@@ -1,0 +1,94 @@
+
+import React, { useState } from 'react';
+import Footer from '@/components/Footer';
+import LocationFilter from '@/components/LocationFilter';
+import VenueCard from '@/components/VenueCard';
+import { Button } from '@/components/ui/button';
+import { Filter } from 'lucide-react';
+import { useVenueSearch, VenueSearchParams } from '@/hooks/useVenueSearch';
+import { Skeleton } from "@/components/ui/skeleton";
+
+const VenueSearch = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const { venues, loading, searchVenues } = useVenueSearch();
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    searchVenues({ query });
+  };
+
+  const handleLocationChange = (location: { latitude: number | null, longitude: number | null }) => {
+    searchVenues({ 
+      latitude: location.latitude, 
+      longitude: location.longitude 
+    });
+  };
+
+  const handleDistanceChange = (distance: string) => {
+    searchVenues({ distance });
+  };
+
+  return (
+    <div className="min-h-screen bg-esports-dark text-white flex flex-col">
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Find Gaming Venues</h1>
+        
+        <div className="mb-8">
+          <LocationFilter 
+            onSearch={handleSearch} 
+            onLocationChange={handleLocationChange}
+            onDistanceChange={handleDistanceChange}
+          />
+        </div>
+
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" className="border-gaming-purple">
+              <Filter className="mr-2" />
+              Filters
+            </Button>
+          </div>
+          <div className="text-gray-400">
+            Showing {venues.length} venues
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((index) => (
+              <div key={index} className="bg-gaming-dark border border-gaming-gray/30 rounded-lg overflow-hidden">
+                <Skeleton className="h-48 w-full" />
+                <div className="p-4">
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2 mb-3" />
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-16 rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : venues.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {venues.map((venue) => (
+              <VenueCard key={venue.id} venue={venue} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-gaming-dark border border-gaming-gray/30 rounded-lg">
+            <p className="text-gray-400 mb-2">No venues found</p>
+            <p className="text-sm text-gray-500">Try adjusting your search parameters</p>
+          </div>
+        )}
+      </main>
+      <Footer />
+    </div>
+  );
+};
+
+export default VenueSearch;

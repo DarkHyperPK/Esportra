@@ -1,0 +1,145 @@
+{
+  "games": [
+    {
+      "name": "Fortnite",
+      "formats": [
+        {
+          "name": "Solo",
+          "value": "solo",
+          "teamSize": 1
+        },
+        {
+          "name": "Duo",
+          "value": "duo",
+          "teamSize": 2
+        },
+        {
+          "name": "Trio",
+          "value": "trio",
+          "teamSize": 3
+        },
+        {
+          "name": "Squad",
+          "value": "squad",
+          "teamSize": 4
+        }
+      ],
+      "defaultFormat": "solo",
+      "logo": "https://ggmoxgiddhhvimbdolsl.supabase.co/storage/v1/object/sign/game-logos/Fortnite.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzJiNmUyM2M0LWI1ZmItNDRhZS1hYTM5LTI0ZTUyMzJlYjIzNCJ9.eyJ1cmwiOiJnYW1lLWxvZ29zL0ZvcnRuaXRlLnBuZyIsImlhdCI6MTc0NjUyNDgyNiwiZXhwIjozMzI1MDk4ODgyNn0.DnXZE3yoOTEhCGhrN6GXs1d0068ttSwXnz-tSEVx2g4"
+    },
+    {
+      "name": "PUBG",
+      "formats": [
+        {
+          "name": "Solo",
+          "value": "solo",
+          "teamSize": 1
+        },
+        {
+          "name": "Duo",
+          "value": "duo",
+          "teamSize": 2
+        },
+        {
+          "name": "Squad",
+          "value": "squad",
+          "teamSize": 4
+        }
+      ],
+      "defaultFormat": "solo",
+      "logo": "/logos/pubg.png"
+    },
+    {
+      "name": "Valorant",
+      "formats": [
+        {
+          "name": "5v5",
+          "value": "5v5",
+          "teamSize": 5
+        }
+      ],
+      "defaultFormat": "5v5",
+      "logo": "https://ggmoxgiddhhvimbdolsl.supabase.co/storage/v1/object/sign/game-logos/Valorant.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzJiNmUyM2M0LWI1ZmItNDRhZS1hYTM5LTI0ZTUyMzJlYjIzNCJ9.eyJ1cmwiOiJnYW1lLWxvZ29zL1ZhbG9yYW50LnBuZyIsImlhdCI6MTc0NjUyNDg4MCwiZXhwIjozMzI1MDk4ODg4MH0.cRIjRCXDvzU2lOmGoCBQ0K-c7MqaqzwrJjplD2Rwl-s"
+    },
+    {
+      "name": "CS2",
+      "formats": [
+        {
+          "name": "5v5",
+          "value": "5v5",
+          "teamSize": 5
+        }
+      ],
+      "defaultFormat": "5v5",
+      "logo": "https://ggmoxgiddhhvimbdolsl.supabase.co/storage/v1/object/sign/game-logos/cs2.jpg?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzJiNmUyM2M0LWI1ZmItNDRhZS1hYTM5LTI0ZTUyMzJlYjIzNCJ9.eyJ1cmwiOiJnYW1lLWxvZ29zL2NzMi5qcGciLCJpYXQiOjE3NDY1MjQ5MTcsImV4cCI6MzMyNTA5ODg5MTd9.wPLQnGbaD1-2f-G3ux5aZR72dyzsv_SJNv_snlhvd34"
+    },
+    {
+      "name": "League of Legends",
+      "formats": [
+        {
+          "name": "5v5",
+          "value": "5v5",
+          "teamSize": 5
+        }
+      ],
+      "defaultFormat": "5v5",
+      "logo": "/logos/lol.png"
+    },
+    {
+      "name": "Dota 2",
+      "formats": [
+        {
+          "name": "5v5",
+          "value": "5v5",
+          "teamSize": 5
+        }
+      ],
+      "defaultFormat": "5v5",
+      "logo": "/logos/dota2.png"
+    },
+    {
+      "name": "Rocket League",
+      "formats": [
+        {
+          "name": "1v1",
+          "value": "1v1",
+          "teamSize": 1
+        },
+        {
+          "name": "2v2",
+          "value": "2v2",
+          "teamSize": 2
+        },
+        {
+          "name": "3v3",
+          "value": "3v3",
+          "teamSize": 3
+        }
+      ],
+      "defaultFormat": "3v3",
+      "logo": "/logos/rocketleague.png"
+    },
+    {
+      "name": "Apex Legends",
+      "formats": [
+        {
+          "name": "Solo",
+          "value": "solo",
+          "teamSize": 1
+        },
+        {
+          "name": "Duo",
+          "value": "duo",
+          "teamSize": 2
+        },
+        {
+          "name": "Trio",
+          "value": "trio",
+          "teamSize": 3
+        }
+      ],
+      "defaultFormat": "trio",
+      "logo": "https://ggmoxgiddhhvimbdolsl.supabase.co/storage/v1/object/sign/game-logos/apexlegends.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzJiNmUyM2M0LWI1ZmItNDRhZS1hYTM5LTI0ZTUyMzJlYjIzNCJ9.eyJ1cmwiOiJnYW1lLWxvZ29zL2FwZXhsZWdlbmRzLnBuZyIsImlhdCI6MTc0NjUyNDc5MywiZXhwIjozMzI1MDk4ODc5M30.H1ACwYiMrViqDDmg6wCmNKyvUcOsrT7yfYORvmGTS2I"
+    }
+  ]
+} 
