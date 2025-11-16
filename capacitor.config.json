@@ -1,7 +1,7 @@
 
 {
-  "appId": "com.fragandbook.app",
-  "appName": "Frag & Book",
+  "appId": "com.esportra.app",
+  "appName": "Esportra",
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
@@ -26,6 +26,6 @@
     }
   },
   "ios": {
-    "scheme": "FragBook"
+    "scheme": "Esportra"
   }
 }

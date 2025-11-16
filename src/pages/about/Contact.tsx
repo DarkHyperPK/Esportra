@@ -27,13 +27,13 @@ const ContactPage = () => {
             <div>
               <h2 className="text-xl font-bold mb-4">Get in Touch</h2>
               <p className="text-gray-300 mb-6">
-                Have questions about GamerSpot? We're here to help! Fill out the form and we'll get back to you as soon as possible.
+                Have questions about Esportra? We're here to help! Fill out the form and we'll get back to you as soon as possible.
               </p>
 
               <div className="space-y-4">
                 <div>
                   <h3 className="font-bold mb-2">Email</h3>
-                  <p className="text-gray-300">support@gamerspot.com</p>
+                  <p className="text-gray-300">support@esportra.com</p>
                 </div>
                 <div>
                   <h3 className="font-bold mb-2">Office</h3>

@@ -8,7 +8,7 @@ const AppDownloadPage = () => {
   return (
     <div className="min-h-screen bg-esports-dark text-white flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8 text-center">
-        <h1 className="text-3xl font-bold mb-6">Download GamerSpot App</h1>
+        <h1 className="text-3xl font-bold mb-6">Download Esportra App</h1>
         <div className="flex justify-center space-x-4 mb-8">
           <Button className="bg-gaming-purple hover:bg-gaming-purple/80">
             <Smartphone className="mr-2" /> Download for iOS

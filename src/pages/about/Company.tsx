@@ -99,7 +99,7 @@ const AboutCompany = () => {
             <div className="flex-1 text-center md:text-left">
               <h2 className="text-2xl font-bold mb-4">Join Our Community</h2>
               <p className="text-gray-300 mb-6">
-                Be part of the fastest-growing gaming community platform. Connect, compete, and level up your gaming experience with GamerSpot.
+                Be part of the fastest-growing gaming community platform. Connect, compete, and level up your gaming experience with Esportra.
               </p>
               <Button className="bg-gaming-purple hover:bg-gaming-purple/80">
                 Sign Up Now

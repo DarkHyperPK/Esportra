@@ -12,8 +12,8 @@ import {
 const FAQPage = () => {
   const faqs = [
     {
-      question: "What is GamerSpot?",
-      answer: "GamerSpot is a platform connecting gamers with gaming venues and tournaments. We help you discover places to play, compete in tournaments, and connect with other gamers."
+      question: "What is Esportra?",
+      answer: "Esportra is a platform connecting gamers with gaming venues and tournaments. We help you discover places to play, compete in tournaments, and connect with other gamers."
     },
     {
       question: "How do I book a venue?",

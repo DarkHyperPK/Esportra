@@ -90,7 +90,7 @@ const SponsorsBanner = () => {
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="mb-4 md:mb-0">
               <h3 className="text-xl font-bold mb-2">Exclusive Gaming Gear Discounts</h3>
-              <p className="text-gray-300">Get special offers on premium gaming equipment for GamerSpot members</p>
+              <p className="text-gray-300">Get special offers on premium gaming equipment for Esportra members</p>
             </div>
             <div className="flex space-x-4">
               <a 

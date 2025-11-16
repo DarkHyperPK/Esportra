@@ -163,7 +163,7 @@ const SponsorAds: React.FC<SponsorAdProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <motion.div variants={itemVariants}>
-              <p className="text-white font-medium">Official Sponsors of the GamerSpot Gaming Platform</p>
+              <p className="text-white font-medium">Official Sponsors of the Esportra Gaming Platform</p>
             </motion.div>
           </div>
           <motion.div variants={itemVariants}>

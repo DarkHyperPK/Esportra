@@ -182,8 +182,8 @@ Your app can also work as a PWA without building native apps:
 
 ```json
 {
-  "name": "Frag & Book",
-  "short_name": "FragBook",
+  "name": "Esportra",
+  "short_name": "Esportra",
   "description": "Esports Tournaments & Gaming Platform",
   "start_url": "/",
   "display": "standalone",
@@ -222,8 +222,8 @@ Your app can also work as a PWA without building native apps:
 
 ```json
 {
-  "appId": "com.yourcompany.fragandbook",  // Change to your company
-  "appName": "Frag & Book",                 // Your app name
+  "appId": "com.esportra.app",  // Change to your company
+  "appName": "Esportra",                 // Your app name
   "webDir": "dist",                         // Build output folder
 }
 ```
@@ -232,7 +232,7 @@ Your app can also work as a PWA without building native apps:
 
 **Android** (`android/app/build.gradle`):
 ```gradle
-applicationId "com.yourcompany.fragandbook"
+applicationId "com.esportra.app"
 ```
 
 **iOS** (`ios/App/App.xcodeproj/project.pbxproj`):
