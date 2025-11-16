@@ -1,4 +1,4 @@
-# Frag & Book - Esports Tournament Platform
+# Esportra - Esports Tournament Platform
 
 A comprehensive esports tournament management platform built with React, TypeScript, and Supabase.
 
@@ -47,8 +47,8 @@ A comprehensive esports tournament management platform built with React, TypeScr
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/frag-and-book.git
-   cd frag-and-book
+   git clone https://github.com/yourusername/Esportra.git
+   cd Esportra
    ```
 
 2. **Install dependencies**
@@ -78,7 +78,7 @@ A comprehensive esports tournament management platform built with React, TypeScr
 ## 📁 Project Structure
 
 ```
-frag-and-book/
+Esportra/
 ├── src/
 │   ├── components/      # React components
 │   │   ├── admin/       # Admin-specific components
@@ -241,3 +241,4 @@ For issues and questions:
 ---
 
 Built with ❤️ using React, TypeScript, and Supabase
+"# Esportra" 
