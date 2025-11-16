@@ -8,6 +8,7 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tournament as TournamentType } from '@/hooks/useTournaments';
 import { TournamentStatus } from '@/types/tournament';
@@ -30,6 +31,10 @@ import { tournamentApi } from '@/services/api';
 import esportsGames from '@/data/esportsGames.json';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import SingleEliminationBracketCustom, { BracketTeam, BracketMatch } from '@/components/bracket/SingleEliminationBracketCustom';
+import BanManagement from '@/components/organizer/BanManagement';
+import DisputeCenter from '@/components/organizer/DisputeCenter';
+
+const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 
 interface DatabaseTournament {
   id: string;
@@ -76,7 +81,8 @@ interface Participant {
   id: string;
   user_id: string;
   tournament_id: string;
-  registration_type: 'solo' | 'team';
+  participant_type: 'solo' | 'team';
+  team_id?: string | null;
   team_name: string | null;
   team_members: string | null;
   gamer_tag: string | null;
@@ -154,6 +160,13 @@ const TournamentDashboard = () => {
   const [bracketType, setBracketType] = useState<'single' | 'double' | 'roundrobin' | 'swiss'>('single');
   const [gameLogo, setGameLogo] = useState<string | null>(null);
   const [gameBackgroundUrl, setGameBackgroundUrl] = useState<string | null>(null);
+  const [teamDialogOpen, setTeamDialogOpen] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState<Participant | null>(null);
+  const [selectedTeamMembers, setSelectedTeamMembers] = useState<string[]>([]);
+  const [teamCaptain, setTeamCaptain] = useState<string | null>(null);
+  const [teamLoading, setTeamLoading] = useState<boolean>(false);
+  const [teamModalOpen, setTeamModalOpen] = useState(false);
+  const [teamModalData, setTeamModalData] = useState<{ id?: string | null; name: string; logo?: string | null; members: string[] }>({ name: '', members: [] });
 
   useEffect(() => {
     if (slug && user) {
@@ -179,30 +192,68 @@ const TournamentDashboard = () => {
 
       // First, get the tournament data
       console.log('Executing Supabase query for tournament:', slug);
-      const { data: tournamentData, error: tournamentError } = await supabase
+      let { data: tournamentData, error: tournamentError } = await supabase
         .from('tournaments')
         .select(`
           id,
           name,
-          game,
-          date,
-          time,
-          venue,
-          max_participants,
-          prize_pool,
           description,
-          organizer_id,
+          slug,
+          game,
+          format,
+          max_teams,
+          min_teams,
           entry_fee,
-          is_online,
-          created_at,
-          updated_at,
+          prize_pool,
+          start_date,
+          end_date,
+          registration_deadline,
           status,
-          image_url,
-          team_size,
-          slug
+          organizer_id,
+          venue_id,
+          is_public,
+          banner_url,
+          logo_url,
+          created_at,
+          updated_at
         `)
         .eq('slug', slug)
         .single();
+
+      // Fallback: try by ID if slug lookup fails
+      if ((tournamentError || !tournamentData) && slug) {
+        const byId = await supabase
+          .from('tournaments')
+          .select(`
+            id,
+            name,
+            description,
+            slug,
+            game,
+            format,
+            max_teams,
+            min_teams,
+            entry_fee,
+            prize_pool,
+            start_date,
+            end_date,
+            registration_deadline,
+            status,
+            organizer_id,
+            venue_id,
+            is_public,
+            banner_url,
+            logo_url,
+            created_at,
+            updated_at
+          `)
+          .eq('id', slug)
+          .single();
+        if (!byId.error && byId.data) {
+          tournamentData = byId.data;
+          tournamentError = null as any;
+        }
+      }
 
       console.log('Tournament query response:', {
         data: tournamentData,
@@ -249,9 +300,9 @@ const TournamentDashboard = () => {
       }
       const typedTournamentData = (tournamentData as DatabaseTournament)!;
 
-      // Get participant count separately
+      // Get participant count from tournament_participants (teams count as 1 entry)
       const { count, error: countError } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .select('*', { count: 'exact', head: true })
         .eq('tournament_id', typedTournamentData.id);
 
@@ -296,21 +347,9 @@ const TournamentDashboard = () => {
 
       // Fetch registrations separately
       const { data: registrationsData, error: registrationsError } = await supabase
-        .from('tournament_registrations')
-        .select(`
-          id,
-          tournament_id,
-          user_id,
-          gamer_tag,
-          team_name,
-          team_members,
-          status,
-          registered_at,
-          created_at,
-          team_logo
-        `)
-        .eq('tournament_id', typedTournamentData.id)
-        .order('created_at', { ascending: false });
+        .from('tournament_participants')
+        .select('*')
+        .eq('tournament_id', typedTournamentData.id);
 
       if (registrationsError) {
         console.error('Error fetching registrations:', registrationsError);
@@ -321,34 +360,242 @@ const TournamentDashboard = () => {
         );
       }
 
-      // Transform and set the participants data
-      const participants = (registrationsData || []).map((reg: any) => {
-        console.log('Processing registration:', reg);
+      // Resolve solo usernames from profiles
+      const regs = (registrationsData as any[]) || [];
+      const soloUserIds = Array.from(new Set(regs.filter(r => r.participant_type !== 'team' && r.user_id).map(r => r.user_id)));
+      let profileMap: Record<string, { username: string; full_name: string | null }> = {};
+      if (soloUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, full_name')
+          .in('id', soloUserIds);
+        for (const p of (profiles || [])) {
+          profileMap[p.id] = { username: p.username || 'User', full_name: p.full_name || null };
+        }
+      }
+
+      const participants = regs.map((reg: any) => {
+        const isTeam = reg.participant_type === 'team';
+        const teamMembersStr = Array.isArray(reg.team_members) ? reg.team_members.join(', ') : (reg.team_members || null);
         const participant: Participant = {
           id: reg.id,
           user_id: reg.user_id,
           tournament_id: reg.tournament_id,
-          registration_type: reg.team_name ? 'team' : 'solo',
-          team_name: reg.team_name,
-          team_members: reg.team_members,
-          gamer_tag: reg.gamer_tag,
+          participant_type: isTeam ? 'team' as const : 'solo' as const,
+          team_id: reg.team_id || null,
+          team_name: isTeam ? (reg.team_name || 'Team') : null,
+          team_members: isTeam ? teamMembersStr : null,
+          gamer_tag: isTeam ? null : (reg.gamer_tag || null),
           status: reg.status || 'registered',
-          registered_at: reg.registered_at || reg.created_at,
-          created_at: reg.created_at,
-          team_logo: reg.team_logo || null,
-          user: {
-            username: reg.team_name || reg.gamer_tag || 'Unknown User',
-            full_name: null
-          }
+          registered_at: reg.registered_at || reg.registration_date || reg.created_at,
+          created_at: reg.created_at || reg.registered_at || reg.registration_date,
+          team_logo: null,
+          user: isTeam ? { username: '', full_name: null } : (profileMap[reg.user_id] || { username: 'User', full_name: null })
         };
-        console.log('Transformed participant:', participant);
         return participant;
       });
 
+      // Resolve team rosters: use roster_id from registration to get roster-specific members
+      for (const p of participants) {
+        if (p.participant_type !== 'team') continue;
+        
+        // If existing string contains plain names (not UUIDs), keep it
+        if (p.team_members && p.team_members.trim().length > 0) {
+          const tokens = p.team_members.split(',').map(s => s.trim()).filter(Boolean);
+          const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+          if (tokens.some(t => !looksLikeUuid(t))) continue;
+        }
+        
+        try {
+          // Get the registration row to access roster_id
+          const { data: regRow } = await supabase
+            .from('tournament_participants')
+            .select('roster_id, team_id')
+            .eq('id', p.id)
+            .maybeSingle();
+          
+          const rosterId = (regRow as any)?.roster_id || null;
+          let teamId = p.team_id as string | null || (regRow as any)?.team_id || null;
+          let ownerId: string | null = null;
+          
+          // Resolve team id by exact name if missing
+          if (!teamId && p.team_name) {
+            const exact = await (supabase as any).from('teams').select('id, owner_id, logo_url').eq('name', p.team_name).maybeSingle();
+            if (exact.data) { 
+              teamId = exact.data.id; 
+              ownerId = exact.data.owner_id; 
+              if (!p.team_logo) p.team_logo = exact.data.logo_url || null; 
+            }
+            if (!teamId) {
+              const fuzzy = await (supabase as any).from('teams').select('id, owner_id, logo_url').ilike('name', `%${p.team_name}%`).limit(1).maybeSingle();
+              if (fuzzy.data) {
+                teamId = fuzzy.data.id; 
+                ownerId = fuzzy.data.owner_id; 
+                if (!p.team_logo) p.team_logo = fuzzy.data.logo_url || null;
+              }
+            }
+          }
+          
+          if (teamId && !ownerId) {
+            const meta = await (supabase as any).from('teams').select('owner_id, logo_url').eq('id', teamId).maybeSingle();
+            if (meta.data) {
+              ownerId = meta.data.owner_id || null; 
+              if (!p.team_logo) p.team_logo = meta.data.logo_url || null;
+            }
+          }
+          
+          let names: string[] = [];
+          
+          // Priority 1: Use roster_id from registration to get roster-specific members
+          if (rosterId) {
+            const { data: roster, error: rosterError } = await supabase.rpc('get_roster_members', { r_id: rosterId });
+            if (rosterError) {
+              console.error('Error fetching roster members:', rosterError, 'for roster_id:', rosterId);
+            } else {
+              names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+              console.log('Resolved members from roster_id:', rosterId, 'names:', names);
+            }
+          }
+          
+          // Priority 2: If no roster_id, resolve roster by team_id + tournament game
+          if (names.length === 0 && teamId && typedTournamentData.game) {
+            const game = (typedTournamentData.game || '').trim().toLowerCase();
+            const { data: rosters, error: rostersError } = await supabase
+              .from('team_rosters')
+              .select('id, name, game, created_at')
+              .eq('team_id', teamId);
+            
+            if (rostersError) {
+              console.error('Error fetching rosters:', rostersError, 'for team_id:', teamId);
+            } else {
+              const list = rosters || [];
+              let pickedRosterId: string | null = null;
+              
+              if (list.length === 1) {
+                pickedRosterId = list[0].id;
+              } else if (list.length > 1) {
+                // Match by game
+                const byGame = list.filter((r: any) => String(r.game || '').trim().toLowerCase() === game);
+                if (byGame.length === 1) {
+                  pickedRosterId = byGame[0].id;
+                } else if (byGame.length > 0) {
+                  // Multiple matches, pick most recent
+                  const sorted = [...byGame].sort((a: any, b: any) => 
+                    new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+                  );
+                  pickedRosterId = sorted[0].id;
+                } else if (list.length > 0) {
+                  // No game match, pick most recent
+                  const sorted = [...list].sort((a: any, b: any) => 
+                    new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+                  );
+                  pickedRosterId = sorted[0].id;
+                }
+              }
+              
+              if (pickedRosterId) {
+                const { data: roster, error: rosterError2 } = await supabase.rpc('get_roster_members', { r_id: pickedRosterId });
+                if (rosterError2) {
+                  console.error('Error fetching roster members (priority 2):', rosterError2, 'for roster_id:', pickedRosterId);
+                } else {
+                  names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+                  console.log('Resolved members from inferred roster_id:', pickedRosterId, 'names:', names);
+                }
+              }
+            }
+          }
+          
+          // Priority 3: Final fallback to organization-wide team members (legacy)
+          if (names.length === 0 && teamId) {
+            const { data: roster, error: teamRosterError } = await (supabase as any).rpc('get_team_roster', { t_id: teamId });
+            if (teamRosterError) {
+              console.error('Error fetching team roster:', teamRosterError, 'for team_id:', teamId);
+            } else {
+              names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+              if (names.length === 0 && ownerId) {
+                const { data: owner } = await supabase.from('profiles').select('id, username, full_name').eq('id', ownerId).maybeSingle();
+                const ownerName = owner?.username || owner?.full_name || `player_${String(ownerId).substring(0,8)}`;
+                names = [ownerName];
+              }
+              console.log('Resolved members from team_roster fallback:', names);
+            }
+          }
+          
+          if (names.length > 0) {
+            p.team_members = names.join(', ');
+            console.log('Final member list for participant:', p.id, 'team_name:', p.team_name, 'members:', p.team_members);
+          } else {
+            console.warn('No members found for participant:', p.id, 'team_name:', p.team_name, 'roster_id:', rosterId, 'team_id:', teamId);
+          }
+        } catch (e) {
+          console.error('Error resolving members for participant:', p.id, e);
+          // ignore and continue to next team
+        }
+      }
+
+      // Attempt to resolve team logos
+      try {
+        const byIds = Array.from(new Set(participants.filter(p => p.participant_type === 'team' && p.team_id).map(p => p.team_id as string)));
+        if (byIds.length > 0) {
+          const { data: teamRows } = await (supabase as any).from('teams').select('id, logo_url').in('id', byIds);
+          const logoById = new Map<string, string | null>();
+          (teamRows || []).forEach((t: any) => logoById.set(t.id, t.logo_url || null));
+          participants.forEach(p => { if (p.team_id && logoById.has(p.team_id)) p.team_logo = logoById.get(p.team_id) || null; });
+        }
+        // Fallback by team_name from tournament_registrations or teams
+        const byNames = participants.filter(p => p.participant_type === 'team' && !p.team_logo && p.team_name).map(p => p.team_name as string);
+        if (byNames.length > 0) {
+          const { data: regRows } = await supabase
+            .from('tournament_registrations')
+            .select('team_name, team_logo')
+            .in('team_name', byNames);
+          const logoByName = new Map<string, string | null>();
+          (regRows || []).forEach((r: any) => logoByName.set(r.team_name, r.team_logo || null));
+          // Try teams table next for any still missing
+          const missingNames = byNames.filter(n => !logoByName.has(n));
+          if (missingNames.length > 0) {
+            const { data: teamRowsByName } = await supabase
+              .from('teams')
+              .select('name, logo_url')
+              .in('name', missingNames);
+            (teamRowsByName || []).forEach((t: any) => logoByName.set(t.name, t.logo_url || null));
+          }
+          participants.forEach(p => {
+            if (!p.team_logo && p.team_name && logoByName.has(p.team_name)) {
+              p.team_logo = logoByName.get(p.team_name) || null;
+            }
+          });
+        }
+      } catch {}
+
+      // Attach team logos where team_id is available
+      const teamIds = Array.from(new Set(participants.filter(p => p.participant_type === 'team' && p.team_id).map(p => p.team_id))) as string[];
+      if (teamIds.length > 0) {
+        const { data: teamsMeta } = await supabase
+          .from('teams')
+          .select('id, logo_url')
+          .in('id', teamIds);
+        const logoMap = new Map<string, string | null>();
+        (teamsMeta || []).forEach((t: any) => logoMap.set(t.id, t.logo_url || null));
+        for (const p of participants) {
+          if (p.participant_type === 'team' && p.team_id && (logoMap.has(p.team_id))) {
+            (p as any).team_logo = logoMap.get(p.team_id);
+          }
+        }
+      }
+
       // Transform the data to match the Tournament type
       const now = new Date();
-      const start = new Date(`${typedTournamentData.date}T${typedTournamentData.time}`);
+      const start = new Date(typedTournamentData.start_date);
       console.log('Tournament data:', typedTournamentData);
+      
+      // Get venue name if venue_id exists
+      let venueName = '';
+      if (typedTournamentData.venue_id) {
+        // For now, just use venue_id as venue name
+        venueName = `Venue ${typedTournamentData.venue_id}`;
+      }
+      
       // Only allow the three statuses
       let computedStatus: 'upcoming' | 'ongoing' | 'completed' = 'upcoming';
       if (typedTournamentData.status === 'completed') {
@@ -361,34 +608,60 @@ const TournamentDashboard = () => {
         id: typedTournamentData.id,
         name: typedTournamentData.name,
         game: typedTournamentData.game,
-        date: typedTournamentData.date,
-        time: typedTournamentData.time,
-        venue: typedTournamentData.venue,
-        max_participants: typedTournamentData.max_participants,
-        prize_pool: typedTournamentData.prize_pool,
-        description: typedTournamentData.description,
+        date: typedTournamentData.start_date ? new Date(typedTournamentData.start_date).toISOString().split('T')[0] : '',
+        time: typedTournamentData.start_date ? new Date(typedTournamentData.start_date).toTimeString().split(' ')[0] : '',
+        venue: venueName,
+        max_participants: typedTournamentData.max_teams,
+        prize_pool: typedTournamentData.prize_pool?.toString() || '0',
+        description: typedTournamentData.description || '',
         organizer_id: typedTournamentData.organizer_id,
         user_id: typedTournamentData.organizer_id || '',
-        entry_fee: typedTournamentData.entry_fee,
-        is_online: typedTournamentData.is_online,
+        entry_fee: typedTournamentData.entry_fee?.toString() || '0',
+        is_online: !typedTournamentData.venue_id,
         created_at: typedTournamentData.created_at,
         updated_at: typedTournamentData.updated_at,
         status: computedStatus,
-        image_url: typedTournamentData.image_url,
+        image_url: typedTournamentData.banner_url || typedTournamentData.logo_url,
         team_size: typedTournamentData.team_size || 1,
         current_participants: count
       };
 
-      // Fetch game logo from Supabase games table
-      const { data: gameData, error: gameError } = await (supabase as any)
+      // Pick logo: RAWG API first, then local mapping, then DB games table, then tournament image
+      try {
+        const searchName = typedTournamentData.game.trim().toLowerCase() === 'cs2' ? 'Counter-Strike 2' : typedTournamentData.game;
+        const rawgRes = await fetch(`https://api.rawg.io/api/games?key=55e8210bf73448108b7f3c6707739206&search=${encodeURIComponent(searchName)}&page_size=1`);
+        const rawgJson = await rawgRes.json();
+        const apiImg = rawgJson?.results?.[0]?.background_image || rawgJson?.results?.[0]?.background_image_additional || '';
+        if (apiImg) {
+          setGameLogo(apiImg);
+        } else {
+          const localGame = (esportsGames as any).games.find((g: any) => normalize(g.name) === normalize(typedTournamentData.game));
+          if (localGame?.logo) {
+            setGameLogo(localGame.logo);
+          } else {
+            const { data: gameData } = await (supabase as any)
         .from('games')
         .select('logo_url')
         .eq('name', typedTournamentData.game)
-        .single();
-      if (!gameError && gameData && typeof gameData.logo_url === 'string' && gameData.logo_url) {
+              .maybeSingle();
+            if (gameData?.logo_url) {
         setGameLogo(gameData.logo_url);
+            } else if (tournament.image_url) {
+              setGameLogo(tournament.image_url);
       } else {
         setGameLogo(null);
+            }
+          }
+        }
+      } catch {
+        const localGame = (esportsGames as any).games.find((g: any) => normalize(g.name) === normalize(typedTournamentData.game));
+        if (localGame?.logo) {
+          setGameLogo(localGame.logo);
+        } else if (tournament.image_url) {
+          setGameLogo(tournament.image_url);
+        } else {
+          setGameLogo(null);
+        }
       }
 
       // Set the tournament data
@@ -428,24 +701,214 @@ const TournamentDashboard = () => {
     }
   };
 
+  // Open team modal: fetch members and logo on demand for accuracy
+  const openTeamModal = async (p: Participant) => {
+    try {
+      let teamId = p.team_id || null;
+      let logo: string | null | undefined = (p as any).team_logo;
+      // Load the exact registration row first (use id for precision)
+      let regTeamMembers: string[] = [];
+      let regRosterId: string | null = null;
+      let regRosterName: string | null = null;
+      let regTeamId: string | null = null;
+      try {
+        const { data: regRow } = await supabase
+          .from('tournament_participants')
+          .select('team_members, roster_id, roster_name, team_id, team_captain_id')
+          .eq('id', p.id)
+          .maybeSingle();
+        if (regRow) {
+          const raw = regRow.team_members;
+          regRosterId = regRow.roster_id || null;
+          regRosterName = regRow.roster_name || null;
+          regTeamId = regRow.team_id || null;
+
+          // Robustly parse team_members in multiple shapes
+          if (raw) {
+            if (Array.isArray(raw)) {
+              // Could be array of strings, ids or objects
+              const items = raw as any[];
+              // If objects with usernames/gamer_tag/full_name
+              if (items.length > 0 && typeof items[0] === 'object' && items[0] !== null) {
+                const maybeNames = items
+                  .map((it: any) => it?.gamer_tag || it?.username || it?.full_name || it?.name || null)
+                  .filter(Boolean);
+                if (maybeNames.length > 0) {
+                  regTeamMembers = maybeNames as string[];
+                } else {
+                  const ids = items.map((it: any) => it?.user_id).filter(Boolean);
+                  if (ids.length > 0) {
+                    const { data: profsTok } = await supabase
+                      .from('profiles')
+                      .select('id, gamer_tag, username, full_name')
+                      .in('id', ids);
+                    const mapTok = new Map<string, string>();
+                    (profsTok || []).forEach((p: any) => mapTok.set(p.id, p.gamer_tag || p.username || p.full_name || `player_${String(p.id).substring(0,8)}`));
+                    regTeamMembers = ids.map((id: string) => mapTok.get(id) || `player_${String(id).substring(0,8)}`);
+                  }
+                }
+              } else {
+                regTeamMembers = items.map((s: any) => String(s).trim()).filter(Boolean);
+              }
+            } else if (typeof raw === 'string') {
+              regTeamMembers = String(raw).split(',').map(s => s.trim()).filter(Boolean);
+            } else if (typeof raw === 'object' && Array.isArray((raw as any).members)) {
+              const m = (raw as any).members as any[];
+              regTeamMembers = m.map((s: any) => String(s).trim()).filter(Boolean);
+            }
+          }
+        }
+      } catch {}
+      if (!teamId && p.team_name) {
+        const { data: teamRow } = await supabase
+          .from('teams')
+          .select('id, logo_url')
+          .ilike('name', p.team_name)
+          .maybeSingle();
+        teamId = teamRow?.id || null;
+        logo = teamRow?.logo_url || logo;
+      } else if (teamId && !logo) {
+        const { data: teamRow } = await supabase
+          .from('teams')
+          .select('logo_url')
+          .eq('id', teamId)
+          .maybeSingle();
+        logo = teamRow?.logo_url || null;
+      }
+      // Simplified logic: 1) Already resolved names from participants list; 2) roster_id; 3) derive roster by team_id + tournament.game
+      let members: string[] = [];
+
+      const toNames = (rows: any[]) =>
+        (rows || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+
+      // Step 0: Check if participant already has resolved readable member names (from fetchTournamentData loop)
+      if (p.team_members && p.team_members.trim().length > 0) {
+        const tokens = p.team_members.split(',').map(s => s.trim()).filter(Boolean);
+        const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+        // If any token is NOT a UUID, assume these are readable names already resolved
+        if (tokens.some(t => !looksLikeUuid(t))) {
+          members = tokens;
+          console.log('Using already-resolved members from participant.team_members:', members);
+        }
+      }
+
+      // Step 1: If we have parsed names from regRow.team_members, use those
+      if (members.length === 0 && regTeamMembers.length > 0) {
+        members = regTeamMembers;
+        console.log('Using parsed members from registration row:', members);
+      }
+
+      // Step 2: use roster_id on registration if available
+      if (members.length === 0 && regRosterId) {
+        const { data: roster, error: rosterError } = await supabase.rpc('get_roster_members', { r_id: regRosterId });
+        if (rosterError) {
+          console.error('Error fetching roster members in modal:', rosterError);
+        } else {
+          const names = toNames(roster || []);
+          if (names.length > 0) {
+            members = names;
+            console.log('Resolved members from roster_id in modal:', members);
+          }
+        }
+      }
+
+      // Step 3: if missing, derive roster by team_id + game match (game or name ilike)
+      if (members.length === 0) {
+        const effectiveTeamId = regTeamId || teamId;
+        const game = String(tournament?.game || '').trim().toLowerCase();
+        if (effectiveTeamId && game) {
+          const { data: rosters } = await supabase
+            .from('team_rosters')
+            .select('id, name, game, created_at')
+            .eq('team_id', effectiveTeamId);
+          const list = rosters || [];
+          let pickedId: string | null = null;
+          if (list.length === 1) {
+            pickedId = list[0].id;
+          } else if (list.length > 1) {
+            const byGame = list.filter((r: any) => String(r.game || '').trim().toLowerCase() === game);
+            if (byGame.length === 1) {
+              pickedId = byGame[0].id;
+            } else if (byGame.length > 1) {
+              // pick most recent among game matches
+              const sorted = [...byGame].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+              pickedId = sorted[0].id;
+            } else {
+              // fallback: name contains game
+              const byName = list.filter((r: any) => String(r.name || '').toLowerCase().includes(game));
+              if (byName.length > 0) {
+                const sorted = [...byName].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+                pickedId = sorted[0].id;
+              }
+            }
+          }
+          if (!pickedId && list.length > 0) {
+            const sorted = [...list].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+            pickedId = sorted[0].id;
+          }
+          if (pickedId) {
+            const { data: roster, error: rosterError3 } = await supabase.rpc('get_roster_members', { r_id: pickedId });
+            if (rosterError3) {
+              console.error('Error fetching roster members (Step 3) in modal:', rosterError3);
+            } else {
+              const names = toNames(roster || []);
+              if (names.length > 0) {
+                members = names;
+                console.log('Resolved members from inferred roster (Step 3) in modal:', members);
+              }
+            }
+          }
+        }
+      }
+
+      console.log('Modal opening - participant:', p.team_name, 'resolved members:', members);
+      setTeamModalData({ id: teamId, name: p.team_name || 'Team', logo: logo || null, members });
+      setTeamModalOpen(true);
+    } catch (e) {
+      setTeamModalData({ id: p.team_id || null, name: p.team_name || 'Team', logo: (p as any).team_logo || null, members: (p.team_members || '').split(',').map(s => s.trim()).filter(Boolean) });
+      setTeamModalOpen(true);
+    }
+  };
+
   // Ban participant (delete registration from DB)
   const handleBan = async (participantId: string, userId: string) => {
     try {
+      // Get participant info to determine if it's a user or team ban
+      const { data: participant } = await supabase
+        .from('tournament_participants')
+        .select('user_id, team_id')
+        .eq('id', participantId)
+        .maybeSingle();
+
       // Remove registration
       await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .delete()
         .eq('id', participantId);
+
       // Insert into tournament_bans
+      const banData: any = {
+        tournament_id: tournament?.id,
+        participant_id: participantId,
+        ban_reason: banReason.trim(),
+        banned_by: user?.id,
+        banned_at: new Date().toISOString(),
+        is_active: true,
+      };
+
+      // Set user_id or team_id based on participant type
+      if (participant?.user_id) {
+        banData.user_id = participant.user_id;
+      } else if (participant?.team_id) {
+        banData.team_id = participant.team_id;
+      } else {
+        // Fallback to provided userId
+        banData.user_id = userId;
+      }
+
       await supabase
         .from('tournament_bans')
-        .insert({
-          tournament_id: slug,
-          user_id: userId,
-          ban_reason: banReason.trim(),
-          banned_by: user?.id,
-          banned_at: new Date().toISOString(),
-        });
+        .insert(banData);
       toast({ title: 'Banned', description: 'Participant has been banned from this tournament.' });
       setBanDialogOpen(false);
       setBanReason('');
@@ -584,7 +1047,7 @@ const TournamentDashboard = () => {
 
   // Move the bracket rendering logic to a separate function to avoid linter error
   function renderBracketTab(participants, bracketGenerated, setBracketGenerated, toast) {
-    const teams = participants.filter(p => p.registration_type === 'team');
+    const teams = participants.filter(p => p.participant_type === 'team');
     const matches = generateCustomBracketMatches(teams);
     const canGenerate = teams.length >= 2;
     if (!bracketGenerated) {
@@ -828,9 +1291,9 @@ const TournamentDashboard = () => {
           <div className="flex items-center gap-4">
             {/* Game Logo */}
             {gameLogo ? (
-              <img src={gameLogo} alt={tournament.game + ' logo'} className="w-12 h-12 object-contain rounded bg-white border border-gray-200" />
+              <img src={gameLogo} alt={tournament.game + ' logo'} className="w-12 h-12 object-cover rounded border border-gray-700 bg-transparent" />
             ) : (
-              <span className="w-12 h-12 flex items-center justify-center rounded bg-white border border-gray-200">
+              <span className="w-12 h-12 flex items-center justify-center rounded bg-gray-800 border border-gray-700">
                 <GamepadIcon className="w-8 h-8 text-gaming-purple" />
               </span>
             )}
@@ -928,6 +1391,8 @@ const TournamentDashboard = () => {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="participants">Participants</TabsTrigger>
             <TabsTrigger value="brackets">Brackets</TabsTrigger>
+            <TabsTrigger value="bans">Bans</TabsTrigger>
+            <TabsTrigger value="disputes">Disputes</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -966,11 +1431,11 @@ const TournamentDashboard = () => {
                   </div>
                   <div>
                     <span className="block text-sm text-gray-400">Teams Registered</span>
-                    <span className="block font-semibold">{participants.filter(p => p.registration_type === 'team').length}</span>
+                    <span className="block font-semibold">{participants.filter(p => p.participant_type === 'team').length}</span>
                   </div>
                   <div>
                     <span className="block text-sm text-gray-400">Solo Players</span>
-                    <span className="block font-semibold">{participants.filter(p => p.registration_type === 'solo').length}</span>
+                    <span className="block font-semibold">{participants.filter(p => p.participant_type === 'solo').length}</span>
                   </div>
                 </div>
               </CardContent>
@@ -980,152 +1445,351 @@ const TournamentDashboard = () => {
           <TabsContent value="participants">
             <Card className="bg-gaming-dark border-gaming-gray/30">
               <CardHeader>
-                <CardTitle>Registered Participants</CardTitle>
+                <CardTitle>Teams</CardTitle>
               </CardHeader>
               <CardContent>
-                {participants.length === 0 ? (
-                  <p className="text-gray-400">No participants registered yet.</p>
+                {participants.filter(p => p.participant_type === 'team').length === 0 ? (
+                  <p className="text-gray-400">No teams registered yet.</p>
                 ) : (
-                  <div className="space-y-10">
-                    {/* Solo Players Table */}
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3">Solo Players</h3>
                       <div className="overflow-x-auto rounded-lg border border-gaming-gray/30">
                         <table className="min-w-full bg-gaming-dark text-white">
                           <thead className="bg-gaming-gray/20">
                             <tr>
-                              <th className="py-2 px-4 text-left">Username</th>
+                          <th className="py-2 px-4 text-left">Logo</th>
+                          <th className="py-2 px-4 text-left">Team Name</th>
                               <th className="py-2 px-4 text-left">Registered</th>
                               <th className="py-2 px-4 text-right">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {participants.filter(p => p.registration_type === 'solo').length === 0 ? (
-                              <tr>
-                                <td colSpan={3} className="text-center py-4 text-gray-400">No solo players registered.</td>
-                              </tr>
-                            ) : (
-                              participants
-                                .filter(p => p.registration_type === 'solo')
+                        {participants
+                          .filter(p => p.participant_type === 'team')
                                 .map((participant) => (
-                                  <tr key={participant.id} className="border-t border-gaming-gray/30 hover:bg-gaming-gray/10">
-                                    <td className="py-2 px-4 font-semibold">{participant.user.username}</td>
+                            <tr key={participant.id} className="border-t border-gaming-gray/30 hover:bg-gaming-gray/10 cursor-pointer"
+                              onClick={async () => {
+                                setSelectedTeam(participant);
+                                setTeamLoading(true);
+                                setTeamCaptain(null);
+                                try {
+                                  // Parse any pre-saved members; if they look like UUIDs, we will resolve them to profile names
+                                  const rawTokens = participant.team_members ? participant.team_members.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                  const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+                                  const tokensAreIds = rawTokens.some(t => looksLikeUuid(t));
+                                  if (rawTokens.length > 0 && !tokensAreIds) {
+                                    setSelectedTeamMembers(rawTokens);
+                                  }
+                                  // Resolve team id and owner
+                                  let teamId = participant.team_id as string | null;
+                                  let ownerId: string | null = null;
+                                  let logoUrl: string | null = participant.team_logo || null;
+                                  if (!teamId) {
+                                    // Try exact name match first
+                                    const exact = await supabase
+                                      .from('teams')
+                                      .select('id, owner_id, logo_url')
+                                      .eq('name', participant.team_name || '')
+                                      .maybeSingle();
+                                    if (exact.data) {
+                                      teamId = exact.data.id; ownerId = exact.data.owner_id; logoUrl = logoUrl || exact.data.logo_url || null;
+                                    } else {
+                                      // Try fuzzy name
+                                      const fuzzy = await supabase
+                                        .from('teams')
+                                        .select('id, owner_id, logo_url')
+                                        .ilike('name', `%${participant.team_name || ''}%`)
+                                        .limit(1)
+                                        .maybeSingle();
+                                      if (fuzzy.data) {
+                                        teamId = fuzzy.data.id; ownerId = fuzzy.data.owner_id; logoUrl = logoUrl || fuzzy.data.logo_url || null;
+                                      }
+                                    }
+                                  } else {
+                                    const byId = await supabase
+                                      .from('teams')
+                                      .select('id, owner_id, logo_url')
+                                      .eq('id', teamId)
+                                      .maybeSingle();
+                                    if (byId.data) {
+                                      ownerId = byId.data.owner_id; logoUrl = logoUrl || byId.data.logo_url || null;
+                                    }
+                                  }
+                                  if (logoUrl && selectedTeam) selectedTeam.team_logo = logoUrl;
+                                  // First, try reading names saved in tournament registration directly
+                                  if (tournament?.id && participant.team_name) {
+                                    const { data: regRow } = await supabase
+                                      .from('tournament_participants')
+                                      .select('team_members')
+                                      .eq('tournament_id', tournament.id)
+                                      .eq('team_name', participant.team_name)
+                                      .maybeSingle();
+                                    if (regRow?.team_members) {
+                                      const raw = Array.isArray(regRow.team_members)
+                                        ? (regRow.team_members as any[]).map(String)
+                                        : String(regRow.team_members);
+                                      const tokens = (Array.isArray(raw) ? raw : raw.split(',')).map((s: string) => s.trim()).filter(Boolean);
+                                      const looksUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+                                      const hasPlainNames = tokens.some(t => !looksUuid(t));
+                                      if (tokens.length > 0 && hasPlainNames) {
+                                        setSelectedTeamMembers(tokens);
+                                        setTeamLoading(false);
+                                        setTeamDialogOpen(true);
+                                        return;
+                                      }
+                                      if (tokens.length > 0) {
+                                        let namesResolved: string[] = [];
+                                        if (tokens.every(looksUuid)) {
+                                          const { data: prows } = await supabase
+                                            .from('profiles')
+                                            .select('id, gamer_tag, username, full_name')
+                                            .in('id', tokens);
+                                          const mapTok = new Map<string, string>();
+                                          (prows || []).forEach((p: any) => mapTok.set(p.id, p.gamer_tag || p.username || p.full_name || `player_${String(p.id).substring(0,8)}`));
+                                          namesResolved = tokens.map(id => mapTok.get(id) || `player_${String(id).substring(0,8)}`);
+                                        } else {
+                                          const uniq = Array.from(new Set(tokens));
+                                          const [byTag, byUser, byFull] = await Promise.all([
+                                            supabase.from('profiles').select('id, gamer_tag, username, full_name').in('gamer_tag', uniq),
+                                            supabase.from('profiles').select('id, gamer_tag, username, full_name').in('username', uniq),
+                                            supabase.from('profiles').select('id, gamer_tag, username, full_name').in('full_name', uniq),
+                                          ]);
+                                          const map = new Map<string, string>();
+                                          (byTag.data || []).forEach((p: any) => map.set(p.gamer_tag, p.gamer_tag || p.username || p.full_name));
+                                          (byUser.data || []).forEach((p: any) => map.set(p.username, p.gamer_tag || p.username || p.full_name));
+                                          (byFull.data || []).forEach((p: any) => map.set(p.full_name, p.gamer_tag || p.username || p.full_name));
+                                          namesResolved = uniq.map(t => map.get(t) || t);
+                                        }
+                                        if (namesResolved.length > 0) {
+                                          setSelectedTeamMembers(namesResolved);
+                                          setTeamLoading(false);
+                                          setTeamDialogOpen(true);
+                                          return;
+                                        }
+                                      }
+                                    }
+                                  }
+
+                                  // Resolve members via roster (not organization-wide)
+                                  let names: string[] = [];
+                                  
+                                  // Step 1: Get roster_id from registration
+                                  const { data: regRowForRoster } = await supabase
+                                    .from('tournament_participants')
+                                    .select('roster_id')
+                                    .eq('id', participant.id)
+                                    .maybeSingle();
+                                  const rosterId = (regRowForRoster as any)?.roster_id || null;
+                                  
+                                  // Step 2: Use roster_id to fetch roster members
+                                  if (rosterId) {
+                                    const { data: roster } = await supabase.rpc('get_roster_members', { r_id: rosterId });
+                                    names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+                                    console.log('Row onClick: Resolved members from roster_id:', rosterId, 'names:', names);
+                                  }
+                                  
+                                  // Step 3: If no roster_id, match roster by team_id + tournament game
+                                  if (names.length === 0 && teamId && tournament?.game) {
+                                    const game = (tournament.game || '').trim().toLowerCase();
+                                    const { data: rosters } = await supabase
+                                      .from('team_rosters')
+                                      .select('id, name, game, created_at')
+                                      .eq('team_id', teamId);
+                                    const list = rosters || [];
+                                    let pickedRosterId: string | null = null;
+                                    if (list.length === 1) {
+                                      pickedRosterId = list[0].id;
+                                    } else if (list.length > 1) {
+                                      const byGame = list.filter((r: any) => String(r.game || '').trim().toLowerCase() === game);
+                                      if (byGame.length === 1) {
+                                        pickedRosterId = byGame[0].id;
+                                      } else if (byGame.length > 0) {
+                                        const sorted = [...byGame].sort((a: any, b: any) => 
+                                          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+                                        );
+                                        pickedRosterId = sorted[0].id;
+                                      } else if (list.length > 0) {
+                                        const sorted = [...list].sort((a: any, b: any) => 
+                                          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+                                        );
+                                        pickedRosterId = sorted[0].id;
+                                      }
+                                    }
+                                    if (pickedRosterId) {
+                                      const { data: roster } = await supabase.rpc('get_roster_members', { r_id: pickedRosterId });
+                                      names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+                                      console.log('Row onClick: Resolved members from inferred roster_id:', pickedRosterId, 'names:', names);
+                                    }
+                                  }
+                                  
+                                  // Step 4: Fallback to organization-wide members (legacy)
+                                  if (names.length === 0 && teamId) {
+                                    const { data: roster } = await supabase.rpc('get_team_roster', { t_id: teamId });
+                                    names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+                                    if (names.length === 0 && ownerId) {
+                                      const { data: ownerProfile } = await supabase
+                                        .from('profiles')
+                                        .select('id, username, full_name')
+                                        .eq('id', ownerId)
+                                        .maybeSingle();
+                                      const ownerName = ownerProfile?.username || ownerProfile?.full_name || `player_${String(ownerId).substring(0,8)}`;
+                                      names = [ownerName];
+                                    }
+                                  }
+                                  
+                                  // Step 5: If registration stored user IDs, resolve them as names
+                                  if (names.length === 0 && tokensAreIds && rawTokens.length > 0) {
+                                    const { data: profsTok } = await supabase
+                                      .from('profiles')
+                                      .select('id, username, full_name')
+                                      .in('id', rawTokens);
+                                    const mapTok = new Map<string, string>();
+                                    (profsTok || []).forEach((p: any) => mapTok.set(p.id, p.username || p.full_name || `player_${String(p.id).substring(0,8)}`));
+                                    names = rawTokens.map(id => mapTok.get(id) || `player_${String(id).substring(0,8)}`);
+                                  }
+                                  
+                                  // Step 6: Last resort - show parsed tokens
+                                  if (names.length === 0 && rawTokens.length > 0 && !tokensAreIds) {
+                                    names = rawTokens;
+                                  }
+                                  
+                                  if (names.length > 0) {
+                                    setSelectedTeamMembers(names);
+                                    console.log('Row onClick: Final members set:', names);
+                                  } else {
+                                    console.warn('Row onClick: No members found for participant:', participant.team_name);
+                                    setSelectedTeamMembers([]);
+                                  }
+                                } catch {
+                                  setSelectedTeamMembers([]);
+                                } finally {
+                                  setTeamLoading(false);
+                                }
+                                setTeamDialogOpen(true);
+                              }}
+                            >
+                              <td className="py-2 px-4">
+                                {participant.team_logo ? (
+                                  <img src={participant.team_logo} alt={participant.team_name || 'team'} className="w-8 h-8 rounded object-cover border border-gray-700" />
+                                ) : (
+                                  <span className="w-8 h-8 inline-flex items-center justify-center rounded bg-gray-800 border border-gray-700 text-xs">
+                                    {(participant.team_name || 'T')[0]}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2 px-4 font-semibold">{participant.team_name}</td>
                                     <td className="py-2 px-4 text-sm text-gray-400">{new Date(participant.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</td>
                                     <td className="py-2 px-4 text-right">
+                                <Button size="sm" variant="secondary" className="mr-2"
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    // Use the row's onClick handler which will populate members
+                                    // We'll just wait a bit for the async operation
+                                    setSelectedTeam(participant);
+                                    // Manually trigger member resolution (same as row onClick does)
+                                    const row = e.currentTarget.closest('tr');
+                                    if (row) {
+                                      (row as any).click();
+                                    }
+                                  }}
+                                >
+                                  Manage
+                                </Button>
                                       <Button size="sm" variant="destructive"
-                                        onClick={() => { setBanDialogOpen(true); setBanTarget({ id: participant.id, userId: participant.user_id }); }}
+                                  onClick={(e) => { e.stopPropagation(); setBanDialogOpen(true); setBanTarget({ id: participant.id, userId: participant.user_id }); }}
                                         className="flex items-center gap-1"
                                       >
-                                        <TooltipProvider>
-                                          <UITooltip>
-                                            <TooltipTrigger asChild>
-                                              <span className="flex items-center"><BanIcon className="w-4 h-4 mr-1" />Ban</span>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              Ban prevents this user from participating in this tournament again.
-                                            </TooltipContent>
-                                          </UITooltip>
-                                        </TooltipProvider>
+                                  <BanIcon className="w-4 h-4" />
+                                  Ban
                                       </Button>
                                     </td>
                                   </tr>
-                                ))
-                            )}
+                          ))}
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                    {/* Teams Table */}
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3">Teams</h3>
-                      <div className="overflow-x-auto rounded-lg border border-gaming-gray/30">
-                        <table className="min-w-full bg-gaming-dark text-white">
-                          <thead className="bg-gaming-gray/20">
-                            <tr>
-                              <th className="py-2 px-4 text-left">Team Name</th>
-                              <th className="py-2 px-4 text-left">Registered</th>
-                              <th className="py-2 px-4 text-left">Team Members</th>
-                              <th className="py-2 px-4 text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {participants.filter(p => p.registration_type === 'team').length === 0 ? (
-                              <tr>
-                                <td colSpan={4} className="text-center py-4 text-gray-400">No teams registered.</td>
-                              </tr>
-                            ) : (
-                              participants
-                                .filter(p => p.registration_type === 'team')
-                                .map((participant) => (
-                                  <tr key={participant.id} className="border-t border-gaming-gray/30 hover:bg-gaming-gray/10">
-                                    <td className="py-2 px-4 font-semibold">{participant.team_name}</td>
-                                    <td className="py-2 px-4 text-sm text-gray-400">{new Date(participant.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</td>
-                                    <td className="py-2 px-4 text-sm text-gray-400">
-                                      {participant.team_members ? (
-                                        <ul className="list-disc list-inside">
-                                          {participant.team_members.split(',').map((member, idx) => (
-                                            <li key={idx}>{member.trim()}</li>
-                                          ))}
-                                        </ul>
-                                      ) : '-'}
-                                    </td>
-                                    <td className="py-2 px-4 text-right">
-                                      <Button size="sm" variant="destructive"
-                                        onClick={() => { setBanDialogOpen(true); setBanTarget({ id: participant.id, userId: participant.user_id }); }}
-                                        className="flex items-center gap-1"
-                                      >
-                                        <TooltipProvider>
-                                          <UITooltip>
-                                            <TooltipTrigger asChild>
-                                              <span className="flex items-center"><BanIcon className="w-4 h-4 mr-1" />Ban</span>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              Ban prevents this team from participating in this tournament again.
-                                            </TooltipContent>
-                                          </UITooltip>
-                                        </TooltipProvider>
-                                      </Button>
-                                    </td>
-                                  </tr>
-                                ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Team Management Dialog */}
+            <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
+              <DialogContent className="sm:max-w-[520px] bg-gaming-dark border border-gaming-gray/30">
+                <DialogHeader>
+                  <DialogTitle className="text-white">{selectedTeam?.team_name || 'Team'}</DialogTitle>
+                  <DialogDescription className="text-gray-400">Roster and management</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                    <div>
+                    <div className="text-xs text-gray-400 mb-1">Players</div>
+                    {teamLoading ? (
+                      <div className="text-sm text-gray-400">Loading roster…</div>
+                    ) : selectedTeamMembers.length === 0 ? (
+                      <div className="text-sm text-gray-400">No members found</div>
+                    ) : (
+                      <>
+                        {teamCaptain && (
+                          <div className="text-sm text-gaming-purple mb-1">Captain: {teamCaptain}</div>
+                        )}
+                        <ul className="list-disc list-inside text-sm text-gray-200">
+                          {selectedTeamMembers.map((m, i) => <li key={i}>{m}</li>)}
+                                        </ul>
+                      </>
+                    )}
+                      </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="destructive" onClick={() => { setBanDialogOpen(true); setBanTarget({ id: selectedTeam?.id!, userId: selectedTeam?.user_id! }); }}>Ban Team</Button>
+                    <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>Close</Button>
+                    </div>
+                  </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="brackets">
             <Card className="mb-8">
               <CardHeader>
+                <div className="flex justify-between items-center">
                 <CardTitle>Brackets</CardTitle>
+                  <Button
+                    onClick={() => {
+                      console.log('Navigating to brackets for tournament:', slug);
+                      navigate(`/tournaments/${slug}/brackets`);
+                    }}
+                    className="bg-gaming-purple hover:bg-gaming-purple/80 text-white"
+                  >
+                    View Full Bracket System
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="mb-4 flex gap-4 items-center">
-                  <label htmlFor="bracketType">Bracket Type:</label>
-                  <select
-                    id="bracketType"
-                    value={bracketType}
-                    onChange={e => setBracketType(e.target.value as any)}
-                    className="bg-gaming-dark border border-gaming-gray/30 rounded px-2 py-1"
+                <div className="text-center py-8">
+                  <h3 className="text-lg font-semibold text-white mb-2">Professional Bracket System</h3>
+                  <p className="text-gray-400 mb-4">
+                    Access the full bracket visualization with team count selection (8, 16, 24, 32 teams) and mock data generation.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      console.log('Opening bracket system for tournament:', slug);
+                      navigate(`/tournaments/${slug}/brackets`);
+                    }}
+                    className="bg-gaming-purple hover:bg-gaming-purple/80 text-white"
                   >
-                    <option value="single">Single Elimination</option>
-                    <option value="double">Double Elimination</option>
-                    <option value="roundrobin">Round Robin</option>
-                    <option value="swiss">Swiss</option>
-                  </select>
+                    Open Bracket System
+                  </Button>
                 </div>
-                {bracketType !== 'single' && (
-                  <div className="text-yellow-400 mb-4">Only Single Elimination is implemented for now.</div>
-                )}
-                {/* Bracket generation logic */}
-                {renderBracketTab(participants, bracketGenerated, setBracketGenerated, toast)}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="bans">
+            {tournament?.id && (
+              <BanManagement tournamentId={tournament.id} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="disputes">
+            {tournament?.id && user?.id && (
+              <DisputeCenter tournamentId={tournament.id} organizerId={user.id} />
+            )}
           </TabsContent>
 
           <TabsContent value="settings">

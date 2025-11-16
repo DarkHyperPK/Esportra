@@ -8,7 +8,7 @@ export interface TeamMember {
   username: string;
   full_name?: string;
   avatar_url?: string;
-  role: 'captain' | 'player' | 'substitute';
+  role: 'captain' | 'member' | 'substitute';
   verified: boolean;
   joined_at: string;
   is_active: boolean;
@@ -26,7 +26,7 @@ export interface Team {
   website_url?: string;
   social_media?: any;
   achievements?: any;
-  created_by: string;
+  owner_id: string;
   created_at: string;
   updated_at: string;
   is_active: boolean;
@@ -44,7 +44,7 @@ export interface CreateTeamData {
   description?: string;
   members: Array<{
     user_id: string;
-    role: 'captain' | 'player' | 'substitute';
+    role: 'captain' | 'member' | 'substitute';
   }>;
 }
 
@@ -124,126 +124,84 @@ export const useTeamManagement = () => {
     try {
       setLoading(true);
 
-      // Get teams where user is a member
-      const { data: memberTeams, error: memberError } = await supabase
-        .from('team_members')
-        .select(`
-          team_id,
-          role,
-          joined_at,
-          is_active,
-          teams (
-            id,
-            name,
-            tag,
-            game,
-            games,
-            game_format,
-            logo_url,
-            description,
-            website_url,
-            social_media,
-            achievements,
-            created_by,
-            created_at,
-            updated_at,
-            is_active
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('is_active', true);
+      // STEP 1: Find team ids via safe RPC (avoids recursive RLS)
+      const { data: teamIdRows, error: teamIdsError } = await supabase
+        .rpc('current_user_team_ids');
+      if (teamIdsError) throw teamIdsError;
+      const memberTeamIds: string[] = Array.isArray(teamIdRows) ? teamIdRows as any : [];
 
-      if (memberError) throw memberError;
-
-      // Get teams created by user
+      // STEP 2: Load teams the user owns
       const { data: createdTeams, error: createdError } = await supabase
         .from('teams')
         .select('*')
-        .eq('created_by', user.id)
+        .eq('owner_id', user.id)
         .eq('is_active', true);
-
       if (createdError) throw createdError;
 
-      // Combine and deduplicate teams
-      const allTeams = [...(memberTeams || []), ...(createdTeams || [])];
-      const uniqueTeams = Array.from(
-        new Map(allTeams.map(t => [t.teams?.id || t.id, t])).values()
-      );
+      // STEP 3: Load teams where the user is a member
+      const { data: memberTeamsExpanded, error: teamsLoadError } = await supabase
+        .from('teams')
+        .select('*')
+        .in('id', memberTeamIds.length > 0 ? memberTeamIds : ['00000000-0000-0000-0000-000000000000']);
+      if (teamsLoadError) throw teamsLoadError;
+
+      // Combine and dedupe by id
+      const combined = [...(memberTeamsExpanded || []), ...(createdTeams || [])];
+      const uniqueTeams = Array.from(new Map(combined.map((t: any) => [t.id, t])).values());
 
       // Fetch members for each team
       const teamsWithMembers = await Promise.all(
         uniqueTeams.map(async (team) => {
-          const teamId = team.teams?.id || team.id;
-          const teamCreatedBy = team.teams?.created_by || team.created_by;
+          const teamId = team.id;
+          const teamCreatedBy = team.owner_id;
           
           // Fix missing captain in team_members
           await fixTeamCaptain(teamId, teamCreatedBy);
           
           const { data: members } = await supabase
-            .from('team_members')
-            .select(`
-              user_id,
-              role,
-              joined_at,
-              is_active,
-              profiles (
-                id,
-                username,
-                full_name,
-                avatar_url,
-                verified
-              )
-            `)
-            .eq('team_id', teamId)
-            .eq('is_active', true);
+            .rpc('get_team_members', { t_id: teamId });
 
           console.log('Raw members data for team', teamId, ':', members);
 
-          // Calculate tournament stats (placeholder for now)
-          const { count: tournamentWins } = await supabase
-            .from('tournament_registrations')
-            .select('*', { count: 'exact', head: true })
-            .eq('team_id', teamId)
-            .eq('status', 'winner');
-
+          // Calculate tournament stats (fallback to participants table; simple counts)
           const { count: totalMatches } = await supabase
-            .from('tournament_registrations')
+            .from('tournament_participants')
             .select('*', { count: 'exact', head: true })
             .eq('team_id', teamId);
 
           return {
             id: teamId,
-            name: team.teams?.name || team.name,
-            tag: team.teams?.tag || team.tag,
-            game: team.teams?.game || team.game,
-            games: team.teams?.games || team.games || [],
-            game_format: team.teams?.game_format || team.game_format,
-            logo_url: team.teams?.logo_url || team.logo_url,
-            description: team.teams?.description || team.description,
-            website_url: team.teams?.website_url || team.website_url,
-            social_media: team.teams?.social_media || team.social_media,
-            achievements: team.teams?.achievements || team.achievements,
-            created_by: team.teams?.created_by || team.created_by,
-            created_at: team.teams?.created_at || team.created_at,
-            updated_at: team.teams?.updated_at || team.updated_at,
-            is_active: team.teams?.is_active || team.is_active,
-            members: (members || []).map(m => {
+            name: team.name,
+            tag: team.tag,
+            game: team.game,
+            games: team.games || [],
+            game_format: team.game_format,
+            logo_url: team.logo_url,
+            description: team.description,
+            website_url: team.website_url,
+            social_media: team.social_media,
+            achievements: team.achievements,
+            owner_id: team.owner_id,
+            created_at: team.created_at,
+            updated_at: team.updated_at,
+            is_active: team.is_active,
+            members: (members || []).map((m: any) => {
               console.log('Mapping member:', m);
               const mappedMember = {
                 id: m.user_id,
-                user_id: m.user_id, // Add user_id field for filtering
-                username: m.profiles?.username || 'Unknown',
-                full_name: m.profiles?.full_name,
-                avatar_url: m.profiles?.avatar_url,
+                user_id: m.user_id,
+                username: m.username || 'Unknown',
+                full_name: undefined,
+                avatar_url: m.avatar_url,
                 role: m.role,
-                verified: m.profiles?.verified || false,
+                verified: false,
                 joined_at: m.joined_at,
                 is_active: m.is_active,
               };
               console.log('Mapped member:', mappedMember);
               return mappedMember;
             }),
-            tournament_wins: tournamentWins || 0,
+            tournament_wins: 0,
             total_matches: totalMatches || 0,
           };
         })
@@ -289,7 +247,7 @@ export const useTeamManagement = () => {
             game,
             logo_url
           ),
-          profiles!team_invites_invited_by_fkey (
+          profiles!invited_by (
             username,
             avatar_url
           )
@@ -357,7 +315,7 @@ export const useTeamManagement = () => {
           game_format: teamData.game_format,
           logo_url: teamData.logo_url,
           description: teamData.description,
-          created_by: user.id,
+          owner_id: user.id,
         })
         .select()
         .single();
@@ -676,7 +634,9 @@ export const useTeamManagement = () => {
         .insert({
           team_id: invite.team_id,
           user_id: invite.user_id,
-          role: 'player',
+          role: 'member',
+          is_active: true,
+          joined_at: new Date().toISOString(),
         });
 
       if (memberError) throw memberError;
@@ -811,8 +771,8 @@ export const useTeamManagement = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, verified, email')
-        .eq('verified', true)
+        .select('id, username, full_name, avatar_url, is_verified, email')
+        .eq('is_verified', true)
         .order('username');
 
       if (error) throw error;
@@ -832,6 +792,11 @@ export const useTeamManagement = () => {
   // Remove member from team (alias for removeTeamMember)
   const removeMemberFromTeam = removeTeamMember;
 
+  // Manual refresh function
+  const refreshTeams = useCallback(async () => {
+    await Promise.all([fetchUserTeams(), fetchTeamInvites()]);
+  }, [fetchUserTeams, fetchTeamInvites]);
+
   // Transfer captaincy
   const transferCaptaincy = async (teamId: string, newCaptainId: string): Promise<boolean> => {
     try {
@@ -840,10 +805,10 @@ export const useTeamManagement = () => {
       console.log('New Captain ID:', newCaptainId);
       console.log('Current User ID:', user?.id);
       
-      // Update the team's created_by field to the new captain
+      // Update the team's owner_id field to the new captain
       const { error: teamError } = await supabase
         .from('teams')
-        .update({ created_by: newCaptainId })
+        .update({ owner_id: newCaptainId })
         .eq('id', teamId);
 
       if (teamError) {
@@ -854,7 +819,7 @@ export const useTeamManagement = () => {
       // Update member roles - handle both 'captain' and 'Captain' cases
       const { error: oldCaptainError } = await supabase
         .from('team_members')
-        .update({ role: 'player' })
+        .update({ role: 'member' })
         .eq('team_id', teamId)
         .in('role', ['captain', 'Captain']);
 
@@ -898,12 +863,26 @@ export const useTeamManagement = () => {
   // Disband team (hard delete team row and related records)
   const disbandTeam = async (teamId: string): Promise<boolean> => {
     try {
-      // 1) Delete tournament registrations for this team
+      // 1) Delete tournament registrations for this team from tournament_participants
       const { error: registrationsError } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .delete()
         .eq('team_id', teamId);
-      if (registrationsError) throw registrationsError;
+      if (registrationsError) {
+        console.warn('Error deleting tournament_participants:', registrationsError);
+        // Continue anyway - try to clean up other things
+      }
+      
+      // Also try to delete from tournament_registrations (legacy table if it exists)
+      try {
+        await supabase
+          .from('tournament_registrations')
+          .delete()
+          .eq('team_id', teamId);
+      } catch (e) {
+        // Ignore if table doesn't exist
+        console.warn('tournament_registrations cleanup skipped:', e);
+      }
 
       // 2) Delete any pending/in-flight invites for this team
       const { error: invitesError } = await supabase
@@ -1012,5 +991,6 @@ export const useTeamManagement = () => {
     // Refresh functions
     fetchUserTeams,
     fetchTeamInvites,
+    refreshTeams,
   };
 };

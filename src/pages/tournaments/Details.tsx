@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -11,6 +13,7 @@ import { useRole } from '@/contexts/RoleContext';
 import { Tournament, BaseTournament, TournamentRegistration, RegistrationStatus, RegistrationType } from '@/types/tournament';
 import TournamentRegistrationForm from '@/components/TournamentRegistration';
 import TournamentBracket from '@/components/tournament/TournamentBracket';
+import DisputeSubmission from '@/components/player/DisputeSubmission';
 import {
   Dialog,
   DialogContent,
@@ -70,7 +73,7 @@ interface DatabaseRegistration {
   id: string;
   tournament_id: string;
   user_id: string;
-  registration_type: string;
+  participant_type: string;
   gamer_tag?: string | null;
   team_name?: string | null;
   team_members?: string | null;
@@ -86,6 +89,8 @@ interface DatabaseRegistration {
 
 const TournamentDetails = () => {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
+  const urlMatchId = typeof window !== 'undefined' ? new URLSearchParams(location.search).get('matchId') : null;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, profile } = useAuth();
@@ -95,53 +100,150 @@ const TournamentDetails = () => {
   const [isRegistered, setIsRegistered] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [registrationDetails, setRegistrationDetails] = useState<TournamentRegistration | null>(null);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeTitle, setDisputeTitle] = useState("");
+  const [disputeDesc, setDisputeDesc] = useState("");
+  const [disputeFile, setDisputeFile] = useState<File | null>(null);
+  const [isCaptain, setIsCaptain] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registrationLoading, setRegistrationLoading] = useState(true);
   const [allRegistrations, setAllRegistrations] = useState<DatabaseRegistration[]>([]);
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
 
-  const isOrganizer = currentRole === 'organizer' && user?.id && tournament?.user_id && user.id === tournament.user_id;
+  const isOrganizer = currentRole === 'organizer' && !!(user?.id && tournament?.user_id && user.id === tournament.user_id);
+
+  const sb: any = supabase;
 
   const fetchTournamentData = useCallback(async () => {
-    if (!slug) return;
+    if (!slug || slug === 'undefined') {
+      console.error('Invalid slug provided:', slug);
+      setError('Invalid tournament identifier');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const { data: tournamentData, error: tournamentError } = await supabase
+      // Try by slug first, then fall back to ID to be resilient to bad links
+      let tournamentData: any = null;
+      let tournamentError: any = null;
+
+      const bySlug = await sb
         .from('tournaments')
-        .select('*')
+        .select(`
+          id,
+          name,
+          description,
+          slug,
+          game,
+          format,
+          max_teams,
+          min_teams,
+          entry_fee,
+          prize_pool,
+          start_date,
+          end_date,
+          registration_deadline,
+          status,
+          organizer_id,
+          venue_id,
+          is_public,
+          banner_url,
+          logo_url,
+          created_at,
+          updated_at
+        `)
         .eq('slug', slug)
         .single();
+
+      if (!bySlug.error && bySlug.data) {
+        tournamentData = bySlug.data;
+      } else {
+        const byId = await sb
+          .from('tournaments')
+          .select(`
+            id,
+            name,
+            description,
+            slug,
+            game,
+            format,
+            max_teams,
+            min_teams,
+            entry_fee,
+            prize_pool,
+            start_date,
+            end_date,
+            registration_deadline,
+            status,
+            organizer_id,
+            venue_id,
+            is_public,
+            banner_url,
+            logo_url,
+            created_at,
+            updated_at
+          `)
+          .eq('id', slug)
+          .single();
+        if (!byId.error && byId.data) {
+          tournamentData = byId.data;
+        } else {
+          tournamentError = bySlug.error || byId.error;
+        }
+      }
+
       if (tournamentError) throw tournamentError;
       if (!tournamentData) throw new Error('Tournament not found');
-      const dbTournament = tournamentData as DatabaseTournament;
+      
+      // Get venue name if venue_id exists
+      let venueName = null;
+      if (tournamentData.venue_id) {
+        const { data: venueData } = await sb
+          .from('venues')
+          .select('name')
+          .eq('id', tournamentData.venue_id)
+          .single();
+        venueName = venueData?.name || null;
+      }
+      
       const baseTournament: BaseTournament = {
-        id: dbTournament.id,
-        name: dbTournament.name,
-        game: dbTournament.game,
-        date: dbTournament.date,
-        time: dbTournament.time,
-        venue: dbTournament.venue,
-        is_online: dbTournament.is_online,
-        max_participants: dbTournament.max_participants,
-        team_size: dbTournament.team_size ?? 1,
-        prize_pool: dbTournament.prize_pool,
-        entry_fee: dbTournament.entry_fee,
-        description: dbTournament.description,
-        user_id: dbTournament.user_id,
-        created_at: dbTournament.created_at,
-        image_url: dbTournament.image_url ?? null,
-        slug: dbTournament.slug
+        id: tournamentData.id,
+        name: tournamentData.name,
+        game: tournamentData.game,
+        date: tournamentData.start_date ? new Date(tournamentData.start_date).toISOString().split('T')[0] : '',
+        time: tournamentData.start_date ? new Date(tournamentData.start_date).toTimeString().split(' ')[0] : '',
+        venue: venueName || '',
+        is_online: !tournamentData.venue_id,
+        max_participants: tournamentData.max_teams,
+        team_size: 1, // Default team size for now
+        prize_pool: tournamentData.prize_pool?.toString() || '0',
+        entry_fee: tournamentData.entry_fee?.toString() || '0',
+        description: tournamentData.description || '',
+        user_id: tournamentData.organizer_id,
+        created_at: tournamentData.created_at,
+        image_url: tournamentData.banner_url || tournamentData.logo_url || null
       };
-      const { count, error: countError } = await supabase
-        .from('tournament_registrations')
+      
+      const { count, error: countError } = await sb
+        .from('tournament_participants')
         .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', dbTournament.id);
+        .eq('tournament_id', tournamentData.id);
       if (countError) throw countError;
+
+      // Try RPC for accurate count if RLS limits visibility
+      let participantCount = count || 0;
+      try {
+        const { data: rpcCount } = await (sb as any).rpc('get_tournament_participant_count', { t_id: tournamentData.id });
+        if (typeof rpcCount === 'number' && rpcCount >= 0) {
+          participantCount = rpcCount;
+        }
+      } catch {}
+      
       const newTournament: Tournament = {
         ...baseTournament,
-        current_participants: count || 0,
-        status: 'upcoming' as const
+        current_participants: participantCount,
+        status: tournamentData.status === 'draft' ? 'upcoming' : tournamentData.status as any
       };
       setTournament(newTournament);
       setError(null);
@@ -167,30 +269,76 @@ const TournamentDetails = () => {
       return;
     }
     try {
-      const { data: regData, error } = await supabase
-        .from('tournament_registrations')
+      const { data: regData, error } = await sb
+        .from('tournament_participants')
         .select('*')
         .eq('tournament_id', tournament.id)
-        .eq('user_id', user.id)
+        .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`)
         .maybeSingle();
       if (error) throw error;
       if (regData) {
-        setIsRegistered(true);
         const dbRegistration = regData as DatabaseRegistration;
-        const registration: TournamentRegistration = {
-          id: dbRegistration.id,
-          tournament_id: dbRegistration.tournament_id,
-          user_id: dbRegistration.user_id,
-          registration_type: dbRegistration.registration_type === 'solo' ? 'solo' : 'team',
-          gamer_tag: dbRegistration.gamer_tag || null,
-          team_name: dbRegistration.team_name || null,
-          team_members: dbRegistration.team_members || null,
-          status: dbRegistration.status || 'registered',
-          registered_at: dbRegistration.registered_at || dbRegistration.created_at,
-          created_at: dbRegistration.created_at,
-          updated_at: dbRegistration.updated_at || dbRegistration.created_at
+        const teamId = (dbRegistration as any).team_id;
+        
+        // If this is a team registration, validate that the team still exists
+        if (teamId && (dbRegistration as any).participant_type === 'team') {
+          console.log('[TournamentDetails] Validating team exists for registration:', teamId);
+          const { data: teamExists, error: teamCheckError } = await sb
+            .from('teams')
+            .select('id')
+            .eq('id', teamId)
+            .maybeSingle();
+          
+          if (teamCheckError) {
+            console.error('[TournamentDetails] Error checking team existence:', teamCheckError);
+          }
+          
+          // If team doesn't exist, treat as not registered
+          if (!teamExists) {
+            console.warn('[TournamentDetails] Team registration found but team no longer exists, cleaning up registration:', (dbRegistration as any).id);
+            // Clean up the orphaned registration
+            try {
+              const { error: deleteError } = await sb
+                .from('tournament_participants')
+                .delete()
+                .eq('id', (dbRegistration as any).id);
+              
+              if (deleteError) {
+                console.error('[TournamentDetails] Failed to clean up orphaned registration:', deleteError);
+              } else {
+                console.log('[TournamentDetails] Successfully cleaned up orphaned registration');
+              }
+            } catch (cleanupError) {
+              console.error('[TournamentDetails] Exception while cleaning up orphaned registration:', cleanupError);
+            }
+            setIsRegistered(false);
+            setRegistrationDetails(null);
+            setError(null);
+            setRegistrationLoading(false);
+            return;
+          } else {
+            console.log('[TournamentDetails] Team exists, registration is valid');
+          }
+        }
+        
+        setIsRegistered(true);
+        console.log('Registration data:', dbRegistration);
+        const registration: TournamentRegistration & { team_id?: string; team_captain_id?: string } = {
+          id: (dbRegistration as any).id,
+          tournament_id: (dbRegistration as any).tournament_id,
+          user_id: (dbRegistration as any).user_id,
+          registration_type: (dbRegistration as any).participant_type === 'solo' ? 'solo' : 'team',
+          gamer_tag: (dbRegistration as any).gamer_tag || null,
+          team_name: (dbRegistration as any).team_name || null,
+          team_members: (dbRegistration as any).team_members || null,
+          status: (dbRegistration as any).status || 'registered',
+          registered_at: (dbRegistration as any).registered_at || (dbRegistration as any).created_at,
+          created_at: (dbRegistration as any).created_at,
+          updated_at: (dbRegistration as any).updated_at || (dbRegistration as any).created_at,
+          team_id: (dbRegistration as any).team_id || undefined,
+          team_captain_id: (dbRegistration as any).team_captain_id || undefined
         };
-        setRegistrationDetails(registration);
+        setRegistrationDetails(registration as TournamentRegistration);
         setShowEditDialog(false);
       } else {
         setIsRegistered(false);
@@ -206,17 +354,116 @@ const TournamentDetails = () => {
     }
   }, [user?.id, tournament?.id]);
 
+  // Check if user is team captain
+  useEffect(() => {
+    const checkCaptain = async () => {
+      if (!user?.id || !registrationDetails) {
+        setIsCaptain(false);
+        return;
+      }
+      // If solo registration, not a captain
+      if (registrationDetails.registration_type === 'solo') {
+        setIsCaptain(false);
+        return;
+      }
+      
+      // First check: if team_captain_id directly matches user.id
+      const teamCaptainId = (registrationDetails as any)?.team_captain_id;
+      if (teamCaptainId === user.id) {
+        console.log('User is captain (team_captain_id match)');
+        setIsCaptain(true);
+        return;
+      }
+      
+      // If team registration, check if user is captain (owner of team OR has captain role in team_members)
+      const teamId = (registrationDetails as any)?.team_id;
+      if (teamId) {
+        try {
+          // First check teams table for owner_id
+          const { data: team, error: teamError } = await sb
+            .from('teams')
+            .select('owner_id')
+            .eq('id', teamId)
+            .single();
+          
+          console.log('Checking captain status:', { teamId, userId: user.id, team, teamError });
+          
+          if (!teamError && team && team.owner_id === user.id) {
+            console.log('User is team owner (captain)');
+            setIsCaptain(true);
+            return;
+          }
+          
+          // Also check team_members table for captain role
+          const { data: member, error: memberError } = await sb
+            .from('team_members')
+            .select('role')
+            .eq('team_id', teamId)
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .maybeSingle();
+          
+          console.log('Team member check:', { member, memberError });
+          
+          if (!memberError && member && (member.role === 'captain' || member.role === 'Captain')) {
+            console.log('User has captain role in team_members');
+            setIsCaptain(true);
+            return;
+          }
+          
+          setIsCaptain(false);
+        } catch (e) {
+          console.error('Error checking captain status:', e);
+          setIsCaptain(false);
+        }
+      } else {
+        // If no team_id, try to find team by team_name from registration
+        const teamName = registrationDetails.team_name;
+        if (teamName) {
+          try {
+            const { data: team, error } = await sb
+              .from('teams')
+              .select('id, owner_id')
+              .eq('name', teamName)
+              .maybeSingle();
+            
+            if (!error && team) {
+              if (team.owner_id === user.id) {
+                setIsCaptain(true);
+                return;
+              }
+              // Check team_members
+              const { data: member } = await sb
+                .from('team_members')
+                .select('role')
+                .eq('team_id', team.id)
+                .eq('user_id', user.id)
+                .eq('is_active', true)
+                .maybeSingle();
+              
+              if (member && (member.role === 'captain' || member.role === 'Captain')) {
+                setIsCaptain(true);
+                return;
+              }
+            }
+          } catch (e) {
+            console.error('Error checking captain by team name:', e);
+          }
+        }
+        setIsCaptain(false);
+      }
+    };
+    checkCaptain();
+  }, [user?.id, registrationDetails]);
+
   useEffect(() => {
     let isMounted = true;
 
     const initializeData = async () => {
-      if (slug && user?.id && isMounted) {
-        setLoading(true);
-        await Promise.all([
-          checkRegistration(),
-          fetchTournamentData()
-        ]);
-      }
+      if (!slug || !isMounted) return;
+      setLoading(true);
+      await fetchTournamentData();
+      await checkRegistration();
     };
 
     initializeData();
@@ -224,7 +471,37 @@ const TournamentDetails = () => {
     return () => {
       isMounted = false;
     };
-  }, [slug, user?.id, checkRegistration, fetchTournamentData]);
+  }, [slug, checkRegistration, fetchTournamentData]);
+
+  // Listen for team disband/delete events to refresh registration status
+  useEffect(() => {
+    const handleTeamLeft = () => {
+      console.log('[TournamentDetails] Team left event detected, refreshing registration status...');
+      // Delay slightly to ensure database changes have propagated
+      setTimeout(() => {
+        checkRegistration();
+      }, 500);
+    };
+
+    const handleVisibilityChange = () => {
+      // When page becomes visible again, re-check registration status
+      if (!document.hidden) {
+        checkRegistration();
+      }
+    };
+
+    window.addEventListener('teamLeft', handleTeamLeft);
+    window.addEventListener('teamDeleted', handleTeamLeft);
+    window.addEventListener('teamCreated', handleTeamLeft);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('teamLeft', handleTeamLeft);
+      window.removeEventListener('teamDeleted', handleTeamLeft);
+      window.removeEventListener('teamCreated', handleTeamLeft);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [checkRegistration]);
 
   const handleRegistrationSuccess = useCallback(async () => {
     setShowEditDialog(false);
@@ -236,8 +513,8 @@ const TournamentDetails = () => {
     if (!user?.id || !tournament) return;
 
     try {
-      const { data: existingRegistration, error: checkError } = await supabase
-        .from('tournament_registrations')
+      const { data: existingRegistration, error: checkError } = await sb
+        .from('tournament_participants')
         .select('*')
         .eq('tournament_id', tournament.id)
         .eq('user_id', user.id)
@@ -252,7 +529,7 @@ const TournamentDetails = () => {
           id: dbData.id,
           tournament_id: dbData.tournament_id,
           user_id: dbData.user_id,
-          registration_type: dbData.registration_type === 'solo' ? 'solo' : 'team',
+          registration_type: dbData.participant_type === 'solo' ? 'solo' : 'team',
           gamer_tag: dbData.gamer_tag || null,
           team_name: dbData.team_name || null,
           team_members: dbData.team_members || null,
@@ -293,8 +570,8 @@ const TournamentDetails = () => {
       console.log('Starting withdrawal process for user:', user.id, 'tournament:', tournament.id);
       
       // First, try to get the registration to see what we're dealing with
-      const { data: existingRegistration, error: fetchError } = await supabase
-        .from('tournament_registrations')
+      const { data: existingRegistration, error: fetchError } = await sb
+        .from('tournament_participants')
         .select('*')
         .eq('tournament_id', tournament.id)
         .eq('user_id', user.id)
@@ -315,9 +592,9 @@ const TournamentDetails = () => {
 
       console.log('Found registration:', existingRegistration);
 
-      // Delete from tournament_registrations first
-      const { error: registrationError } = await supabase
-        .from('tournament_registrations')
+      // Delete from tournament_participants
+      const { error: registrationError } = await sb
+        .from('tournament_participants')
         .delete()
         .eq('id', existingRegistration.id);
 
@@ -327,26 +604,6 @@ const TournamentDetails = () => {
       }
 
       console.log('Successfully deleted registration');
-
-      // Try to delete from tournament_participants if it exists
-      // This might fail if the table doesn't exist or the record doesn't exist, which is fine
-      try {
-        const { error: participantError } = await supabase
-          .from('tournament_participants')
-          .delete()
-          .eq('tournament_id', tournament.id)
-          .eq('user_id', user.id);
-
-        if (participantError) {
-          console.warn('Warning deleting from tournament_participants (this might be expected):', participantError);
-          // Don't throw here as this table might not exist or the record might not exist
-        } else {
-          console.log('Successfully deleted from tournament_participants');
-        }
-      } catch (participantErr) {
-        console.warn('Warning with tournament_participants deletion (this might be expected):', participantErr);
-        // Continue with the process even if this fails
-      }
 
       setIsRegistered(false);
       setRegistrationDetails(null);
@@ -378,9 +635,72 @@ const TournamentDetails = () => {
 
   const normalize = (str) => str?.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 
+  const getMembers = (members: any): string[] => {
+    if (!members) return [];
+    if (Array.isArray(members)) {
+      return members
+        .map((m) => (typeof m === 'string' ? m : String(m)))
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    if (typeof members === 'string') {
+      return members
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    // Attempt to unwrap common shapes like { members: [...] }
+    if (typeof members === 'object' && Array.isArray((members as any).members)) {
+      return (members as any).members
+        .map((m: any) => (typeof m === 'string' ? m : String(m)))
+        .map((s: string) => s.trim())
+        .filter(Boolean);
+    }
+    return [];
+  };
+
   const selectedGame = tournament ? esportsGames.games.find(
     (g) => normalize(g.name) === normalize(tournament.game)
   ) : null;
+
+  // Fallback: resolve team members from team if registration has none
+  const [resolvedMembers, setResolvedMembers] = useState<string[] | null>(null);
+  useEffect(() => {
+    const run = async () => {
+      if (!registrationDetails || registrationDetails.registration_type !== 'team') return;
+      const current = getMembers(registrationDetails.team_members);
+      if (current.length > 0) {
+        setResolvedMembers(current);
+        return;
+      }
+      if (!registrationDetails.team_name || !user?.id) return;
+      try {
+        const { data: teamRow } = await sb
+          .from('teams')
+          .select('id')
+          .eq('owner_id', user.id)
+          .ilike('name', registrationDetails.team_name)
+          .maybeSingle();
+        if (!teamRow?.id) return;
+        const { data: memberRows } = await sb
+          .from('team_members')
+          .select('user_id')
+          .eq('team_id', teamRow.id)
+          .eq('is_active', true);
+        const memberIds = Array.from(new Set([...(memberRows || []).map(m => m.user_id), user.id]));
+        if (memberIds.length === 0) { setResolvedMembers([]); return; }
+        const { data: profiles } = await sb
+          .from('profiles')
+          .select('*')
+          .in('id', memberIds);
+        const names = (profiles || []).map(p => (p as any).gamer_tag || (p as any).username || (p as any).full_name || (p as any).id).filter(Boolean) as string[];
+        setResolvedMembers(names);
+      } catch {
+        setResolvedMembers(null);
+      }
+    };
+    run();
+  }, [registrationDetails, user?.id]);
 
   // Fetch all registrations if organizer
   useEffect(() => {
@@ -388,12 +708,89 @@ const TournamentDetails = () => {
       if (!isOrganizer || !tournament?.id) return;
       setRegistrationsLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('tournament_registrations')
+        const { data, error } = await sb
+          .from('tournament_participants')
           .select('*')
           .eq('tournament_id', tournament.id);
         if (error) throw error;
-        setAllRegistrations(data || []);
+        const regs = ((data || []) as unknown as DatabaseRegistration[]);
+        // Simplified enrichment: 1) roster_id -> members; 2) derive by team_id + tournament.game
+        const game = (tournament?.game || '').trim().toLowerCase();
+        for (const r of regs) {
+          const isTeam = (r as any).participant_type === 'team';
+          if (!isTeam) continue;
+          try {
+            let names: string[] = [];
+            const rosterId = (r as any).roster_id as string | null | undefined;
+            // Step 1: roster_id
+            if (rosterId) {
+              const { data: roster } = await sb.rpc('get_roster_members', { r_id: rosterId });
+              names = (roster || []).map((row: any) => row.username || row.full_name || `player_${String(row.user_id).substring(0, 8)}`);
+            }
+            // Step 2: derive by team_id + game if still empty
+            if ((!names || names.length === 0) && game) {
+              // Resolve team_id from team_name if missing
+              let effectiveTeamId: string | null = (r as any).team_id || null;
+              const teamName = (r as any).team_name as string | null | undefined;
+              if (!effectiveTeamId && teamName) {
+                const exact = await sb
+                  .from('teams')
+                  .select('id')
+                  .eq('name', teamName)
+                  .maybeSingle();
+                effectiveTeamId = exact.data?.id || null;
+                if (!effectiveTeamId) {
+                  const fuzzy = await sb
+                    .from('teams')
+                    .select('id')
+                    .ilike('name', `%${teamName}%`)
+                    .limit(1)
+                    .maybeSingle();
+                  effectiveTeamId = fuzzy.data?.id || null;
+                }
+              }
+              if (!effectiveTeamId) {
+                // Cannot derive without a team reference
+                continue;
+              }
+              const { data: rosters } = await sb
+                .from('team_rosters')
+                .select('id, name, game, created_at')
+                .eq('team_id', effectiveTeamId);
+              const list = rosters || [];
+              let pickedId: string | null = null;
+              if (list.length === 1) {
+                pickedId = list[0].id;
+              } else if (list.length > 1) {
+                const byGame = list.filter((x: any) => String(x.game || '').trim().toLowerCase() === game);
+                if (byGame.length === 1) {
+                  pickedId = byGame[0].id;
+                } else if (byGame.length > 1) {
+                  const sorted = [...byGame].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+                  pickedId = sorted[0].id;
+                } else {
+                  const byName = list.filter((x: any) => String(x.name || '').toLowerCase().includes(game));
+                  if (byName.length > 0) {
+                    const sorted = [...byName].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+                    pickedId = sorted[0].id;
+                  }
+                }
+              }
+              if (!pickedId && list.length > 0) {
+                const sorted = [...list].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+                pickedId = sorted[0].id;
+              }
+              if (pickedId) {
+                const { data: roster } = await sb.rpc('get_roster_members', { r_id: pickedId });
+                names = (roster || []).map((row: any) => row.username || row.full_name || `player_${String(row.user_id).substring(0, 8)}`);
+              }
+            }
+            if (names && names.length > 0) {
+              (r as any).team_members = names;
+            }
+          } catch {}
+        }
+        setAllRegistrations(regs);
       } catch (err) {
         setAllRegistrations([]);
       } finally {
@@ -406,10 +803,10 @@ const TournamentDetails = () => {
   }, [isOrganizer, tournament?.id]);
 
   useEffect(() => {
-    if (!loading && tournament && user?.id && tournament.user_id && user.id === tournament.user_id && currentRole === 'organizer') {
-      navigate(`/organizer/tournament/${tournament.slug}`);
+    if (!loading && tournament && isOrganizer) {
+      navigate(`/organizer/tournament/${slug}`);
     }
-  }, [loading, tournament, user, navigate, currentRole]);
+  }, [loading, tournament, isOrganizer, navigate]);
 
   if (loading) {
     return (
@@ -473,7 +870,7 @@ const TournamentDetails = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate(`/tournaments/edit/${tournament.slug}`)}
+                  onClick={() => navigate(`/tournaments/edit/${slug}`)}
                   className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
                 >
                   <Edit className="w-4 h-4 mr-2" />
@@ -482,6 +879,19 @@ const TournamentDetails = () => {
               )}
             </div>
           </div>
+
+          {/* Quick actions (no results upload here per request) */}
+          {isRegistered && user && (
+            <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 mb-8">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Player Actions</h3>
+                <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800" onClick={() => setShowDisputeModal(true)}>
+                  Raise a dispute
+                </Button>
+              </div>
+              <p className="text-gray-400 text-sm mt-3">To upload a match result, use the upload icon on the specific match in the Brackets page.</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
@@ -518,7 +928,7 @@ const TournamentDetails = () => {
                 <div className="text-center py-4">
                   <p className="text-gray-400 mb-4">Please log in to register for this tournament</p>
                   <Button 
-                    onClick={() => navigate('/login')}
+                    onClick={() => navigate('/auth/signin')}
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     Login to Register
@@ -527,6 +937,17 @@ const TournamentDetails = () => {
               ) : isOrganizer ? (
                 <div className="text-center py-4">
                   <p className="text-gray-400">You are the organizer of this tournament</p>
+                </div>
+              ) : (currentRole && currentRole !== 'casual') ? (
+                <div className="text-center py-4">
+                  <p className="text-gray-400 mb-3">Switch to Player role to register for tournaments.</p>
+                  <Button
+                    onClick={() => navigate('/user/dashboard')}
+                    variant="outline"
+                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                  >
+                    Go to Dashboard
+                  </Button>
                 </div>
               ) : isRegistered ? (
                 <div className="space-y-4">
@@ -541,7 +962,7 @@ const TournamentDetails = () => {
                         <div>
                           <span className="block text-sm text-gray-400 mb-1">Team Members</span>
                           <ul className="flex flex-wrap gap-2">
-                            {registrationDetails.team_members?.split(',').map((member, idx) => (
+                            {(resolvedMembers || getMembers(registrationDetails.team_members)).map((member, idx) => (
                               <li key={idx} className="bg-gray-600/50 px-3 py-1 rounded-full flex items-center gap-2">
                                 <span className="inline-block w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">
                                   {member.trim().charAt(0).toUpperCase()}
@@ -589,11 +1010,18 @@ const TournamentDetails = () => {
           </div>
 
           {/* Tournament Bracket */}
-          <TournamentBracket 
-            tournamentId={tournament.id}
-            isOrganizer={isOrganizer}
-            onBracketUpdate={fetchTournamentData}
-          />
+          <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Tournament Bracket</h3>
+              <Button
+                onClick={() => navigate(`/tournaments/${tournament.id}/brackets`)}
+                className="bg-gaming-purple hover:bg-gaming-purple/80 text-white"
+              >
+                View Full Bracket
+              </Button>
+            </div>
+            <p className="text-gray-400">View the complete tournament bracket with match details and team progression.</p>
+          </div>
 
           {/* Organizer: Show all registrations */}
           {isOrganizer && (
@@ -610,6 +1038,7 @@ const TournamentDetails = () => {
                       <tr>
                         <th className="px-4 py-2 text-left text-gray-300">Type</th>
                         <th className="px-4 py-2 text-left text-gray-300">Team Name / Gamer Tag</th>
+                        <th className="px-4 py-2 text-left text-gray-300">Roster</th>
                         <th className="px-4 py-2 text-left text-gray-300">Members</th>
                         <th className="px-4 py-2 text-left text-gray-300">Registered At</th>
                       </tr>
@@ -618,15 +1047,18 @@ const TournamentDetails = () => {
                       {allRegistrations.map((reg) => (
                         <tr key={reg.id} className="border-t border-gray-700">
                           <td className="px-4 py-2 text-white">
-                            {reg.registration_type === 'team' ? 'Team' : 'Solo'}
+                            {reg.participant_type === 'team' ? 'Team' : 'Solo'}
                           </td>
                           <td className="px-4 py-2 font-semibold text-white">
-                            {reg.registration_type === 'team' ? reg.team_name : reg.gamer_tag || 'N/A'}
+                            {reg.participant_type === 'team' ? reg.team_name : reg.gamer_tag || 'N/A'}
                           </td>
                           <td className="px-4 py-2 text-gray-300">
-                            {reg.registration_type === 'team' && reg.team_members ? (
+                            {(reg as any).roster_name || '-'}
+                          </td>
+                          <td className="px-4 py-2 text-gray-300">
+                            {reg.participant_type === 'team' && reg.team_members ? (
                               <ul className="list-disc list-inside">
-                                {reg.team_members.split(',').map((member, idx) => (
+                                {getMembers(reg.team_members).map((member, idx) => (
                                   <li key={idx}>{member.trim()}</li>
                                 ))}
                               </ul>
@@ -660,12 +1092,37 @@ const TournamentDetails = () => {
             tournamentId={tournament.id}
             tournamentName={tournament.name}
             game={tournament.game}
-            onSuccess={handleRegistrationSuccess}
+            onRegisterSuccess={handleRegistrationSuccess}
+            onCancel={() => setShowEditDialog(false)}
             initialData={registrationDetails}
             isEdit={!!registrationDetails}
             structure={selectedGame?.defaultFormat || ''}
             teamSize={selectedGame?.formats.find(f => f.value === selectedGame.defaultFormat)?.teamSize || 1}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dispute Modal */}
+      <Dialog open={showDisputeModal} onOpenChange={setShowDisputeModal}>
+        <DialogContent className="sm:max-w-[600px] bg-gray-900 border border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Raise a Dispute</DialogTitle>
+            <DialogDescription className="text-gray-400">Describe the issue and attach optional evidence. Organizers will review.</DialogDescription>
+          </DialogHeader>
+          {tournament && (
+            <DisputeSubmission
+              tournamentId={tournament.id}
+              tournamentName={tournament.name}
+              teamId={(registrationDetails as any)?.team_id || null}
+              matchId={null}
+              onClose={() => {
+                setShowDisputeModal(false);
+                setDisputeTitle("");
+                setDisputeDesc("");
+                setDisputeFile(null);
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

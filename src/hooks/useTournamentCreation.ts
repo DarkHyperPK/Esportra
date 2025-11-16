@@ -121,43 +121,105 @@ export const useTournamentCreation = () => {
     setLoading(true);
     
     try {
-      const slug = slugify(formData.name, { lower: true, strict: true });
+      // Parse dates and times
+      const startDateTime = new Date(`${formData.date}T${formData.time}`);
+      const endDateTime = new Date(startDateTime.getTime() + (2 * 60 * 60 * 1000)); // 2 hours later
+      const registrationDeadline = new Date(startDateTime.getTime() - (24 * 60 * 60 * 1000)); // 1 day before
+      
+      // Parse entry fee and prize pool, clamp to DB numeric(10,2) safe range
+      const toMoney = (val: string, freeAsZero = false) => {
+        if (freeAsZero && (val || '').trim().toLowerCase() === 'free') return 0;
+        const num = parseFloat((val || '').toString().replace(/[^0-9.]/g, ''));
+        if (!isFinite(num) || isNaN(num)) return 0;
+        const clamped = Math.min(Math.max(0, num), 99999999.99);
+        // Round to 2 decimals to satisfy scale 2
+        return Math.round(clamped * 100) / 100;
+      };
+
+      const entryFee = toMoney(formData.entryFee, true);
+      const prizePool = toMoney(formData.prizePool);
+      
+      // Map structure to format
+      const formatMap: { [key: string]: string } = {
+        'single_elimination': 'single_elimination',
+        'double_elimination': 'double_elimination',
+        'round_robin': 'round_robin',
+        'swiss': 'swiss',
+        'custom': 'custom'
+      };
+      
+      // Build base slug and ensure uniqueness by appending a numeric suffix on conflict
+      let slug = slugify(formData.name, { lower: true, strict: true });
+      let uniqueSlug = slug;
+      try {
+        const { data: existing } = await supabase
+          .from('tournaments')
+          .select('id')
+          .eq('slug', uniqueSlug)
+          .limit(1);
+        if (existing && existing.length > 0) {
+          uniqueSlug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+        }
+      } catch {}
+      slug = uniqueSlug;
+      console.log('Generated slug:', slug);
+      
       const { data: tournament, error: tournamentError } = await supabase
         .from('tournaments')
         .insert({
           name: formData.name,
-          game: formData.game,
-          team_size: parseInt(formData.teamSize, 10),
-          date: formData.date,
-          time: formData.time,
-          venue: formData.venue,
-          max_participants: parseInt(formData.maxParticipants, 10),
-          prize_pool: formData.prizePool,
           description: formData.description,
-          status: 'upcoming',
-          user_id: user.id,
+          slug: slug,
+          game: formData.game,
+          format: formatMap[formData.structure] || 'single_elimination',
+          max_teams: Math.max(2, Math.min(1024, parseInt(formData.maxParticipants, 10) || 2)),
+          min_teams: 2,
+          entry_fee: entryFee,
+          prize_pool: prizePool,
+          start_date: startDateTime.toISOString(),
+          end_date: endDateTime.toISOString(),
+          registration_deadline: registrationDeadline.toISOString(),
+          status: 'open',
+          banner_url: null,
+          logo_url: null,
           organizer_id: user.id,
-          entry_fee: formData.entryFee,
-          is_online: formData.isOnline,
-          slug
+          // Use null unless you have a valid venue_id (UUID) to relate
+          venue_id: formData.isOnline ? null : null,
+          is_public: true,
+          
         })
         .select()
         .single();
         
-      if (tournamentError) throw tournamentError;
+      if (tournamentError) {
+        console.error('Create tournament insert error:', {
+          code: (tournamentError as any).code,
+          message: (tournamentError as any).message,
+          details: (tournamentError as any).details,
+          hint: (tournamentError as any).hint
+        });
+        throw tournamentError;
+      }
+      
+      console.log('Tournament created successfully:', tournament);
+      console.log('Tournament slug:', tournament?.slug);
+      console.log('Tournament id:', tournament?.id);
 
       toast({
         title: "Tournament Created",
         description: "Your tournament has been successfully created!",
       });
       
-      navigate(`/tournaments/${slug}`);
-    } catch (err) {
+      const navigationPath = tournament?.slug ? `/organizer/tournament/${tournament.slug}` : `/organizer/tournament/${tournament.id}`;
+      console.log('Navigating to:', navigationPath);
+      navigate(navigationPath);
+    } catch (err: any) {
       console.error('Error creating tournament:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred while creating the tournament');
+      const msg = err?.message || 'Failed to create tournament';
+      setError(msg);
       toast({
         title: "Error",
-        description: err instanceof Error ? err.message : 'Failed to create tournament',
+        description: msg,
         variant: "destructive",
       });
     } finally {

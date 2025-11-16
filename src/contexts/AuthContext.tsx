@@ -29,6 +29,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   // Use the signUp from useAuthActions directly
   const { signUp: originalSignUp } = useAuthActions();
@@ -44,8 +45,15 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     await originalSignUp(email, password, username, fullName, role);
   };
 
+  // Set mounted state
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Handle auth state changes
   useEffect(() => {
+    if (!isMounted) return;
+    
     const handleUserChange = async () => {
       setError(null);
       
@@ -82,7 +90,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     };
     
     handleUserChange();
-  }, [user, authLoading]);
+  }, [user, authLoading, isMounted]);
 
   // React to auth errors
   useEffect(() => {
@@ -123,9 +131,9 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
 
   // Memoize the context value to prevent unnecessary re-renders
   const value = useMemo<AuthContextType>(() => ({
-    user,
-    profile,
-    loading: loading || authLoading || profileLoading,
+    user: isMounted ? user : null,
+    profile: isMounted ? profile : null,
+    loading: !isMounted || loading || authLoading || profileLoading,
     signIn,
     signUp,
     signInWithGoogle,
@@ -145,7 +153,8 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     profileError,
     signIn,
     signUp,
-    signInWithGoogle
+    signInWithGoogle,
+    isMounted
   ]);
 
   return (

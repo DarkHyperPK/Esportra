@@ -50,7 +50,7 @@ interface TeamMember {
   username: string;
   full_name?: string;
   avatar_url?: string;
-  role: 'captain' | 'player' | 'substitute';
+  role: 'captain' | 'member' | 'substitute';
   verified: boolean;
 }
 
@@ -60,7 +60,7 @@ interface Team {
   tag: string;
   games: string[];
   logo_url?: string;
-  created_by: string;
+  owner_id: string;
   created_at: string;
   members: TeamMember[];
   tournament_wins: number;
@@ -76,7 +76,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   const { toast } = useToast();
   
   // Wizard state
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(2);
   const [showWizard, setShowWizard] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState('');
@@ -84,7 +84,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   const [editGames, setEditGames] = useState<string[]>([]);
   
   // Team creation state
-  const [selectedGames, setSelectedGames] = useState<string[]>([]);
+  const [selectedGames, setSelectedGames] = useState<string[]>([]); // deprecated for initial creation; rosters handle games
   const [teamName, setTeamName] = useState('');
   const [teamTag, setTeamTag] = useState('');
   const [teamLogoFile, setTeamLogoFile] = useState<File | null>(null);
@@ -154,8 +154,9 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, verified, email')
-        .eq('verified', true)
+        .select('id, username, full_name, avatar_url, is_verified, email, is_admin')
+        .eq('is_verified', true)
+        .eq('is_admin', false) // Exclude admins from team member selection
         .order('username');
       
       if (error) throw error;
@@ -180,7 +181,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
       const { data: createdTeam, error: createdError } = await supabase
         .from('teams')
         .select('*')
-        .eq('created_by', user.id)
+        .eq('owner_id', user.id)
         .maybeSingle();
 
       if (createdError && createdError.code !== 'PGRST116') throw createdError;
@@ -189,17 +190,17 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
         // Fetch members for the team
         const { data: members } = await supabase
           .from('team_members')
-          .select(`
-            user_id,
-            role,
-            profiles (
-              id,
-              username,
-              full_name,
-              avatar_url,
-              verified
-            )
-          `)
+        .select(`
+          user_id,
+          role,
+          profiles (
+            id,
+            username,
+            full_name,
+            avatar_url,
+            is_verified
+          )
+        `)
           .eq('team_id', createdTeam.id);
 
         setUserTeam({
@@ -210,7 +211,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
             full_name: m.profiles.full_name,
             avatar_url: m.profiles.avatar_url,
             role: m.role,
-            verified: m.profiles.verified,
+            verified: m.profiles.is_verified,
           })),
           tournament_wins: 0, // TODO: Calculate from tournament results
           total_matches: 0, // TODO: Calculate from match history
@@ -230,13 +231,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
     }
   };
 
-  const handleGameToggle = (gameName: string) => {
-    setSelectedGames(prev => 
-      prev.includes(gameName) 
-        ? prev.filter(g => g !== gameName)
-        : [...prev, gameName]
-    );
-  };
+  const handleGameToggle = (_gameName: string) => {};
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -329,6 +324,16 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   };
 
   const addMember = (user: any) => {
+    // Check if user is admin
+    if (user.is_admin) {
+      toast({
+        title: 'Cannot add admin',
+        description: 'Admins cannot be added to teams as members. They can only create and manage teams.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Check if user is already selected
     if (selectedMembers.some(m => m.id === user.id)) {
       toast({
@@ -340,7 +345,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
     }
 
     // Add user as first member (captain) if no members yet
-    const role = selectedMembers.length === 0 ? 'captain' : 'player';
+    const role = selectedMembers.length === 0 ? 'captain' : 'member';
     
     setSelectedMembers(prev => [...prev, {
       id: user.id,
@@ -366,10 +371,10 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   };
 
   const handleCreateTeam = async () => {
-    if (!user || selectedGames.length === 0 || !teamName || !teamTag) {
+    if (!user || !teamName || !teamTag) {
       toast({
         title: 'Missing Information',
-        description: 'Please fill in all required fields',
+        description: 'Please enter team name and tag',
         variant: 'destructive',
       });
       return;
@@ -378,22 +383,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
     setSubmitting(true);
 
     try {
-      // Enforce: creator cannot create a team for games where they are already active member
-      const { data: candidateTeams, error: conflictError } = await supabase
-        .from('teams')
-        .select('id, name, games, team_members!inner(user_id, is_active)')
-        .eq('team_members.user_id', user.id)
-        .eq('team_members.is_active', true);
-      if (conflictError) throw conflictError;
-      const hasConflict = (candidateTeams || []).some((t: any) => Array.isArray(t?.games) && t.games.some((g: string) => selectedGames.includes(g)));
-      if (hasConflict) {
-        toast({
-          title: 'Cannot Create Team',
-          description: 'You are already a member of another team for one or more selected games.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      // No game selection at creation time; games managed via rosters later
 
       // Upload logo if provided
       let logoUrl = null;
@@ -435,9 +425,9 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
       console.log('Team data to insert:', {
         name: teamName,
         tag: teamTag,
-        games: selectedGames,
+        games: [],
         logo_url: logoUrl,
-        created_by: user.id,
+        owner_id: user.id,
       });
 
       // Create team
@@ -446,9 +436,10 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
         .insert({
           name: teamName,
           tag: teamTag,
-          games: selectedGames,
+          game: 'Organization', // default primary game placeholder for multi-game orgs
+          games: [],
           logo_url: logoUrl,
-          created_by: user.id,
+          owner_id: user.id,
         })
         .select()
         .single();
@@ -459,18 +450,12 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
       if (teamError) throw teamError;
 
-      // Build final member list: ensure current user is added as captain if none selected
-      const hasCurrentUser = selectedMembers.some(m => m.id === user.id);
-      const hasCaptain = selectedMembers.some(m => m.role === 'captain');
-      const finalMembers = hasCurrentUser
-        ? selectedMembers
-        : [{ id: user.id, role: hasCaptain ? 'player' : 'captain' }, ...selectedMembers];
-
-      const memberRows = finalMembers.map(member => ({
+      // Add only creator as captain initially; roster flows will invite others
+      const memberRows = [{
         team_id: team.id,
-        user_id: member.id,
-        role: member.role,
-      }));
+        user_id: user.id,
+        role: 'captain',
+      }];
 
       const { error: memberError } = await supabase
         .from('team_members')
@@ -478,22 +463,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
       if (memberError) throw memberError;
 
-      // Send notifications to team members
-      const notifications = finalMembers
-        .filter(m => m.id !== user.id) // Don't notify yourself
-        .map(member => ({
-          user_id: member.id,
-          type: 'team_created',
-          title: 'Team Created',
-          message: `You have been added to team "${teamName}" as ${member.role}`,
-          data: { team_id: team.id, team_name: teamName },
-          read: false,
-          created_at: new Date().toISOString(),
-        }));
-
-      if (notifications.length > 0) {
-        await supabase.from('notifications').insert(notifications);
-      }
+      // No member notifications needed at creation time
 
       toast({
         title: 'Team Created!',
@@ -756,7 +726,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   return (
     <div className="w-full">
 
-      {/* Team Creation Wizard */}
+      {/* Team Creation Wizard (basic info only; games are managed via rosters) */}
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-esports-dark border border-gray-600/30">
           <DialogHeader>
@@ -764,96 +734,19 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
               Create Your Team
             </DialogTitle>
             <DialogDescription className="text-esports-secondary">
-              Set up your esports team with games, members, and branding.
+              Set up your esports team with basic info and branding. Add game rosters later from your dashboard.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Step 1: Game Selection */}
-            {currentStep === 1 && (
-              <div className="space-y-6">
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-esports-blue to-esports-cyan rounded-xl flex items-center justify-center">
-                    <Gamepad2 className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-esports-primary mb-2">Select Your Games</h3>
-                  <p className="text-esports-secondary">
-                    {imagesLoading ? 'Loading game images...' : 'Choose the games your team will compete in'}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {esportsGames.games.map((game: Game) => (
-                    <div
-                      key={game.name}
-                      className={`relative cursor-pointer transition-all duration-300 ease-out hover:scale-105 ${
-                        selectedGames.includes(game.name)
-                          ? 'ring-2 ring-esports-accent ring-offset-2 ring-offset-esports-dark'
-                          : 'hover:ring-1 hover:ring-gray-600'
-                      }`}
-                      onClick={() => handleGameToggle(game.name)}
-                    >
-                      <div className="bg-esports-card border border-gray-600/30 rounded-lg p-4 text-center hover:border-gray-500/50 transition-all duration-300 ease-out">
-                        <div className="w-12 h-12 mx-auto mb-3 rounded-lg overflow-hidden bg-esports-dark border border-gray-600/30 relative">
-                          {imagesLoading ? (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <div className="w-4 h-4 border-2 border-esports-accent border-t-transparent rounded-full animate-spin"></div>
-                            </div>
-                          ) : gameImages[game.name] ? (
-                            <img
-                              src={gameImages[game.name]}
-                              alt={game.name}
-                              className="w-full h-full object-cover transition-opacity duration-300"
-                              onError={(e) => {
-                                e.currentTarget.src = game.logo;
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Gamepad2 className="h-6 w-6 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                        <h4 className="font-semibold text-esports-primary text-sm mb-1">{game.name}</h4>
-                        {selectedGames.includes(game.name) && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center animate-in zoom-in-50 duration-200">
-                            <span className="text-white text-xs font-bold">✓</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {selectedGames.length > 0 && (
-                  <div className="text-center pt-4">
-                    <Button
-                      onClick={() => setCurrentStep(2)}
-                      disabled={imagesLoading}
-                      className="btn-esports-blue px-8 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {imagesLoading ? 'Loading...' : `Continue with ${selectedGames.length} game${selectedGames.length !== 1 ? 's' : ''}`}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 2: Team Details */}
+            {/* Team Details */}
             {currentStep === 2 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-4 mb-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentStep(1)}
-                    className="border-gray-600/30 text-esports-secondary hover:bg-gray-800/50"
-                  >
-                    ← Back
-                  </Button>
                   <div>
                     <h3 className="text-2xl font-bold text-esports-primary">Team Details</h3>
                     <p className="text-esports-secondary">
-                      Configure your multi-game team
+                      Create your organization team. Add game rosters later.
                     </p>
                   </div>
                 </div>
@@ -882,17 +775,6 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                         maxLength={6}
                         className="bg-esports-dark border border-gray-600/30 text-esports-primary placeholder-gray-400"
                       />
-                    </div>
-
-                    <div>
-                      <Label className="text-white">Selected Games</Label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {selectedGames.map(game => (
-                          <Badge key={game} className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-                            {game}
-                          </Badge>
-                        ))}
-                      </div>
                     </div>
 
                     <div>

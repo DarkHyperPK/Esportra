@@ -34,7 +34,7 @@ const OrganizerTournamentsList: React.FC = () => {
         .from('tournaments')
         .select('id, name, game, date, time, venue, max_participants, team_size, slug')
         .eq('organizer_id', user.id)
-        .order('date', { ascending: true });
+        .order('start_date', { ascending: true });
 
       if (error) throw error;
 

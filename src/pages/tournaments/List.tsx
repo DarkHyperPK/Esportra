@@ -28,7 +28,7 @@ const TournamentList = () => {
     try {
       console.log('[RegisteredState] Fetching registrations for user:', user.id, typeof user.id);
       const { data: registrationsData, error: registrationsError } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .select('tournament_id, user_id')
         .eq('user_id', user.id.toString());
 
@@ -51,7 +51,7 @@ const TournamentList = () => {
       const { data: tournamentsData, error: tournamentsError } = await supabase
         .from('tournaments')
         .select('*')
-        .order('date', { ascending: true });
+        .order('start_date', { ascending: true });
 
       if (tournamentsError) {
         console.error('[TournamentList] Error fetching tournaments:', tournamentsError);

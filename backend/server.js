@@ -39,7 +39,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
-    message: 'Frag and Book API is running!',
+    message: 'Esportra API is running!',
     timestamp: new Date().toISOString()
   });
 });

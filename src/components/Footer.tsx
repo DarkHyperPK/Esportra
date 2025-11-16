@@ -8,8 +8,8 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <img src="/logo.svg" alt="GamerSpot Logo" className="h-8 w-8" />
-              <span className="text-xl font-bold text-white">GamerSpot</span>
+              <img src="/logo.svg" alt="Esportra Logo" className="h-8 w-8" />
+              <span className="text-xl font-bold text-white">Esportra</span>
             </div>
             <p className="text-gray-400 mb-4">
               The ultimate platform for discovering gaming venues and joining esports tournaments.
@@ -74,7 +74,7 @@ const Footer = () => {
         </div>
         
         <div className="border-t border-gaming-gray/30 mt-10 pt-6 text-center">
-          <p className="text-gray-400">© {new Date().getFullYear()} GamerSpot. All rights reserved.</p>
+          <p className="text-gray-400">© {new Date().getFullYear()} Esportra. All rights reserved.</p>
         </div>
       </div>
     </footer>

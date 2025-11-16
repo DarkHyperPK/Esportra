@@ -11,7 +11,6 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
-import PlayerTournaments from '@/components/player/PlayerTournaments';
 
 interface VenueBooking {
   id: string;
@@ -28,9 +27,9 @@ interface Tournament {
   id: string;
   name: string;
   game: string;
-  date: string;
-  time: string;
-  venue: string;
+  start_date: string;
+  end_date: string;
+  venue_name: string;
   registered_at: string;
 }
 
@@ -53,67 +52,89 @@ const UserDashboard = () => {
       
       setLoading(true);
       try {
-        const { data: bookingsData, error: bookingsError } = await supabase
-          .from('venue_bookings')
-          .select(`
-            id,
-            venue_id,
-            venues(name),
-            booking_date,
-            booking_time,
-            amount,
-            status,
-            created_at
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (bookingsError) throw bookingsError;
-        
-        const formattedBookings = bookingsData.map(booking => ({
-          id: booking.id,
-          venue_id: booking.venue_id,
-          venue_name: booking.venues?.name || 'Unknown venue',
-          booking_date: booking.booking_date,
-          booking_time: booking.booking_time,
-          amount: booking.amount,
-          status: booking.status,
-          created_at: booking.created_at
-        }));
-        
-        setBookings(formattedBookings);
-
-        const { data: participationData, error: participationError } = await supabase
-          .from('tournament_participants')
-          .select(`
-            tournaments(
+        // Try to fetch venue bookings (handle gracefully if table doesn't exist)
+        try {
+          const { data: bookingsData, error: bookingsError } = await supabase
+            .from('venue_bookings')
+            .select(`
               id,
-              name,
-              game,
-              date,
-              time,
-              venue
-            ),
-            registered_at
-          `)
-          .eq('user_id', user.id)
-          .order('registered_at', { ascending: false });
+              venue_id,
+              venues(name),
+              booking_date,
+              time_slot,
+              amount,
+              status,
+              created_at
+            `)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
 
-        if (participationError) throw participationError;
-        
-        const formattedTournaments = participationData.map(participation => ({
-          id: participation.tournaments.id,
-          name: participation.tournaments.name,
-          game: participation.tournaments.game,
-          date: participation.tournaments.date,
-          time: participation.tournaments.time,
-          venue: participation.tournaments.venue,
-          registered_at: participation.registered_at
-        }));
-        
-        setTournaments(formattedTournaments);
+          if (bookingsError) {
+            console.warn('Venue bookings query failed:', bookingsError);
+            setBookings([]);
+          } else {
+            const formattedBookings = bookingsData?.map(booking => ({
+              id: booking.id,
+              venue_id: booking.venue_id,
+              venue_name: booking.venues?.name || 'Unknown venue',
+              booking_date: booking.booking_date,
+              booking_time: booking.time_slot,
+              amount: booking.amount,
+              status: booking.status,
+              created_at: booking.created_at
+            })) || [];
+            
+            setBookings(formattedBookings);
+          }
+        } catch (err) {
+          console.warn('Venue bookings table may not exist:', err);
+          setBookings([]);
+        }
+
+        // Try to fetch tournament participations (handle gracefully if table doesn't exist)
+        try {
+          const { data: participationData, error: participationError } = await supabase
+            .from('tournament_participants')
+            .select(`
+              tournaments(
+                id,
+                name,
+                game,
+                start_date,
+                end_date,
+                venue_id,
+                venues(name)
+              ),
+              created_at
+            `)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (participationError) {
+            console.warn('Tournament participants query failed:', participationError);
+            setTournaments([]);
+          } else {
+            const formattedTournaments = participationData?.map(participation => ({
+              id: participation.tournaments?.id,
+              name: participation.tournaments?.name,
+              game: participation.tournaments?.game,
+              start_date: participation.tournaments?.start_date,
+              end_date: participation.tournaments?.end_date,
+              venue_name: participation.tournaments?.venues?.name || 'TBD',
+              registered_at: participation.created_at
+            })) || [];
+            
+            setTournaments(formattedTournaments);
+          }
+        } catch (err) {
+          console.warn('Tournament participants table may not exist:', err);
+          setTournaments([]);
+        }
       } catch (error) {
         console.error('Error fetching user data:', error);
+        // Set empty arrays as fallback
+        setBookings([]);
+        setTournaments([]);
       } finally {
         setLoading(false);
       }
@@ -237,7 +258,67 @@ const UserDashboard = () => {
             
             <TabsContent value="tournaments">
               <h2 className="text-xl font-semibold mb-4">My Tournament Registrations</h2>
-              <PlayerTournaments />
+              {loading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <Card key={i} className="bg-gaming-dark border-gaming-gray/30">
+                      <CardContent className="p-6">
+                        <div className="space-y-3">
+                          <Skeleton className="h-5 w-3/4 bg-gaming-gray/30" />
+                          <Skeleton className="h-4 w-1/2 bg-gaming-gray/30" />
+                          <Skeleton className="h-4 w-1/3 bg-gaming-gray/30" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : tournaments.length === 0 ? (
+                <Card className="bg-gaming-dark border-gaming-gray/30">
+                  <CardHeader>
+                    <CardTitle>No Tournament Registrations</CardTitle>
+                    <CardDescription>You haven't registered for any tournaments yet</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button asChild className="bg-gaming-purple hover:bg-gaming-purple/80">
+                      <Link to="/tournaments">Browse Tournaments</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {tournaments.map(tournament => (
+                    <Card key={tournament.id} className="bg-gaming-dark border-gaming-gray/30">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between">
+                          <CardTitle>{tournament.name}</CardTitle>
+                          <Badge variant="outline">
+                            {tournament.game}
+                          </Badge>
+                        </div>
+                        <CardDescription>
+                          Registered on {new Date(tournament.registered_at).toLocaleDateString()}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-gaming-purple" />
+                            <span>Start: {new Date(tournament.start_date).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-gaming-purple" />
+                            <span>End: {new Date(tournament.end_date).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="h-4 w-4 text-gaming-purple" />
+                            <span>Venue: {tournament.venue_name}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>

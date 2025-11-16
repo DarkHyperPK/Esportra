@@ -49,7 +49,7 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
       }
       // Check registration
       const { data: regData } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .select('id')
         .eq('tournament_id', tournamentId)
         .eq('user_id', user.id)
@@ -68,7 +68,7 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, full_name, email')
-        .eq('verified', true);
+        .eq('is_verified', true);
       if (!error && data) setVerifiedUsers(data);
     };
     fetchVerifiedUsers();

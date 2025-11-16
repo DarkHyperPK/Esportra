@@ -160,36 +160,9 @@ export const DualRoleProvider: React.FC<DualRoleProviderProps> = ({ children }) 
         setPlayerProfile(player);
       }
 
-      // Load organizer profile
-      try {
-        const { data: organizerData } = await supabase
-          .from('company_profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (organizerData) {
-          const organizer: OrganizerProfile = {
-            id: organizerData.id,
-            company_name: organizerData.company_name,
-            company_logo: organizerData.company_logo,
-            business_type: organizerData.business_type,
-            website: organizerData.website,
-            contact_email: organizerData.contact_email,
-            business_stats: {
-              tournaments_created: 0, // TODO: Calculate from database
-              total_participants: 0,
-              total_prize_pool: 0,
-              active_tournaments: 0,
-              total_revenue: 0
-            },
-            verification_status: organizerData.is_verified ? 'verified' : 'pending'
-          };
-          setOrganizerProfile(organizer);
-        }
-      } catch (error) {
-        console.log('No organizer profile found');
-      }
+      // Organizer profile - removed company_profiles dependency
+      // Set empty organizer profile for now
+      setOrganizerProfile(null);
 
       // Load venue owner profile
       try {

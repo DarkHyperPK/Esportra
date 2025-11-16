@@ -37,7 +37,7 @@ const AboutCompany = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-gaming-darker/90 via-gaming-dark/80 to-gaming-darker/60 z-10" />
         <div className="relative z-20 text-center px-4">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-4">About GamerSpot</h1>
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-4">About Esportra</h1>
           <p className="text-lg md:text-2xl text-gray-300 max-w-2xl mx-auto">
             The complete gaming ecosystem: venues, tournaments, and community—all in one place.
           </p>

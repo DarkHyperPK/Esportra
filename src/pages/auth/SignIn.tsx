@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/MongoAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { AlertCircle, Info } from 'lucide-react';
+import { AlertCircle, Info, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Define form schema with validation
@@ -31,9 +31,10 @@ type SignInFormValues = z.infer<typeof signInSchema>;
 
 const SignIn = () => {
   const [error, setError] = useState<string | null>(null);
-  const { login, loading: authLoading } = useAuth();
+  const { signIn, loading: authLoading, user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isAlreadySignedIn, setIsAlreadySignedIn] = useState(false);
 
   // Initialize form
   const form = useForm<SignInFormValues>({
@@ -44,15 +45,40 @@ const SignIn = () => {
     },
   });
 
+  // Check if user is already signed in
+  useEffect(() => {
+    if (user && profile) {
+      setIsAlreadySignedIn(true);
+      toast({
+        title: "Already signed in",
+        description: `You are already signed in as ${profile.username || profile.full_name || user.email}`,
+      });
+      // Redirect to appropriate dashboard after a short delay
+      setTimeout(() => {
+        navigate("/user/dashboard");
+      }, 2000);
+    }
+  }, [user, profile, navigate, toast]);
+
   const handleSubmit = async (values: SignInFormValues) => {
+    // Prevent form submission if already signed in
+    if (isAlreadySignedIn) {
+      toast({
+        title: "Already signed in",
+        description: "You are already signed in. Redirecting to dashboard...",
+      });
+      navigate("/user/dashboard");
+      return;
+    }
+
     try {
       setError(null);
-      await login(values.email, values.password);
+      await signIn(values.email, values.password);
       toast({
         title: "Success!",
         description: "You have successfully signed in.",
       });
-      navigate('/dashboard');
+      navigate('/user/dashboard');
     } catch (error: any) {
       console.error("Sign in error:", error);
       setError(error.message);
@@ -64,7 +90,34 @@ const SignIn = () => {
     }
   };
 
-
+  // Show already signed in message
+  if (isAlreadySignedIn) {
+    return (
+      <div className="min-h-screen bg-esports-dark text-white flex flex-col">
+        <main className="flex-grow container mx-auto px-4 py-8 flex items-center justify-center">
+          <div className="max-w-md w-full">
+            <div className="card-esports spacing-card text-center">
+              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h1 className="text-2xl font-bold mb-4">Already Signed In</h1>
+              <p className="text-gray-400 mb-6">
+                You are already signed in as <strong>{profile?.username || profile?.full_name || user?.email}</strong>
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                Redirecting to dashboard...
+              </p>
+              <Button 
+                onClick={() => navigate("/user/dashboard")}
+                className="w-full bg-esports-primary hover:bg-esports-primary/80"
+              >
+                Go to Dashboard
+              </Button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-esports-dark text-white flex flex-col">

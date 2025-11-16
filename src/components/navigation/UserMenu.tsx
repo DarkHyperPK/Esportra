@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -23,12 +24,14 @@ const UserMenu = ({
   handleSignOut: () => Promise<void>; 
 }) => {
   const { user, profile } = useAuth();
+  const { currentRole } = useRole();
   const admin = useAdmin();
   const navigate = useNavigate();
 
-  const userRole = profile?.role || 'casual';
+  const userRole = currentRole;
 
   const [hasTeam, setHasTeam] = useState(false);
+  const [hasPendingInvite, setHasPendingInvite] = useState(false);
 
   const checkTeamStatus = async () => {
     if (!user) { setHasTeam(false); return; }
@@ -36,7 +39,7 @@ const UserMenu = ({
       const { data: created } = await supabase
         .from('teams')
         .select('id')
-        .eq('created_by', user.id)
+        .eq('owner_id', user.id)
         .maybeSingle();
       if (created?.id) { setHasTeam(true); return; }
       const { data: membership } = await supabase
@@ -54,10 +57,31 @@ const UserMenu = ({
     checkTeamStatus();
   }, [user?.id]);
 
+  // Check for pending team invitations for the current user (for badge indicator)
+  useEffect(() => {
+    const checkInvites = async () => {
+      if (!user?.id) { setHasPendingInvite(false); return; }
+      try {
+        const { data } = await supabase
+          .from('team_invitations' as any)
+          .select('id')
+          .or(`invited_user_id.eq.${user.id},invited_email.eq.${user.email}`)
+          .eq('status', 'pending')
+          .limit(1);
+        setHasPendingInvite(!!(data && data.length > 0));
+      } catch {
+        setHasPendingInvite(false);
+      }
+    };
+    checkInvites();
+  }, [user?.id, user?.email]);
+
   // Listen for team changes (when user creates/joins/leaves a team)
   useEffect(() => {
     const handleTeamChange = () => {
       checkTeamStatus();
+      // Clear the badge once user joins a team
+      setHasPendingInvite(false);
     };
 
     // Listen for custom events that indicate team changes
@@ -125,7 +149,12 @@ const UserMenu = ({
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem asChild>
-              <Link to="/player/teams" className="w-full">Create Your Team</Link>
+              <Link to="/player/teams" className="w-full flex items-center justify-between">
+                <span>Create Your Team</span>
+                {hasPendingInvite && (
+                  <span aria-label="pending invites" className="ml-2 inline-block w-2 h-2 rounded-full bg-red-500" />
+                )}
+              </Link>
             </DropdownMenuItem>
           )}
         </DropdownMenuGroup>

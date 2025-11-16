@@ -91,39 +91,7 @@ export const IdentityProvider: React.FC<IdentityProviderProps> = ({ children }) 
         setPersonalProfile(personal);
       }
 
-      // Load company profile (if user is an organizer)
-      if (profile?.role === 'organizer') {
-        try {
-          const { data: companyData, error } = await supabase
-            .from('company_profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-
-          if (error && error.code !== 'PGRST116') {
-            console.error('Error loading company profile:', error);
-          } else if (companyData) {
-            const company: CompanyProfile = {
-              id: companyData.id,
-              company_name: companyData.company_name,
-              company_logo: companyData.company_logo,
-              company_description: companyData.company_description,
-              website: companyData.website,
-              contact_email: companyData.contact_email,
-              business_stats: {
-                tournaments_created: 0, // TODO: Calculate from database
-                total_participants: 0,
-                total_prize_pool: 0,
-                active_tournaments: 0,
-              }
-            };
-            setCompanyProfile(company);
-          }
-        } catch (error) {
-          console.error('Error loading company profile (table may not exist):', error);
-          // Company profiles table doesn't exist yet, that's okay
-        }
-      }
+      // Company profiles removed - no longer needed
 
       // Load current mode from localStorage
       const savedMode = localStorage.getItem('identityMode') as IdentityMode;

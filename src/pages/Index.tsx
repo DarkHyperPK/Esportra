@@ -22,6 +22,7 @@ const Index = () => {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // (no-op helper removed in favor of fixed responsive grid)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,7 +40,7 @@ const Index = () => {
         const { data: tournamentsData, error: tournamentsError } = await supabase
           .from('tournaments')
           .select('*')
-          .eq('status', 'upcoming')
+          .eq('status', 'open')
           .limit(4);
         
         if (tournamentsError) throw tournamentsError;
@@ -105,9 +106,9 @@ const Index = () => {
       <SponsorsBanner />
       
       {/* Featured Venues Section */}
-      <section className="container-professional spacing-section">
-        <div className="flex-between mb-12">
-          <h2 className="text-4xl font-bold text-esports-primary">Featured Venues</h2>
+      <section className="container mx-auto px-4 py-10 max-w-7xl">
+        <div className="flex items-center gap-4 md:gap-6 flex-wrap mb-6 md:mb-8">
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">Featured Venues</h2>
           <Link to="/venues/featured">
             <Button variant="outline" className="btn-esports-green">
               <MapPin className="mr-2 h-4 w-4" />
@@ -115,7 +116,7 @@ const Index = () => {
             </Button>
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {isLoading ? (
             Array(4).fill(0).map((_, i) => (
               <div key={i} className="animate-pulse bg-gaming-gray/20 rounded-lg h-64"></div>
@@ -125,15 +126,22 @@ const Index = () => {
               <VenueCard key={venue.id} venue={venue} />
             ))
           ) : (
-            <p className="col-span-4 text-center text-gray-400">No venues available</p>
+            <div className="col-span-4">
+              <div className="border border-gaming-gray/30 rounded-xl bg-gaming-dark/60 p-8 text-center max-w-xl mx-auto">
+                <p className="text-gray-300 mb-3">No venues are featured right now.</p>
+                <Link to="/venues/featured">
+                  <Button size="sm" className="bg-gaming-purple hover:bg-gaming-purple/80">Explore venues</Button>
+                </Link>
+              </div>
+            </div>
           )}
         </div>
       </section>
 
       {/* Upcoming Tournaments Section */}
-      <section className="container-professional spacing-section">
-        <div className="flex-between mb-12">
-          <h2 className="text-4xl font-bold text-esports-primary">Upcoming Tournaments</h2>
+      <section className="container mx-auto px-4 py-10 max-w-7xl">
+        <div className="flex items-center gap-4 md:gap-6 flex-wrap mb-6 md:mb-8">
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">Upcoming Tournaments</h2>
           <Link to="/tournaments/upcoming">
             <Button variant="outline" className="btn-esports-orange">
               <Calendar className="mr-2 h-4 w-4" />
@@ -141,7 +149,7 @@ const Index = () => {
             </Button>
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {isLoading ? (
             Array(4).fill(0).map((_, i) => (
               <div key={i} className="animate-pulse bg-gaming-gray/20 rounded-lg h-64"></div>
@@ -162,15 +170,24 @@ const Index = () => {
                 team_size={tournament.team_size}
                 prize_pool={tournament.prize_pool}
                 user_id={tournament.user_id}
+                organizer_id={tournament.organizer_id}
                 entry_fee={tournament.entry_fee}
                 is_online={tournament.is_online}
                 image_url={tournament.image_url}
                 registrationData={tournament.registrationData}
+                currentUserId={user?.id}
                 slug={tournament.slug}
               />
             ))
           ) : (
-            <p className="col-span-4 text-center text-gray-400">No tournaments available</p>
+            <div className="col-span-4">
+              <div className="border border-gaming-gray/30 rounded-xl bg-gaming-dark/60 p-8 text-center max-w-xl mx-auto">
+                <p className="text-gray-300 mb-3">No tournaments available right now.</p>
+                <Link to="/tournaments/upcoming">
+                  <Button size="sm" className="bg-gaming-purple hover:bg-gaming-purple/80">Browse tournaments</Button>
+                </Link>
+              </div>
+            </div>
           )}
         </div>
       </section>

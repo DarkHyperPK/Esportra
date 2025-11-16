@@ -186,155 +186,248 @@ const EditTournament = () => {
   }
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">Edit Tournament</h1>
-          
-          <Card className="bg-gaming-dark border-gaming-gray/30">
-            <CardHeader>
-              <CardTitle>Tournament Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Tournament Name</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      className="bg-gaming-gray/10"
-                      required
-                    />
-                  </div>
+        <div className="max-w-4xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-white mb-2">Edit Tournament</h1>
+            <p className="text-gray-300 text-lg">Update your tournament details and settings</p>
+          </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="game">Game</Label>
-                    <Input
-                      id="game"
-                      name="game"
-                      value={formData.game}
-                      onChange={handleInputChange}
-                      className="bg-gaming-gray/10"
-                      required
-                    />
+          <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 shadow-2xl">
+            <CardContent className="p-8">
+              <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Basic Information Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full"></div>
+                    <h2 className="text-2xl font-semibold text-white">Basic Information</h2>
                   </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="name" className="text-white font-medium text-sm uppercase tracking-wide">
+                        Tournament Name
+                      </Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 h-14 px-4 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        placeholder="Enter tournament name"
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      name="date"
-                      type="date"
-                      value={formData.date}
-                      onChange={handleInputChange}
-                      className="bg-gaming-gray/10"
-                      required
-                    />
+                    <div className="space-y-3">
+                      <Label htmlFor="game" className="text-white font-medium text-sm uppercase tracking-wide">
+                        Game
+                      </Label>
+                      <Input
+                        id="game"
+                        name="game"
+                        value={formData.game}
+                        onChange={handleInputChange}
+                        className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 h-14 px-4 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        placeholder="Enter game name"
+                        required
+                      />
+                    </div>
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="time">Time</Label>
-                    <Input
-                      id="time"
-                      name="time"
-                      type="time"
-                      value={formData.time}
-                      onChange={handleInputChange}
-                      className="bg-gaming-gray/10"
-                      required
-                    />
+                {/* Date & Time Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full"></div>
+                    <h2 className="text-2xl font-semibold text-white">Schedule</h2>
                   </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="date" className="text-white font-medium text-sm uppercase tracking-wide">
+                        Date
+                      </Label>
+                      <Input
+                        id="date"
+                        name="date"
+                        type="date"
+                        value={formData.date}
+                        onChange={handleInputChange}
+                        className="bg-slate-700/50 border-slate-600 text-white h-14 px-4 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="max_participants">Maximum Participants</Label>
-                    <Input
-                      id="max_participants"
-                      name="max_participants"
-                      type="number"
-                      value={formData.max_participants}
-                      onChange={handleInputChange}
-                      className="bg-gaming-gray/10"
-                      required
-                      min={2}
-                    />
+                    <div className="space-y-3">
+                      <Label htmlFor="time" className="text-white font-medium text-sm uppercase tracking-wide">
+                        Time
+                      </Label>
+                      <Input
+                        id="time"
+                        name="time"
+                        type="time"
+                        value={formData.time}
+                        onChange={handleInputChange}
+                        className="bg-slate-700/50 border-slate-600 text-white h-14 px-4 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        required
+                      />
+                    </div>
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="prize_pool">Prize Pool</Label>
-                    <Input
-                      id="prize_pool"
-                      name="prize_pool"
-                      value={formData.prize_pool}
-                      onChange={handleInputChange}
-                      className="bg-gaming-gray/10"
-                      required
-                    />
+                {/* Tournament Details Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-1 h-8 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full"></div>
+                    <h2 className="text-2xl font-semibold text-white">Tournament Details</h2>
                   </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="max_participants" className="text-white font-medium text-sm uppercase tracking-wide">
+                        Max Participants
+                      </Label>
+                      <Input
+                        id="max_participants"
+                        name="max_participants"
+                        type="number"
+                        value={formData.max_participants}
+                        onChange={handleInputChange}
+                        className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 h-14 px-4 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        placeholder="100"
+                        required
+                        min={2}
+                      />
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="entry_fee">Entry Fee (optional)</Label>
-                    <Input
-                      id="entry_fee"
-                      name="entry_fee"
-                      value={formData.entry_fee}
-                      onChange={handleInputChange}
-                      className="bg-gaming-gray/10"
-                      placeholder="Free"
-                    />
+                    <div className="space-y-3">
+                      <Label htmlFor="prize_pool" className="text-white font-medium text-sm uppercase tracking-wide">
+                        Prize Pool
+                      </Label>
+                      <Input
+                        id="prize_pool"
+                        name="prize_pool"
+                        value={formData.prize_pool}
+                        onChange={handleInputChange}
+                        className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 h-14 px-4 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        placeholder="$1,000"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="entry_fee" className="text-white font-medium text-sm uppercase tracking-wide">
+                        Entry Fee
+                      </Label>
+                      <Input
+                        id="entry_fee"
+                        name="entry_fee"
+                        value={formData.entry_fee}
+                        onChange={handleInputChange}
+                        className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 h-14 px-4 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                        placeholder="Free"
+                      />
+                    </div>
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="venue">Venue</Label>
+                {/* Venue Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-1 h-8 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
+                    <h2 className="text-2xl font-semibold text-white">Location</h2>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <Label htmlFor="venue" className="text-white font-medium text-sm uppercase tracking-wide">
+                      Venue
+                    </Label>
                     <Input
                       id="venue"
                       name="venue"
                       value={formData.venue}
                       onChange={handleInputChange}
-                      className="bg-gaming-gray/10"
+                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 h-14 px-4 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="Enter venue name or address"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    className="bg-gaming-gray/10 min-h-[100px]"
-                    required
-                  />
+                {/* Description Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-1 h-8 bg-gradient-to-b from-pink-500 to-purple-500 rounded-full"></div>
+                    <h2 className="text-2xl font-semibold text-white">Description</h2>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <Label htmlFor="description" className="text-white font-medium text-sm uppercase tracking-wide">
+                      Tournament Description
+                    </Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 min-h-[150px] p-4 text-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                      placeholder="Describe your tournament, rules, format, and any special requirements..."
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="is_online"
-                    checked={formData.is_online}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_online: checked }))}
-                  />
-                  <Label htmlFor="is_online">Online Tournament</Label>
+                {/* Online Tournament Toggle */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-1 h-8 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full"></div>
+                    <h2 className="text-2xl font-semibold text-white">Tournament Type</h2>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-6 bg-slate-700/30 rounded-xl border border-slate-600/50">
+                    <div className="space-y-1">
+                      <Label htmlFor="is_online" className="text-white font-medium text-lg cursor-pointer">
+                        Online Tournament
+                      </Label>
+                      <p className="text-slate-400 text-sm">
+                        Toggle this if your tournament will be held online
+                      </p>
+                    </div>
+                    <Switch
+                      id="is_online"
+                      checked={formData.is_online}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_online: checked }))}
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-purple-500 data-[state=checked]:to-blue-500"
+                    />
+                  </div>
                 </div>
 
-                <div className="flex justify-end gap-4">
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-slate-700/50">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => navigate(`/organizer/tournament/${slug}`)}
-                    className="border-gaming-gray/30"
+                    className="flex-1 h-14 text-lg font-medium border-slate-600 text-white hover:bg-slate-700/50 hover:border-slate-500 transition-all"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    className="bg-gaming-purple hover:bg-gaming-purple/80"
+                    className="flex-1 h-14 text-lg font-medium bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white transition-all shadow-lg hover:shadow-xl"
                     disabled={saving}
                   >
-                    {saving ? 'Saving...' : 'Save Changes'}
+                    {saving ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Saving Changes...
+                      </div>
+                    ) : (
+                      'Save Changes'
+                    )}
                   </Button>
                 </div>
               </form>

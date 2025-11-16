@@ -3,6 +3,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile optimizations */
+@layer base {
+  /* Safe area support for notched devices */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Prevent text selection on mobile (improves UX) */
+  @media (max-width: 768px) {
+    button, a {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
+  }
+  
+  /* Smooth scrolling on mobile */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;600;700;800&display=swap');
+
+:root {
+  --font-heading: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.font-heading { font-family: var(--font-heading); }
+.font-body { font-family: var(--font-body); }
+
 /* Prevent double header flash during hydration */
 nav {
   will-change: opacity, transform;
@@ -23,136 +60,71 @@ nav[data-mounted] {
 
 /* Enhanced animations for interactive elements */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes subtle-pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
 }
 
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.8;
-  }
-}
+@keyframes pulse { 0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.8} }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
+@keyframes shimmer { 0%{background-position:-200% 0}100%{background-position:200% 0} }
 
-.animate-fadeIn {
-  animation: fadeIn 0.6s ease-out;
-}
-
-.animate-slideIn {
-  animation: slideIn 0.6s ease-out;
-}
-
-.animate-subtle-pulse {
-  animation: subtle-pulse 3s ease-in-out infinite;
-}
-
-.animate-pulse {
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-}
+.animate-fadeIn { animation: fadeIn 0.6s ease-out; }
+.animate-slideIn { animation: slideIn 0.6s ease-out; }
+.animate-subtle-pulse { animation: subtle-pulse 3s ease-in-out infinite; }
+.animate-pulse { animation: pulse 2s ease-in-out infinite; }
+.animate-shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); background-size:200% 100%; animation: shimmer 2s infinite; }
 
 @layer base {
   :root {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
-
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
-
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-
     --primary: 259 94% 60%;
     --primary-foreground: 0 0% 98%;
-
     --secondary: 240 5.9% 14%;
     --secondary-foreground: 0 0% 98%;
-
     --muted: 240 5.9% 14%;
     --muted-foreground: 240 5% 64.9%;
-
     --accent: 240 5.9% 14%;
     --accent-foreground: 0 0% 98%;
-
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-
     --border: 240 5.9% 14%;
     --input: 240 5.9% 14%;
     --ring: 259 94% 60%;
-
     --radius: 0.5rem;
   }
 
   .light {
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
-
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-
     --primary: 259 94% 60%;
     --primary-foreground: 0 0% 98%;
-
     --secondary: 240 5.9% 10%;
     --secondary-foreground: 0 0% 98%;
-
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
-
     --accent: 240 4.8% 95.9%;
     --accent-foreground: 240 5.9% 10%;
-
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 259 94% 60%;
@@ -160,324 +132,71 @@ nav[data-mounted] {
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-esports-dark text-foreground;
-  }
+  * { @apply border-border; }
+  body { @apply bg-esports-dark text-foreground font-body; }
 }
 
-/* Custom scrollbar for the gaming theme */
-::-webkit-scrollbar {
-  width: 10px;
-}
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { @apply bg-esports-dark; }
+::-webkit-scrollbar-thumb { @apply bg-gray-600 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-esports-accent/50; }
 
-::-webkit-scrollbar-track {
-  @apply bg-esports-dark;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-600 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-esports-accent/50;
-}
-
-/* Custom classes for gradient text and borders */
-.text-gradient {
-  @apply text-transparent bg-clip-text bg-gradient-to-r from-esports-accent to-esports-blue;
-}
+/* Gradient text */
+.text-gradient { @apply text-transparent bg-clip-text bg-gradient-to-r from-esports-accent to-esports-blue; }
 
 /* Animated background elements */
-@keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
+@keyframes blob { 0%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-50px) scale(1.1)}66%{transform:translate(-20px,20px) scale(.9)}100%{transform:translate(0,0) scale(1)} }
+.animate-blob { animation: blob 7s infinite; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-4000 { animation-delay: 4s; }
 
-.animate-blob {
-  animation: blob 7s infinite;
-}
+/* Glass effects */
+.glass { backdrop-filter: blur(20px) saturate(180%); background: linear-gradient(135deg, rgba(255,255,255,.1), rgba(255,255,255,.05)); border:1px solid rgba(255,255,255,.2); box-shadow:0 8px 32px rgba(0,0,0,.3); }
+.glass-dark { backdrop-filter: blur(20px) saturate(180%); background: linear-gradient(135deg, rgba(0,0,0,.4), rgba(0,0,0,.2)); border:1px solid rgba(255,255,255,.1); box-shadow:0 8px 32px rgba(0,0,0,.5); }
+.glass-esports { backdrop-filter: blur(20px) saturate(180%); background: linear-gradient(135deg, rgba(0,212,255,.1), rgba(59,130,246,.05)); border:1px solid rgba(0,212,255,.3); box-shadow:0 8px 32px rgba(0,212,255,.2); }
 
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-
-.animation-delay-4000 {
-  animation-delay: 4s;
-}
-
-/* Enhanced glass morphism effects */
-.glass {
-  backdrop-filter: blur(20px) saturate(180%);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.glass-dark {
-  backdrop-filter: blur(20px) saturate(180%);
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-}
-
-.glass-esports {
-  backdrop-filter: blur(20px) saturate(180%);
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(59, 130, 246, 0.05));
-  border: 1px solid rgba(0, 212, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 212, 255, 0.2);
-}
-
-/* Minimalistic hover effects */
-.hover-lift {
-  transition: all 0.2s ease;
-}
-
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-}
-
-.hover-subtle {
-  transition: all 0.2s ease;
-}
-
-.hover-subtle:hover {
-  background-color: #1e1e1e;
-  border-color: #3a3a3a;
-}
+/* Hover & layout utils */
+.hover-lift { transition: all .2s ease; }
+.hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,.3); }
+.hover-subtle { transition: all .2s ease; }
+.hover-subtle:hover { background-color:#1e1e1e; border-color:#3a3a3a; }
 
 /* Gradient borders */
-.gradient-border {
-  position: relative;
-  background: linear-gradient(45deg, #00d4ff, #3b82f6);
-  padding: 1px;
-  border-radius: 0.75rem;
-}
+.gradient-border { position:relative; background: linear-gradient(45deg,#00d4ff,#3b82f6); padding:1px; border-radius:.75rem; }
+.gradient-border::before { content:""; position:absolute; inset:0; background:linear-gradient(45deg,#00d4ff,#3b82f6); border-radius:.75rem; padding:1px; mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask-composite: exclude; }
+.border-gradient { border-image: linear-gradient(to right,#00d4ff,#3B82F6) 1; }
 
-.gradient-border::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(45deg, #00d4ff, #3b82f6);
-  border-radius: 0.75rem;
-  padding: 1px;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-}
+/* Esports theme utilities */
+.bg-esports-dark { background: linear-gradient(135deg,#0a0a0a 0%,#1a1a1a 50%,#0f0f0f 100%); }
+.bg-esports-card { background: linear-gradient(135deg,#111111 0%,#1a1a1a 100%); }
+.bg-esports-accent { background: linear-gradient(135deg,#1e1e1e 0%,#2a2a2a 100%); }
+.text-esports-primary { color:#ffffff; }
+.text-esports-secondary { color:#a0a0a0; }
+.text-esports-accent { color:#00d4ff; }
 
-.border-gradient {
-  border-image: linear-gradient(to right, #00d4ff, #3B82F6) 1;
-}
+/* Headings */
+.h1-elegant { @apply font-heading text-3xl md:text-4xl font-extrabold tracking-tight; }
+.h2-elegant { @apply font-heading text-2xl md:text-3xl font-bold; }
+.button-elegant { @apply font-heading font-semibold; }
 
-/* Professional esports theme utilities */
-.bg-esports-dark {
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%);
-}
+/* Professional card styling */
+.card-esports { background: linear-gradient(135deg,#111111 0%,#1a1a1a 100%); border:1px solid #2a2a2a; box-shadow:0 4px 20px rgba(0,0,0,.3); backdrop-filter: blur(10px); border-radius:12px; padding:24px; margin:0 auto; max-width:100%; }
+.card-esports:hover { transform: translateY(-2px); box-shadow:0 8px 30px rgba(0,0,0,.4); border-color:#3a3a3a; transition: all .2s ease; }
 
-.bg-esports-card {
-  background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%);
-}
+/* Button gradients */
+.btn-esports-blue { background: linear-gradient(135deg,#3b82f6 0%,#2563eb 100%); color:white; border:none; transition: all .2s ease; }
+.btn-esports-blue:hover { background: linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%); transform: translateY(-1px); box-shadow:0 4px 12px rgba(59,130,246,.3); }
+.btn-esports-green { background: linear-gradient(135deg,#10b981 0%,#059669 100%); color:white; border:none; transition: all .2s ease; }
+.btn-esports-green:hover { background: linear-gradient(135deg,#059669 0%,#047857 100%); transform: translateY(-1px); box-shadow:0 4px 12px rgba(16,185,129,.3); }
+.btn-esports-orange { background: linear-gradient(135deg,#f59e0b 0%,#d97706 100%); color:white; border:none; transition: all .2s ease; }
+.btn-esports-orange:hover { background: linear-gradient(135deg,#d97706 0%,#b45309 100%); transform: translateY(-1px); box-shadow:0 4px 12px rgba(245,158,11,.3); }
+.btn-esports-red { background: linear-gradient(135deg,#ef4444 0%,#dc2626 100%); color:white; border:none; transition: all .2s ease; }
+.btn-esports-red:hover { background: linear-gradient(135deg,#dc2626 0%,#b91c1c 100%); transform: translateY(-1px); box-shadow:0 4px 12px rgba(239,68,68,.3); }
+.btn-esports-purple { background: linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%); color:white; border:none; transition: all .2s ease; }
+.btn-esports-purple:hover { background: linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%); transform: translateY(-1px); box-shadow:0 4px 12px rgba(139,92,246,.3); }
 
-.bg-esports-accent {
-  background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
-}
-
-.text-esports-primary {
-  color: #ffffff;
-}
-
-.text-esports-secondary {
-  color: #a0a0a0;
-}
-
-.text-esports-accent {
-  color: #00d4ff;
-}
-
-/* Professional card styling with perfect alignment */
-.card-esports {
-  background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%);
-  border: 1px solid #2a2a2a;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 24px;
-  margin: 0 auto;
-  max-width: 100%;
-}
-
-.card-esports:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-  border-color: #3a3a3a;
-  transition: all 0.2s ease;
-}
-
-/* Esports-themed secondary accent colors */
-.btn-esports-blue {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.btn-esports-blue:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.btn-esports-green {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.btn-esports-green:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
-.btn-esports-orange {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: white;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.btn-esports-orange:hover {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-}
-
-.btn-esports-red {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.btn-esports-red:hover {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-}
-
-/* Esports-themed accent colors for highlights */
-.btn-esports-cyan {
-  background: linear-gradient(135deg, #00d4ff 0%, #00a8cc 100%);
-  color: white;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.btn-esports-cyan:hover {
-  background: linear-gradient(135deg, #00a8cc 0%, #0088aa 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
-}
-
-.btn-esports-purple {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  color: white;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.btn-esports-purple:hover {
-  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-}
-
-.btn-esports-pink {
-  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
-  color: white;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.btn-esports-pink:hover {
-  background: linear-gradient(135deg, #db2777 0%, #be185d 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
-}
-
-/* Professional layout utilities */
-.container-professional {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
-.grid-professional {
-  display: grid;
-  gap: 24px;
-  align-items: start;
-}
-
-.grid-professional-2 {
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-}
-
-.grid-professional-3 {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
-
-.grid-professional-4 {
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-}
-
-/* Perfect alignment utilities */
-.text-center-professional {
-  text-align: center;
-  line-height: 1.6;
-}
-
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.flex-between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.flex-start {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-}
-
-/* Professional spacing */
-.spacing-section {
-  padding: 80px 0;
-}
-
-.spacing-card {
-  padding: 32px;
-}
-
-.spacing-button {
-  padding: 12px 24px;
-}
+/* Performance helpers */
+.cv-auto { content-visibility: auto; contain-intrinsic-size: 600px; }
+.gpu { will-change: transform; transform: translateZ(0); }
+img { image-rendering: auto; }

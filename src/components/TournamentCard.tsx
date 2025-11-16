@@ -45,13 +45,15 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
   image_url,
   registrationData,
   user_id,
+  organizer_id,
   currentUserId,
   slug,
   status,
 }) => {
   const navigate = useNavigate();
   const { currentRole } = useRole();
-  const isOrganizer = currentRole === 'organizer' && currentUserId && user_id && currentUserId === user_id;
+  const ownerId = organizer_id || user_id;
+  const isOrganizer = currentRole === 'organizer' && currentUserId && ownerId && currentUserId === ownerId;
 
   // RAWG game image state
   const [gameLogo, setGameLogo] = useState<string | null>(null);
@@ -143,12 +145,14 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
               src={gameLogo}
               alt={game + ' logo'}
               className="h-full w-full object-cover"
+              loading="lazy"
             />
           ) : (
             <img
               src={image_url || '/default-tournament.jpg'}
               alt={name}
               className="h-full w-full object-cover"
+              loading="lazy"
             />
           )}
         </div>
@@ -183,15 +187,23 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
       </div>
       <div className="px-4 pb-4 pt-2 mt-auto relative z-10">
         {isOrganizer ? (
-          <div className="w-full mb-2 flex items-center justify-center gap-2 rounded-lg font-bold text-base py-2 bg-gaming-purple/80 text-white border-0 shadow-md opacity-80 cursor-not-allowed select-none">
-            <svg className="w-5 h-5 text-white opacity-80" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 11c0-1.104-.896-2-2-2s-2 .896-2 2 .896 2 2 2 2-.896 2-2zm0 0c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0v2m0 4h.01" /></svg>
-            You are the organizer
-          </div>
+          <>
+            <div className="w-full mb-2 flex items-center justify-center gap-2 rounded-lg font-bold text-base py-2 bg-gaming-purple/80 text-white border-0 shadow-md cursor-default select-none">
+              <svg className="w-5 h-5 text-white opacity-90" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 11c0-1.104-.896-2-2-2s-2 .896-2 2 .896 2 2 2 2-.896 2-2zm0 0c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0v2m0 4h.01" /></svg>
+              You are the organizer
+            </div>
+            <Button
+              className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-semibold text-base py-2 mb-2"
+              onClick={() => navigate(`/organizer/tournament/${slug || id}`)}
+            >
+              Manage
+            </Button>
+          </>
         ) : registrationData ? (
           <button
             type="button"
-            disabled
-            className="w-full mb-2 flex items-center justify-center gap-2 rounded-lg font-bold text-base py-2 cursor-default select-none bg-green-500 hover:bg-green-400 text-white border-0 shadow-md"
+            onClick={() => navigate(`/tournaments/${slug || id}`)}
+            className="w-full mb-2 flex items-center justify-center gap-2 rounded-lg font-bold text-base py-2 bg-green-500 hover:bg-green-400 text-white border-0 shadow-md"
           >
             <CheckCircle className="w-5 h-5 text-white" />
             <span>Registered</span>
@@ -199,25 +211,26 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
         ) : status === 'ongoing' ? (
           <Button
             className="w-full bg-red-600 animate-pulse text-white font-semibold text-base py-2 mb-2"
-            onClick={() => navigate(`/tournaments/${slug}`)}
+            onClick={() => navigate(`/tournaments/${slug || id}`)}
           >
             LIVE NOW
           </Button>
         ) : status === 'upcoming' ? (
           <Button
             className="w-full btn-esports-blue font-semibold text-base py-2 mb-2"
-            onClick={() => navigate(`/tournaments/${slug}`)}
+            onClick={() => navigate(`/tournaments/${slug || id}`)}
           >
-            Register Now
+            View Details
           </Button>
-        ) : null}
-        <Button
-          variant="outline"
-          className="w-full border-gray-600 text-esports-secondary hover:bg-gray-800 hover:text-white font-semibold text-base py-2"
-          onClick={() => navigate(`/tournaments/${slug}`)}
-        >
-          View Details
-        </Button>
+        ) : (
+          <Button
+            variant="outline"
+            className="w-full border-gray-600 text-esports-secondary hover:bg-gray-800 hover:text-white font-semibold text-base py-2"
+            onClick={() => navigate(`/tournaments/${slug || id}`)}
+          >
+            View Details
+          </Button>
+        )}
       </div>
     </div>
   );

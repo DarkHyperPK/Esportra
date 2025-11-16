@@ -21,7 +21,7 @@ const ContactPage = () => {
     <div className="min-h-screen bg-esports-dark text-white flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">Contact Us</h1>
+          <h1 className="text-3xl font-bold mb-6">Contact Esportra</h1>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div>

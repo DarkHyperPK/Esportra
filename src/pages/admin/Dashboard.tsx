@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/MongoAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import apiClient from "@/lib/api";
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";

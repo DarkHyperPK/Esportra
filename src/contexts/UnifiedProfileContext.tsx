@@ -157,12 +157,8 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
           .eq('user_id', user.id)
           .single(),
         
-        // Organizer data
-        supabase
-          .from('company_profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single(),
+        // Organizer data - removed company_profiles
+        Promise.resolve({ data: null, error: null }),
         
         // Venue data
         supabase

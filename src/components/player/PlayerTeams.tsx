@@ -69,7 +69,7 @@ const PlayerTeams = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, full_name, email')
-        .eq('verified', true);
+        .eq('is_verified', true);
       if (!error && data) setVerifiedUsers(data);
     };
     fetchVerifiedUsers();
@@ -91,7 +91,7 @@ const PlayerTeams = () => {
     if (!file) return null;
     const fileExt = file.name.split('.').pop();
     const fileName = `team-${Date.now()}.${fileExt}`;
-    const filePath = `team-logos/${fileName}`;
+    const filePath = fileName; // Don't include folder in path since we're uploading to team-logos bucket
     const { error } = await supabase.storage.from('team-logos').upload(filePath, file);
     if (error) return null;
     const { data } = supabase.storage.from('team-logos').getPublicUrl(filePath);
@@ -135,7 +135,14 @@ const PlayerTeams = () => {
     // Create team
     const { data: team, error: teamError } = await supabase
       .from('teams')
-      .insert({ name: teamName, tag: teamTag, logo_url: logoUrl, game, created_by: user?.id })
+      .insert({ 
+        name: teamName, 
+        tag: teamTag, 
+        logo_url: logoUrl, 
+        game: game || 'Unknown', // Ensure game field is not null
+        games: [game || 'Unknown'], // Also set games array
+        owner_id: user?.id 
+      })
       .select()
       .single();
     if (teamError) {
@@ -156,7 +163,7 @@ const PlayerTeams = () => {
         .map((username) => ({
           team_id: team.id,
           user_id: verifiedUsers.find(u => u.username === username)?.id,
-          role: 'player',
+          role: 'member',
         })),
     ];
     const { error: memberError } = await supabase.from('team_members').insert(memberRows);
@@ -187,6 +194,21 @@ const PlayerTeams = () => {
     // (fetchTeams will run due to showModal change)
   };
 
+  // Listen for team invite acceptance events
+  useEffect(() => {
+    const handleTeamInviteAccepted = () => {
+      console.log('Team invite accepted, refreshing teams...');
+      // Trigger a re-fetch by updating a dependency
+      setShowModal(prev => prev);
+    };
+
+    window.addEventListener('teamInviteAccepted', handleTeamInviteAccepted);
+    
+    return () => {
+      window.removeEventListener('teamInviteAccepted', handleTeamInviteAccepted);
+    };
+  }, []);
+
   useEffect(() => {
     const fetchTeams = async () => {
       setLoading(true);
@@ -206,10 +228,10 @@ const PlayerTeams = () => {
       // Fetch teams where user is a member or creator
       const { data: teamRows, error: teamError } = await supabase
         .from('teams')
-        .select('id, name, logo_url, created_by, game, tag')
+        .select('id, name, logo_url, owner_id, game, tag')
         .or([
           teamIds.length > 0 ? `id.in.(${teamIds.join(',')})` : null,
-          `created_by.eq.${user.id}`
+          `owner_id.eq.${user.id}`
         ].filter(Boolean).join(','));
       if (teamError || !teamRows) {
         setTeams([]);
@@ -253,14 +275,19 @@ const PlayerTeams = () => {
     setInviteError('');
     setInviteLoading(true);
     // Validate username
-    const { data: user, error } = await supabase.from('profiles').select('id, verified').eq('username', inviteUsername).single();
+    const { data: user, error } = await supabase.from('profiles').select('id, is_verified, is_admin').eq('username', inviteUsername).single();
     if (error || !user) {
       setInviteError('User not found.');
       setInviteLoading(false);
       return;
     }
-    if (!user.verified) {
+    if (!user.is_verified) {
       setInviteError('User is not verified.');
+      setInviteLoading(false);
+      return;
+    }
+    if (user.is_admin) {
+      setInviteError('Cannot invite admins to teams. Admins can only create and manage teams.');
       setInviteLoading(false);
       return;
     }
@@ -295,8 +322,9 @@ const PlayerTeams = () => {
     await supabase.from('notifications').insert({
       user_id: user.id,
       type: 'team_invite',
+      title: 'Team Invitation',
       message: `You have been invited to join a team.`,
-      read: false,
+      is_read: false,
       created_at: new Date().toISOString(),
     });
     setInviteLoading(false);

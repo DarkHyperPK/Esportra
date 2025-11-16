@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/MongoAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import Footer from '@/components/Footer';
 import { ProfileLoading } from '@/components/profile/ProfileLoading';
@@ -8,7 +8,7 @@ import { ProfileError } from '@/components/profile/ProfileError';
 import { ProfileDetails } from '@/components/profile/ProfileDetails';
 
 const Profile = () => {
-  const { user, logout, updateProfile } = useAuth();
+  const { user, profile, signOut, updateProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState({
@@ -21,7 +21,7 @@ const Profile = () => {
     try {
       setLoading(prev => ({ ...prev, signOut: true }));
       setError(null);
-      await logout();
+      await signOut();
       navigate('/auth/signin');
       toast({
         title: "Signed out successfully",

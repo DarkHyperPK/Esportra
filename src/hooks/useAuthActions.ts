@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './use-toast';
 import { UserRole } from '@/types/auth';
+import { getDashboardPath } from '@/utils/redirectUtils';
 
 export const useAuthActions = () => {
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ export const useAuthActions = () => {
         description: 'You have successfully signed in.',
       });
 
-      navigate('/');
+      navigate('/user/dashboard');
     } catch (error: any) {
       console.error('Error signing in:', error);
       throw error;
@@ -74,16 +75,20 @@ export const useAuthActions = () => {
       
       console.log(`User created with ID: ${authData.user.id} and role: ${role}`);
       
-      // Step 2: Create user profile
+      // Step 2: Create user profile (with upsert to handle duplicates)
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({
+        .upsert({
           id: authData.user.id,
           username: username,
           full_name: fullName || null,
           email: email,
           avatar_url: null,
-          role: role
+          role: role,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
         });
 
       if (profileError) {
@@ -95,33 +100,8 @@ export const useAuthActions = () => {
 
       console.log("Successfully created user profile");
       
-      // Step 3: Only attempt role assignment for non-casual users
-      if (role !== 'casual') {
-        const dbRole = role === 'venue_owner' ? 'venue_owner' : 
-                      role === 'organizer' ? 'organizer' : 
-                      role === 'admin' ? 'admin' : null;
-        
-        if (dbRole) {
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .insert({
-              user_id: authData.user.id,
-              role: dbRole
-            });
-            
-          if (roleError) {
-            console.error("Error assigning role:", roleError);
-            // Don't throw, just log warning
-            toast({
-              title: 'Role assignment warning',
-              description: 'Account created but some permissions may be limited. Please contact support.',
-              variant: 'destructive',
-            });
-          } else {
-            console.log(`Successfully assigned role: ${dbRole}`);
-          }
-        }
-      }
+      // Step 3: Role is already set in the profile table, no need for separate role assignment
+      console.log(`User created with role: ${role}`);
 
       toast({
         title: 'Account created',
@@ -129,8 +109,8 @@ export const useAuthActions = () => {
         duration: 6000,
       });
       
-      // Navigate to home page
-      navigate('/');
+      // Navigate to user dashboard
+      navigate('/user/dashboard');
 
     } catch (error: any) {
       console.error('Error signing up:', error);

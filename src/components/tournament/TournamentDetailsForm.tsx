@@ -29,9 +29,9 @@ const TournamentDetailsForm = ({
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Prize Pool</label>
+          <label className="block text-sm font-medium mb-2">Prize Pool (PKR)</label>
           <Input 
-            placeholder="Enter prize pool amount" 
+            placeholder="e.g., 50000" 
             value={formData.prizePool}
             name="prizePool"
             onChange={onInputChange}
@@ -39,9 +39,9 @@ const TournamentDetailsForm = ({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">Entry Fee</label>
+          <label className="block text-sm font-medium mb-2">Entry Fee (PKR)</label>
           <Input 
-            placeholder="Enter entry fee or 'Free'" 
+            placeholder="Enter amount or type Free" 
             value={formData.entryFee}
             name="entryFee"
             onChange={onInputChange}

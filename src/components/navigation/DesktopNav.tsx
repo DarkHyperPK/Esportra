@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MapPin, Trophy, Info, Smartphone } from "lucide-react";
+import { MapPin, Trophy, Info, Smartphone, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,6 +8,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRole } from "@/contexts/RoleContext";
+import { useNotifications } from "@/components/NotificationContext";
 import UserMenu from "./UserMenu";
 
 const DesktopNav = ({ 
@@ -16,7 +18,9 @@ const DesktopNav = ({
   handleSignOut: () => Promise<void>;
 }) => {
   const { user, profile } = useAuth();
-  const userRole = profile?.role || 'casual';
+  const { currentRole } = useRole();
+  const { unreadCount } = useNotifications();
+  const userRole = currentRole;
 
   return (
     <div className="hidden md:flex items-center space-x-6 font-roboto">
@@ -103,7 +107,22 @@ const DesktopNav = ({
       </DropdownMenu>
 
       {user ? (
-        <UserMenu handleSignOut={handleSignOut} />
+        <>
+          {/* Notification Bell */}
+          <Link 
+            to="/notifications" 
+            className="relative text-gray-100 hover:text-white transition-colors"
+          >
+            <Bell className="h-6 w-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
+          
+          <UserMenu handleSignOut={handleSignOut} />
+        </>
       ) : (
         <div className="flex items-center space-x-4">
           <Button 

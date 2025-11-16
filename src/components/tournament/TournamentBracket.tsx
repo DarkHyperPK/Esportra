@@ -241,7 +241,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
         </div>
         
         {matches.length === 0 ? (
-          <p className="text-gray-400">No bracket generated yet. Teams need to register first.</p>
+          <p className="text-gray-400">Bracket available soon. Check back later.</p>
         ) : (
           <div className="text-sm text-gray-400">
             {matches.length} matches across {totalRounds} rounds

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/MongoAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import apiClient from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -8,7 +8,7 @@ export interface TeamMember {
   username: string;
   fullName?: string;
   avatar?: string;
-  role: 'captain' | 'player' | 'substitute';
+  role: 'captain' | 'member' | 'substitute';
   verified: boolean;
   joinedAt: string;
   isActive: boolean;

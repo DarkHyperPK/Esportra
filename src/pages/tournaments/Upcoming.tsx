@@ -40,7 +40,7 @@ const UpcomingTournaments = () => {
       // First, let's check if we can see any tournaments at all
       const { data: allTournaments, error: allError } = await supabase
         .from('tournaments')
-        .select('*');
+        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, created_at, updated_at');
       
       console.log('All tournaments in DB:', allTournaments);
       
@@ -51,8 +51,8 @@ const UpcomingTournaments = () => {
       // Now fetch with ordering
       const { data, error } = await supabase
         .from('tournaments')
-        .select('*')
-        .order('date', { ascending: true });
+        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, created_at, updated_at')
+        .order('start_date', { ascending: true });
       
       if (error) {
         console.error('Error fetching tournaments:', error);
@@ -65,38 +65,45 @@ const UpcomingTournaments = () => {
       const tournamentsWithExtras = await Promise.all(
         (data || []).map(async (tournament) => {
           const { count } = await supabase
-            .from('tournament_registrations')
+            .from('tournament_participants')
             .select('*', { count: 'exact', head: true })
             .eq('tournament_id', tournament.id);
           let registrationData = null;
           if (user?.id) {
             const { data: regData, error: regError } = await supabase
-              .from('tournament_registrations')
-              .select('id, tournament_id, user_id, registration_type, gamer_tag, team_name, team_members, status, registered_at, created_at, updated_at')
+              .from('tournament_participants')
+              .select('id, tournament_id, user_id, team_captain_id, participant_type, created_at, updated_at')
               .eq('tournament_id', tournament.id)
-              .eq('user_id', user.id)
+              .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`)
               .maybeSingle();
             console.log('Registration fetch result:', { regData, regError, tournamentId: tournament.id, userId: user.id });
             if (regData) {
               const row = regData as any;
-              registrationData = {
-                id: row.id,
-                tournament_id: row.tournament_id,
-                user_id: row.user_id,
-                gamer_tag: row.gamer_tag ?? null,
-                team_name: row.team_name ?? null,
-                team_members: row.team_members ?? null,
-                status: row.status ?? 'registered',
-                registered_at: row.registered_at ?? row.created_at ?? '',
-                created_at: row.created_at ?? '',
-                updated_at: row.updated_at ?? row.created_at ?? '',
-              };
+              registrationData = { id: row.id };
             }
           }
           console.log('TournamentCard initialData:', registrationData);
+          
+          // Transform tournament data to match expected interface
           return {
-            ...tournament,
+            id: tournament.id,
+            name: tournament.name,
+            game: tournament.game,
+            date: tournament.start_date ? new Date(tournament.start_date).toISOString().split('T')[0] : '',
+            time: tournament.start_date ? new Date(tournament.start_date).toTimeString().split(' ')[0] : '',
+            venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
+            max_participants: tournament.max_teams,
             current_participants: count || 0,
+            prize_pool: tournament.prize_pool?.toString() || '0',
+            entry_fee: tournament.entry_fee?.toString() || 'Free',
+            description: tournament.description || '',
+            user_id: tournament.organizer_id,
+            is_online: !tournament.venue_id,
+            created_at: tournament.created_at,
+            updated_at: tournament.updated_at,
+            image_url: tournament.banner_url || tournament.logo_url,
+            team_size: 1,
+            slug: tournament.slug,
             registrationData,
           };
         })
@@ -106,9 +113,11 @@ const UpcomingTournaments = () => {
       const now = new Date();
       const filteredTournaments = tournamentsWithExtras.filter(t => {
         try {
-          const [year, month, day] = t.date.split('-').map(Number);
-          const [hours, minutes] = t.time.split(':').map(Number);
-          const start = new Date(year, month - 1, day, hours, minutes);
+          // Use the original start_date from the database for filtering
+          const originalTournament = data?.find(orig => orig.id === t.id);
+          if (!originalTournament?.start_date) return false;
+          
+          const start = new Date(originalTournament.start_date);
           const isUpcoming = start > now;
           const isCompleted = (t as any).status === 'completed' || ((t as any).finished === true);
           return isUpcoming && !isCompleted;
@@ -116,8 +125,6 @@ const UpcomingTournaments = () => {
           console.error('Error processing tournament date:', {
             tournamentId: t.id,
             name: t.name,
-            date: t.date,
-            time: t.time,
             error
           });
           return false;
@@ -189,6 +196,7 @@ const UpcomingTournaments = () => {
                 team_size={tournament.team_size}
                 prize_pool={tournament.prize_pool}
                 user_id={tournament.user_id}
+                organizer_id={tournament.user_id}
                 entry_fee={tournament.entry_fee}
                 is_online={tournament.is_online}
                 image_url={tournament.image_url}

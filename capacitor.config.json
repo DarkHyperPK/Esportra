@@ -1,9 +1,31 @@
 
 {
-  "appId": "app.lovable.02a8332866664828bea2b93ce153bf6f",
-  "appName": "GamerSpot",
+  "appId": "com.fragandbook.app",
+  "appName": "Frag & Book",
+  "webDir": "dist",
   "server": {
-    "url": "https://02a83328-6666-4828-bea2-b93ce153bf6f.lovableproject.com?forceHideBadge=true",
-    "cleartext": true
+    "androidScheme": "https",
+    "iosScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0a0a0a"
+    },
+    "StatusBar": {
+      "style": "dark",
+      "backgroundColor": "#0a0a0a"
+    }
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": "",
+      "keystorePassword": "",
+      "keystoreAlias": "",
+      "keystoreAliasPassword": ""
+    }
+  },
+  "ios": {
+    "scheme": "FragBook"
   }
 }

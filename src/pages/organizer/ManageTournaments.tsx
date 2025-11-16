@@ -46,9 +46,9 @@ const TournamentList = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('tournaments')
-        .select('id, name, game, date, time, venue, max_participants, prize_pool, user_id, entry_fee, is_online, image_url, slug')
-        .eq('user_id', user.id)
-        .order('date', { ascending: true });
+        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description')
+        .eq('organizer_id', user.id)
+        .order('start_date', { ascending: true });
 
       if (error) throw error;
 
@@ -56,25 +56,39 @@ const TournamentList = () => {
       const tournamentsWithCounts = await Promise.all(
         (data || []).map(async (tournament) => {
           const { count } = await supabase
-            .from('tournament_registrations')
+            .from('tournament_participants')
             .select('*', { count: 'exact', head: true })
             .eq('tournament_id', tournament.id);
 
           // Compute status dynamically
           const now = new Date();
-          const start = new Date(`${tournament.date}T${tournament.time}`);
+          const start = new Date(tournament.start_date);
+          const end = tournament.end_date ? new Date(tournament.end_date) : null;
+          
           let computedStatus: 'upcoming' | 'ongoing' | 'completed' = 'upcoming';
           if (now >= start) {
-            computedStatus = 'ongoing';
-          }
-          // If the tournament date is in the past, mark as completed
-          if (now > start) {
-            computedStatus = 'completed';
+            if (end && now > end) {
+              computedStatus = 'completed';
+            } else {
+              computedStatus = 'ongoing';
+            }
           }
 
           return {
-            ...tournament,
+            id: tournament.id,
+            name: tournament.name,
+            game: tournament.game,
+            date: tournament.start_date ? new Date(tournament.start_date).toISOString().split('T')[0] : '',
+            time: tournament.start_date ? new Date(tournament.start_date).toTimeString().split(' ')[0] : '',
+            venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
+            max_participants: tournament.max_teams,
             current_participants: count || 0,
+            prize_pool: tournament.prize_pool?.toString() || '0',
+            user_id: tournament.organizer_id,
+            entry_fee: tournament.entry_fee?.toString() || 'Free',
+            is_online: !tournament.venue_id,
+            image_url: tournament.banner_url || tournament.logo_url,
+            slug: tournament.slug,
             status: computedStatus,
             team_size: 1, // fallback default
           };

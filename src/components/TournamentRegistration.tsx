@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import TeamTournamentRegistration from '@/components/tournament/TeamTournamentRegistration';
+import SoloTournamentRegistration from '@/components/tournament/SoloTournamentRegistration';
 import { AlertTriangle, Ban as BanIcon } from 'lucide-react';
 import { RegistrationDetails } from '@/types/tournament';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +18,7 @@ interface TournamentRegistrationProps {
   isEdit?: boolean;
   initialData?: RegistrationDetails | null;
   onRegisterSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
@@ -28,7 +30,8 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   onSuccess,
   isEdit = false,
   initialData,
-  onRegisterSuccess
+  onRegisterSuccess,
+  onCancel
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -103,31 +106,32 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           id: tournamentId,
           name: tournamentName,
           game: game || '',
-          team_size: teamSize || 2,
-          entry_fee: null,
-          prize_pool: '',
-          date: new Date().toISOString(),
-          time: '',
-          venue: null,
-          is_online: true,
-          max_participants: 0,
-          current_participants: 0,
-          status: 'upcoming',
-          slug: ''
+          start_date: new Date().toISOString(),
+          entry_fee: undefined,
+          prize_pool: undefined,
+          max_teams: 100,
         }}
         onRegistrationComplete={onRegisterSuccess}
+        onCancel={onCancel || onRegisterSuccess} // Close dialog on cancel
       />
     );
   }
 
-  // For solo tournaments, show a message that solo registration is not implemented
+  // For solo tournaments, use the solo registration component
   return (
-    <Alert className="rounded-lg shadow-md border-0 bg-gradient-to-r from-yellow-800 to-yellow-900 text-white">
-      <AlertTriangle className="h-4 w-4" />
-      <AlertDescription>
-        Solo tournament registration is not yet implemented. Please create a team to participate in team tournaments.
-      </AlertDescription>
-    </Alert>
+    <SoloTournamentRegistration
+      tournament={{
+        id: tournamentId,
+        name: tournamentName,
+        game: game || '',
+        start_date: new Date().toISOString(),
+        entry_fee: 0,
+        prize_pool: 0,
+        max_teams: 100,
+        description: ''
+      }}
+      onRegistrationComplete={onRegisterSuccess}
+    />
   );
 };
 

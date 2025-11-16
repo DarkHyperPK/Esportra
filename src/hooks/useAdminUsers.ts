@@ -32,7 +32,7 @@ const mockUsers: AdminUser[] = [
     id: '4',
     username: 'gamer123',
     email: 'gamer@example.com',
-    roles: ['player'],
+    roles: ['member'],
     createdAt: '2023-04-20',
     status: 'active',
   },

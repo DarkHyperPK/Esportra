@@ -32,7 +32,7 @@ const TournamentHistoryPage = () => {
           .from('tournaments')
           .select('id, name, date, status, finished, slug')
           .eq('organizer_id', user.id)
-          .order('date', { ascending: false });
+          .order('start_date', { ascending: false });
         data = res.data || [];
         error = res.error;
       } else if (profile.role === 'venue_owner') {

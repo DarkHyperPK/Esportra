@@ -44,7 +44,7 @@ const TournamentsList = () => {
           .from('tournaments')
           .select('*')
           .eq('user_id', user.id)
-          .order('date', { ascending: true });
+          .order('start_date', { ascending: true });
 
         if (tournamentsError) throw tournamentsError;
 

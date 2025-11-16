@@ -25,7 +25,7 @@ const OrganizerTournamentHistory = () => {
         .select('id, name, date, status, finished')
         .eq('organizer_id', user.id)
         .or('status.eq.completed,finished.eq.true')
-        .order('date', { ascending: false });
+        .order('start_date', { ascending: false });
       setTournaments(error ? [] : (data || []));
       setLoading(false);
     };

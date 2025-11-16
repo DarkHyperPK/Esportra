@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/contexts/AdminContext";
+import { useRole } from "@/contexts/RoleContext";
 import { ProfileLoading } from "./profile/ProfileLoading";
 import { UserRole } from "@/types/auth";
 
@@ -19,6 +20,7 @@ const ProtectedRoute = ({
 }: ProtectedRouteProps) => {
   const { user, profile, loading } = useAuth();
   const admin = useAdmin();
+  const { currentRole, isLoading: roleLoading } = useRole();
 
   // Enhanced debugging
   console.log("ProtectedRoute check:", {
@@ -31,7 +33,7 @@ const ProtectedRoute = ({
   });
 
   // Add visual debugging in development
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     console.log("🔍 ProtectedRoute Debug:", {
       user: !!user,
       profile: !!profile,
@@ -41,7 +43,7 @@ const ProtectedRoute = ({
     });
   }
 
-  if (loading) {
+  if (loading || roleLoading) {
     console.log("Auth loading, showing loading screen");
     return <ProfileLoading />;
   }
@@ -53,11 +55,12 @@ const ProtectedRoute = ({
   }
 
   // If roles are specified, check if user has permission (public roles)
-  if (allowedRoles && profile) {
-    const hasPermission = allowedRoles.includes(profile.role);
+  if (allowedRoles) {
+    const effectiveRole = (currentRole || profile?.role) as UserRole | undefined;
+    const hasPermission = !!effectiveRole && allowedRoles.includes(effectiveRole);
     if (!hasPermission) {
       console.log('Access denied:', {
-        userRole: profile.role,
+        userRole: effectiveRole,
         allowedRoles,
         userId: user.id
       });

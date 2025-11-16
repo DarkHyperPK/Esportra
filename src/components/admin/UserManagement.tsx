@@ -84,6 +84,25 @@ const UserManagement: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 20;
 
+  // Extra data for user details modal
+  const [userVerifiedRoles, setUserVerifiedRoles] = useState<any[]>([]);
+  const [userAssignedRoles, setUserAssignedRoles] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadUserDetails = async () => {
+      if (!showUserDetails || !selectedUser) return;
+      try {
+        const [vr, ur] = await Promise.all([
+          supabase.from('verified_roles').select('role,status,is_active,reviewed_at').eq('user_id', selectedUser.id),
+          supabase.from('user_roles').select('role,is_active,assigned_at').eq('user_id', selectedUser.id)
+        ]);
+        if (!vr.error && vr.data) setUserVerifiedRoles(vr.data);
+        if (!ur.error && ur.data) setUserAssignedRoles(ur.data);
+      } catch {}
+    };
+    loadUserDetails();
+  }, [showUserDetails, selectedUser]);
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -698,6 +717,75 @@ const UserManagement: React.FC = () => {
               Ban User
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Details Modal */}
+      <Dialog open={showUserDetails} onOpenChange={setShowUserDetails}>
+        <DialogContent className="bg-gray-800 border-gray-700 max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">User Details</DialogTitle>
+            <DialogDescription className="text-gray-400">Profile and roles</DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-gray-400">Name</div>
+                  <div className="text-white">{selectedUser.full_name || selectedUser.username}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400">Email</div>
+                  <div className="text-white">{selectedUser.email}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400">Role</div>
+                  <div className="text-white">{selectedUser.role}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400">Joined</div>
+                  <div className="text-white">{new Date(selectedUser.created_at).toLocaleDateString()}</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-gray-400 mb-1">Verified Roles</div>
+                <div className="flex flex-wrap gap-2">
+                  {userVerifiedRoles.length ? userVerifiedRoles.map((r) => {
+                    const role = r.role as string;
+                    const status = (r.status as string) || '';
+                    const isActive = !!r.is_active;
+                    const label = isActive ? `${role}: ${status}` : `${role}: revoked`;
+                    const cls = !isActive
+                      ? 'bg-gray-600'
+                      : status === 'approved'
+                        ? 'bg-green-600'
+                        : status === 'pending'
+                          ? 'bg-yellow-600'
+                          : status === 'rejected'
+                            ? 'bg-red-600'
+                            : 'bg-gray-600';
+                    return (
+                      <Badge key={`${role}-vr`} className={`${cls} text-white`}>
+                        {label}
+                      </Badge>
+                    );
+                  }) : <div className="text-gray-500">None</div>}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-gray-400 mb-1">Assigned Roles</div>
+                <div className="flex flex-wrap gap-2">
+                  {userAssignedRoles.length ? userAssignedRoles.map((r) => (
+                    <Badge key={`${r.role}-ur`} className="bg-blue-600 text-white">
+                      {r.role}: {r.is_active ? 'active' : 'inactive'}
+                    </Badge>
+                  )) : <div className="text-gray-500">None</div>}
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -41,7 +41,7 @@ export const tournamentApi = {
     const { data, error } = await supabase
       .from('tournaments')
       .select('*')
-      .order('date', { ascending: true });
+      .order('start_date', { ascending: true });
     
     if (error) throw error;
     return data;

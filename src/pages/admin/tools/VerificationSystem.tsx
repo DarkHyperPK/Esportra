@@ -35,15 +35,21 @@ interface VerificationRequest {
   first_name?: string;
   last_name?: string;
   dob?: string;
+  date_of_birth?: string;
   business_name?: string;
   business_type?: string;
   business_description?: string;
   contact_email?: string;
+  email?: string;
   contact_phone?: string;
   website?: string;
   business_address?: string;
   social_media_links?: any;
   cnic_image_path?: string | null;
+  cnic_front_url?: string | null;
+  cnic_back_url?: string | null;
+  organizer_data?: any;
+  venue_data?: any;
   profiles?: {
     full_name: string;
     username: string;
@@ -63,6 +69,10 @@ const VerificationSystemTool = () => {
   const [selected, setSelected] = useState<VerificationRequest | null>(null);
   const [cnicFrontUrl, setCnicFrontUrl] = useState<string | null>(null);
   const [cnicBackUrl, setCnicBackUrl] = useState<string | null>(null);
+  const [venueExteriorUrl, setVenueExteriorUrl] = useState<string | null>(null);
+  const [venueInteriorUrl, setVenueInteriorUrl] = useState<string | null>(null);
+  const [venueGamingUrl, setVenueGamingUrl] = useState<string | null>(null);
+  const [showRaw, setShowRaw] = useState(false);
 
   useEffect(() => {
     fetchVerificationRequests();
@@ -132,10 +142,44 @@ const VerificationSystemTool = () => {
 
       if (updateError) throw updateError;
 
-      // Update user role
+      // Update user role (legacy single-role display)
       const { error: roleError } = await supabase.from('profiles').update({ role: role }).eq('id', userId);
 
       if (roleError) throw roleError;
+
+      // Ensure multi-role records reflect approval
+      // 1) verified_roles: mark approved + active
+      try {
+        const { error: vrErr } = await supabase
+          .from('verified_roles')
+          .upsert({
+            user_id: userId,
+            role,
+            status: 'approved',
+            is_active: true,
+            reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id,role' });
+        if (vrErr) console.warn('verified_roles upsert warning:', vrErr);
+      } catch (e) {
+        console.warn('verified_roles table not available:', e);
+      }
+
+      // 2) user_roles: ensure active assignment exists
+      try {
+        const { error: urErr } = await supabase
+          .from('user_roles')
+          .upsert({
+            user_id: userId,
+            role,
+            is_active: true,
+            assigned_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id,role' });
+        if (urErr) console.warn('user_roles upsert warning:', urErr);
+      } catch (e) {
+        console.warn('user_roles table not available:', e);
+      }
 
       // Create company profile for organizers
       if (role === 'organizer') {
@@ -230,14 +274,36 @@ const VerificationSystemTool = () => {
     setDetailsOpen(true);
     setCnicFrontUrl(null);
     setCnicBackUrl(null);
+    setVenueExteriorUrl(null);
+    setVenueInteriorUrl(null);
+    setVenueGamingUrl(null);
     try {
-      if (req.cnic_front_path) {
-        const { data, error } = await supabase.storage.from('kyc').createSignedUrl(req.cnic_front_path, 300);
-        if (!error && data?.signedUrl) setCnicFrontUrl(data.signedUrl);
+      if (req.cnic_front_url) setCnicFrontUrl(req.cnic_front_url);
+      if (req.cnic_back_url) setCnicBackUrl(req.cnic_back_url);
+
+      const frontPath = (req as any).cnic_front_path || req.organizer_data?.cnic_front_path || req.venue_data?.cnic_front_path || null;
+      const backPath = (req as any).cnic_back_path || req.organizer_data?.cnic_back_path || req.venue_data?.cnic_back_path || null;
+      if (!cnicFrontUrl && frontPath) {
+        const { data } = await supabase.storage.from('kyc-documents').createSignedUrl(frontPath, 300);
+        if (data?.signedUrl) setCnicFrontUrl(data.signedUrl);
       }
-      if (req.cnic_back_path) {
-        const { data, error } = await supabase.storage.from('kyc').createSignedUrl(req.cnic_back_path, 300);
-        if (!error && data?.signedUrl) setCnicBackUrl(data.signedUrl);
+      if (!cnicBackUrl && backPath) {
+        const { data } = await supabase.storage.from('kyc-documents').createSignedUrl(backPath, 300);
+        if (data?.signedUrl) setCnicBackUrl(data.signedUrl);
+      }
+
+      const venueImages = req.venue_data?.venue_images || {};
+      if (venueImages.exterior) {
+        const { data } = await supabase.storage.from('kyc-documents').createSignedUrl(venueImages.exterior, 300);
+        if (data?.signedUrl) setVenueExteriorUrl(data.signedUrl);
+      }
+      if (venueImages.interior) {
+        const { data } = await supabase.storage.from('kyc-documents').createSignedUrl(venueImages.interior, 300);
+        if (data?.signedUrl) setVenueInteriorUrl(data.signedUrl);
+      }
+      if (venueImages.gaming_area) {
+        const { data } = await supabase.storage.from('kyc-documents').createSignedUrl(venueImages.gaming_area, 300);
+        if (data?.signedUrl) setVenueGamingUrl(data.signedUrl);
       }
     } catch {}
   };
@@ -475,28 +541,28 @@ const VerificationSystemTool = () => {
     </div>
     {/* Details dialog needs to be a sibling wrapper element */}
     <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-      <DialogContent className="bg-gray-800 border-gray-700 max-w-3xl">
+      <DialogContent className="bg-gray-800 border-gray-700 max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-white">Verification Details</DialogTitle>
           <DialogDescription className="text-gray-400">Applicant-submitted information</DialogDescription>
         </DialogHeader>
         {selected && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm p-1 md:p-2">
             <div>
               <div className="text-gray-400">Name</div>
               <div className="text-white">{selected.first_name} {selected.last_name}</div>
             </div>
             <div>
               <div className="text-gray-400">DOB</div>
-              <div className="text-white">{selected.dob || '—'}</div>
+              <div className="text-white">{selected.date_of_birth || selected.dob || selected.organizer_data?.dob || selected.venue_data?.dob || '—'}</div>
             </div>
             <div>
               <div className="text-gray-400">Email</div>
-              <div className="text-white">{selected.contact_email || selected.profiles?.email}</div>
+              <div className="text-white">{selected.email || selected.contact_email || selected.organizer_data?.contact_email || selected.venue_data?.contact_email || selected.profiles?.email}</div>
             </div>
             <div>
               <div className="text-gray-400">Phone</div>
-              <div className="text-white">{selected.contact_phone || '—'}</div>
+              <div className="text-white">{selected.contact_phone || selected.organizer_data?.contact_phone || selected.venue_data?.contact_phone || '—'}</div>
             </div>
             <div className="md:col-span-2">
               <div className="text-gray-400">Business Name</div>
@@ -504,34 +570,89 @@ const VerificationSystemTool = () => {
             </div>
             <div>
               <div className="text-gray-400">Business Type</div>
-              <div className="text-white capitalize">{selected.business_type || '—'}</div>
+              <div className="text-white capitalize">{selected.business_type || selected.organizer_data?.business_type || selected.organizer_data?.organization_type || '—'}</div>
             </div>
             <div>
               <div className="text-gray-400">Website</div>
-              <div className="text-white">{selected.website || '—'}</div>
+              <div className="text-white">{selected.website || selected.organizer_data?.website || selected.venue_data?.website || '—'}</div>
             </div>
-            <div className="md:col-span-2">
-              <div className="text-gray-400">Business Address</div>
-              <div className="text-white">{selected.business_address || '—'}</div>
-            </div>
+            {(() => {
+              const isOrg = (selected.requested_role || '').toLowerCase() === 'organizer';
+              const isVenue = (selected.requested_role || '').toLowerCase() === 'venue_owner';
+              const addr = (isOrg ? (selected.organizer_data?.business_address || selected.organizer_data?.address) : null)
+                || (isVenue ? (selected.venue_data?.business_address || selected.venue_data?.address) : null)
+                || selected.business_address;
+              return addr ? (
+                <div className="md:col-span-2">
+                  <div className="text-gray-400">Business Address</div>
+                  <div className="text-white">{addr}</div>
+                </div>
+              ) : null;
+            })()}
             <div className="md:col-span-2">
               <div className="text-gray-400">Description</div>
-              <div className="text-white whitespace-pre-wrap">{selected.business_description || '—'}</div>
+              <div className="text-white whitespace-pre-wrap">{((selected.requested_role || '').toLowerCase() === 'organizer' ? selected.organizer_data?.business_description : selected.venue_data?.business_description) || selected.business_description || '—'}</div>
+            </div>
+
+            {/* Experience Description (top-level or from organizer_data.previous_experience) */}
+            <div className="md:col-span-2">
+              <div className="text-gray-400">Experience Description</div>
+              <div className="text-white whitespace-pre-wrap">{(selected as any).experience_description || selected.organizer_data?.previous_experience || '—'}</div>
             </div>
             {/* Socials */}
-            {selected.social_media_links && (
-              <div className="md:col-span-2">
-                <div className="text-gray-400 mb-1">Socials</div>
-                <div className="flex flex-wrap gap-4 text-white text-sm">
-                  {Object.entries(selected.social_media_links).map(([k,v]) => (
-                    <div key={k} className="min-w-[120px]">
-                      <span className="text-gray-400 capitalize mr-2">{k}:</span>
-                      <span>{(v as string) || '—'}</span>
-                    </div>
-                  ))}
+            {(() => {
+              // Accept multiple shapes/keys: prioritize by role
+              const isOrg = (selected.requested_role || '').toLowerCase() === 'organizer';
+              const isVenue = (selected.requested_role || '').toLowerCase() === 'venue_owner';
+              const cand = (isOrg ? (selected.organizer_data?.social_media_links || selected.organizer_data?.socials) : null)
+                || (isVenue ? (selected.venue_data?.social_media_links || selected.venue_data?.socials) : null)
+                || (selected as any).social_media_links
+                || (selected as any).socials
+                || (selected as any).social_links
+                || (selected as any).links;
+
+              if (!cand) return null;
+
+              type Entry = { label: string; url: string };
+              const normalizeUrl = (u: string) => (u.startsWith('http://') || u.startsWith('https://')) ? u : `https://${u}`;
+              const makeEntries = (val: any): Entry[] => {
+                if (!val) return [];
+                if (Array.isArray(val)) {
+                  return val
+                    .map((v) => (typeof v === 'string' ? v.trim() : ''))
+                    .filter(Boolean)
+                    .map((url, i) => ({ label: `link_${i+1}`, url }));
+                }
+                if (typeof val === 'string') {
+                  return val.split(',').map(s => s.trim()).filter(Boolean).map((url, i) => ({ label: `link_${i+1}`, url }));
+                }
+                if (typeof val === 'object') {
+                  return Object.entries(val)
+                    .filter(([, v]) => typeof v === 'string' && (v as string).trim().length > 0)
+                    .map(([k, v]) => ({ label: k.replace(/_/g,' '), url: v as string }));
+                }
+                return [];
+              };
+
+              const entries = makeEntries(cand);
+              if (!entries.length) return null;
+
+              return (
+                <div className="md:col-span-2">
+                  <div className="text-gray-400 mb-1">Socials</div>
+                  <div className="flex flex-wrap gap-4 text-white text-sm">
+                    {entries.map((e) => (
+                      <div key={e.label} className="min-w-[160px] truncate">
+                        <span className="text-gray-400 capitalize mr-2">{e.label}:</span>
+                        <a href={normalizeUrl(e.url)} target="_blank" rel="noreferrer" className="underline hover:text-blue-300">
+                          {e.url}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             {(cnicFrontUrl || cnicBackUrl) && (
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {cnicFrontUrl && (
@@ -548,6 +669,187 @@ const VerificationSystemTool = () => {
                 )}
               </div>
             )}
+
+            {/* Venue images */}
+            {(selected.requested_role === 'venue_owner') && (
+              <div className="md:col-span-2 space-y-4">
+                <div className="text-gray-400">Venue Images</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {venueExteriorUrl && (
+                    <div>
+                      <div className="text-gray-400 mb-1">Exterior</div>
+                      <img src={venueExteriorUrl} alt="Venue exterior" className="max-h-48 rounded border border-gray-700" />
+                    </div>
+                  )}
+                  {venueInteriorUrl && (
+                    <div>
+                      <div className="text-gray-400 mb-1">Interior</div>
+                      <img src={venueInteriorUrl} alt="Venue interior" className="max-h-48 rounded border border-gray-700" />
+                    </div>
+                  )}
+                  {venueGamingUrl && (
+                    <div>
+                      <div className="text-gray-400 mb-1">Gaming Area</div>
+                      <img src={venueGamingUrl} alt="Gaming area" className="max-h-48 rounded border border-gray-700" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Organizer-specific details */}
+            {selected.requested_role === 'organizer' && selected.organizer_data && (
+              <div className="md:col-span-2 space-y-3">
+                <div className="text-gray-400">Organizer Details</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-gray-400">Organization Type</div>
+                    <div className="text-white">{selected.organizer_data.organization_type || '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Years Experience</div>
+                    <div className="text-white">{selected.organizer_data.years_experience ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Staff Count</div>
+                    <div className="text-white">{selected.organizer_data.staff_count ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Expected Tournaments / Month</div>
+                    <div className="text-white">{selected.organizer_data.expected_tournaments_per_month ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Streaming Capabilities</div>
+                    <div className="text-white">{selected.organizer_data.streaming_capabilities ? 'Yes' : (selected.organizer_data.streaming_capabilities === false ? 'No' : '—')}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Prize Pool Experience</div>
+                    <div className="text-white whitespace-pre-wrap">{selected.organizer_data.prize_pool_experience || '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Team Size Experience</div>
+                    <div className="text-white whitespace-pre-wrap">{selected.organizer_data.team_size_experience || '—'}</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-gray-400">Equipment Available</div>
+                    <div className="text-white whitespace-pre-wrap">{selected.organizer_data.equipment_available || '—'}</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-gray-400">Previous Tournaments</div>
+                    <div className="text-white whitespace-pre-wrap">{selected.organizer_data.previous_tournaments || '—'}</div>
+                  </div>
+                </div>
+                {/* Additional organizer fields not explicitly rendered */}
+                {(() => {
+                  const renderedKeys = new Set(['organization_type','years_experience','staff_count','expected_tournaments_per_month','streaming_capabilities','equipment_available','previous_tournaments','prize_pool_experience','team_size_experience','dob','contact_email','contact_phone','business_address','business_type','website','cnic_front_path','cnic_back_path','social_media_links']);
+                  const extra = Object.entries(selected.organizer_data).filter(([k]) => !renderedKeys.has(k));
+                  return extra.length ? (
+                    <div className="space-y-2">
+                      <div className="text-gray-400">Additional Organizer Data</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-white">
+                        {extra.map(([k,v]) => (
+                          <div key={k} className="break-all">
+                            <span className="text-gray-400 capitalize mr-2">{k.replace(/_/g,' ')}:</span>
+                            <span>{typeof v === 'boolean' ? (v ? 'Yes' : 'No') : Array.isArray(v) ? v.join(', ') : (typeof v === 'object' ? JSON.stringify(v) : String(v || '—'))}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+            )}
+
+            {/* Venue-specific details */}
+            {selected.requested_role === 'venue_owner' && selected.venue_data && (
+              <div className="md:col-span-2 space-y-3">
+                <div className="text-gray-400">Venue Details</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-gray-400">Venue Name</div>
+                    <div className="text-white">{selected.venue_data.venue_name || '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Total PCs</div>
+                    <div className="text-white">{selected.venue_data.total_pcs ?? '—'}</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-gray-400">PC Specs</div>
+                    <div className="text-white whitespace-pre-wrap">{selected.venue_data.pc_specs || '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Operating Hours</div>
+                    <div className="text-white">{selected.venue_data.operating_hours || '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Hourly Rate</div>
+                    <div className="text-white">{selected.venue_data.hourly_rate ?? '—'}</div>
+                  </div>
+                  {Array.isArray(selected.venue_data.amenities) && (
+                    <div className="md:col-span-2">
+                      <div className="text-gray-400 mb-1">Amenities</div>
+                      <div className="flex flex-wrap gap-2">
+                        {selected.venue_data.amenities.map((a: string) => (
+                          <span key={a} className="px-2 py-1 bg-gray-700 rounded text-white text-xs">{a}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-gray-400">Streaming Setup</div>
+                    <div className="text-white">{selected.venue_data.streaming_setup ? 'Yes' : (selected.venue_data.streaming_setup === false ? 'No' : '—')}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400">Tournament Capability</div>
+                    <div className="text-white">{selected.venue_data.tournament_capability ? 'Yes' : (selected.venue_data.tournament_capability === false ? 'No' : '—')}</div>
+                  </div>
+                  {Array.isArray(selected.venue_data.games_available) && (
+                    <div className="md:col-span-2">
+                      <div className="text-gray-400 mb-1">Games Available</div>
+                      <div className="flex flex-wrap gap-2">
+                        {selected.venue_data.games_available.map((g: string) => (
+                          <span key={g} className="px-2 py-1 bg-gray-700 rounded text-white text-xs">{g}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Additional venue fields not explicitly rendered */}
+                {(() => {
+                  const renderedVenueKeys = new Set(['venue_name','total_pcs','pc_specs','operating_hours','hourly_rate','amenities','games_available','business_address','contact_email','contact_phone','website','dob','cnic_front_path','cnic_back_path','venue_images','streaming_setup','tournament_capability']);
+                  const extra = Object.entries(selected.venue_data).filter(([k]) => !renderedVenueKeys.has(k) && k !== 'venue_images');
+                  return extra.length ? (
+                    <div className="space-y-2">
+                      <div className="text-gray-400">Additional Venue Data</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-white">
+                        {extra.map(([k,v]) => (
+                          <div key={k} className="break-all">
+                            <span className="text-gray-400 capitalize mr-2">{k.replace(/_/g,' ')}:</span>
+                            <span>{typeof v === 'boolean' ? (v ? 'Yes' : 'No') : Array.isArray(v) ? v.join(', ') : (typeof v === 'object' ? JSON.stringify(v) : String(v || '—'))}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+            )}
+
+            {/* Raw payload (for completeness) */}
+            <div className="md:col-span-2">
+              <button
+                className="text-xs text-gray-400 underline hover:text-gray-200"
+                onClick={() => setShowRaw(v => !v)}
+                type="button"
+              >
+                {showRaw ? 'Hide raw data' : 'Show raw data'}
+              </button>
+              {showRaw && (
+                <pre className="mt-2 max-h-64 overflow-auto bg-gray-900 border border-gray-700 rounded p-3 text-xs text-gray-200">
+{JSON.stringify(selected, null, 2)}
+                </pre>
+              )}
+            </div>
           </div>
         )}
       </DialogContent>

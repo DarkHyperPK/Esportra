@@ -125,7 +125,7 @@ export const useTournamentRegistration = ({
       const registrationData = {
         tournament_id: tournamentId,
         user_id: user.id,
-        registration_type: state.type,
+        participant_type: state.type,
         gamer_tag: state.type === 'solo' ? state.gamertag : null,
         team_name: state.type === 'team' ? state.teamName : null,
         team_captain: state.type === 'team' ? (override?.teamCaptain || null) : null,
@@ -139,7 +139,7 @@ export const useTournamentRegistration = ({
       console.log('[useTournamentRegistration] Saving registration:', registrationData);
 
       const { error: dbError, data } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .upsert(registrationData, {
           onConflict: 'tournament_id,user_id'
         })
@@ -196,7 +196,7 @@ export const useTournamentRegistration = ({
 
       // First, check if registration exists
       const { data: existingRegistration, error: fetchError } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .select('*')
         .eq('tournament_id', tournamentId)
         .eq('user_id', user.id)
@@ -219,7 +219,7 @@ export const useTournamentRegistration = ({
 
       // Delete the registration
       const { error } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .delete()
         .eq('id', existingRegistration.id);
 

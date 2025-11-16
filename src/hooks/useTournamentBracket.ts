@@ -70,22 +70,44 @@ export const useTournamentBracket = (tournamentId: string) => {
         .order('round', { ascending: true })
         .order('match_number', { ascending: true });
 
-      if (matchesError) throw matchesError;
+      if (matchesError) {
+        // If tournament_matches table doesn't exist or has issues, just set empty data
+        console.warn('Tournament matches not available:', matchesError);
+        setMatches([]);
+        setMatchResults([]);
+        return;
+      }
 
-      // Fetch match results
-      const { data: resultsData, error: resultsError } = await supabase
-        .from('match_results')
-        .select('*')
-        .in('match_id', matchesData?.map(m => m.id) || []);
+      // Fetch match results (only if there are matches and match_results table exists)
+      let resultsData = [];
+      if (matchesData && matchesData.length > 0) {
+        try {
+          const { data: results, error: resultsError } = await supabase
+            .from('match_results')
+            .select('*')
+            .in('match_id', matchesData.map(m => m.id));
 
-      if (resultsError) throw resultsError;
+          if (resultsError) {
+            console.warn('Match results not available:', resultsError);
+            resultsData = [];
+          } else {
+            resultsData = results || [];
+          }
+        } catch (resultsErr) {
+          console.warn('Match results table may not exist:', resultsErr);
+          resultsData = [];
+        }
+      }
 
       setMatches(matchesData || []);
-      setMatchResults(resultsData || []);
+      setMatchResults(resultsData);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load bracket data';
       setError(errorMessage);
       console.error('Error fetching bracket data:', err);
+      // Set empty data on error to prevent UI crashes
+      setMatches([]);
+      setMatchResults([]);
     } finally {
       setLoading(false);
     }
@@ -95,13 +117,14 @@ export const useTournamentBracket = (tournamentId: string) => {
     try {
       // Get registered teams
       const { data: registrations, error: regError } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .select(`
           *,
           team:teams(*)
         `)
         .eq('tournament_id', tournamentId)
-        .eq('status', 'registered');
+        .eq('registration_type', 'team')
+        .in('status', ['approved', 'checked_in']);
 
       if (regError) throw regError;
 

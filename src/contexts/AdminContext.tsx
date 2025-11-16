@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { ROLE_PERMISSIONS } from '@/hooks/useAdminPermissions';
 
 type AdminContextValue = {
   isAdmin: boolean;
@@ -31,20 +32,47 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setPermissions([]);
       return;
     }
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_admin, admin_roles, admin_permissions')
-      .eq('id', user.id)
-      .maybeSingle();
-    setIsAdmin(!!profile?.is_admin);
-    setRoles((profile?.admin_roles as string[]) || []);
-    // merge role permissions from mapping
-    const perms = new Set<string>((profile?.admin_permissions as string[]) || []);
-    if (profile?.is_admin) {
-      const { data: rolePerms } = await supabase.rpc('get_admin_permissions_for_user', { p_user: user.id }).catch(() => ({ data: [] } as any));
-      (rolePerms || []).forEach((k: string) => perms.add(k));
+
+    try {
+      // Get profile data
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin, admin_roles, admin_permissions')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const isUserAdmin = !!profile?.is_admin;
+      const userRoles = (profile?.admin_roles as string[]) || [];
+      const directPermissions = (profile?.admin_permissions as string[]) || [];
+
+      setIsAdmin(isUserAdmin);
+      setRoles(userRoles);
+
+      // Calculate role-based permissions
+      const rolePermissions = new Set<string>();
+      
+      // Add permissions from each role
+      userRoles.forEach(role => {
+        const rolePerms = ROLE_PERMISSIONS[role] || [];
+        rolePerms.forEach(perm => rolePermissions.add(perm));
+      });
+      
+      // Add direct permissions from profile
+      directPermissions.forEach(perm => rolePermissions.add(perm));
+
+      setPermissions(Array.from(rolePermissions));
+
+      console.log('Admin context loaded:', {
+        isAdmin: isUserAdmin,
+        roles: userRoles,
+        permissions: Array.from(rolePermissions)
+      });
+    } catch (error) {
+      console.error('Error loading admin context:', error);
+      setIsAdmin(false);
+      setRoles([]);
+      setPermissions([]);
     }
-    setPermissions(Array.from(perms));
   };
 
   useEffect(() => {
@@ -52,11 +80,21 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  const hasPermission = (perm: string): boolean => {
+    if (!isAdmin) return false;
+    
+    // Super admin has all permissions
+    if (roles.includes('super_admin')) return true;
+    
+    // Check if user has the specific permission
+    return permissions.includes(perm);
+  };
+
   const value = useMemo<AdminContextValue>(() => ({
     isAdmin,
     roles,
     permissions,
-    hasPermission: (perm: string) => permissions.includes(perm) || roles.includes('super_admin'),
+    hasPermission,
     refresh: load
   }), [isAdmin, roles, permissions]);
 

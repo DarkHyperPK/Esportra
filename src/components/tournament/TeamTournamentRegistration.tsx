@@ -1,579 +1,622 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useTeamManagement, Team } from '@/hooks/useTeamManagement';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Users, 
-  Trophy, 
   Gamepad2, 
-  CheckCircle, 
-  XCircle,
-  Crown,
+  Calendar, 
+  Trophy, 
+  DollarSign,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
   Shield,
-  Calendar,
-  MapPin
-} from "lucide-react";
-
-interface Tournament {
-  id: string;
-  name: string;
-  game: string;
-  team_size: number;
-  entry_fee: string | null;
-  prize_pool: string;
-  date: string;
-  time: string;
-  venue: string | null;
-  is_online: boolean;
-  max_participants: number;
-  current_participants: number;
-  status: string;
-  slug: string;
-}
+  Zap,
+  Info
+} from 'lucide-react';
+import { useGameLogo, useGameLogos } from '@/hooks/useGameLogo';
 
 interface TeamTournamentRegistrationProps {
-  tournament: Tournament;
+  tournament: {
+    id: string;
+    name: string;
+    game: string;
+    start_date: string;
+    entry_fee?: number;
+    prize_pool?: number;
+    max_teams: number;
+    registration_deadline?: string;
+    description?: string;
+  };
   onRegistrationComplete?: () => void;
+  onCancel?: () => void;
 }
+
+type TeamRow = { id: string; name: string; games: any; owner_id: string };
 
 const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   tournament,
-  onRegistrationComplete
+  onRegistrationComplete,
+  onCancel
 }) => {
   const { user } = useAuth();
-  const { userTeams, loading: teamsLoading } = useTeamManagement();
   const { toast } = useToast();
   
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
-  const [showTeamSelector, setShowTeamSelector] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
-  type RegistrationRow = {
-    id: string;
-    team_name: string | null;
-    status: string | null;
-    created_at: string;
-  } | null;
-  const [registrationData, setRegistrationData] = useState<RegistrationRow>(null);
+  const [existingRegistration, setExistingRegistration] = useState<any>(null);
 
-  // Check if a team of this user is already registered
+  // Team selection flow
+  const [captainTeams, setCaptainTeams] = useState<TeamRow[]>([]);
+  const [eligibleTeamIds, setEligibleTeamIds] = useState<Set<string>>(new Set());
+  const [ineligibleReasons, setIneligibleReasons] = useState<Record<string, string[]>>({});
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
+  const [teamRosters, setTeamRosters] = useState<Array<{ id: string; name: string; game: string; format: string | null; team_size: number }>>([]);
+  const [selectedRosterId, setSelectedRosterId] = useState<string>('');
+  
+  // Use global game logo hooks
+  const gameLogo = useGameLogo(tournament.game);
+  const rosterGameLogos = useGameLogos(teamRosters.map(r => r.game));
+
+  const requiredMembers = (tournament as any).team_size ? Number((tournament as any).team_size) : 5;
+
   useEffect(() => {
-    const checkRegistration = async () => {
-      if (!user) return;
+    checkExistingRegistration();
+  }, [user?.id, tournament.id]);
 
-      try {
-        const { data, error } = await supabase
-          .from('tournament_registrations')
-          .select('*')
-          .eq('tournament_id', tournament.id)
-          .eq('user_id', user.id)
-          .maybeSingle();
+  useEffect(() => {
+    fetchCaptainTeams();
+  }, [user?.id]);
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-          console.error('Error checking registration:', error);
-          return;
-        }
 
-        if (data) {
-          setIsRegistered(true);
-          setRegistrationData(data);
-        }
-      } catch (error) {
-        console.error('Error checking registration:', error);
-      }
+  useEffect(() => {
+    const fetchRosters = async () => {
+      if (!selectedTeamId) { setTeamRosters([]); setSelectedRosterId(''); return; }
+      const { data } = await supabase
+        .from('team_rosters' as any)
+        .select('id, name, game, format, team_size')
+        .eq('team_id', selectedTeamId);
+      const filtered = (data || []).filter((r: any) => {
+        const byGame = !tournament.game || r.game === tournament.game;
+        const bySize = !requiredMembers || Number(r.team_size) === Number(requiredMembers);
+        return byGame && bySize;
+      });
+      setTeamRosters(filtered);
+      setSelectedRosterId(filtered[0]?.id || '');
     };
+    fetchRosters();
+  }, [selectedTeamId, tournament.game, requiredMembers]);
 
-    checkRegistration();
-  }, [user, tournament.id]);
+  const checkExistingRegistration = async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from('tournament_participants')
+        .select('*')
+        .eq('tournament_id', tournament.id)
+        .eq('team_captain_id', user.id)
+        .eq('participant_type', 'team')
+        .maybeSingle();
+      if (data) {
+        // Already registered; simply notify parent so the dialog can close
+        onRegistrationComplete?.();
+      }
+    } catch {}
+  };
 
-  // Filter teams that match the tournament requirements (game match, member count, captain, verified)
-  const eligibleTeams = userTeams.filter((team) => {
+  const fetchCaptainTeams = async () => {
+    if (!user?.id) return;
+    try {
+      const { data: teams } = await supabase
+        .from('teams')
+        .select('id,name,games,owner_id')
+        .eq('owner_id', user.id);
 
-    // Check if team has the tournament game
-    const teamGames: string[] = (Array.isArray(team.games) && team.games.length > 0) 
-      ? team.games.map(g => (g || '').toLowerCase())
-      : [team.game].map(g => (g || '').toLowerCase());
-    
-    if (!teamGames.includes((tournament.game || '').toLowerCase())) return false;
+      const ids = new Set<string>();
+      const reasons: Record<string, string[]> = {};
 
-    // Check if team has enough members (including captain)
-    const totalMembers = team.members.length + (team.created_by === user?.id ? 1 : 0); // Add 1 for captain if not in members list
-    if (totalMembers < tournament.team_size) return false;
+      for (const team of (teams || [])) {
+        const errs: string[] = [];
+        
+        // Check if team has a roster for this tournament's game
+        // This is the primary check with the new roster system
+        const { data: rosters } = await supabase
+          .from('team_rosters' as any)
+          .select('id, game, team_size')
+          .eq('team_id', team.id);
+        
+        const normalize = (s: string) => (s || '').toLowerCase().trim();
+        const tournamentGameNormalized = normalize(tournament.game || '');
+        
+        // Check if team has a roster matching the tournament's game
+        const hasMatchingRoster = (rosters || []).some((r: any) => 
+          normalize(r.game) === tournamentGameNormalized
+        );
+        
+        // Fallback: also check team.games for backwards compatibility
+        const teamGames = Array.isArray(team.games) ? team.games : (typeof team.games === 'string' ? [team.games] : []);
+        const hasGameInTeam = teamGames.some((g: string) => normalize(g) === tournamentGameNormalized);
+        
+        if (!hasMatchingRoster && !hasGameInTeam) {
+          errs.push("Team doesn't include this game. Create a roster for this game first.");
+        }
+        
+        // Check if matching roster has enough members
+        if (hasMatchingRoster && tournament.game) {
+          const matchingRoster = (rosters || []).find((r: any) => 
+            normalize(r.game) === tournamentGameNormalized
+          );
+          
+          if (matchingRoster) {
+            // Check roster member count
+            const { data: rosterMembers } = await supabase
+              .from('team_roster_members' as any)
+              .select('user_id')
+              .eq('roster_id', matchingRoster.id);
+            const rosterMemberCount = (rosterMembers || []).length + 1; // +1 for captain/owner
+            
+            if (rosterMemberCount < requiredMembers) {
+              errs.push(`Roster needs ${requiredMembers} members (has ${rosterMemberCount}).`);
+            }
+          }
+        } else {
+          // Fallback: check team_members if no roster system
+          const { data: members } = await supabase
+            .from('team_members')
+            .select('user_id, is_active')
+            .eq('team_id', team.id)
+            .eq('is_active', true);
+          let activeCount = (members || []).length + 1; // include captain
+          
+          if (activeCount < requiredMembers) {
+            errs.push(`Need ${requiredMembers} members (have ${activeCount}).`);
+          }
+        }
 
-    // Check if user is captain of the team (either in members list or team creator)
-    const userMember = team.members.find(m => m.user_id === user?.id || m.id === user?.id);
-    const isTeamCreator = team.created_by === user?.id;
-    const isCaptain = (userMember && userMember.role === 'captain') || isTeamCreator;
-    
-    if (!isCaptain) return false;
+        if (errs.length === 0) ids.add(team.id);
+        reasons[team.id] = errs;
+      }
 
-    // All members verified (including captain if not in members list)
-    const allMembersVerified = team.members.every(m => m.verified);
-    const captainVerified = isTeamCreator ? true : (userMember?.verified ?? false); // Assume captain is verified if team creator
-    
-    if (!allMembersVerified || !captainVerified) return false;
+      setCaptainTeams(teams || []);
+      setEligibleTeamIds(ids);
+      setIneligibleReasons(reasons);
+      if (teams && teams.length > 0) {
+        const firstEligible = (teams.find(t => ids.has(t.id)) || {}).id || '';
+        setSelectedTeamId(firstEligible);
+      }
+    } catch (error) {
+      console.error('Error fetching captain teams:', error);
+      setCaptainTeams([]);
+    }
+  };
 
-    return true;
-  });
-
-  const handleTeamSelect = (team: Team) => {
-    setSelectedTeam(team);
-    setShowTeamSelector(false);
+  const formatDate = (raw: any) => {
+    try {
+      // Prefer ISO datetime
+      if (raw) {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+          const dateStr = d.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+          return `${dateStr} at ${timeStr}`;
+        }
+      }
+      // Fallback: try date + time fields if provided by upstream
+      const anyT = tournament as any;
+      if (anyT?.date) {
+        const combined = anyT.time ? `${anyT.date}T${anyT.time}` : anyT.date;
+        const d2 = new Date(combined);
+        if (!isNaN(d2.getTime())) {
+          const dateStr = d2.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          const timeStr = d2.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+          return `${dateStr} at ${timeStr}`;
+        }
+        // If still invalid, show as-is date string
+        return String(anyT.date);
+      }
+      return '—';
+    } catch {
+      return '—';
+    }
   };
 
   const handleRegister = async () => {
-    if (!user || !selectedTeam) return;
-
-    setSubmitting(true);
-
+    if (!user || !selectedTeamId || !eligibleTeamIds.has(selectedTeamId)) return;
+    if (!selectedRosterId) {
+      toast({ title: 'Select roster', description: 'Please select a roster for this tournament.', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
     try {
-      // Check if team is already registered for this tournament
-      const { data: existingRegistration } = await supabase
-        .from('tournament_registrations')
-        .select('id')
-        .eq('tournament_id', tournament.id)
-        .eq('team_id', selectedTeam.id)
-        .maybeSingle();
+      const team = captainTeams.find(t => t.id === selectedTeamId)!;
 
-      if (existingRegistration) {
-        toast({
-          title: 'Already Registered',
-          description: 'This team is already registered for this tournament',
-          variant: 'destructive',
-        });
-        return;
+      // Fetch roster members (include captain in count)
+      const { data: rosterMembers } = await supabase
+        .from('team_roster_members' as any)
+        .select('user_id')
+        .eq('roster_id', selectedRosterId);
+      const memberIds = Array.from(new Set(((rosterMembers || []).map((r: any) => r.user_id))));
+      const totalMemberCount = memberIds.length + 1; // +1 for captain/owner
+      if (totalMemberCount !== requiredMembers) {
+        throw new Error(`Selected roster must have exactly ${requiredMembers} members (currently has ${totalMemberCount}: ${memberIds.length} members + 1 captain)`);
       }
 
-      // Create registration
-      const registrationData = {
-        tournament_id: tournament.id,
-        user_id: user.id,
-        registration_type: 'team',
-        team_id: selectedTeam.id,
-        team_name: selectedTeam.name,
-        team_members: selectedTeam.members.map(m => m.username).join(','),
-        team_captain: selectedTeam.members.find(m => m.role === 'captain')?.username || '',
-        status: 'registered',
-        created_at: new Date().toISOString(),
-      };
+      // Resolve member display names from profiles (include captain)
+      const allMemberIds = [...memberIds];
+      if (!allMemberIds.includes(team.owner_id)) {
+        allMemberIds.push(team.owner_id); // Add captain if not already in roster
+      }
+      
+      if (allMemberIds.length === 0) {
+        throw new Error('No team members found');
+      }
+      
+      const { data: profileRows } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', allMemberIds);
+      
+      // Map to names, ensuring captain is included
+      const memberMap = new Map<string, string>();
+      (profileRows || []).forEach(p => {
+        const name = (p as any).gamer_tag || (p as any).username || (p as any).full_name || (p as any).id;
+        if (name) memberMap.set(p.id, name);
+      });
+      
+      // Build member names array, captain first
+      const memberNames: string[] = [];
+      const captainName = memberMap.get(team.owner_id);
+      if (captainName) memberNames.push(captainName);
+      memberIds.forEach(id => {
+        if (id !== team.owner_id) {
+          const name = memberMap.get(id);
+          if (name) memberNames.push(name);
+        }
+      });
 
-      const { error } = await supabase
-        .from('tournament_registrations')
-        .insert(registrationData);
+      const roster = teamRosters.find(r => r.id === selectedRosterId);
+
+      const { data, error } = await supabase
+        .from('tournament_participants')
+        .insert({
+          tournament_id: tournament.id,
+          participant_type: 'team',
+          team_captain_id: user.id,
+          team_id: selectedTeamId,
+          team_name: roster?.name || team.name,
+          team_members: memberNames.join(','),
+          roster_id: selectedRosterId,
+          roster_name: roster?.name || null,
+          team_contact_email: user.email || null,
+          status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'approved',
+          entry_fee_amount: tournament.entry_fee || 0,
+          entry_fee_paid: !tournament.entry_fee || tournament.entry_fee === 0
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      // Notify all team members
-      const memberIds = selectedTeam.members
-        .map((m) => (m.user_id ?? m.id))
-        .filter((v): v is string => Boolean(v));
-      if (memberIds.length > 0) {
-        await supabase.from('notifications').insert(
-          memberIds.map((uid) => ({
-            user_id: uid,
-            type: 'tournament_registration',
-            title: 'Team Registered in Tournament',
-            message: `${selectedTeam.name} registered for ${tournament.name}.`,
-            team_id: selectedTeam.id,
-            is_read: false,
-            created_at: new Date().toISOString(),
-          }))
-        );
-      }
-
-      toast({
-        title: 'Registration Successful!',
-        description: `Team "${selectedTeam.name}" has been registered for "${tournament.name}"`,
-        variant: 'default',
-      });
-
-      setIsRegistered(true);
-      setRegistrationData(registrationData);
+      toast({ title: 'Registered', description: 'Team registered successfully.' });
       onRegistrationComplete?.();
-
-    } catch (error) {
-      console.error('Error registering team:', error);
-      toast({
-        title: 'Registration Failed',
-        description: 'Failed to register team. Please try again.',
-        variant: 'destructive',
-      });
+    } catch (e: any) {
+      toast({ title: 'Registration Failed', description: e.message || 'Please try again.', variant: 'destructive' });
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const handleUnregister = async () => {
-    if (!user) {
-      console.log('No user found for unregister');
-      return;
-    }
-
-    if (!registrationData) {
-      console.log('No registration data found, trying to fetch current registration');
-      
-      // Try to fetch the current registration
-      try {
-        const { data: currentRegistration, error: fetchError } = await supabase
-          .from('tournament_registrations')
-          .select('*')
-          .eq('tournament_id', tournament.id)
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (fetchError) {
-          console.error('Error fetching current registration:', fetchError);
-          toast({
-            title: 'Error',
-            description: 'Failed to find registration. Please try again.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        if (!currentRegistration) {
-          console.log('No registration found to unregister');
-          setIsRegistered(false);
-          setRegistrationData(null);
-          onRegistrationComplete?.();
-          return;
-        }
-
-        // Use the fetched registration data
-        setRegistrationData(currentRegistration);
-        console.log('Found registration to unregister:', currentRegistration);
-      } catch (error) {
-        console.error('Error fetching registration:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to find registration. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-    }
-
-    setSubmitting(true);
-
-    try {
-      console.log('Starting team unregister process for registration:', registrationData?.id);
-      
-      if (!registrationData?.id) {
-        throw new Error('No registration ID found');
-      }
-
-      // Delete the registration using the tournament_id and user_id as backup
-      const { error } = await supabase
-        .from('tournament_registrations')
-        .delete()
-        .eq('tournament_id', tournament.id)
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error deleting registration:', error);
-        throw error;
-      }
-
-      console.log('Successfully unregistered team');
-
-      toast({
-        title: 'Unregistered Successfully',
-        description: 'Your team has been unregistered from the tournament',
-        variant: 'default',
-      });
-
-      setIsRegistered(false);
-      setRegistrationData(null);
-      onRegistrationComplete?.();
-
-    } catch (error) {
-      console.error('Error unregistering:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to unregister. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (teamsLoading) {
     return (
-      <div className="card-esports spacing-card">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-700/50 rounded w-1/3"></div>
-          <div className="h-8 bg-gray-700/50 rounded"></div>
-          <div className="h-4 bg-gray-700/50 rounded w-2/3"></div>
+    <Card className="bg-[#0a0a0a] border border-[#1a1a1a] shadow-xl overflow-hidden">
+      <CardHeader className="pb-4 border-b border-[#1a1a1a]">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-white flex items-center gap-3 text-xl font-semibold mb-1">
+              <div className="p-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+                <Users className="w-5 h-5 text-white" />
         </div>
+              <span>Team Registration</span>
+            </CardTitle>
+            <p className="text-gray-400 text-sm ml-12">
+              Register your team for <span className="text-white font-medium">{tournament.name}</span>
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5 pt-5">
+        {/* Tournament Info - Clean Minimal */}
+        <div className="bg-[#111111] border border-[#1a1a1a] rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Zap className="w-4 h-4 text-gray-400" />
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tournament Details</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 relative">
+              {gameLogo ? (
+                <>
+                  <img 
+                    src={gameLogo} 
+                    alt={`${tournament.game} logo`} 
+                    className="w-[64px] h-[64px] object-contain rounded"
+                  onError={(e) => {
+                    console.error('Image failed to load:', gameLogo);
+                    const target = e.currentTarget;
+                    target.style.display = 'none';
+                    const fallback = target.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.classList.remove('hidden');
+                  }}
+                  />
+                  <Gamepad2 className="w-[64px] h-[64px] text-gray-400 absolute hidden game-icon-fallback" />
+                </>
+              ) : (
+                <Gamepad2 className="w-[64px] h-[64px] text-gray-400" />
+              )}
+              <div>
+                <span className="text-xs text-gray-500 block mb-1">Game</span>
+                <span className="text-white font-semibold">{tournament.game}</span>
+          </div>
+        </div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+                <Calendar className="w-4 h-4 text-gray-400" />
       </div>
-    );
-  }
-
-  if (isRegistered) {
-    return (
-      <div className="bg-esports-dark border border-gray-600/30 rounded-lg p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <CheckCircle className="h-5 w-5 text-green-400" />
           <div>
-            <h3 className="text-lg font-semibold text-white">Registered for Tournament</h3>
-            <p className="text-gray-400 text-sm">Your team is successfully registered</p>
-          </div>
+                <span className="text-xs text-gray-500 block mb-1">Start Date</span>
+                <span className="text-white font-medium text-sm">{formatDate(tournament.start_date)}</span>
         </div>
-        
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 mb-4">
-          <div className="text-sm font-medium text-white mb-2">Registration Details</div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Team:</span>
-              <span className="text-white font-medium">{registrationData?.team_name}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Status:</span>
-              <span className="text-green-400 font-medium capitalize">{registrationData?.status}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Registered:</span>
-              <span className="text-white">{new Date(registrationData?.created_at).toLocaleDateString()}</span>
-            </div>
-          </div>
-        </div>
-        
-        <Button
-          onClick={handleUnregister}
-          className="bg-red-600 hover:bg-red-700 text-white w-full"
-          disabled={submitting}
-        >
-          <XCircle className="h-4 w-4 mr-2" />
-          {submitting ? 'Unregistering...' : 'Unregister Team'}
-        </Button>
-      </div>
-    );
-  }
-
-  if (eligibleTeams.length === 0) {
-    return (
-      <div className="bg-esports-dark border border-gray-600/30 rounded-lg p-6">
-        <div className="text-center mb-4">
-          <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-white mb-2">No Eligible Teams</h3>
-          <p className="text-gray-400 text-sm">You need to create or manage teams to register</p>
-        </div>
-        
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 mb-4">
-          <div className="text-sm font-medium text-white mb-2">Requirements</div>
-          <div className="space-y-1 text-sm text-gray-400">
-            <div>• You need to be a team captain</div>
-            <div>• Team game must match: {tournament.game}</div>
-            <div>• Team must have at least {tournament.team_size} members</div>
-            <div>• All team members must be verified</div>
-          </div>
-        </div>
-        
-        <Button
-          onClick={() => window.location.href = '/player/teams'}
-          className="bg-blue-600 hover:bg-blue-700 text-white w-full"
-        >
-          <Users className="h-4 w-4 mr-2" />
-          Create or Manage Teams
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-esports-dark border border-gray-600/30 rounded-lg p-6">
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold text-white mb-1">Team Registration</h3>
-        <p className="text-gray-400 text-sm">Register your team for this tournament</p>
-      </div>
-
-      {/* Tournament Info */}
-      <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h4 className="text-lg font-semibold text-white">{tournament.name}</h4>
-            <p className="text-gray-400 text-sm">Tournament Details</p>
-          </div>
-          <div className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium">
-            {tournament.game} {tournament.team_size}v{tournament.team_size}
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Date:</span>
-              <span className="text-white font-medium">
-                {new Date(tournament.date).toLocaleDateString()} at {tournament.time}
-              </span>
-            </div>
-            {tournament.venue && (
-              <div className="flex justify-between">
-                <span className="text-gray-400">Venue:</span>
-                <span className="text-white font-medium">{tournament.venue}</span>
+            {tournament.entry_fee && tournament.entry_fee > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+                  <DollarSign className="w-4 h-4 text-gray-400" />
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500 block mb-1">Entry Fee</span>
+                  <span className="text-white font-medium text-sm">PKR {tournament.entry_fee}</span>
+                </div>
               </div>
             )}
+            {tournament.prize_pool && tournament.prize_pool > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
+                  <Trophy className="w-4 h-4 text-gray-400" />
           </div>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Entry Fee:</span>
-              <span className="text-white font-medium">{tournament.entry_fee || 'Free'}</span>
+                <div>
+                  <span className="text-xs text-gray-500 block mb-1">Prize Pool</span>
+                  <span className="text-white font-medium text-sm">PKR {tournament.prize_pool}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Prize Pool:</span>
-              <span className="text-white font-medium">{tournament.prize_pool}</span>
             </div>
-          </div>
+            )}
         </div>
       </div>
 
-      {/* Selected Team */}
-      {selectedTeam ? (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-green-400" />
-              <div>
-                <h5 className="text-lg font-semibold text-white">Selected Team</h5>
-                <p className="text-gray-400 text-sm">Ready to register</p>
-              </div>
+        {/* Captain Teams - Clean Minimal */}
+        {captainTeams.length === 0 ? (
+          <Alert className="bg-[#1a0a0a] border border-[#3a1a1a]">
+            <AlertCircle className="h-4 w-4 text-red-400" />
+            <AlertDescription className="text-red-300 text-sm">
+              Create a team first, then return to register.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-3">
+              <Shield className="w-4 h-4 text-gray-400" />
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Select Your Team</span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSelectedTeam(null)}
-              className="border-gray-600 text-gray-400 hover:bg-gray-700 hover:text-white"
-            >
-              Change
-            </Button>
+            {captainTeams.map((team) => {
+              const isEligible = eligibleTeamIds.has(team.id);
+              const errs = ineligibleReasons[team.id] || [];
+              const isSelected = selectedTeamId === team.id;
+              
+              return (
+                <div
+                  key={team.id}
+                  className={`border rounded-lg transition-all ${
+                    isEligible
+                      ? isSelected
+                        ? 'border-[#3a3a3a] bg-[#151515]'
+                        : 'border-[#2a2a2a] bg-[#111111] hover:border-[#3a3a3a] cursor-pointer'
+                      : 'border-[#2a1a1a] bg-[#0f0a0a] opacity-60'
+                  }`}
+                  onClick={() => isEligible && setSelectedTeamId(team.id)}
+                >
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+                      {/* Radio Button */}
+                      <div className="flex-shrink-0 mt-1">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          isSelected && isEligible
+                            ? 'border-white bg-white'
+                            : isEligible
+                            ? 'border-[#4a4a4a]'
+                            : 'border-[#3a3a3a]'
+                        }`}>
+                          {isSelected && isEligible && (
+                            <div className="w-2 h-2 rounded-full bg-[#0a0a0a]" />
+                          )}
+                        </div>
           </div>
           
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-gray-700 border border-gray-600 rounded-lg flex items-center justify-center overflow-hidden">
-              {selectedTeam.logo_url ? (
-                <img src={selectedTeam.logo_url} alt={selectedTeam.name} className="w-full h-full object-contain p-1" />
-              ) : (
-                <Gamepad2 className="h-6 w-6 text-gray-400" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="text-white font-semibold text-base flex items-center gap-2">
+                            {team.name}
+                            {isSelected && (
+                              <CheckCircle className="w-4 h-4 text-white" />
+                            )}
+                          </div>
+                          {isEligible ? (
+                            <Badge className="bg-[#1a3a1a] border border-[#2a5a2a] text-green-300 px-2.5 py-0.5 text-xs">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Eligible
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-[#5a2a2a] text-red-300 bg-[#1a0a0a] px-2.5 py-0.5 text-xs">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              Not Eligible
+                            </Badge>
               )}
             </div>
-            <div className="flex-1">
-              <div className="text-lg font-semibold text-white">{selectedTeam.name}</div>
-              <div className="text-sm text-gray-400">
-                [{selectedTeam.tag}] • {selectedTeam.members.length} members
+                        
+                        {!isEligible && errs.length > 0 && (
+                          <div className="mt-2 p-2 bg-[#1a0a0a] border border-[#3a1a1a] rounded">
+                            <div className="text-xs text-red-300 flex items-center gap-1.5">
+                              <AlertCircle className="w-3 h-3" />
+                              {errs[0]}
               </div>
             </div>
+                        )}
+                        
+                        {/* Roster Selection */}
+                        {isSelected && isEligible && (
+                          <div className="mt-4 space-y-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <Users className="w-3 h-3" />
+                                Select Roster
+                              </Label>
+                              <TooltipProvider delayDuration={0}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button type="button" className="cursor-help">
+                                      <Info className="w-3.5 h-3.5 text-gray-500 hover:text-gray-300 transition-colors" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent 
+                                    side="right"
+                                    className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs max-w-xs z-50"
+                                  >
+                                    <p className="font-semibold mb-1">Required criteria:</p>
+                                    <ul className="list-disc list-inside space-y-0.5">
+                                      <li>Game: {tournament.game}</li>
+                                      <li>Team size: {requiredMembers} members</li>
+                                      <li>Roster must be active</li>
+                                    </ul>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <Select value={selectedRosterId || undefined} onValueChange={setSelectedRosterId}>
+                              <SelectTrigger className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm hover:border-[#3a3a3a] focus:border-[#4a4a4a] transition-colors">
+                                <SelectValue placeholder="Choose a roster">
+                                  {selectedRosterId && teamRosters.find(r => r.id === selectedRosterId) 
+                                    ? `${teamRosters.find(r => r.id === selectedRosterId)?.name} · ${teamRosters.find(r => r.id === selectedRosterId)?.game}${teamRosters.find(r => r.id === selectedRosterId)?.format ? ` · ${teamRosters.find(r => r.id === selectedRosterId)?.format}` : ''}`
+                                    : 'Select a roster'}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#0a0a0a] border border-[#2a2a2a]">
+                                {(teamRosters || []).length > 0 ? (
+                                  (teamRosters || []).map(r => (
+                                    <SelectItem 
+                                      key={r.id} 
+                                      value={r.id}
+                                      className="text-white hover:bg-[#151515] focus:bg-[#151515] cursor-pointer"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        {rosterGameLogos[r.game] ? (
+                                          <div className="w-5 h-5 flex items-center justify-center">
+                                            <img 
+                                              src={rosterGameLogos[r.game]} 
+                                              alt={`${r.game} logo`} 
+                                              className="w-full h-full object-contain rounded"
+                                              onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                              }}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <Shield className="w-4 h-4 text-gray-400" />
+                                        )}
+                                        <span>{r.name} · {r.game}{r.format ? ` · ${r.format}` : ''}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                                    No matching roster found
           </div>
-
-          {/* Team Members */}
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-white">Team Members</div>
-            <div className="grid grid-cols-2 gap-2">
-              {selectedTeam.members.slice(0, tournament.team_size).map((member) => (
-                <div key={member.id} className="flex items-center gap-2 bg-gray-700/50 rounded p-2">
-                  <Avatar className="h-6 w-6">
-                    <img src={member.avatar_url} alt={member.username} />
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium text-white truncate">{member.username}</div>
-                    <div className="flex items-center gap-1">
-                      {member.role === 'captain' && <Crown className="h-3 w-3 text-yellow-500" />}
-                      {member.verified && <Shield className="h-3 w-3 text-green-500" />}
-                      <span className="text-xs text-gray-400 capitalize">{member.role}</span>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            {selectedRosterId && (() => {
+                              const selectedRoster = teamRosters.find(r => r.id === selectedRosterId);
+                              // Only show requirements if roster doesn't meet criteria
+                              const rosterMeetsCriteria = selectedRoster && 
+                                selectedRoster.game === tournament.game &&
+                                Number(selectedRoster.team_size) === requiredMembers;
+                              
+                              // Don't show message if criteria is met
+                              if (rosterMeetsCriteria) return null;
+                              
+                              return (
+                                <div className="mt-2 p-2 bg-[#1a0a0a] border border-[#3a1a1a] rounded">
+                                  <div className="text-xs text-red-300 flex items-center gap-2">
+                                    <AlertCircle className="w-3 h-3" />
+                                    <span>
+                                      {selectedRoster?.game !== tournament.game && `Game mismatch: ${selectedRoster?.game} ≠ ${tournament.game}`}
+                                      {selectedRoster?.game === tournament.game && Number(selectedRoster?.team_size) !== requiredMembers && 
+                                        `Team size mismatch: ${selectedRoster?.team_size} ≠ ${requiredMembers} required`}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        ) : (
-          <div className="text-center py-6">
-            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h4 className="text-lg font-semibold text-white mb-2">Select a Team</h4>
-            <p className="text-gray-400 mb-4">
-              Choose one of your eligible teams to register for this tournament
-            </p>
-            <Button
-              onClick={() => setShowTeamSelector(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
-            >
-              <Trophy className="h-4 w-4 mr-2" />
-              Select Team ({eligibleTeams.length} available)
-            </Button>
+              );
+            })}
           </div>
         )}
 
-      {/* Register Button */}
-      {selectedTeam && (
+        {/* Actions - Clean */}
+        <div className="flex gap-3 pt-2 border-t border-[#1a1a1a]">
         <Button
+            disabled={!selectedTeamId || !eligibleTeamIds.has(selectedTeamId) || !selectedRosterId || loading}
           onClick={handleRegister}
-          disabled={submitting}
-          className="bg-green-600 hover:bg-green-700 text-white w-full py-2"
+            className="flex-1 bg-white text-[#0a0a0a] hover:bg-gray-100 font-semibold py-3 text-base transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {submitting ? (
+            {loading ? (
             <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-              Registering...
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <span>Registering...</span>
             </>
           ) : (
             <>
-              <Trophy className="h-4 w-4 mr-2" />
-              Register Team for {tournament.entry_fee || 'Free'}
+                <Users className="w-4 h-4 mr-2" />
+                <span>Register Team</span>
             </>
           )}
         </Button>
-      )}
-
-      {/* Team Selector Modal */}
-      <Dialog open={showTeamSelector} onOpenChange={setShowTeamSelector}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-gray-900 border border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-white">
-              Select Team for {tournament.name}
-            </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Choose one of your eligible teams to register for this tournament.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-3">
-            {eligibleTeams.map((team) => (
-              <div
-                key={team.id}
-                className="bg-gray-800 border border-gray-700 hover:border-gray-600 cursor-pointer transition-all duration-200 rounded-lg p-4"
-                onClick={() => handleTeamSelect(team)}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gray-700 border border-gray-600 rounded-lg flex items-center justify-center overflow-hidden">
-                    {team.logo_url ? (
-                      <img src={team.logo_url} alt={team.name} className="w-full h-full object-contain p-1" />
-                    ) : (
-                      <Gamepad2 className="h-6 w-6 text-gray-400" />
-                    )}
+          <Button 
+            type="button" 
+            onClick={() => {
+              if (onCancel) {
+                onCancel();
+              }
+            }} 
+            variant="outline" 
+            className="border-[#2a2a2a] text-gray-300 hover:bg-[#151515] hover:border-[#3a3a3a] hover:text-white px-6 py-3 transition-colors"
+          >
+            Cancel
+          </Button>
                   </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-white">{team.name}</div>
-                    <div className="text-sm text-gray-400">
-                      [{team.tag}] • {team.members.length} members • {team.tournament_wins} wins
-                    </div>
-                  </div>
-                  <div className="bg-green-600 text-white px-2 py-1 rounded text-xs">
-                    Eligible
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

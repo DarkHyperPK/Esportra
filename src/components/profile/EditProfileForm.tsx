@@ -47,12 +47,12 @@ export const EditProfileForm = ({ profile, onUpdateProfile, loading }: EditProfi
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${profile.id}_${Date.now()}.${fileExt}`;
-      const { data, error } = await supabase.storage.from('profile-pictures').upload(fileName, file, {
+      const { data, error } = await supabase.storage.from('user-avatars').upload(fileName, file, {
         cacheControl: '3600',
         upsert: true,
       });
       if (error) throw error;
-      const { data: publicUrlData } = supabase.storage.from('profile-pictures').getPublicUrl(fileName);
+      const { data: publicUrlData } = supabase.storage.from('user-avatars').getPublicUrl(fileName);
       const publicUrl = publicUrlData?.publicUrl;
       if (publicUrl) {
         setPreviewUrl(publicUrl);
@@ -87,27 +87,31 @@ export const EditProfileForm = ({ profile, onUpdateProfile, loading }: EditProfi
           Edit Profile
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] bg-esports-dark text-white">
+      <DialogContent className="sm:max-w-[480px] bg-gray-900 text-white border border-gray-800 rounded-xl shadow-2xl p-6">
         <DialogHeader>
-          <DialogTitle>Edit Profile</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">Edit Profile</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col items-center mb-4">
-          <Avatar src={previewUrl} name={form.watch('full_name') || form.watch('username')} size={64} />
-          <label className="mt-2 cursor-pointer text-gaming-purple hover:underline">
-            <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} disabled={uploading} />
+        <div className="flex flex-col items-center gap-3 mb-6">
+          <Avatar src={previewUrl} name={form.watch('full_name') || form.watch('username')} size={72} />
+          <label className="text-sm font-medium text-blue-400 hover:text-blue-300 cursor-pointer">
+            <input type="file" accept="image/*" className="sr-only" onChange={handleFileChange} disabled={uploading} />
             {uploading ? 'Uploading...' : 'Change Profile Picture'}
           </label>
         </div>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel className="text-sm text-gray-300">Username</FormLabel>
                   <FormControl>
-                    <Input {...field} className="bg-gaming-dark border-gaming-gray/30" />
+                    <Input
+                      {...field}
+                      placeholder="Enter username"
+                      className="bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -118,27 +122,31 @@ export const EditProfileForm = ({ profile, onUpdateProfile, loading }: EditProfi
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel className="text-sm text-gray-300">Full Name</FormLabel>
                   <FormControl>
-                    <Input {...field} className="bg-gaming-dark border-gaming-gray/30" />
+                    <Input
+                      {...field}
+                      placeholder="Enter full name"
+                      className="bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <input type="hidden" {...form.register('avatar_url')} />
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setOpen(false)}
-                className="border-gaming-gray/30"
+                className="border-gray-700 text-gray-300 hover:bg-gray-800"
               >
                 Cancel
               </Button>
               <Button 
                 type="submit"
-                className="bg-gaming-blue hover:bg-gaming-blue/80"
+                className="bg-blue-600 hover:bg-blue-500"
                 disabled={loading || uploading}
               >
                 {loading ? 'Saving...' : 'Save Changes'}

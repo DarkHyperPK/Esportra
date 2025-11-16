@@ -7,26 +7,32 @@ const HeroSection = () => {
   const { user } = useAuth();
   
   return (
-    <div className="relative flex items-center pt-0 mt-0 overflow-hidden" style={{ minHeight: '110vh', height: '110vh', backgroundColor: '#18181b' }}>
+    <div className="relative flex items-center pt-0 mt-0 overflow-hidden" style={{ minHeight: '100vh', backgroundColor: '#0f1115' }}>
       {/* Background with overlay gradient */}
-      <img
-        src="https://ggmoxgiddhhvimbdolsl.supabase.co/storage/v1/object/public/website-pics/main%20screen.jpg"
-        alt="Gaming Hero Background"
-        className="absolute inset-0 w-full h-full object-contain object-center z-0 bg-esports-dark"
-        style={{ minHeight: '110vh', height: '110vh', backgroundColor: '#18181b' }}
+      {/* Background with gradient overlay instead of broken image */}
+      <div 
+        className="absolute inset-0 w-full h-full z-0"
+        style={{ 
+          backgroundImage: "url('https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/website-assets/website-main.jpg')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-gaming-darker via-gaming-darker/80 to-transparent z-10"></div>
+      {/* Darker overlay for stronger text contrast */}
+      <div className="absolute inset-0 z-10 bg-black/60" />
+      <div className="absolute inset-0 z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(67,56,202,0.22),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(16,185,129,0.15),transparent_50%)]"></div>
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0f1115] to-transparent z-10"></div>
 
       {/* Content */}
       <div className="container mx-auto px-4 relative z-20">
         <div className="max-w-2xl">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
-            Book Gaming Venues & Join 
-            <span className="text-gradient"> Esports Tournaments</span>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-4">
+            Esportra: 
+            <span className="text-gradient"> Tournaments, Teams, Victory.</span>
           </h1>
-          <p className="text-xl text-gray-300 mb-8">
-            The ultimate platform connecting gamers with premium venues and
-            tournaments. Find your perfect gaming spot or compete at the next level.
+          <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-xl">
+            Create and manage tournaments across games, register your team, and climb the bracket. Built for speed and clarity.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4">
@@ -52,7 +58,7 @@ const HeroSection = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-12">
             {/* Find Venues */}
-            <div className="relative rounded-lg overflow-hidden border border-gray-600/30 transition-all duration-200 hover:border-esports-blue hover:shadow-lg">
+            <div className="relative rounded-xl overflow-hidden border border-gray-600/30 transition-all duration-200 hover:border-esports-blue hover:shadow-lg hover:-translate-y-0.5">
               <div className="absolute inset-0 bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1598550487031-0898b4852123?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')"}} />
               <div className="absolute inset-0 bg-esports-dark/85" />
               <div className="relative z-10 p-4">
@@ -64,7 +70,7 @@ const HeroSection = () => {
               </div>
             </div>
             {/* Join Tournaments */}
-            <div className="relative rounded-lg overflow-hidden border border-gray-600/30 transition-all duration-200 hover:border-esports-orange hover:shadow-lg">
+            <div className="relative rounded-xl overflow-hidden border border-gray-600/30 transition-all duration-200 hover:border-esports-orange hover:shadow-lg hover:-translate-y-0.5">
               <div className="absolute inset-0 bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-1.2.1&auto=format&fit=crop&w=2850&q=80')"}} />
               <div className="absolute inset-0 bg-esports-dark/85" />
               <div className="relative z-10 p-4">
@@ -76,7 +82,7 @@ const HeroSection = () => {
               </div>
             </div>
             {/* Win Prizes */}
-            <div className="relative rounded-lg overflow-hidden border border-gray-600/30 transition-all duration-200 hover:border-esports-green hover:shadow-lg">
+            <div className="relative rounded-xl overflow-hidden border border-gray-600/30 transition-all duration-200 hover:border-esports-green hover:shadow-lg hover:-translate-y-0.5">
               <div className="absolute inset-0 bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1514820720301-4c4790309f46?q=80&w=1932&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')"}} />
               <div className="absolute inset-0 bg-esports-dark/85" />
               <div className="relative z-10 p-4">

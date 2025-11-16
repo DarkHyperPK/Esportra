@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useNavigate } from 'react-router-dom';
 import VerificationRequestForm from '@/components/VerificationRequestForm';
+import UserRolesDisplay from '@/components/UserRolesDisplay';
 import { 
   Shield, 
   Clock, 
@@ -46,6 +47,7 @@ const VerificationStatus: React.FC = () => {
   const { toast } = useToast();
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [verifiedRoles, setVerifiedRoles] = useState<VerifiedRole[]>([]);
+  const [assignedRoles, setAssignedRoles] = useState<{ role: 'organizer' | 'venue_owner'; is_active: boolean }[]>([]);
   const [orgVerifiedByProfile, setOrgVerifiedByProfile] = useState(false);
   const [venueVerifiedByProfile, setVenueVerifiedByProfile] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -75,27 +77,31 @@ const VerificationStatus: React.FC = () => {
 
       if (requestsError) throw requestsError;
 
-      // Fetch verified roles
+      // Fetch verified roles (approved + active)
       const { data: rolesData, error: rolesError } = await supabase
         .from('verified_roles')
         .select('*')
         .eq('user_id', user.id)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('status', 'approved');
 
       if (rolesError) throw rolesError;
 
+      // Fetch assigned roles (active)
+      const { data: assignedData, error: assignedError } = await supabase
+        .from('user_roles')
+        .select('role, is_active')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      if (assignedError) throw assignedError;
+
       setRequests(requestsData || []);
       setVerifiedRoles(rolesData || []);
+      setAssignedRoles((assignedData as any) || []);
 
-      // Fallback sources of truth: profile/company/venue
-      try {
-        const org = await supabase
-          .from('company_profiles')
-          .select('is_verified')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        setOrgVerifiedByProfile(!!org.data?.is_verified);
-      } catch {}
+      // Company profiles removed - no longer needed
+      setOrgVerifiedByProfile(false);
       try {
         const venue = await supabase
           .from('venue_profiles')
@@ -142,15 +148,10 @@ const VerificationStatus: React.FC = () => {
   };
 
   const hasVerifiedRole = (role: 'organizer' | 'venue_owner') => {
-    const viaTable = verifiedRoles.some(vr => vr.role === role && vr.is_active);
-    const viaApprovedRequest = requests.some(req => 
-      (req.requested_role || '').toLowerCase() === role && 
-      (req.status || '').toLowerCase() === 'approved'
-    );
-    const viaProfileRole = profile?.role === role;
-    const viaProfileRecords = role === 'organizer' ? orgVerifiedByProfile : venueVerifiedByProfile;
-    
-    return viaTable || viaApprovedRequest || viaProfileRole || viaProfileRecords;
+    const isApproved = verifiedRoles.some(vr => (vr.role as any) === role && vr.is_active);
+    const isAssigned = assignedRoles.some(ar => (ar.role as any) === role && ar.is_active);
+    // Only show Verified if BOTH conditions are met (matches Role Switcher)
+    return isApproved && isAssigned;
   };
 
   const hasPendingRequest = (role: 'organizer' | 'venue_owner') => {
@@ -219,6 +220,11 @@ const VerificationStatus: React.FC = () => {
                 Back
               </Button>
             </div>
+          </div>
+
+          {/* Debug: User Roles Display */}
+          <div className="mb-8">
+            <UserRolesDisplay />
           </div>
 
           {/* Verification Status Cards */}

@@ -41,86 +41,62 @@ const RoleSwitcher: React.FC = () => {
   const [checkingVerification, setCheckingVerification] = useState(false);
   const [switching, setSwitching] = useState(false);
 
-  // Check verification status for organizer and venue_owner roles
+  // Check verification status for organizer and venue_owner roles using multi-role system
   const checkVerificationStatus = async () => {
     if (!user) return;
     setCheckingVerification(true);
     try {
-      // Get current profile
+      // Get user's active roles from multi-role system
+      const { data: userRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      // Get verified roles
+      const { data: verifiedRoles } = await supabase
+        .from('verified_roles')
+        .select('role, status')
+        .eq('user_id', user.id)
+        .eq('status', 'approved');
+
+      // Get admin status
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('is_admin')
         .eq('id', user.id)
         .maybeSingle();
 
-      // Prefer verification_requests if present
-      const base = await supabase
-        .from('verification_requests')
-        .select('requested_role, status, business_type')
-        .eq('user_id', user.id);
+      const isAdmin = profile?.is_admin;
+      const hasOrganizerRole = userRoles?.some(r => r.role === 'organizer') || false;
+      const hasVenueOwnerRole = userRoles?.some(r => r.role === 'venue_owner') || false;
+      const isOrganizerVerified = verifiedRoles?.some(r => r.role === 'organizer') || false;
+      const isVenueOwnerVerified = verifiedRoles?.some(r => r.role === 'venue_owner') || false;
 
-      if (!base.error && Array.isArray(base.data)) {
-         const approved = (role: 'organizer' | 'venue_owner') => {
-           // Check approved verification requests
-           const hasApprovedRequest = base.data!.some((r: any) => {
-             const isApproved = (r.status || '').toLowerCase() === 'approved';
-             if (role === 'venue_owner') {
-               // For venue_owner, check both requested_role and business_type
-               return isApproved && (
-                 (r.requested_role || '').toLowerCase() === 'venue_owner' || 
-                 ((r.requested_role || '').toLowerCase() === 'organizer' && (r.business_type || '').toLowerCase() === 'gaming_venue')
-               );
-             }
-             return isApproved && (r.requested_role || '').toLowerCase() === role;
-           });
-           
-           // For venue_owner, also check if they have a verified venue profile
-           if (role === 'venue_owner') {
-             return hasApprovedRequest || profile?.data?.role === 'venue_owner';
-           }
-           
-           // For organizer, check if they have a verified company profile
-           if (role === 'organizer') {
-             return hasApprovedRequest || profile?.data?.role === 'organizer';
-           }
-           
-           return hasApprovedRequest;
-         };
+      console.log('Verification check:', {
+        userRoles: userRoles?.map(r => r.role),
+        verifiedRoles: verifiedRoles?.map(r => r.role),
+        isAdmin,
+        hasOrganizerRole,
+        hasVenueOwnerRole,
+        isOrganizerVerified,
+        isVenueOwnerVerified
+      });
 
-        // Fallbacks: treat existing role/company/venue profile as verified
-        let isOrganizer = approved('organizer');
-        let isVenue = approved('venue_owner');
-
-        if (!isOrganizer) {
-          if (profile?.data?.role === 'organizer') isOrganizer = true;
-          try {
-            const org = await supabase.from('company_profiles').select('user_id, is_verified').eq('user_id', user.id).maybeSingle();
-            if (!org.error && org.data?.is_verified) isOrganizer = true;
-          } catch (e) {
-            // Table might not exist
-          }
-        }
-        if (!isVenue) {
-          if (profile?.data?.role === 'venue_owner') isVenue = true;
-          try {
-            const v = await supabase.from('venue_profiles').select('owner_id, verified, is_verified').eq('owner_id', user.id).maybeSingle();
-            if (!v.error && (v.data?.verified || v.data?.is_verified)) isVenue = true;
-          } catch (e) {
-            // Table might not exist
-          }
-        }
-
-        setVerificationSystemReady(true);
-        setVerificationStatus({ organizer: !!isOrganizer, venue_owner: !!isVenue });
-        return;
-      }
-
-      // If table missing or error, mark system as not ready (do not block switches)
-      setVerificationSystemReady(false);
-      // Fallback to profile role only
+      setVerificationSystemReady(true);
       setVerificationStatus({ 
-        organizer: profile?.data?.role === 'organizer', 
-        venue_owner: profile?.data?.role === 'venue_owner' 
+        organizer: isAdmin || (hasOrganizerRole && isOrganizerVerified), 
+        venue_owner: isAdmin || (hasVenueOwnerRole && isVenueOwnerVerified) 
+      });
+
+      console.log('RoleSwitcher verification status:', {
+        hasOrganizerRole,
+        hasVenueOwnerRole,
+        isOrganizerVerified,
+        isVenueOwnerVerified,
+        isAdmin,
+        finalOrganizer: hasOrganizerRole && (isOrganizerVerified || isAdmin),
+        finalVenueOwner: hasVenueOwnerRole && (isVenueOwnerVerified || isAdmin)
       });
     } catch (error) {
       console.error('Error checking verification status:', error);
@@ -257,6 +233,10 @@ const RoleSwitcher: React.FC = () => {
                 <span className="font-semibold text-white">
                   Current: {getRoleLabel(currentRole as any)}
                 </span>
+                <Badge className="bg-green-600 text-white text-xs">
+                  <Shield className="w-3 h-3 mr-1" />
+                  Active
+                </Badge>
               </div>
               <p className="text-sm text-gray-400">
                 {getRoleDescription(currentRole)}
@@ -307,6 +287,11 @@ const RoleSwitcher: React.FC = () => {
                       <Shield className="w-3 h-3 mr-1" />
                       Admin Access
                     </Badge>
+                  ) : currentRole === 'organizer' ? (
+                    <Badge className="bg-green-600 text-white text-xs">
+                      <Shield className="w-3 h-3 mr-1" />
+                      Active
+                    </Badge>
                   ) : !verificationSystemReady ? (
                     <Badge className="bg-blue-600 text-white text-xs">
                       <Shield className="w-3 h-3 mr-1" />
@@ -332,7 +317,7 @@ const RoleSwitcher: React.FC = () => {
                   <Badge variant="outline" className="text-xs">Manage Events</Badge>
                   <Badge variant="outline" className="text-xs">Verify Results</Badge>
                 </div>
-                {currentRole !== 'admin' && verificationSystemReady && !verificationStatus.organizer && (
+                {currentRole !== 'admin' && currentRole !== 'organizer' && verificationSystemReady && !verificationStatus.organizer && (
                   <Alert className="mt-3 bg-yellow-900/20 border-yellow-700">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription className="text-yellow-300 text-xs">
@@ -361,6 +346,11 @@ const RoleSwitcher: React.FC = () => {
                       <Shield className="w-3 h-3 mr-1" />
                       Admin Access
                     </Badge>
+                  ) : currentRole === 'venue_owner' ? (
+                    <Badge className="bg-green-600 text-white text-xs">
+                      <Shield className="w-3 h-3 mr-1" />
+                      Active
+                    </Badge>
                   ) : verificationStatus.venue_owner ? (
                     <Badge className="bg-green-600 text-white text-xs">
                       <Shield className="w-3 h-3 mr-1" />
@@ -381,7 +371,7 @@ const RoleSwitcher: React.FC = () => {
                   <Badge variant="outline" className="text-xs">Host Events</Badge>
                   <Badge variant="outline" className="text-xs">Manage Spaces</Badge>
                 </div>
-                {currentRole !== 'admin' && !verificationStatus.venue_owner && (
+                {currentRole !== 'admin' && currentRole !== 'venue_owner' && !verificationStatus.venue_owner && (
                   <Alert className="mt-3 bg-yellow-900/20 border-yellow-700">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription className="text-yellow-300 text-xs">
