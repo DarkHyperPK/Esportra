@@ -96,7 +96,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
           user:profiles!tournament_participants_user_id_fkey(username, full_name, avatar_url)
         `)
         .eq('tournament_id', tournamentId)
-        .eq('registration_type', 'solo')
+        .eq('participant_type', 'solo')
         .order('registration_date', { ascending: false });
 
       if (soloError) throw soloError;
@@ -109,7 +109,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
           team_captain:profiles!tournament_participants_team_captain_id_fkey(username, full_name, avatar_url)
         `)
         .eq('tournament_id', tournamentId)
-        .eq('registration_type', 'team')
+        .eq('participant_type', 'team')
         .order('registration_date', { ascending: false });
 
       if (teamError) throw teamError;

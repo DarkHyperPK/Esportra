@@ -70,14 +70,14 @@ const TournamentBrackets = () => {
     try {
       const { data, error } = await supabase
         .from('tournament_participants')
-        .select('id, registration_type, team_name, profiles(username)')
+        .select('id, participant_type, team_name, profiles(username)')
         .eq('tournament_id', tournamentId)
         .eq('banned', false);
       if (error) throw error;
-      // Cast registration_type to 'team'|'solo' and filter out any with missing profiles
+      // Cast participant_type to 'team'|'solo' and filter out any with missing profiles
       const safeParticipants: Participant[] = (data as any[] ?? []).map((p: any) => ({
         id: p.id,
-        registration_type: p.registration_type as 'team' | 'solo',
+        registration_type: p.participant_type as 'team' | 'solo',
         team_name: p.team_name,
         profiles: { username: p.profiles?.username || '' },
       }));

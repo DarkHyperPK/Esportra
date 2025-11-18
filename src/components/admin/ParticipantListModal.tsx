@@ -27,8 +27,8 @@ interface Participant {
     team_name: string | null;
     team_captain: string | null;
     team_members: string | null;
-    team_email: string | null;
-    team_phone: string | null;
+    team_contact_email: string | null;
+    team_contact_phone: string | null;
   };
 }
 
@@ -68,7 +68,7 @@ export function ParticipantListModal({
           tournament_id,
           registered_at,
           profile:profiles(username, full_name, email),
-          registration:tournament_participants!inner(id, registration_type, team_name, team_members, team_email, team_phone)
+          registration:tournament_participants!inner(id, participant_type, team_name, team_members, team_contact_email, team_contact_phone)
         `)
         .eq('tournament_id', tournamentId);
 

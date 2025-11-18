@@ -50,7 +50,7 @@ const Index = () => {
         if (user && user.id) {
           const { data: regData, error: regError } = await supabase
             .from('tournament_participants')
-            .select('id, tournament_id, user_id, registration_type, created_at')
+            .select('id, tournament_id, user_id, participant_type, created_at')
             .eq('user_id', user.id);
           if (regError) throw regError;
           userRegistrations = regData || [];
