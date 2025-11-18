@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const SimpleNavbar = () => {
   console.log('SIMPLE NAVBAR RENDERING...');
@@ -22,10 +23,10 @@ const SimpleNavbar = () => {
     }}>
       <div>Esportra</div>
       <div>
-        <a href="/" style={{ color: 'white', marginRight: '20px' }}>Home</a>
-        <a href="/venues" style={{ color: 'white', marginRight: '20px' }}>Venues</a>
-        <a href="/tournaments" style={{ color: 'white', marginRight: '20px' }}>Tournaments</a>
-        <a href="/about" style={{ color: 'white' }}>About</a>
+        <Link to="/" style={{ color: 'white', marginRight: '20px', textDecoration: 'none' }}>Home</Link>
+        <Link to="/venues" style={{ color: 'white', marginRight: '20px', textDecoration: 'none' }}>Venues</Link>
+        <Link to="/tournaments" style={{ color: 'white', marginRight: '20px', textDecoration: 'none' }}>Tournaments</Link>
+        <Link to="/about" style={{ color: 'white', textDecoration: 'none' }}>About</Link>
       </div>
     </div>
   );

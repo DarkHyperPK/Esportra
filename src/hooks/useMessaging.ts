@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
@@ -367,9 +367,14 @@ export const useMessaging = () => {
     }
   };
 
+  // Memoize conversation IDs to prevent subscription remounts
+  const conversationIds = useMemo(() => {
+    return conversations.map(c => c.id);
+  }, [conversations]);
+
   // Set up real-time subscriptions
   useEffect(() => {
-    if (!user) return;
+    if (!user || conversationIds.length === 0) return;
 
     // Subscribe to new messages
     const messageSubscription = supabase
@@ -378,24 +383,45 @@ export const useMessaging = () => {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-        filter: `conversation_id=in.(${conversations.map(c => c.id).join(',')})`,
+        filter: `conversation_id=in.(${conversationIds.join(',')})`,
       }, (payload) => {
         const newMessage = payload.new as Message;
         
         // Add to current messages if it's the active conversation
         if (currentConversation && newMessage.conversation_id === currentConversation.id) {
-          setMessages(prev => [...prev, newMessage]);
+          setMessages(prev => {
+            // Check if message already exists to avoid duplicates
+            const exists = prev.some(m => m.id === newMessage.id);
+            if (exists) return prev;
+            return [...prev, newMessage];
+          });
         }
 
-        // Update conversations list
-        fetchConversations();
+        // Update conversations list directly - update the conversation's last_message and updated_at
+        setConversations(prev => {
+          return prev.map(conv => {
+            if (conv.id === newMessage.conversation_id) {
+              return {
+                ...conv,
+                last_message: newMessage,
+                updated_at: newMessage.created_at,
+                unread_count: currentConversation?.id === conv.id 
+                  ? (conv.unread_count || 0) 
+                  : (conv.unread_count || 0) + 1,
+              };
+            }
+            return conv;
+          }).sort((a, b) => 
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          );
+        });
       })
       .subscribe();
 
     return () => {
       messageSubscription.unsubscribe();
     };
-  }, [user, conversations, currentConversation, fetchConversations]);
+  }, [user, conversationIds, currentConversation]); // Removed fetchConversations from dependencies
 
   // Initialize data
   useEffect(() => {

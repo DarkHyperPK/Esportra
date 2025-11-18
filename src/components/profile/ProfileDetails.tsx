@@ -5,7 +5,7 @@ import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UserProfile } from '@/types/auth';
 import { EditProfileForm } from './EditProfileForm';
-import { Avatar } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface ProfileDetailsProps {
   profile: UserProfile;
@@ -39,7 +39,12 @@ export const ProfileDetails = ({
       <div className="bg-gaming-dark rounded-lg shadow-md p-6 border border-gaming-gray/30">
         <div className="flex items-center gap-4 mb-6">
           <div className="relative">
-            <Avatar src={profile?.avatar_url} name={profile?.full_name || profile?.username} size={64} />
+            <Avatar className="w-16 h-16">
+              <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || profile?.username || 'Profile'} />
+              <AvatarFallback className="text-xl bg-gray-700 text-white">
+                {(profile?.full_name || profile?.username || 'U').charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
           </div>
           <div>
             <h2 className="text-xl font-semibold">

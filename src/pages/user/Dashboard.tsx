@@ -93,9 +93,53 @@ const UserDashboard = () => {
 
         // Try to fetch tournament participations (handle gracefully if table doesn't exist)
         try {
-          const { data: participationData, error: participationError } = await supabase
+          // Step 1: Get all teams the user is a member of (from team_members and team_roster_members)
+          const userTeamIds = new Set<string>();
+          
+          // Get teams where user is owner
+          const { data: ownedTeams } = await supabase
+            .from('teams')
+            .select('id')
+            .eq('owner_id', user.id);
+          (ownedTeams || []).forEach(team => userTeamIds.add(team.id));
+          
+          // Get teams where user is a member
+          const { data: teamMemberships } = await supabase
+            .from('team_members')
+            .select('team_id')
+            .eq('user_id', user.id)
+            .eq('is_active', true);
+          (teamMemberships || []).forEach(membership => userTeamIds.add(membership.team_id));
+          
+          // Get teams where user is in a roster
+          const { data: rosterMemberships } = await supabase
+            .from('team_roster_members')
+            .select('team_rosters!inner(team_id)')
+            .eq('user_id', user.id)
+            .eq('is_active', true);
+          (rosterMemberships || []).forEach((rm: any) => {
+            if (rm.team_rosters?.team_id) {
+              userTeamIds.add(rm.team_rosters.team_id);
+            }
+          });
+          
+          const teamIdsArray = Array.from(userTeamIds);
+          
+          // Step 2: Fetch tournament participations
+          // We'll fetch in multiple queries and combine results since Supabase .or() doesn't work well with .in()
+          const allParticipations: any[] = [];
+          
+          // Query 1: Solo registrations
+          const { data: soloData } = await supabase
             .from('tournament_participants')
             .select(`
+              id,
+              tournament_id,
+              registration_type,
+              user_id,
+              team_id,
+              team_captain_id,
+              team_members,
               tournaments(
                 id,
                 name,
@@ -109,20 +153,113 @@ const UserDashboard = () => {
             `)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
+          if (soloData) allParticipations.push(...soloData);
+          
+          // Query 2: Team captain registrations
+          const { data: captainData } = await supabase
+            .from('tournament_participants')
+            .select(`
+              id,
+              tournament_id,
+              registration_type,
+              user_id,
+              team_id,
+              team_captain_id,
+              team_members,
+              tournaments(
+                id,
+                name,
+                game,
+                start_date,
+                end_date,
+                venue_id,
+                venues(name)
+              ),
+              created_at
+            `)
+            .eq('team_captain_id', user.id)
+            .order('created_at', { ascending: false });
+          if (captainData) allParticipations.push(...captainData);
+          
+          // Query 3: Team member registrations (if user has teams)
+          let teamMemberData: any[] = [];
+          if (teamIdsArray.length > 0) {
+            const { data: memberData } = await supabase
+              .from('tournament_participants')
+              .select(`
+                id,
+                tournament_id,
+                registration_type,
+                user_id,
+                team_id,
+                team_captain_id,
+                team_members,
+                tournaments(
+                  id,
+                  name,
+                  game,
+                  start_date,
+                  end_date,
+                  venue_id,
+                  venues(name)
+                ),
+                created_at
+              `)
+              .in('team_id', teamIdsArray)
+              .order('created_at', { ascending: false });
+            if (memberData) teamMemberData = memberData;
+          }
+          
+          // Combine and deduplicate by participation id
+          const participationMap = new Map<string, any>();
+          [...allParticipations, ...teamMemberData].forEach(p => {
+            if (p.id) participationMap.set(p.id, p);
+          });
+          const participationData = Array.from(participationMap.values());
+          const participationError = null; // No error since we're combining results
 
           if (participationError) {
             console.warn('Tournament participants query failed:', participationError);
             setTournaments([]);
           } else {
-            const formattedTournaments = participationData?.map(participation => ({
-              id: participation.tournaments?.id,
-              name: participation.tournaments?.name,
-              game: participation.tournaments?.game,
-              start_date: participation.tournaments?.start_date,
-              end_date: participation.tournaments?.end_date,
-              venue_name: participation.tournaments?.venues?.name || 'TBD',
-              registered_at: participation.created_at
-            })) || [];
+            // Filter to ensure we only include relevant participations
+            const userParticipations = (participationData || []).filter(participation => {
+              // Solo registration
+              if (participation.user_id === user.id) {
+                return true;
+              }
+              
+              // Team captain
+              if (participation.team_captain_id === user.id) {
+                return true;
+              }
+              
+              // Team member - check if team_id is in user's teams
+              if (participation.team_id && userTeamIds.has(participation.team_id)) {
+                return true;
+              }
+              
+              return false;
+            });
+
+            const formattedTournaments = userParticipations
+              .map(participation => ({
+                id: participation.tournaments?.id,
+                name: participation.tournaments?.name,
+                game: participation.tournaments?.game,
+                start_date: participation.tournaments?.start_date,
+                end_date: participation.tournaments?.end_date,
+                venue_name: participation.tournaments?.venues?.name || 'TBD',
+                registered_at: participation.created_at
+              }))
+              .filter(t => t.id != null); // Filter out any null/undefined tournament IDs
+            
+            console.log('[Dashboard] Found tournament registrations:', {
+              userTeams: userTeamIds.size,
+              totalParticipations: participationData?.length || 0,
+              userParticipations: userParticipations.length,
+              formattedTournaments: formattedTournaments.length
+            });
             
             setTournaments(formattedTournaments);
           }

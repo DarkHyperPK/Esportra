@@ -40,6 +40,20 @@ const Profile = () => {
     }
   };
 
+  const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
+    try {
+      setLoading(prev => ({ ...prev, updateProfile: true }));
+      setError(null);
+      await updateProfile(updates);
+      // Profile will be refreshed automatically by AuthContext
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      setError(error.message || 'Error updating profile');
+    } finally {
+      setLoading(prev => ({ ...prev, updateProfile: false }));
+    }
+  };
+
   if (!user || !profile) {
     return <ProfileLoading />;
   }
@@ -55,11 +69,11 @@ const Profile = () => {
           <h1 className="text-3xl font-bold mb-8">Profile Settings</h1>
           <div className="grid gap-6">
             <ProfileDetails
-              profile={user}
+              profile={profile}
               error={error}
               loading={loading}
               onSignOut={handleSignOut}
-              onUpdateProfile={updateProfile}
+              onUpdateProfile={handleUpdateProfile}
             />
           </div>
         </div>

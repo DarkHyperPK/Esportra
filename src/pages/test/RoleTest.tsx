@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/contexts/RoleContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -7,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 
 const RoleTest = () => {
   const { user, profile } = useAuth();
+  const { refreshRoleFromDatabase } = useRole();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [dbRole, setDbRole] = useState<string | null>(null);
@@ -110,8 +112,13 @@ const RoleTest = () => {
       await checkDatabaseRole();
       await checkUserMetadata();
       
-      // Force a profile refresh
-      window.location.reload();
+      // Refresh role from database without page reload
+      await refreshRoleFromDatabase();
+      
+      toast({
+        title: "Refresh Complete",
+        description: "Role and profile have been refreshed. Please check the updated values above.",
+      });
     } catch (error: any) {
       toast({
         title: "Error",

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -162,9 +162,25 @@ export const IdentityProvider: React.FC<IdentityProviderProps> = ({ children }) 
     ? personalProfile?.avatar_url
     : companyProfile?.company_logo;
 
+  // Track previous IDs to prevent unnecessary reloads
+  const prevUserIdRef = React.useRef<string | null>(null);
+  const prevProfileIdRef = React.useRef<string | null>(null);
+
   useEffect(() => {
+    const currentUserId = user?.id || null;
+    const currentProfileId = profile?.id || null;
+    const prevUserId = prevUserIdRef.current;
+    const prevProfileId = prevProfileIdRef.current;
+
+    // Only reload if user or profile ID actually changed
+    if (currentUserId === prevUserId && currentProfileId === prevProfileId) {
+      return;
+    }
+
+    prevUserIdRef.current = currentUserId;
+    prevProfileIdRef.current = currentProfileId;
     loadIdentityData();
-  }, [user, profile]);
+  }, [user?.id, profile?.id]); // Use IDs instead of full objects
 
   const value: IdentityContextType = {
     currentMode,

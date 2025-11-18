@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { UserProfile } from '@/types/auth';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Edit } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { Avatar } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface EditProfileFormProps {
   profile: UserProfile;
@@ -39,6 +39,18 @@ export const EditProfileForm = ({ profile, onUpdateProfile, loading }: EditProfi
       avatar_url: profile.avatar_url || '',
     },
   });
+
+  // Update preview when profile changes or dialog opens
+  React.useEffect(() => {
+    if (open) {
+      setPreviewUrl(profile.avatar_url || null);
+      form.reset({
+        username: profile.username || '',
+        full_name: profile.full_name || '',
+        avatar_url: profile.avatar_url || '',
+      });
+    }
+  }, [profile, open]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,9 +79,31 @@ export const EditProfileForm = ({ profile, onUpdateProfile, loading }: EditProfi
 
   const onSubmit = async (data: ProfileFormData) => {
     try {
-      await onUpdateProfile(data);
-      setOpen(false);
-      form.reset(data);
+      // Only include fields that have actually changed
+      const updates: Partial<UserProfile> = {};
+      
+      if (data.username !== profile.username) {
+        updates.username = data.username;
+      }
+      
+      if (data.full_name !== (profile.full_name || '')) {
+        updates.full_name = data.full_name || null;
+      }
+      
+      // Only include avatar_url if it's different and not empty
+      if (data.avatar_url && data.avatar_url !== (profile.avatar_url || '')) {
+        updates.avatar_url = data.avatar_url;
+      }
+      
+      // Only update if there are actual changes
+      if (Object.keys(updates).length > 0) {
+        await onUpdateProfile(updates);
+        setOpen(false);
+        form.reset(data);
+      } else {
+        // No changes, just close the dialog
+        setOpen(false);
+      }
     } catch (error) {
       // Error handling is managed by the parent component
       console.error('Profile update failed:', error);
@@ -92,7 +126,12 @@ export const EditProfileForm = ({ profile, onUpdateProfile, loading }: EditProfi
           <DialogTitle className="text-lg font-semibold">Edit Profile</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center gap-3 mb-6">
-          <Avatar src={previewUrl} name={form.watch('full_name') || form.watch('username')} size={72} />
+          <Avatar className="w-[72px] h-[72px]">
+            <AvatarImage src={previewUrl || undefined} alt={form.watch('full_name') || form.watch('username') || 'Profile'} />
+            <AvatarFallback className="text-2xl bg-gray-700 text-white">
+              {(form.watch('full_name') || form.watch('username') || 'U').charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <label className="text-sm font-medium text-blue-400 hover:text-blue-300 cursor-pointer">
             <input type="file" accept="image/*" className="sr-only" onChange={handleFileChange} disabled={uploading} />
             {uploading ? 'Uploading...' : 'Change Profile Picture'}

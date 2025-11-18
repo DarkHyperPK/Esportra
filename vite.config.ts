@@ -10,7 +10,10 @@ export default defineConfig(({ mode }) => ({
     open: true,
   },
   plugins: [
-    react(),
+    react({
+      // Explicitly enable Fast Refresh for better HMR experience
+      fastRefresh: true,
+    }),
   ],
   resolve: {
     alias: {
@@ -19,7 +22,36 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false, // Disable sourcemaps in production for smaller bundle
+    // Set base path for subdirectory deployment
+    // For subdomain demo.esportra.com pointing to public_html/demo/, use '/'
+    // If you need a subdirectory path, use '/demo/' instead
+    base: '/',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Split node_modules into vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'react-vendor';
+            }
+            if (id.includes('@radix-ui')) {
+              return 'ui-vendor';
+            }
+            if (id.includes('@supabase')) {
+              return 'supabase-vendor';
+            }
+            if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform')) {
+              return 'form-vendor';
+            }
+            // Other node_modules
+            return 'vendor';
+          }
+        },
+      },
+    },
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000,
   },
   define: {
     global: 'globalThis',

@@ -66,18 +66,153 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
+    // Initial fetch
     fetchNotifications();
-    // Optionally, poll for new notifications every 30s
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+
+    // Set up realtime subscriptions instead of polling
+    const notificationsChannel = supabase
+      .channel(`notifications_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('[Notifications] Realtime update:', payload.eventType);
+          
+          if (payload.eventType === 'INSERT' && payload.new) {
+            // New notification added
+            const newNotification = payload.new as Notification;
+            setNotifications(prev => {
+              const exists = prev.some(n => n.id === newNotification.id);
+              if (exists) return prev;
+              const updated = [newNotification, ...prev].sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+              setUnreadCount(updated.filter(n => !n.is_read).length);
+              return updated;
+            });
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            // Notification updated (e.g., marked as read)
+            const updatedNotification = payload.new as Notification;
+            setNotifications(prev => {
+              const updated = prev.map(n => n.id === updatedNotification.id ? updatedNotification : n);
+              setUnreadCount(updated.filter(n => !n.is_read).length);
+              return updated;
+            });
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            // Notification deleted
+            setNotifications(prev => {
+              const updated = prev.filter(n => n.id !== payload.old.id);
+              setUnreadCount(updated.filter(n => !n.is_read).length);
+              return updated;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    const invitesChannel = supabase
+      .channel(`team_invites_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_invites',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('[Notifications] Team invite update:', payload.eventType);
+          
+          // Update notifications state directly instead of refetching
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newInvite = payload.new as InviteRow;
+            const syntheticNotification: Notification = {
+              id: `invite-${newInvite.id}`,
+              user_id: user.id,
+              type: 'team_invite',
+              title: 'Team Invitation',
+              message: newInvite.message || `You have been invited to join a team`,
+              team_id: newInvite.team_id,
+              is_read: false,
+              created_at: newInvite.created_at,
+            };
+            
+            setNotifications(prev => {
+              const exists = prev.some(n => n.id === syntheticNotification.id);
+              if (exists) return prev;
+              const updated = [syntheticNotification, ...prev].sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+              setUnreadCount(updated.filter(n => !n.is_read).length);
+              return updated;
+            });
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            const updatedInvite = payload.new as InviteRow;
+            // If invite is no longer pending, remove the synthetic notification
+            if (updatedInvite.status !== 'pending') {
+              setNotifications(prev => {
+                const updated = prev.filter(n => n.id !== `invite-${updatedInvite.id}`);
+                setUnreadCount(updated.filter(n => !n.is_read).length);
+                return updated;
+              });
+            } else {
+              // Update existing synthetic notification
+              const syntheticNotification: Notification = {
+                id: `invite-${updatedInvite.id}`,
+                user_id: user.id,
+                type: 'team_invite',
+                title: 'Team Invitation',
+                message: updatedInvite.message || `You have been invited to join a team`,
+                team_id: updatedInvite.team_id,
+                is_read: false,
+                created_at: updatedInvite.created_at,
+              };
+              
+              setNotifications(prev => {
+                const updated = prev.map(n => 
+                  n.id === syntheticNotification.id ? syntheticNotification : n
+                );
+                setUnreadCount(updated.filter(n => !n.is_read).length);
+                return updated;
+              });
+            }
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            const deletedInvite = payload.old as InviteRow;
+            // Remove synthetic notification
+            setNotifications(prev => {
+              const updated = prev.filter(n => n.id !== `invite-${deletedInvite.id}`);
+              setUnreadCount(updated.filter(n => !n.is_read).length);
+              return updated;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      notificationsChannel.unsubscribe();
+      invitesChannel.unsubscribe();
+    };
+  }, [user, fetchNotifications]);
 
   const markAsRead = async (id: string) => {
+    // Update in database - realtime subscription will handle state update
     await supabase
       .from('notifications')
       .update({ is_read: true })
       .eq('id', id);
-    await fetchNotifications();
+    // No need to call fetchNotifications - realtime UPDATE event will update state
   };
 
   return (

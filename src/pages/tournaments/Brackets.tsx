@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
+import { MapVeto } from '@/components/tournament/MapVeto';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { UploadCloud, Eye, Clock, Settings, Radio, Copy, Check } from 'lucide-react';
+import { UploadCloud, Eye, Clock, Settings, Radio, Copy, Check, Map as MapIcon } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
 import { Tournament } from '@/hooks/useTournaments';
 import { supabase } from '@/lib/supabase';
@@ -63,6 +64,59 @@ interface BracketMatch {
   partyCode?: string | null;
 }
 
+// Timer component for waiting period
+const WaitingTimer: React.FC<{ endTime: number; onComplete: () => void }> = ({ endTime, onComplete }) => {
+  const [timeRemaining, setTimeRemaining] = React.useState(Math.max(0, Math.floor((endTime - Date.now()) / 1000)));
+  
+  React.useEffect(() => {
+    if (timeRemaining <= 0) {
+      onComplete();
+      return;
+    }
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+      setTimeRemaining(remaining);
+      if (remaining === 0) {
+        onComplete();
+        clearInterval(interval);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [endTime, onComplete, timeRemaining]);
+  
+  const minutes = Math.floor(timeRemaining / 60);
+  const seconds = timeRemaining % 60;
+  const totalSeconds = minutes * 60 + seconds;
+  const progress = 1 - (totalSeconds / 300); // 5 minutes = 300 seconds
+  
+  return (
+    <div className="fixed top-6 right-6 z-50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-emerald-500/50 rounded-xl p-6 shadow-2xl backdrop-blur-sm min-w-[280px]">
+      <div className="flex items-start gap-4">
+        <div className="relative">
+          <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping"></div>
+          <Clock className="w-8 h-8 text-emerald-400 relative z-10" />
+        </div>
+        <div className="flex-1">
+          <div className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1">Waiting for Players</div>
+          <div className="text-3xl font-black text-white font-mono mb-2 tracking-tight">
+            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+          </div>
+          {/* Progress bar */}
+          <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-1000 ease-linear"
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
+          <div className="text-xs text-slate-400 mt-2">
+            Teams joining... Veto setup will begin automatically
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TournamentBrackets = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -76,7 +130,10 @@ const TournamentBrackets = () => {
   const [teamCount, setTeamCount] = useState<8 | 16 | 24 | 32>(8);
   const [bracketMatches, setBracketMatches] = useState<BracketMatch[]>([]);
   const isOrganizerRole = currentRole === 'organizer';
-  const isOrganizerOwner = isOrganizerRole && !!(user?.id && (tournament as any)?.organizer_id && user.id === (tournament as any).organizer_id);
+  const isOrganizerOwner = useMemo(() => 
+    isOrganizerRole && !!(user?.id && (tournament as any)?.organizer_id && user.id === (tournament as any).organizer_id),
+    [isOrganizerRole, user?.id, (tournament as any)?.organizer_id]
+  );
   const canView = useMemo(() => {
     if (isOrganizerOwner) return true;
     if (!user?.id) return false;
@@ -94,7 +151,16 @@ const TournamentBrackets = () => {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadMatchId, setUploadMatchId] = useState<string | undefined>(undefined);
   const [showEditBracket, setShowEditBracket] = useState(false);
+  const [mapVetoOpen, setMapVetoOpen] = useState(false);
+  const [mapVetoMatchId, setMapVetoMatchId] = useState<string | null>(null);
+  const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
+  const [matchVetoLinks, setMatchVetoLinks] = useState<Map<string, { team1Link?: string; team2Link?: string }>>(new Map());
   const isUuid = (s?: string | null) => !!s && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+
+  // Debug: Log map veto state changes
+  useEffect(() => {
+    console.log('[Brackets] Map Veto state:', { mapVetoOpen, mapVetoMatchId, hasMatch: !!mapVetoMatch });
+  }, [mapVetoOpen, mapVetoMatchId, mapVetoMatch]);
 
   // Define fetchTournamentData first before any useEffect that uses it
   const fetchTournamentData = useCallback(async () => {
@@ -413,13 +479,418 @@ const TournamentBrackets = () => {
     }
   }, [slug, fetchTournamentData]);
 
+  // Removed refresh trigger - real-time subscriptions handle all updates
+
+  // Fetch veto links for matches where user is captain
+  useEffect(() => {
+    if (!isCaptain || !userTeamId || !tournament?.id || matches.length === 0) {
+      setMatchVetoLinks(new Map());
+      return;
+    }
+
+    let mounted = true;
+
+    const fetchVetoLinks = async () => {
+      if (!mounted) return;
+
+      try {
+        // Get all matches for this tournament
+        const matchIds = matches
+          .filter(m => String(m.id).startsWith('db-'))
+          .map(m => String(m.id).replace('db-', ''))
+          .filter(id => isUuid(id));
+
+        if (matchIds.length === 0 || !mounted) return;
+
+        // Fetch veto records for these matches
+        const { data: vetos, error } = await supabase
+          .from('match_map_vetos')
+          .select('match_id, team1_id, team2_id, team1_link_token, team2_link_token, status')
+          .in('match_id', matchIds)
+          .eq('status', 'in_progress');
+
+        if (error || !mounted) {
+          if (error) console.error('[Brackets] Error fetching veto links:', error);
+          return;
+        }
+
+        // Build map of match_id -> links
+        const linksMap = new Map<string, { team1Link?: string; team2Link?: string }>();
+        
+        (vetos || []).forEach((veto: any) => {
+          const matchId = veto.match_id;
+          const hasUserTeamLink = 
+            (veto.team1_id === userTeamId && veto.team1_link_token) ||
+            (veto.team2_id === userTeamId && veto.team2_link_token);
+
+          if (hasUserTeamLink) {
+            linksMap.set(matchId, {
+              team1Link: veto.team1_id === userTeamId ? veto.team1_link_token : undefined,
+              team2Link: veto.team2_id === userTeamId ? veto.team2_link_token : undefined,
+            });
+          }
+        });
+
+        if (mounted) {
+          setMatchVetoLinks(linksMap);
+        }
+      } catch (error) {
+        console.error('[Brackets] Error in fetchVetoLinks:', error);
+      }
+    };
+
+    fetchVetoLinks();
+
+    // Set up realtime subscription for veto link updates
+    const channel = supabase
+      .channel(`veto-links-${tournament.id}-${userTeamId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'match_map_vetos',
+          filter: `team1_id=eq.${userTeamId}`,
+        },
+        () => {
+          if (mounted) fetchVetoLinks();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'match_map_vetos',
+          filter: `team2_id=eq.${userTeamId}`,
+        },
+        () => {
+          if (mounted) fetchVetoLinks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [isCaptain, userTeamId, tournament?.id, matches.length]); // Only depend on matches.length, not matches array
+
+  // Helper function to convert DB match to BracketMatch format
+  const convertDbMatchToBracketMatch = async (dbMatch: any, teamNameById: Map<string, string>, teamLogoById: Map<string, string | null>, teamCount: number): Promise<BracketMatch | null> => {
+    const mapDbToLocalStatus = (s: string | null | undefined): 'pending' | 'in_progress' | 'completed' => {
+      if (!s) return 'pending';
+      const v = String(s);
+      if (v === 'scheduled' || v === 'pending' || v === 'not_started') return 'pending';
+      if (v === 'in_progress' || v === 'live' || v === 'ongoing') return 'in_progress';
+      return 'completed';
+    };
+
+    const calculateSeed = (round: number, matchNumber: number, slot: 'team1' | 'team2', bracketSize: number): number => {
+      if (round === 1) {
+        if (slot === 'team1') {
+          return matchNumber;
+        } else {
+          return bracketSize - matchNumber + 1;
+        }
+      }
+      return 0;
+    };
+
+    const t1Id = dbMatch.team1_id as string | null;
+    const t2Id = dbMatch.team2_id as string | null;
+    const t1Name = t1Id ? (teamNameById.get(t1Id) || (t1Id.startsWith('bye-') ? 'BYE' : null)) : null;
+    const t2Name = t2Id ? (teamNameById.get(t2Id) || (t2Id.startsWith('bye-') ? 'BYE' : null)) : null;
+    const winnerName = dbMatch.winner_team_id ? (teamNameById.get(dbMatch.winner_team_id) || null) : null;
+    const round = Number(dbMatch.round || 1);
+    const matchNum = Number(dbMatch.match_number || 1);
+
+    // If team names are missing, try to fetch them
+    const missingTeamIds: string[] = [];
+    if (t1Id && !t1Name && !t1Id.startsWith('bye-')) missingTeamIds.push(t1Id);
+    if (t2Id && !t2Name && !t2Id.startsWith('bye-')) missingTeamIds.push(t2Id);
+    if (dbMatch.winner_team_id && !winnerName) missingTeamIds.push(dbMatch.winner_team_id);
+
+    if (missingTeamIds.length > 0) {
+      const { data: missingTeams } = await supabase
+        .from('teams')
+        .select('id, name, logo_url')
+        .in('id', missingTeamIds);
+      
+      (missingTeams || []).forEach((t: any) => {
+        if (t.id && t.name) {
+          teamNameById.set(t.id, t.name);
+          if (t.logo_url) teamLogoById.set(t.id, t.logo_url);
+        }
+      });
+    }
+
+    const finalT1Name = t1Id ? (teamNameById.get(t1Id) || (t1Id.startsWith('bye-') ? 'BYE' : 'Team')) : null;
+    const finalT2Name = t2Id ? (teamNameById.get(t2Id) || (t2Id.startsWith('bye-') ? 'BYE' : 'Team')) : null;
+    const finalWinnerName = dbMatch.winner_team_id ? (teamNameById.get(dbMatch.winner_team_id) || 'Winner') : null;
+
+    const t1Seed = (round === 1 && t1Id && !t1Id.startsWith('bye-')) ? calculateSeed(round, matchNum, 'team1', teamCount) : 0;
+    const t2Seed = (round === 1 && t2Id && !t2Id.startsWith('bye-')) ? calculateSeed(round, matchNum, 'team2', teamCount) : 0;
+
+    // Fetch results for this match
+    const { data: resultsData } = await supabase
+      .from('tournament_match_results')
+      .select('image_url, comment')
+      .eq('match_id', dbMatch.id);
+    
+    const resultImages: string[] = [];
+    const resultComments: string[] = [];
+    (resultsData || []).forEach((r: any) => {
+      if (r.image_url) resultImages.push(r.image_url);
+      if (r.comment) resultComments.push(r.comment);
+    });
+
+    return {
+      id: `db-${dbMatch.id}`,
+      round: round,
+      matchNumber: matchNum,
+      team1: t1Id ? { id: t1Id, name: finalT1Name || 'Team', seed: t1Seed, logo_url: teamLogoById.get(t1Id) || null } : null,
+      team2: t2Id ? { id: t2Id, name: finalT2Name || 'Team', seed: t2Seed, logo_url: teamLogoById.get(t2Id) || null } : null,
+      winner: dbMatch.winner_team_id ? { id: dbMatch.winner_team_id, name: finalWinnerName || 'Winner', seed: 0, logo_url: teamLogoById.get(dbMatch.winner_team_id) || null } : null,
+      score: (typeof dbMatch.team1_score === 'number' && typeof dbMatch.team2_score === 'number') 
+        ? `${dbMatch.team1_score}-${dbMatch.team2_score}` 
+        : null,
+      team1_score: typeof dbMatch.team1_score === 'number' ? dbMatch.team1_score : null,
+      team2_score: typeof dbMatch.team2_score === 'number' ? dbMatch.team2_score : null,
+      status: mapDbToLocalStatus(dbMatch.status),
+      scheduledTime: (dbMatch.scheduled_at || dbMatch.scheduled_time) ? (() => {
+        const date = new Date(dbMatch.scheduled_at || dbMatch.scheduled_time);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const dateStr = `${day}/${month}/${year}`;
+        const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        return `${dateStr} at ${timeStr}`;
+      })() : undefined,
+      bestOf: dbMatch.best_of || undefined,
+      resultImages: resultImages,
+      resultComments: resultComments,
+      partyCode: dbMatch.party_code || null,
+    };
+  };
+
+  // Build team name/logo mappings from current participants
+  const buildTeamMappings = useCallback(async (participantsData: any[]): Promise<{ teamNameById: Map<string, string>, teamLogoById: Map<string, string | null> }> => {
+    const teamNameById = new Map<string, string>();
+    const teamLogoById = new Map<string, string | null>();
+
+    // Map from tournament participants
+    const participantTeamIds = new Set<string>();
+    (participantsData || []).forEach((p: any) => {
+      if (p.team_id) {
+        participantTeamIds.add(p.team_id);
+        const display = p.team_name || p.roster_name;
+        if (display) {
+          teamNameById.set(p.team_id, display);
+          if (p.team_logo) teamLogoById.set(p.team_id, p.team_logo);
+        }
+      }
+    });
+
+    // Fetch team names and logos from teams table
+    if (participantTeamIds.size > 0) {
+      const participantIdsArray = Array.from(participantTeamIds);
+      const { data: participantTeams } = await supabase
+        .from('teams')
+        .select('id, name, logo_url')
+        .in('id', participantIdsArray);
+      
+      (participantTeams || []).forEach((t: any) => {
+        if (t.id) {
+          if (t.name) teamNameById.set(t.id, t.name);
+          if (!teamLogoById.has(t.id)) {
+            teamLogoById.set(t.id, t.logo_url || null);
+          }
+        }
+      });
+    }
+
+    return { teamNameById, teamLogoById };
+  }, []);
+
   // Real-time sync: Subscribe to bracket changes
   useEffect(() => {
     if (!tournament?.id) return;
 
     console.log('[Brackets] Setting up realtime subscriptions for tournament:', tournament.id);
 
+    // Update local state directly from real-time events for instant updates
+    const handleMatchUpdate = async (payload: any) => {
+      console.log('[Brackets] handleMatchUpdate called:', {
+        eventType: payload.eventType,
+        table: payload.table,
+        new: payload.new,
+        old: payload.old,
+        timestamp: new Date().toISOString()
+      });
+      
+      if (payload.eventType === 'UPDATE' && payload.new) {
+        const updatedMatch = payload.new;
+        // Get current participants for team mappings
+        const currentParticipants = participants;
+        const teamMappings = await buildTeamMappings(currentParticipants);
+        
+        // Update local state immediately
+        setBracketMatches(prevMatches => 
+          prevMatches.map(match => {
+            const matchDbId = String(match.id).replace('db-', '');
+            if (matchDbId === updatedMatch.id) {
+              // Check if team IDs changed (from drag-and-drop or other updates)
+              const team1IdChanged = updatedMatch.team1_id !== (match.team1?.id || null);
+              const team2IdChanged = updatedMatch.team2_id !== (match.team2?.id || null);
+              
+              // If team IDs changed, rebuild team objects with latest data
+              let updatedTeam1 = match.team1;
+              let updatedTeam2 = match.team2;
+              
+              if (team1IdChanged) {
+                if (updatedMatch.team1_id) {
+                  const teamName = teamMappings.teamNameById.get(updatedMatch.team1_id) || 'Team';
+                  const teamLogo = teamMappings.teamLogoById.get(updatedMatch.team1_id) || null;
+                  updatedTeam1 = {
+                    id: updatedMatch.team1_id,
+                    name: teamName,
+                    seed: match.team1?.seed || 0,
+                    logo_url: teamLogo,
+                  };
+                } else {
+                  updatedTeam1 = null;
+                }
+              }
+              
+              if (team2IdChanged) {
+                if (updatedMatch.team2_id) {
+                  const teamName = teamMappings.teamNameById.get(updatedMatch.team2_id) || 'Team';
+                  const teamLogo = teamMappings.teamLogoById.get(updatedMatch.team2_id) || null;
+                  updatedTeam2 = {
+                    id: updatedMatch.team2_id,
+                    name: teamName,
+                    seed: match.team2?.seed || 0,
+                    logo_url: teamLogo,
+                  };
+                } else {
+                  updatedTeam2 = null;
+                }
+              }
+              
+              return {
+                ...match,
+                team1: updatedTeam1,
+                team2: updatedTeam2,
+                status: (updatedMatch.status === 'pending' ? 'pending' : 
+                        updatedMatch.status === 'in_progress' ? 'in_progress' : 'completed') as 'pending' | 'in_progress' | 'completed',
+                team1_score: typeof updatedMatch.team1_score === 'number' ? updatedMatch.team1_score : match.team1_score,
+                team2_score: typeof updatedMatch.team2_score === 'number' ? updatedMatch.team2_score : match.team2_score,
+                score: (typeof updatedMatch.team1_score === 'number' && typeof updatedMatch.team2_score === 'number') 
+                  ? `${updatedMatch.team1_score}-${updatedMatch.team2_score}` 
+                  : match.score,
+                bestOf: updatedMatch.best_of || match.bestOf,
+                partyCode: updatedMatch.party_code || match.partyCode,
+              };
+            }
+            return match;
+          })
+        );
+        
+        // Also update matches state
+        setMatches(prevMatches => 
+          prevMatches.map((m: any) => {
+            if (m.id === updatedMatch.id) {
+              return { ...m, ...updatedMatch };
+            }
+            return m;
+          })
+        );
+      } else if (payload.eventType === 'INSERT' && payload.new) {
+        // New match inserted - convert and add to state directly
+        const newMatch = payload.new;
+        // Get current participants for team mappings
+        const currentParticipants = participants;
+        const teamMappings = await buildTeamMappings(currentParticipants);
+        const convertedMatch = await convertDbMatchToBracketMatch(newMatch, teamMappings.teamNameById, teamMappings.teamLogoById, teamCount);
+        if (convertedMatch) {
+          setBracketMatches(prevMatches => {
+            // Check if match already exists (avoid duplicates)
+            const exists = prevMatches.some(m => m.id === convertedMatch.id);
+            if (exists) return prevMatches;
+            return [...prevMatches, convertedMatch].sort((a, b) => {
+              if (a.round !== b.round) return a.round - b.round;
+              return a.matchNumber - b.matchNumber;
+            });
+          });
+          setMatches(prevMatches => {
+            const exists = prevMatches.some((m: any) => m.id === newMatch.id);
+            if (exists) return prevMatches;
+            return [...prevMatches, newMatch];
+          });
+        }
+      } else if (payload.eventType === 'DELETE' && payload.old) {
+        // Match deleted - remove from state directly
+        // Note: When clearing brackets, multiple DELETE events fire (one per match)
+        // Each event is processed individually to remove matches from state
+        const deletedMatch = payload.old;
+        const deletedMatchId = deletedMatch.id;
+        const deletedTournamentId = deletedMatch.tournament_id;
+        
+        console.log('[Brackets] Processing DELETE event:', {
+          deletedMatchId,
+          tournamentId: deletedTournamentId,
+          currentTournamentId: tournament.id
+        });
+        
+        // Only process if it's for the current tournament
+        if (deletedTournamentId !== tournament.id) {
+          console.log('[Brackets] Ignoring DELETE event for different tournament');
+          return;
+        }
+        
+        // Remove the deleted match from state using functional updates
+        setBracketMatches(prevMatches => {
+          const filtered = prevMatches.filter(match => {
+            const matchDbId = String(match.id).replace('db-', '');
+            const shouldKeep = matchDbId !== deletedMatchId;
+            if (!shouldKeep) {
+              console.log('[Brackets] Removing match from bracketMatches state:', matchDbId);
+            }
+            return shouldKeep;
+          });
+          
+          console.log('[Brackets] After DELETE filter (bracketMatches):', {
+            before: prevMatches.length,
+            after: filtered.length,
+            deletedId: deletedMatchId
+          });
+          
+          return filtered;
+        });
+        
+        setMatches(prevMatches => {
+          const filtered = prevMatches.filter((m: any) => {
+            const shouldKeep = m.id !== deletedMatchId;
+            if (!shouldKeep) {
+              console.log('[Brackets] Removing match from matches state:', m.id);
+            }
+            return shouldKeep;
+          });
+          
+          console.log('[Brackets] After DELETE filter (matches):', {
+            before: prevMatches.length,
+            after: filtered.length
+          });
+          
+          return filtered;
+        });
+      }
+    };
+
     // Subscribe to match changes (INSERT, UPDATE, DELETE)
+    // Note: For DELETE events, Supabase sends individual events for each deleted row
+    // When clearing brackets, multiple DELETE events will fire, and we process each one
     const matchesChannel = supabase
       .channel(`tournament_matches_${tournament.id}`)
       .on(
@@ -431,14 +902,26 @@ const TournamentBrackets = () => {
           filter: `tournament_id=eq.${tournament.id}`,
         },
         (payload) => {
-          console.log('[Brackets] Match change detected:', payload.eventType, payload);
-          
-          // Refetch tournament data to ensure we have the latest state
-          // This ensures we always have the correct state from the database
-          fetchTournamentData();
+          console.log('[Brackets] Real-time event received:', {
+            eventType: payload.eventType,
+            table: payload.table,
+            old: payload.old,
+            new: payload.new,
+            timestamp: new Date().toISOString()
+          });
+          handleMatchUpdate(payload);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Brackets] Subscription status for tournament_matches:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('[Brackets] Successfully subscribed to tournament_matches real-time updates for tournament:', tournament.id);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[Brackets] Error subscribing to tournament_matches:', status);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('[Brackets] Subscription timed out, may retry...');
+        }
+      });
 
     // Subscribe to match results changes
     const resultsChannel = supabase
@@ -451,14 +934,59 @@ const TournamentBrackets = () => {
           table: 'tournament_match_results',
           filter: `tournament_id=eq.${tournament.id}`,
         },
-        (payload) => {
-          console.log('[Brackets] Match result change detected:', payload.eventType, payload);
+        async (payload) => {
+          console.log('[Brackets] Real-time match result event received:', payload.eventType, payload);
           
-          // Refetch to get updated results
-          fetchTournamentData();
+          if (payload.eventType === 'INSERT' && payload.new) {
+            // New result added - update specific match's results directly
+            const newResult = payload.new;
+            const matchId = newResult.match_id;
+            
+            setBracketMatches(prevMatches => 
+              prevMatches.map(match => {
+                const matchDbId = String(match.id).replace('db-', '');
+                if (matchDbId === matchId) {
+                  const currentImages = match.resultImages || [];
+                  const currentComments = match.resultComments || [];
+                  return {
+                    ...match,
+                    resultImages: newResult.image_url ? [...currentImages, newResult.image_url] : currentImages,
+                    resultComments: newResult.comment ? [...currentComments, newResult.comment] : currentComments,
+                  };
+                }
+                return match;
+              })
+            );
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            // Result deleted - remove from specific match
+            const deletedResult = payload.old;
+            const matchId = deletedResult.match_id;
+            
+            setBracketMatches(prevMatches => 
+              prevMatches.map(match => {
+                const matchDbId = String(match.id).replace('db-', '');
+                if (matchDbId === matchId) {
+                  const currentImages = match.resultImages || [];
+                  const currentComments = match.resultComments || [];
+                  return {
+                    ...match,
+                    resultImages: deletedResult.image_url 
+                      ? currentImages.filter(img => img !== deletedResult.image_url)
+                      : currentImages,
+                    resultComments: deletedResult.comment
+                      ? currentComments.filter(comment => comment !== deletedResult.comment)
+                      : currentComments,
+                  };
+                }
+                return match;
+              })
+            );
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Brackets] Subscription status for tournament_match_results:', status);
+      });
 
     // Subscribe to participant changes (in case teams are added/removed)
     const participantsChannel = supabase
@@ -471,23 +999,75 @@ const TournamentBrackets = () => {
           table: 'tournament_participants',
           filter: `tournament_id=eq.${tournament.id}`,
         },
-        (payload) => {
-          console.log('[Brackets] Participant change detected:', payload.eventType, payload);
+        async (payload) => {
+          console.log('[Brackets] Real-time participant event received:', payload.eventType, payload);
           
-          // Refetch participants to update team name mappings
-          fetchTournamentData();
+          // Update participants state and rebuild team mappings in a single operation
+          // Use functional update to get latest participants state and avoid double renders
+          setParticipants(prevParticipants => {
+            // Calculate updated participants
+            const updatedParticipants = payload.eventType === 'INSERT' && payload.new
+              ? (() => {
+                  const exists = prevParticipants.some((p: any) => p.id === payload.new.id);
+                  return exists ? prevParticipants : [...prevParticipants, payload.new];
+                })()
+              : payload.eventType === 'DELETE' && payload.old
+              ? prevParticipants.filter((p: any) => p.id !== payload.old.id)
+              : payload.eventType === 'UPDATE' && payload.new
+              ? prevParticipants.map((p: any) => p.id === payload.new.id ? payload.new : p)
+              : prevParticipants;
+            
+            // Rebuild mappings with updated participants
+            buildTeamMappings(updatedParticipants).then(newMappings => {
+              // Update matches that reference the affected team
+              const affectedTeamId = payload.new?.team_id || payload.old?.team_id;
+              if (affectedTeamId) {
+                setBracketMatches(prevMatches => 
+                  prevMatches.map(match => {
+                    const needsUpdate = 
+                      (match.team1?.id === affectedTeamId) ||
+                      (match.team2?.id === affectedTeamId) ||
+                      (match.winner?.id === affectedTeamId);
+                    
+                    if (needsUpdate) {
+                      const updateTeam = (team: BracketTeam | null) => {
+                        if (!team || team.id !== affectedTeamId) return team;
+                        return {
+                          ...team,
+                          name: newMappings.teamNameById.get(team.id) || team.name,
+                          logo_url: newMappings.teamLogoById.get(team.id) ?? team.logo_url,
+                        };
+                      };
+                      
+                      return {
+                        ...match,
+                        team1: updateTeam(match.team1),
+                        team2: updateTeam(match.team2),
+                        winner: updateTeam(match.winner),
+                      };
+                    }
+                    return match;
+                  })
+                );
+              }
+            });
+            
+            return updatedParticipants;
+          });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Brackets] Subscription status for tournament_participants:', status);
+      });
 
     // Cleanup subscriptions on unmount or tournament change
     return () => {
-      console.log('[Brackets] Cleaning up realtime subscriptions');
+      console.log('[Brackets] Cleaning up realtime subscriptions for tournament:', tournament.id);
       matchesChannel.unsubscribe();
       resultsChannel.unsubscribe();
       participantsChannel.unsubscribe();
     };
-  }, [tournament?.id, fetchTournamentData]);
+  }, [tournament?.id, buildTeamMappings]); // Removed participants and teamCount - they're only used inside handlers
 
   // Ensure scheduler has a sensible default when opened
   useEffect(() => {
@@ -716,15 +1296,40 @@ const TournamentBrackets = () => {
       // Pair teams for Round 1: randomize position, then assign seeds based on match position
       // Match 1: team1 gets seed 1, team2 gets seed N
       // Match 2: team1 gets seed 2, team2 gets seed N-1, etc.
+      // IMPORTANT: Each team should only appear once in Round 1
       const round1Matches: BracketTeam[] = [];
+      const usedTeamIds = new Set<string>(); // Track teams already assigned
+      
       for (let i = 0; i < finalSize / 2; i++) {
         // Lower position teams (will be team1 in matches)
         const team1 = padded[i];
         // Higher position teams (will be team2 in matches) - opposite end
         const team2 = padded[finalSize - 1 - i];
+        
+        // Verify teams aren't duplicates
+        if (team1 && team1.id && !team1.id.startsWith('bye-')) {
+          if (usedTeamIds.has(team1.id)) {
+            console.error('[Brackets] Duplicate team detected in Round 1 generation:', team1.id, team1.name);
+          }
+          usedTeamIds.add(team1.id);
+        }
+        if (team2 && team2.id && !team2.id.startsWith('bye-')) {
+          if (usedTeamIds.has(team2.id)) {
+            console.error('[Brackets] Duplicate team detected in Round 1 generation:', team2.id, team2.name);
+          }
+          usedTeamIds.add(team2.id);
+        }
+        
         round1Matches.push(team1 ? { ...team1, seed: i + 1 } : team1); // Seed = match number
         round1Matches.push(team2 ? { ...team2, seed: finalSize - i } : team2); // Seed = N - match number + 1
       }
+      
+      console.log('[Brackets] Generated Round 1 matches:', {
+        totalTeams: padded.length,
+        matchesToCreate: finalSize / 2,
+        uniqueTeamsUsed: usedTeamIds.size,
+        round1MatchesLength: round1Matches.length
+      });
       
       const newMatches: BracketMatch[] = [];
       let matchId = 1;
@@ -732,12 +1337,21 @@ const TournamentBrackets = () => {
       
       // Create Round 1 matches
       for (let i = 0; i < round1Matches.length; i += 2) {
+        const matchNumber = Math.floor(i / 2) + 1;
+        const team1 = round1Matches[i] || null;
+        const team2 = round1Matches[i + 1] || null;
+        
+        // Final check for duplicates before creating match
+        if (team1 && team2 && team1.id === team2.id && !team1.id.startsWith('bye-')) {
+          console.error('[Brackets] ERROR: Same team in both slots for match', matchNumber, ':', team1.id);
+        }
+        
         newMatches.push({
           id: `match-${matchId++}`,
           round: currentRound,
-          matchNumber: Math.floor(i / 2) + 1,
-          team1: round1Matches[i] || null,
-          team2: round1Matches[i + 1] || null,
+          matchNumber: matchNumber,
+          team1: team1,
+          team2: team2,
           winner: null,
           score: null,
           status: 'pending',
@@ -748,11 +1362,21 @@ const TournamentBrackets = () => {
       // For 8 teams: Round 1 has 4 matches, Round 2 has 2 matches, Round 3 has 1 match
       // Total rounds = log2(teamCount)
       const totalRounds = Math.log2(finalSize);
-      let remaining = finalSize / 2; // Number of matches in Round 2
+      // Round 2 starts with finalSize / 4 matches (half of Round 1 matches)
+      let remaining = finalSize / 4; // Number of matches in Round 2
+      
+      console.log('[Brackets] Generating subsequent rounds:', {
+        finalSize,
+        totalRounds,
+        round1Matches: newMatches.filter(m => m.round === 1).length,
+        remainingForRound2: remaining
+      });
       
       currentRound = 2;
       while (currentRound <= totalRounds && remaining >= 1) {
-        for (let i = 0; i < remaining; i++) {
+        const matchesInThisRound = Math.floor(remaining);
+        console.log(`[Brackets] Creating Round ${currentRound} with ${matchesInThisRound} matches`);
+        for (let i = 0; i < matchesInThisRound; i++) {
           newMatches.push({
             id: `match-${matchId++}`,
             round: currentRound,
@@ -767,6 +1391,16 @@ const TournamentBrackets = () => {
         remaining = Math.floor(remaining / 2);
         currentRound++;
       }
+      
+      console.log('[Brackets] Total matches generated:', {
+        total: newMatches.length,
+        byRound: {
+          round1: newMatches.filter(m => m.round === 1).length,
+          round2: newMatches.filter(m => m.round === 2).length,
+          round3: newMatches.filter(m => m.round === 3).length,
+          round4: newMatches.filter(m => m.round === 4).length,
+        }
+      });
       
       // Apply schedule if provided during generation
       if (scheduleConfig && scheduleConfig.startTime) {
@@ -784,10 +1418,7 @@ const TournamentBrackets = () => {
         await persistMatches(newMatches);
       }
       
-      // Refresh to show updated brackets with times
-      setTimeout(() => {
-        fetchTournamentData();
-      }, 500);
+      // State is updated immediately in persistMatches - no need to wait for real-time
     } catch (e: any) {
       toast({ title: 'Generation failed', description: e?.message || 'Could not generate bracket', variant: 'destructive' });
     }
@@ -907,9 +1538,11 @@ const TournamentBrackets = () => {
         best_of: m.bestOf || 1,
         };
       });
+      console.log('[Brackets] persistMatches: Inserting', payload.length, 'matches into database');
       let ins = await supabase.from('tournament_matches').insert(payload).select('*');
       if (ins.error) {
         const msg = String(ins.error.message || '').toLowerCase();
+        console.error('[Brackets] persistMatches: Insert error:', ins.error);
         // Some schemas require a non-null match_id column on tournament_matches
         if (msg.includes('match_id') && (msg.includes('not-null') || msg.includes('null value'))) {
           const genId = () => {
@@ -926,15 +1559,39 @@ const TournamentBrackets = () => {
             // Try UUID first; if DB expects text it will still accept UUID as text in many schemas
             match_id: genId() || `${tournament.id}:${m.round}:${m.matchNumber}`,
           }));
+          console.log('[Brackets] persistMatches: Retrying with match_id, payload length:', payloadWithMatchId.length);
           ins = await supabase.from('tournament_matches').insert(payloadWithMatchId).select('*');
-          if (ins.error) throw ins.error;
+          if (ins.error) {
+            console.error('[Brackets] persistMatches: Retry insert error:', ins.error);
+            throw ins.error;
+          }
         } else {
           throw ins.error;
         }
       }
-      toast({ title: 'Brackets saved', description: 'Bracket matches have been stored. All users will see the updated bracket.' });
-      // Real-time subscription will update UI automatically, but refresh to ensure consistency
-      await fetchTournamentData();
+      
+      console.log('[Brackets] persistMatches: Successfully inserted', ins.data?.length || 0, 'matches');
+      
+      // Immediately update local state with the inserted matches for instant UI update
+      if (ins.data && ins.data.length > 0) {
+        const teamMappings = await buildTeamMappings(participants || []);
+        const convertedMatches = await Promise.all(
+          ins.data.map((dbMatch: any) => 
+            convertDbMatchToBracketMatch(dbMatch, teamMappings.teamNameById, teamMappings.teamLogoById, teamCount)
+          )
+        );
+        const validMatches = convertedMatches.filter((m): m is BracketMatch => m !== null);
+        
+        console.log('[Brackets] persistMatches: Converted', validMatches.length, 'matches, updating state');
+        
+        // Update state immediately
+        setBracketMatches(validMatches);
+        setMatches(ins.data);
+      } else {
+        console.warn('[Brackets] persistMatches: No data returned from insert, matches may not have been saved');
+      }
+      
+      toast({ title: 'Brackets saved', description: `Bracket matches have been stored (${ins.data?.length || 0} matches). All users will see the updated bracket.` });
     } catch (e: any) {
       console.error('Failed to save brackets:', e);
       toast({ title: 'Save failed', description: e?.message || 'Could not save brackets', variant: 'destructive' });
@@ -962,54 +1619,144 @@ const TournamentBrackets = () => {
     }
   };
 
-  const clearBracketInDatabase = async () => {
+  const clearBracketCompletely = async () => {
     try {
       if (!tournament) return;
       
       // Confirm before clearing
-      if (!confirm('Are you sure you want to clear all bracket matches? This action cannot be undone.')) {
+      if (!confirm('Are you sure you want to DELETE all bracket matches? This will completely remove the bracket and you will need to regenerate it.')) {
         return;
       }
       
       setIsClearing(true);
       
-      // Also clear match results associated with these matches
-      const { data: matchIds } = await supabase
-        .from('tournament_matches')
-        .select('id')
-        .eq('tournament_id', tournament.id);
-      
-      if (matchIds && matchIds.length > 0) {
-        const ids = matchIds.map(m => m.id);
-        await supabase
-          .from('tournament_match_results')
-          .delete()
-          .in('match_id', ids);
-      }
-      
-      const { error } = await supabase
+      // Delete all matches for this tournament
+      const { error: deleteError } = await supabase
         .from('tournament_matches')
         .delete()
         .eq('tournament_id', tournament.id);
       
-      if (error) throw error;
+      if (deleteError) {
+        console.error('[Brackets] Error deleting matches:', deleteError);
+        throw deleteError;
+      }
       
-      toast({ title: 'Bracket cleared', description: 'All matches have been removed. All users will see the updated state.' });
-      
-      // Clear local state immediately
+      // Clear local state
       setMatches([]);
       setBracketMatches([]);
-      setDraftMatches(null);
       
-      // Real-time subscription will also update, but refresh to ensure consistency
-      setTimeout(() => {
-        fetchTournamentData();
-      }, 500);
+      toast({ 
+        title: 'Bracket Cleared', 
+        description: 'All matches have been deleted. You can now generate a new bracket.' 
+      });
+      
     } catch (e: any) {
       console.error('Error clearing bracket:', e);
       toast({ 
         title: 'Clear failed', 
         description: e?.message || 'Could not clear matches', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  const clearBracketInDatabase = async () => {
+    try {
+      if (!tournament) return;
+      
+      // Confirm before resetting
+      if (!confirm('Are you sure you want to reset all bracket matches? This will reset all match statuses, scores, and winners, but keep the bracket structure.')) {
+        return;
+      }
+      
+      setIsClearing(true);
+      
+      // Get all matches for this tournament
+      const { data: matchIds, error: fetchError } = await supabase
+        .from('tournament_matches')
+        .select('id')
+        .eq('tournament_id', tournament.id);
+      
+      if (fetchError) {
+        console.error('[Brackets] Error fetching matches:', fetchError);
+        throw fetchError;
+      }
+      
+      if (!matchIds || matchIds.length === 0) {
+        toast({ title: 'No matches', description: 'There are no matches to reset.' });
+        setIsClearing(false);
+        return;
+      }
+      
+      const ids = matchIds.map(m => m.id);
+      
+      // Delete match results associated with these matches
+      await supabase
+        .from('tournament_match_results')
+        .delete()
+        .in('match_id', ids);
+      
+      // Reset all matches: set status to 'pending', clear scores, clear winners, clear party codes
+      console.log('[Brackets] resetBracketInDatabase: Resetting all matches for tournament:', tournament.id);
+      
+      const { error: updateError } = await supabase
+        .from('tournament_matches')
+        .update({
+          status: 'pending',
+          team1_score: 0,
+          team2_score: 0,
+          winner_team_id: null,
+          party_code: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('tournament_id', tournament.id);
+      
+      if (updateError) {
+        console.error('[Brackets] Error resetting matches:', updateError);
+        throw updateError;
+      }
+      
+      const resetCount = matchIds.length;
+      console.log('[Brackets] resetBracketInDatabase: Reset', resetCount, 'matches');
+      
+      // Update local state immediately to reflect reset
+      setMatches(prevMatches => 
+        prevMatches.map(match => ({
+          ...match,
+          status: 'pending' as const,
+          team1_score: 0,
+          team2_score: 0,
+          winner_id: null,
+          score: '0-0',
+          partyCode: null
+        }))
+      );
+      
+      setBracketMatches(prevBracketMatches =>
+        prevBracketMatches.map(match => ({
+          ...match,
+          status: 'pending' as const,
+          team1_score: 0,
+          team2_score: 0,
+          score: '0-0',
+          winner: null,
+          partyCode: null
+        }))
+      );
+      
+      toast({ 
+        title: 'Bracket Reset', 
+        description: `All ${resetCount} matches have been reset to pending status. Scores and winners have been cleared.` 
+      });
+      
+      // Real-time subscription will update UI automatically for other browsers
+    } catch (e: any) {
+      console.error('Error resetting bracket:', e);
+      toast({ 
+        title: 'Reset failed', 
+        description: e?.message || 'Could not reset matches', 
         variant: 'destructive' 
       });
     } finally {
@@ -1192,8 +1939,25 @@ const TournamentBrackets = () => {
                           <Button variant="outline" className="border-gaming-gray/30" onClick={saveBracketToDatabase}>
                             Save Bracket
                           </Button>
-                          <Button variant="destructive" onClick={clearBracketInDatabase} disabled={isClearing}>
-                            {isClearing ? 'Clearing...' : 'Clear Bracket'}
+                          {/* Clear Bracket button - deletes all matches */}
+                          <Button 
+                            variant="destructive" 
+                            onClick={clearBracketCompletely} 
+                            disabled={isClearing}
+                            className="font-semibold border-2 border-red-600/50"
+                            title="Delete all matches completely (requires regeneration)"
+                          >
+                            {isClearing ? 'Clearing...' : '🗑️ Clear Bracket'}
+                          </Button>
+                          {/* Reset Bracket button - resets statuses but keeps structure */}
+                          <Button 
+                            variant="outline" 
+                            onClick={clearBracketInDatabase} 
+                            disabled={isClearing}
+                            className="font-semibold border-2 border-orange-600/50 text-orange-400 hover:text-orange-300"
+                            title="Reset all match statuses, scores, and winners (keeps bracket structure)"
+                          >
+                            {isClearing ? 'Resetting...' : '🔄 Reset Bracket'}
                           </Button>
                         </>
                       )}
@@ -1209,7 +1973,7 @@ const TournamentBrackets = () => {
             </CardHeader>
             <CardContent>
               {bracketMatches.length > 0 ? (
-                <div className="overflow-x-auto pb-4">
+                <div className="pb-4">
                   <BracketVisualization
                     matches={bracketMatches}
                     teamCount={teamCount}
@@ -1217,8 +1981,19 @@ const TournamentBrackets = () => {
                     isOrganizer={isOrganizerOwner}
                     isCaptain={isCaptain}
                     userTeamId={userTeamId}
+                    matchVetoLinks={matchVetoLinks}
                     onUploadResult={openUploadForMatch}
-                    onRefresh={fetchTournamentData}
+                    onOpenMapVeto={(match, matchId) => {
+                      setMapVetoMatch(match);
+                      setMapVetoMatchId(matchId);
+                      setMapVetoOpen(true);
+                      // Remove notification badge after opening
+                      setMatchVetoLinks(prev => {
+                        const newMap = new Map(prev);
+                        newMap.delete(matchId);
+                        return newMap;
+                      });
+                    }}
                     onSwapTeam={async ({ source, target }) => {
                       // Restrict DnD to Round 1 and pending matches to avoid integrity issues
                       if (source.round !== 1 || target.round !== 1) return;
@@ -1250,28 +2025,49 @@ const TournamentBrackets = () => {
                         const tTeam2Id = tMatch.team2?.id && !tMatch.team2.id.startsWith('bye-') && !tMatch.team2.id.startsWith('name:') ? tMatch.team2.id : null;
                         
                         try {
-                          const { error: sError } = await supabase
+                          console.log('[Brackets] onSwapTeam: Saving team swap to database', {
+                            sourceMatch: { id: sDbId, team1_id: sTeam1Id, team2_id: sTeam2Id },
+                            targetMatch: { id: tDbId, team1_id: tTeam1Id, team2_id: tTeam2Id }
+                          });
+                          
+                          const { error: sError, data: sData } = await supabase
                             .from('tournament_matches')
                             .update({ team1_id: sTeam1Id, team2_id: sTeam2Id, updated_at: new Date().toISOString() })
-                            .eq('id', sDbId);
+                            .eq('id', sDbId)
+                            .select();
                           
-                          if (sError) throw sError;
+                          if (sError) {
+                            console.error('[Brackets] onSwapTeam: Error updating source match:', sError);
+                            throw sError;
+                          }
+                          console.log('[Brackets] onSwapTeam: Source match updated:', sData);
                           
-                          const { error: tError } = await supabase
+                          const { error: tError, data: tData } = await supabase
                             .from('tournament_matches')
                             .update({ team1_id: tTeam1Id, team2_id: tTeam2Id, updated_at: new Date().toISOString() })
-                            .eq('id', tDbId);
+                            .eq('id', tDbId)
+                            .select();
                           
-                          if (tError) throw tError;
+                          if (tError) {
+                            console.error('[Brackets] onSwapTeam: Error updating target match:', tError);
+                            throw tError;
+                          }
+                          console.log('[Brackets] onSwapTeam: Target match updated:', tData);
+                          
+                          toast({
+                            title: 'Teams swapped',
+                            description: 'Team positions have been updated. Other users will see the change shortly.',
+                          });
                         } catch (error: any) {
-                          console.error('Error persisting drag-and-drop:', error);
+                          console.error('[Brackets] Error persisting drag-and-drop:', error);
                           toast({ 
                             title: 'Error', 
-                            description: 'Failed to save team swap. Please try again.', 
+                            description: error?.message || 'Failed to save team swap. Please try again.', 
                             variant: 'destructive' 
                           });
-                          // Revert UI state on error
-                          fetchTournamentData();
+                          // Revert local state on error
+                          setBracketMatches(bracketMatches);
+                          // Real-time subscription will update UI automatically
                         }
                       }
                     }}
@@ -1479,20 +2275,71 @@ const TournamentBrackets = () => {
           )}
         </DialogContent>
       </Dialog>
+      {/* Map Veto Dialog */}
+      <Dialog open={mapVetoOpen} onOpenChange={(open) => {
+        console.log('[Brackets] Map Veto dialog onOpenChange:', open, { mapVetoOpen, mapVetoMatchId, mapVetoMatch: !!mapVetoMatch });
+        setMapVetoOpen(open);
+        if (!open) {
+          // Reset state when dialog closes
+          setMapVetoMatchId(null);
+          setMapVetoMatch(null);
+        }
+      }}>
+        <DialogContent className="w-[95vw] sm:w-full sm:max-w-[900px] bg-gaming-dark border border-gaming-gray/40 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-3 sm:p-6">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-white">Map Veto</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  {mapVetoMatch?.team1?.name || 'Team 1'} vs {mapVetoMatch?.team2?.name || 'Team 2'}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+            {tournament && mapVetoMatchId && mapVetoMatch ? (
+              <MapVeto
+                matchId={mapVetoMatchId}
+                tournamentId={tournament.id}
+                team1Id={mapVetoMatch.team1?.id || null}
+                team2Id={mapVetoMatch.team2?.id || null}
+                team1Name={mapVetoMatch.team1?.name || 'Team 1'}
+                team2Name={mapVetoMatch.team2?.name || 'Team 2'}
+                game={tournament.game}
+                bestOf={mapVetoMatch.bestOf || 1}
+                matchStatus={mapVetoMatch.status}
+                onComplete={() => {
+                  console.log('[Brackets] Map Veto completed');
+                  // Don't close the dialog - let organizer see the result
+                  // Just update the local state via real-time subscription
+                  // setMapVetoOpen(false);
+                  // setMapVetoMatchId(null);
+                  // setMapVetoMatch(null);
+                  // Don't trigger refresh - real-time will handle it
+                  // setRefreshTrigger(prev => prev + 1);
+                }}
+              />
+            ) : (
+            <div className="text-center py-8 text-gray-400">
+              {!tournament ? 'Loading tournament...' : !mapVetoMatchId ? `No match selected (mapVetoMatchId: ${mapVetoMatchId})` : `Loading match details... (matchId: ${mapVetoMatchId})`}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </div>
   );
 };
 
 type SwapPayload = { source: { round: number; matchNumber: number; slot: 'team1'|'team2' }, target: { round: number; matchNumber: number; slot: 'team1'|'team2' } };
-const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: number; tournamentId?: string | null; isOrganizer?: boolean; isCaptain?: boolean; userTeamId?: string; onUploadResult?: (matchId: string) => void; onSwapTeam?: (p: SwapPayload) => void; onRefresh?: () => void }> = ({ matches, teamCount, tournamentId, isOrganizer, isCaptain, userTeamId, onUploadResult, onSwapTeam, onRefresh }) => {
+const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: number; tournamentId?: string | null; isOrganizer?: boolean; isCaptain?: boolean; userTeamId?: string; matchVetoLinks?: Map<string, { team1Link?: string; team2Link?: string }>; onUploadResult?: (matchId: string) => void; onSwapTeam?: (p: SwapPayload) => void; onOpenMapVeto?: (match: BracketMatch, matchId: string) => void }> = React.memo(({ matches, teamCount, tournamentId, isOrganizer, isCaptain, userTeamId, matchVetoLinks = new Map(), onUploadResult, onSwapTeam, onOpenMapVeto }) => {
   const { toast } = useToast();
   const rounds = Math.log2(teamCount);
   const [scoreDraft, setScoreDraft] = React.useState<Record<string, { t1: string; t2: string }>>({});
   const [resultsOpen, setResultsOpen] = React.useState(false);
   const [resultsList, setResultsList] = React.useState<Array<{ image_url: string | null; comment: string | null; created_at: string; reporter_user_id: string }>>([]);
   const [editOpen, setEditOpen] = React.useState(false);
-  const [editDraft, setEditDraft] = React.useState<{ scheduled_at: string; best_of: string; status: 'pending'|'in_progress'|'completed' } | null>(null);
+  const [editDraft, setEditDraft] = React.useState<{ scheduled_at: string; best_of: string } | null>(null);
   const [editMatchId, setEditMatchId] = React.useState<string | null>(null);
   const [partyCodeOpen, setPartyCodeOpen] = React.useState(false);
   const [partyCodeMatch, setPartyCodeMatch] = React.useState<BracketMatch | null>(null);
@@ -1500,6 +2347,8 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
   const [goLiveDialogOpen, setGoLiveDialogOpen] = React.useState(false);
   const [goLiveMatch, setGoLiveMatch] = React.useState<BracketMatch | null>(null);
   const [partyCodeInput, setPartyCodeInput] = React.useState('');
+  const [waitingForPlayers, setWaitingForPlayers] = React.useState<{ matchId: string; endTime: number } | null>(null);
+  const [vetoSetupMatchId, setVetoSetupMatchId] = React.useState<string | null>(null);
   
   const getRoundName = (round: number) => {
     const totalRounds = Math.log2(teamCount);
@@ -1622,15 +2471,8 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
       });
       
       // Real-time subscription will automatically update the UI
-      // But we can also trigger a manual refresh for immediate feedback
+      // No need for manual refresh - real-time updates handle it
       toast({ title: 'Score saved', description: 'Match result has been saved and winner advanced.' });
-      
-      // Small delay to let the database update propagate, then refresh
-      if (onRefresh) {
-        setTimeout(() => {
-          onRefresh();
-        }, 500);
-      }
     } catch (error: any) {
       console.error('Error saving score:', error);
       toast({ 
@@ -1676,7 +2518,7 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
       }
     }
     
-    setEditDraft({ scheduled_at: iso, best_of: String(m.bestOf || 1), status: m.status });
+    setEditDraft({ scheduled_at: iso, best_of: String(m.bestOf || 1) }); // best_of kept for backward compatibility but not shown in UI
     setEditOpen(true);
   };
 
@@ -1685,15 +2527,8 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
     
     try {
       const payload: any = {
-        best_of: parseInt(editDraft.best_of, 10) || 1,
-        status: editDraft.status || 'pending', // Always update status
         updated_at: new Date().toISOString()
       };
-      
-      // If status is set to pending, also clear party_code
-      if (editDraft.status === 'pending') {
-        payload.party_code = null;
-      }
       
       if (editDraft.scheduled_at) {
         payload.scheduled_at = new Date(editDraft.scheduled_at).toISOString();
@@ -1706,15 +2541,15 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
       
       if (error) throw error;
       
+      // Real-time subscription will automatically update bracketMatches and matches state
+      // No need for manual state updates - realtime handles it
+      
+      // Real-time subscription will update matches state automatically
+      
       toast({ title: 'Match updated', description: 'Match details have been saved.' });
       setEditOpen(false);
       
-      // Real-time subscription will update UI automatically
-      if (onRefresh) {
-        setTimeout(() => {
-          onRefresh();
-        }, 300);
-      }
+      // Real-time subscription will also update, ensuring consistency across all users
     } catch (error: any) {
       console.error('Error saving match edit:', error);
       toast({ 
@@ -1766,18 +2601,26 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
       
       if (error) throw error;
       
-      toast({ title: 'Match is now live', description: 'Party code has been set and shared with team captains.' });
+      toast({ 
+        title: 'Match is now live', 
+        description: 'Party code has been set. Waiting for team members to join (5 minutes)...' 
+      });
       
       setGoLiveDialogOpen(false);
       setGoLiveMatch(null);
+      
+      // Start 5-minute timer for team members to join (informational only, not a constraint)
+      const endTime = Date.now() + 5 * 60 * 1000; // 5 minutes from now
+      setWaitingForPlayers({ matchId: dbId, endTime });
+      
+      // Timer automatically clears after 5 minutes (just for display purposes)
+      setTimeout(() => {
+        setWaitingForPlayers(null);
+      }, 5 * 60 * 1000);
+      
       setPartyCodeInput('');
       
-      // Refresh to show updated status
-      if (onRefresh) {
-        setTimeout(() => {
-          onRefresh();
-        }, 300);
-      }
+      // Real-time subscription will update UI automatically
     } catch (error: any) {
       console.error('Error going live:', error);
       toast({ 
@@ -1829,98 +2672,156 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
   };
 
   return (
-    <div className="flex gap-12 min-w-max py-8">
+    <div className="flex gap-4 sm:gap-8 lg:gap-12 min-w-max py-4 sm:py-6 lg:py-8 overflow-x-auto">
       {Array.from({ length: rounds }, (_, i) => i + 1).map(round => {
         const roundMatches = getMatchesByRound(round);
         return (
-          <div key={round} className="flex flex-col gap-6 min-w-[300px] relative">
-            <div className="sticky top-0 z-10 bg-gaming-dark/80 backdrop-blur supports-[backdrop-filter]:bg-gaming-dark/60 border-b border-gaming-gray/20 py-2 text-center">
-              <h3 className="text-lg font-bold text-gaming-purple">{getRoundName(round)}</h3>
-              <p className="text-sm text-gray-400">{roundMatches.length} matches</p>
+          <div key={round} className="flex flex-col gap-4 sm:gap-6 min-w-[280px] sm:min-w-[320px] relative">
+            <div className="sticky top-0 z-10 bg-gradient-to-b from-gaming-dark via-gaming-dark/95 to-gaming-dark/80 backdrop-blur-md supports-[backdrop-filter]:bg-gaming-dark/60 border-b-2 border-gaming-purple/30 py-3 px-2 text-center shadow-lg">
+              <h3 className="text-lg sm:text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gaming-purple via-purple-400 to-gaming-purple drop-shadow-lg">
+                {getRoundName(round)}
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1 font-medium">{roundMatches.length} {roundMatches.length === 1 ? 'match' : 'matches'}</p>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 sm:space-y-5">
               {roundMatches.map((match, index) => (
-                <div key={match.id} className="bg-gaming-gray/20 rounded-xl p-4 border border-gaming-gray/30 hover:border-gaming-purple/40 transition-colors relative">
+                <div 
+                  key={match.id} 
+                  className={`group relative bg-gradient-to-br from-gaming-gray/30 via-gaming-gray/20 to-gaming-gray/10 rounded-2xl p-4 sm:p-5 border-2 transition-all duration-300 ${
+                    match.status === 'in_progress' 
+                      ? 'border-yellow-500/50 shadow-lg shadow-yellow-500/20 ring-2 ring-yellow-500/30' 
+                      : match.status === 'completed'
+                      ? 'border-green-500/50 shadow-lg shadow-green-500/20'
+                      : 'border-gaming-gray/40 hover:border-gaming-purple/60 hover:shadow-xl hover:shadow-gaming-purple/20'
+                  }`}
+                >
+                  {/* Glow effect for live matches */}
+                  {match.status === 'in_progress' && (
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-yellow-500/10 via-transparent to-yellow-500/10 animate-pulse pointer-events-none" />
+                  )}
+                  
                   {/* right connector stub */}
-                  <div className="hidden lg:block absolute right-[-24px] top-1/2 w-6 h-0.5 bg-gaming-gray/40" />
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-gray-400">Match {match.matchNumber}</span>
-                    <span className="text-xs text-gray-400">{match.scheduledTime || 'TBD'}</span>
+                  <div className="hidden lg:block absolute right-[-24px] top-1/2 w-6 h-0.5 bg-gradient-to-r from-gaming-gray/60 to-transparent" />
+                  
+                  {/* Match header */}
+                  <div className="flex items-center justify-between mb-3 sm:mb-4 pb-2 border-b border-gaming-gray/30">
+                    <span className="text-xs sm:text-sm font-bold text-gaming-purple/80">Match {match.matchNumber}</span>
+                    <span className="text-[10px] sm:text-xs text-gray-400 truncate ml-2 font-medium">{match.scheduledTime || 'TBD'}</span>
                   </div>
-                  <div className="space-y-3">
+                  
+                  <div className="space-y-3 sm:space-y-4">
+                    {/* Team 1 */}
                     <div
-                      className={`flex items-center gap-2 p-2 rounded-lg ${
-                      match.team1?.eliminated ? 'bg-red-900/20 text-red-400' : 'bg-gaming-gray/10'
-                    }`}
+                      className={`relative flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl transition-all duration-200 ${
+                        match.team1?.eliminated 
+                          ? 'bg-gradient-to-r from-red-900/30 to-red-800/20 text-red-300 border border-red-500/30' 
+                          : match.status === 'in_progress'
+                          ? 'bg-gradient-to-r from-gaming-gray/20 to-gaming-gray/10 border border-gaming-purple/30 hover:bg-gaming-gray/30'
+                          : 'bg-gradient-to-r from-gaming-gray/15 to-gaming-gray/5 border border-gaming-gray/20 hover:border-gaming-purple/40 hover:bg-gaming-gray/25'
+                      }`}
                       draggable={!!(isOrganizer && match.status === 'pending' && match.team1 && !(match.team1.id || '').startsWith('bye-'))}
                       onDragStart={(e) => onDragStart(e, match, 'team1')}
                       onDragOver={onDragOver}
                       onDrop={(e) => onDrop(e, match, 'team1')}
                     >
                       {match.team1?.logo_url ? (
-                        <img 
-                          src={match.team1.logo_url} 
-                          alt={match.team1.name} 
-                          className="w-[54px] h-[54px] object-contain flex-shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
+                        <div className="relative flex-shrink-0">
+                          <img 
+                            src={match.team1.logo_url} 
+                            alt={match.team1.name} 
+                            className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-lg bg-gaming-gray/20 p-1 border border-gaming-gray/30"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                          {match.winner?.id === match.team1?.id && (
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gaming-dark flex items-center justify-center">
+                              <span className="text-[10px] font-bold text-white">✓</span>
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        <div className="w-[54px] h-[54px] bg-gaming-gray/30 flex-shrink-0 flex items-center justify-center">
-                          <span className="text-lg text-gray-500 font-bold">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gaming-gray/40 to-gaming-gray/20 flex-shrink-0 flex items-center justify-center rounded-lg border border-gaming-gray/30">
+                          <span className="text-lg sm:text-xl text-gray-400 font-bold">
                             {match.team1?.name ? match.team1.name.charAt(0).toUpperCase() : '?'}
                           </span>
                         </div>
                       )}
-                      <span className="text-sm font-semibold truncate flex-1">{match.team1?.name || 'TBD'}</span>
-                      {match.team1_score !== null && (
-                        <span className="text-sm font-bold text-gaming-purple min-w-[24px] text-right">
+                      <span className="text-sm sm:text-base font-bold truncate flex-1 text-white">{match.team1?.name || 'TBD'}</span>
+                      {(typeof match.team1_score === 'number') && (
+                        <span className="text-lg sm:text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gaming-purple to-purple-400 min-w-[28px] sm:min-w-[32px] text-right">
                           {match.team1_score}
                         </span>
                       )}
                     </div>
-                    <div className="text-center text-[10px] tracking-widest uppercase text-gray-500">vs</div>
+                    
+                    {/* VS Divider */}
+                    <div className="flex items-center justify-center py-1">
+                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gaming-purple/40 to-transparent"></div>
+                      <span className="px-3 text-xs sm:text-sm font-extrabold text-gaming-purple/60 tracking-widest uppercase">VS</span>
+                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gaming-purple/40 to-transparent"></div>
+                    </div>
+                    
+                    {/* Team 2 */}
                     <div
-                      className={`flex items-center gap-2 p-2 rounded-lg ${
-                      match.team2?.eliminated ? 'bg-red-900/20 text-red-400' : 'bg-gaming-gray/10'
-                    }`}
+                      className={`relative flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl transition-all duration-200 ${
+                        match.team2?.eliminated 
+                          ? 'bg-gradient-to-r from-red-900/30 to-red-800/20 text-red-300 border border-red-500/30' 
+                          : match.status === 'in_progress'
+                          ? 'bg-gradient-to-r from-gaming-gray/20 to-gaming-gray/10 border border-gaming-purple/30 hover:bg-gaming-gray/30'
+                          : 'bg-gradient-to-r from-gaming-gray/15 to-gaming-gray/5 border border-gaming-gray/20 hover:border-gaming-purple/40 hover:bg-gaming-gray/25'
+                      }`}
                       draggable={!!(isOrganizer && match.status === 'pending' && match.team2 && !(match.team2.id || '').startsWith('bye-'))}
                       onDragStart={(e) => onDragStart(e, match, 'team2')}
                       onDragOver={onDragOver}
                       onDrop={(e) => onDrop(e, match, 'team2')}
                     >
                       {match.team2?.logo_url ? (
-                        <img 
-                          src={match.team2.logo_url} 
-                          alt={match.team2.name} 
-                          className="w-[54px] h-[54px] object-contain flex-shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
+                        <div className="relative flex-shrink-0">
+                          <img 
+                            src={match.team2.logo_url} 
+                            alt={match.team2.name} 
+                            className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-lg bg-gaming-gray/20 p-1 border border-gaming-gray/30"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                          {match.winner?.id === match.team2?.id && (
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gaming-dark flex items-center justify-center">
+                              <span className="text-[10px] font-bold text-white">✓</span>
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        <div className="w-[54px] h-[54px] bg-gaming-gray/30 flex-shrink-0 flex items-center justify-center">
-                          <span className="text-lg text-gray-500 font-bold">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gaming-gray/40 to-gaming-gray/20 flex-shrink-0 flex items-center justify-center rounded-lg border border-gaming-gray/30">
+                          <span className="text-lg sm:text-xl text-gray-400 font-bold">
                             {match.team2?.name ? match.team2.name.charAt(0).toUpperCase() : '?'}
                           </span>
                         </div>
                       )}
-                      <span className="text-sm font-semibold truncate flex-1">{match.team2?.name || 'TBD'}</span>
-                      {match.team2_score !== null && (
-                        <span className="text-sm font-bold text-gaming-purple min-w-[24px] text-right">
+                      <span className="text-sm sm:text-base font-bold truncate flex-1 text-white">{match.team2?.name || 'TBD'}</span>
+                      {(typeof match.team2_score === 'number') && (
+                        <span className="text-lg sm:text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gaming-purple to-purple-400 min-w-[28px] sm:min-w-[32px] text-right">
                           {match.team2_score}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center justify-end">
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        match.status === 'completed' ? 'bg-green-900/20 text-green-400' :
-                        match.status === 'in_progress' ? 'bg-yellow-900/20 text-yellow-400' :
-                        'bg-gray-900/20 text-gray-400'
+                    {/* Status and Map Veto Badge */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-gaming-gray/20">
+                      <span className={`text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold flex items-center gap-1.5 ${
+                        match.status === 'completed' 
+                          ? 'bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-400 border border-green-500/30' 
+                          : match.status === 'in_progress' 
+                          ? 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-400 border border-yellow-500/30 animate-pulse' 
+                          : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-400 border border-gray-500/30'
                       }`}>
-                        {match.status === 'completed' ? 'Completed' :
-                         match.status === 'in_progress' ? 'Live' : 'Pending'}
+                        {match.status === 'completed' ? (
+                          <>✓ Completed</>
+                        ) : match.status === 'in_progress' ? (
+                          <>● Live</>
+                        ) : (
+                          <>○ Pending</>
+                        )}
                       </span>
                     </div>
                     {(match.resultImages && match.resultImages.length > 0) && (
@@ -1936,23 +2837,49 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
                       </div>
                     )}
                     {tournamentId && String(match.id).startsWith('db-') && isCaptain && !isOrganizer && userTeamId && (match.team1?.id === userTeamId || match.team2?.id === userTeamId) && (
-                      <div className="mt-3 flex gap-2 justify-end">
+                      <div className="mt-3 flex flex-col sm:flex-row gap-2 justify-end">
                         {match.status === 'in_progress' && match.partyCode && (
                           <button
                             title="View party code"
-                            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-green-600/20 hover:bg-green-600/30 border border-green-600/40 text-green-400"
+                            className="inline-flex items-center justify-center gap-1 text-[10px] sm:text-xs px-2 py-1.5 sm:py-1 rounded bg-green-600/20 hover:bg-green-600/30 border border-green-600/40 text-green-400"
                             onClick={() => openPartyCode(match)}
                           >
-                            <Radio className="w-3 h-3" /> Party Code
+                            <Radio className="w-3 h-3" /> <span>Party Code</span>
                           </button>
                         )}
+                        {/* Map Veto button - show for captains when match is in_progress and veto is ready */}
+                        {match.team1 && match.team2 && match.team1.name !== 'TBD' && match.team2.name !== 'TBD' && String(match.id).startsWith('db-') && onOpenMapVeto && (() => {
+                          const matchId = String(match.id).replace('db-', '');
+                          // Check if veto exists and has best_of set (veto setup complete)
+                          const vetoExists = matchVetoLinks.has(matchId) || vetoSetupMatchId === matchId;
+                          // Show if match is in_progress (veto will be initialized after timer)
+                          const canShowVeto = match.status === 'in_progress' || vetoExists;
+                          return canShowVeto ? (
+                            <button
+                              title="Map Veto"
+                              className="relative inline-flex items-center justify-center gap-1 text-[10px] sm:text-xs px-2 py-1.5 sm:py-1 rounded bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/40 text-purple-400"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('[Brackets] Opening Map Veto for match:', matchId, match);
+                                onOpenMapVeto(match, matchId);
+                              }}
+                            >
+                              <MapIcon className="w-3 h-3" /> Map Veto
+                              {/* Notification badge if link available for captain */}
+                              {isCaptain && userTeamId && matchVetoLinks.has(String(match.id).replace('db-', '')) && (
+                                <span className="absolute -top-1 -right-1 h-3 w-3 bg-emerald-500 rounded-full border-2 border-gray-900 animate-pulse"></span>
+                              )}
+                            </button>
+                          ) : null;
+                        })()}
                         {onUploadResult && (
                           <button
                             title="Upload result (captain only)"
-                            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-gaming-blue/20 hover:bg-gaming-blue/30 border border-gaming-blue/30"
+                            className="inline-flex items-center justify-center gap-1 text-[10px] sm:text-xs px-2 py-1.5 sm:py-1 rounded bg-gaming-blue/20 hover:bg-gaming-blue/30 border border-gaming-blue/30"
                             onClick={() => onUploadResult(String(match.id).replace('db-',''))}
                           >
-                            <UploadCloud className="w-3 h-3" /> Upload result
+                            <UploadCloud className="w-3 h-3" /> <span>Upload result</span>
                           </button>
                         )}
                       </div>
@@ -1963,24 +2890,48 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
                           <div className="flex gap-2 flex-wrap">
                             {match.status === 'pending' && match.team1 && match.team2 && match.team1.name !== 'TBD' && match.team2.name !== 'TBD' && (
                               <button
-                                className="text-xs px-3 py-1.5 rounded bg-green-600/20 hover:bg-green-600/30 border border-green-600/40 text-green-400 transition-colors"
+                                className="text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded bg-green-600/20 hover:bg-green-600/30 border border-green-600/40 text-green-400 transition-colors flex items-center gap-1"
                                 onClick={() => openGoLiveDialog(match)}
                               >
-                                <Radio className="w-3 h-3 inline mr-1.5" /> Go Live
+                                <Radio className="w-3 h-3" /> <span>Go Live</span>
                               </button>
                             )}
                             <button
-                              className="text-xs px-3 py-1.5 rounded bg-gaming-gray/20 hover:bg-gaming-gray/30 border border-gaming-gray/40 transition-colors"
+                              className="text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded bg-gaming-gray/20 hover:bg-gaming-gray/30 border border-gaming-gray/40 transition-colors flex items-center gap-1"
                               onClick={() => openResults(match)}
                             >
-                              <Eye className="w-3 h-3 inline mr-1.5" /> View results
+                              <Eye className="w-3 h-3" /> <span>View results</span>
                             </button>
                             <button
-                              className="text-xs px-3 py-1.5 rounded bg-gaming-gray/20 hover:bg-gaming-gray/30 border border-gaming-gray/40 transition-colors"
+                              className="text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded bg-gaming-gray/20 hover:bg-gaming-gray/30 border border-gaming-gray/40 transition-colors flex items-center gap-1"
                               onClick={() => openEdit(match)}
                             >
-                              <Settings className="w-3 h-3 inline mr-1.5" /> Edit match
+                              <Settings className="w-3 h-3" /> <span>Edit match</span>
                             </button>
+                            {/* Map Veto button for organizers - always visible, but shows error if match not live */}
+                            {match.team1 && match.team2 && match.team1.name !== 'TBD' && match.team2.name !== 'TBD' && String(match.id).startsWith('db-') && onOpenMapVeto && isOrganizer && (
+                              <button
+                                className="relative text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/40 text-purple-400 transition-colors flex items-center gap-1"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const matchId = String(match.id).replace('db-', '');
+                                  // Check if match is live (in_progress)
+                                  if (match.status !== 'in_progress') {
+                                    toast({
+                                      title: 'Match not live',
+                                      description: 'Please make the match live first by clicking "Go Live" and entering the party code.',
+                                      variant: 'destructive',
+                                    });
+                                    return;
+                                  }
+                                  console.log('[Brackets] Opening Map Veto for match:', matchId, match);
+                                  onOpenMapVeto(match, matchId);
+                                }}
+                              >
+                                <MapIcon className="w-3 h-3" /> <span>Map Veto</span>
+                              </button>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <input
@@ -2060,7 +3011,7 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
         <DialogContent className="sm:max-w-[520px] bg-gaming-dark border border-gaming-gray/40">
           <DialogHeader>
             <DialogTitle className="text-white">Edit Match</DialogTitle>
-            <DialogDescription className="text-gray-400">Set match time, status, and best-of.</DialogDescription>
+            <DialogDescription className="text-gray-400">Set match scheduled time.</DialogDescription>
           </DialogHeader>
           {editDraft && (
             <div className="space-y-3">
@@ -2073,33 +3024,6 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
                   className="w-full bg-[#16161d] border border-[#2a2a35] rounded px-3 py-2 text-sm text-white"
                   style={{ colorScheme: 'dark' }}
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">Best of</label>
-                  <select
-                    value={editDraft.best_of}
-                    onChange={(e) => setEditDraft({ ...editDraft, best_of: e.target.value })}
-                    className="w-full bg-[#16161d] border border-[#2a2a35] rounded px-3 py-2 text-sm text-white"
-                  >
-                    <option value="1">BO1</option>
-                    <option value="3">BO3</option>
-                    <option value="5">BO5</option>
-                    <option value="7">BO7</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">Status</label>
-                  <select
-                    value={editDraft.status}
-                    onChange={(e) => setEditDraft({ ...editDraft, status: e.target.value as any })}
-                    className="w-full bg-[#16161d] border border-[#2a2a35] rounded px-3 py-2 text-sm text-white"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="in_progress">Live</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
               </div>
               <div className="text-right">
                 <button
@@ -2114,6 +3038,9 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
         </DialogContent>
       </Dialog>
 
+      {/* Timer Display Component */}
+      {waitingForPlayers && <WaitingTimer endTime={waitingForPlayers.endTime} onComplete={() => setWaitingForPlayers(null)} />}
+
       {/* Go Live Dialog - for organizer to enter party code */}
       <Dialog open={goLiveDialogOpen} onOpenChange={setGoLiveDialogOpen}>
         <DialogContent className="sm:max-w-[420px] bg-gaming-dark border border-gaming-gray/40">
@@ -2123,7 +3050,7 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
               Go Live - Enter Party Code
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Enter the party code from your in-game custom lobby. This will be shared with team captains.
+              Enter the party code from your in-game custom lobby. After going live, you'll have 5 minutes for team members to join, then the veto setup will begin.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -2193,7 +3120,7 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
               <div className="flex gap-2">
                 <Button
                   onClick={copyPartyCode}
-                  className="flex-1 bg-gaming-purple hover:bg-gaming-purple/80"
+                  className="flex-1 bg-gaming-purple hover:bg-gaming-purple/80 flex items-center justify-center"
                   variant="default"
                 >
                   {copiedCode ? (
@@ -2220,6 +3147,8 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
       </Dialog>
     </div>
   );
-};
+});
+
+BracketVisualization.displayName = 'BracketVisualization';
 
 export default TournamentBrackets; 

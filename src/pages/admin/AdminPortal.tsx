@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
@@ -547,12 +547,12 @@ const AdminPortal = () => {
             <div className="mb-2"><b>Status:</b> {tournamentModal.tournament.status}</div>
             <div className="mb-2"><b>Finished:</b> {tournamentModal.tournament.finished ? 'Yes' : 'No'}</div>
             <div className="mb-2"><b>ID:</b> {tournamentModal.tournament.id}</div>
-            <a
-              href={`/admin/tournaments/${tournamentModal.tournament.id}`}
+            <Link
+              to={`/admin/tournaments/${tournamentModal.tournament.id}`}
               className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
               Go to Full Details Page
-            </a>
+            </Link>
           </div>
         </div>
       )}

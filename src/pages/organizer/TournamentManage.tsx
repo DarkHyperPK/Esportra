@@ -1,7 +1,7 @@
 // OrganizerTournamentDashboard.tsx
 // This file is for managing a single tournament (participants, brackets, settings, etc.)
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import Footer from '@/components/Footer';
@@ -130,9 +130,12 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
           <div className="mb-2 text-gray-300">{this.state.error?.message || 'An unexpected error occurred.'}</div>
           <button
             className="bg-gaming-purple text-white px-4 py-2 rounded mt-4"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              this.setState({ error: null });
+              this.fetchTournamentData();
+            }}
           >
-            Reload Page
+            Retry
           </button>
         </div>
       );
@@ -167,16 +170,9 @@ const TournamentDashboard = () => {
   const [teamLoading, setTeamLoading] = useState<boolean>(false);
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [teamModalData, setTeamModalData] = useState<{ id?: string | null; name: string; logo?: string | null; members: string[] }>({ name: '', members: [] });
+  const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    if (slug && user) {
-      console.log('Tournament slug from URL:', slug);
-      console.log('Current user:', user);
-      fetchTournamentData();
-    }
-  }, [slug, user]);
-
-  const fetchTournamentData = async () => {
+  const fetchTournamentData = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Starting to fetch tournament data for slug:', slug);
@@ -677,7 +673,122 @@ const TournamentDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [slug, user]);
+
+  useEffect(() => {
+    if (slug && user) {
+      console.log('Tournament slug from URL:', slug);
+      console.log('Current user:', user);
+      fetchTournamentData();
+    }
+  }, [slug, user, fetchTournamentData]);
+
+  // Set up realtime subscriptions for tournaments and participants
+  useEffect(() => {
+    if (!tournament?.id) return;
+
+    console.log('[TournamentManage] Setting up realtime subscriptions for tournament:', tournament.id);
+
+    // Subscribe to tournament changes
+    const tournamentChannel = supabase
+      .channel(`tournament_${tournament.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tournaments',
+          filter: `id=eq.${tournament.id}`
+        },
+        (payload) => {
+          console.log('[TournamentManage] Tournament change detected:', payload);
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            // Update tournament state directly from payload
+            const updated = payload.new as any;
+            setTournament(prev => prev ? {
+              ...prev,
+              name: updated.name || prev.name,
+              description: updated.description || prev.description,
+              status: updated.status || prev.status,
+              prize_pool: updated.prize_pool?.toString() || prev.prize_pool,
+              max_participants: updated.max_teams || prev.max_participants,
+              entry_fee: updated.entry_fee?.toString() || prev.entry_fee,
+            } : null);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tournament_participants',
+          filter: `tournament_id=eq.${tournament.id}`
+        },
+        async (payload) => {
+          console.log('[TournamentManage] Participant change detected:', payload);
+          // Refetch participants when they change (complex data structure)
+          // But do it without showing loading state
+          try {
+            const { data: registrationsData } = await supabase
+              .from('tournament_participants')
+              .select('*')
+              .eq('tournament_id', tournament.id);
+            
+            if (registrationsData) {
+              const regs = (registrationsData as any[]) || [];
+              const soloUserIds = Array.from(new Set(regs.filter(r => r.participant_type !== 'team' && r.user_id).map(r => r.user_id)));
+              let profileMap: Record<string, { username: string; full_name: string | null }> = {};
+              if (soloUserIds.length > 0) {
+                const { data: profiles } = await supabase
+                  .from('profiles')
+                  .select('id, username, full_name')
+                  .in('id', soloUserIds);
+                for (const p of (profiles || [])) {
+                  profileMap[p.id] = { username: p.username || 'User', full_name: p.full_name || null };
+                }
+              }
+
+              const participants = regs.map((reg: any) => {
+                const isTeam = reg.participant_type === 'team';
+                const teamMembersStr = Array.isArray(reg.team_members) ? reg.team_members.join(', ') : (reg.team_members || null);
+                return {
+                  id: reg.id,
+                  user_id: reg.user_id,
+                  tournament_id: reg.tournament_id,
+                  participant_type: isTeam ? 'team' as const : 'solo' as const,
+                  team_id: reg.team_id || null,
+                  team_name: isTeam ? (reg.team_name || 'Team') : null,
+                  team_members: isTeam ? teamMembersStr : null,
+                  gamer_tag: isTeam ? null : (reg.gamer_tag || null),
+                  status: reg.status || 'registered',
+                  registered_at: reg.registered_at || reg.registration_date || reg.created_at,
+                  created_at: reg.created_at || reg.registered_at || reg.registration_date,
+                  team_logo: null,
+                  user: isTeam ? { username: '', full_name: null } : (profileMap[reg.user_id] || { username: 'User', full_name: null })
+                };
+              });
+
+              // Update participant count
+              setTournament(prev => prev ? {
+                ...prev,
+                current_participants: participants.length
+              } : null);
+
+              setParticipants(participants as Participant[]);
+            }
+          } catch (error) {
+            console.error('[TournamentManage] Error updating participants from realtime:', error);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[TournamentManage] Cleaning up realtime subscriptions');
+      tournamentChannel.unsubscribe();
+    };
+  }, [tournament?.id]);
 
   const handleDelete = async () => {
     try {
@@ -920,12 +1031,12 @@ const TournamentDashboard = () => {
   };
 
   // Helper: next power of two
-  function nextPowerOfTwo(n: number) {
+  const nextPowerOfTwo = (n: number) => {
     return Math.pow(2, Math.ceil(Math.log2(n)));
-  }
+  };
 
   // Update validateMatches for custom bracket structure
-  function validateMatches(matches) {
+  const validateMatches = (matches: any[]) => {
     if (!Array.isArray(matches) || matches.length === 0) return false;
     for (const match of matches) {
       if (!match || typeof match !== 'object') return false;
@@ -938,13 +1049,13 @@ const TournamentDashboard = () => {
       if (!('id' in visitor) || (!('name' in visitor) && !('team_name' in visitor))) return false;
     }
     return true;
-  }
+  };
 
   // Update BracketTeam type to allow team_name (for normalization)
   // If BracketTeam is imported, add a local type override here:
   type BracketTeamWithName = BracketTeam & { team_name?: string };
 
-  function generateCustomBracketMatches(teams: BracketTeamWithName[]): BracketMatch[] {
+  const generateCustomBracketMatches = (teams: BracketTeamWithName[]): BracketMatch[] => {
     // Pad to next power of two
     const totalTeams = teams.length;
     const bracketSize = Math.pow(2, Math.ceil(Math.log2(totalTeams)));
@@ -981,7 +1092,7 @@ const TournamentDashboard = () => {
       round++;
     }
     return matches;
-  }
+  };
 
   // Custom BracketMatch component
   const BracketMatch = ({ match }) => {
@@ -1045,130 +1156,69 @@ const TournamentDashboard = () => {
     );
   };
 
-  // Move the bracket rendering logic to a separate function to avoid linter error
-  function renderBracketTab(participants, bracketGenerated, setBracketGenerated, toast) {
-    const teams = participants.filter(p => p.participant_type === 'team');
-    const matches = generateCustomBracketMatches(teams);
-    const canGenerate = teams.length >= 2;
-    if (!bracketGenerated) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-[300px]">
-          <div className="text-gray-400 mb-4">Bracket not generated yet.</div>
-          <Button
-            onClick={() => {
-              setBracketGenerated(true);
-              toast({ title: 'Bracket Generated', description: 'Bracket has been generated.' });
-            }}
-            disabled={!canGenerate}
-            className="bg-gaming-purple hover:bg-gaming-purple/80"
-          >
-            Generate Bracket
-          </Button>
-          {!canGenerate && (
-            <div className="text-xs text-gray-400 mt-2">At least 2 teams are required to generate a bracket.</div>
-          )}
-        </div>
-      );
-    }
-    // Always show matches JSON for debugging
+  // Update BracketSVGStyle for more aggressive SVG and parent container overrides
+  const BracketSVGStyle = () => {
     return (
-      <div>
-        {/* 2 teams: show final */}
-        {matches.length === 1 && teams.length === 2 && (
-          <div className="flex flex-col items-center justify-center min-h-[200px]">
-            <div className="text-lg font-bold mb-2">Final</div>
-            <div className="flex gap-4 items-center">
-              <span className="font-semibold">{matches[0].home?.name || 'TBD'}</span>
-              <span className="text-gray-400">vs</span>
-              <span className="font-semibold">{matches[0].visitor?.name || 'TBD'}</span>
-            </div>
-            <div className="text-xs text-gray-400 mt-2">Only 2 teams registered. No bracket tree to display.</div>
-            <Button
-              onClick={() => setBracketGenerated(false)}
-              variant="outline"
-              className="mt-4"
-            >
-              Regenerate Bracket
-            </Button>
-          </div>
-        )}
-        {/* 3 teams: show message */}
-        {teams.length === 3 && (
-          <div className="flex flex-col items-center justify-center min-h-[200px]">
-            <div className="text-lg font-bold mb-2">Bracket Not Supported</div>
-            <div className="text-xs text-gray-400 mt-2">Single elimination brackets require 2, 4, 8, ... teams. 3 teams is not supported. Please add or remove a team.</div>
-            <Button
-              onClick={() => setBracketGenerated(false)}
-              variant="outline"
-              className="mt-4"
-            >
-              Regenerate Bracket
-            </Button>
-          </div>
-        )}
-        {/* 4+ teams: render bracket if valid, else show error and JSON */}
-        {teams.length >= 4 && matches.length > 1 && (
-          validateMatches(matches) ? (
-            <div
-              className="w-full h-full flex justify-center items-center overflow-x-auto bracket-svg-root relative"
-              style={{
-                minHeight: 600,
-                width: '100%',
-                maxWidth: 1200,
-                margin: '0 auto',
-                borderRadius: 32,
-                boxShadow: '0 8px 48px #000a',
-                padding: 0,
-                position: 'relative',
-                background: gameBackgroundUrl
-                  ? `url('${gameBackgroundUrl}') center/cover no-repeat`
-                  : `url('/backgrounds/generic-gaming.jpg') center/cover no-repeat`,
-                overflow: 'hidden',
-              }}
-            >
-              <BracketSVGStyle />
-              <BracketPremiumOverlay />
-              {/* Dark overlay for readability on top of SVG */}
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                background: 'rgba(18,18,22,0.82)',
-                borderRadius: 32,
-                zIndex: 3,
-                pointerEvents: 'none',
-              }} />
-              <div style={{ width: '100%', height: '100%', zIndex: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, borderRadius: 32 }}>
-                <SingleEliminationBracketCustom teams={teams} matches={matches} />
-              </div>
-              <Button
-                onClick={() => setBracketGenerated(false)}
-                variant="outline"
-                className="mt-4 absolute right-4 top-4 z-10"
-                style={{ borderRadius: 16 }}
-              >
-                Regenerate Bracket
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center min-h-[200px]">
-              <div className="text-lg font-bold mb-2 text-red-400">Bracket Data Invalid</div>
-              <div className="text-xs text-gray-400 mt-2">The generated bracket data is invalid or incomplete. Please contact support.</div>
-              <Button
-                onClick={() => setBracketGenerated(false)}
-                variant="outline"
-                className="mt-4"
-              >
-                Regenerate Bracket
-              </Button>
-            </div>
-          )
-        )}
-      </div>
+      <style>{`
+        .bracket-svg-root,
+        .bracket-svg-root > div,
+        .bracket-svg-root svg {
+          width: 100% !important;
+          height: 100% !important;
+          min-width: 0 !important;
+          min-height: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+        .bracket-svg-root svg {
+          background: transparent !important;
+        }
+      `}</style>
     );
-  }
+  };
+
+  // Add a blurred background and animated border/glow
+  const BracketPremiumOverlay = () => {
+    return (
+      <>
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 0,
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          background: 'rgba(18,18,22,0.7)',
+          borderRadius: 32,
+          pointerEvents: 'none',
+        }} />
+        <div className="bracket-glow-border" style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          borderRadius: 32,
+          boxShadow: '0 0 32px 4px #a259ff88, 0 0 0 4px #18181b',
+          border: '2px solid #a259ff',
+          pointerEvents: 'none',
+          animation: 'bracketGlow 2s infinite alternate',
+          zIndex: 2,
+        }} />
+        <style>{`
+          @keyframes bracketGlow {
+            0% { box-shadow: 0 0 32px 4px #a259ff44, 0 0 0 4px #18181b; }
+            100% { box-shadow: 0 0 48px 8px #a259ffcc, 0 0 0 4px #18181b; }
+          }
+        `}</style>
+      </>
+    );
+  };
 
   // Fetch game background from RAWG API
   useEffect(() => {
@@ -1190,66 +1240,6 @@ const TournamentDashboard = () => {
       fetchGameBackground(tournament.game);
     }
   }, [tournament?.game]);
-
-  // Update BracketSVGStyle for more aggressive SVG and parent container overrides
-  const BracketSVGStyle = () => (
-    <style>{`
-      .bracket-svg-root,
-      .bracket-svg-root > div,
-      .bracket-svg-root svg {
-        width: 100% !important;
-        height: 100% !important;
-        min-width: 0 !important;
-        min-height: 0 !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-      }
-      .bracket-svg-root svg {
-        background: transparent !important;
-      }
-    `}</style>
-  );
-
-  // Add a blurred background and animated border/glow
-  const BracketPremiumOverlay = () => (
-    <>
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 0,
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        background: 'rgba(18,18,22,0.7)',
-        borderRadius: 32,
-        pointerEvents: 'none',
-      }} />
-      <div className="bracket-glow-border" style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        borderRadius: 32,
-        boxShadow: '0 0 32px 4px #a259ff88, 0 0 0 4px #18181b',
-        border: '2px solid #a259ff',
-        pointerEvents: 'none',
-        animation: 'bracketGlow 2s infinite alternate',
-        zIndex: 2,
-      }} />
-      <style>{`
-        @keyframes bracketGlow {
-          0% { box-shadow: 0 0 32px 4px #a259ff44, 0 0 0 4px #18181b; }
-          100% { box-shadow: 0 0 48px 8px #a259ffcc, 0 0 0 4px #18181b; }
-        }
-      `}</style>
-    </>
-  );
 
   if (loading) {
     return (
@@ -1287,44 +1277,45 @@ const TournamentDashboard = () => {
   return (
     <div className="min-h-screen bg-esports-dark text-white">
       <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+          <div className="flex items-center gap-3 sm:gap-4">
             {/* Game Logo */}
             {gameLogo ? (
-              <img src={gameLogo} alt={tournament.game + ' logo'} className="w-12 h-12 object-cover rounded border border-gray-700 bg-transparent" />
+              <img src={gameLogo} alt={tournament.game + ' logo'} className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded border border-gray-700 bg-transparent flex-shrink-0" />
             ) : (
-              <span className="w-12 h-12 flex items-center justify-center rounded bg-gray-800 border border-gray-700">
-                <GamepadIcon className="w-8 h-8 text-gaming-purple" />
+              <span className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded bg-gray-800 border border-gray-700 flex-shrink-0">
+                <GamepadIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gaming-purple" />
               </span>
             )}
-            <div>
-              <h1 className="text-3xl font-bold">{tournament.name}</h1>
-              <p className="text-gray-400 flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">{tournament.name}</h1>
+              <p className="text-gray-400 flex items-center gap-2 flex-wrap text-sm sm:text-base">
                 {tournament.game}
                 {/* Game Format */}
                 {(() => {
                   const gameInfo = esportsGames.games.find(g => g.name.toLowerCase() === tournament.game.toLowerCase());
                   const format = gameInfo?.formats.find(f => f.teamSize === tournament.team_size);
                   return format ? (
-                    <span className="ml-2 px-2 py-1 bg-gaming-gray/30 rounded text-xs font-semibold text-gaming-purple">{format.name}</span>
+                    <span className="px-2 py-1 bg-gaming-gray/30 rounded text-xs font-semibold text-gaming-purple">{format.name}</span>
                   ) : null;
                 })()}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button
               onClick={() => navigate(`/organizer/tournament/${slug}/edit`)}
-              className="bg-yellow-500 hover:bg-yellow-600"
+              className="bg-yellow-500 hover:bg-yellow-600 text-xs sm:text-sm px-2 sm:px-4"
+              size="sm"
             >
-              <Edit2 className="mr-2 h-4 w-4" />
-              Edit
+              <Edit2 className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Edit</span>
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                <Button variant="destructive" size="sm" className="text-xs sm:text-sm px-2 sm:px-4">
+                  <Trash2 className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Delete</span>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -1348,52 +1339,52 @@ const TournamentDashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           <Card className="bg-gaming-dark border-gaming-gray/30">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Trophy className="mr-2 h-5 w-5" />
+            <CardHeader className="pb-2 sm:pb-6">
+              <CardTitle className="flex items-center text-sm sm:text-base">
+                <Trophy className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                 Prize Pool
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-gaming-green">{tournament.prize_pool}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gaming-green">{tournament.prize_pool}</p>
             </CardContent>
           </Card>
 
           <Card className="bg-gaming-dark border-gaming-gray/30">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Users className="mr-2 h-5 w-5" />
+            <CardHeader className="pb-2 sm:pb-6">
+              <CardTitle className="flex items-center text-sm sm:text-base">
+                <Users className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                 Participants
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{tournament.current_participants} / {tournament.max_participants}</p>
+              <p className="text-xl sm:text-2xl font-bold">{tournament.current_participants} / {tournament.max_participants}</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gaming-dark border-gaming-gray/30">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Settings className="mr-2 h-5 w-5" />
+          <Card className="bg-gaming-dark border-gaming-gray/30 sm:col-span-2 lg:col-span-1">
+            <CardHeader className="pb-2 sm:pb-6">
+              <CardTitle className="flex items-center text-sm sm:text-base">
+                <Settings className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                 Status
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold capitalize">{tournament.status}</p>
+              <p className="text-xl sm:text-2xl font-bold capitalize">{tournament.status}</p>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="participants">Participants</TabsTrigger>
-            <TabsTrigger value="brackets">Brackets</TabsTrigger>
-            <TabsTrigger value="bans">Bans</TabsTrigger>
-            <TabsTrigger value="disputes">Disputes</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full overflow-x-auto flex-nowrap justify-start sm:justify-center pb-2 sm:pb-0 scrollbar-hide">
+            <TabsTrigger value="overview" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Overview</TabsTrigger>
+            <TabsTrigger value="participants" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Participants</TabsTrigger>
+            <TabsTrigger value="brackets" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Brackets</TabsTrigger>
+            <TabsTrigger value="bans" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Bans</TabsTrigger>
+            <TabsTrigger value="disputes" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Disputes</TabsTrigger>
+            <TabsTrigger value="settings" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -1451,21 +1442,23 @@ const TournamentDashboard = () => {
                 {participants.filter(p => p.participant_type === 'team').length === 0 ? (
                   <p className="text-gray-400">No teams registered yet.</p>
                 ) : (
-                      <div className="overflow-x-auto rounded-lg border border-gaming-gray/30">
+                  <>
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block overflow-x-auto rounded-lg border border-gaming-gray/30">
                         <table className="min-w-full bg-gaming-dark text-white">
                           <thead className="bg-gaming-gray/20">
                             <tr>
-                          <th className="py-2 px-4 text-left">Logo</th>
-                          <th className="py-2 px-4 text-left">Team Name</th>
-                              <th className="py-2 px-4 text-left">Registered</th>
-                              <th className="py-2 px-4 text-right">Actions</th>
+                          <th className="py-3 px-4 text-left text-sm font-semibold">Logo</th>
+                          <th className="py-3 px-4 text-left text-sm font-semibold">Team Name</th>
+                              <th className="py-3 px-4 text-left text-sm font-semibold">Registered</th>
+                              <th className="py-3 px-4 text-right text-sm font-semibold">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
                         {participants
                           .filter(p => p.participant_type === 'team')
                                 .map((participant) => (
-                            <tr key={participant.id} className="border-t border-gaming-gray/30 hover:bg-gaming-gray/10 cursor-pointer"
+                            <tr key={participant.id} className="border-t border-gaming-gray/30 hover:bg-gaming-gray/10 cursor-pointer transition-colors"
                               onClick={async () => {
                                 setSelectedTeam(participant);
                                 setTeamLoading(true);
@@ -1666,19 +1659,20 @@ const TournamentDashboard = () => {
                                 setTeamDialogOpen(true);
                               }}
                             >
-                              <td className="py-2 px-4">
+                              <td className="py-3 px-4">
                                 {participant.team_logo ? (
-                                  <img src={participant.team_logo} alt={participant.team_name || 'team'} className="w-8 h-8 rounded object-cover border border-gray-700" />
+                                  <img src={participant.team_logo} alt={participant.team_name || 'team'} className="w-10 h-10 rounded object-cover border border-gray-700" />
                                 ) : (
-                                  <span className="w-8 h-8 inline-flex items-center justify-center rounded bg-gray-800 border border-gray-700 text-xs">
+                                  <span className="w-10 h-10 inline-flex items-center justify-center rounded bg-gray-800 border border-gray-700 text-sm font-semibold">
                                     {(participant.team_name || 'T')[0]}
                                   </span>
                                 )}
                               </td>
-                              <td className="py-2 px-4 font-semibold">{participant.team_name}</td>
-                                    <td className="py-2 px-4 text-sm text-gray-400">{new Date(participant.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</td>
-                                    <td className="py-2 px-4 text-right">
-                                <Button size="sm" variant="secondary" className="mr-2"
+                              <td className="py-3 px-4 font-semibold">{participant.team_name}</td>
+                                    <td className="py-3 px-4 text-sm text-gray-400">{new Date(participant.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                                    <td className="py-3 px-4">
+                                <div className="flex items-center justify-end gap-2">
+                                <Button size="sm" variant="secondary" className="text-xs"
                                   onClick={(e) => { 
                                     e.stopPropagation(); 
                                     // Use the row's onClick handler which will populate members
@@ -1695,17 +1689,172 @@ const TournamentDashboard = () => {
                                 </Button>
                                       <Button size="sm" variant="destructive"
                                   onClick={(e) => { e.stopPropagation(); setBanDialogOpen(true); setBanTarget({ id: participant.id, userId: participant.user_id }); }}
-                                        className="flex items-center gap-1"
+                                        className="flex items-center gap-1 text-xs"
                                       >
-                                  <BanIcon className="w-4 h-4" />
-                                  Ban
+                                  <BanIcon className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">Ban</span>
                                       </Button>
+                                </div>
                                     </td>
                                   </tr>
                           ))}
                           </tbody>
                         </table>
                       </div>
+                      
+                      {/* Mobile Card View */}
+                      <div className="md:hidden space-y-3">
+                        {participants
+                          .filter(p => p.participant_type === 'team')
+                          .map((participant) => {
+                            // Parse team members for display
+                            const rawTokens = participant.team_members ? participant.team_members.split(',').map(s => s.trim()).filter(Boolean) : [];
+                            const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+                            const tokensAreIds = rawTokens.some(t => looksLikeUuid(t));
+                            const displayMembers = rawTokens.length > 0 && !tokensAreIds ? rawTokens : [];
+                            
+                            const handleOpenDialog = async () => {
+                              setSelectedTeam(participant);
+                              setTeamLoading(true);
+                              setTeamCaptain(null);
+                              
+                              // First, try to use the already-parsed members from display
+                              if (displayMembers.length > 0) {
+                                setSelectedTeamMembers(displayMembers);
+                                setTeamLoading(false);
+                                setTeamDialogOpen(true);
+                                return;
+                              }
+                              
+                              // Otherwise, try to resolve from database
+                              try {
+                                let teamId = participant.team_id as string | null;
+                                let ownerId: string | null = null;
+                                let logoUrl: string | null = participant.team_logo || null;
+                                
+                                if (!teamId && participant.team_name) {
+                                  const exact = await supabase
+                                    .from('teams')
+                                    .select('id, owner_id, logo_url')
+                                    .eq('name', participant.team_name || '')
+                                    .maybeSingle();
+                                  if (exact.data) {
+                                    teamId = exact.data.id;
+                                    ownerId = exact.data.owner_id;
+                                    logoUrl = logoUrl || exact.data.logo_url || null;
+                                  }
+                                }
+                                
+                                if (tournament?.id && participant.team_name) {
+                                  const { data: regRow } = await supabase
+                                    .from('tournament_participants')
+                                    .select('team_members')
+                                    .eq('tournament_id', tournament.id)
+                                    .eq('team_name', participant.team_name)
+                                    .maybeSingle();
+                                    
+                                  if (regRow?.team_members) {
+                                    const raw = Array.isArray(regRow.team_members)
+                                      ? (regRow.team_members as any[]).map(String)
+                                      : String(regRow.team_members);
+                                    const tokens = (Array.isArray(raw) ? raw : raw.split(',')).map((s: string) => s.trim()).filter(Boolean);
+                                    const looksUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+                                    const hasPlainNames = tokens.some(t => !looksUuid(t));
+                                    
+                                    if (tokens.length > 0 && hasPlainNames) {
+                                      setSelectedTeamMembers(tokens);
+                                      setTeamLoading(false);
+                                      setTeamDialogOpen(true);
+                                      return;
+                                    }
+                                  }
+                                }
+                                
+                                // Fallback: use raw tokens if available
+                                if (rawTokens.length > 0) {
+                                  setSelectedTeamMembers(rawTokens);
+                                } else {
+                                  setSelectedTeamMembers([]);
+                                }
+                              } catch (error) {
+                                console.error('Error loading team members:', error);
+                                setSelectedTeamMembers([]);
+                              } finally {
+                                setTeamLoading(false);
+                              }
+                              
+                              setTeamDialogOpen(true);
+                            };
+                            
+                            return (
+                              <div
+                                key={participant.id}
+                                className="bg-gaming-dark border border-gaming-gray/30 rounded-lg p-3 sm:p-4 space-y-2.5 sm:space-y-3 hover:border-gaming-purple/50 transition-colors"
+                              >
+                                <div className="flex items-center gap-2.5 sm:gap-3">
+                                  {participant.team_logo ? (
+                                    <img src={participant.team_logo} alt={participant.team_name || 'team'} className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover border border-gray-700 flex-shrink-0" />
+                                  ) : (
+                                    <span className="w-12 h-12 sm:w-14 sm:h-14 inline-flex items-center justify-center rounded-lg bg-gray-800 border border-gray-700 text-sm sm:text-base font-semibold flex-shrink-0">
+                                      {(participant.team_name || 'T')[0]}
+                                    </span>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-semibold text-white text-sm sm:text-base truncate">{participant.team_name}</h4>
+                                    <p className="text-xs text-gray-400 mt-0.5">
+                                      {new Date(participant.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                {/* Team Members Section */}
+                                {displayMembers.length > 0 && (
+                                  <div className="pt-2 border-t border-gaming-gray/30">
+                                    <p className="text-xs text-gray-400 mb-1.5 font-medium">Members ({displayMembers.length}):</p>
+                                    <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                                      {displayMembers.map((member, idx) => (
+                                        <span
+                                          key={idx}
+                                          className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-[10px] sm:text-xs text-gray-300 bg-gaming-gray/20 border border-gaming-gray/40"
+                                        >
+                                          {member}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                <div className="flex items-center gap-2 pt-2 border-t border-gaming-gray/30">
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    className="flex-1 text-xs h-8 sm:h-9"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenDialog();
+                                    }}
+                                  >
+                                    Manage
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="flex-1 text-xs h-8 sm:h-9 flex items-center justify-center gap-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setBanDialogOpen(true);
+                                      setBanTarget({ id: participant.id, userId: participant.user_id });
+                                    }}
+                                  >
+                                    <BanIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                    <span className="hidden xs:inline">Ban</span>
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -1717,29 +1866,36 @@ const TournamentDashboard = () => {
                   <DialogTitle className="text-white">{selectedTeam?.team_name || 'Team'}</DialogTitle>
                   <DialogDescription className="text-gray-400">Roster and management</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-3">
-                    <div>
-                    <div className="text-xs text-gray-400 mb-1">Players</div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-xs text-gray-400 mb-2 font-medium">Players</div>
                     {teamLoading ? (
                       <div className="text-sm text-gray-400">Loading roster…</div>
                     ) : selectedTeamMembers.length === 0 ? (
                       <div className="text-sm text-gray-400">No members found</div>
                     ) : (
-                      <>
+                      <div className="space-y-2">
                         {teamCaptain && (
-                          <div className="text-sm text-gaming-purple mb-1">Captain: {teamCaptain}</div>
+                          <div className="text-sm text-gaming-purple font-medium mb-2">Captain: {teamCaptain}</div>
                         )}
-                        <ul className="list-disc list-inside text-sm text-gray-200">
-                          {selectedTeamMembers.map((m, i) => <li key={i}>{m}</li>)}
-                                        </ul>
-                      </>
-                    )}
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTeamMembers.map((m, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center px-3 py-1.5 rounded-md bg-gaming-gray/20 text-sm text-gray-200 border border-gaming-gray/40"
+                            >
+                              {m}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="destructive" onClick={() => { setBanDialogOpen(true); setBanTarget({ id: selectedTeam?.id!, userId: selectedTeam?.user_id! }); }}>Ban Team</Button>
-                    <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>Close</Button>
-                    </div>
+                    )}
                   </div>
+                  <div className="flex justify-end gap-2 pt-2 border-t border-gaming-gray/30">
+                    <Button variant="destructive" onClick={() => { setBanDialogOpen(true); setBanTarget({ id: selectedTeam?.id!, userId: selectedTeam?.user_id! }); setTeamDialogOpen(false); }}>Ban Team</Button>
+                    <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>Close</Button>
+                  </div>
+                </div>
               </DialogContent>
             </Dialog>
           </TabsContent>
@@ -1791,6 +1947,7 @@ const TournamentDashboard = () => {
               <DisputeCenter tournamentId={tournament.id} organizerId={user.id} />
             )}
           </TabsContent>
+
 
           <TabsContent value="settings">
             <Card className="bg-gaming-dark border-gaming-gray/30">

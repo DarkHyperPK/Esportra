@@ -458,6 +458,339 @@ export type Database = {
         }
         Relationships: []
       }
+      teams: {
+        Row: {
+          id: string
+          name: string
+          created_by: string | null
+          owner_id: string | null
+          logo_url: string | null
+          game: string | null
+          games: Json | null
+          description: string | null
+          website_url: string | null
+          social_media: Json | null
+          achievements: Json | null
+          is_active: boolean | null
+          updated_at: string | null
+          game_format: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          created_by?: string | null
+          owner_id?: string | null
+          logo_url?: string | null
+          game?: string | null
+          games?: Json | null
+          description?: string | null
+          website_url?: string | null
+          social_media?: Json | null
+          achievements?: Json | null
+          is_active?: boolean | null
+          updated_at?: string | null
+          game_format?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          created_by?: string | null
+          owner_id?: string | null
+          logo_url?: string | null
+          game?: string | null
+          games?: Json | null
+          description?: string | null
+          website_url?: string | null
+          social_media?: Json | null
+          achievements?: Json | null
+          is_active?: boolean | null
+          updated_at?: string | null
+          game_format?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          id: string
+          team_id: string
+          user_id: string
+          role: string | null
+          joined_at: string | null
+          is_active: boolean | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          user_id: string
+          role?: string | null
+          joined_at?: string | null
+          is_active?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          team_id?: string
+          user_id?: string
+          role?: string | null
+          joined_at?: string | null
+          is_active?: boolean | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_maps: {
+        Row: {
+          id: string
+          game: string
+          map_name: string
+          map_image_url: string | null
+          is_active: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          game: string
+          map_name: string
+          map_image_url?: string | null
+          is_active?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          game?: string
+          map_name?: string
+          map_image_url?: string | null
+          is_active?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      tournament_map_pools: {
+        Row: {
+          id: string
+          tournament_id: string
+          map_id: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          tournament_id: string
+          map_id: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          tournament_id?: string
+          map_id?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_map_pools_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_map_pools_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "game_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_map_vetos: {
+        Row: {
+          id: string
+          match_id: string
+          tournament_id: string
+          team1_id: string | null
+          team2_id: string | null
+          veto_format: string | null
+          status: string | null
+          current_team_id: string | null
+          current_action: string | null
+          current_action_number: number | null
+          turn_started_at: string | null
+          turn_duration_seconds: number | null
+          team1_banned_maps: string[] | null
+          team2_banned_maps: string[] | null
+          selected_map_id: string | null
+          started_at: string | null
+          completed_at: string | null
+          created_at: string | null
+          updated_at: string | null
+          best_of: number | null
+          team1_picked_maps: Json | null
+          team2_picked_maps: Json | null
+          team1_link_token: string | null
+          team2_link_token: string | null
+        }
+        Insert: {
+          id?: string
+          match_id: string
+          tournament_id: string
+          team1_id?: string | null
+          team2_id?: string | null
+          veto_format?: string | null
+          status?: string | null
+          current_team_id?: string | null
+          current_action?: string | null
+          current_action_number?: number | null
+          turn_started_at?: string | null
+          turn_duration_seconds?: number | null
+          team1_banned_maps?: string[] | null
+          team2_banned_maps?: string[] | null
+          selected_map_id?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          best_of?: number | null
+          team1_picked_maps?: Json | null
+          team2_picked_maps?: Json | null
+          team1_link_token?: string | null
+          team2_link_token?: string | null
+        }
+        Update: {
+          id?: string
+          match_id?: string
+          tournament_id?: string
+          team1_id?: string | null
+          team2_id?: string | null
+          veto_format?: string | null
+          status?: string | null
+          current_team_id?: string | null
+          current_action?: string | null
+          current_action_number?: number | null
+          turn_started_at?: string | null
+          turn_duration_seconds?: number | null
+          team1_banned_maps?: string[] | null
+          team2_banned_maps?: string[] | null
+          selected_map_id?: string | null
+          started_at?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          best_of?: number | null
+          team1_picked_maps?: Json | null
+          team2_picked_maps?: Json | null
+          team1_link_token?: string | null
+          team2_link_token?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_map_vetos_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_map_vetos_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_map_vetos_team1_id_fkey"
+            columns: ["team1_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_map_vetos_team2_id_fkey"
+            columns: ["team2_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_map_veto_actions: {
+        Row: {
+          id: string
+          veto_id: string
+          match_id: string
+          team_id: string
+          action_type: string
+          map_id: string
+          action_number: number
+          created_at: string | null
+          side: string | null
+        }
+        Insert: {
+          id?: string
+          veto_id: string
+          match_id: string
+          team_id: string
+          action_type: string
+          map_id: string
+          action_number: number
+          created_at?: string | null
+          side?: string | null
+        }
+        Update: {
+          id?: string
+          veto_id?: string
+          match_id?: string
+          team_id?: string
+          action_type?: string
+          map_id?: string
+          action_number?: number
+          created_at?: string | null
+          side?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_map_veto_actions_veto_id_fkey"
+            columns: ["veto_id"]
+            isOneToOne: false
+            referencedRelation: "match_map_vetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_map_veto_actions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_map_veto_actions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_map_veto_actions_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "game_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -500,6 +833,22 @@ export type Database = {
               p_gamer_tag?: string
             }
         Returns: Json
+      }
+      initialize_match_veto: {
+        Args: {
+          p_match_id: string
+          p_tournament_id: string
+          p_team1_id?: string | null
+          p_team2_id?: string | null
+          p_veto_format?: string
+        }
+        Returns: string
+      }
+      reset_match_veto: {
+        Args: {
+          p_match_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

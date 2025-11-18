@@ -109,14 +109,27 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   };
 
   // Update role when profile changes (but don't override session role)
+  // Use ref to track previous profile role to avoid unnecessary updates
+  const prevProfileRoleRef = React.useRef<string | null>(null);
+  
   useEffect(() => {
     if (profile?.role) {
+      const currentProfileRole = profile.role;
+      const prevProfileRole = prevProfileRoleRef.current;
+      
+      // Only update if profile role actually changed
+      if (currentProfileRole === prevProfileRole) {
+        return;
+      }
+      
+      prevProfileRoleRef.current = currentProfileRole;
+      
       const sessionRole = localStorage.getItem('sessionRole') as UserRole;
       
       // Only use database role if no session role is set
       if (!sessionRole || !['casual', 'organizer', 'venue_owner', 'admin'].includes(sessionRole)) {
-        setCurrentRole(profile.role as UserRole);
-        localStorage.setItem('sessionRole', profile.role);
+        setCurrentRole(currentProfileRole as UserRole);
+        localStorage.setItem('sessionRole', currentProfileRole);
       }
     }
   }, [profile?.role]);
@@ -258,9 +271,23 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const canReportScores = currentRole === 'casual' || currentRole === 'admin';
   const canVerifyResults = currentRole === 'organizer' || currentRole === 'admin';
 
+  // Track previous user ID to prevent unnecessary reloads
+  const prevUserIdRef = React.useRef<string | null>(null);
+  const prevProfileIdRef = React.useRef<string | null>(null);
+  
   useEffect(() => {
-    loadCurrentRole();
-  }, [user, profile]);
+    const currentUserId = user?.id || null;
+    const currentProfileId = profile?.id || null;
+    const prevUserId = prevUserIdRef.current;
+    const prevProfileId = prevProfileIdRef.current;
+    
+    // Only reload if user or profile actually changed
+    if (currentUserId !== prevUserId || currentProfileId !== prevProfileId) {
+      prevUserIdRef.current = currentUserId;
+      prevProfileIdRef.current = currentProfileId;
+      loadCurrentRole();
+    }
+  }, [user?.id, profile?.id]);
 
   const value: RoleContextType = {
     currentRole,

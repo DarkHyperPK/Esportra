@@ -261,13 +261,15 @@ const TournamentDetails = () => {
   }, [slug, toast]);
 
   const checkRegistration = useCallback(async () => {
-    setRegistrationLoading(true);
+    // Only set loading to false if we have both user and tournament, otherwise keep loading
     if (!user?.id || !tournament?.id) {
+      // Keep loading state true if we don't have required data yet
+      setRegistrationLoading(true);
       setIsRegistered(false);
       setRegistrationDetails(null);
-      setRegistrationLoading(false);
       return;
     }
+    setRegistrationLoading(true);
     try {
       const { data: regData, error } = await sb
         .from('tournament_participants')
@@ -462,8 +464,13 @@ const TournamentDetails = () => {
     const initializeData = async () => {
       if (!slug || !isMounted) return;
       setLoading(true);
+      setRegistrationLoading(true); // Ensure loading state is set before fetching
+      // Fetch tournament data first, then registration status (which depends on tournament.id)
       await fetchTournamentData();
-      await checkRegistration();
+      // Only check registration if we have tournament data
+      if (isMounted) {
+        await checkRegistration();
+      }
     };
 
     initializeData();
@@ -472,6 +479,18 @@ const TournamentDetails = () => {
       isMounted = false;
     };
   }, [slug, checkRegistration, fetchTournamentData]);
+
+  // Check registration when tournament or user becomes available
+  useEffect(() => {
+    if (tournament?.id && user?.id && !registrationLoading) {
+      // Only check if we haven't already checked (registrationLoading would be false after first check)
+      // But if tournament just loaded, we need to check
+      const shouldCheck = !registrationDetails && !isRegistered;
+      if (shouldCheck) {
+        checkRegistration();
+      }
+    }
+  }, [tournament?.id, user?.id]);
 
   // Listen for team disband/delete events to refresh registration status
   useEffect(() => {
@@ -924,7 +943,12 @@ const TournamentDetails = () => {
 
             <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-white mb-4">Registration</h3>
-              {!user ? (
+              {loading || registrationLoading ? (
+                <div className="text-center py-4">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-gray-600 border-t-white"></div>
+                  <p className="text-gray-400 mt-2">Loading...</p>
+                </div>
+              ) : !user ? (
                 <div className="text-center py-4">
                   <p className="text-gray-400 mb-4">Please log in to register for this tournament</p>
                   <Button 

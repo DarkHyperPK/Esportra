@@ -9,84 +9,90 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { IdentityProvider } from "@/contexts/IdentityContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import React from 'react';
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Unauthorized from "./pages/Unauthorized";
-import SignUp from "./pages/auth/SignUp";
-import SignIn from "./pages/auth/SignIn";
-import Profile from "./pages/auth/Profile";
-import Callback from "./pages/auth/Callback";
-import AdminPortal from "./pages/admin/AdminPortal";
+import React, { Suspense, lazy } from 'react';
 import Navbar from "@/components/Navbar";
-import TestNavbar from "@/components/TestNavbar";
-import SimpleNavbar from "@/components/SimpleNavbar";
-
-// User 
-import UserDashboard from "./pages/user/Dashboard";
-import PlayerDashboard from "./pages/player/Dashboard";
-import TeamsPage from "./pages/player/Teams";
-
-// Admin
-import AdminDashboard from "./pages/admin/Dashboard";
-import AdminManagement from "./pages/admin/AdminManagement";
-import AdminAccess from "./pages/admin/AdminAccess";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
 import AdminLayout from "@/components/admin/AdminLayout";
-import DisputeCenter from "./pages/admin/DisputeCenter";
-import SystemSettings from "./pages/admin/SystemSettings";
-import VerificationSystemTool from "./pages/admin/tools/VerificationSystem";
-import AuditLogsTool from "./pages/admin/tools/AuditLogs";
-import UserManagementTool from "./pages/admin/tools/UserManagement";
-import TournamentManagementTool from "./pages/admin/tools/TournamentManagement";
-import VenueManagementTool from "./pages/admin/tools/VenueManagement";
-import AnalyticsTool from "./pages/admin/tools/Analytics";
-// Removed SystemStatusTool per request
+import { Loader2 } from "lucide-react";
+
+// Lazy load all route components for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Unauthorized = lazy(() => import("./pages/Unauthorized"));
+const SignUp = lazy(() => import("./pages/auth/SignUp"));
+const SignIn = lazy(() => import("./pages/auth/SignIn"));
+const Profile = lazy(() => import("./pages/auth/Profile"));
+const Callback = lazy(() => import("./pages/auth/Callback"));
+const AdminPortal = lazy(() => import("./pages/admin/AdminPortal"));
+
+// User 
+const UserDashboard = lazy(() => import("./pages/user/Dashboard"));
+const PlayerDashboard = lazy(() => import("./pages/player/Dashboard"));
+const TeamsPage = lazy(() => import("./pages/player/Teams"));
+
+// Admin
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const AdminManagement = lazy(() => import("./pages/admin/AdminManagement"));
+const AdminAccess = lazy(() => import("./pages/admin/AdminAccess"));
+const DisputeCenter = lazy(() => import("./pages/admin/DisputeCenter"));
+const SystemSettings = lazy(() => import("./pages/admin/SystemSettings"));
+const VerificationSystemTool = lazy(() => import("./pages/admin/tools/VerificationSystem"));
+const AuditLogsTool = lazy(() => import("./pages/admin/tools/AuditLogs"));
+const UserManagementTool = lazy(() => import("./pages/admin/tools/UserManagement"));
+const TournamentManagementTool = lazy(() => import("./pages/admin/tools/TournamentManagement"));
+const VenueManagementTool = lazy(() => import("./pages/admin/tools/VenueManagement"));
+const AnalyticsTool = lazy(() => import("./pages/admin/tools/Analytics"));
 
 // Venue Owner
-import VenueOwnerDashboard from "./pages/venue-owner/Dashboard";
+const VenueOwnerDashboard = lazy(() => import("./pages/venue-owner/Dashboard"));
 
 // Tournament Organizer
-import OrganizerDashboard from "./pages/organizer/Dashboard";
-import TournamentList from "./pages/organizer/TournamentList";
-import ManageTournaments from "./pages/organizer/ManageTournaments";
-import TournamentManage from "./pages/organizer/TournamentManage";
-import EditTournament from "./pages/tournaments/Edit";
-import TournamentBrackets from "./pages/tournaments/Brackets";
-// Tournament Details
-import TournamentDetailsUser from "./pages/tournaments/Details";
-import TournamentDetails from "./pages/admin/TournamentDetails";
-
+const OrganizerDashboard = lazy(() => import("./pages/organizer/Dashboard"));
+const TournamentList = lazy(() => import("./pages/organizer/TournamentList"));
+const ManageTournaments = lazy(() => import("./pages/organizer/ManageTournaments"));
+const TournamentManage = lazy(() => import("./pages/organizer/TournamentManage"));
+const EditTournament = lazy(() => import("./pages/tournaments/Edit"));
+const TournamentBrackets = lazy(() => import("./pages/tournaments/Brackets"));
+const TournamentDetailsUser = lazy(() => import("./pages/tournaments/Details"));
+const TournamentDetails = lazy(() => import("./pages/admin/TournamentDetails"));
 
 // Venues
-import VenueSearch from "./pages/venues/Search";
-import FeaturedVenues from "./pages/venues/Featured";
-import VenueDetails from "./pages/venues/Details";
-import ListVenue from "./pages/venues/ListVenue";
+const VenueSearch = lazy(() => import("./pages/venues/Search"));
+const FeaturedVenues = lazy(() => import("./pages/venues/Featured"));
+const VenueDetails = lazy(() => import("./pages/venues/Details"));
+const ListVenue = lazy(() => import("./pages/venues/ListVenue"));
 
 // Tournaments
-import UpcomingTournaments from "./pages/tournaments/Upcoming";
-import OngoingTournaments from "./pages/tournaments/Ongoing";
-import CreateTournament from "./pages/tournaments/Create";
+const UpcomingTournaments = lazy(() => import("./pages/tournaments/Upcoming"));
+const OngoingTournaments = lazy(() => import("./pages/tournaments/Ongoing"));
+const CreateTournament = lazy(() => import("./pages/tournaments/Create"));
 
 // About
-import AboutCompany from "./pages/about/Company";
-import ContactPage from "./pages/about/Contact";
-import FAQPage from "./pages/about/FAQ";
-import AboutPage from "./pages/About";
-import PrivacyPage from "./pages/Privacy";
-import CareersPage from "./pages/Careers";
-import ContactStandalone from "./pages/Contact";
+const AboutCompany = lazy(() => import("./pages/about/Company"));
+const ContactPage = lazy(() => import("./pages/about/Contact"));
+const FAQPage = lazy(() => import("./pages/about/FAQ"));
+const AboutPage = lazy(() => import("./pages/About"));
+const PrivacyPage = lazy(() => import("./pages/Privacy"));
+const CareersPage = lazy(() => import("./pages/Careers"));
+const ContactStandalone = lazy(() => import("./pages/Contact"));
 
 // App Download
-import AppDownloadPage from "./pages/AppDownload";
+const AppDownloadPage = lazy(() => import("./pages/AppDownload"));
 
 // Notifications
-import NotificationsPage from "./pages/notifications/Notifications";
+const NotificationsPage = lazy(() => import("./pages/notifications/Notifications"));
 
-import TournamentHistoryPage from './pages/TournamentHistory';
-import VerificationStatus from './pages/VerificationStatus';
-import OrganizerDisputesPage from './pages/organizer/Disputes';
+const TournamentHistoryPage = lazy(() => import('./pages/TournamentHistory'));
+const VerificationStatus = lazy(() => import('./pages/VerificationStatus'));
+const OrganizerDisputesPage = lazy(() => import('./pages/organizer/Disputes'));
+const MapVetoToken = lazy(() => import('./pages/tournaments/MapVetoToken'));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="min-h-screen bg-esports-dark text-white flex items-center justify-center">
+    <Loader2 className="h-8 w-8 animate-spin text-gaming-purple" />
+  </div>
+);
 
 // Test Supabase connection on app start
 import './utils/testSupabase';
@@ -100,7 +106,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const AppContent = () => {
+const AppContent = React.memo(() => {
   const location = useLocation();
   const isHome = location.pathname === '/';
 
@@ -110,7 +116,8 @@ const AppContent = () => {
       <Sonner />
       <Navbar />
       <div style={{ paddingTop: isHome ? '0px' : '80px' }}>
-        <Routes>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
           <Route path="/" element={<Index />} />
           
           {/* Auth Routes */}
@@ -330,6 +337,7 @@ const AppContent = () => {
           } />
           <Route path="/tournaments/edit/:slug" element={<EditTournament />} />
           <Route path="/tournaments/:slug/brackets" element={<TournamentBrackets />} />
+          <Route path="/map-veto/:token" element={<MapVetoToken />} />
           
           {/* Company Pages */}
           <Route path="/about" element={<AboutPage />} />
@@ -357,33 +365,34 @@ const AppContent = () => {
           
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
+          </Routes>
+        </Suspense>
       </div>
     </>
   );
-};
+});
+
+AppContent.displayName = 'AppContent';
 
 const App = () => {
   return (
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <AuthProvider>
-            <RoleProvider>
-              <IdentityProvider>
-                <TooltipProvider>
-                  <NotificationProvider>
-                    <AdminProvider>
-                      <AppContent />
-                    </AdminProvider>
-                  </NotificationProvider>
-                </TooltipProvider>
-              </IdentityProvider>
-            </RoleProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <RoleProvider>
+            <IdentityProvider>
+              <TooltipProvider>
+                <NotificationProvider>
+                  <AdminProvider>
+                    <AppContent />
+                  </AdminProvider>
+                </NotificationProvider>
+              </TooltipProvider>
+            </IdentityProvider>
+          </RoleProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 };
 

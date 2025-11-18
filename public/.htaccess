@@ -1,10 +1,27 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
+  
+  # Skip rewriting if the file exists
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+  
+  # Skip rewriting if the directory exists
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  
+  # Skip rewriting for asset files (JS, CSS, images, fonts, etc.)
+  RewriteCond %{REQUEST_URI} \.(js|mjs|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json|webp|avif)$ [NC]
+  RewriteRule ^ - [L]
+  
+  # For all other requests (routes), serve index.html
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Set correct MIME types for JavaScript modules
+<IfModule mod_mime.c>
+  AddType application/javascript js mjs
+  AddType text/css css
 </IfModule>
 
 # Enable compression

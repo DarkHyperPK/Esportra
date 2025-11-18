@@ -50,9 +50,35 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     setIsMounted(true);
   }, []);
 
-  // Handle auth state changes
+  // Track previous user ID to detect actual user changes
+  const prevUserIdRef = React.useRef<string | null>(null);
+  
+  // Track previous profile ID to prevent loops
+  const prevProfileIdRef = React.useRef<string | null>(null);
+  
+  // Handle auth state changes - only refetch when user actually changes
   useEffect(() => {
     if (!isMounted) return;
+    
+    // Skip if still loading auth state
+    if (authLoading) return;
+    
+    const currentUserId = user?.id || null;
+    const currentProfileId = profile?.id || null;
+    const prevUserId = prevUserIdRef.current;
+    const prevProfileId = prevProfileIdRef.current;
+    
+    // Only refetch if user actually changed (not just on tab switch)
+    // Also check if profile ID changed to avoid loops
+    if (currentUserId === prevUserId && currentProfileId === prevProfileId && profile) {
+      // User and profile haven't changed - no need to refetch
+      setLoading(false);
+      return;
+    }
+    
+    // Update refs for next comparison
+    prevUserIdRef.current = currentUserId;
+    prevProfileIdRef.current = currentProfileId;
     
     const handleUserChange = async () => {
       setError(null);
@@ -65,6 +91,13 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
       });
       
       if (user) {
+        // Only fetch if we don't already have a profile for this user
+        if (profile && profile.id === user.id) {
+          console.log("✅ Profile already loaded, skipping refetch");
+          setLoading(false);
+          return;
+        }
+        
         try {
           console.log("✅ Auth state changed, user is logged in:", user.id);
           const profileResult = await fetchProfile(user.id);
@@ -74,6 +107,8 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
             console.log("⚠️ No profile found for authenticated user. User may need to complete profile setup.");
           } else {
             console.log("✅ Profile loaded successfully");
+            // Update profile ID ref after successful fetch
+            prevProfileIdRef.current = profileResult.id;
           }
         } catch (err: any) {
           console.error("❌ Error fetching profile:", err);
@@ -82,15 +117,16 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
           console.log("🏁 Setting loading to false");
           setLoading(false);
         }
-      } else if (!authLoading) {
+      } else {
         console.log("🚪 Auth state changed, no user logged in");
         clearProfile();
+        prevProfileIdRef.current = null;
         setLoading(false);
       }
     };
     
     handleUserChange();
-  }, [user, authLoading, isMounted]);
+  }, [user?.id, authLoading, isMounted]); // Removed profile?.id from dependencies to prevent loops
 
   // React to auth errors
   useEffect(() => {
