@@ -68,7 +68,7 @@ export function ParticipantListModal({
           tournament_id,
           registered_at,
           profile:profiles(username, full_name, email),
-          registration:tournament_registrations!inner(id, registration_type, team_name, team_members, team_email, team_phone)
+          registration:tournament_participants!inner(id, registration_type, team_name, team_members, team_email, team_phone)
         `)
         .eq('tournament_id', tournamentId);
 
@@ -108,9 +108,9 @@ export function ParticipantListModal({
 
         if (participantError) throw participantError;
 
-        // Delete from tournament_registrations
+        // Delete from tournament_participants
         const { error: registrationError } = await supabase
-          .from('tournament_registrations')
+          .from('tournament_participants')
           .delete()
           .eq('user_id', userId)
           .eq('tournament_id', tournamentId);

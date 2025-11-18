@@ -69,7 +69,7 @@ const TournamentBrackets = () => {
   const fetchParticipants = async () => {
     try {
       const { data, error } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .select('id, registration_type, team_name, profiles(username)')
         .eq('tournament_id', tournamentId)
         .eq('banned', false);

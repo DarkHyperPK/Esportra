@@ -43,7 +43,7 @@ const TournamentHistoryPage = () => {
       } else {
         // Users: only tournaments they participated in
         const res = await (supabase as any)
-          .from('tournament_registrations')
+          .from('tournament_participants')
           .select('tournament_id, tournaments!inner(id, name, date, status, finished, slug)')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });

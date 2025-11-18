@@ -538,11 +538,11 @@ const TournamentDashboard = () => {
           (teamRows || []).forEach((t: any) => logoById.set(t.id, t.logo_url || null));
           participants.forEach(p => { if (p.team_id && logoById.has(p.team_id)) p.team_logo = logoById.get(p.team_id) || null; });
         }
-        // Fallback by team_name from tournament_registrations or teams
+        // Fallback by team_name from tournament_participants or teams
         const byNames = participants.filter(p => p.participant_type === 'team' && !p.team_logo && p.team_name).map(p => p.team_name as string);
         if (byNames.length > 0) {
           const { data: regRows } = await supabase
-            .from('tournament_registrations')
+            .from('tournament_participants')
             .select('team_name, team_logo')
             .in('team_name', byNames);
           const logoByName = new Map<string, string | null>();

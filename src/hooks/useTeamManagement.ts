@@ -873,15 +873,15 @@ export const useTeamManagement = () => {
         // Continue anyway - try to clean up other things
       }
       
-      // Also try to delete from tournament_registrations (legacy table if it exists)
+      // Also try to delete from tournament_participants (legacy table if it exists)
       try {
         await supabase
-          .from('tournament_registrations')
+          .from('tournament_participants')
           .delete()
           .eq('team_id', teamId);
       } catch (e) {
         // Ignore if table doesn't exist
-        console.warn('tournament_registrations cleanup skipped:', e);
+        console.warn('tournament_participants cleanup skipped:', e);
       }
 
       // 2) Delete any pending/in-flight invites for this team

@@ -79,7 +79,7 @@ export interface Database {
           updated_at?: string
         }
       }
-      tournament_registrations: {
+      tournament_participants: {
         Row: {
           id: string
           tournament_id: string
@@ -127,13 +127,13 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: "tournament_registrations_tournament_id_fkey"
+            foreignKeyName: "tournament_participants_tournament_id_fkey"
             columns: ["tournament_id"]
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tournament_registrations_user_id_fkey"
+            foreignKeyName: "tournament_participants_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "profiles"
             referencedColumns: ["id"]

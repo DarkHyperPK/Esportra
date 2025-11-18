@@ -23,7 +23,7 @@ export function useTournamentRegistrationStatus(tournamentIds: string[]) {
       console.log('[useTournamentRegistrationStatus] tournamentIds:', tournamentIds);
       // Fetch all registrations for this user and these tournaments
       const { data, error } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .select('tournament_id')
         .in('tournament_id', tournamentIds)
         .eq('user_id', user.id);

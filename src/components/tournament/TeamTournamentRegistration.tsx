@@ -17,7 +17,7 @@ import {
   Calendar, 
   Trophy, 
   DollarSign,
-  CheckCircle,
+  CheckCircle, 
   AlertCircle,
   Loader2,
   Shield,
@@ -28,9 +28,9 @@ import { useGameLogo, useGameLogos } from '@/hooks/useGameLogo';
 
 interface TeamTournamentRegistrationProps {
   tournament: {
-    id: string;
-    name: string;
-    game: string;
+  id: string;
+  name: string;
+  game: string;
     start_date: string;
     entry_fee?: number;
     prize_pool?: number;
@@ -98,16 +98,16 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   }, [selectedTeamId, tournament.game, requiredMembers]);
 
   const checkExistingRegistration = async () => {
-    if (!user) return;
-    try {
+      if (!user) return;
+      try {
       const { data } = await supabase
         .from('tournament_participants')
-        .select('*')
-        .eq('tournament_id', tournament.id)
+          .select('*')
+          .eq('tournament_id', tournament.id)
         .eq('team_captain_id', user.id)
         .eq('participant_type', 'team')
-        .maybeSingle();
-      if (data) {
+          .maybeSingle();
+        if (data) {
         // Already registered; simply notify parent so the dialog can close
         onRegistrationComplete?.();
       }
@@ -330,8 +330,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
             <p className="text-gray-400 text-sm ml-12">
               Register your team for <span className="text-white font-medium">{tournament.name}</span>
             </p>
-          </div>
         </div>
+      </div>
       </CardHeader>
       <CardContent className="space-y-5 pt-5">
         {/* Tournament Info - Clean Minimal */}
@@ -361,7 +361,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
               ) : (
                 <Gamepad2 className="w-[64px] h-[64px] text-gray-400" />
               )}
-              <div>
+          <div>
                 <span className="text-xs text-gray-500 block mb-1">Game</span>
                 <span className="text-white font-semibold">{tournament.game}</span>
           </div>
@@ -379,27 +379,27 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
                   <DollarSign className="w-4 h-4 text-gray-400" />
-                </div>
+            </div>
                 <div>
                   <span className="text-xs text-gray-500 block mb-1">Entry Fee</span>
                   <span className="text-white font-medium text-sm">PKR {tournament.entry_fee}</span>
-                </div>
-              </div>
+            </div>
+          </div>
             )}
             {tournament.prize_pool && tournament.prize_pool > 0 && (
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg">
                   <Trophy className="w-4 h-4 text-gray-400" />
-          </div>
+        </div>
                 <div>
                   <span className="text-xs text-gray-500 block mb-1">Prize Pool</span>
                   <span className="text-white font-medium text-sm">PKR {tournament.prize_pool}</span>
-            </div>
-            </div>
-            )}
-        </div>
       </div>
-
+        </div>
+            )}
+          </div>
+        </div>
+        
         {/* Captain Teams - Clean Minimal */}
         {captainTeams.length === 0 ? (
           <Alert className="bg-[#1a0a0a] border border-[#3a1a1a]">
@@ -413,13 +413,13 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-4 h-4 text-gray-400" />
               <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Select Your Team</span>
-            </div>
+      </div>
             {captainTeams.map((team) => {
               const isEligible = eligibleTeamIds.has(team.id);
               const errs = ineligibleReasons[team.id] || [];
               const isSelected = selectedTeamId === team.id;
-              
-              return (
+
+  return (
                 <div
                   key={team.id}
                   className={`border rounded-lg transition-all ${
@@ -445,17 +445,17 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                           {isSelected && isEligible && (
                             <div className="w-2 h-2 rounded-full bg-[#0a0a0a]" />
                           )}
-                        </div>
           </div>
-          
+        </div>
+        
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <div className="text-white font-semibold text-base flex items-center gap-2">
                             {team.name}
                             {isSelected && (
                               <CheckCircle className="w-4 h-4 text-white" />
-                            )}
-                          </div>
+            )}
+          </div>
                           {isEligible ? (
                             <Badge className="bg-[#1a3a1a] border border-[#2a5a2a] text-green-300 px-2.5 py-0.5 text-xs">
                               <CheckCircle className="w-3 h-3 mr-1" />
@@ -467,8 +467,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                               Not Eligible
                             </Badge>
               )}
-            </div>
-                        
+      </div>
+
                         {!isEligible && errs.length > 0 && (
                           <div className="mt-2 p-2 bg-[#1a0a0a] border border-[#3a1a1a] rounded">
                             <div className="text-xs text-red-300 flex items-center gap-1.5">
@@ -534,18 +534,18 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                                                 e.currentTarget.style.display = 'none';
                                               }}
                                             />
-                                          </div>
-                                        ) : (
+          </div>
+              ) : (
                                           <Shield className="w-4 h-4 text-gray-400" />
-                                        )}
+              )}
                                         <span>{r.name} · {r.game}{r.format ? ` · ${r.format}` : ''}</span>
-                                      </div>
+            </div>
                                     </SelectItem>
                                   ))
                                 ) : (
                                   <div className="px-3 py-4 text-center text-gray-500 text-sm">
                                     No matching roster found
-          </div>
+              </div>
                                 )}
                               </SelectContent>
                             </Select>
@@ -568,15 +568,15 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                                       {selectedRoster?.game === tournament.game && Number(selectedRoster?.team_size) !== requiredMembers && 
                                         `Team size mismatch: ${selectedRoster?.team_size} ≠ ${requiredMembers} required`}
                                     </span>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </div>
+                              );
+                            })()}
+                </div>
+                        )}
+            </div>
+          </div>
+        </div>
                 </div>
               );
             })}
