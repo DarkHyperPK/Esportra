@@ -30,28 +30,51 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Split node_modules into vendor chunks
+          // CRITICAL: React and React-DOM must be in the same chunk and load first
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+            // React core must be together - check for exact react package paths
+            if (
+              id.includes('/react/') || 
+              id.includes('/react-dom/') || 
+              id.includes('\\react\\') || 
+              id.includes('\\react-dom\\') ||
+              id.includes('react-router')
+            ) {
               return 'react-vendor';
             }
-            if (id.includes('@radix-ui')) {
-              return 'ui-vendor';
+            // Exclude react-related packages from other chunks
+            if (id.includes('react-hook-form') || id.includes('@hookform')) {
+              return 'form-vendor';
             }
+            // Supabase (might depend on React)
             if (id.includes('@supabase')) {
               return 'supabase-vendor';
             }
-            if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform')) {
-              return 'form-vendor';
+            // UI libraries (depend on React)
+            if (id.includes('@radix-ui')) {
+              return 'ui-vendor';
             }
-            // Other node_modules
+            // Other node_modules - ensure no React code here
             return 'vendor';
           }
+        },
+        // Ensure proper chunk ordering
+        chunkFileNames: (chunkInfo) => {
+          // React vendor should load first
+          if (chunkInfo.name === 'react-vendor') {
+            return 'assets/react-vendor-[hash].js';
+          }
+          return 'assets/[name]-[hash].js';
         },
       },
     },
     // Optimize chunk size
     chunkSizeWarningLimit: 1000,
+    // Ensure common chunks are properly handled
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true,
+    },
   },
   define: {
     global: 'globalThis',
