@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Plus, X, Save } from 'lucide-react';
+import { Plus, X, Save, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface GameMap {
@@ -232,38 +232,45 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
             </Button>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {allMaps.map((map) => {
               const isInPool = poolMaps.includes(map.id);
+              const mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+              
               return (
                 <div
                   key={map.id}
                   className={cn(
-                    'flex items-center justify-between p-3 rounded-lg border',
+                    'group relative rounded-lg overflow-hidden border-2 transition-all duration-200 cursor-pointer',
                     isInPool
-                      ? 'bg-blue-900/20 border-blue-700'
-                      : 'bg-gray-800/50 border-gray-700'
+                      ? 'border-green-500 shadow-lg shadow-green-500/20'
+                      : 'border-gray-700 hover:border-gray-600'
                   )}
+                  onClick={() => toggleMapInPool(map.id, isInPool)}
+                  style={{
+                    backgroundImage: `url(${mapImageUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    minHeight: '160px'
+                  }}
                 >
-                  <div className="flex items-center gap-3 flex-1">
-                    <Checkbox
-                      checked={isInPool}
-                      onCheckedChange={() => toggleMapInPool(map.id, isInPool)}
-                    />
-                    {map.map_image_url && (
-                      <img
-                        src={map.map_image_url}
-                        alt={map.map_name}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                    )}
-                    <span className="font-medium text-white">{map.map_name}</span>
-                  </div>
+                  {/* Gradient overlay from bottom */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+                  
+                  {/* Checkmark indicator - top right */}
                   {isInPool && (
-                    <Badge variant="secondary" className="bg-blue-600">
-                      In Pool
-                    </Badge>
+                    <div className="absolute top-2 right-2 z-20 bg-green-500 rounded-full p-1.5 shadow-lg">
+                      <Check className="h-4 w-4 text-white" strokeWidth={3} />
+                    </div>
                   )}
+                  
+                  {/* Map name in bottom gradient area */}
+                  <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
+                    <span className="text-white font-bold text-sm sm:text-base block text-center" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
+                      {map.map_name}
+                    </span>
+                  </div>
                 </div>
               );
             })}

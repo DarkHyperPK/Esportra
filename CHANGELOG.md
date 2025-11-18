@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-01-XX
+
+### Fixed
+- **Map Veto UI**: Fixed BO selection screen mobile alignment - buttons now stack vertically on mobile devices
+- **Map Veto UX**: Fixed scroll position reset issue - dialog now preserves scroll position after each map action (ban/pick)
+- **Landing Page**: Improved hero section button styling with better text boxes, shadows, and contrast
+- **Landing Page**: Adjusted hero section background transparency for better text visibility (increased overlay opacity to 65%)
+- **Landing Page**: Reduced button sizes for better proportions while maintaining visibility
+
+### Changed
+- BO selection dialog now uses responsive grid layout (1 column on mobile, 3 columns on desktop)
+- Hero section buttons now have gradient backgrounds, icons, and enhanced shadows
+- Background overlay opacity increased from 40% to 65% for improved text readability
+
 ## [0.2.0] - 2024-11-22
 
 ### Added

@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { MapVeto } from '@/components/tournament/MapVeto';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { UploadCloud, Eye, Clock, Settings, Radio, Copy, Check, Map as MapIcon } from 'lucide-react';
+import { UploadCloud, Eye, Settings, Radio, Copy, Check, Map as MapIcon } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
 import { Tournament } from '@/hooks/useTournaments';
 import { supabase } from '@/lib/supabase';
@@ -63,59 +63,6 @@ interface BracketMatch {
   resultComments?: string[];
   partyCode?: string | null;
 }
-
-// Timer component for waiting period
-const WaitingTimer: React.FC<{ endTime: number; onComplete: () => void }> = ({ endTime, onComplete }) => {
-  const [timeRemaining, setTimeRemaining] = React.useState(Math.max(0, Math.floor((endTime - Date.now()) / 1000)));
-  
-  React.useEffect(() => {
-    if (timeRemaining <= 0) {
-      onComplete();
-      return;
-    }
-    const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
-      setTimeRemaining(remaining);
-      if (remaining === 0) {
-        onComplete();
-        clearInterval(interval);
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [endTime, onComplete, timeRemaining]);
-  
-  const minutes = Math.floor(timeRemaining / 60);
-  const seconds = timeRemaining % 60;
-  const totalSeconds = minutes * 60 + seconds;
-  const progress = 1 - (totalSeconds / 300); // 5 minutes = 300 seconds
-  
-  return (
-    <div className="fixed top-6 right-6 z-50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-emerald-500/50 rounded-xl p-6 shadow-2xl backdrop-blur-sm min-w-[280px]">
-      <div className="flex items-start gap-4">
-        <div className="relative">
-          <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping"></div>
-          <Clock className="w-8 h-8 text-emerald-400 relative z-10" />
-        </div>
-        <div className="flex-1">
-          <div className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1">Waiting for Players</div>
-          <div className="text-3xl font-black text-white font-mono mb-2 tracking-tight">
-            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-          </div>
-          {/* Progress bar */}
-          <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-1000 ease-linear"
-              style={{ width: `${progress * 100}%` }}
-            />
-          </div>
-          <div className="text-xs text-slate-400 mt-2">
-            Teams joining... Veto setup will begin automatically
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const TournamentBrackets = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -1698,6 +1645,43 @@ const TournamentBrackets = () => {
         .delete()
         .in('match_id', ids);
       
+      // Reset map veto for each match using the same RPC function that the map veto component uses
+      // Then also clear best_of and selected_map_pool to start from scratch
+      console.log('[Brackets] Resetting map vetos for', ids.length, 'matches');
+      for (const matchId of ids) {
+        try {
+          // First, call the RPC function to reset the veto state
+          const { error: vetoResetError } = await supabase.rpc('reset_match_veto', {
+            p_match_id: matchId,
+          });
+          
+          if (vetoResetError) {
+            // If veto doesn't exist for this match, that's okay - just log and continue
+            if (vetoResetError.code !== 'P0001' && !vetoResetError.message?.includes('not found')) {
+              console.error(`[Brackets] Error resetting veto for match ${matchId}:`, vetoResetError);
+            }
+          } else {
+            // After reset, also clear best_of and selected_map_pool to start from scratch
+            // This ensures the flow goes: map pool selection -> BO selection -> map pick/ban
+            const { error: clearError } = await supabase
+              .from('match_map_vetos')
+              .update({
+                best_of: null,
+                selected_map_pool: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('match_id', matchId);
+            
+            if (clearError) {
+              console.error(`[Brackets] Error clearing best_of/selected_map_pool for match ${matchId}:`, clearError);
+            }
+          }
+        } catch (error: any) {
+          // If RPC function doesn't exist or match has no veto, that's okay - continue
+          console.log(`[Brackets] Could not reset veto for match ${matchId} (may not exist):`, error?.message || error);
+        }
+      }
+      
       // Reset all matches: set status to 'pending', clear scores, clear winners, clear party codes
       console.log('[Brackets] resetBracketInDatabase: Resetting all matches for tournament:', tournament.id);
       
@@ -1971,10 +1955,11 @@ const TournamentBrackets = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0 sm:p-6">
               {bracketMatches.length > 0 ? (
-                <div className="pb-4">
-                  <BracketVisualization
+                <div className="w-full overflow-x-auto pb-4">
+                  <div className="min-w-0 max-w-full">
+                    <BracketVisualization
                     matches={bracketMatches}
                     teamCount={teamCount}
                     tournamentId={tournament?.id}
@@ -2072,6 +2057,7 @@ const TournamentBrackets = () => {
                       }
                     }}
                   />
+                  </div>
                 </div>
               ) : matches.length > 0 ? (
                 <div className="space-y-8">
@@ -2347,7 +2333,6 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
   const [goLiveDialogOpen, setGoLiveDialogOpen] = React.useState(false);
   const [goLiveMatch, setGoLiveMatch] = React.useState<BracketMatch | null>(null);
   const [partyCodeInput, setPartyCodeInput] = React.useState('');
-  const [waitingForPlayers, setWaitingForPlayers] = React.useState<{ matchId: string; endTime: number } | null>(null);
   const [vetoSetupMatchId, setVetoSetupMatchId] = React.useState<string | null>(null);
   
   const getRoundName = (round: number) => {
@@ -2608,16 +2593,6 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
       
       setGoLiveDialogOpen(false);
       setGoLiveMatch(null);
-      
-      // Start 5-minute timer for team members to join (informational only, not a constraint)
-      const endTime = Date.now() + 5 * 60 * 1000; // 5 minutes from now
-      setWaitingForPlayers({ matchId: dbId, endTime });
-      
-      // Timer automatically clears after 5 minutes (just for display purposes)
-      setTimeout(() => {
-        setWaitingForPlayers(null);
-      }, 5 * 60 * 1000);
-      
       setPartyCodeInput('');
       
       // Real-time subscription will update UI automatically
@@ -2672,11 +2647,11 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
   };
 
   return (
-    <div className="flex gap-4 sm:gap-8 lg:gap-12 min-w-max py-4 sm:py-6 lg:py-8 overflow-x-auto">
+    <div className="flex gap-4 sm:gap-8 lg:gap-12 py-4 sm:py-6 lg:py-8 px-4 sm:px-6">
       {Array.from({ length: rounds }, (_, i) => i + 1).map(round => {
         const roundMatches = getMatchesByRound(round);
         return (
-          <div key={round} className="flex flex-col gap-4 sm:gap-6 min-w-[280px] sm:min-w-[320px] relative">
+          <div key={round} className="flex flex-col gap-4 sm:gap-6 min-w-[280px] sm:min-w-[320px] flex-shrink-0 relative">
             <div className="sticky top-0 z-10 bg-gradient-to-b from-gaming-dark via-gaming-dark/95 to-gaming-dark/80 backdrop-blur-md supports-[backdrop-filter]:bg-gaming-dark/60 border-b-2 border-gaming-purple/30 py-3 px-2 text-center shadow-lg">
               <h3 className="text-lg sm:text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gaming-purple via-purple-400 to-gaming-purple drop-shadow-lg">
                 {getRoundName(round)}
@@ -2700,8 +2675,10 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
                     <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-yellow-500/10 via-transparent to-yellow-500/10 animate-pulse pointer-events-none" />
                   )}
                   
-                  {/* right connector stub */}
-                  <div className="hidden lg:block absolute right-[-24px] top-1/2 w-6 h-0.5 bg-gradient-to-r from-gaming-gray/60 to-transparent" />
+                  {/* right connector stub - only show if not last round */}
+                  {round < rounds && (
+                    <div className="hidden lg:block absolute right-[-24px] top-1/2 w-6 h-0.5 bg-gradient-to-r from-gaming-gray/60 to-transparent" />
+                  )}
                   
                   {/* Match header */}
                   <div className="flex items-center justify-between mb-3 sm:mb-4 pb-2 border-b border-gaming-gray/30">
@@ -3037,9 +3014,6 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Timer Display Component */}
-      {waitingForPlayers && <WaitingTimer endTime={waitingForPlayers.endTime} onComplete={() => setWaitingForPlayers(null)} />}
 
       {/* Go Live Dialog - for organizer to enter party code */}
       <Dialog open={goLiveDialogOpen} onOpenChange={setGoLiveDialogOpen}>

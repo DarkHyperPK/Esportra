@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useToast } from '@/hooks/use-toast';
 import { Clock, Shield, CheckCircle, XCircle, Play, Copy, Check, RotateCcw, Sword, Shield as ShieldIcon, Link2, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRole } from '@/contexts/RoleContext';
 
 interface GameMap {
@@ -240,6 +241,8 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   const [selectedMapPool, setSelectedMapPool] = useState<string[]>([]);
   const [dialogStep, setDialogStep] = useState<'map_pool' | 'bo'>('map_pool'); // Two-step dialog: map pool first, then BO
   const [allAvailableMaps, setAllAvailableMaps] = useState<GameMap[]>([]); // All maps for selection dialog
+  const [dialogManuallyClosed, setDialogManuallyClosed] = useState(false); // Track if user manually closed the dialog
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // Ref to preserve scroll position
 
   // Fetch team logos
   useEffect(() => {
@@ -667,19 +670,33 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     });
     
     // Show dialog if: veto is pending, user is organizer, and dialog not already showing
-    // Allow showing even if best_of is set (organizer can change it if still pending)
-    const shouldShowDialog = veto && 
+    // Check if map pool is selected first - if not, show map pool selection
+    // If map pool is selected but BO is not set, show BO selection
+    if (!veto) return; // Early return if veto is null
+    
+    const hasMapPool = veto.selected_map_pool && Array.isArray(veto.selected_map_pool) && veto.selected_map_pool.length > 0;
+    const needsMapPool = !hasMapPool;
+    const needsBO = hasMapPool && (veto.best_of === null || veto.best_of === undefined || veto.best_of === 0 || veto.best_of === 1);
+    
+    const shouldShowDialog = 
       veto.status === 'pending' && 
       effectiveIsOrganizer && 
       !showBODialog &&
-      (veto.best_of === null || veto.best_of === undefined || veto.best_of === 0 || veto.best_of === 1);
+      !dialogManuallyClosed && // Don't auto-open if user manually closed it
+      (needsMapPool || needsBO);
     
     if (shouldShowDialog) {
-      console.log('[MapVeto] Showing BO dialog...');
+      console.log('[MapVeto] Showing dialog...', { needsMapPool, needsBO });
+      // If map pool is needed, start with map pool step
+      if (needsMapPool) {
+        setDialogStep('map_pool');
+      } else if (needsBO) {
+        setDialogStep('bo');
+      }
       // Show dialog immediately
       setShowBODialog(true);
     }
-  }, [veto?.status, veto?.best_of, veto?.id, isOrganizer, currentRole, showBODialog]);
+  }, [veto?.status, veto?.best_of, veto?.selected_map_pool, veto?.id, isOrganizer, currentRole, showBODialog, dialogManuallyClosed]);
 
 
   // Check if organizer is also a captain - show role switch prompt
@@ -1019,6 +1036,8 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       return;
     }
 
+    // Save scroll position before action
+    saveScrollPosition();
     setActionLoading(mapId);
 
     try {
@@ -2312,6 +2331,49 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     }
   };
 
+  // Preserve scroll position after state updates (for dialog content)
+  useEffect(() => {
+    // Find the dialog content container (parent with overflow-y-auto)
+    const dialogContent = document.querySelector('[data-radix-dialog-content]') as HTMLElement;
+    if (dialogContent) {
+      const savedScroll = sessionStorage.getItem(`mapVeto_scroll_${matchId}`);
+      if (savedScroll) {
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          dialogContent.scrollTop = parseInt(savedScroll, 10);
+          sessionStorage.removeItem(`mapVeto_scroll_${matchId}`);
+        });
+      }
+    }
+  }, [veto?.current_action_number, matchId]);
+
+  // Save scroll position before state updates
+  const saveScrollPosition = useCallback(() => {
+    if (matchId) {
+      // Find the dialog content container
+      const dialogContent = document.querySelector('[data-radix-dialog-content]') as HTMLElement;
+      if (dialogContent) {
+        sessionStorage.setItem(`mapVeto_scroll_${matchId}`, dialogContent.scrollTop.toString());
+      }
+    }
+  }, [matchId]);
+
+  // Save scroll on scroll event
+  useEffect(() => {
+    const dialogContent = document.querySelector('[data-radix-dialog-content]') as HTMLElement;
+    if (dialogContent) {
+      const handleScroll = () => {
+        if (matchId) {
+          sessionStorage.setItem(`mapVeto_scroll_${matchId}`, dialogContent.scrollTop.toString());
+        }
+      };
+      dialogContent.addEventListener('scroll', handleScroll, { passive: true });
+      return () => {
+        dialogContent.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, [matchId]);
+
   return (
     <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
       {/* Minimalistic Header */}
@@ -3097,11 +3159,20 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
       {/* BO Selection Dialog for Organizers - Two Steps: Map Pool, then BO */}
       <Dialog open={showBODialog} onOpenChange={(open) => {
-        setShowBODialog(open);
+        console.log('[MapVeto] Dialog onOpenChange:', open);
         if (!open) {
+          // User is closing the dialog - reset everything and mark as manually closed
+          setDialogManuallyClosed(true);
           setDialogStep('map_pool'); // Reset to first step when closing
           setSelectedBO(null);
+          // Reset selected map pool to original state from veto (if exists)
+          if (veto?.selected_map_pool && Array.isArray(veto.selected_map_pool)) {
+            setSelectedMapPool([...veto.selected_map_pool]);
+          } else {
+            setSelectedMapPool([]);
+          }
         }
+        setShowBODialog(open);
       }}>
         <DialogContent className="bg-black border-2 border-white/20 max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0">
           {dialogStep === 'map_pool' ? (
@@ -3120,11 +3191,18 @@ export const MapVeto: React.FC<MapVetoProps> = ({
               </DialogHeader>
               <div className="flex-1 overflow-y-auto px-8 py-6">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {(allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps).map((map) => {
+                  {(allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps).map((map, index) => {
                     const isSelected = selectedMapPool.includes(map.id);
+                    const mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+                    
                     return (
-                      <button
+                      <motion.button
                         key={map.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3, delay: index * 0.05, ease: 'easeOut' }}
+                        whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => {
                           if (isSelected) {
                             setSelectedMapPool(prev => prev.filter(id => id !== map.id));
@@ -3133,50 +3211,36 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                           }
                         }}
                         className={cn(
-                          "group relative rounded-xl border-2 transition-all duration-200 overflow-hidden",
-                          "hover:scale-[1.02] hover:shadow-lg",
+                          "group relative rounded-lg overflow-hidden border-2 transition-all duration-200 cursor-pointer",
                           isSelected
-                            ? "bg-green-500/10 border-green-500 shadow-lg shadow-green-500/20"
-                            : "bg-black/50 border-white/20 hover:border-white/40 hover:bg-white/5"
+                            ? "border-green-500 shadow-lg shadow-green-500/20"
+                            : "border-white/20 hover:border-white/40"
                         )}
+                        style={{
+                          backgroundImage: `url(${mapImageUrl})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          backgroundRepeat: 'no-repeat',
+                          minHeight: '180px'
+                        }}
                       >
-                        {map.map_image_url && (
-                          <div className="relative w-full h-32 overflow-hidden">
-                            <img
-                              src={map.map_image_url}
-                              alt={map.map_name}
-                              className={cn(
-                                "w-full h-full object-cover transition-all duration-200",
-                                isSelected ? "brightness-110" : "brightness-75 group-hover:brightness-90"
-                              )}
-                            />
-                            <div className={cn(
-                              "absolute inset-0 transition-all duration-200",
-                              isSelected ? "bg-green-500/20" : "bg-black/30 group-hover:bg-black/20"
-                            )} />
-                            {isSelected && (
-                              <div className="absolute top-2 right-2">
-                                <div className="bg-green-500 rounded-full p-1.5 shadow-lg">
-                                  <CheckCircle className="h-4 w-4 text-white" />
-                                </div>
-                              </div>
-                            )}
+                        {/* Gradient overlay from bottom */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+                        
+                        {/* Checkmark indicator - top right */}
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 z-20 bg-green-500 rounded-full p-1.5 shadow-lg">
+                            <CheckCircle className="h-4 w-4 text-white" strokeWidth={2.5} />
                           </div>
                         )}
-                        <div className="p-4">
-                          <div className="flex items-center justify-between">
-                            <span className={cn(
-                              "font-bold text-sm transition-colors",
-                              isSelected ? "text-green-400" : "text-white group-hover:text-white/90"
-                            )}>
-                              {map.map_name}
-                            </span>
-                            {!map.map_image_url && isSelected && (
-                              <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                            )}
-                          </div>
+                        
+                        {/* Map name in bottom gradient area */}
+                        <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
+                          <span className="text-white font-bold text-sm sm:text-base block text-center" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
+                            {map.map_name}
+                          </span>
                         </div>
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>
@@ -3190,7 +3254,16 @@ export const MapVeto: React.FC<MapVetoProps> = ({
               </div>
               <DialogFooter className="px-8 py-6 border-t border-white/10 bg-black/50 gap-3">
                 <Button
-                  onClick={() => setShowBODialog(false)}
+                  onClick={() => {
+                    // Reset selected map pool to original state from veto (if exists)
+                    if (veto?.selected_map_pool && Array.isArray(veto.selected_map_pool)) {
+                      setSelectedMapPool([...veto.selected_map_pool]);
+                    } else {
+                      setSelectedMapPool([]);
+                    }
+                    setDialogManuallyClosed(true); // Mark as manually closed
+                    setShowBODialog(false);
+                  }}
                   variant="outline"
                   className="bg-transparent border-white/20 text-white/80 hover:bg-white/10 hover:text-white hover:border-white/30 px-6"
                 >
@@ -3228,8 +3301,8 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                   </div>
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex-1 overflow-y-auto px-8 py-8">
-                <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
+              <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-2xl mx-auto">
                   {[1, 3, 5].map((bo) => {
                     const isSelected = selectedBO === bo;
                     const isDisabled = selectedBO !== null && selectedBO !== bo;
@@ -3239,7 +3312,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                         onClick={() => handleSetBO(bo)}
                         disabled={isDisabled}
                         className={cn(
-                          "relative p-8 rounded-xl border-2 transition-all duration-200",
+                          "relative p-6 sm:p-8 rounded-xl border-2 transition-all duration-200",
                           "hover:scale-[1.02] hover:shadow-xl",
                           isSelected
                             ? "bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-500/30"
@@ -3249,14 +3322,14 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                         )}
                       >
                         <div className="text-center">
-                          <div className="text-4xl font-black mb-3">BO{bo}</div>
+                          <div className="text-3xl sm:text-4xl font-black mb-2 sm:mb-3">BO{bo}</div>
                           <div className="text-xs text-white/60 font-medium uppercase tracking-wider">
                             {bo === 1 ? 'Pick 1 map' : bo === 3 ? '7 actions' : '11 actions'}
                           </div>
                         </div>
                         {isSelected && (
-                          <div className="absolute top-3 right-3">
-                            <CheckCircle className="h-5 w-5 text-white" />
+                          <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
+                            <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                           </div>
                         )}
                       </button>
@@ -3285,21 +3358,39 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Pending Preview - Show message if BO not selected or organizer wants to change it */}
+      {/* Pending Preview - Show message if map pool or BO not selected */}
       {veto && veto.status === 'pending' && (isOrganizer || currentRole === 'organizer') && (
         <div className="text-center py-12 text-gray-400">
           <p className="text-lg font-semibold mb-2">
-            {veto.best_of ? `Current format: BO${veto.best_of}. ` : ''}Please select the Best Of format to start the veto process.
+            {!veto.selected_map_pool || (Array.isArray(veto.selected_map_pool) && veto.selected_map_pool.length === 0) 
+              ? 'Please select the map pool to start the veto process.'
+              : veto.best_of 
+                ? `Current format: BO${veto.best_of}. Please select the Best Of format to start the veto process.`
+                : 'Please select the Best Of format to start the veto process.'}
           </p>
-          <p className="text-sm mb-4">The BO selection dialog should appear automatically. If it doesn't, click the button below.</p>
+          <p className="text-sm mb-4">
+            {!veto.selected_map_pool || (Array.isArray(veto.selected_map_pool) && veto.selected_map_pool.length === 0)
+              ? 'The map pool selection dialog should appear automatically. If it doesn\'t, click the button below.'
+              : 'The BO selection dialog should appear automatically. If it doesn\'t, click the button below.'}
+          </p>
           <Button
             onClick={() => {
-              console.log('[MapVeto] Manual BO dialog trigger');
+              console.log('[MapVeto] Manual dialog trigger');
+              // Reset the manually closed flag since user is explicitly opening it
+              setDialogManuallyClosed(false);
+              // If no map pool selected, start with map pool step
+              if (!veto || !veto.selected_map_pool || (Array.isArray(veto.selected_map_pool) && veto.selected_map_pool.length === 0)) {
+                setDialogStep('map_pool');
+              }
               setShowBODialog(true);
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {veto.best_of ? 'Change BO Format' : 'Select BO Format'}
+            {!veto.selected_map_pool || (Array.isArray(veto.selected_map_pool) && veto.selected_map_pool.length === 0)
+              ? 'Select Map Pool'
+              : veto.best_of 
+                ? 'Change BO Format'
+                : 'Select BO Format'}
           </Button>
         </div>
       )}
