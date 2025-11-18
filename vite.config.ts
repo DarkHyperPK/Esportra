@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => ({
               return 'react-vendor';
             }
             // ALL React-dependent packages must be in react-vendor or load after it
-            // These packages use React.forwardRef, React.useState, etc.
+            // These packages use React.forwardRef, React.useState, React.createContext, etc.
             if (
               id.includes('react-hook-form') || 
               id.includes('@hookform') ||
@@ -61,7 +61,14 @@ export default defineConfig(({ mode }) => ({
               id.includes('vaul') ||
               id.includes('next-themes') ||
               id.includes('cmdk') ||
-              id.includes('input-otp')
+              id.includes('input-otp') ||
+              id.includes('@emotion') || // Used by styled-components
+              id.includes('@tanstack/react-query') ||
+              id.includes('@tanstack/react') ||
+              id.includes('@g-loot/react') ||
+              id.includes('use-isomorphic-layout-effect') || // React hook dependency
+              id.includes('@testing-library/react') ||
+              id.includes('react-transition-group')
             ) {
               return 'react-vendor'; // Put all React-dependent packages with React
             }
@@ -77,11 +84,11 @@ export default defineConfig(({ mode }) => ({
             return 'vendor';
           }
         },
-        // Ensure proper chunk ordering
+        // Ensure proper chunk ordering - react-vendor must load first
         chunkFileNames: (chunkInfo) => {
-          // React vendor should load first
+          // React vendor should load first - prefix with 0 to ensure it's first alphabetically
           if (chunkInfo.name === 'react-vendor') {
-            return 'assets/react-vendor-[hash].js';
+            return 'assets/0-react-vendor-[hash].js';
           }
           return 'assets/[name]-[hash].js';
         },
