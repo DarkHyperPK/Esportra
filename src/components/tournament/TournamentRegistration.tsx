@@ -106,7 +106,7 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
       setTeamLogoUrl(logoUrl);
     }
     // Save registration (add your registration logic here)
-    // Example: await supabase.from('tournament_registrations').insert({...})
+    // Example: await supabase.from('tournament_participants').insert({...})
     setSubmitting(false);
     alert('Registration submitted! (implement your registration logic)');
   };

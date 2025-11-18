@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 
 type Tournament = Database['public']['Tables']['tournaments']['Row'];
-type Registration = Database['public']['Tables']['tournament_registrations']['Row'];
+type Registration = Database['public']['Tables']['tournament_participants']['Row'];
 type TournamentBan = Database['public']['Tables']['tournament_bans']['Row'];
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -31,7 +31,7 @@ const TournamentManagement: React.FC<Props> = ({ tournament }) => {
 
   const fetchRegistrations = async () => {
     const { data, error } = await supabase
-      .from('tournament_registrations')
+      .from('tournament_participants')
       .select('*, profiles(*)')
       .eq('tournament_id', tournament.id);
 
@@ -77,9 +77,9 @@ const TournamentManagement: React.FC<Props> = ({ tournament }) => {
         });
       if (banError) throw banError;
 
-      // Delete from tournament_registrations
+      // Delete from tournament_participants
       const { error: regError } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .delete()
         .eq('tournament_id', tournament.id)
         .eq('user_id', selectedUserId);

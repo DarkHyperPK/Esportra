@@ -74,7 +74,7 @@ const PlayerTournaments = () => {
       try {
         // Get all tournaments the user is registered for
         const { data: registrations, error: registrationsError } = await supabase
-          .from('tournament_registrations')
+          .from('tournament_participants')
           .select(`
             id,
             tournament_id,
@@ -117,7 +117,7 @@ const PlayerTournaments = () => {
         const tournamentsWithCounts = (await Promise.all(validRegistrations.map(async (reg) => {
           const typedReg = (reg!) as unknown as TournamentRegistration;
           const { count } = await supabase
-            .from('tournament_registrations')
+            .from('tournament_participants')
             .select('*', { count: 'exact', head: true })
             .eq('tournament_id', typedReg.tournament_id);
           // Determine tournament status based on date

@@ -96,13 +96,13 @@ const TournamentList = () => {
     if (!user) return;
 
     const subscription = supabase
-      .channel('tournament_registrations_changes')
+      .channel('tournament_participants_changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'tournament_registrations',
+          table: 'tournament_participants',
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {

@@ -4,7 +4,7 @@ import { Database } from '@/integrations/supabase/types';
 // Types
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type Tournament = Database['public']['Tables']['tournaments']['Row'];
-export type TournamentRegistration = Database['public']['Tables']['tournament_registrations']['Row'];
+export type TournamentRegistration = Database['public']['Tables']['tournament_participants']['Row'];
 export type Venue = Database['public']['Tables']['venues']['Row'];
 export type VenueBooking = Database['public']['Tables']['venue_bookings']['Row'];
 export type UserRole = Database['public']['Tables']['user_roles']['Row'];
@@ -131,7 +131,7 @@ export const tournamentApi = {
       // 2. Then delete all tournament registrations
       console.log('Step 2: Deleting tournament registrations...');
       const { error: registrationsError } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .delete()
         .eq('tournament_id', id);
 
@@ -142,7 +142,7 @@ export const tournamentApi = {
 
       // Verify registrations are deleted
       const { data: remainingRegistrations } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .select('*')
         .eq('tournament_id', id);
 
@@ -183,7 +183,7 @@ export const tournamentApi = {
 export const registrationApi = {
   getRegistrations: async (tournamentId: string) => {
     const { data, error } = await supabase
-      .from('tournament_registrations')
+      .from('tournament_participants')
       .select('*')
       .eq('tournament_id', tournamentId);
     
@@ -193,7 +193,7 @@ export const registrationApi = {
 
   registerForTournament: async (registration: Omit<TournamentRegistration, 'id' | 'created_at'>) => {
     const { data, error } = await supabase
-      .from('tournament_registrations')
+      .from('tournament_participants')
       .insert(registration)
       .select()
       .single();
@@ -204,7 +204,7 @@ export const registrationApi = {
 
   updateRegistration: async (id: string, updates: Partial<TournamentRegistration>) => {
     const { data, error } = await supabase
-      .from('tournament_registrations')
+      .from('tournament_participants')
       .update(updates)
       .eq('id', id)
       .select()
@@ -216,7 +216,7 @@ export const registrationApi = {
 
   cancelRegistration: async (id: string) => {
     const { error } = await supabase
-      .from('tournament_registrations')
+      .from('tournament_participants')
       .delete()
       .eq('id', id);
     

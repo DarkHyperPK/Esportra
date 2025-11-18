@@ -654,13 +654,13 @@ const TeamsPage = () => {
 
       // Skip name-based fallback to avoid showing stale registrations from deleted teams
 
-      // Fallback B: legacy table tournament_registrations (deprecated - kept for backwards compatibility only)
+      // Fallback B: legacy table tournament_participants (deprecated - kept for backwards compatibility only)
       // Note: This table is no longer used. All registrations are in tournament_participants.
       let registrations = null;
       let regError = null;
       try {
         const result = await supabase
-          .from('tournament_registrations')
+          .from('tournament_participants')
           .select('*')
           .eq('team_id', currentTeam.id);
         registrations = result.data;

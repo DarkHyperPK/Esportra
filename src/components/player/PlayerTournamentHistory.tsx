@@ -17,7 +17,7 @@ const PlayerTournamentHistory = () => {
       setLoading(true);
       // Get all completed tournaments the user participated in
       const { data: registrations, error } = await supabase
-        .from('tournament_registrations')
+        .from('tournament_participants')
         .select('tournament_id, tournaments!inner(id, name, date, status, finished)')
         .eq('user_id', user.id)
         .or('status.eq.completed,finished.eq.true')

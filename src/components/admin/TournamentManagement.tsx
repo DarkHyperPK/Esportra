@@ -90,7 +90,7 @@ const TournamentManagement: React.FC = () => {
           *,
           organizer:profiles!tournaments_user_id_fkey(username, full_name),
           venue:venues(name),
-          registrations:tournament_registrations(count)
+          registrations:tournament_participants(count)
         `)
         .order('created_at', { ascending: false })
         .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);

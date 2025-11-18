@@ -29,7 +29,7 @@ interface DbTournament {
   status: string;
   image_url: string | null;
   team_size: number;
-  tournament_registrations: { count: number }[];
+  tournament_participants: { count: number }[];
 }
 
 const TournamentDetails = () => {
@@ -46,7 +46,7 @@ const TournamentDetails = () => {
         setLoading(true);
         const { data, error } = await supabase
           .from('tournaments')
-          .select('*, tournament_registrations(count)')
+          .select('*, tournament_participants(count)')
           .eq('id', id)
           .single();
 
@@ -56,7 +56,7 @@ const TournamentDetails = () => {
           const dbTournament = data as DbTournament;
           setTournament({
             ...dbTournament,
-            current_participants: dbTournament.tournament_registrations?.[0]?.count || 0,
+            current_participants: dbTournament.tournament_participants?.[0]?.count || 0,
             status: dbTournament.status || 'upcoming',
             team_size: dbTournament.team_size || 1,
             updated_at: dbTournament.updated_at || dbTournament.created_at

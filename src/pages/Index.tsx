@@ -49,7 +49,7 @@ const Index = () => {
         let userRegistrations: any[] = [];
         if (user && user.id) {
           const { data: regData, error: regError } = await supabase
-            .from('tournament_registrations')
+            .from('tournament_participants')
             .select('id, tournament_id, user_id, registration_type, created_at')
             .eq('user_id', user.id);
           if (regError) throw regError;
@@ -61,7 +61,7 @@ const Index = () => {
         const participantCounts = await Promise.all(
           (tournamentsData || []).map(async (tournament) => {
             const { count } = await supabase
-              .from('tournament_registrations')
+              .from('tournament_participants')
               .select('*', { count: 'exact', head: true })
               .eq('tournament_id', tournament.id);
             return { id: tournament.id, count: count || 0 };

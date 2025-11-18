@@ -118,7 +118,7 @@ const AdminTournamentsList = () => {
           .select(`
             id, name, title, game, status, start_date, created_at, max_participants, prize_pool,
             organizer:profiles!tournaments_user_id_fkey(full_name, username),
-            registrations:tournament_registrations(count)
+            registrations:tournament_participants(count)
           `)
           .order('created_at', { ascending: false });
         if (error) throw error;

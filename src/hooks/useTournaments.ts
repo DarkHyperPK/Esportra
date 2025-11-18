@@ -46,7 +46,7 @@ interface DbTournament {
   status: string;
   image_url: string | null;
   team_size: number;
-  tournament_registrations: { count: number }[];
+  tournament_participants: { count: number }[];
 }
 
 export function useTournaments(status?: TournamentStatus) {
