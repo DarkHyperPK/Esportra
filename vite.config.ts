@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => ({
               return 'react-vendor';
             }
             // ALL React-dependent packages must be in react-vendor or load after it
-            // These packages use React.forwardRef, React.useState, React.createContext, etc.
+            // These packages use React.forwardRef, React.useState, React.createContext, useLayoutEffect, etc.
             if (
               id.includes('react-hook-form') || 
               id.includes('@hookform') ||
@@ -66,9 +66,12 @@ export default defineConfig(({ mode }) => ({
               id.includes('@tanstack/react-query') ||
               id.includes('@tanstack/react') ||
               id.includes('@g-loot/react') ||
-              id.includes('use-isomorphic-layout-effect') || // React hook dependency
+              id.includes('use-isomorphic-layout-effect') || // React hook dependency - uses useLayoutEffect
               id.includes('@testing-library/react') ||
-              id.includes('react-transition-group')
+              id.includes('react-transition-group') ||
+              id.includes('@floating-ui') || // Used by Radix UI, uses useLayoutEffect
+              id.includes('@radix-ui/react-popper') || // Uses @floating-ui
+              id.includes('react-refresh') // React development tool
             ) {
               return 'react-vendor'; // Put all React-dependent packages with React
             }
