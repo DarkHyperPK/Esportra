@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => ({
             ) {
               return 'react-vendor'; // Put all React-dependent packages with React
             }
-            // Supabase (doesn't depend on React)
+            // Supabase (doesn't depend on React) - ONLY truly standalone packages
             if (id.includes('@supabase')) {
               return 'supabase-vendor';
             }
@@ -83,7 +83,22 @@ export default defineConfig(({ mode }) => ({
             if (id.includes('@radix-ui')) {
               return 'react-vendor'; // Radix UI needs React, so put it with React
             }
+            // Be more aggressive: If it's a dependency of React packages or commonly used with React,
+            // put it in react-vendor to be safe
+            // Check for packages that might be used in React context
+            if (
+              id.includes('keen-slider') || // Might be used with React
+              id.includes('class-variance-authority') || // Used extensively in React components
+              id.includes('clsx') || // Used in React components
+              id.includes('tailwind-merge') || // Used in React components
+              id.includes('date-fns') || // Often used in React date components
+              id.includes('zod') || // Used with react-hook-form
+              id.includes('slugify') // Might be used in React components
+            ) {
+              return 'react-vendor'; // Put in react-vendor to be safe
+            }
             // Other node_modules - ensure no React dependencies
+            // Only truly standalone packages should be here
             return 'vendor';
           }
         },
