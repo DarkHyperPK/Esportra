@@ -123,7 +123,7 @@ export const useTournamentBracket = (tournamentId: string) => {
           team:teams(*)
         `)
         .eq('tournament_id', tournamentId)
-        .eq('registration_type', 'team')
+        .eq('participant_type', 'team')
         .in('status', ['approved', 'checked_in']);
 
       if (regError) throw regError;

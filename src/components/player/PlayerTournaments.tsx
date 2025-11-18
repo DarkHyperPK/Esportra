@@ -79,7 +79,7 @@ const PlayerTournaments = () => {
             id,
             tournament_id,
             user_id,
-            registration_type,
+            participant_type,
             team_name,
             team_captain,
             team_email,

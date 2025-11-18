@@ -135,7 +135,7 @@ const UserDashboard = () => {
             .select(`
               id,
               tournament_id,
-              registration_type,
+              participant_type,
               user_id,
               team_id,
               team_captain_id,
@@ -161,7 +161,7 @@ const UserDashboard = () => {
             .select(`
               id,
               tournament_id,
-              registration_type,
+              participant_type,
               user_id,
               team_id,
               team_captain_id,
@@ -189,7 +189,7 @@ const UserDashboard = () => {
               .select(`
                 id,
                 tournament_id,
-                registration_type,
+                participant_type,
                 user_id,
                 team_id,
                 team_captain_id,
