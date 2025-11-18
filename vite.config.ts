@@ -32,74 +32,14 @@ export default defineConfig(({ mode }) => ({
         manualChunks(id) {
           // CRITICAL: React and React-DOM must be in the same chunk and load first
           if (id.includes('node_modules')) {
-            // React core must be together - check for exact react package paths
-            if (
-              id.includes('/react/') || 
-              id.includes('/react-dom/') || 
-              id.includes('\\react\\') || 
-              id.includes('\\react-dom\\') ||
-              id.includes('react-router')
-            ) {
-              return 'react-vendor';
-            }
-            // ALL React-dependent packages must be in react-vendor or load after it
-            // These packages use React.forwardRef, React.useState, React.createContext, useLayoutEffect, etc.
-            if (
-              id.includes('react-hook-form') || 
-              id.includes('@hookform') ||
-              id.includes('embla-carousel-react') ||
-              id.includes('framer-motion') ||
-              id.includes('lucide-react') ||
-              id.includes('react-day-picker') ||
-              id.includes('react-hot-toast') ||
-              id.includes('react-resizable-panels') ||
-              id.includes('react-select') ||
-              id.includes('react-svg-pan-zoom') ||
-              id.includes('recharts') ||
-              id.includes('styled-components') ||
-              id.includes('sonner') ||
-              id.includes('vaul') ||
-              id.includes('next-themes') ||
-              id.includes('cmdk') ||
-              id.includes('input-otp') ||
-              id.includes('@emotion') || // Used by styled-components
-              id.includes('@tanstack/react-query') ||
-              id.includes('@tanstack/react') ||
-              id.includes('@g-loot/react') ||
-              id.includes('use-isomorphic-layout-effect') || // React hook dependency - uses useLayoutEffect
-              id.includes('@testing-library/react') ||
-              id.includes('react-transition-group') ||
-              id.includes('@floating-ui') || // Used by Radix UI, uses useLayoutEffect
-              id.includes('@radix-ui/react-popper') || // Uses @floating-ui
-              id.includes('react-refresh') // React development tool
-            ) {
-              return 'react-vendor'; // Put all React-dependent packages with React
-            }
             // Supabase (doesn't depend on React) - ONLY truly standalone packages
+            // Check this FIRST before anything else
             if (id.includes('@supabase')) {
               return 'supabase-vendor';
             }
-            // UI libraries (depend on React) - but they're already handled above via @radix-ui check
-            if (id.includes('@radix-ui')) {
-              return 'react-vendor'; // Radix UI needs React, so put it with React
-            }
-            // Be more aggressive: If it's a dependency of React packages or commonly used with React,
-            // put it in react-vendor to be safe
-            // Check for packages that might be used in React context
-            if (
-              id.includes('keen-slider') || // Might be used with React
-              id.includes('class-variance-authority') || // Used extensively in React components
-              id.includes('clsx') || // Used in React components
-              id.includes('tailwind-merge') || // Used in React components
-              id.includes('date-fns') || // Often used in React date components
-              id.includes('zod') || // Used with react-hook-form
-              id.includes('slugify') // Might be used in React components
-            ) {
-              return 'react-vendor'; // Put in react-vendor to be safe
-            }
-            // Other node_modules - ensure no React dependencies
-            // Only truly standalone packages should be here
-            return 'vendor';
+            // EVERYTHING ELSE goes to react-vendor to ensure React loads first
+            // This is the safest approach - if it's not Supabase, it goes with React
+            return 'react-vendor';
           }
         },
         // Ensure proper chunk ordering - react-vendor must load first
