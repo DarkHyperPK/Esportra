@@ -1001,9 +1001,9 @@ const TournamentDashboard = () => {
       const banData: any = {
         tournament_id: tournament?.id,
         participant_id: participantId,
-        ban_reason: banReason.trim(),
-        banned_by: user?.id,
-        banned_at: new Date().toISOString(),
+          ban_reason: banReason.trim(),
+          banned_by: user?.id,
+          banned_at: new Date().toISOString(),
         is_active: true,
       };
 
@@ -1159,65 +1159,65 @@ const TournamentDashboard = () => {
   // Update BracketSVGStyle for more aggressive SVG and parent container overrides
   const BracketSVGStyle = () => {
     return (
-      <style>{`
-        .bracket-svg-root,
-        .bracket-svg-root > div,
-        .bracket-svg-root svg {
-          width: 100% !important;
-          height: 100% !important;
-          min-width: 0 !important;
-          min-height: 0 !important;
-          background: transparent !important;
-          box-shadow: none !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-        }
-        .bracket-svg-root svg {
-          background: transparent !important;
-        }
-      `}</style>
-    );
+    <style>{`
+      .bracket-svg-root,
+      .bracket-svg-root > div,
+      .bracket-svg-root svg {
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+      .bracket-svg-root svg {
+        background: transparent !important;
+      }
+    `}</style>
+  );
   };
 
   // Add a blurred background and animated border/glow
   const BracketPremiumOverlay = () => {
     return (
-      <>
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          zIndex: 0,
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          background: 'rgba(18,18,22,0.7)',
-          borderRadius: 32,
-          pointerEvents: 'none',
-        }} />
-        <div className="bracket-glow-border" style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          borderRadius: 32,
-          boxShadow: '0 0 32px 4px #a259ff88, 0 0 0 4px #18181b',
-          border: '2px solid #a259ff',
-          pointerEvents: 'none',
-          animation: 'bracketGlow 2s infinite alternate',
-          zIndex: 2,
-        }} />
-        <style>{`
-          @keyframes bracketGlow {
-            0% { box-shadow: 0 0 32px 4px #a259ff44, 0 0 0 4px #18181b; }
-            100% { box-shadow: 0 0 48px 8px #a259ffcc, 0 0 0 4px #18181b; }
-          }
-        `}</style>
-      </>
-    );
+    <>
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        background: 'rgba(18,18,22,0.7)',
+        borderRadius: 32,
+        pointerEvents: 'none',
+      }} />
+      <div className="bracket-glow-border" style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        borderRadius: 32,
+        boxShadow: '0 0 32px 4px #a259ff88, 0 0 0 4px #18181b',
+        border: '2px solid #a259ff',
+        pointerEvents: 'none',
+        animation: 'bracketGlow 2s infinite alternate',
+        zIndex: 2,
+      }} />
+      <style>{`
+        @keyframes bracketGlow {
+          0% { box-shadow: 0 0 32px 4px #a259ff44, 0 0 0 4px #18181b; }
+          100% { box-shadow: 0 0 48px 8px #a259ffcc, 0 0 0 4px #18181b; }
+        }
+      `}</style>
+    </>
+  );
   };
 
   // Fetch game background from RAWG API
@@ -1835,7 +1835,7 @@ const TournamentDashboard = () => {
                                     }}
                                   >
                                     Manage
-                                  </Button>
+                                      </Button>
                                   <Button
                                     size="sm"
                                     variant="destructive"
@@ -1849,11 +1849,11 @@ const TournamentDashboard = () => {
                                     <BanIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                                     <span className="hidden xs:inline">Ban</span>
                                   </Button>
-                                </div>
-                              </div>
+                      </div>
+                    </div>
                             );
                           })}
-                    </div>
+                  </div>
                   </>
                 )}
               </CardContent>

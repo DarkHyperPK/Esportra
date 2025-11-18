@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, Trophy, CheckCircle } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
+import { motion } from 'framer-motion';
 
 interface TournamentCardProps {
   id: string;
@@ -126,7 +127,13 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
   }, [carouselIndex, screenshots]);
 
   return (
-    <div className="card-esports hover-lift rounded-lg flex flex-col relative overflow-hidden min-h-[280px] w-full">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      className="card-esports hover-lift rounded-lg flex flex-col relative overflow-hidden min-h-[280px] w-full"
+    >
       {/* Carousel background images */}
       {screenshots.map((img, idx) => (
         <img
@@ -232,6 +239,6 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
           </Button>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };

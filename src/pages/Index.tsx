@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ProfileLoading } from "@/components/profile/ProfileLoading";
 import { supabase } from "@/lib/supabase";
 import { Tournament } from "@/hooks/useTournaments";
+import { motion } from 'framer-motion';
 
 const Index = () => {
   const { user, profile, loading } = useAuth();
@@ -106,24 +107,42 @@ const Index = () => {
       <SponsorsBanner />
       
       {/* Featured Venues Section */}
-      <section className="container mx-auto px-4 py-10 max-w-7xl">
-        <div className="flex items-center gap-4 md:gap-6 flex-wrap mb-6 md:mb-8">
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">Featured Venues</h2>
-          <Link to="/venues/featured">
-            <Button variant="outline" className="btn-esports-green">
-              <MapPin className="mr-2 h-4 w-4" />
-              View All Venues
-            </Button>
-          </Link>
-        </div>
+      <section className="container mx-auto px-4 py-16 max-w-7xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="flex items-center gap-4 md:gap-6 flex-wrap mb-8 md:mb-12"
+        >
+          <div>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
+              Featured <span className="text-gradient bg-clip-text text-transparent bg-gradient-to-r from-esports-green to-esports-blue">Venues</span>
+            </h2>
+            <p className="text-gray-400">Discover premium gaming spaces near you</p>
+          </div>
+        </motion.div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {isLoading ? (
             Array(4).fill(0).map((_, i) => (
-              <div key={i} className="animate-pulse bg-gaming-gray/20 rounded-lg h-64"></div>
+              <motion.div
+                key={i}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.1 }}
+                className="animate-pulse bg-gaming-gray/20 rounded-lg h-64"
+              />
             ))
           ) : venues.length > 0 ? (
-            venues.map((venue) => (
-              <VenueCard key={venue.id} venue={venue} />
+            venues.map((venue, index) => (
+              <motion.div
+                key={venue.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.1, ease: 'easeOut' }}
+              >
+                <VenueCard venue={venue} />
+              </motion.div>
             ))
           ) : (
             <div className="col-span-4">
@@ -139,45 +158,62 @@ const Index = () => {
       </section>
 
       {/* Upcoming Tournaments Section */}
-      <section className="container mx-auto px-4 py-10 max-w-7xl">
-        <div className="flex items-center gap-4 md:gap-6 flex-wrap mb-6 md:mb-8">
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">Upcoming Tournaments</h2>
-          <Link to="/tournaments/upcoming">
-            <Button variant="outline" className="btn-esports-orange">
+      <section className="container mx-auto px-4 py-16 max-w-7xl bg-gradient-to-b from-transparent via-gaming-dark/30 to-transparent">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="flex items-center gap-4 md:gap-6 flex-wrap mb-8 md:mb-12"
+        >
+          <div>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
+              Upcoming <span className="text-gradient bg-clip-text text-transparent bg-gradient-to-r from-esports-orange to-gaming-purple">Tournaments</span>
+            </h2>
+            <p className="text-gray-400">Join the competition and compete for glory</p>
+          </div>
+          <Link to="/tournaments/upcoming" className="ml-auto">
+            <Button variant="outline" size="lg" className="btn-esports-orange border-2">
               <Calendar className="mr-2 h-4 w-4" />
               View All Tournaments
             </Button>
           </Link>
-        </div>
+        </motion.div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {isLoading ? (
             Array(4).fill(0).map((_, i) => (
               <div key={i} className="animate-pulse bg-gaming-gray/20 rounded-lg h-64"></div>
             ))
           ) : tournaments.length > 0 ? (
-            tournaments.map((tournament) => (
-              <TournamentCard
+            tournaments.map((tournament, index) => (
+              <motion.div
                 key={tournament.id}
-                id={tournament.id}
-                name={tournament.name}
-                game={tournament.game}
-                date={tournament.date}
-                time={tournament.time}
-                venue={tournament.venue}
-                max_participants={tournament.max_participants}
-                current_participants={tournament.current_participants}
-                status={tournament.status}
-                team_size={tournament.team_size}
-                prize_pool={tournament.prize_pool}
-                user_id={tournament.user_id}
-                organizer_id={tournament.organizer_id}
-                entry_fee={tournament.entry_fee}
-                is_online={tournament.is_online}
-                image_url={tournament.image_url}
-                registrationData={tournament.registrationData}
-                currentUserId={user?.id}
-                slug={tournament.slug}
-              />
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.1, ease: 'easeOut' }}
+              >
+                <TournamentCard
+                  id={tournament.id}
+                  name={tournament.name}
+                  game={tournament.game}
+                  date={tournament.date}
+                  time={tournament.time}
+                  venue={tournament.venue}
+                  max_participants={tournament.max_participants}
+                  current_participants={tournament.current_participants}
+                  status={tournament.status}
+                  team_size={tournament.team_size}
+                  prize_pool={tournament.prize_pool}
+                  user_id={tournament.user_id}
+                  organizer_id={tournament.organizer_id}
+                  entry_fee={tournament.entry_fee}
+                  is_online={tournament.is_online}
+                  image_url={tournament.image_url}
+                  registrationData={tournament.registrationData}
+                  currentUserId={user?.id}
+                  slug={tournament.slug}
+                />
+              </motion.div>
             ))
           ) : (
             <div className="col-span-4">
@@ -192,6 +228,7 @@ const Index = () => {
         </div>
       </section>
 
+      <FeaturesSection />
       <UseModes />
       <Footer />
     </div>
