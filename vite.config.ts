@@ -42,19 +42,38 @@ export default defineConfig(({ mode }) => ({
             ) {
               return 'react-vendor';
             }
-            // Exclude react-related packages from other chunks
-            if (id.includes('react-hook-form') || id.includes('@hookform')) {
-              return 'form-vendor';
+            // ALL React-dependent packages must be in react-vendor or load after it
+            // These packages use React.forwardRef, React.useState, etc.
+            if (
+              id.includes('react-hook-form') || 
+              id.includes('@hookform') ||
+              id.includes('embla-carousel-react') ||
+              id.includes('framer-motion') ||
+              id.includes('lucide-react') ||
+              id.includes('react-day-picker') ||
+              id.includes('react-hot-toast') ||
+              id.includes('react-resizable-panels') ||
+              id.includes('react-select') ||
+              id.includes('react-svg-pan-zoom') ||
+              id.includes('recharts') ||
+              id.includes('styled-components') ||
+              id.includes('sonner') ||
+              id.includes('vaul') ||
+              id.includes('next-themes') ||
+              id.includes('cmdk') ||
+              id.includes('input-otp')
+            ) {
+              return 'react-vendor'; // Put all React-dependent packages with React
             }
-            // Supabase (might depend on React)
+            // Supabase (doesn't depend on React)
             if (id.includes('@supabase')) {
               return 'supabase-vendor';
             }
-            // UI libraries (depend on React)
+            // UI libraries (depend on React) - but they're already handled above via @radix-ui check
             if (id.includes('@radix-ui')) {
-              return 'ui-vendor';
+              return 'react-vendor'; // Radix UI needs React, so put it with React
             }
-            // Other node_modules - ensure no React code here
+            // Other node_modules - ensure no React dependencies
             return 'vendor';
           }
         },
