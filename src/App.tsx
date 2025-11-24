@@ -4,95 +4,105 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NotificationProvider } from "@/components/NotificationContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { PageTransition } from "@/components/PageTransition";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { IdentityProvider } from "@/contexts/IdentityContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import Navbar from "@/components/Navbar";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Loader2 } from "lucide-react";
 
-// Lazy load all route components for code splitting
-const Index = lazy(() => import("./pages/Index"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const Unauthorized = lazy(() => import("./pages/Unauthorized"));
-const SignUp = lazy(() => import("./pages/auth/SignUp"));
-const SignIn = lazy(() => import("./pages/auth/SignIn"));
-const Profile = lazy(() => import("./pages/auth/Profile"));
-const Callback = lazy(() => import("./pages/auth/Callback"));
-const AdminPortal = lazy(() => import("./pages/admin/AdminPortal"));
+// Import all route components directly (no lazy loading)
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
+import Unauthorized from "./pages/Unauthorized";
+import SignUp from "./pages/auth/SignUp";
+import SignIn from "./pages/auth/SignIn";
+import Profile from "./pages/auth/Profile";
+import Callback from "./pages/auth/Callback";
+import AdminPortal from "./pages/admin/AdminPortal";
 
 // User 
-const UserDashboard = lazy(() => import("./pages/user/Dashboard"));
-const PlayerDashboard = lazy(() => import("./pages/player/Dashboard"));
-const TeamsPage = lazy(() => import("./pages/player/Teams"));
+import UserDashboard from "./pages/user/Dashboard";
+import PlayerDashboard from "./pages/player/Dashboard";
+import StaffInvitesPage from "./pages/user/StaffInvites";
+import RaiseDispute from "./pages/user/RaiseDispute";
+import MyDisputes from "./pages/user/MyDisputes";
+import StaffDashboard from "./pages/staff/StaffDashboard";
+import TeamsPage from "./pages/player/Teams";
 
 // Admin
-const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
-const AdminManagement = lazy(() => import("./pages/admin/AdminManagement"));
-const AdminAccess = lazy(() => import("./pages/admin/AdminAccess"));
-const DisputeCenter = lazy(() => import("./pages/admin/DisputeCenter"));
-const SystemSettings = lazy(() => import("./pages/admin/SystemSettings"));
-const VerificationSystemTool = lazy(() => import("./pages/admin/tools/VerificationSystem"));
-const AuditLogsTool = lazy(() => import("./pages/admin/tools/AuditLogs"));
-const UserManagementTool = lazy(() => import("./pages/admin/tools/UserManagement"));
-const TournamentManagementTool = lazy(() => import("./pages/admin/tools/TournamentManagement"));
-const VenueManagementTool = lazy(() => import("./pages/admin/tools/VenueManagement"));
-const AnalyticsTool = lazy(() => import("./pages/admin/tools/Analytics"));
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminManagement from "./pages/admin/AdminManagement";
+import AdminAccess from "./pages/admin/AdminAccess";
+import AdminRoleManagement from "./pages/admin/tools/AdminManagement";
+import DisputeCenter from "./pages/admin/DisputeCenter";
+import SystemSettings from "./pages/admin/SystemSettings";
+import VerificationSystemTool from "./pages/admin/tools/VerificationSystem";
+import AuditLogsTool from "./pages/admin/tools/AuditLogs";
+import UserManagementTool from "./pages/admin/tools/UserManagement";
+import TournamentManagementTool from "./pages/admin/tools/TournamentManagement";
+import VenueManagementTool from "./pages/admin/tools/VenueManagement";
+import AnalyticsTool from "./pages/admin/tools/Analytics";
 
 // Venue Owner
-const VenueOwnerDashboard = lazy(() => import("./pages/venue-owner/Dashboard"));
+import VenueOwnerDashboard from "./pages/venue-owner/Dashboard";
 
 // Tournament Organizer
-const OrganizerDashboard = lazy(() => import("./pages/organizer/Dashboard"));
-const TournamentList = lazy(() => import("./pages/organizer/TournamentList"));
-const ManageTournaments = lazy(() => import("./pages/organizer/ManageTournaments"));
-const TournamentManage = lazy(() => import("./pages/organizer/TournamentManage"));
-const EditTournament = lazy(() => import("./pages/tournaments/Edit"));
-const TournamentBrackets = lazy(() => import("./pages/tournaments/Brackets"));
-const TournamentDetailsUser = lazy(() => import("./pages/tournaments/Details"));
-const TournamentDetails = lazy(() => import("./pages/admin/TournamentDetails"));
+import OrganizerDashboard from "./pages/organizer/Dashboard";
+import TournamentList from "./pages/organizer/TournamentList";
+import ManageTournaments from "./pages/organizer/ManageTournaments";
+import TournamentManage from "./pages/organizer/TournamentManage";
+import EditTournament from "./pages/tournaments/Edit";
+import TournamentBrackets from "./pages/tournaments/Brackets";
+import TournamentDetailsUser from "./pages/tournaments/Details";
+import TournamentDetails from "./pages/admin/TournamentDetails";
 
+const ADMIN_ROLE_SETS = {
+  anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
+  userManagement: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
+  tournamentManagement: ['super_admin', 'ops_admin', 'moderator'],
+  venueManagement: ['super_admin', 'ops_admin', 'support_admin'],
+  verification: ['super_admin', 'ops_admin', 'support_admin'],
+  auditAccess: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
+  analytics: ['super_admin', 'ops_admin', 'finance_admin'],
+  systemSettings: ['super_admin', 'ops_admin', 'finance_admin'],
+  disputes: ['super_admin', 'moderator', 'ops_admin'],
+};
 // Venues
-const VenueSearch = lazy(() => import("./pages/venues/Search"));
-const FeaturedVenues = lazy(() => import("./pages/venues/Featured"));
-const VenueDetails = lazy(() => import("./pages/venues/Details"));
-const ListVenue = lazy(() => import("./pages/venues/ListVenue"));
+import VenueSearch from "./pages/venues/Search";
+import FeaturedVenues from "./pages/venues/Featured";
+import VenueDetails from "./pages/venues/Details";
+import ListVenue from "./pages/venues/ListVenue";
 
 // Tournaments
-const UpcomingTournaments = lazy(() => import("./pages/tournaments/Upcoming"));
-const OngoingTournaments = lazy(() => import("./pages/tournaments/Ongoing"));
-const CreateTournament = lazy(() => import("./pages/tournaments/Create"));
+import UpcomingTournaments from "./pages/tournaments/Upcoming";
+import OngoingTournaments from "./pages/tournaments/Ongoing";
+import CreateTournament from "./pages/tournaments/Create";
 
 // About
-const AboutCompany = lazy(() => import("./pages/about/Company"));
-const ContactPage = lazy(() => import("./pages/about/Contact"));
-const FAQPage = lazy(() => import("./pages/about/FAQ"));
-const AboutPage = lazy(() => import("./pages/About"));
-const PrivacyPage = lazy(() => import("./pages/Privacy"));
-const CareersPage = lazy(() => import("./pages/Careers"));
-const ContactStandalone = lazy(() => import("./pages/Contact"));
+import AboutCompany from "./pages/about/Company";
+import ContactPage from "./pages/about/Contact";
+import FAQPage from "./pages/about/FAQ";
+import AboutPage from "./pages/About";
+import PrivacyPage from "./pages/Privacy";
+import CareersPage from "./pages/Careers";
+import ContactStandalone from "./pages/Contact";
 
 // App Download
-const AppDownloadPage = lazy(() => import("./pages/AppDownload"));
+import AppDownloadPage from "./pages/AppDownload";
 
 // Notifications
-const NotificationsPage = lazy(() => import("./pages/notifications/Notifications"));
+import NotificationsPage from "./pages/notifications/Notifications";
 
-const TournamentHistoryPage = lazy(() => import('./pages/TournamentHistory'));
-const VerificationStatus = lazy(() => import('./pages/VerificationStatus'));
-const OrganizerDisputesPage = lazy(() => import('./pages/organizer/Disputes'));
-const MapVetoToken = lazy(() => import('./pages/tournaments/MapVetoToken'));
-
-// Loading fallback component
-const LoadingFallback = () => (
-  <div className="min-h-screen bg-esports-dark text-white flex items-center justify-center">
-    <Loader2 className="h-8 w-8 animate-spin text-gaming-purple" />
-  </div>
-);
+import TournamentHistoryPage from './pages/TournamentHistory';
+import VerificationStatus from './pages/VerificationStatus';
+import OrganizerDisputesPage from './pages/organizer/Disputes';
+import MapVetoToken from './pages/tournaments/MapVetoToken';
 
 // Test Supabase connection on app start
 import './utils/testSupabase';
@@ -115,10 +125,10 @@ const AppContent = React.memo(() => {
       <Toaster />
       <Sonner />
       <Navbar />
-      <div style={{ paddingTop: isHome ? '0px' : '80px' }}>
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-          <Route path="/" element={<Index />} />
+      <div style={{ paddingTop: '10px' }}>
+        <AnimatePresence mode="wait" initial={false}>
+          <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<PageTransition><Index /></PageTransition>} />
           
           {/* Auth Routes */}
           <Route path="/auth/signup" element={<SignUp />} />
@@ -155,6 +165,26 @@ const AppContent = React.memo(() => {
               <UserDashboard />
             </ProtectedRoute>
           } />
+          <Route path="/user/staff-invites" element={
+            <ProtectedRoute>
+              <StaffInvitesPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/user/raise-dispute" element={
+            <ProtectedRoute>
+              <RaiseDispute />
+            </ProtectedRoute>
+          } />
+          <Route path="/user/my-disputes" element={
+            <ProtectedRoute>
+              <MyDisputes />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff" element={
+            <ProtectedRoute>
+              <StaffDashboard />
+            </ProtectedRoute>
+          } />
           
           {/* Player Routes */}
           <Route path="/player/dashboard" element={
@@ -173,7 +203,7 @@ const AppContent = React.memo(() => {
           
           {/* Admin Dashboard Routes */}
           <Route path="/admin/dashboard" element={
-            <AdminProtectedRoute>
+            <AdminProtectedRoute requiredRoles={ADMIN_ROLE_SETS.anyAdmin}>
               <AdminLayout>
                 <AdminManagement />
               </AdminLayout>
@@ -182,93 +212,142 @@ const AppContent = React.memo(() => {
           
           {/* Admin Tool Routes */}
           <Route path="/admin/tools/user-management" element={
-            <AdminProtectedRoute requiredPermission="user:view">
+            <AdminProtectedRoute
+              requiredPermission="user:view"
+              requiredRoles={ADMIN_ROLE_SETS.userManagement}
+            >
               <AdminLayout>
                 <UserManagementTool />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           <Route path="/admin/tools/tournament-management" element={
-            <AdminProtectedRoute requiredPermission="tournament:view">
+            <AdminProtectedRoute
+              requiredPermission="tournament:view"
+              requiredRoles={ADMIN_ROLE_SETS.tournamentManagement}
+            >
               <AdminLayout>
                 <TournamentManagementTool />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           <Route path="/admin/tools/venue-management" element={
-            <AdminProtectedRoute requiredPermission="venue:view">
+            <AdminProtectedRoute
+              requiredPermission="venue:view"
+              requiredRoles={ADMIN_ROLE_SETS.venueManagement}
+            >
               <AdminLayout>
                 <VenueManagementTool />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           <Route path="/admin/tools/verification-system" element={
-            <AdminProtectedRoute requiredPermission="verification:view">
+            <AdminProtectedRoute
+              requiredPermission="verification:view"
+              requiredRoles={ADMIN_ROLE_SETS.verification}
+            >
               <AdminLayout>
                 <VerificationSystemTool />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           <Route path="/admin/tools/audit-logs" element={
-            <AdminProtectedRoute requiredPermission="audit:view">
+            <AdminProtectedRoute
+              requiredPermission="audit:view"
+              requiredRoles={ADMIN_ROLE_SETS.auditAccess}
+            >
               <AdminLayout>
                 <AuditLogsTool />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           <Route path="/admin/tools/analytics" element={
-            <AdminProtectedRoute requiredPermission="audit:view">
+            <AdminProtectedRoute
+              requiredPermission="audit:view"
+              requiredRoles={ADMIN_ROLE_SETS.analytics}
+            >
               <AdminLayout>
                 <AnalyticsTool />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           <Route path="/admin/tools/system-settings" element={
-            <AdminProtectedRoute requiredPermission="settings:view">
+            <AdminProtectedRoute
+              requiredPermission="settings:view"
+              requiredRoles={ADMIN_ROLE_SETS.systemSettings}
+            >
               <AdminLayout>
                 <SystemSettings />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           
+          {/* Admin Management - Super Admin Only */}
+          <Route path="/admin/tools/admin-management" element={
+            <AdminProtectedRoute
+              requiredPermission="admin:assign_roles"
+              requiredRoles={['super_admin']}
+            >
+              <AdminLayout>
+                <AdminRoleManagement />
+              </AdminLayout>
+            </AdminProtectedRoute>
+          } />
+          
           {/* Legacy Admin Routes (for backward compatibility) */}
           <Route path="/admin/access" element={
-            <AdminProtectedRoute requiredPermission="admin:assign_roles">
+            <AdminProtectedRoute
+              requiredPermission="admin:assign_roles"
+              requiredRoles={['super_admin']}
+            >
               <AdminLayout>
                 <AdminAccess />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           <Route path="/admin/disputes" element={
-            <AdminProtectedRoute requiredPermission="dispute:resolve">
-              <AdminLayout>
-                <DisputeCenter />
-              </AdminLayout>
+            <AdminProtectedRoute
+              requiredPermission="dispute:resolve"
+              requiredRoles={ADMIN_ROLE_SETS.disputes}
+            >
+              <DisputeCenter />
             </AdminProtectedRoute>
           } />
           <Route path="/admin/settings" element={
-            <AdminProtectedRoute requiredPermission="settings:edit">
+            <AdminProtectedRoute
+              requiredPermission="settings:edit"
+              requiredRoles={ADMIN_ROLE_SETS.systemSettings}
+            >
               <AdminLayout>
                 <SystemSettings />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           <Route path="/admin/verification" element={
-            <AdminProtectedRoute requiredPermission="verification:view">
+            <AdminProtectedRoute
+              requiredPermission="verification:view"
+              requiredRoles={ADMIN_ROLE_SETS.verification}
+            >
               <AdminLayout>
                 <VerificationSystemTool />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           <Route path="/admin/audit" element={
-            <AdminProtectedRoute requiredPermission="audit:view">
+            <AdminProtectedRoute
+              requiredPermission="audit:view"
+              requiredRoles={ADMIN_ROLE_SETS.auditAccess}
+            >
               <AdminLayout>
                 <AuditLogsTool />
               </AdminLayout>
             </AdminProtectedRoute>
           } />
           <Route path="/admin/users" element={
-            <AdminProtectedRoute requiredPermission="user:view">
+            <AdminProtectedRoute
+              requiredPermission="user:view"
+              requiredRoles={ADMIN_ROLE_SETS.userManagement}
+            >
               <AdminLayout>
                 <UserManagementTool />
               </AdminLayout>
@@ -294,7 +373,7 @@ const AppContent = React.memo(() => {
             </ProtectedRoute>
           } />
           <Route path="/organizer/tournament/:slug" element={
-            <ProtectedRoute allowedRoles={['organizer']}>
+            <ProtectedRoute>
               <TournamentManage />
             </ProtectedRoute>
           } />
@@ -364,9 +443,9 @@ const AppContent = React.memo(() => {
           <Route path="/verification" element={<VerificationStatus />} />
           
           {/* Catch-all route */}
-          <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+          <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+        </Routes>
+        </AnimatePresence>
       </div>
     </>
   );

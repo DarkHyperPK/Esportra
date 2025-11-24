@@ -57,12 +57,17 @@ const ProtectedRoute = ({
   // If roles are specified, check if user has permission (public roles)
   if (allowedRoles) {
     const effectiveRole = (currentRole || profile?.role) as UserRole | undefined;
-    const hasPermission = !!effectiveRole && allowedRoles.includes(effectiveRole);
+    
+    // Super admin can access all routes
+    const isSuperAdmin = admin.isAdmin && admin.roles.includes('super_admin');
+    const hasPermission = isSuperAdmin || (!!effectiveRole && allowedRoles.includes(effectiveRole));
+    
     if (!hasPermission) {
       console.log('Access denied:', {
         userRole: effectiveRole,
         allowedRoles,
-        userId: user.id
+        userId: user.id,
+        isSuperAdmin
       });
       return <Navigate to="/unauthorized" />;
     }

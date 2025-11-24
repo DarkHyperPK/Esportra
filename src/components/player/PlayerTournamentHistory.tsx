@@ -51,7 +51,6 @@ const PlayerTournamentHistory = () => {
               <CardHeader>
                 <CardTitle>{tournament.name}</CardTitle>
                 <div className="text-gray-400 text-sm">{new Date(tournament.date).toLocaleDateString()}</div>
-                {/* TODO: Display real result/placement here if available in the DB */}
                 <div className="text-xs text-gaming-green mt-1">Result: <span className="font-semibold">(Coming soon)</span></div>
               </CardHeader>
               <CardContent>

@@ -34,23 +34,33 @@ export const useGameLogo = (gameName: string | null | undefined): string | null 
           ? 'Counter-Strike 2' 
           : gameName;
         
+        console.log(`[useGameLogo] Fetching logo for: ${searchName}`);
         const response = await fetch(
           `${RAWG_API_URL}?key=${RAWG_API_KEY}&search=${encodeURIComponent(searchName)}&page_size=1`
         );
+        
+        if (!response.ok) {
+          console.error(`[useGameLogo] RAWG API error for ${searchName}: ${response.status} ${response.statusText}`);
+          throw new Error(`RAWG API error: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log(`[useGameLogo] RAWG results for ${searchName}:`, data?.results?.length || 0);
         
         if (data?.results && data.results.length > 0) {
           const logoUrl = data.results[0].background_image || null;
+          console.log(`[useGameLogo] Found logo for ${searchName}:`, logoUrl ? 'Yes' : 'No');
           // Cache the result
           logoCache[gameName.toLowerCase()] = logoUrl;
           setLogo(logoUrl);
         } else {
+          console.warn(`[useGameLogo] No results for: ${searchName}`);
           // Cache null result to avoid retrying
           logoCache[gameName.toLowerCase()] = null;
           setLogo(null);
         }
       } catch (error) {
-        console.error(`Failed to fetch game logo for ${gameName}:`, error);
+        console.error(`[useGameLogo] Failed to fetch game logo for ${gameName}:`, error);
         // Cache null result on error
         logoCache[gameName.toLowerCase()] = null;
         setLogo(null);
@@ -94,21 +104,31 @@ export const useGameLogos = (gameNames: (string | null | undefined)[]): Record<s
               ? 'Counter-Strike 2' 
               : gameName;
             
+            console.log(`[useGameLogos] Fetching logo for: ${searchName}`);
             const response = await fetch(
               `${RAWG_API_URL}?key=${RAWG_API_KEY}&search=${encodeURIComponent(searchName)}&page_size=1`
             );
+            
+            if (!response.ok) {
+              console.error(`[useGameLogos] RAWG API error for ${searchName}: ${response.status} ${response.statusText}`);
+              throw new Error(`RAWG API error: ${response.status}`);
+            }
+            
             const data = await response.json();
+            console.log(`[useGameLogos] RAWG results for ${searchName}:`, data?.results?.length || 0);
             
             if (data?.results && data.results.length > 0) {
               const logoUrl = data.results[0].background_image || null;
+              console.log(`[useGameLogos] Found logo for ${searchName}:`, logoUrl ? 'Yes' : 'No');
               logoCache[gameName.toLowerCase()] = logoUrl;
               newLogos[gameName] = logoUrl;
             } else {
+              console.warn(`[useGameLogos] No results for: ${searchName}`);
               logoCache[gameName.toLowerCase()] = null;
               newLogos[gameName] = null;
             }
           } catch (error) {
-            console.error(`Failed to fetch logo for ${gameName}:`, error);
+            console.error(`[useGameLogos] Failed to fetch logo for ${gameName}:`, error);
             logoCache[gameName.toLowerCase()] = null;
             newLogos[gameName] = null;
           }

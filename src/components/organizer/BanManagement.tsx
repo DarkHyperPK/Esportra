@@ -170,17 +170,22 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
-                                {ban.user_id ? (
+                                {ban.team_id ? (
+                                  <div className="flex items-center gap-2">
+                                    <Users className="h-4 w-4 text-gray-400" />
+                                    <span className="font-semibold">{ban.team_name || 'Unknown Team'}</span>
+                                    <Badge variant="outline" className="border-gray-500">Team</Badge>
+                                  </div>
+                                ) : ban.user_id ? (
                                   <div className="flex items-center gap-2">
                                     <User className="h-4 w-4 text-gray-400" />
-                                    <span className="font-semibold">{ban.user_name}</span>
+                                    <span className="font-semibold">{ban.user_name || 'Unknown User'}</span>
                                     <Badge variant="outline" className="border-gray-500">Player</Badge>
                                   </div>
                                 ) : (
                                   <div className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-gray-400" />
-                                    <span className="font-semibold">{ban.team_name}</span>
-                                    <Badge variant="outline" className="border-gray-500">Team</Badge>
+                                    <AlertTriangle className="h-4 w-4 text-gray-400" />
+                                    <span className="font-semibold text-gray-400">Unknown Participant</span>
                                   </div>
                                 )}
                               </div>
@@ -226,17 +231,22 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
-                                {ban.user_id ? (
+                                {ban.team_id ? (
+                                  <div className="flex items-center gap-2">
+                                    <Users className="h-4 w-4 text-gray-500" />
+                                    <span className="text-gray-400">{ban.team_name || 'Unknown Team'}</span>
+                                    <Badge variant="outline" className="border-gray-600 text-gray-500">Team</Badge>
+                                  </div>
+                                ) : ban.user_id ? (
                                   <div className="flex items-center gap-2">
                                     <User className="h-4 w-4 text-gray-500" />
-                                    <span className="text-gray-400">{ban.user_name}</span>
+                                    <span className="text-gray-400">{ban.user_name || 'Unknown User'}</span>
                                     <Badge variant="outline" className="border-gray-600 text-gray-500">Player</Badge>
                                   </div>
                                 ) : (
                                   <div className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-gray-500" />
-                                    <span className="text-gray-400">{ban.team_name}</span>
-                                    <Badge variant="outline" className="border-gray-600 text-gray-500">Team</Badge>
+                                    <AlertTriangle className="h-4 w-4 text-gray-500" />
+                                    <span className="text-gray-400">Unknown Participant</span>
                                   </div>
                                 )}
                                 <Badge className="bg-green-600/20 text-green-400 border-green-500/30">Lifted</Badge>

@@ -82,7 +82,7 @@ export const IdentityProvider: React.FC<IdentityProviderProps> = ({ children }) 
           avatar_url: profile.avatar_url,
           bio: profile.bio,
           gaming_stats: {
-            tournaments_played: 0, // TODO: Calculate from database
+            tournaments_played: 0,
             tournaments_won: 0,
             teams_created: 0,
             teams_joined: 0,

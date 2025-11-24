@@ -194,12 +194,12 @@ export const useTournamentRegistration = ({
       setError(null);
       console.log('[useTournamentRegistration] Starting withdrawal process for tournament:', tournamentId, 'user:', user.id);
 
-      // First, check if registration exists
+      // First, check if registration exists - check both user_id (solo) and team_captain_id (team)
       const { data: existingRegistration, error: fetchError } = await supabase
         .from('tournament_participants')
         .select('*')
         .eq('tournament_id', tournamentId)
-        .eq('user_id', user.id)
+        .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`)
         .maybeSingle();
 
       if (fetchError) {
@@ -216,6 +216,15 @@ export const useTournamentRegistration = ({
       }
 
       console.log('[useTournamentRegistration] Found registration:', existingRegistration);
+
+      // Verify the user has permission to withdraw (must be the registered user or team captain)
+      const isSoloRegistration = existingRegistration.participant_type === 'solo' && existingRegistration.user_id === user.id;
+      const isTeamCaptain = existingRegistration.participant_type === 'team' && (existingRegistration as any).team_captain_id === user.id;
+      
+      if (!isSoloRegistration && !isTeamCaptain) {
+        console.error('[useTournamentRegistration] User does not have permission to withdraw this registration');
+        throw new Error('You do not have permission to withdraw this registration.');
+      }
 
       // Delete the registration
       const { error } = await supabase

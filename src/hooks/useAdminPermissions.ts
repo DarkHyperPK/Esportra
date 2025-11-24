@@ -235,19 +235,20 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'verification:view', 'verification:approve', 'verification:reject',
     'team:view', 'team:edit', 'team:delete',
     'user:view', 'user:edit',
-    'audit:view', 'settings:view'
+    'audit:view', 'settings:view',
+    'dispute:resolve'
   ],
   'finance_admin': [
     'user:view', 'user:edit',
-    'tournament:view',
-    'venue:view',
-    'audit:view', 'settings:view'
+    'audit:view',
+    'settings:view'
   ],
   'moderator': [
     'user:view', 'user:edit', 'user:suspend',
     'tournament:view', 'tournament:edit',
     'team:view', 'team:edit',
-    'audit:view'
+    'audit:view',
+    'dispute:resolve'
   ],
   'support_admin': [
     'user:view', 'user:edit',

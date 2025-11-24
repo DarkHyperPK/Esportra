@@ -27,7 +27,10 @@ const TeamForm = ({ mode = 'create', team = null, onClose, onSubmit }) => {
   const [game, setGame] = useState(team?.game || '');
   const [teamLogoFile, setTeamLogoFile] = useState(null);
   const [teamLogoUrl, setTeamLogoUrl] = useState(team?.logo || null);
-  const [members, setMembers] = useState(team?.members?.filter(m => m.role !== 'Captain').map(m => ({ value: m.username, label: m.username })) || []);
+  const [members, setMembers] = useState(() => {
+    if (!team?.members || !Array.isArray(team.members)) return [];
+    return team.members.filter(m => m.role !== 'Captain').map(m => ({ value: m.username, label: m.username }));
+  });
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef();
 

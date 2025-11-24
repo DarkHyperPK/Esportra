@@ -1,5 +1,14 @@
 export type TournamentStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
-export type RegistrationStatus = 'registered' | 'checked_in' | 'eliminated' | 'winner';
+export type RegistrationStatus =
+  | 'pending'
+  | 'approved'
+  | 'registered'
+  | 'checked_in'
+  | 'rejected'
+  | 'cancelled'
+  | 'disqualified'
+  | 'eliminated'
+  | 'winner';
 export type RegistrationType = 'solo' | 'team';
 
 export interface BaseTournament {
@@ -18,6 +27,9 @@ export interface BaseTournament {
   user_id: string;
   created_at: string;
   image_url?: string | null;
+  check_in_required?: boolean;
+  check_in_deadline?: string | null;
+  auto_remove_unchecked?: boolean;
 }
 
 export interface Tournament extends BaseTournament {
@@ -40,6 +52,7 @@ export interface RegistrationDetails {
   team_name: string | null;
   team_members: string | null; // Comma-separated string of member names
   status: RegistrationStatus;
+  checked_in_at?: string | null;
   registered_at: string;
   created_at: string;
   updated_at: string;

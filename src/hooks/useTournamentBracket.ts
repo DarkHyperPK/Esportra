@@ -115,25 +115,61 @@ export const useTournamentBracket = (tournamentId: string) => {
 
   const generateBracket = useCallback(async () => {
     try {
-      // Get registered teams
-      const { data: registrations, error: regError } = await supabase
-        .from('tournament_participants')
-        .select(`
-          *,
-          team:teams(*)
-        `)
-        .eq('tournament_id', tournamentId)
-        .eq('participant_type', 'team')
-        .in('status', ['approved', 'checked_in']);
+      const { data: tournamentConfig, error: configError } = await supabase
+        .from('tournaments')
+        .select('check_in_required, check_in_deadline')
+        .eq('id', tournamentId)
+        .maybeSingle();
 
-      if (regError) throw regError;
+      if (configError) throw configError;
 
-      if (!registrations || registrations.length < 2) {
+      let allowedStatuses: string[] = ['approved', 'checked_in'];
+      if (tournamentConfig?.check_in_required && tournamentConfig.check_in_deadline) {
+        const deadline = new Date(tournamentConfig.check_in_deadline).getTime();
+        if (deadline <= Date.now()) {
+          allowedStatuses = ['checked_in'];
+        }
+      }
+
+      // Get registered teams (excluding banned ones)
+      const [registrationsResponse, bansResponse] = await Promise.all([
+        supabase
+          .from('tournament_participants')
+          .select(`
+            *,
+            team:teams(*)
+          `)
+          .eq('tournament_id', tournamentId)
+          .eq('participant_type', 'team')
+          .in('status', allowedStatuses),
+        supabase
+          .from('tournament_bans')
+          .select('user_id, team_id')
+          .eq('tournament_id', tournamentId)
+          .eq('is_active', true)
+      ]);
+
+      if (registrationsResponse.error) throw registrationsResponse.error;
+
+      const registrations = registrationsResponse.data || [];
+      
+      // Get banned user_ids and team_ids
+      const bannedUserIds = new Set((bansResponse.data || []).filter(b => b.user_id).map(b => b.user_id));
+      const bannedTeamIds = new Set((bansResponse.data || []).filter(b => b.team_id).map(b => b.team_id));
+      
+      // Filter out banned participants
+      const allowedRegistrations = registrations.filter((reg: any) => {
+        if (reg.user_id && bannedUserIds.has(reg.user_id)) return false;
+        if (reg.team_id && bannedTeamIds.has(reg.team_id)) return false;
+        return true;
+      });
+
+      if (!allowedRegistrations || allowedRegistrations.length < 2) {
         throw new Error('Need at least 2 teams to generate bracket');
       }
 
       // Generate bracket structure
-      const teams = registrations.map(reg => reg.team).filter(Boolean);
+      const teams = allowedRegistrations.map(reg => reg.team).filter(Boolean);
       const bracketMatches = generateBracketMatches(teams, tournamentId);
 
       // Insert matches into database

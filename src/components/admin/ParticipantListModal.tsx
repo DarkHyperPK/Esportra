@@ -195,7 +195,7 @@ export function ParticipantListModal({
                       <td className="py-2 px-4 font-semibold text-white">{participant.registration_details?.team_name || '-'}</td>
                       <td className="py-2 px-4 text-white">{participant.profile?.username || '-'}</td>
                       <td className="py-2 px-4 text-sm text-gray-300">
-                        {participant.registration_details?.team_members
+                        {participant.registration_details?.team_members && typeof participant.registration_details.team_members === 'string'
                           ? participant.registration_details.team_members.split(',').map((m, i) => <span key={i}>{m.trim()}<br/></span>)
                           : '-'}
                       </td>

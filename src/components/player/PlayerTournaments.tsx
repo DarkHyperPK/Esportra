@@ -168,21 +168,39 @@ const PlayerTournaments = () => {
         tournaments.map(async (tournament) => {
           const searchName = tournament.game.trim().toLowerCase() === 'cs2' ? 'Counter-Strike 2' : tournament.game;
           try {
+            console.log(`[PlayerTournaments] Fetching RAWG images for: ${searchName}`);
             const response = await fetch(`${RAWG_API_URL}?key=${RAWG_API_KEY}&search=${encodeURIComponent(searchName)}`);
+            
+            if (!response.ok) {
+              console.error(`[PlayerTournaments] RAWG API error for ${searchName}: ${response.status} ${response.statusText}`);
+              newImages[tournament.id] = { logo: null, banner: null };
+              return;
+            }
+            
             const data = await response.json();
+            console.log(`[PlayerTournaments] RAWG results for ${searchName}:`, data?.results?.length || 0);
+            
             if (data && data.results && data.results.length > 0) {
               const gameData = data.results[0];
+              console.log(`[PlayerTournaments] Found game: ${gameData.name}, ID: ${gameData.id}`);
               let banner = null;
               // Try to get a screenshot as banner
               try {
                 const screenshotsRes = await fetch(`${RAWG_API_URL}/${gameData.id}/screenshots?key=${RAWG_API_KEY}`);
+                if (!screenshotsRes.ok) {
+                  console.warn(`[PlayerTournaments] Screenshots API error: ${screenshotsRes.status}`);
+                  throw new Error(`Screenshots API error: ${screenshotsRes.status}`);
+                }
                 const screenshotsData = await screenshotsRes.json();
+                console.log(`[PlayerTournaments] Screenshots for ${gameData.name}:`, screenshotsData?.results?.length || 0);
+                
                 if (screenshotsData && screenshotsData.results && screenshotsData.results.length > 0) {
                   banner = screenshotsData.results[0].image;
                 } else {
                   banner = gameData.background_image_additional || gameData.background_image || null;
                 }
-              } catch {
+              } catch (screenshotErr) {
+                console.error(`[PlayerTournaments] Error fetching screenshots for ${gameData.name}:`, screenshotErr);
                 banner = gameData.background_image_additional || gameData.background_image || null;
               }
               newImages[tournament.id] = {
@@ -190,14 +208,17 @@ const PlayerTournaments = () => {
                 banner: banner,
               };
             } else {
+              console.warn(`[PlayerTournaments] No RAWG results for: ${searchName}`);
               newImages[tournament.id] = { logo: null, banner: null };
             }
-          } catch {
+          } catch (err) {
+            console.error(`[PlayerTournaments] Error fetching RAWG images for ${searchName}:`, err);
             newImages[tournament.id] = { logo: null, banner: null };
           }
         })
       );
       setGameImages(newImages);
+      console.log(`[PlayerTournaments] Fetched images for ${Object.keys(newImages).length} tournaments`);
     };
     if (tournaments.length > 0) fetchImages();
   }, [tournaments]);

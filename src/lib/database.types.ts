@@ -94,6 +94,7 @@ export interface Database {
           team_logo: string | null
           created_at: string
           status: 'registered' | 'cancelled'
+          checked_in_at: string | null
         }
         Insert: {
           id?: string
@@ -109,6 +110,7 @@ export interface Database {
           team_logo?: string | null
           created_at?: string
           status?: 'registered' | 'cancelled'
+          checked_in_at?: string | null
         }
         Update: {
           id?: string
@@ -124,6 +126,7 @@ export interface Database {
           team_logo?: string | null
           created_at?: string
           status?: 'registered' | 'cancelled'
+          checked_in_at?: string | null
         }
         Relationships: [
           {
@@ -157,6 +160,9 @@ export interface Database {
           status: 'upcoming' | 'ongoing' | 'completed'
           created_at: string
           updated_at: string
+          check_in_required: boolean | null
+          check_in_deadline: string | null
+          auto_remove_unchecked: boolean | null
         }
         Insert: {
           id?: string
@@ -174,6 +180,9 @@ export interface Database {
           status?: 'upcoming' | 'ongoing' | 'completed'
           created_at?: string
           updated_at?: string
+          check_in_required?: boolean | null
+          check_in_deadline?: string | null
+          auto_remove_unchecked?: boolean | null
         }
         Update: {
           id?: string
@@ -191,7 +200,91 @@ export interface Database {
           status?: 'upcoming' | 'ongoing' | 'completed'
           created_at?: string
           updated_at?: string
+          check_in_required?: boolean | null
+          check_in_deadline?: string | null
+          auto_remove_unchecked?: boolean | null
         }
+      }
+      team_invitations: {
+        Row: {
+          id: string
+          team_id: string | null
+          invited_user_id: string | null
+          invited_email: string | null
+          status: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          team_id?: string | null
+          invited_user_id?: string | null
+          invited_email?: string | null
+          status?: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          team_id?: string | null
+          invited_user_id?: string | null
+          invited_email?: string | null
+          status?: string
+          created_at?: string | null
+        }
+      }
+      tournament_staff: {
+        Row: {
+          id: string
+          tournament_id: string
+          user_id: string
+          role: string
+          permissions: string[]
+          status: string
+          assigned_by: string | null
+          created_at: string
+          updated_at: string
+          accepted_at: string | null
+          responded_at: string | null
+        }
+        Insert: {
+          id?: string
+          tournament_id: string
+          user_id: string
+          role?: string
+          permissions?: string[]
+          status?: string
+          assigned_by?: string | null
+          created_at?: string
+          updated_at?: string
+          accepted_at?: string | null
+          responded_at?: string | null
+        }
+        Update: {
+          id?: string
+          tournament_id?: string
+          user_id?: string
+          role?: string
+          permissions?: string[]
+          status?: string
+          assigned_by?: string | null
+          created_at?: string
+          updated_at?: string
+          accepted_at?: string | null
+          responded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_staff_tournament_id_fkey"
+            columns: ["tournament_id"]
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_staff_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       user_roles: {
         Row: {

@@ -59,12 +59,12 @@ export const EditProfileForm = ({ profile, onUpdateProfile, loading }: EditProfi
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${profile.id}_${Date.now()}.${fileExt}`;
-      const { data, error } = await supabase.storage.from('user-avatars').upload(fileName, file, {
+      const { data, error } = await supabase.storage.from('users.avatars').upload(fileName, file, {
         cacheControl: '3600',
         upsert: true,
       });
       if (error) throw error;
-      const { data: publicUrlData } = supabase.storage.from('user-avatars').getPublicUrl(fileName);
+      const { data: publicUrlData } = supabase.storage.from('users.avatars').getPublicUrl(fileName);
       const publicUrl = publicUrlData?.publicUrl;
       if (publicUrl) {
         setPreviewUrl(publicUrl);

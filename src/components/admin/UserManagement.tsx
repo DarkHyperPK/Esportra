@@ -35,12 +35,17 @@ import {
   MessageSquare,
   DollarSign,
   Trophy,
-  Building2
+  Building2,
+  UserPlus,
+  UserMinus,
+  Crown
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ROLE_PERMISSIONS } from '@/hooks/useAdminPermissions';
 
 interface User {
   id: string;
@@ -49,6 +54,8 @@ interface User {
   full_name: string;
   avatar_url?: string;
   role: string;
+  is_admin?: boolean;
+  admin_roles?: string[];
   created_at: string;
   last_sign_in?: string;
   is_verified: boolean;
@@ -64,12 +71,26 @@ interface User {
     total_earnings: number;
     teams_created: number;
   };
+  // Fetched roles
+  assigned_user_roles?: string[];
+  assigned_admin_roles?: string[];
 }
 
+type Role = { 
+  id: string; 
+  name: string; 
+  description: string; 
+  isAdmin?: boolean;
+  roleKey?: string;
+  roleId?: string | number;
+};
+
 const UserManagement: React.FC = () => {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, profile } = useAuth();
+  const admin = useAdmin();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -78,15 +99,87 @@ const UserManagement: React.FC = () => {
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [showSuspendDialog, setShowSuspendDialog] = useState(false);
   const [showBanDialog, setShowBanDialog] = useState(false);
+  const [showAssignRoleDialog, setShowAssignRoleDialog] = useState(false);
+  const [showRevokeRoleDialog, setShowRevokeRoleDialog] = useState(false);
+  const [selectedRoleForAction, setSelectedRoleForAction] = useState<string>('');
+  const [roleActionLoading, setRoleActionLoading] = useState(false);
   const [actionReason, setActionReason] = useState('');
   const [actionDuration, setActionDuration] = useState('7');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 20;
+  
+  const isSuperAdmin = admin.roles.includes('super_admin');
 
   // Extra data for user details modal
   const [userVerifiedRoles, setUserVerifiedRoles] = useState<any[]>([]);
   const [userAssignedRoles, setUserAssignedRoles] = useState<any[]>([]);
+
+  // Load roles for super admin role management
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    
+    const loadRoles = async () => {
+      try {
+        let adminRoles: any[] = [];
+        
+        try {
+          const { data: rolesWithKey, error: errorWithKey } = await supabase
+            .from('admin_roles')
+            .select('id, key, name, description')
+            .order('name');
+          
+          if (errorWithKey) {
+            const errorMessage = errorWithKey?.message || String(errorWithKey) || '';
+            const errorCode = errorWithKey?.code || '';
+            const isColumnError = errorMessage.includes('column') && errorMessage.includes('key') 
+              || errorCode === '42703';
+            
+            if (isColumnError) {
+              const { data: rolesWithoutKey } = await supabase
+                .from('admin_roles')
+                .select('id, name, description')
+                .order('name');
+              adminRoles = rolesWithoutKey || [];
+            } else {
+              adminRoles = [];
+            }
+          } else {
+            adminRoles = rolesWithKey || [];
+          }
+        } catch (err) {
+          adminRoles = [];
+        }
+        
+        const regularRoles = [
+          { id: 'organizer', name: 'organizer', description: 'Tournament Organizer' },
+          { id: 'venue_owner', name: 'venue_owner', description: 'Venue Owner' },
+          { id: 'casual', name: 'casual', description: 'Casual Player' }
+        ];
+        
+        const allRoles = [
+          ...adminRoles.map((role: any) => {
+            const roleKey = role.key || role.name;
+            return {
+              id: role.key || role.id || role.name,
+              name: role.name,
+              description: role.description || '',
+              isAdmin: true,
+              roleKey: roleKey,
+              roleId: role.id
+            };
+          }),
+          ...regularRoles.map(role => ({ ...role, isAdmin: false }))
+        ];
+        
+        setRoles(allRoles);
+      } catch (err) {
+        console.error('Error loading roles:', err);
+      }
+    };
+    
+    loadRoles();
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     const loadUserDetails = async () => {
@@ -117,9 +210,9 @@ const UserManagement: React.FC = () => {
           .order('created_at', { ascending: false })
           .range(from, to);
 
-        if (filterRole !== 'all') {
-          q = q.eq('role', filterRole);
-        }
+        // Note: We'll filter by roles after fetching, since we need to check both
+        // admin_roles array and user_roles table. For now, fetch all and filter client-side.
+        // This is less efficient but more accurate for multi-role system.
 
         if (searchTerm) {
           q = q.or(`username.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
@@ -153,7 +246,58 @@ const UserManagement: React.FC = () => {
 
       if (error) throw error;
 
-      setUsers(data || []);
+      // Fetch roles for all users
+      const userIds = (data || []).map(u => u.id);
+      const [userRolesResult, adminUserRolesResult] = await Promise.all([
+        userIds.length > 0 
+          ? supabase.from('user_roles').select('user_id, role').in('user_id', userIds).eq('is_active', true)
+          : { data: [], error: null },
+        userIds.length > 0
+          ? supabase.from('admin_user_roles').select('user_id, admin_roles:role_id(name)').in('user_id', userIds)
+          : { data: [], error: null }
+      ]);
+
+      // Build role maps
+      const userRolesMap: Record<string, string[]> = {};
+      (userRolesResult.data || []).forEach((ur: any) => {
+        if (!userRolesMap[ur.user_id]) userRolesMap[ur.user_id] = [];
+        userRolesMap[ur.user_id].push(ur.role);
+      });
+
+      const adminRolesMap: Record<string, string[]> = {};
+      (adminUserRolesResult.data || []).forEach((aur: any) => {
+        if (!adminRolesMap[aur.user_id]) adminRolesMap[aur.user_id] = [];
+        const roleName = aur.admin_roles?.name || '';
+        if (roleName) {
+          adminRolesMap[aur.user_id].push(roleName.toLowerCase().replace(/\s+/g, '_'));
+        }
+      });
+
+      // Enhance users with role data
+      let usersWithRoles = (data || []).map(user => ({
+        ...user,
+        assigned_user_roles: userRolesMap[user.id] || [],
+        assigned_admin_roles: adminRolesMap[user.id] || (user.admin_roles as string[]) || []
+      }));
+
+      // Apply role filter client-side (since we need to check multiple sources)
+      if (filterRole !== 'all') {
+        const adminRoles = ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'];
+        const normalizedFilterRole = filterRole.toLowerCase().replace(/\s+/g, '_');
+        
+        usersWithRoles = usersWithRoles.filter(user => {
+          // Check admin roles
+          if (adminRoles.includes(normalizedFilterRole)) {
+            return user.assigned_admin_roles?.includes(normalizedFilterRole) || 
+                   (user.admin_roles as string[])?.includes(normalizedFilterRole);
+          }
+          // Check user roles
+          return user.assigned_user_roles?.includes(normalizedFilterRole) ||
+                 user.role === normalizedFilterRole;
+        });
+      }
+
+      setUsers(usersWithRoles);
       setTotalPages(Math.ceil((count || 0) / itemsPerPage));
 
     } catch (error: any) {
@@ -345,6 +489,276 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  // Role management functions (for super admin)
+  const handleAssignRole = async () => {
+    if (!selectedUser || !selectedRoleForAction) return;
+    
+    try {
+      setRoleActionLoading(true);
+      const user = { 
+        id: selectedUser.id, 
+        email: selectedUser.email, 
+        is_admin: selectedUser.is_admin, 
+        admin_roles: selectedUser.admin_roles || selectedUser.assigned_admin_roles 
+      };
+      const targetUserIsSuperAdmin = user.is_admin && (user.admin_roles as string[])?.includes('super_admin');
+      const selectedRoleData = roles.find(r => r.id === selectedRoleForAction);
+      const roleDisplayName = selectedRoleData?.name || selectedRoleForAction.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+      const isAdminRole = selectedRoleData?.isAdmin || false;
+      
+      if (targetUserIsSuperAdmin) {
+        toast({ title: 'Cannot Assign Role', description: 'Super admins cannot have roles assigned.', variant: 'destructive' });
+        setRoleActionLoading(false);
+        return;
+      }
+      
+      if (selectedRoleForAction === 'super_admin' || selectedRoleData?.roleKey === 'super_admin') {
+        toast({ title: 'Cannot Assign Role', description: 'Super admin role cannot be assigned through this interface.', variant: 'destructive' });
+        setRoleActionLoading(false);
+        return;
+      }
+      
+      if (isAdminRole) {
+        const roleData = selectedRoleData as (Role & { roleKey?: string; roleId?: string | number });
+        let roleId: string | number;
+        let roleKey: string;
+        
+        if (roleData?.roleId) {
+          roleId = roleData.roleId;
+          const rawKey = roleData.roleKey || roleData.name || selectedRoleForAction;
+          roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
+        } else {
+          const { data: adminRoleRecord, error: roleLookupError } = await supabase
+            .from('admin_roles')
+            .select('id, key, name')
+            .or(`id.eq.${selectedRoleForAction},key.eq.${selectedRoleForAction},name.eq.${selectedRoleForAction}`)
+            .maybeSingle();
+          
+          if (roleLookupError || !adminRoleRecord) {
+            throw new Error(`Admin role '${selectedRoleForAction}' not found`);
+          }
+          
+          const rawKey = adminRoleRecord.key || adminRoleRecord.name || selectedRoleForAction;
+          roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
+          roleId = adminRoleRecord.id;
+        }
+        
+        const { data: existingRole } = await supabase
+          .from('admin_user_roles')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('role_id', roleId)
+          .maybeSingle();
+        
+        const { data: currentProfile } = await supabase
+          .from('profiles')
+          .select('admin_roles')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        const currentAdminRoles = (currentProfile?.admin_roles as string[]) || [];
+        if (existingRole || currentAdminRoles.includes(roleKey)) {
+          toast({ title: 'Role Already Assigned', description: `${roleDisplayName} is already assigned`, variant: 'default' });
+          setRoleActionLoading(false);
+          return;
+        }
+        
+        const { error: adminError } = await supabase
+          .from('admin_user_roles')
+          .insert({
+            user_id: user.id,
+            role_id: roleId,
+            assigned_by: profile?.id,
+            assigned_at: new Date().toISOString()
+          });
+        
+        if (adminError) {
+          if (adminError.code === '23505') {
+            toast({ title: 'Role Already Assigned', description: `${roleDisplayName} is already assigned`, variant: 'default' });
+            setRoleActionLoading(false);
+            return;
+          }
+          throw adminError;
+        }
+        
+        const updatedAdminRoles = [...currentAdminRoles, roleKey];
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ is_admin: true, admin_roles: updatedAdminRoles })
+          .eq('id', user.id);
+        
+        if (profileError) throw profileError;
+      } else {
+        const { error: userRoleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: user.id,
+            role: selectedRoleForAction,
+            is_active: true,
+            assigned_by: profile?.id,
+            assigned_at: new Date().toISOString()
+          });
+        
+        if (userRoleError) {
+          const { error: updateError } = await supabase
+            .from('user_roles')
+            .update({ is_active: true, assigned_by: profile?.id, assigned_at: new Date().toISOString() })
+            .eq('user_id', user.id)
+            .eq('role', selectedRoleForAction);
+          if (updateError) throw updateError;
+        }
+      }
+      
+      toast({ title: 'Role Assigned', description: `${roleDisplayName} assigned to ${user.email}` });
+      window.dispatchEvent(new CustomEvent('adminRolesUpdated'));
+      localStorage.setItem('admin_roles_updated', Date.now().toString());
+      
+      setShowAssignRoleDialog(false);
+      setSelectedRoleForAction('');
+      fetchUsers();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Failed to assign role', variant: 'destructive' });
+    } finally {
+      setRoleActionLoading(false);
+    }
+  };
+
+  const handleRevokeRole = async () => {
+    if (!selectedUser || !selectedRoleForAction) return;
+    
+    try {
+      setRoleActionLoading(true);
+      const user = { 
+        id: selectedUser.id, 
+        email: selectedUser.email, 
+        is_admin: selectedUser.is_admin, 
+        admin_roles: selectedUser.admin_roles || selectedUser.assigned_admin_roles 
+      };
+      const targetUserIsSuperAdmin = user.is_admin && (user.admin_roles as string[])?.includes('super_admin');
+      
+      if (targetUserIsSuperAdmin) {
+        toast({ title: 'Cannot Revoke Role', description: 'Super admins do not have roles assigned.', variant: 'destructive' });
+        setRoleActionLoading(false);
+        return;
+      }
+      
+      const selectedRoleData = roles.find(r => r.id === selectedRoleForAction);
+      const roleDisplayName = selectedRoleData?.name || selectedRoleForAction.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+      const isAdminRole = selectedRoleData?.isAdmin || false;
+      
+      if (selectedRoleForAction === 'super_admin' || selectedRoleData?.roleKey === 'super_admin') {
+        toast({ title: 'Cannot Revoke Role', description: 'Super admin role cannot be revoked.', variant: 'destructive' });
+        setRoleActionLoading(false);
+        return;
+      }
+      
+      if (isAdminRole) {
+        const roleData = selectedRoleData as (Role & { roleKey?: string; roleId?: string | number });
+        let roleId: string | number;
+        let roleKey: string;
+        
+        if (roleData?.roleId) {
+          roleId = roleData.roleId;
+          const rawKey = roleData.roleKey || roleData.name || selectedRoleForAction;
+          roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
+        } else {
+          const { data: adminRoleRecord, error: roleLookupError } = await supabase
+            .from('admin_roles')
+            .select('id, key, name')
+            .or(`id.eq.${selectedRoleForAction},key.eq.${selectedRoleForAction},name.eq.${selectedRoleForAction}`)
+            .maybeSingle();
+          
+          if (roleLookupError || !adminRoleRecord) {
+            throw new Error(`Admin role '${selectedRoleForAction}' not found`);
+          }
+          
+          const rawKey = adminRoleRecord.key || adminRoleRecord.name || selectedRoleForAction;
+          roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
+          roleId = adminRoleRecord.id;
+        }
+        
+        const { data: existingAdminRole } = await supabase
+          .from('admin_user_roles')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('role_id', roleId)
+          .maybeSingle();
+        
+        if (!existingAdminRole) {
+          toast({ title: 'Role Not Found', description: `${roleDisplayName} is not assigned to ${user.email}`, variant: 'destructive' });
+          setRoleActionLoading(false);
+          return;
+        }
+        
+        const { error: adminError } = await supabase
+          .from('admin_user_roles')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('role_id', roleId);
+        
+        if (adminError) throw adminError;
+        
+        const { data: currentProfile } = await supabase
+          .from('profiles')
+          .select('admin_roles')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        const currentAdminRoles = (currentProfile?.admin_roles as string[]) || [];
+        const updatedAdminRoles = currentAdminRoles.filter(r => r !== roleKey);
+        
+        const { data: remainingAdminRoles } = await supabase
+          .from('admin_user_roles')
+          .select('id')
+          .eq('user_id', user.id);
+        
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ 
+            is_admin: remainingAdminRoles && remainingAdminRoles.length > 0,
+            admin_roles: updatedAdminRoles
+          })
+          .eq('id', user.id);
+        
+        if (profileError) throw profileError;
+      } else {
+        const { data: existingUserRole } = await supabase
+          .from('user_roles')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('role', selectedRoleForAction)
+          .eq('is_active', true)
+          .maybeSingle();
+        
+        if (!existingUserRole) {
+          toast({ title: 'Role Not Found', description: `${roleDisplayName} is not active for ${user.email}`, variant: 'destructive' });
+          setRoleActionLoading(false);
+          return;
+        }
+        
+        const { error: userRoleError } = await supabase
+          .from('user_roles')
+          .update({ is_active: false })
+          .eq('user_id', user.id)
+          .eq('role', selectedRoleForAction);
+        
+        if (userRoleError) throw userRoleError;
+      }
+      
+      toast({ title: 'Role Revoked', description: `${roleDisplayName} revoked from ${user.email}` });
+      window.dispatchEvent(new CustomEvent('adminRolesUpdated'));
+      localStorage.setItem('admin_roles_updated', Date.now().toString());
+      
+      setShowRevokeRoleDialog(false);
+      setSelectedRoleForAction('');
+      fetchUsers();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Failed to revoke role', variant: 'destructive' });
+    } finally {
+      setRoleActionLoading(false);
+    }
+  };
+
   const getStatusBadge = (user: User) => {
     if (user.is_banned) {
       return <Badge className="bg-red-600 text-white">Banned</Badge>;
@@ -356,17 +770,49 @@ const UserManagement: React.FC = () => {
   };
 
   const getRoleBadge = (role: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       admin: 'bg-purple-600',
+      super_admin: 'bg-yellow-600',
+      ops_admin: 'bg-blue-600',
+      finance_admin: 'bg-green-600',
+      moderator: 'bg-orange-600',
+      support_admin: 'bg-purple-500',
       organizer: 'bg-blue-600',
       venue_owner: 'bg-green-600',
       casual: 'bg-gray-600'
     };
+    const displayName = role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     return (
-      <Badge className={`${colors[role as keyof typeof colors] || 'bg-gray-600'} text-white`}>
-        {role.charAt(0).toUpperCase() + role.slice(1)}
+      <Badge className={`${colors[role] || 'bg-gray-600'} text-white`}>
+        {displayName}
       </Badge>
     );
+  };
+
+  const getAllUserRoles = (user: User): string[] => {
+    const allRoles: string[] = [];
+    
+    // Add admin roles
+    if (user.assigned_admin_roles && user.assigned_admin_roles.length > 0) {
+      allRoles.push(...user.assigned_admin_roles);
+    } else if (user.admin_roles && user.admin_roles.length > 0) {
+      allRoles.push(...(user.admin_roles as string[]));
+    }
+    
+    // Add user roles
+    if (user.assigned_user_roles && user.assigned_user_roles.length > 0) {
+      allRoles.push(...user.assigned_user_roles);
+    } else if (user.role && user.role !== 'casual') {
+      // Only add legacy role if it's not casual (to avoid duplicates)
+      allRoles.push(user.role);
+    }
+    
+    // If no roles found, default to casual
+    if (allRoles.length === 0) {
+      allRoles.push('casual');
+    }
+    
+    return [...new Set(allRoles)]; // Remove duplicates
   };
 
   return (
@@ -401,7 +847,13 @@ const UserManagement: React.FC = () => {
               </SelectTrigger>
               <SelectContent className="bg-gray-700 border-gray-600">
                 <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase">Admin Roles</div>
+                <SelectItem value="super_admin">Super Admin</SelectItem>
+                <SelectItem value="ops_admin">Ops Admin</SelectItem>
+                <SelectItem value="finance_admin">Finance Admin</SelectItem>
+                <SelectItem value="moderator">Moderator</SelectItem>
+                <SelectItem value="support_admin">Support Admin</SelectItem>
+                <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase mt-2 border-t border-gray-600 pt-2">User Roles</div>
                 <SelectItem value="organizer">Organizer</SelectItem>
                 <SelectItem value="venue_owner">Venue Owner</SelectItem>
                 <SelectItem value="casual">Casual</SelectItem>
@@ -469,7 +921,13 @@ const UserManagement: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {getRoleBadge(user.role)}
+                      <div className="flex flex-wrap gap-1">
+                        {getAllUserRoles(user).map((role, idx) => (
+                          <span key={idx}>
+                            {getRoleBadge(role)}
+                          </span>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {getStatusBadge(user)}
@@ -508,6 +966,46 @@ const UserManagement: React.FC = () => {
                           </TooltipTrigger>
                           <TooltipContent>View details</TooltipContent>
                         </Tooltip>
+                        
+                        {/* Super Admin Role Management Actions */}
+                        {isSuperAdmin && (user.is_admin || user.assigned_admin_roles?.length || 0 > 0) && (
+                          <>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  aria-label="Assign role"
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setShowAssignRoleDialog(true);
+                                  }}
+                                  className="border-blue-600 text-blue-400 hover:bg-blue-600/10"
+                                >
+                                  <UserPlus className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Assign Role</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  aria-label="Revoke role"
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setShowRevokeRoleDialog(true);
+                                  }}
+                                  className="border-red-600 text-red-400 hover:bg-red-600/10"
+                                >
+                                  <UserMinus className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Revoke Role</TooltipContent>
+                            </Tooltip>
+                          </>
+                        )}
                         
                         {!user.is_banned && !user.is_suspended && (
                           <>
@@ -788,6 +1286,104 @@ const UserManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Assign Role Dialog */}
+      {selectedUser && (
+        <Dialog open={showAssignRoleDialog} onOpenChange={setShowAssignRoleDialog}>
+          <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center gap-2">
+                <UserPlus className="w-5 h-5" /> Assign Role to {selectedUser.username}
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Select a role to assign to {selectedUser.email}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <Select value={selectedRoleForAction} onValueChange={setSelectedRoleForAction}>
+                <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+                  <SelectValue placeholder="Select role to assign" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase">Admin Roles</div>
+                  {roles.filter(r => r.isAdmin && r.roleKey !== 'super_admin').map(role => (
+                    <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                  ))}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase mt-2 border-t border-gray-700 pt-2">User Roles</div>
+                  {roles.filter(r => !r.isAdmin).map(role => (
+                    <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAssignRoleDialog(false)} className="text-gray-400 border-gray-600 hover:bg-gray-700">
+                Cancel
+              </Button>
+              <Button onClick={handleAssignRole} disabled={!selectedRoleForAction || roleActionLoading} className="bg-green-600 hover:bg-green-700 text-white">
+                {roleActionLoading ? 'Assigning...' : 'Assign Role'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Revoke Role Dialog */}
+      {selectedUser && (
+        <Dialog open={showRevokeRoleDialog} onOpenChange={setShowRevokeRoleDialog}>
+          <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center gap-2">
+                <UserMinus className="w-5 h-5" /> Revoke Role from {selectedUser.username}
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Select a role to revoke from {selectedUser.email}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <Select value={selectedRoleForAction} onValueChange={setSelectedRoleForAction}>
+                <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+                  <SelectValue placeholder="Select role to revoke" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase">Admin Roles</div>
+                  {selectedUser && getAllUserRoles(selectedUser)
+                    .filter(role => {
+                      const roleData = roles.find(r => r.id === role || r.roleKey === role);
+                      return roleData?.isAdmin && roleData.roleKey !== 'super_admin';
+                    })
+                    .map(role => {
+                      const roleData = roles.find(r => r.id === role || r.roleKey === role);
+                      return roleData ? (
+                        <SelectItem key={role} value={roleData.id}>{roleData.name}</SelectItem>
+                      ) : null;
+                    })}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase mt-2 border-t border-gray-700 pt-2">User Roles</div>
+                  {selectedUser && getAllUserRoles(selectedUser)
+                    .filter(role => {
+                      const roleData = roles.find(r => r.id === role || r.roleKey === role);
+                      return !roleData?.isAdmin;
+                    })
+                    .map(role => {
+                      const roleData = roles.find(r => r.id === role || r.roleKey === role);
+                      return roleData ? (
+                        <SelectItem key={role} value={roleData.id}>{roleData.name}</SelectItem>
+                      ) : null;
+                    })}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowRevokeRoleDialog(false)} className="text-gray-400 border-gray-600 hover:bg-gray-700">
+                Cancel
+              </Button>
+              <Button onClick={handleRevokeRole} disabled={!selectedRoleForAction || roleActionLoading} className="bg-red-600 hover:bg-red-700 text-white">
+                {roleActionLoading ? 'Revoking...' : 'Revoke Role'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

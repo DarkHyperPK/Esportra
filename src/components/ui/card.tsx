@@ -1,4 +1,5 @@
 import * as React from "react"
+import { motion } from "framer-motion"
 
 import { cn } from "@/lib/utils"
 
@@ -6,12 +7,16 @@ const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <motion.div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      "rounded-3xl border border-white/5 bg-gradient-to-br from-[#0c0f17]/90 via-[#0c101c]/80 to-[#050608]/90 text-white shadow-[0_25px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl",
       className
     )}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+    whileHover={{ y: -4, transition: { duration: 0.2 } }}
     {...props}
   />
 ))
@@ -23,7 +28,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    className={cn("flex flex-col space-y-1 p-6", className)}
     {...props}
   />
 ))
@@ -36,7 +41,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-xl font-semibold leading-none tracking-tight text-white",
       className
     )}
     {...props}

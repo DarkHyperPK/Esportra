@@ -91,9 +91,9 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
     const filePath = `team-logos/${fileName}`;
-    const { error } = await supabase.storage.from('team-logos').upload(filePath, file);
+    const { error } = await supabase.storage.from('teams.logos').upload(filePath, file);
     if (error) return null;
-    const { data } = supabase.storage.from('team-logos').getPublicUrl(filePath);
+    const { data } = supabase.storage.from('teams.logos').getPublicUrl(filePath);
     return data.publicUrl;
   };
 

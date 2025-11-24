@@ -53,12 +53,13 @@ const RoleSwitcher: React.FC = () => {
         .eq('user_id', user.id)
         .eq('is_active', true);
 
-      // Get verified roles
+      // Get verified roles (must be approved AND active)
       const { data: verifiedRoles } = await supabase
         .from('verified_roles')
-        .select('role, status')
+        .select('role, status, is_active')
         .eq('user_id', user.id)
-        .eq('status', 'approved');
+        .eq('status', 'approved')
+        .eq('is_active', true);
 
       // Get admin status
       const { data: profile } = await supabase
@@ -112,15 +113,13 @@ const RoleSwitcher: React.FC = () => {
   }, [user]);
 
   const handleRoleSwitch = async (newRole: 'casual' | 'organizer' | 'venue_owner') => {
-    // Admins don't need verification for any role
-    if (currentRole === 'admin') {
-      setSwitching(true);
-      const success = await switchRole(newRole, reason || undefined);
-      if (success) {
-        setShowDialog(false);
-        setReason('');
-      }
-      setSwitching(false);
+    // Admins cannot switch roles - super admin has all perks, other admins stay on casual
+    if (currentRole === 'admin' || isLoading) {
+      toast({
+        title: 'Admin Account',
+        description: 'Admin accounts cannot switch roles. Super admins have all features, other admins stay on casual with their admin permissions.',
+        variant: 'default',
+      });
       return;
     }
 
@@ -160,12 +159,16 @@ const RoleSwitcher: React.FC = () => {
     }
   };
 
-  const getRoleColor = (role: 'casual' | 'organizer' | 'venue_owner') => {
+const getRoleBadgeClasses = (role: 'casual' | 'organizer' | 'venue_owner') => {
     switch (role) {
-      case 'casual': return 'bg-blue-600';
-      case 'organizer': return 'bg-purple-600';
-      case 'venue_owner': return 'bg-green-600';
-      default: return 'bg-blue-600';
+    case 'casual':
+      return 'bg-gradient-to-r from-cyan-500/70 to-sky-500/70 border border-cyan-400/30';
+    case 'organizer':
+      return 'bg-gradient-to-r from-rose-500/70 to-orange-500/70 border border-rose-400/30';
+    case 'venue_owner':
+      return 'bg-gradient-to-r from-emerald-500/70 to-lime-500/70 border border-emerald-400/30';
+    default:
+      return 'bg-gradient-to-r from-cyan-500/70 to-sky-500/70 border border-cyan-400/30';
     }
   };
 
@@ -195,7 +198,7 @@ const RoleSwitcher: React.FC = () => {
       <div className="flex items-center gap-3">
         <Badge 
           variant="secondary" 
-          className={`${getRoleColor(currentRole)} text-white flex items-center gap-2`}
+          className={`${getRoleBadgeClasses(currentRole)} text-white flex items-center gap-2`}
         >
           {getRoleIcon(currentRole)}
           {currentRole === 'casual' ? 'Player' : 'Organizer'}
@@ -206,7 +209,7 @@ const RoleSwitcher: React.FC = () => {
           size="sm"
           onClick={() => setShowDialog(true)}
           disabled={isLoading}
-          className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
+          className="rounded-xl border-white/20 bg-white/5 text-white hover:bg-white/10"
         >
           <ArrowRightLeft className="w-4 h-4 mr-2" />
           Switch Role
@@ -214,210 +217,114 @@ const RoleSwitcher: React.FC = () => {
       </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="bg-gray-900 border border-gray-700 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <Shield className="w-5 h-5" />
+        <DialogContent className="max-w-sm border border-white/10 bg-[#05070f] px-4 py-5 shadow-[0_30px_70px_rgba(0,0,0,0.65)]">
+          <DialogHeader className="pb-3">
+            <DialogTitle className="flex items-center gap-2 text-lg text-white">
+              <ArrowRightLeft className="w-4 h-4" />
               Switch Role
             </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Choose your role to access different features
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {/* Current Role Info */}
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
+          <div className="space-y-2">
+            {/* Current Role Badge */}
+            <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+              <Badge className={`${getRoleBadgeClasses(currentRole)} text-white text-xs flex items-center gap-1.5`}>
                 {getRoleIcon(currentRole as any)}
-                <span className="font-semibold text-white">
-                  Current: {getRoleLabel(currentRole as any)}
-                </span>
-                <Badge className="bg-green-600 text-white text-xs">
-                  <Shield className="w-3 h-3 mr-1" />
-                  Active
-                </Badge>
-              </div>
-              <p className="text-sm text-gray-400">
-                {getRoleDescription(currentRole)}
-              </p>
+                Current: {getRoleLabel(currentRole as any)}
+              </Badge>
             </div>
 
-            {/* Role Options */}
-            <div className="space-y-3">
+            {/* Role Options - Compact */}
+            <div className="space-y-2">
               {/* Player Role */}
-              <div 
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+              <button
+                className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-all ${
                   currentRole === 'casual' 
-                    ? 'border-blue-500 bg-blue-500/10' 
-                    : 'border-gray-600 hover:border-blue-500/50'
+                    ? 'border-cyan-400/60 bg-cyan-500/10'
+                    : 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5'
                 }`}
                 onClick={() => currentRole !== 'casual' && handleRoleSwitch('casual')}
+                disabled={switching || currentRole === 'casual'}
               >
-                <div className="flex items-center gap-3 mb-2">
-                  <Gamepad2 className="w-5 h-5 text-blue-500" />
-                  <span className="font-semibold text-white">Player Mode</span>
+                <div className="flex items-center gap-2">
+                  <Gamepad2 className="h-4 w-4 flex-shrink-0 text-cyan-300" />
+                  <span className="text-sm font-medium text-white">Player</span>
+                  {currentRole === 'casual' && (
+                    <Badge className="ml-auto bg-emerald-500/80 text-xs text-white">Active</Badge>
+                  )}
                 </div>
-                <p className="text-sm text-gray-400 mb-3">
-                  Create teams, join tournaments, compete in matches
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs">Create Teams</Badge>
-                  <Badge variant="outline" className="text-xs">Join Tournaments</Badge>
-                  <Badge variant="outline" className="text-xs">Report Scores</Badge>
-                </div>
-              </div>
+              </button>
 
               {/* Organizer Role */}
-              <div 
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+              <button
+                className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-all ${
                   currentRole === 'organizer' 
-                    ? 'border-purple-500 bg-purple-500/10' 
+                    ? 'border-rose-400/70 bg-rose-500/10' 
                     : verificationStatus.organizer
-                      ? 'border-gray-600 hover:border-purple-500/50'
-                      : 'border-gray-600 hover:border-purple-500/50 opacity-75'
+                      ? 'border-white/10 hover:border-rose-400/40 hover:bg-white/5'
+                      : 'border-white/10 hover:border-rose-400/40 hover:bg-white/5 opacity-75'
                 }`}
                 onClick={() => currentRole !== 'organizer' && handleRoleSwitch('organizer')}
+                disabled={switching || currentRole === 'organizer'}
               >
-                <div className="flex items-center gap-3 mb-2">
-                  <Trophy className="w-5 h-5 text-purple-500" />
-                  <span className="font-semibold text-white">Organizer Mode</span>
-                  {currentRole === 'admin' ? (
-                    <Badge className="bg-red-600 text-white text-xs">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Admin Access
-                    </Badge>
-                  ) : currentRole === 'organizer' ? (
-                    <Badge className="bg-green-600 text-white text-xs">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Active
-                    </Badge>
-                  ) : !verificationSystemReady ? (
-                    <Badge className="bg-blue-600 text-white text-xs">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Available
-                    </Badge>
-                  ) : verificationStatus.organizer ? (
-                    <Badge className="bg-green-600 text-white text-xs">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Verified
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-yellow-400 border-yellow-400 text-xs">
-                      <AlertCircle className="w-3 h-3 mr-1" />
-                      Requires Verification
-                    </Badge>
-                  )}
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 flex-shrink-0 text-rose-300" />
+                  <span className="text-sm font-medium text-white">Organizer</span>
+                  <div className="ml-auto flex items-center gap-1">
+                    {currentRole === 'organizer' ? (
+                      <Badge className="bg-emerald-500/80 text-xs text-white">Active</Badge>
+                    ) : verificationStatus.organizer ? (
+                      <Badge className="bg-emerald-500/80 text-xs text-white">Verified</Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-amber-400 text-xs text-amber-300">
+                        <AlertCircle className="mr-0.5 h-3 w-3" />
+                        Verify
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <p className="text-sm text-gray-400 mb-3">
-                  Create tournaments, manage events, verify results
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs">Create Tournaments</Badge>
-                  <Badge variant="outline" className="text-xs">Manage Events</Badge>
-                  <Badge variant="outline" className="text-xs">Verify Results</Badge>
-                </div>
-                {currentRole !== 'admin' && currentRole !== 'organizer' && verificationSystemReady && !verificationStatus.organizer && (
-                  <Alert className="mt-3 bg-yellow-900/20 border-yellow-700">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-yellow-300 text-xs">
-                      You need to be verified as an organizer to access this mode.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
+              </button>
 
               {/* Venue Owner Role */}
-              <div 
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+              <button
+                className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-all ${
                   currentRole === 'venue_owner' 
-                    ? 'border-green-500 bg-green-500/10' 
+                    ? 'border-emerald-400/70 bg-emerald-500/10' 
                     : verificationStatus.venue_owner
-                      ? 'border-gray-600 hover:border-green-500/50'
-                      : 'border-gray-600 hover:border-green-500/50 opacity-75'
+                      ? 'border-white/10 hover:border-emerald-400/40 hover:bg-white/5'
+                      : 'border-white/10 hover:border-emerald-400/40 hover:bg-white/5 opacity-75'
                 }`}
                 onClick={() => currentRole !== 'venue_owner' && handleRoleSwitch('venue_owner')}
+                disabled={switching || currentRole === 'venue_owner'}
               >
-                <div className="flex items-center gap-3 mb-2">
-                  <Building2 className="w-5 h-5 text-green-500" />
-                  <span className="font-semibold text-white">Venue Owner Mode</span>
-                  {currentRole === 'admin' ? (
-                    <Badge className="bg-red-600 text-white text-xs">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Admin Access
-                    </Badge>
-                  ) : currentRole === 'venue_owner' ? (
-                    <Badge className="bg-green-600 text-white text-xs">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Active
-                    </Badge>
-                  ) : verificationStatus.venue_owner ? (
-                    <Badge className="bg-green-600 text-white text-xs">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Verified
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-yellow-400 border-yellow-400 text-xs">
-                      <AlertCircle className="w-3 h-3 mr-1" />
-                      Requires Verification
-                    </Badge>
-                  )}
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 flex-shrink-0 text-emerald-300" />
+                  <span className="text-sm font-medium text-white">Venue Owner</span>
+                  <div className="ml-auto flex items-center gap-1">
+                    {currentRole === 'venue_owner' ? (
+                      <Badge className="bg-emerald-500/80 text-xs text-white">Active</Badge>
+                    ) : verificationStatus.venue_owner ? (
+                      <Badge className="bg-emerald-500/80 text-xs text-white">Verified</Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-amber-400 text-xs text-amber-300">
+                        <AlertCircle className="mr-0.5 h-3 w-3" />
+                        Verify
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <p className="text-sm text-gray-400 mb-3">
-                  List venues, host tournaments, manage gaming spaces
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs">List Venues</Badge>
-                  <Badge variant="outline" className="text-xs">Host Events</Badge>
-                  <Badge variant="outline" className="text-xs">Manage Spaces</Badge>
-                </div>
-                {currentRole !== 'admin' && currentRole !== 'venue_owner' && !verificationStatus.venue_owner && (
-                  <Alert className="mt-3 bg-yellow-900/20 border-yellow-700">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-yellow-300 text-xs">
-                      You need to be verified as a venue owner to access this mode.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </div>
-
-            {/* Reason for switching (optional) */}
-            <div>
-              <Label htmlFor="reason" className="text-white">Reason for switching (optional)</Label>
-              <Textarea
-                id="reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Why are you switching roles?"
-                className="bg-gray-800 border-gray-600 text-white mt-1"
-                rows={2}
-              />
-            </div>
-
-            {/* Warning */}
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-yellow-200">
-                  <p className="font-medium mb-1">Important:</p>
-                  <ul className="text-xs space-y-1 text-yellow-300">
-                    <li>• You can only create teams in Player mode</li>
-                    <li>• You can only create tournaments in Organizer mode</li>
-                    <li>• Your role affects what features you can access</li>
-                  </ul>
-                </div>
-              </div>
+              </button>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="mt-3 flex justify-end gap-2 border-t border-white/10 pt-3">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setShowDialog(false)}
-              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              className="rounded-xl border-white/20 bg-white/5 text-white hover:bg-white/10"
             >
-              Cancel
+              Close
             </Button>
           </div>
         </DialogContent>
@@ -425,7 +332,7 @@ const RoleSwitcher: React.FC = () => {
 
       {/* Verification Request Form Dialog */}
       <Dialog open={showVerificationForm} onOpenChange={setShowVerificationForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-800 border-gray-700">
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto border border-white/10 bg-[#05070f]">
           <DialogHeader>
             <DialogTitle className="text-white">Verification Required</DialogTitle>
             <DialogDescription className="text-gray-400">

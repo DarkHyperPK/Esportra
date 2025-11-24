@@ -81,13 +81,10 @@ const VerificationSystemTool = () => {
   const fetchVerificationRequests = async () => {
     try {
       setLoading(true);
-      // Attempt with relationship embed (FK name may vary across environments)
+      // Fetch without relationship embed to avoid FK ambiguity
       let { data, error } = await supabase
         .from('verification_requests')
-        .select(`
-          *,
-          profiles:profiles(full_name,username,email)
-        `)
+        .select('*')
         .order('submitted_at', { ascending: false });
 
       if (error) {
@@ -284,25 +281,25 @@ const VerificationSystemTool = () => {
       const frontPath = (req as any).cnic_front_path || req.organizer_data?.cnic_front_path || req.venue_data?.cnic_front_path || null;
       const backPath = (req as any).cnic_back_path || req.organizer_data?.cnic_back_path || req.venue_data?.cnic_back_path || null;
       if (!cnicFrontUrl && frontPath) {
-        const { data } = await supabase.storage.from('kyc-documents').createSignedUrl(frontPath, 300);
+        const { data } = await supabase.storage.from('users.documents.kyc').createSignedUrl(frontPath, 300);
         if (data?.signedUrl) setCnicFrontUrl(data.signedUrl);
       }
       if (!cnicBackUrl && backPath) {
-        const { data } = await supabase.storage.from('kyc-documents').createSignedUrl(backPath, 300);
+        const { data } = await supabase.storage.from('users.documents.kyc').createSignedUrl(backPath, 300);
         if (data?.signedUrl) setCnicBackUrl(data.signedUrl);
       }
 
       const venueImages = req.venue_data?.venue_images || {};
       if (venueImages.exterior) {
-        const { data } = await supabase.storage.from('kyc-documents').createSignedUrl(venueImages.exterior, 300);
+        const { data } = await supabase.storage.from('users.documents.kyc').createSignedUrl(venueImages.exterior, 300);
         if (data?.signedUrl) setVenueExteriorUrl(data.signedUrl);
       }
       if (venueImages.interior) {
-        const { data } = await supabase.storage.from('kyc-documents').createSignedUrl(venueImages.interior, 300);
+        const { data } = await supabase.storage.from('users.documents.kyc').createSignedUrl(venueImages.interior, 300);
         if (data?.signedUrl) setVenueInteriorUrl(data.signedUrl);
       }
       if (venueImages.gaming_area) {
-        const { data } = await supabase.storage.from('kyc-documents').createSignedUrl(venueImages.gaming_area, 300);
+        const { data } = await supabase.storage.from('users.documents.kyc').createSignedUrl(venueImages.gaming_area, 300);
         if (data?.signedUrl) setVenueGamingUrl(data.signedUrl);
       }
     } catch {}

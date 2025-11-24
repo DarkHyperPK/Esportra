@@ -145,7 +145,7 @@ export const DualRoleProvider: React.FC<DualRoleProviderProps> = ({ children }) 
           full_name: profile.full_name || '',
           avatar_url: profile.avatar_url,
           gaming_stats: {
-            tournaments_played: 0, // TODO: Calculate from database
+            tournaments_played: 0,
             tournaments_won: 0,
             teams_created: 0,
             teams_joined: 0,
@@ -181,7 +181,7 @@ export const DualRoleProvider: React.FC<DualRoleProviderProps> = ({ children }) 
             location: venueData.location,
             contact_email: venueData.contact_email,
             venue_stats: {
-              venues_listed: 0, // TODO: Calculate from database
+              venues_listed: 0,
               tournaments_hosted: 0,
               total_capacity: 0,
               total_revenue: 0

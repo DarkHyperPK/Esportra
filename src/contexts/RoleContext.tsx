@@ -40,10 +40,32 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     }
     
     try {
-      // Check for session role first (from localStorage)
+      // Check if user is admin first
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('is_admin, admin_roles')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      const isAdmin = profileData?.is_admin || false;
+      const adminRoles = (profileData?.admin_roles as string[]) || [];
+      const isSuperAdmin = adminRoles.includes('super_admin');
+      
+      // If user is admin, set role based on admin type
+      if (isAdmin) {
+        // Super admin: set to 'admin' role (gets all perks)
+        // Other admins: set to 'casual' role (stay on casual, get admin perks)
+        const adminRole: UserRole = isSuperAdmin ? 'admin' : 'casual';
+        setCurrentRole(adminRole);
+        localStorage.setItem('sessionRole', adminRole);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check for session role first (from localStorage) - only for non-admins
       const sessionRole = localStorage.getItem('sessionRole') as UserRole;
       
-      if (sessionRole && ['casual', 'organizer', 'venue_owner', 'admin'].includes(sessionRole)) {
+      if (sessionRole && ['casual', 'organizer', 'venue_owner'].includes(sessionRole)) {
         // Verify the user actually has this role in the multi-role system
         const { data: userRoles } = await supabase
           .from('user_roles')
@@ -52,11 +74,9 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
           .eq('is_active', true);
         
         const hasRole = userRoles?.some(r => r.role === sessionRole);
-        const isAdmin = profile?.is_admin;
         
-        if (hasRole || isAdmin || sessionRole === 'casual') {
+        if (hasRole || sessionRole === 'casual') {
           setCurrentRole(sessionRole);
-          console.log('Using session role:', sessionRole);
           setIsLoading(false);
           return;
         }
@@ -75,7 +95,6 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
         const activeRole = userRoles[0].role as UserRole;
         setCurrentRole(activeRole);
         localStorage.setItem('sessionRole', activeRole);
-        console.log('Using active role from user_roles:', activeRole);
       } else {
         // Fallback to base role from profiles
         const { data: freshProfile, error } = await supabase
@@ -94,7 +113,6 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
           const userBaseRole = (freshProfile?.base_role as UserRole) || 'casual';
           setCurrentRole(userBaseRole);
           localStorage.setItem('sessionRole', userBaseRole);
-          console.log('Using base role from profiles:', userBaseRole);
         }
       }
       
@@ -145,6 +163,29 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
       return false;
     }
 
+    // Prevent admins from switching roles (except super admin can't switch - they already have all perks)
+    const isAdmin = profile?.is_admin;
+    if (isAdmin) {
+      const adminRoles = (profile?.admin_roles as string[]) || [];
+      const isSuperAdmin = adminRoles.includes('super_admin');
+      
+      if (isSuperAdmin) {
+        toast({
+          title: 'Super Admin',
+          description: 'Super admins have access to all features without switching roles.',
+          variant: 'default',
+        });
+        return false;
+      } else {
+        toast({
+          title: 'Admin Account',
+          description: 'Admin accounts stay on casual role. Your admin permissions are active.',
+          variant: 'default',
+        });
+        return false;
+      }
+    }
+
     if (newRole === currentRole) {
       toast({
         title: 'Already in Role',
@@ -157,8 +198,6 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      console.log('Attempting to switch role:', { newRole, reason });
-      
       // Check if user has this role in the multi-role system
       if (newRole !== 'casual') {
         const { data: userRoles } = await supabase
@@ -168,9 +207,8 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
           .eq('is_active', true);
         
         const hasRole = userRoles?.some(r => r.role === newRole);
-        const isAdmin = profile?.is_admin;
         
-        if (!hasRole && !isAdmin) {
+        if (!hasRole) {
           toast({ 
             title: 'Access Denied', 
             description: `You don't have the ${newRole.replace('_',' ')} role assigned.`, 
@@ -180,14 +218,15 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
           return false;
         }
 
-        // For organizer/venue_owner, check verification status
-        if ((newRole === 'organizer' || newRole === 'venue_owner') && !isAdmin) {
+        // For organizer/venue_owner, check verification status (must be approved AND active)
+        if (newRole === 'organizer' || newRole === 'venue_owner') {
           const { data: verifiedRoles } = await supabase
             .from('verified_roles')
-            .select('status')
+            .select('status, is_active')
             .eq('user_id', user.id)
             .eq('role', newRole)
             .eq('status', 'approved')
+            .eq('is_active', true)
             .limit(1);
           
           const isVerified = verifiedRoles && verifiedRoles.length > 0;
@@ -205,11 +244,8 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
       }
 
       // Session-based role switching - don't update database, just localStorage
-      // This preserves the user's roles and verification status
       setCurrentRole(newRole);
       localStorage.setItem('sessionRole', newRole);
-      
-      // Do not write to DB here; keep it session-only to avoid RLS/column mismatches
       
       toast({
         title: 'Role Switched',
@@ -263,13 +299,18 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     await loadCurrentRole();
   };
 
-  // Permission checks - Admins can do everything
-  const canCreateTeams = currentRole === 'casual' || currentRole === 'admin';
-  const canCreateTournaments = currentRole === 'organizer' || currentRole === 'admin';
-  const canManageTournaments = currentRole === 'organizer' || currentRole === 'admin';
-  const canJoinTeams = currentRole === 'casual' || currentRole === 'admin';
-  const canReportScores = currentRole === 'casual' || currentRole === 'admin';
-  const canVerifyResults = currentRole === 'organizer' || currentRole === 'admin';
+  // Permission checks - Super admin gets all perks, other admins stay on casual
+  const isSuperAdmin = profile?.is_admin && (profile?.admin_roles as string[])?.includes('super_admin');
+  const isAdmin = profile?.is_admin;
+  
+  // Super admin: gets all perks (casual, organizer, venue owner) without switching
+  // Other admins: stay on casual, get their specific admin role perks
+  const canCreateTeams = currentRole === 'casual' || isSuperAdmin;
+  const canCreateTournaments = currentRole === 'organizer' || isSuperAdmin;
+  const canManageTournaments = currentRole === 'organizer' || isSuperAdmin;
+  const canJoinTeams = currentRole === 'casual' || isSuperAdmin;
+  const canReportScores = currentRole === 'casual' || isSuperAdmin;
+  const canVerifyResults = currentRole === 'organizer' || isSuperAdmin;
 
   // Track previous user ID to prevent unnecessary reloads
   const prevUserIdRef = React.useRef<string | null>(null);
