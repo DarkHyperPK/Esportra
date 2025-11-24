@@ -28,48 +28,60 @@ const Index = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch venues
-        const { data: venuesData, error: venuesError } = await supabase
-          .from('venues')
-          .select('*')
-          .limit(4);
-        
-        if (venuesError) throw venuesError;
-        setVenues(venuesData || []);
+        // PARALLELIZE all independent queries
+        const [venuesResult, tournamentsResult, registrationsResult] = await Promise.all([
+          // Fetch venues
+          supabase
+            .from('venues')
+            .select('*')
+            .limit(4),
+          
+          // Fetch tournaments
+          supabase
+            .from('tournaments')
+            .select('*')
+            .eq('status', 'open')
+            .limit(4),
+          
+          // Fetch user registrations if logged in (or empty array)
+          user && user.id
+            ? supabase
+                .from('tournament_participants')
+                .select('id, tournament_id, user_id, participant_type, created_at')
+                .eq('user_id', user.id)
+            : Promise.resolve({ data: [], error: null })
+        ]);
 
-        // Fetch tournaments
-        const { data: tournamentsData, error: tournamentsError } = await supabase
-          .from('tournaments')
-          .select('*')
-          .eq('status', 'open')
-          .limit(4);
-        
-        if (tournamentsError) throw tournamentsError;
-        
-        // Fetch user registrations if logged in
-        let userRegistrations: any[] = [];
-        if (user && user.id) {
-          const { data: regData, error: regError } = await supabase
-            .from('tournament_participants')
-            .select('id, tournament_id, user_id, participant_type, created_at')
-            .eq('user_id', user.id);
-          if (regError) throw regError;
-          userRegistrations = regData || [];
-        }
+        if (venuesResult.error) throw venuesResult.error;
+        if (tournamentsResult.error) throw tournamentsResult.error;
+        if (registrationsResult.error) throw registrationsResult.error;
+
+        setVenues(venuesResult.data || []);
+        const tournamentsData = tournamentsResult.data || [];
+        const userRegistrations = registrationsResult.data || [];
         setRegistrations(userRegistrations);
 
-        // Get participant counts in a separate query
-        const participantCounts = await Promise.all(
-          (tournamentsData || []).map(async (tournament) => {
-            const { count } = await supabase
-              .from('tournament_participants')
-              .select('*', { count: 'exact', head: true })
-              .eq('tournament_id', tournament.id);
-            return { id: tournament.id, count: count || 0 };
-          })
-        );
+        // OPTIMIZED: Fetch all participant counts in ONE query instead of N queries
+        const tournamentIds = tournamentsData.map(t => t.id);
+        let participantCountsMap = new Map<string, number>();
+        
+        if (tournamentIds.length > 0) {
+          // Single query to get counts for all tournaments
+          const { data: countsData, error: countsError } = await supabase
+            .from('tournament_participants')
+            .select('tournament_id')
+            .in('tournament_id', tournamentIds);
+          
+          if (!countsError && countsData) {
+            // Count participants per tournament
+            countsData.forEach((p: any) => {
+              const tournamentId = p.tournament_id;
+              participantCountsMap.set(tournamentId, (participantCountsMap.get(tournamentId) || 0) + 1);
+            });
+          }
+        }
 
-        const formattedTournaments = (tournamentsData || []).map(t => {
+        const formattedTournaments = tournamentsData.map(t => {
           // Compute status based on date/time
           const now = new Date();
           const start = new Date(`${t.date}T${t.time}`);
@@ -80,7 +92,7 @@ const Index = () => {
           return {
             ...t,
             status,
-            current_participants: participantCounts.find(pc => pc.id === t.id)?.count || 0,
+            current_participants: participantCountsMap.get(t.id) || 0,
             team_size: t.team_size ?? 1,
             registrationData: userRegistrations.find(r => r.tournament_id === t.id)
           };

@@ -22,8 +22,8 @@ const pageVariants = {
 
 const pageTransition = {
   type: 'tween',
-  ease: 'easeInOut',
-  duration: 0.3,
+  ease: [0.4, 0, 0.2, 1],
+  duration: 0.4,
 };
 
 export const PageTransition = ({ children }: PageTransitionProps) => {
@@ -34,56 +34,9 @@ export const PageTransition = ({ children }: PageTransitionProps) => {
       exit="exit"
       variants={pageVariants}
       transition={pageTransition}
+      className="w-full"
     >
       {children}
     </motion.div>
   );
 };
-
-export const StaggerContainer = ({ children, className = '' }: { children: ReactNode; className?: string }) => {
-  return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: { opacity: 0 },
-        visible: {
-          opacity: 1,
-          transition: {
-            staggerChildren: 0.1,
-          },
-        },
-      }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-};
-
-export const FadeInUp = ({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay, ease: 'easeOut' }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-};
-
-export const ScaleIn = ({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3, delay, ease: 'easeOut' }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-};
-

@@ -92,9 +92,9 @@ const PlayerTeams = () => {
     const fileExt = file.name.split('.').pop();
     const fileName = `team-${Date.now()}.${fileExt}`;
     const filePath = fileName; // Don't include folder in path since we're uploading to team-logos bucket
-    const { error } = await supabase.storage.from('team-logos').upload(filePath, file);
+    const { error } = await supabase.storage.from('teams.logos').upload(filePath, file);
     if (error) return null;
-    const { data } = supabase.storage.from('team-logos').getPublicUrl(filePath);
+    const { data } = supabase.storage.from('teams.logos').getPublicUrl(filePath);
     return data.publicUrl;
   };
 
@@ -405,7 +405,7 @@ const PlayerTeams = () => {
                           <Plus className="mr-2 h-4 w-4" />
                           Invite Member
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => {/* TODO: open edit modal */}}>
+                        <Button variant="outline" size="sm" onClick={() => {}}>
                           Edit
                         </Button>
                         <Button variant="destructive" size="sm" onClick={() => setDeleteModal({ open: true, team })}>

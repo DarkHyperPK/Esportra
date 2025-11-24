@@ -24,7 +24,10 @@ const SystemSettings: React.FC = () => {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    load(); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty - only load once on mount
 
   const save = async () => {
     try {

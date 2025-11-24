@@ -2,17 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { 
   User, 
-  Mail, 
-  Phone, 
   Gamepad2, 
   Calendar, 
   Trophy, 
@@ -42,7 +38,6 @@ interface SoloTournamentRegistrationProps {
 
 interface RegistrationData {
   gamer_tag: string;
-  contact_phone: string;
 }
 
 const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
@@ -56,8 +51,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
   const [isRegistered, setIsRegistered] = useState(false);
   const [existingRegistration, setExistingRegistration] = useState<any>(null);
   const [registrationData, setRegistrationData] = useState<RegistrationData>({
-    gamer_tag: profile?.username || '',
-    contact_phone: ''
+    gamer_tag: profile?.username || ''
   });
 
   // Check if user is already registered
@@ -91,8 +85,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
         setIsRegistered(true);
         setExistingRegistration(data);
         setRegistrationData({
-          gamer_tag: data.gamer_tag || profile?.username || '',
-          contact_phone: data.solo_contact_phone || ''
+          gamer_tag: data.gamer_tag || profile?.username || ''
         });
       }
     } catch (error) {
@@ -110,9 +103,6 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
   const validateRegistration = (): string | null => {
     if (!registrationData.gamer_tag.trim()) {
       return 'Gamer tag is required';
-    }
-    if (registrationData.contact_phone.trim() && !/^\+?[\d\s\-\(\)]{10,}$/.test(registrationData.contact_phone)) {
-      return 'Please enter a valid phone number';
     }
     return null;
   };
@@ -198,7 +188,6 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
           user_id: user.id,
           gamer_tag: registrationData.gamer_tag.trim(),
           solo_contact_email: user.email, // Use registered email
-          solo_contact_phone: registrationData.contact_phone.trim() || null,
           status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'approved',
           entry_fee_amount: tournament.entry_fee || 0,
           entry_fee_paid: !tournament.entry_fee || tournament.entry_fee === 0
@@ -299,42 +288,42 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
   if (isRegistered && existingRegistration) {
     return (
-      <Card className="bg-slate-800/50 border-slate-700/50">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
+      <div className="space-y-6">
+        <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+          <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
             <CheckCircle className="w-5 h-5 text-green-500" />
-            Registration Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-white">Registration Status</h3>
+            <p className="text-sm text-white/60">You're registered for this tournament</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-gray-300">Status:</span>
+            <span className="text-white/70">Status:</span>
             {getStatusBadge(existingRegistration.status)}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label className="text-gray-300">Gamer Tag</Label>
-              <p className="text-white font-medium">{existingRegistration.gamer_tag}</p>
+              <Label className="text-white/60 text-sm">Gamer Tag</Label>
+              <p className="text-white font-medium mt-1">{existingRegistration.gamer_tag}</p>
             </div>
             <div>
-              <Label className="text-gray-300">Contact Email</Label>
-              <p className="text-white font-medium">{user?.email}</p>
+              <Label className="text-white/60 text-sm">Contact Email</Label>
+              <p className="text-white font-medium mt-1">{user?.email}</p>
             </div>
             <div>
-              <Label className="text-gray-300">Contact Phone</Label>
-              <p className="text-white font-medium">{existingRegistration.solo_contact_phone}</p>
-            </div>
-            <div>
-              <Label className="text-gray-300">Registration Date</Label>
-              <p className="text-white font-medium">{formatDate(existingRegistration.registration_date)}</p>
+              <Label className="text-white/60 text-sm">Registration Date</Label>
+              <p className="text-white font-medium mt-1">{formatDate(existingRegistration.registration_date)}</p>
             </div>
           </div>
 
           {existingRegistration.status === 'pending' && (
             <Alert className="bg-yellow-900/20 border-yellow-500/50">
               <AlertCircle className="h-4 w-4 text-yellow-500" />
-              <AlertDescription className="text-yellow-200">
+              <AlertDescription className="text-yellow-200 text-sm">
                 Your registration is pending approval. You will be notified once the organizer reviews your application.
               </AlertDescription>
             </Alert>
@@ -343,170 +332,154 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
           {existingRegistration.status === 'rejected' && existingRegistration.rejection_reason && (
             <Alert className="bg-red-900/20 border-red-500/50">
               <AlertCircle className="h-4 w-4 text-red-500" />
-              <AlertDescription className="text-red-200">
+              <AlertDescription className="text-red-200 text-sm">
                 <strong>Rejection Reason:</strong> {existingRegistration.rejection_reason}
               </AlertDescription>
             </Alert>
           )}
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-2 pt-2">
             {existingRegistration.status === 'pending' && (
               <Button
                 onClick={handleCancelRegistration}
                 variant="outline"
                 disabled={loading}
-                className="border-red-500 text-red-500 hover:bg-red-500/10"
+                className="border-red-500/50 text-red-400 hover:bg-red-500/10 flex-1"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Cancel Registration'}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Cancel Registration
               </Button>
             )}
             <Button
               onClick={onCancel}
               variant="outline"
-              className="border-slate-500 text-slate-300 hover:bg-slate-500/10"
+              className="border-gray-600 text-gray-300 hover:bg-gray-800 flex-1"
             >
               Close
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-slate-800/50 border-slate-700/50">
-      <CardHeader>
-        <CardTitle className="text-white flex items-center gap-2">
+    <div className="space-y-6">
+      {/* Solo Registration Header */}
+      <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
           <User className="w-5 h-5 text-blue-500" />
-          Solo Registration
-        </CardTitle>
-        <p className="text-gray-400">Register as an individual player for {tournament.name}</p>
-      </CardHeader>
-      <CardContent>
-        {/* Tournament Info */}
-        <div className="bg-slate-700/30 rounded-lg p-4 mb-6">
-          <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-            <Gamepad2 className="w-4 h-4" />
-            Tournament Details
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-300">Start:</span>
-              <span className="text-white">{formatDate(tournament.start_date)}</span>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-white">Solo Registration</h3>
+          <p className="text-sm text-white/60">Register as an individual player for {tournament.name}</p>
+        </div>
+      </div>
+
+      {/* Tournament Details */}
+      <div className="bg-gray-800/30 rounded-lg p-4 border border-white/5">
+        <div className="flex items-center gap-2 mb-3">
+          <Gamepad2 className="w-4 h-4 text-blue-400" />
+          <h4 className="text-white font-medium text-sm">Tournament Details</h4>
+        </div>
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center gap-2 text-white/80">
+            <Calendar className="w-4 h-4 text-white/50" />
+            <span>{formatDate(tournament.start_date)}</span>
+          </div>
+          {tournament.entry_fee && tournament.entry_fee > 0 && (
+            <div className="flex items-center gap-2 text-white/80">
+              <DollarSign className="w-4 h-4 text-white/50" />
+              <span>Entry Fee: ${tournament.entry_fee}</span>
             </div>
-            {tournament.entry_fee && tournament.entry_fee > 0 && (
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-300">Entry Fee:</span>
-                <span className="text-white">${tournament.entry_fee}</span>
-              </div>
-            )}
-            {tournament.prize_pool && tournament.prize_pool > 0 && (
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-300">Prize Pool:</span>
-                <span className="text-white">${tournament.prize_pool}</span>
-              </div>
-            )}
+          )}
+          {tournament.prize_pool && tournament.prize_pool > 0 && (
+            <div className="flex items-center gap-2 text-white/80">
+              <Trophy className="w-4 h-4 text-white/50" />
+              <span>Prize Pool: ${tournament.prize_pool}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Your Information */}
+      <div className="bg-gray-800/30 rounded-lg p-4 border border-white/5">
+        <div className="flex items-center gap-2 mb-3">
+          <UserCheck className="w-4 h-4 text-blue-400" />
+          <h4 className="text-white font-medium text-sm">Your Information</h4>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-white/60">Username:</span>
+            <span className="text-white font-medium">{profile?.username || 'Loading...'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-white/60">Email:</span>
+            <span className="text-white font-medium">{user?.email}</span>
           </div>
         </div>
+      </div>
 
-        {/* User Info Display */}
-        <div className="bg-slate-700/30 rounded-lg p-4 mb-6">
-          <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-            <UserCheck className="w-4 h-4" />
-            Your Information
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-300">Username:</span>
-              <span className="text-white font-medium">{profile?.username || 'Loading...'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-300">Email:</span>
-              <span className="text-white font-medium">{user?.email}</span>
-            </div>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Gamer Tag */}
+        <div className="space-y-2">
+          <Label htmlFor="gamer_tag" className="text-white flex items-center gap-2 text-sm font-medium">
+            <Gamepad2 className="w-4 h-4 text-blue-400" />
+            Gamer Tag <span className="text-red-400">*</span>
+          </Label>
+          <Input
+            id="gamer_tag"
+            type="text"
+            value={registrationData.gamer_tag}
+            onChange={(e) => handleInputChange('gamer_tag', e.target.value)}
+            placeholder="Enter your gamer tag"
+            className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-10"
+            required
+          />
+          <p className="text-xs text-white/50">This will be displayed as your in-game name</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="gamer_tag" className="text-white font-medium flex items-center gap-2">
-              <Gamepad2 className="w-4 h-4" />
-              Gamer Tag *
-            </Label>
-            <Input
-              id="gamer_tag"
-              type="text"
-              value={registrationData.gamer_tag}
-              onChange={(e) => handleInputChange('gamer_tag', e.target.value)}
-              placeholder="Enter your gamer tag"
-              className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              required
-            />
-            <p className="text-xs text-gray-400">This will be displayed as your in-game name</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="contact_phone" className="text-white font-medium flex items-center gap-2">
-              <Phone className="w-4 h-4" />
-              Contact Phone (Optional)
-            </Label>
-            <Input
-              id="contact_phone"
-              type="tel"
-              value={registrationData.contact_phone}
-              onChange={(e) => handleInputChange('contact_phone', e.target.value)}
-              placeholder="Enter your phone number (optional)"
-              className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-400">For emergency contact during the tournament</p>
-          </div>
-
-          <Separator className="bg-slate-600" />
-
-          {/* Registration Terms */}
-          <Alert className="bg-blue-900/20 border-blue-500/50">
-            <Shield className="h-4 w-4 text-blue-500" />
-            <AlertDescription className="text-blue-200">
+        {/* Agreement */}
+        <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-blue-200 leading-relaxed">
               By registering, you agree to participate in the tournament and follow all rules and regulations. 
               Your contact information will be used for tournament communication only.
-            </AlertDescription>
-          </Alert>
-
-          <div className="flex gap-3">
-            <Button
-              type="submit"
-              disabled={loading || !registrationData.gamer_tag.trim()}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Registering...
-                </>
-              ) : (
-                <>
-                  <User className="w-4 h-4 mr-2" />
-                  Register Solo
-                </>
-              )}
-            </Button>
-            <Button
-              type="button"
-              onClick={onCancel}
-              variant="outline"
-              className="border-slate-500 text-slate-300 hover:bg-slate-500/10"
-            >
-              Cancel
-            </Button>
+            </p>
           </div>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-2">
+          <Button
+            type="submit"
+            disabled={loading || !registrationData.gamer_tag.trim()}
+            className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed h-11 font-semibold shadow-lg shadow-blue-500/20"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Registering...
+              </>
+            ) : (
+              <>
+                <User className="w-4 h-4 mr-2" />
+                Register Solo
+              </>
+            )}
+          </Button>
+          <Button
+            type="button"
+            onClick={onCancel}
+            variant="outline"
+            className="border-gray-600 text-gray-300 hover:bg-gray-800 h-11 px-6"
+          >
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };
 

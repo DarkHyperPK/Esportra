@@ -1,20 +1,23 @@
 // OrganizerTournamentDashboard.tsx
 // This file is for managing a single tournament (participants, brackets, settings, etc.)
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tournament as TournamentType } from '@/hooks/useTournaments';
 import { TournamentStatus } from '@/types/tournament';
 import { supabase } from '@/lib/supabase';
-import { Users, Trophy, Settings, Edit2, Trash2, GamepadIcon, Ban as BanIcon } from 'lucide-react';
+import { Users, Trophy, Settings, Edit2, Trash2, GamepadIcon, Ban as BanIcon, AlertTriangle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
+import type { StaffPermission } from '@/lib/tournamentStaff';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +36,7 @@ import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 import SingleEliminationBracketCustom, { BracketTeam, BracketMatch } from '@/components/bracket/SingleEliminationBracketCustom';
 import BanManagement from '@/components/organizer/BanManagement';
 import DisputeCenter from '@/components/organizer/DisputeCenter';
+import TournamentStaffManager from '@/components/organizer/TournamentStaffManager';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 
@@ -55,6 +59,9 @@ interface DatabaseTournament {
   image_url: string | null;
   team_size: number;
   slug: string;
+  check_in_required?: boolean;
+  check_in_deadline?: string | null;
+  auto_remove_unchecked?: boolean;
 }
 
 interface Tournament extends DatabaseTournament {
@@ -90,11 +97,20 @@ interface Participant {
   registered_at: string;
   created_at: string;
   team_logo?: string | null;
+  checked_in_at?: string | null;
   user: {
     username: string;
     full_name: string | null;
   };
 }
+
+const STAFF_PERMISSION_LABELS: Record<StaffPermission, string> = {
+  'scores:update': 'Scores',
+  'teams:manage': 'Teams',
+  'bracket:edit': 'Brackets',
+  'announcements:send': 'Announcements',
+  'disputes:assist': 'Disputes',
+};
 
 // Mock data for teams and bracket
 const mockTeams = [
@@ -129,10 +145,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
           <h1 className="text-2xl font-bold mb-4 text-red-400">Something went wrong</h1>
           <div className="mb-2 text-gray-300">{this.state.error?.message || 'An unexpected error occurred.'}</div>
           <button
-            className="bg-gaming-purple text-white px-4 py-2 rounded mt-4"
+            className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded mt-4"
             onClick={() => {
-              this.setState({ error: null });
-              this.fetchTournamentData();
+              this.setState({ hasError: false, error: null });
+              // Force a page reload to reset the component state
+              window.location.reload();
             }}
           >
             Retry
@@ -149,8 +166,10 @@ const getTeamDisplayName = (team: any) => team.name || team.team_name || 'Unknow
 const TournamentDashboard = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const userId = user?.id;
   const [tournament, setTournament] = useState<TournamentType | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +189,17 @@ const TournamentDashboard = () => {
   const [teamLoading, setTeamLoading] = useState<boolean>(false);
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [teamModalData, setTeamModalData] = useState<{ id?: string | null; name: string; logo?: string | null; members: string[] }>({ name: '', members: [] });
-  const [activeTab, setActiveTab] = useState('overview');
+  // Initialize activeTab from location state if available
+  const [activeTab, setActiveTab] = useState((location.state as { activeTab?: string })?.activeTab || 'overview');
+  const [checkInRequiredSetting, setCheckInRequiredSetting] = useState(false);
+  const [checkInDeadlineSetting, setCheckInDeadlineSetting] = useState('');
+  const [autoRemoveUncheckedSetting, setAutoRemoveUncheckedSetting] = useState(true);
+  const [savingCheckInSettings, setSavingCheckInSettings] = useState(false);
+  const [removingUnchecked, setRemovingUnchecked] = useState(false);
+  const [isOrganizer, setIsOrganizer] = useState(false);
+  const [hasStaffAccess, setHasStaffAccess] = useState(false);
+  const [staffPermissions, setStaffPermissions] = useState<StaffPermission[]>([]);
+  const [now, setNow] = useState(Date.now());
 
   const fetchTournamentData = useCallback(async () => {
     try {
@@ -211,7 +240,10 @@ const TournamentDashboard = () => {
           banner_url,
           logo_url,
           created_at,
-          updated_at
+          updated_at,
+          check_in_required,
+          check_in_deadline,
+          auto_remove_unchecked
         `)
         .eq('slug', slug)
         .single();
@@ -241,7 +273,10 @@ const TournamentDashboard = () => {
             banner_url,
             logo_url,
             created_at,
-            updated_at
+            updated_at,
+            check_in_required,
+            check_in_deadline,
+            auto_remove_unchecked
           `)
           .eq('id', slug)
           .single();
@@ -296,28 +331,6 @@ const TournamentDashboard = () => {
       }
       const typedTournamentData = (tournamentData as DatabaseTournament)!;
 
-      // Get participant count from tournament_participants (teams count as 1 entry)
-      const { count, error: countError } = await supabase
-        .from('tournament_participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', typedTournamentData.id);
-
-      if (countError) {
-        console.error('Error getting participant count:', countError);
-        throw new DatabaseError(
-          'Failed to get participant count',
-          'DATABASE_ERROR',
-          { error: countError }
-        );
-      }
-
-      console.log('Found tournament data:', {
-        tournament: typedTournamentData,
-        participantCount: count,
-        userId: user?.id,
-        isOrganizer: typedTournamentData.organizer_id === user?.id
-      });
-
       // Check if the current user is the tournament organizer
       console.log('Checking user permissions:', { 
         tournamentOrganizerId: typedTournamentData.organizer_id, 
@@ -333,31 +346,85 @@ const TournamentDashboard = () => {
         );
       }
 
-      if (typedTournamentData.organizer_id !== user.id) {
-        throw new AuthError(
-          'You do not have permission to manage this tournament.',
-          'ACCESS_DENIED',
-          { tournamentSlug: slug }
+      const organizerMatch = typedTournamentData.organizer_id === user.id;
+      let staffPerms: StaffPermission[] = [];
+
+      if (!organizerMatch) {
+        const { data: staffRecord } = await supabase
+          .from('tournament_staff')
+          .select('permissions,status')
+          .eq('tournament_id', typedTournamentData.id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!staffRecord || staffRecord.status !== 'active') {
+          throw new AuthError(
+            'You do not have permission to manage this tournament.',
+            'ACCESS_DENIED',
+            { tournamentSlug: slug }
+          );
+        }
+
+        staffPerms = (staffRecord.permissions || []) as StaffPermission[];
+      }
+
+      const [countResponse, registrationsResponse, bansResponse] = await Promise.all([
+        supabase
+          .from('tournament_participants')
+          .select('*', { count: 'exact', head: true })
+          .eq('tournament_id', typedTournamentData.id),
+        supabase
+          .from('tournament_participants')
+          .select('*')
+          .eq('tournament_id', typedTournamentData.id),
+        supabase
+          .from('tournament_bans')
+          .select('user_id, team_id')
+          .eq('tournament_id', typedTournamentData.id)
+          .eq('is_active', true)
+      ]);
+
+      if (countResponse.error) {
+        console.error('Error getting participant count:', countResponse.error);
+        throw new DatabaseError(
+          'Failed to get participant count',
+          'DATABASE_ERROR',
+          { error: countResponse.error }
         );
       }
 
-      // Fetch registrations separately
-      const { data: registrationsData, error: registrationsError } = await supabase
-        .from('tournament_participants')
-        .select('*')
-        .eq('tournament_id', typedTournamentData.id);
-
-      if (registrationsError) {
-        console.error('Error fetching registrations:', registrationsError);
+      if (registrationsResponse.error) {
+        console.error('Error fetching registrations:', registrationsResponse.error);
         throw new DatabaseError(
           'Failed to fetch tournament registrations',
           'DATABASE_ERROR',
-          { error: registrationsError }
+          { error: registrationsResponse.error }
         );
       }
 
+      const count = countResponse.count || 0;
+      const registrationsData = registrationsResponse.data;
+      
+      // Get banned user_ids and team_ids
+      const bannedUserIds = new Set((bansResponse.data || []).filter(b => b.user_id).map(b => b.user_id));
+      const bannedTeamIds = new Set((bansResponse.data || []).filter(b => b.team_id).map(b => b.team_id));
+      
+      // Filter out banned participants
+      const filteredRegistrations = (registrationsData || []).filter((reg: any) => {
+        if (reg.user_id && bannedUserIds.has(reg.user_id)) return false;
+        if (reg.team_id && bannedTeamIds.has(reg.team_id)) return false;
+        return true;
+      });
+
+      console.log('Found tournament data:', {
+        tournament: typedTournamentData,
+        participantCount: count,
+        userId: user?.id,
+        isOrganizer: typedTournamentData.organizer_id === user?.id
+      });
+
       // Resolve solo usernames from profiles
-      const regs = (registrationsData as any[]) || [];
+      const regs = (filteredRegistrations as any[]) || [];
       const soloUserIds = Array.from(new Set(regs.filter(r => r.participant_type !== 'team' && r.user_id).map(r => r.user_id)));
       let profileMap: Record<string, { username: string; full_name: string | null }> = {};
       if (soloUserIds.length > 0) {
@@ -370,22 +437,49 @@ const TournamentDashboard = () => {
         }
       }
 
+      // Resolve team names from teams table
+      const registrationTeamIds = Array.from(
+        new Set(
+          regs
+            .filter((r) => r.participant_type === 'team' && r.team_id)
+            .map((r) => r.team_id as string)
+        )
+      );
+      let teamNameMap: Record<string, { name: string | null; logo_url: string | null }> = {};
+      if (registrationTeamIds.length > 0) {
+        const { data: teams } = await supabase
+          .from('teams')
+          .select('id,name,logo_url')
+          .in('id', registrationTeamIds);
+        (teams || []).forEach((team: any) => {
+          teamNameMap[team.id] = { name: team.name, logo_url: team.logo_url || null };
+        });
+      }
+
       const participants = regs.map((reg: any) => {
         const isTeam = reg.participant_type === 'team';
         const teamMembersStr = Array.isArray(reg.team_members) ? reg.team_members.join(', ') : (reg.team_members || null);
+        const resolvedTeamName =
+          (reg.team_id && teamNameMap[reg.team_id]?.name) ||
+          reg.team_name ||
+          'Team';
+        const resolvedTeamLogo =
+          (reg.team_id && teamNameMap[reg.team_id]?.logo_url) ||
+          null;
         const participant: Participant = {
           id: reg.id,
           user_id: reg.user_id,
           tournament_id: reg.tournament_id,
           participant_type: isTeam ? 'team' as const : 'solo' as const,
           team_id: reg.team_id || null,
-          team_name: isTeam ? (reg.team_name || 'Team') : null,
+          team_name: isTeam ? resolvedTeamName : null,
           team_members: isTeam ? teamMembersStr : null,
           gamer_tag: isTeam ? null : (reg.gamer_tag || null),
           status: reg.status || 'registered',
           registered_at: reg.registered_at || reg.registration_date || reg.created_at,
           created_at: reg.created_at || reg.registered_at || reg.registration_date,
-          team_logo: null,
+          team_logo: resolvedTeamLogo,
+          checked_in_at: reg.checked_in_at || null,
           user: isTeam ? { username: '', full_name: null } : (profileMap[reg.user_id] || { username: 'User', full_name: null })
         };
         return participant;
@@ -396,7 +490,7 @@ const TournamentDashboard = () => {
         if (p.participant_type !== 'team') continue;
         
         // If existing string contains plain names (not UUIDs), keep it
-        if (p.team_members && p.team_members.trim().length > 0) {
+        if (p.team_members && typeof p.team_members === 'string' && p.team_members.trim().length > 0) {
           const tokens = p.team_members.split(',').map(s => s.trim()).filter(Boolean);
           const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
           if (tokens.some(t => !looksLikeUuid(t))) continue;
@@ -565,12 +659,12 @@ const TournamentDashboard = () => {
       } catch {}
 
       // Attach team logos where team_id is available
-      const teamIds = Array.from(new Set(participants.filter(p => p.participant_type === 'team' && p.team_id).map(p => p.team_id))) as string[];
-      if (teamIds.length > 0) {
+      const participantTeamIds = Array.from(new Set(participants.filter(p => p.participant_type === 'team' && p.team_id).map(p => p.team_id))) as string[];
+      if (participantTeamIds.length > 0) {
         const { data: teamsMeta } = await supabase
           .from('teams')
           .select('id, logo_url')
-          .in('id', teamIds);
+          .in('id', participantTeamIds);
         const logoMap = new Map<string, string | null>();
         (teamsMeta || []).forEach((t: any) => logoMap.set(t.id, t.logo_url || null));
         for (const p of participants) {
@@ -619,7 +713,10 @@ const TournamentDashboard = () => {
         status: computedStatus,
         image_url: typedTournamentData.banner_url || typedTournamentData.logo_url,
         team_size: typedTournamentData.team_size || 1,
-        current_participants: count
+        current_participants: filteredRegistrations.length,
+        check_in_required: typedTournamentData.check_in_required ?? false,
+        check_in_deadline: typedTournamentData.check_in_deadline,
+        auto_remove_unchecked: typedTournamentData.auto_remove_unchecked ?? true,
       };
 
       // Pick logo: RAWG API first, then local mapping, then DB games table, then tournament image
@@ -662,7 +759,17 @@ const TournamentDashboard = () => {
 
       // Set the tournament data
       setTournament(tournament);
+      setCheckInRequiredSetting(!!tournament.check_in_required);
+      setAutoRemoveUncheckedSetting(tournament.auto_remove_unchecked ?? true);
+      setCheckInDeadlineSetting(
+        tournament.check_in_deadline
+          ? new Date(tournament.check_in_deadline).toISOString().slice(0, 16)
+          : ''
+      );
       setParticipants(participants as Participant[]);
+      setIsOrganizer(organizerMatch);
+      setHasStaffAccess(!organizerMatch && staffPerms.length > 0);
+      setStaffPermissions(staffPerms);
     } catch (error) {
       console.error('Error in fetchTournamentData:', error);
       toast({
@@ -673,15 +780,31 @@ const TournamentDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [slug, user]);
+  }, [slug, userId]);
 
   useEffect(() => {
-    if (slug && user) {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (slug && userId) {
       console.log('Tournament slug from URL:', slug);
-      console.log('Current user:', user);
+      console.log('Current user ID:', userId);
       fetchTournamentData();
     }
-  }, [slug, user, fetchTournamentData]);
+  }, [slug, userId, fetchTournamentData]);
+
+  useEffect(() => {
+    if (!tournament) return;
+    setCheckInRequiredSetting(!!tournament.check_in_required);
+    setAutoRemoveUncheckedSetting(tournament.auto_remove_unchecked ?? true);
+    setCheckInDeadlineSetting(
+      tournament.check_in_deadline
+        ? new Date(tournament.check_in_deadline).toISOString().slice(0, 16)
+        : ''
+    );
+  }, [tournament]);
 
   // Set up realtime subscriptions for tournaments and participants
   useEffect(() => {
@@ -749,22 +872,49 @@ const TournamentDashboard = () => {
                 }
               }
 
+              // Resolve team names and logos (same as in fetchTournamentData)
+              const registrationTeamIds = Array.from(
+                new Set(
+                  regs
+                    .filter((r) => r.participant_type === 'team' && r.team_id)
+                    .map((r) => r.team_id as string)
+                )
+              );
+              let teamNameMap: Record<string, { name: string | null; logo_url: string | null }> = {};
+              if (registrationTeamIds.length > 0) {
+                const { data: teams } = await supabase
+                  .from('teams')
+                  .select('id,name,logo_url')
+                  .in('id', registrationTeamIds);
+                (teams || []).forEach((team: any) => {
+                  teamNameMap[team.id] = { name: team.name, logo_url: team.logo_url || null };
+                });
+              }
+
               const participants = regs.map((reg: any) => {
                 const isTeam = reg.participant_type === 'team';
                 const teamMembersStr = Array.isArray(reg.team_members) ? reg.team_members.join(', ') : (reg.team_members || null);
+                const resolvedTeamName =
+                  (reg.team_id && teamNameMap[reg.team_id]?.name) ||
+                  reg.team_name ||
+                  'Team';
+                const resolvedTeamLogo =
+                  (reg.team_id && teamNameMap[reg.team_id]?.logo_url) ||
+                  null;
                 return {
                   id: reg.id,
                   user_id: reg.user_id,
                   tournament_id: reg.tournament_id,
                   participant_type: isTeam ? 'team' as const : 'solo' as const,
                   team_id: reg.team_id || null,
-                  team_name: isTeam ? (reg.team_name || 'Team') : null,
+                  team_name: isTeam ? resolvedTeamName : null,
                   team_members: isTeam ? teamMembersStr : null,
                   gamer_tag: isTeam ? null : (reg.gamer_tag || null),
                   status: reg.status || 'registered',
                   registered_at: reg.registered_at || reg.registration_date || reg.created_at,
                   created_at: reg.created_at || reg.registered_at || reg.registration_date,
-                  team_logo: null,
+                  team_logo: resolvedTeamLogo,
+                  checked_in_at: reg.checked_in_at || null, // CRITICAL: Include checked_in_at for check-in status
                   user: isTeam ? { username: '', full_name: null } : (profileMap[reg.user_id] || { username: 'User', full_name: null })
                 };
               });
@@ -782,6 +932,29 @@ const TournamentDashboard = () => {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tournament_disputes',
+          filter: `tournament_id=eq.${tournament.id}`
+        },
+        (payload) => {
+          const status = payload.new?.status || payload.old?.status;
+          if (payload.eventType === 'INSERT') {
+            toast({
+              title: 'New dispute received',
+              description: payload.new?.title || 'A player raised a dispute.',
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            toast({
+              title: 'Dispute updated',
+              description: `Status changed to ${String(status || '').replace('_', ' ')}`,
+            });
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -791,6 +964,14 @@ const TournamentDashboard = () => {
   }, [tournament?.id]);
 
   const handleDelete = async () => {
+    if (!isOrganizer) {
+      toast({
+        title: 'Not allowed',
+        description: 'Only the lead organizer can delete this tournament.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       setIsDeleting(true);
       await tournamentApi.deleteTournament(slug!);
@@ -809,6 +990,88 @@ const TournamentDashboard = () => {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSaveCheckInSettings = async () => {
+    if (!tournament?.id) return;
+    setSavingCheckInSettings(true);
+    try {
+      const payload = {
+        check_in_required: checkInRequiredSetting,
+        auto_remove_unchecked: autoRemoveUncheckedSetting,
+        check_in_deadline: checkInDeadlineSetting
+          ? new Date(checkInDeadlineSetting).toISOString()
+          : null,
+      };
+
+      const { error } = await supabase
+        .from('tournaments')
+        .update(payload)
+        .eq('id', tournament.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Check-in settings updated',
+        description: 'Players will now see the updated requirements.',
+      });
+
+      setTournament((prev) =>
+        prev
+          ? {
+              ...prev,
+              check_in_required: payload.check_in_required,
+              auto_remove_unchecked: payload.auto_remove_unchecked,
+              check_in_deadline: payload.check_in_deadline,
+            }
+          : prev
+      );
+    } catch (error: any) {
+      console.error('Error saving check-in settings:', error);
+      toast({
+        title: 'Unable to update settings',
+        description: error.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingCheckInSettings(false);
+    }
+  };
+
+  const handleRemoveUncheckedParticipants = async () => {
+    if (!tournament?.id) return;
+    setRemovingUnchecked(true);
+    try {
+      const { data, error } = await supabase
+        .from('tournament_participants')
+        .update({ status: 'cancelled' })
+        .eq('tournament_id', tournament.id)
+        .is('checked_in_at', null)
+        .in('status', ['pending', 'approved', 'registered'])
+        .select('id');
+
+      if (error) throw error;
+      const removedCount = data?.length || 0;
+
+      toast({
+        title: 'Unchecked teams removed',
+        description:
+          removedCount > 0
+            ? `${removedCount} registrations were removed for missing check-in.`
+            : 'No unchecked teams remained.',
+      });
+
+      fetchTournamentData();
+    } catch (error: any) {
+      console.error('Error removing unchecked participants:', error);
+      toast({
+        title: 'Unable to remove teams',
+        description: error.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRemovingUnchecked(false);
     }
   };
 
@@ -893,7 +1156,7 @@ const TournamentDashboard = () => {
         (rows || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
 
       // Step 0: Check if participant already has resolved readable member names (from fetchTournamentData loop)
-      if (p.team_members && p.team_members.trim().length > 0) {
+      if (p.team_members && typeof p.team_members === 'string' && p.team_members.trim().length > 0) {
         const tokens = p.team_members.split(',').map(s => s.trim()).filter(Boolean);
         const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
         // If any token is NOT a UUID, assume these are readable names already resolved
@@ -976,7 +1239,8 @@ const TournamentDashboard = () => {
       setTeamModalData({ id: teamId, name: p.team_name || 'Team', logo: logo || null, members });
       setTeamModalOpen(true);
     } catch (e) {
-      setTeamModalData({ id: p.team_id || null, name: p.team_name || 'Team', logo: (p as any).team_logo || null, members: (p.team_members || '').split(',').map(s => s.trim()).filter(Boolean) });
+      const safeTeamMembers = typeof p.team_members === 'string' ? p.team_members : '';
+      setTeamModalData({ id: p.team_id || null, name: p.team_name || 'Team', logo: (p as any).team_logo || null, members: safeTeamMembers.split(',').map(s => s.trim()).filter(Boolean) });
       setTeamModalOpen(true);
     }
   };
@@ -984,49 +1248,100 @@ const TournamentDashboard = () => {
   // Ban participant (delete registration from DB)
   const handleBan = async (participantId: string, userId: string) => {
     try {
-      // Get participant info to determine if it's a user or team ban
-      const { data: participant } = await supabase
+      if (!tournament?.id) {
+        toast({ title: 'Error', description: 'Tournament not found.', variant: 'destructive' });
+        return;
+      }
+
+      // Get participant info to determine if it's a user or team ban (BEFORE deleting)
+      const { data: participant, error: participantError } = await supabase
         .from('tournament_participants')
         .select('user_id, team_id')
         .eq('id', participantId)
         .maybeSingle();
 
+      if (participantError) {
+        console.error('Error fetching participant:', participantError);
+        throw participantError;
+      }
+
+      if (!participant) {
+        toast({ title: 'Error', description: 'Participant not found.', variant: 'destructive' });
+        return;
+      }
+
+      // Prepare ban data
+      const banData: any = {
+        tournament_id: tournament.id,
+        participant_id: participantId,
+        ban_reason: banReason.trim(),
+        banned_by: user?.id,
+        banned_at: new Date().toISOString(),
+        is_active: true,
+      };
+
+      // Determine user_id OR team_id for the ban
+      // Try to set only one (check constraint requires exactly one)
+      // If database schema has user_id as NOT NULL, we'll get an error and need to run migration
+      if (participant.team_id) {
+        // Team ban - set only team_id (correct approach per schema)
+        banData.team_id = participant.team_id;
+        // Do NOT set user_id - this will fail if user_id is NOT NULL, requiring migration
+      } else if (participant.user_id) {
+        // Solo participant ban - set only user_id
+        banData.user_id = participant.user_id;
+      } else {
+        // Fallback: use provided userId
+        if (!userId) {
+          toast({ 
+            title: 'Error', 
+            description: 'Cannot determine user ID for ban.', 
+            variant: 'destructive' 
+          });
+          return;
+        }
+        banData.user_id = userId;
+      }
+
+      // Insert ban first (in case deletion fails, we still have the ban record)
+      const { error: banError } = await supabase
+        .from('tournament_bans')
+        .insert(banData);
+
+      if (banError) {
+        console.error('Error inserting ban:', banError);
+        throw banError;
+      }
+
       // Remove registration
-      await supabase
+      const { error: deleteError } = await supabase
         .from('tournament_participants')
         .delete()
         .eq('id', participantId);
 
-      // Insert into tournament_bans
-      const banData: any = {
-        tournament_id: tournament?.id,
-        participant_id: participantId,
-          ban_reason: banReason.trim(),
-          banned_by: user?.id,
-          banned_at: new Date().toISOString(),
-        is_active: true,
-      };
-
-      // Set user_id or team_id based on participant type
-      if (participant?.user_id) {
-        banData.user_id = participant.user_id;
-      } else if (participant?.team_id) {
-        banData.team_id = participant.team_id;
+      if (deleteError) {
+        console.error('Error deleting participant:', deleteError);
+        // Ban was inserted, but deletion failed - log error but don't fail completely
+        toast({ 
+          title: 'Warning', 
+          description: 'Participant was banned but registration removal failed. Please refresh.', 
+          variant: 'destructive' 
+        });
       } else {
-        // Fallback to provided userId
-        banData.user_id = userId;
+        toast({ title: 'Banned', description: 'Participant has been banned from this tournament.' });
       }
 
-      await supabase
-        .from('tournament_bans')
-        .insert(banData);
-      toast({ title: 'Banned', description: 'Participant has been banned from this tournament.' });
       setBanDialogOpen(false);
       setBanReason('');
       setBanTarget(null);
       fetchTournamentData(); // Refresh participants
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to ban participant.', variant: 'destructive' });
+    } catch (error: any) {
+      console.error('Error banning participant:', error);
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to ban participant.', 
+        variant: 'destructive' 
+      });
     }
   };
 
@@ -1111,7 +1426,7 @@ const TournamentDashboard = () => {
                     <img src={home.logo} alt={getTeamDisplayName(home)} className="w-6 h-6 rounded bg-white border border-gray-300" />
                   ) : (
                     <span className="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300">
-                      <GamepadIcon className="w-4 h-4 text-gaming-purple" />
+                      <GamepadIcon className="w-4 h-4 text-emerald-400" />
                     </span>
                   )}
                   <span className="font-semibold text-white text-sm truncate max-w-[80px]">{getTeamDisplayName(home)}</span>
@@ -1123,22 +1438,22 @@ const TournamentDashboard = () => {
                     <img src={visitor.logo} alt={getTeamDisplayName(visitor)} className="w-6 h-6 rounded bg-white border border-gray-300" />
                   ) : (
                     <span className="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300">
-                      <GamepadIcon className="w-4 h-4 text-gaming-purple" />
+                      <GamepadIcon className="w-4 h-4 text-emerald-400" />
                     </span>
                   )}
                   <span className="font-semibold text-white text-sm truncate max-w-[80px]">{getTeamDisplayName(visitor)}</span>
                 </div>
               </div>
-              <div className="text-xs text-gaming-purple font-bold mb-1">{round}</div>
+              <div className="text-xs text-emerald-300 font-bold mb-1">{round}</div>
             </div>
           </TooltipTrigger>
-          <TooltipContent className="bg-gaming-dark border border-gaming-purple/40 rounded-lg shadow-lg p-3">
-            <div className="mb-1 text-gaming-purple font-bold">{round}</div>
+          <TooltipContent className="bg-gaming-dark border border-emerald-400/40 rounded-lg shadow-lg p-3">
+            <div className="mb-1 text-emerald-300 font-bold">{round}</div>
             <div className="flex items-center gap-2 mb-1">
               {home.logo ? (
                 <img src={home.logo} alt={getTeamDisplayName(home)} className="w-5 h-5 rounded bg-white border border-gray-300" />
               ) : (
-                <GamepadIcon className="w-4 h-4 text-gaming-purple" />
+                <GamepadIcon className="w-4 h-4 text-emerald-400" />
               )}
               <span className="font-semibold text-white text-xs">{getTeamDisplayName(home)}</span>
             </div>
@@ -1146,7 +1461,7 @@ const TournamentDashboard = () => {
               {visitor.logo ? (
                 <img src={visitor.logo} alt={getTeamDisplayName(visitor)} className="w-5 h-5 rounded bg-white border border-gray-300" />
               ) : (
-                <GamepadIcon className="w-4 h-4 text-gaming-purple" />
+                <GamepadIcon className="w-4 h-4 text-emerald-400" />
               )}
               <span className="font-semibold text-white text-xs">{getTeamDisplayName(visitor)}</span>
             </div>
@@ -1220,6 +1535,80 @@ const TournamentDashboard = () => {
   );
   };
 
+  const formatCountdown = useCallback((ms: number) => {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  }, []);
+
+  const effectiveCheckInRequired = checkInRequiredSetting;
+  const effectiveDeadlineMs = checkInDeadlineSetting
+    ? new Date(checkInDeadlineSetting).getTime()
+    : tournament?.check_in_deadline
+      ? new Date(tournament.check_in_deadline).getTime()
+      : null;
+
+  const teamParticipants = useMemo(
+    () => participants.filter((p) => p.participant_type === 'team'),
+    [participants]
+  );
+  const checkedInTeams = useMemo(
+    () => teamParticipants.filter((p) => Boolean(p.checked_in_at)),
+    [teamParticipants]
+  );
+  const pendingTeams = Math.max(0, teamParticipants.length - checkedInTeams.length);
+  const checkInProgress = teamParticipants.length
+    ? Math.round((checkedInTeams.length / teamParticipants.length) * 100)
+    : 0;
+  const isCheckInClosed = effectiveDeadlineMs ? now > effectiveDeadlineMs : false;
+  const checkInCountdown =
+    effectiveDeadlineMs && !isCheckInClosed
+      ? formatCountdown(effectiveDeadlineMs - now)
+      : null;
+  const showCheckInSummary = Boolean(effectiveCheckInRequired && teamParticipants.length > 0);
+  const pendingDisplayTeams = teamParticipants.filter((p) => !p.checked_in_at).slice(0, 4);
+
+  const staffPermissionSummary =
+    staffPermissions.map((perm) => STAFF_PERMISSION_LABELS[perm] || perm).join(', ') || 'Limited access';
+
+  const canManageStaff = isOrganizer;
+  const canAssistDisputes = isOrganizer || staffPermissions.includes('disputes:assist');
+  const canManageTeams = isOrganizer || staffPermissions.includes('teams:manage');
+  const canEditBracket = isOrganizer || staffPermissions.includes('bracket:edit');
+
+  const PermissionNotice = ({ message }: { message: string }) => (
+    <Card className="bg-[#080d18] border border-white/5">
+      <CardContent className="py-6 text-center text-gray-400 text-sm">{message}</CardContent>
+    </Card>
+  );
+
+  const renderCheckInBadge = (participant: Participant) => {
+    if (!effectiveCheckInRequired) return null;
+    if (participant.checked_in_at) {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-green-500/40 bg-green-500/10 text-green-300">
+          Checked In
+        </span>
+      );
+    }
+    if (isCheckInClosed) {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-red-500/40 bg-red-500/10 text-red-300">
+          Missed
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-amber-400/40 bg-amber-500/10 text-amber-200">
+        Awaiting
+      </span>
+    );
+  };
+
   // Fetch game background from RAWG API
   useEffect(() => {
     async function fetchGameBackground(gameName: string) {
@@ -1245,6 +1634,12 @@ const TournamentDashboard = () => {
     return (
       <div className="min-h-screen bg-esports-dark text-white">
         <main className="container mx-auto px-4 py-8">
+          {hasStaffAccess && (
+            <div className="mb-6 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-sm text-cyan-100 px-4 py-3">
+              You are viewing this tournament as approved staff. Available permissions:{' '}
+              {staffPermissionSummary}.
+            </div>
+          )}
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-1/3 bg-gaming-gray/20 rounded"></div>
             <div className="h-64 bg-gaming-gray/20 rounded"></div>
@@ -1263,7 +1658,7 @@ const TournamentDashboard = () => {
             <h1 className="text-2xl font-bold mb-4">Tournament not found</h1>
             <Button
               onClick={() => navigate('/organizer/tournaments')}
-              className="bg-gaming-purple hover:bg-gaming-purple/80"
+              className="bg-red-600 hover:bg-red-500"
             >
               Back to Tournaments
             </Button>
@@ -1277,6 +1672,11 @@ const TournamentDashboard = () => {
   return (
     <div className="min-h-screen bg-esports-dark text-white">
       <main className="container mx-auto px-4 py-8">
+        {hasStaffAccess && (
+          <div className="mb-6 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-sm text-cyan-100 px-4 py-3">
+            You are viewing this tournament as approved staff. Available permissions: {staffPermissionSummary}.
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Game Logo */}
@@ -1284,7 +1684,7 @@ const TournamentDashboard = () => {
               <img src={gameLogo} alt={tournament.game + ' logo'} className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded border border-gray-700 bg-transparent flex-shrink-0" />
             ) : (
               <span className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded bg-gray-800 border border-gray-700 flex-shrink-0">
-                <GamepadIcon className="w-6 h-6 sm:w-8 sm:h-8 text-gaming-purple" />
+                <GamepadIcon className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-400" />
               </span>
             )}
             <div className="min-w-0 flex-1">
@@ -1296,7 +1696,7 @@ const TournamentDashboard = () => {
                   const gameInfo = esportsGames.games.find(g => g.name.toLowerCase() === tournament.game.toLowerCase());
                   const format = gameInfo?.formats.find(f => f.teamSize === tournament.team_size);
                   return format ? (
-                    <span className="px-2 py-1 bg-gaming-gray/30 rounded text-xs font-semibold text-gaming-purple">{format.name}</span>
+                    <span className="px-2 py-1 bg-gaming-gray/30 rounded text-xs font-semibold text-emerald-300">{format.name}</span>
                   ) : null;
                 })()}
               </p>
@@ -1381,10 +1781,13 @@ const TournamentDashboard = () => {
           <TabsList className="w-full overflow-x-auto flex-nowrap justify-start sm:justify-center pb-2 sm:pb-0 scrollbar-hide">
             <TabsTrigger value="overview" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Overview</TabsTrigger>
             <TabsTrigger value="participants" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Participants</TabsTrigger>
-            <TabsTrigger value="brackets" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Brackets</TabsTrigger>
-            <TabsTrigger value="bans" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Bans</TabsTrigger>
-            <TabsTrigger value="disputes" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Disputes</TabsTrigger>
-            <TabsTrigger value="settings" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Settings</TabsTrigger>
+            <TabsTrigger value="brackets" disabled={!canEditBracket} className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Brackets</TabsTrigger>
+            <TabsTrigger value="bans" disabled={!canManageTeams} className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Bans</TabsTrigger>
+            <TabsTrigger value="disputes" disabled={!canAssistDisputes} className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Disputes</TabsTrigger>
+            {canManageStaff && (
+              <TabsTrigger value="staff" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Staff</TabsTrigger>
+            )}
+            <TabsTrigger value="settings" disabled={!isOrganizer} className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -1434,6 +1837,102 @@ const TournamentDashboard = () => {
           </TabsContent>
 
           <TabsContent value="participants">
+            {showCheckInSummary && (
+              <Card className="bg-[#080d18] border border-white/5 mb-6">
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="text-lg text-white">Check-In Monitor</CardTitle>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {tournament.check_in_deadline
+                        ? `Deadline: ${new Date(tournament.check_in_deadline).toLocaleString()}`
+                        : 'Deadline not set'}
+                      {checkInCountdown && ` · ${checkInCountdown} left`}
+                    </p>
+                  </div>
+                  <Badge
+                    className={`text-xs ${
+                      isCheckInClosed
+                        ? 'bg-red-500/10 text-red-200 border-red-500/40'
+                        : checkInProgress === 100
+                          ? 'bg-green-500/10 text-green-200 border-green-500/40'
+                          : 'bg-amber-500/10 text-amber-200 border-amber-500/40'
+                    }`}
+                  >
+                    {isCheckInClosed
+                      ? 'Closed'
+                      : checkInProgress === 100
+                        ? 'Ready'
+                        : 'Open'}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                      <p className="text-xs uppercase tracking-widest text-slate-400">Total Teams</p>
+                      <p className="text-2xl font-bold text-white mt-1">{teamParticipants.length}</p>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                      <p className="text-xs uppercase tracking-widest text-slate-400">Checked In</p>
+                      <p className="text-2xl font-bold text-green-400 mt-1">{checkedInTeams.length}</p>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                      <p className="text-xs uppercase tracking-widest text-slate-400">Pending</p>
+                      <p className="text-2xl font-bold text-amber-300 mt-1">{Math.max(0, pendingTeams)}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                      <span>Progress</span>
+                      <span>{checkInProgress}%</span>
+                    </div>
+                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all"
+                        style={{ width: `${Math.min(100, checkInProgress)}%` }}
+                      />
+                    </div>
+                  </div>
+                  {pendingTeams > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-2">Waiting on</p>
+                      <div className="flex flex-wrap gap-2">
+                        {pendingDisplayTeams.map((team) => (
+                          <span
+                            key={team.id}
+                            className="text-xs px-3 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-200"
+                          >
+                            {team.team_name || 'Team'}
+                          </span>
+                        ))}
+                        {pendingTeams > pendingDisplayTeams.length && (
+                          <span className="text-xs text-slate-400">
+                            +{pendingTeams - pendingDisplayTeams.length} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {isOrganizer && (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <Button
+                        onClick={handleRemoveUncheckedParticipants}
+                        disabled={pendingTeams <= 0 || removingUnchecked}
+                        className="bg-red-600 hover:bg-red-500 text-white w-full sm:w-auto"
+                      >
+                        {removingUnchecked ? 'Clearing...' : 'Remove unchecked teams'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => fetchTournamentData(undefined)}
+                        className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
+                      >
+                        Refresh statuses
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
             <Card className="bg-gaming-dark border-gaming-gray/30">
               <CardHeader>
                 <CardTitle>Teams</CardTitle>
@@ -1448,8 +1947,8 @@ const TournamentDashboard = () => {
                         <table className="min-w-full bg-gaming-dark text-white">
                           <thead className="bg-gaming-gray/20">
                             <tr>
-                          <th className="py-3 px-4 text-left text-sm font-semibold">Logo</th>
-                          <th className="py-3 px-4 text-left text-sm font-semibold">Team Name</th>
+                              <th className="py-3 px-4 text-left text-sm font-semibold">Logo</th>
+                              <th className="py-3 px-4 text-left text-sm font-semibold">Team Name</th>
                               <th className="py-3 px-4 text-left text-sm font-semibold">Registered</th>
                               <th className="py-3 px-4 text-right text-sm font-semibold">Actions</th>
                             </tr>
@@ -1669,7 +2168,20 @@ const TournamentDashboard = () => {
                                 )}
                               </td>
                               <td className="py-3 px-4 font-semibold">{participant.team_name}</td>
-                                    <td className="py-3 px-4 text-sm text-gray-400">{new Date(participant.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                              <td className="py-3 px-4 text-sm text-gray-400">
+                                {new Date(participant.created_at).toLocaleDateString(undefined, {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                })}
+                                {tournament.check_in_required && (
+                                  <div className="mt-1">
+                                    {renderCheckInBadge(participant) || (
+                                      <span className="text-xs text-slate-500">Pending</span>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
                                     <td className="py-3 px-4">
                                 <div className="flex items-center justify-end gap-2">
                                 <Button size="sm" variant="secondary" className="text-xs"
@@ -1789,7 +2301,7 @@ const TournamentDashboard = () => {
                             return (
                               <div
                                 key={participant.id}
-                                className="bg-gaming-dark border border-gaming-gray/30 rounded-lg p-3 sm:p-4 space-y-2.5 sm:space-y-3 hover:border-gaming-purple/50 transition-colors"
+                                className="bg-gaming-dark border border-gaming-gray/30 rounded-lg p-3 sm:p-4 space-y-2.5 sm:space-y-3 hover:border-emerald-400/40 transition-colors"
                               >
                                 <div className="flex items-center gap-2.5 sm:gap-3">
                                   {participant.team_logo ? (
@@ -1802,8 +2314,19 @@ const TournamentDashboard = () => {
                                   <div className="flex-1 min-w-0">
                                     <h4 className="font-semibold text-white text-sm sm:text-base truncate">{participant.team_name}</h4>
                                     <p className="text-xs text-gray-400 mt-0.5">
-                                      {new Date(participant.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                      {new Date(participant.created_at).toLocaleDateString(undefined, {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })}
                                     </p>
+                                    {tournament.check_in_required && (
+                                      <div className="mt-1">
+                                        {renderCheckInBadge(participant) || (
+                                          <span className="text-xs text-slate-500">Awaiting check-in</span>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                                 
@@ -1876,7 +2399,7 @@ const TournamentDashboard = () => {
                     ) : (
                       <div className="space-y-2">
                         {teamCaptain && (
-                          <div className="text-sm text-gaming-purple font-medium mb-2">Captain: {teamCaptain}</div>
+                          <div className="text-sm text-emerald-300 font-medium mb-2">Captain: {teamCaptain}</div>
                         )}
                         <div className="flex flex-wrap gap-2">
                           {selectedTeamMembers.map((m, i) => (
@@ -1901,6 +2424,9 @@ const TournamentDashboard = () => {
           </TabsContent>
 
           <TabsContent value="brackets">
+            {!canEditBracket ? (
+              <PermissionNotice message="Bracket controls are limited to organizers or staff with bracket permissions." />
+            ) : (
             <Card className="mb-8">
               <CardHeader>
                 <div className="flex justify-between items-center">
@@ -1910,7 +2436,7 @@ const TournamentDashboard = () => {
                       console.log('Navigating to brackets for tournament:', slug);
                       navigate(`/tournaments/${slug}/brackets`);
                     }}
-                    className="bg-gaming-purple hover:bg-gaming-purple/80 text-white"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white"
                   >
                     View Full Bracket System
                   </Button>
@@ -1927,29 +2453,60 @@ const TournamentDashboard = () => {
                       console.log('Opening bracket system for tournament:', slug);
                       navigate(`/tournaments/${slug}/brackets`);
                     }}
-                    className="bg-gaming-purple hover:bg-gaming-purple/80 text-white"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white"
                   >
                     Open Bracket System
                   </Button>
                 </div>
               </CardContent>
             </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="bans">
-            {tournament?.id && (
-              <BanManagement tournamentId={tournament.id} />
+            {!canManageTeams ? (
+              <PermissionNotice message="Only organizers or staff with team management permissions can manage bans." />
+            ) : (
+              tournament?.id && (
+                <BanManagement tournamentId={tournament.id} />
+              )
             )}
           </TabsContent>
 
           <TabsContent value="disputes">
-            {tournament?.id && user?.id && (
-              <DisputeCenter tournamentId={tournament.id} organizerId={user.id} />
+            {!canAssistDisputes ? (
+              <PermissionNotice message="Your staff role does not include dispute assistance permissions." />
+            ) : (
+              tournament?.id && user?.id && (
+                <DisputeCenter
+                  tournamentId={tournament.id}
+                  organizerId={tournament.organizer_id}
+                  currentUserId={user.id}
+                />
+              )
             )}
           </TabsContent>
 
+          {canManageStaff && (
+            <TabsContent value="staff">
+              {tournament?.id && user?.id ? (
+                <TournamentStaffManager tournamentId={tournament.id} organizerId={user.id} />
+              ) : (
+                <Card className="bg-gaming-dark border-gaming-gray/30">
+                  <CardContent className="text-sm text-gray-400 py-6">
+                    Sign in to assign moderators to this tournament.
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          )}
+
 
           <TabsContent value="settings">
+            {!isOrganizer ? (
+              <PermissionNotice message="Tournament settings are available only to the organizer." />
+            ) : (
+            <>
             <Card className="bg-gaming-dark border-gaming-gray/30">
               <CardHeader>
                 <CardTitle>Tournament Settings</CardTitle>
@@ -1975,33 +2532,106 @@ const TournamentDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="bg-gaming-dark border-gaming-gray/30 mt-6">
+              <CardHeader>
+                <CardTitle>Check-In Requirements</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-white">Require check-in</p>
+                    <p className="text-sm text-gray-400">
+                      Force captains to confirm attendance before brackets are generated.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={checkInRequiredSetting}
+                    onCheckedChange={setCheckInRequiredSetting}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">Check-in deadline</label>
+                  <input
+                    type="datetime-local"
+                    value={checkInDeadlineSetting}
+                    onChange={(e) => setCheckInDeadlineSetting(e.target.value)}
+                    disabled={!checkInRequiredSetting}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-white disabled:opacity-50"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Players will see the deadline in their tournament view with a live countdown.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-white">Auto-remove no-shows</p>
+                    <p className="text-sm text-gray-400">
+                      Automatically mark unchecked teams as cancelled after the deadline.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={autoRemoveUncheckedSetting}
+                    onCheckedChange={setAutoRemoveUncheckedSetting}
+                    disabled={!checkInRequiredSetting}
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    onClick={handleSaveCheckInSettings}
+                    disabled={savingCheckInSettings}
+                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                  >
+                    {savingCheckInSettings ? 'Saving...' : 'Save Settings'}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleRemoveUncheckedParticipants}
+                    disabled={removingUnchecked || !checkInRequiredSetting}
+                    className="w-full sm:w-auto"
+                  >
+                    {removingUnchecked ? 'Removing...' : 'Remove Unchecked Teams'}
+                  </Button>
+                </div>
+
+                <div className="flex items-start gap-2 text-xs text-gray-400">
+                  <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5" />
+                  Participants who miss check-in will be set to &quot;Cancelled&quot; and lose their spot.
+                </div>
+              </CardContent>
+            </Card>
+            </>
+            )}
           </TabsContent>
         </Tabs>
       </main>
       <Footer />
       {banDialogOpen && (
         <AlertDialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="bg-[#12121a] border-white/10 text-white">
             <AlertDialogHeader>
-              <AlertDialogTitle>Ban Participant</AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogTitle className="text-white">Ban Participant</AlertDialogTitle>
+              <AlertDialogDescription className="text-white/70">
                 Are you sure you want to ban this participant? This will remove their registration and prevent them from joining this tournament again.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="my-4">
-              <label className="block mb-2 font-semibold">Ban Reason (required)</label>
+              <label className="block mb-2 font-semibold text-white">Ban Reason (required)</label>
               <input
-                className="w-full p-2 rounded border border-gray-600 bg-gaming-dark text-white"
+                className="w-full p-2.5 rounded-lg border border-white/20 bg-white/5 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50"
                 value={banReason}
                 onChange={e => setBanReason(e.target.value)}
                 placeholder="Enter reason for ban..."
               />
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setBanDialogOpen(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => setBanDialogOpen(false)} className="border-white/20 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
               <AlertDialogAction
                 disabled={!banReason.trim()}
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-red-600 hover:bg-red-700 text-white"
                 onClick={() => banTarget && handleBan(banTarget.id, banTarget.userId)}
               >
                 Ban

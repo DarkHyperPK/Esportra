@@ -74,10 +74,10 @@ export const useVenueSearch = () => {
       if (error) throw error;
 
       // Transform the data for UI display
-      const transformedVenues: Venue[] = data.map(venue => ({
+      const transformedVenues: Venue[] = (data || []).map(venue => ({
         ...venue,
-        amenities: venue.games?.split(',').map(game => game.trim()) || [],
-        location: `${venue.city}, ${venue.address}`,
+        amenities: venue.games?.split(',')?.map(game => game.trim()) || [],
+        location: `${venue.city || ''}, ${venue.address || ''}`,
         priceRange: venue.price_range || '$10-20/hr',
         openNow: venue.open_now !== undefined ? venue.open_now : true,
       }));

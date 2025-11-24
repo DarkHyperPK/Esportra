@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdmin } from "@/contexts/AdminContext";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Users, 
   MapPin, 
@@ -25,6 +27,8 @@ import { useNavigate } from "react-router-dom";
 
 const AdminManagement = () => {
   const { profile } = useAuth();
+  const { roles, hasPermission } = useAdmin();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -96,6 +100,51 @@ const AdminManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const hasRoleAccess = (allowedRoles?: string[]) => {
+    if (!allowedRoles || allowedRoles.length === 0) return true;
+    if (roles.includes('super_admin')) return true;
+    return allowedRoles.some(role => roles.includes(role));
+  };
+
+  const TOOL_ACCESS: Record<string, { permission?: string; allowedRoles?: string[] }> = {
+    'user-management': {
+      permission: 'user:view',
+      allowedRoles: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin']
+    },
+    'tournament-management': {
+      permission: 'tournament:view',
+      allowedRoles: ['super_admin', 'ops_admin', 'moderator']
+    },
+    'venue-management': {
+      permission: 'venue:view',
+      allowedRoles: ['super_admin', 'ops_admin', 'support_admin']
+    },
+    'financial-management': {
+      permission: 'settings:view',
+      allowedRoles: ['super_admin', 'finance_admin']
+    },
+    'verification-system': {
+      permission: 'verification:view',
+      allowedRoles: ['super_admin', 'ops_admin', 'support_admin']
+    },
+    'audit-logs': {
+      permission: 'audit:view',
+      allowedRoles: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin']
+    },
+    'analytics-dashboard': {
+      permission: 'audit:view',
+      allowedRoles: ['super_admin', 'ops_admin', 'finance_admin']
+    }
+  };
+
+  const canAccessTool = (toolId: string) => {
+    const config = TOOL_ACCESS[toolId];
+    if (!config) return true;
+    if (config.allowedRoles && !hasRoleAccess(config.allowedRoles)) return false;
+    if (config.permission && !hasPermission(config.permission)) return false;
+    return true;
   };
 
   const adminTools = [
@@ -172,7 +221,17 @@ const AdminManagement = () => {
     }
   ];
 
+  const visibleTools = adminTools.filter(tool => canAccessTool(tool.id));
+
   const handleToolClick = (toolId: string) => {
+    if (!canAccessTool(toolId)) {
+      toast({
+        title: "Access denied",
+        description: "You don't have permission to open this tool.",
+        variant: "destructive"
+      });
+      return;
+    }
     // Map friendly ids to actual routes
     const routeMap: Record<string, string> = {
       'user-management': '/admin/tools/user-management',
@@ -291,7 +350,12 @@ const AdminManagement = () => {
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-white mb-6">Administration Tools</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {adminTools.map((tool) => (
+            {visibleTools.length === 0 && (
+              <div className="col-span-full text-center text-gray-400 border border-dashed border-gray-700 rounded-lg py-12">
+                No administration tools available for your role.
+              </div>
+            )}
+            {visibleTools.map((tool) => (
               <Card 
                 key={tool.id}
                 className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-all duration-200 cursor-pointer group"

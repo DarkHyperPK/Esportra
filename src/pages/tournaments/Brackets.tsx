@@ -140,13 +140,31 @@ const TournamentBrackets = () => {
 
       if (tournamentError) throw tournamentError;
 
-      // Fetch participants
-      const { data: participantsData, error: participantsError } = await supabase
-        .from('tournament_participants')
-        .select('*')
-        .eq('tournament_id', tournamentData.id);
+      // Fetch participants and bans in parallel
+      const [participantsResponse, bansResponse] = await Promise.all([
+        supabase
+          .from('tournament_participants')
+          .select('*')
+          .eq('tournament_id', tournamentData.id),
+        supabase
+          .from('tournament_bans')
+          .select('user_id, team_id')
+          .eq('tournament_id', tournamentData.id)
+          .eq('is_active', true)
+      ]);
 
-      if (participantsError) throw participantsError;
+      if (participantsResponse.error) throw participantsResponse.error;
+
+      // Get banned user_ids and team_ids
+      const bannedUserIds = new Set((bansResponse.data || []).filter(b => b.user_id).map(b => b.user_id));
+      const bannedTeamIds = new Set((bansResponse.data || []).filter(b => b.team_id).map(b => b.team_id));
+      
+      // Filter out banned participants
+      const participantsData = (participantsResponse.data || []).filter((p: any) => {
+        if (p.user_id && bannedUserIds.has(p.user_id)) return false;
+        if (p.team_id && bannedTeamIds.has(p.team_id)) return false;
+        return true;
+      });
 
       // Fetch matches (schema uses match_number and supports team slots/schedule now)
       const { data: matchesData, error: matchesError } = await supabase
@@ -451,7 +469,7 @@ const TournamentBrackets = () => {
 
         // Fetch veto records for these matches
         const { data: vetos, error } = await supabase
-          .from('match_map_vetos')
+          .from('valorant_match_map_vetos')
           .select('match_id, team1_id, team2_id, team1_link_token, team2_link_token, status')
           .in('match_id', matchIds)
           .eq('status', 'in_progress');
@@ -725,6 +743,9 @@ const TournamentBrackets = () => {
                 }
               }
               
+              // When match is reset to pending, also clear result images and comments
+              const isResetToPending = updatedMatch.status === 'pending' && match.status !== 'pending';
+              
               return {
                 ...match,
                 team1: updatedTeam1,
@@ -738,6 +759,9 @@ const TournamentBrackets = () => {
                   : match.score,
                 bestOf: updatedMatch.best_of || match.bestOf,
                 partyCode: updatedMatch.party_code || match.partyCode,
+                // Clear results when match is reset to pending
+                resultImages: isResetToPending ? [] : match.resultImages,
+                resultComments: isResetToPending ? [] : match.resultComments,
               };
             }
             return match;
@@ -905,7 +929,7 @@ const TournamentBrackets = () => {
               })
             );
           } else if (payload.eventType === 'DELETE' && payload.old) {
-            // Result deleted - remove from specific match
+            // Result deleted - handle both individual and bulk deletions
             const deletedResult = payload.old;
             const matchId = deletedResult.match_id;
             
@@ -913,17 +937,29 @@ const TournamentBrackets = () => {
               prevMatches.map(match => {
                 const matchDbId = String(match.id).replace('db-', '');
                 if (matchDbId === matchId) {
-                  const currentImages = match.resultImages || [];
-                  const currentComments = match.resultComments || [];
-                  return {
-                    ...match,
-                    resultImages: deletedResult.image_url 
-                      ? currentImages.filter(img => img !== deletedResult.image_url)
-                      : currentImages,
-                    resultComments: deletedResult.comment
-                      ? currentComments.filter(comment => comment !== deletedResult.comment)
-                      : currentComments,
-                  };
+                  // If image_url or comment is null/undefined, it means all results were deleted (bulk deletion)
+                  // Otherwise, remove the specific result
+                  if (!deletedResult.image_url && !deletedResult.comment) {
+                    // Bulk deletion - clear all results for this match
+                    return {
+                      ...match,
+                      resultImages: [],
+                      resultComments: [],
+                    };
+                  } else {
+                    // Individual deletion - remove specific result
+                    const currentImages = match.resultImages || [];
+                    const currentComments = match.resultComments || [];
+                    return {
+                      ...match,
+                      resultImages: deletedResult.image_url 
+                        ? currentImages.filter(img => img !== deletedResult.image_url)
+                        : currentImages,
+                      resultComments: deletedResult.comment
+                        ? currentComments.filter(comment => comment !== deletedResult.comment)
+                        : currentComments,
+                    };
+                  }
                 }
                 return match;
               })
@@ -1247,22 +1283,64 @@ const TournamentBrackets = () => {
       const round1Matches: BracketTeam[] = [];
       const usedTeamIds = new Set<string>(); // Track teams already assigned
       
+      // Deduplicate teams before pairing (ensure each team appears only once)
+      const uniqueTeams: BracketTeam[] = [];
+      const seenTeamIds = new Set<string>();
+      for (const team of padded) {
+        if (team && team.id && !team.id.startsWith('bye-')) {
+          if (!seenTeamIds.has(team.id)) {
+            uniqueTeams.push(team);
+            seenTeamIds.add(team.id);
+          } else {
+            console.warn('[Brackets] Skipping duplicate team in padded array:', team.id, team.name);
+          }
+        } else {
+          // BYE slots are always included
+          uniqueTeams.push(team);
+        }
+      }
+      
+      // Fill remaining slots with BYEs if needed
+      while (uniqueTeams.length < finalSize) {
+        uniqueTeams.push({ id: `bye-${uniqueTeams.length + 1}`, name: 'BYE', seed: 0, eliminated: true });
+      }
+      
       for (let i = 0; i < finalSize / 2; i++) {
         // Lower position teams (will be team1 in matches)
-        const team1 = padded[i];
+        const team1 = uniqueTeams[i];
         // Higher position teams (will be team2 in matches) - opposite end
-        const team2 = padded[finalSize - 1 - i];
+        const team2 = uniqueTeams[finalSize - 1 - i];
         
-        // Verify teams aren't duplicates
+        // Final verification: ensure teams aren't the same (unless one is BYE)
+        if (team1 && team2 && team1.id === team2.id && !team1.id.startsWith('bye-')) {
+          console.error('[Brackets] ERROR: Same team in both slots for match', i + 1, ':', team1.id, team1.name);
+          // Replace team2 with BYE to prevent duplicate
+          const byeTeam: BracketTeam = { id: `bye-${i + 1}`, name: 'BYE', seed: 0, eliminated: true };
+          round1Matches.push(team1 ? { ...team1, seed: i + 1 } : team1);
+          round1Matches.push(byeTeam);
+          continue;
+        }
+        
+        // Verify teams aren't duplicates across matches
         if (team1 && team1.id && !team1.id.startsWith('bye-')) {
           if (usedTeamIds.has(team1.id)) {
             console.error('[Brackets] Duplicate team detected in Round 1 generation:', team1.id, team1.name);
+            // Replace with BYE to prevent duplicate
+            const byeTeam: BracketTeam = { id: `bye-${i + 1}`, name: 'BYE', seed: 0, eliminated: true };
+            round1Matches.push(byeTeam);
+            round1Matches.push(team2 ? { ...team2, seed: finalSize - i } : team2);
+            continue;
           }
           usedTeamIds.add(team1.id);
         }
         if (team2 && team2.id && !team2.id.startsWith('bye-')) {
           if (usedTeamIds.has(team2.id)) {
             console.error('[Brackets] Duplicate team detected in Round 1 generation:', team2.id, team2.name);
+            // Replace with BYE to prevent duplicate
+            const byeTeam: BracketTeam = { id: `bye-${finalSize - i}`, name: 'BYE', seed: 0, eliminated: true };
+            round1Matches.push(team1 ? { ...team1, seed: i + 1 } : team1);
+            round1Matches.push(byeTeam);
+            continue;
           }
           usedTeamIds.add(team2.id);
         }
@@ -1577,6 +1655,29 @@ const TournamentBrackets = () => {
       
       setIsClearing(true);
       
+      // Get all match IDs before deleting matches
+      const { data: matchIds } = await supabase
+        .from('tournament_matches')
+        .select('id')
+        .eq('tournament_id', tournament.id);
+      
+      const ids = matchIds?.map(m => m.id) || [];
+      
+      // Delete match results associated with these matches BEFORE deleting matches
+      if (ids.length > 0) {
+        const { error: resultsDeleteError } = await supabase
+          .from('tournament_match_results')
+          .delete()
+          .in('match_id', ids);
+        
+        if (resultsDeleteError) {
+          console.error('[Brackets] Error deleting match results:', resultsDeleteError);
+          // Continue anyway - matches will be deleted
+        } else {
+          console.log('[Brackets] Deleted match results for', ids.length, 'matches');
+        }
+      }
+      
       // Delete all matches for this tournament
       const { error: deleteError } = await supabase
         .from('tournament_matches')
@@ -1640,41 +1741,82 @@ const TournamentBrackets = () => {
       const ids = matchIds.map(m => m.id);
       
       // Delete match results associated with these matches
-      await supabase
+      // Delete by match_id first (more specific)
+      const { error: resultsDeleteError } = await supabase
         .from('tournament_match_results')
         .delete()
         .in('match_id', ids);
+      
+      if (resultsDeleteError) {
+        console.error('[Brackets] Error deleting match results by match_id:', resultsDeleteError);
+        // Try deleting by tournament_id as fallback
+        const { error: tournamentResultsDeleteError } = await supabase
+          .from('tournament_match_results')
+          .delete()
+          .eq('tournament_id', tournament.id);
+        
+        if (tournamentResultsDeleteError) {
+          console.error('[Brackets] Error deleting match results by tournament_id:', tournamentResultsDeleteError);
+        } else {
+          console.log('[Brackets] Deleted match results by tournament_id');
+        }
+      } else {
+        console.log('[Brackets] Deleted match results for', ids.length, 'matches');
+      }
       
       // Reset map veto for each match using the same RPC function that the map veto component uses
       // Then also clear best_of and selected_map_pool to start from scratch
       console.log('[Brackets] Resetting map vetos for', ids.length, 'matches');
       for (const matchId of ids) {
         try {
-          // First, call the RPC function to reset the veto state
-          const { error: vetoResetError } = await supabase.rpc('reset_match_veto', {
-            p_match_id: matchId,
-          });
+          // First, find the veto ID if it exists
+          const { data: existingVeto } = await supabase
+            .from('valorant_match_map_vetos')
+            .select('id')
+            .eq('match_id', matchId)
+            .maybeSingle();
           
-          if (vetoResetError) {
-            // If veto doesn't exist for this match, that's okay - just log and continue
-            if (vetoResetError.code !== 'P0001' && !vetoResetError.message?.includes('not found')) {
-              console.error(`[Brackets] Error resetting veto for match ${matchId}:`, vetoResetError);
+          if (existingVeto) {
+            // Delete all actions first
+            const { error: deleteActionsError } = await supabase
+              .from('valorant_match_map_veto_actions')
+              .delete()
+              .eq('veto_id', existingVeto.id);
+            
+            if (deleteActionsError) {
+              console.error(`[Brackets] Error deleting veto actions for match ${matchId}:`, deleteActionsError);
+            }
+            
+            // Then call the RPC function to reset the veto state
+            const { error: vetoResetError } = await supabase.rpc('reset_match_veto', {
+              p_match_id: matchId,
+            });
+            
+            if (vetoResetError) {
+              // If veto doesn't exist for this match, that's okay - just log and continue
+              if (vetoResetError.code !== 'P0001' && !vetoResetError.message?.includes('not found')) {
+                console.error(`[Brackets] Error resetting veto for match ${matchId}:`, vetoResetError);
+              }
+            } else {
+              // After reset, also clear best_of and selected_map_pool to start from scratch
+              // This ensures the flow goes: map pool selection -> BO selection -> map pick/ban
+              const { error: clearError } = await supabase
+                .from('valorant_match_map_vetos')
+                .update({
+                  best_of: null,
+                  selected_map_pool: null,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('match_id', matchId);
+              
+              if (clearError) {
+                console.error(`[Brackets] Error clearing best_of/selected_map_pool for match ${matchId}:`, clearError);
+              } else {
+                console.log(`[Brackets] Successfully reset veto for match ${matchId}`);
+              }
             }
           } else {
-            // After reset, also clear best_of and selected_map_pool to start from scratch
-            // This ensures the flow goes: map pool selection -> BO selection -> map pick/ban
-            const { error: clearError } = await supabase
-              .from('match_map_vetos')
-              .update({
-                best_of: null,
-                selected_map_pool: null,
-                updated_at: new Date().toISOString()
-              })
-              .eq('match_id', matchId);
-            
-            if (clearError) {
-              console.error(`[Brackets] Error clearing best_of/selected_map_pool for match ${matchId}:`, clearError);
-            }
+            console.log(`[Brackets] No veto found for match ${matchId}, skipping reset`);
           }
         } catch (error: any) {
           // If RPC function doesn't exist or match has no veto, that's okay - continue
@@ -1726,13 +1868,15 @@ const TournamentBrackets = () => {
           team2_score: 0,
           score: '0-0',
           winner: null,
-          partyCode: null
+          partyCode: null,
+          resultImages: [], // Clear submitted result images
+          resultComments: [] // Clear submitted result comments
         }))
       );
       
       toast({ 
         title: 'Bracket Reset', 
-        description: `All ${resetCount} matches have been reset to pending status. Scores and winners have been cleared.` 
+        description: `All ${resetCount} matches have been reset to pending status. Scores, winners, and submitted results have been cleared.` 
       });
       
       // Real-time subscription will update UI automatically for other browsers
@@ -2701,35 +2845,46 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
                       onDragOver={onDragOver}
                       onDrop={(e) => onDrop(e, match, 'team1')}
                     >
-                      {match.team1?.logo_url ? (
-                        <div className="relative flex-shrink-0">
+                      {/* Logo container - fixed size */}
+                      <div className="relative flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16">
+                        {match.team1?.logo_url ? (
                           <img 
                             src={match.team1.logo_url} 
                             alt={match.team1.name} 
-                            className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-lg bg-gaming-gray/20 p-1 border border-gaming-gray/30"
+                            className="w-full h-full object-contain rounded-lg bg-gaming-gray/20 p-1 border border-gaming-gray/30"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
+                              console.error('[Brackets] Failed to load team logo:', match.team1.logo_url);
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
                             }}
                           />
-                          {match.winner?.id === match.team1?.id && (
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gaming-dark flex items-center justify-center">
-                              <span className="text-[10px] font-bold text-white">✓</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gaming-gray/40 to-gaming-gray/20 flex-shrink-0 flex items-center justify-center rounded-lg border border-gaming-gray/30">
+                        ) : null}
+                        {/* Fallback initial - always present but hidden if logo loads */}
+                        <div 
+                          className={`w-full h-full bg-gradient-to-br from-gaming-gray/40 to-gaming-gray/20 flex items-center justify-center rounded-lg border border-gaming-gray/30 ${match.team1?.logo_url ? 'hidden' : ''}`}
+                        >
                           <span className="text-lg sm:text-xl text-gray-400 font-bold">
                             {match.team1?.name ? match.team1.name.charAt(0).toUpperCase() : '?'}
                           </span>
                         </div>
-                      )}
+                        {match.status === 'completed' && match.winner?.id && match.team1?.id && match.winner.id === match.team1.id && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gaming-dark flex items-center justify-center z-10">
+                            <span className="text-[10px] font-bold text-white">✓</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Score after logo - fixed width for alignment */}
+                      <div className="flex-shrink-0 min-w-[36px] sm:min-w-[40px] flex items-center justify-center">
+                        {(typeof match.team1_score === 'number') ? (
+                          <span className="text-lg sm:text-xl font-extrabold text-white bg-gradient-to-r from-gaming-purple/20 to-purple-400/20 px-2 py-1 rounded">
+                            {match.team1_score}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500/50">-</span>
+                        )}
+                      </div>
+                      {/* Team name - takes remaining space */}
                       <span className="text-sm sm:text-base font-bold truncate flex-1 text-white">{match.team1?.name || 'TBD'}</span>
-                      {(typeof match.team1_score === 'number') && (
-                        <span className="text-lg sm:text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gaming-purple to-purple-400 min-w-[28px] sm:min-w-[32px] text-right">
-                          {match.team1_score}
-                        </span>
-                      )}
                     </div>
                     
                     {/* VS Divider */}
@@ -2753,35 +2908,46 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
                       onDragOver={onDragOver}
                       onDrop={(e) => onDrop(e, match, 'team2')}
                     >
-                      {match.team2?.logo_url ? (
-                        <div className="relative flex-shrink-0">
+                      {/* Logo container - fixed size (same as team1) */}
+                      <div className="relative flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16">
+                        {match.team2?.logo_url ? (
                           <img 
                             src={match.team2.logo_url} 
                             alt={match.team2.name} 
-                            className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-lg bg-gaming-gray/20 p-1 border border-gaming-gray/30"
+                            className="w-full h-full object-contain rounded-lg bg-gaming-gray/20 p-1 border border-gaming-gray/30"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
+                              console.error('[Brackets] Failed to load team logo:', match.team2.logo_url);
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
                             }}
                           />
-                          {match.winner?.id === match.team2?.id && (
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gaming-dark flex items-center justify-center">
-                              <span className="text-[10px] font-bold text-white">✓</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-gaming-gray/40 to-gaming-gray/20 flex-shrink-0 flex items-center justify-center rounded-lg border border-gaming-gray/30">
+                        ) : null}
+                        {/* Fallback initial - always present but hidden if logo loads */}
+                        <div 
+                          className={`w-full h-full bg-gradient-to-br from-gaming-gray/40 to-gaming-gray/20 flex items-center justify-center rounded-lg border border-gaming-gray/30 ${match.team2?.logo_url ? 'hidden' : ''}`}
+                        >
                           <span className="text-lg sm:text-xl text-gray-400 font-bold">
                             {match.team2?.name ? match.team2.name.charAt(0).toUpperCase() : '?'}
                           </span>
                         </div>
-                      )}
+                        {match.status === 'completed' && match.winner?.id && match.team2?.id && match.winner.id === match.team2.id && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-gaming-dark flex items-center justify-center z-10">
+                            <span className="text-[10px] font-bold text-white">✓</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Score after logo - fixed width for alignment (same as team1) */}
+                      <div className="flex-shrink-0 min-w-[36px] sm:min-w-[40px] flex items-center justify-center">
+                        {(typeof match.team2_score === 'number') ? (
+                          <span className="text-lg sm:text-xl font-extrabold text-white bg-gradient-to-r from-gaming-purple/20 to-purple-400/20 px-2 py-1 rounded">
+                            {match.team2_score}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500/50">-</span>
+                        )}
+                      </div>
+                      {/* Team name - takes remaining space */}
                       <span className="text-sm sm:text-base font-bold truncate flex-1 text-white">{match.team2?.name || 'TBD'}</span>
-                      {(typeof match.team2_score === 'number') && (
-                        <span className="text-lg sm:text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gaming-purple to-purple-400 min-w-[28px] sm:min-w-[32px] text-right">
-                          {match.team2_score}
-                        </span>
-                      )}
                     </div>
                     {/* Status and Map Veto Badge */}
                     <div className="flex items-center justify-between gap-2 pt-2 border-t border-gaming-gray/20">
@@ -2807,7 +2973,7 @@ const BracketVisualization: React.FC<{ matches: BracketMatch[]; teamCount: numbe
                         <div className="flex gap-2 overflow-x-auto">
                           {match.resultImages.slice(0,4).map((img, idx) => (
                             <a key={idx} href={img} target="_blank" className="block w-16 h-12 rounded overflow-hidden border border-gaming-gray/30">
-                              <img src={img} alt="result" className="w-full h-full object-cover" loading="lazy" />
+                              <img src={img} alt="result" className="w-full h-full object-cover" />
                             </a>
                           ))}
                         </div>

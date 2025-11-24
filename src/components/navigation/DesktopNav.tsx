@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
+import { useAdmin } from "@/contexts/AdminContext";
 import { useNotifications } from "@/components/NotificationContext";
 import UserMenu from "./UserMenu";
 
@@ -19,29 +20,34 @@ const DesktopNav = ({
 }) => {
   const { user, profile } = useAuth();
   const { currentRole } = useRole();
+  const admin = useAdmin();
   const { unreadCount } = useNotifications();
   const userRole = currentRole;
+  const isSuperAdmin = admin.isAdmin && admin.roles.includes('super_admin');
+
+  const menuItemClass =
+    "w-full rounded-2xl px-4 py-2 text-[0.75rem] font-semibold uppercase tracking-[0.15em] text-white/70 transition-all focus:text-white hover:text-white hover:bg-white/10 focus:bg-white/10";
 
   return (
-    <div className="hidden md:flex items-center space-x-6 font-roboto">
-      <Link to="/" className="text-gray-100 hover:text-white transition-colors">
+    <div className="hidden lg:flex items-center gap-6 font-roboto">
+      <Link to="/" className="text-sm font-semibold uppercase tracking-[0.2em] text-white transition-colors">
         Home
       </Link>
       
       <DropdownMenu>
-        <DropdownMenuTrigger className="text-gray-100 hover:text-white transition-colors inline-flex items-center gap-2">
+        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-white transition-colors">
           <MapPin className="h-4 w-4" />
           Venues
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-esports-dark border border-gray-600/30 shadow-lg backdrop-blur-md">
-          <DropdownMenuItem asChild>
+        <DropdownMenuContent className="border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
+          <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/venues/search" className="w-full">Find Venues</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/venues/featured" className="w-full">Featured Venues</Link>
           </DropdownMenuItem>
-          {userRole === 'venue_owner' && (
-            <DropdownMenuItem asChild>
+          {(userRole === 'venue_owner' || isSuperAdmin) && (
+            <DropdownMenuItem asChild className={menuItemClass}>
               <Link to="/venues/list-venue" className="w-full">List Your Venue</Link>
             </DropdownMenuItem>
           )}
@@ -49,26 +55,26 @@ const DesktopNav = ({
       </DropdownMenu>
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="text-gray-100 hover:text-white transition-colors inline-flex items-center gap-2">
+        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-white transition-colors">
           <Trophy className="h-4 w-4" />
           Tournaments
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-esports-dark border border-gray-600/30 shadow-lg backdrop-blur-md">
-          <DropdownMenuItem asChild>
+        <DropdownMenuContent className="border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
+          <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/tournaments/upcoming" className="w-full">Upcoming Tournaments</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/tournaments/ongoing" className="w-full">Live Tournaments</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/tournament-history" className="w-full">Tournament History</Link>
           </DropdownMenuItem>
-          {userRole === 'organizer' && (
+          {(userRole === 'organizer' || isSuperAdmin) && (
             <>
-              <DropdownMenuItem asChild>
+              <DropdownMenuItem asChild className={menuItemClass}>
                 <Link to="/organizer/tournaments" className="w-full">Manage Tournaments</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
+              <DropdownMenuItem asChild className={menuItemClass}>
                 <Link to="/tournaments/create" className="w-full">Create Tournament</Link>
               </DropdownMenuItem>
             </>
@@ -77,30 +83,30 @@ const DesktopNav = ({
       </DropdownMenu>
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="text-gray-100 hover:text-white transition-colors inline-flex items-center gap-2">
+        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-white transition-colors">
           <Info className="h-4 w-4" />
           About
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-esports-dark border border-gray-600/30 shadow-lg backdrop-blur-md">
-          <DropdownMenuItem asChild>
+        <DropdownMenuContent className="border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
+          <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/about/company" className="w-full">About Us</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/about/contact" className="w-full">Contact</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/about/faq" className="w-full">FAQ</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="text-gray-100 hover:text-white transition-colors inline-flex items-center gap-2">
+        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-white transition-colors">
           <Smartphone className="h-4 w-4" />
           App
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="bg-esports-dark border border-gray-600/30 shadow-lg backdrop-blur-md">
-          <DropdownMenuItem asChild>
+        <DropdownMenuContent className="border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
+          <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/app" className="w-full">Download Mobile App</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -111,11 +117,11 @@ const DesktopNav = ({
           {/* Notification Bell */}
           <Link 
             to="/notifications" 
-            className="relative text-gray-100 hover:text-white transition-colors"
+            className="relative rounded-full border border-white/10 bg-white/5 p-2 text-white/70 transition-all hover:bg-white/10 hover:text-white"
           >
-            <Bell className="h-6 w-6" />
+            <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -124,16 +130,16 @@ const DesktopNav = ({
           <UserMenu handleSignOut={handleSignOut} />
         </>
       ) : (
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-3">
           <Button 
             variant="outline" 
-            className="border-gaming-purple text-gaming-purple hover:bg-gaming-purple hover:text-white" 
+            className="border-white/30 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white" 
             asChild
           >
             <Link to="/auth/signin">Log In</Link>
           </Button>
           <Button 
-            className="bg-gaming-purple hover:bg-gaming-purple/80 text-white" 
+            className="bg-gradient-to-r from-[#f43f5e] to-[#fb7185] text-white shadow-[0_15px_40px_rgba(244,63,94,0.35)] hover:from-[#fb7185] hover:to-[#f43f5e]" 
             asChild
           >
             <Link to="/auth/signup">Sign Up</Link>
@@ -141,15 +147,6 @@ const DesktopNav = ({
         </div>
       )}
 
-      {userRole === 'venue_owner' && (
-        <Button 
-          variant="outline"
-          className="border-gaming-purple text-gaming-purple hover:bg-gaming-purple hover:text-white"
-          asChild
-        >
-          <Link to="/venue-owner/venues">Manage Venues</Link>
-        </Button>
-      )}
     </div>
   );
 };

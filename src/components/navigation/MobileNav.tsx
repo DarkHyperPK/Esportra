@@ -7,6 +7,7 @@ import { useNotifications } from "@/components/NotificationContext";
 import { UserRole } from "@/types/auth";
 import RoleSwitcher from "@/components/RoleSwitcher";
 import IdentitySwitcher from "@/components/IdentitySwitcher";
+import { motion, AnimatePresence } from "framer-motion";
 
 const MobileNav = ({ 
   isOpen, 
@@ -22,54 +23,78 @@ const MobileNav = ({
   const { unreadCount } = useNotifications();
   const userRole = currentRole as UserRole;
 
-  if (!isOpen) return null;
-
   return (
-    <div className="md:hidden bg-gradient-to-b from-gaming-dark via-gaming-dark/98 to-gaming-dark backdrop-blur-xl border-t border-gaming-purple/20 shadow-2xl">
-      <div className="px-3 pt-4 pb-4 space-y-1">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          className="md:hidden relative z-50 border-t border-white/10 bg-gradient-to-b from-[#080a12]/95 via-[#05060b]/90 to-[#030307]/90 backdrop-blur-2xl shadow-[0_25px_45px_rgba(0,0,0,0.65)] overflow-visible"
+        >
+      <div className="space-y-1 px-3 pt-4 pb-4">
         {/* General Navigation */}
-        <div className="space-y-1 mb-3">
-          <Link to="/" className="block px-4 py-3 text-gray-100 hover:text-white hover:bg-gaming-purple/20 rounded-lg transition-all duration-200 font-medium" onClick={onClose}>
-            Home
-          </Link>
-          <Link to="/venues/search" className="block px-4 py-3 text-gray-100 hover:text-white hover:bg-gaming-purple/20 rounded-lg transition-all duration-200 font-medium" onClick={onClose}>
-            Venues
-          </Link>
-          <Link to="/tournaments/upcoming" className="block px-4 py-3 text-gray-100 hover:text-white hover:bg-gaming-purple/20 rounded-lg transition-all duration-200 font-medium" onClick={onClose}>
-            Tournaments
-          </Link>
-          <Link to="/about/company" className="block px-4 py-3 text-gray-100 hover:text-white hover:bg-gaming-purple/20 rounded-lg transition-all duration-200 font-medium" onClick={onClose}>
-            About
-          </Link>
-          <Link to="/app" className="block px-4 py-3 text-gray-100 hover:text-white hover:bg-gaming-purple/20 rounded-lg transition-all duration-200 font-medium" onClick={onClose}>
-            Download App
-          </Link>
-        </div>
+        <motion.div 
+          className="mb-3 space-y-1"
+          initial="closed"
+          animate="open"
+          variants={{
+            open: {
+              transition: { staggerChildren: 0.05 }
+            }
+          }}
+        >
+          {[
+            { to: "/", label: "Home" },
+            { to: "/venues/search", label: "Venues" },
+            { to: "/tournaments/upcoming", label: "Tournaments" },
+            { to: "/about/company", label: "About" },
+            { to: "/app", label: "Download App" }
+          ].map((item, index) => (
+            <motion.div
+              key={item.to}
+              variants={{
+                closed: { x: -20, opacity: 0 },
+                open: { x: 0, opacity: 1 }
+              }}
+              transition={{ duration: 0.3 }}
+            >
+              <Link 
+                to={item.to} 
+                className="block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" 
+                onClick={onClose}
+              >
+                {item.label}
+              </Link>
+            </motion.div>
+          ))}
+        </motion.div>
         
         {user && (
           <>
-            <div className="border-t border-gaming-purple/30 my-3"></div>
+            <div className="my-3 border-t border-white/10"></div>
             
             {/* Role & Identity Switchers */}
             {userRole !== 'admin' && (
-              <div className="space-y-2 mb-3 px-1">
-                <div className="px-3 py-2 bg-gaming-gray/20 rounded-lg border border-gaming-gray/30">
+              <div className="mb-3 space-y-2 px-1">
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
                   <RoleSwitcher />
                 </div>
-                <div className="px-3 py-2 bg-gaming-gray/20 rounded-lg border border-gaming-gray/30">
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
                   <IdentitySwitcher />
                 </div>
               </div>
             )}
             
-            <div className="border-t border-gaming-purple/30 my-3"></div>
+            <div className="my-3 border-t border-white/10"></div>
             
             {/* User Navigation */}
-            <div className="space-y-1 mb-3">
-              <Link to="/user/dashboard" className="block px-4 py-3 text-gray-100 hover:text-white hover:bg-gaming-purple/20 rounded-lg transition-all duration-200 font-medium" onClick={onClose}>
+            <div className="mb-3 space-y-1">
+              <Link to="/user/dashboard" className="block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
                 My Dashboard
               </Link>
-              <Link to="/notifications" className="block px-4 py-3 text-gray-100 hover:text-white hover:bg-gaming-purple/20 rounded-lg transition-all duration-200 font-medium" onClick={onClose}>
+              <Link to="/notifications" className="block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Bell className="h-4 w-4" />
@@ -82,45 +107,45 @@ const MobileNav = ({
                   )}
                 </div>
               </Link>
-              <Link to="/player/teams" className="block px-4 py-3 text-gray-100 hover:text-white hover:bg-gaming-purple/20 rounded-lg transition-all duration-200 font-medium" onClick={onClose}>
+              <Link to="/player/teams" className="block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
                 Create Your Team
               </Link>
-              <Link to="/auth/profile" className="block px-4 py-3 text-gray-100 hover:text-white hover:bg-gaming-purple/20 rounded-lg transition-all duration-200 font-medium" onClick={onClose}>
+              <Link to="/auth/profile" className="block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
                 My Profile
               </Link>
             </div>
             
             {/* Role-Specific Navigation */}
             {profile?.role === 'admin' && (
-              <div className="space-y-1 mb-3">
-                <Link to="/admin/dashboard" className="block px-4 py-3 text-gaming-purple hover:text-white hover:bg-gaming-purple/30 rounded-lg transition-all duration-200 font-semibold border border-gaming-purple/30" onClick={onClose}>
+              <div className="mb-3 space-y-1">
+                <Link to="/admin/dashboard" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                   Admin Panel
                 </Link>
               </div>
             )}
             {userRole === 'venue_owner' && (
-              <div className="space-y-1 mb-3">
-                <Link to="/venues/list-venue" className="block px-4 py-3 text-gaming-purple hover:text-white hover:bg-gaming-purple/30 rounded-lg transition-all duration-200 font-semibold border border-gaming-purple/30" onClick={onClose}>
+              <div className="mb-3 space-y-1">
+                <Link to="/venues/list-venue" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                   My Venues
                 </Link>
               </div>
             )}
             {userRole === 'organizer' && (
-              <div className="space-y-1 mb-3">
-                <Link to="/organizer/tournaments" className="block px-4 py-3 text-gaming-purple hover:text-white hover:bg-gaming-purple/30 rounded-lg transition-all duration-200 font-semibold border border-gaming-purple/30" onClick={onClose}>
+              <div className="mb-3 space-y-1">
+                <Link to="/organizer/tournaments" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                   Manage Tournaments
                 </Link>
-                <Link to="/tournaments/create" className="block px-4 py-3 text-gaming-purple hover:text-white hover:bg-gaming-purple/30 rounded-lg transition-all duration-200 font-semibold border border-gaming-purple/30" onClick={onClose}>
+                <Link to="/tournaments/create" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                   Create Tournament
                 </Link>
               </div>
             )}
             
-            <div className="border-t border-gaming-purple/30 my-3"></div>
+            <div className="my-3 border-t border-white/10"></div>
             
             {/* Sign Out */}
             <button 
-              className="block w-full text-left px-4 py-3 text-red-400 hover:bg-red-500/20 hover:text-red-300 rounded-lg transition-all duration-200 font-semibold border border-red-500/30"
+              className="block w-full rounded-2xl border border-red-500/40 px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:bg-red-500/10"
               onClick={() => { onClose(); handleSignOut(); }}
             >
               Sign Out
@@ -129,17 +154,19 @@ const MobileNav = ({
         )}
         
         {!user && (
-          <div className="border-t border-gaming-purple/30 pt-3 mt-3 space-y-2">
-            <Link to="/auth/signin" className="block px-4 py-3 text-gray-100 hover:text-white hover:bg-gaming-purple/20 rounded-lg transition-all duration-200 font-medium text-center" onClick={onClose}>
+          <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+            <Link to="/auth/signin" className="block rounded-2xl border border-white/10 px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
               Sign In
             </Link>
-            <Link to="/auth/signup" className="block px-4 py-3 bg-gradient-to-r from-gaming-purple to-purple-600 text-white rounded-lg hover:from-gaming-purple/90 hover:to-purple-600/90 transition-all duration-200 font-semibold text-center shadow-lg shadow-gaming-purple/30" onClick={onClose}>
+            <Link to="/auth/signup" className="block rounded-2xl bg-gradient-to-r from-[#f43f5e] to-[#fb7185] px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.15em] text-white shadow-[0_20px_45px_rgba(244,63,94,0.35)] transition-all duration-200 hover:from-[#fb7185] hover:to-[#f43f5e]" onClick={onClose}>
               Sign Up
             </Link>
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

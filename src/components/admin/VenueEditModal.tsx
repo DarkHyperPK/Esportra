@@ -81,7 +81,7 @@ export function VenueEditModal({ venue, isOpen, onClose, onVenueUpdated }: Venue
 
       // Upload the file to Supabase storage
       const { error: uploadError } = await supabase.storage
-        .from('venues')
+        .from('venues.images')
         .upload(filePath, file);
 
       if (uploadError) {
@@ -90,7 +90,7 @@ export function VenueEditModal({ venue, isOpen, onClose, onVenueUpdated }: Venue
 
       // Get the public URL
       const { data } = supabase.storage
-        .from('venues')
+        .from('venues.images')
         .getPublicUrl(filePath);
 
       setImageUrl(data.publicUrl);

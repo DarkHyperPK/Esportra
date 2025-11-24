@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Filter } from 'lucide-react';
 import { useVenueSearch, VenueSearchParams } from '@/hooks/useVenueSearch';
 import { Skeleton } from "@/components/ui/skeleton";
+import { motion } from 'framer-motion';
 
 const VenueSearch = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,9 +55,26 @@ const VenueSearch = () => {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial="hidden"
+            animate="show"
+            variants={{
+              show: {
+                transition: { staggerChildren: 0.1 }
+              }
+            }}
+          >
             {[1, 2, 3, 4, 5, 6].map((index) => (
-              <div key={index} className="bg-gaming-dark border border-gaming-gray/30 rounded-lg overflow-hidden">
+              <motion.div
+                key={index}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  show: { opacity: 1, y: 0 }
+                }}
+                transition={{ duration: 0.3 }}
+                className="bg-gaming-dark border border-gaming-gray/30 rounded-lg overflow-hidden"
+              >
                 <Skeleton className="h-48 w-full" />
                 <div className="p-4">
                   <Skeleton className="h-6 w-3/4 mb-2" />
@@ -70,15 +88,33 @@ const VenueSearch = () => {
                     <Skeleton className="h-8 w-16 rounded" />
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         ) : venues.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {venues.map((venue) => (
-              <VenueCard key={venue.id} venue={venue} />
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial="hidden"
+            animate="show"
+            variants={{
+              show: {
+                transition: { staggerChildren: 0.1 }
+              }
+            }}
+          >
+            {venues.map((venue, index) => (
+              <motion.div
+                key={venue.id}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  show: { opacity: 1, y: 0 }
+                }}
+                transition={{ duration: 0.4, delay: index * 0.05 }}
+              >
+                <VenueCard venue={venue} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         ) : (
           <div className="text-center py-12 bg-gaming-dark border border-gaming-gray/30 rounded-lg">
             <p className="text-gray-400 mb-2">No venues found</p>

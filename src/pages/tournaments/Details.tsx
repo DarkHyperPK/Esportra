@@ -6,14 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut } from 'lucide-react';
+import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle, Clock, AlertTriangle, Ban as BanIcon } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { Tournament, BaseTournament, TournamentRegistration, RegistrationStatus, RegistrationType } from '@/types/tournament';
 import TournamentRegistrationForm from '@/components/TournamentRegistration';
-import TournamentBracket from '@/components/tournament/TournamentBracket';
-import DisputeSubmission from '@/components/player/DisputeSubmission';
+import { formatDistanceToNowStrict } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -67,6 +66,9 @@ interface DatabaseTournament {
   created_at: string;
   image_url?: string | null;
   slug: string;
+  check_in_required?: boolean;
+  check_in_deadline?: string | null;
+  auto_remove_unchecked?: boolean;
 }
 
 interface DatabaseRegistration {
@@ -78,6 +80,7 @@ interface DatabaseRegistration {
   team_name?: string | null;
   team_members?: string | null;
   status?: RegistrationStatus;
+  checked_in_at?: string | null;
   registered_at?: string;
   created_at: string;
   updated_at?: string;
@@ -100,18 +103,43 @@ const TournamentDetails = () => {
   const [isRegistered, setIsRegistered] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [registrationDetails, setRegistrationDetails] = useState<TournamentRegistration | null>(null);
-  const [showDisputeModal, setShowDisputeModal] = useState(false);
-  const [disputeTitle, setDisputeTitle] = useState("");
-  const [disputeDesc, setDisputeDesc] = useState("");
-  const [disputeFile, setDisputeFile] = useState<File | null>(null);
   const [isCaptain, setIsCaptain] = useState(false);
+  const [checkInSubmitting, setCheckInSubmitting] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registrationLoading, setRegistrationLoading] = useState(true);
   const [allRegistrations, setAllRegistrations] = useState<DatabaseRegistration[]>([]);
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
+  const [isBanned, setIsBanned] = useState(false);
+  const [banReason, setBanReason] = useState<string | null>(null);
 
   const isOrganizer = currentRole === 'organizer' && !!(user?.id && tournament?.user_id && user.id === tournament.user_id);
+  const requiresCheckIn = Boolean(tournament?.check_in_required);
+  const checkInDeadlineDate = tournament?.check_in_deadline ? new Date(tournament.check_in_deadline) : null;
+  const registrationStatus = (registrationDetails?.status || '').toLowerCase();
+  const hasCheckedIn = Boolean(registrationDetails?.checked_in_at) || registrationStatus === 'checked_in';
+  const awaitingApproval = registrationStatus === 'pending';
+  const isCaptainOrSelf = registrationDetails?.registration_type === 'team' ? isCaptain : true;
+  const now = typeof window !== 'undefined' ? new Date() : null;
+  const hasMissedCheckIn =
+    requiresCheckIn &&
+    checkInDeadlineDate instanceof Date &&
+    now instanceof Date &&
+    now > checkInDeadlineDate &&
+    !hasCheckedIn;
+  const canSelfCheckIn =
+    requiresCheckIn &&
+    !!registrationDetails &&
+    isCaptainOrSelf &&
+    !hasCheckedIn &&
+    !awaitingApproval &&
+    checkInDeadlineDate instanceof Date &&
+    now instanceof Date &&
+    now <= checkInDeadlineDate;
+  const checkInCountdown =
+    checkInDeadlineDate instanceof Date
+      ? formatDistanceToNowStrict(checkInDeadlineDate, { addSuffix: true })
+      : null;
 
   const sb: any = supabase;
 
@@ -151,7 +179,10 @@ const TournamentDetails = () => {
           banner_url,
           logo_url,
           created_at,
-          updated_at
+          updated_at,
+          check_in_required,
+          check_in_deadline,
+          auto_remove_unchecked
         `)
         .eq('slug', slug)
         .single();
@@ -182,7 +213,10 @@ const TournamentDetails = () => {
             banner_url,
             logo_url,
             created_at,
-            updated_at
+            updated_at,
+            check_in_required,
+            check_in_deadline,
+            auto_remove_unchecked
           `)
           .eq('id', slug)
           .single();
@@ -222,7 +256,10 @@ const TournamentDetails = () => {
         description: tournamentData.description || '',
         user_id: tournamentData.organizer_id,
         created_at: tournamentData.created_at,
-        image_url: tournamentData.banner_url || tournamentData.logo_url || null
+        image_url: tournamentData.banner_url || tournamentData.logo_url || null,
+        check_in_required: !!tournamentData.check_in_required,
+        check_in_deadline: tournamentData.check_in_deadline,
+        auto_remove_unchecked: tournamentData.auto_remove_unchecked ?? true
       };
       
       const { count, error: countError } = await sb
@@ -267,10 +304,79 @@ const TournamentDetails = () => {
       setRegistrationLoading(true);
       setIsRegistered(false);
       setRegistrationDetails(null);
+      setIsBanned(false);
+      setBanReason(null);
       return;
     }
     setRegistrationLoading(true);
     try {
+      // First check if user/team is banned
+      // Check for user ban (solo participant)
+      const { data: userBan } = await sb
+        .from('tournament_bans')
+        .select('ban_reason')
+        .eq('tournament_id', tournament.id)
+        .eq('is_active', true)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // Check for team ban (if user owns a team or is captain of a team)
+      let teamBan = null;
+      
+      // Get teams user owns
+      const { data: ownedTeams } = await sb
+        .from('teams')
+        .select('id')
+        .eq('owner_id', user.id);
+      
+      // Get teams where user is captain (from tournament_participants - might be empty if banned)
+      const { data: captainTeams } = await sb
+        .from('tournament_participants')
+        .select('team_id')
+        .eq('tournament_id', tournament.id)
+        .eq('team_captain_id', user.id)
+        .not('team_id', 'is', null);
+      
+      // Also check team_members table for teams where user is captain (in case registration was deleted)
+      const { data: captainFromMembers } = await sb
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .or('role.eq.captain,role.eq.Captain');
+      
+      const allTeamIds = [
+        ...(ownedTeams || []).map(t => t.id),
+        ...(captainTeams || []).map(t => t.team_id).filter(Boolean),
+        ...(captainFromMembers || []).map(t => t.team_id).filter(Boolean)
+      ];
+      
+      if (allTeamIds.length > 0) {
+        const uniqueTeamIds = Array.from(new Set(allTeamIds));
+        const { data: banData } = await sb
+          .from('tournament_bans')
+          .select('ban_reason, team_id')
+          .eq('tournament_id', tournament.id)
+          .eq('is_active', true)
+          .in('team_id', uniqueTeamIds)
+          .maybeSingle();
+        teamBan = banData;
+      }
+
+      // If banned (either user or team), set ban state and return early
+      if ((userBan && !userBan.error) || (teamBan && !teamBan.error)) {
+        setIsBanned(true);
+        setBanReason((userBan?.ban_reason || teamBan?.ban_reason) || null);
+        setIsRegistered(false);
+        setRegistrationDetails(null);
+        setRegistrationLoading(false);
+        return;
+      }
+
+      setIsBanned(false);
+      setBanReason(null);
+
+      // Check for registration
       const { data: regData, error } = await sb
         .from('tournament_participants')
         .select('*')
@@ -325,15 +431,38 @@ const TournamentDetails = () => {
         
         setIsRegistered(true);
         console.log('Registration data:', dbRegistration);
+        
+        // For team registrations, fetch the actual team name from teams table (priority over roster name)
+        let resolvedTeamName = (dbRegistration as any).team_name || null;
+        if (teamId && (dbRegistration as any).participant_type === 'team') {
+          try {
+            const { data: teamData } = await sb
+              .from('teams')
+              .select('name')
+              .eq('id', teamId)
+              .maybeSingle();
+            
+            if (teamData?.name) {
+              // Use actual team name from teams table as priority
+              resolvedTeamName = teamData.name;
+              console.log('[TournamentDetails] Resolved team name from teams table:', resolvedTeamName);
+            }
+          } catch (teamNameError) {
+            console.error('[TournamentDetails] Error fetching team name:', teamNameError);
+            // Fall back to registration.team_name if team lookup fails
+          }
+        }
+        
         const registration: TournamentRegistration & { team_id?: string; team_captain_id?: string } = {
           id: (dbRegistration as any).id,
           tournament_id: (dbRegistration as any).tournament_id,
           user_id: (dbRegistration as any).user_id,
           registration_type: (dbRegistration as any).participant_type === 'solo' ? 'solo' : 'team',
           gamer_tag: (dbRegistration as any).gamer_tag || null,
-          team_name: (dbRegistration as any).team_name || null,
+          team_name: resolvedTeamName, // Use resolved team name (from teams table) as priority
           team_members: (dbRegistration as any).team_members || null,
           status: (dbRegistration as any).status || 'registered',
+           checked_in_at: (dbRegistration as any).checked_in_at || null,
           registered_at: (dbRegistration as any).registered_at || (dbRegistration as any).created_at,
           created_at: (dbRegistration as any).created_at,
           updated_at: (dbRegistration as any).updated_at || (dbRegistration as any).created_at,
@@ -553,6 +682,7 @@ const TournamentDetails = () => {
           team_name: dbData.team_name || null,
           team_members: dbData.team_members || null,
           status: dbData.status as RegistrationStatus || 'registered',
+          checked_in_at: dbData.checked_in_at || null,
           registered_at: dbData.registered_at || dbData.created_at,
           created_at: dbData.created_at,
           updated_at: dbData.updated_at || dbData.created_at
@@ -588,12 +718,12 @@ const TournamentDetails = () => {
     try {
       console.log('Starting withdrawal process for user:', user.id, 'tournament:', tournament.id);
       
-      // First, try to get the registration to see what we're dealing with
+      // First, try to get the registration - check both user_id (solo) and team_captain_id (team)
       const { data: existingRegistration, error: fetchError } = await sb
         .from('tournament_participants')
         .select('*')
         .eq('tournament_id', tournament.id)
-        .eq('user_id', user.id)
+        .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`)
         .maybeSingle();
 
       if (fetchError) {
@@ -610,6 +740,20 @@ const TournamentDetails = () => {
       }
 
       console.log('Found registration:', existingRegistration);
+
+      // Verify the user has permission to withdraw (must be the registered user or team captain)
+      const isSoloRegistration = existingRegistration.participant_type === 'solo' && existingRegistration.user_id === user.id;
+      const isTeamCaptain = existingRegistration.participant_type === 'team' && existingRegistration.team_captain_id === user.id;
+      
+      if (!isSoloRegistration && !isTeamCaptain) {
+        console.error('User does not have permission to withdraw this registration');
+        toast({
+          title: 'Error',
+          description: 'You do not have permission to withdraw this registration.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
       // Delete from tournament_participants
       const { error: registrationError } = await sb
@@ -641,6 +785,38 @@ const TournamentDetails = () => {
         description: error.message || 'Failed to withdraw from tournament. Please try again.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleSelfCheckIn = async () => {
+    if (!registrationDetails) return;
+    setCheckInSubmitting(true);
+    try {
+      const { error } = await sb
+        .from('tournament_participants')
+        .update({
+          status: 'checked_in',
+          checked_in_at: new Date().toISOString()
+        })
+        .eq('id', registrationDetails.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Checked in',
+        description: 'Your team is confirmed for this tournament.'
+      });
+
+      await checkRegistration();
+    } catch (error: any) {
+      console.error('Check-in failed:', error);
+      toast({
+        title: 'Check-in failed',
+        description: error.message || 'Unable to complete check-in. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setCheckInSubmitting(false);
     }
   };
 
@@ -899,18 +1075,92 @@ const TournamentDetails = () => {
             </div>
           </div>
 
-          {/* Quick actions (no results upload here per request) */}
-          {isRegistered && user && (
-            <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 mb-8">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">Player Actions</h3>
-                <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800" onClick={() => setShowDisputeModal(true)}>
-                  Raise a dispute
-                </Button>
-              </div>
-              <p className="text-gray-400 text-sm mt-3">To upload a match result, use the upload icon on the specific match in the Brackets page.</p>
+        {requiresCheckIn && (
+          <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-white">Tournament Check-In</h3>
+              <span
+                className={`text-xs px-3 py-1 rounded-full ${
+                  hasCheckedIn
+                    ? 'bg-green-600/20 text-green-300'
+                    : hasMissedCheckIn
+                      ? 'bg-red-600/20 text-red-300'
+                      : 'bg-blue-600/20 text-blue-300'
+                }`}
+              >
+                {hasCheckedIn
+                  ? 'Checked In'
+                  : hasMissedCheckIn
+                    ? 'Closed'
+                    : 'Open'}
+              </span>
             </div>
-          )}
+            <p className="text-gray-400 text-sm mb-4">
+              Captains must check in to confirm participation. Deadline:{' '}
+              {checkInDeadlineDate
+                ? checkInDeadlineDate.toLocaleString()
+                : 'Not set by organizer yet'}
+              {checkInCountdown && !hasCheckedIn && !hasMissedCheckIn && (
+                <span className="ml-2 text-blue-300">({checkInCountdown})</span>
+              )}
+            </p>
+            <div className="space-y-3">
+              {!isRegistered ? (
+                <p className="text-gray-300 text-sm">
+                  Register for the tournament to unlock check-in.
+                </p>
+              ) : registrationDetails?.registration_type === 'team' && !isCaptain ? (
+                <p className="text-gray-300 text-sm">
+                  Only the team captain can complete check-in. Please ask your captain to confirm.
+                </p>
+              ) : awaitingApproval ? (
+                <p className="text-gray-300 text-sm">
+                  Your registration is pending organizer approval. Check-in will be available once you are approved.
+                </p>
+              ) : hasCheckedIn ? (
+                <div className="bg-green-900/20 border border-green-700/40 rounded-lg p-3 text-green-200 text-sm flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Checked in at{' '}
+                  {registrationDetails?.checked_in_at
+                    ? new Date(registrationDetails.checked_in_at).toLocaleString()
+                    : 'just now'}
+                </div>
+              ) : !checkInDeadlineDate ? (
+                <p className="text-gray-300 text-sm">
+                  Waiting for the organizer to publish the official check-in window.
+                </p>
+              ) : hasMissedCheckIn ? (
+                <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-3 text-red-200 text-sm flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 mt-0.5" />
+                  Check-in window has closed. Contact the organizer immediately to see if you can still participate.
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="text-sm text-gray-300">
+                    <p>Your spot is reserved but not confirmed until you check in.</p>
+                    <p className="text-xs text-gray-400">
+                      Once checked in, you will be included in brackets automatically.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleSelfCheckIn}
+                    disabled={checkInSubmitting || !canSelfCheckIn}
+                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                  >
+                    {checkInSubmitting ? 'Checking in...' : 'Check In Now'}
+                  </Button>
+                </div>
+              )}
+            </div>
+            {tournament?.auto_remove_unchecked && (
+              <p className="text-xs text-red-300 mt-4 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Teams that do not check in by the deadline may be removed without a refund.
+              </p>
+            )}
+          </div>
+        )}
+
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
@@ -961,6 +1211,17 @@ const TournamentDetails = () => {
               ) : isOrganizer ? (
                 <div className="text-center py-4">
                   <p className="text-gray-400">You are the organizer of this tournament</p>
+                </div>
+              ) : isBanned ? (
+                <div className="bg-red-500/10 border border-red-500/40 rounded-lg p-6 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <BanIcon className="w-12 h-12 text-red-400" />
+                    <h4 className="text-xl font-bold text-red-300">You are banned from this tournament</h4>
+                    {banReason && (
+                      <p className="text-red-200 text-sm mt-2">Reason: {banReason}</p>
+                    )}
+                    <p className="text-gray-400 text-sm mt-2">You cannot register or participate in this tournament.</p>
+                  </div>
                 </div>
               ) : (currentRole && currentRole !== 'casual') ? (
                 <div className="text-center py-4">
@@ -1105,10 +1366,10 @@ const TournamentDetails = () => {
       </div>
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[425px] bg-gray-900 border border-gray-700">
+        <DialogContent className="sm:max-w-[600px] bg-gray-900 border border-gray-700 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-white">Register for Tournament</DialogTitle>
-            <DialogDescription className="text-gray-400">
+            <DialogTitle className="text-2xl font-bold text-white">Register for Tournament</DialogTitle>
+            <DialogDescription className="text-white/60">
               Fill in your registration details below.
             </DialogDescription>
           </DialogHeader>
@@ -1126,29 +1387,6 @@ const TournamentDetails = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dispute Modal */}
-      <Dialog open={showDisputeModal} onOpenChange={setShowDisputeModal}>
-        <DialogContent className="sm:max-w-[600px] bg-gray-900 border border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-white">Raise a Dispute</DialogTitle>
-            <DialogDescription className="text-gray-400">Describe the issue and attach optional evidence. Organizers will review.</DialogDescription>
-          </DialogHeader>
-          {tournament && (
-            <DisputeSubmission
-              tournamentId={tournament.id}
-              tournamentName={tournament.name}
-              teamId={(registrationDetails as any)?.team_id || null}
-              matchId={null}
-              onClose={() => {
-                setShowDisputeModal(false);
-                setDisputeTitle("");
-                setDisputeDesc("");
-                setDisputeFile(null);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
         <AlertDialogContent className="bg-gray-900 border border-gray-700">

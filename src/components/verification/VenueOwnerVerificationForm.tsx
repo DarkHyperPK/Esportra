@@ -71,7 +71,7 @@ const VenueOwnerVerificationForm: React.FC<VenueOwnerVerificationFormProps> = ({
       const uploadFile = async (file: File, prefix: string) => {
         const ext = file.name.split('.').pop();
         const path = `${user.id}/${prefix}_${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('kyc-documents').upload(path, file, { upsert: true });
+        const { error } = await supabase.storage.from('users.documents.kyc').upload(path, file, { upsert: true });
         if (error) throw error;
         return path;
       };
@@ -85,10 +85,10 @@ const VenueOwnerVerificationForm: React.FC<VenueOwnerVerificationFormProps> = ({
       ]);
 
       const cnicFrontUrl = cnicFrontPath
-        ? supabase.storage.from('kyc-documents').getPublicUrl(cnicFrontPath).data.publicUrl
+        ? supabase.storage.from('users.documents.kyc').getPublicUrl(cnicFrontPath).data.publicUrl
         : null;
       const cnicBackUrl = cnicBackPath
-        ? supabase.storage.from('kyc-documents').getPublicUrl(cnicBackPath).data.publicUrl
+        ? supabase.storage.from('users.documents.kyc').getPublicUrl(cnicBackPath).data.publicUrl
         : null;
 
       const payload: any = {

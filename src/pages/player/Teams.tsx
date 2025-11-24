@@ -39,7 +39,6 @@ const TeamsPage = () => {
   const [showEditTeam, setShowEditTeam] = useState(false);
   const [editTeamName, setEditTeamName] = useState('');
   const [editTeamTag, setEditTeamTag] = useState('');
-  const [editTeamGames, setEditTeamGames] = useState<string[]>([]);
   const [editTeamLogoFile, setEditTeamLogoFile] = useState<File | null>(null);
   const [editTeamLogoUrl, setEditTeamLogoUrl] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
@@ -90,6 +89,10 @@ const TeamsPage = () => {
   const [manageRosterModalOpen, setManageRosterModalOpen] = useState(false);
   const [manageRoster, setManageRoster] = useState<Roster | null>(null);
   const [manageMembers, setManageMembers] = useState<string[]>([]);
+  const [editRosterName, setEditRosterName] = useState('');
+  const [editRosterGame, setEditRosterGame] = useState('');
+  const [editRosterFormat, setEditRosterFormat] = useState('');
+  const [editRosterTeamSize, setEditRosterTeamSize] = useState<number>(5);
   const [inviteSearch, setInviteSearch] = useState('');
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [rosterInvites, setRosterInvites] = useState<Array<{ id: string; invited_email?: string | null; invited_user_id?: string | null; created_at?: string }>>([]);
@@ -222,7 +225,6 @@ const TeamsPage = () => {
     if (currentTeam) {
       setEditTeamName(currentTeam.name);
       setEditTeamTag(currentTeam.tag);
-      setEditTeamGames(currentTeam.games || []);
       setEditTeamLogoUrl(currentTeam.logo_url);
       setEditTeamLogoFile(null);
     }
@@ -268,7 +270,7 @@ const TeamsPage = () => {
       
       // Try uploading to team-logos bucket
       const { error } = await supabase.storage
-        .from('team-logos')
+        .from('teams.logos')
         .upload(filePath, file);
       
       if (error) {
@@ -285,7 +287,7 @@ const TeamsPage = () => {
       console.log('File uploaded successfully');
       
       const { data } = supabase.storage
-        .from('team-logos')
+        .from('teams.logos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', data.publicUrl);
@@ -351,7 +353,6 @@ const TeamsPage = () => {
         .update({
           name: editTeamName,
           tag: editTeamTag,
-          games: editTeamGames,
           logo_url: logoUrl,
         })
         .eq('id', currentTeam.id);
@@ -388,14 +389,6 @@ const TeamsPage = () => {
     }
   };
 
-  // Handle game toggle for edit
-  const handleEditGameToggle = (gameName: string) => {
-    setEditTeamGames(prev => 
-      prev.includes(gameName) 
-        ? prev.filter(g => g !== gameName)
-        : [...prev, gameName]
-    );
-  };
 
   // Test storage access (for debugging)
   const testStorageAccess = async () => {
@@ -408,7 +401,7 @@ const TeamsPage = () => {
       const testFile = new File([testBlob], 'test.txt', { type: 'text/plain' });
       
       const { error } = await supabase.storage
-        .from('team-logos')
+        .from('teams.logos')
         .upload(`test-${Date.now()}.txt`, testFile);
       
       if (error) {
@@ -887,13 +880,7 @@ const TeamsPage = () => {
         .select('id')
         .single();
       if (ins.error) throw ins.error;
-      const rosterId = ins.data.id;
-      // add members if provided (optional at creation)
-      const uniqueMemberIds = Array.from(new Set(newRosterMembers)).slice(0, maxAllowed);
-      if (rosterId && uniqueMemberIds.length > 0) {
-        const rows = uniqueMemberIds.map(uid => ({ roster_id: rosterId, user_id: uid }));
-        await supabase.from('team_roster_members' as any).insert(rows);
-      }
+      // Members can be added later through the Manage Roster dialog
       await fetchRosters();
       setRosterModalOpen(false);
     } catch (e) {
@@ -906,6 +893,8 @@ const TeamsPage = () => {
 
   const openManageRoster = async (r: Roster) => {
     setManageRoster(r);
+    // Set editable fields (only name is editable)
+    setEditRosterName(r.name);
     // load current members
     const { data } = await supabase
       .from('team_roster_members' as any)
@@ -1012,29 +1001,76 @@ const TeamsPage = () => {
 
   const saveManageRoster = async () => {
     if (!manageRoster) return;
+    
+    // Validate roster name
+    if (!editRosterName) {
+      toast({ title: 'Invalid details', description: 'Please enter a roster name.', variant: 'destructive' });
+      return;
+    }
+    
     const maxAllowed = manageRoster.team_size === 5 ? 7 : manageRoster.team_size;
-    // Allow saving with any member count up to the cap; DB trigger will enforce max on insert
+    
     try {
+      // Update only roster name (game and team size cannot be changed)
+      const { error: updateError } = await supabase
+        .from('team_rosters' as any)
+        .update({
+          name: editRosterName,
+        })
+        .eq('id', manageRoster.id);
+      
+      if (updateError) throw updateError;
+      
+      // Update members (remove excess members if needed)
       const { data: existing } = await supabase
         .from('team_roster_members' as any)
         .select('user_id')
         .eq('roster_id', manageRoster.id);
       const currentSet = new Set<string>((existing || []).map((x: any) => x.user_id));
       const desiredSet = new Set<string>(manageMembers);
-      const toAdd = Array.from(desiredSet).filter(x => !currentSet.has(x)).map(uid => ({ roster_id: manageRoster.id, user_id: uid }));
-      const toRemove = Array.from(currentSet).filter(x => !desiredSet.has(x));
+      
+      // Ensure we don't exceed the limit
+      const finalDesiredMembers = Array.from(desiredSet).slice(0, maxAllowed);
+      const finalDesiredSet = new Set(finalDesiredMembers);
+      
+      const toAdd = Array.from(finalDesiredSet).filter(x => !currentSet.has(x)).map(uid => ({ roster_id: manageRoster.id, user_id: uid }));
+      const toRemove = Array.from(currentSet).filter(x => !finalDesiredSet.has(x));
+      
       if (toAdd.length > 0) {
         await supabase.from('team_roster_members' as any).insert(toAdd);
       }
       if (toRemove.length > 0) {
         await supabase.from('team_roster_members' as any).delete().eq('roster_id', manageRoster.id).in('user_id', toRemove);
       }
+      
       await fetchRosters();
       setManageRosterModalOpen(false);
-      toast({ title: 'Roster updated' });
+      toast({ title: 'Roster updated', description: 'Roster name has been saved.' });
     } catch (e) {
       console.error(e);
-      toast({ title: 'Failed to update roster', variant: 'destructive' });
+      toast({ title: 'Failed to update roster', description: e instanceof Error ? e.message : 'Could not update roster.', variant: 'destructive' });
+    }
+  };
+
+  const deleteRoster = async (roster: Roster) => {
+    if (!roster || !currentTeam) return;
+    if (!confirm(`Are you sure you want to delete the roster "${roster.name}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      // Delete roster (cascade will handle roster members and invitations)
+      const { error } = await supabase
+        .from('team_rosters' as any)
+        .delete()
+        .eq('id', roster.id);
+      
+      if (error) throw error;
+      
+      await fetchRosters();
+      toast({ title: 'Roster deleted', description: `Roster "${roster.name}" has been deleted.` });
+    } catch (e: any) {
+      console.error('Failed to delete roster:', e);
+      toast({ title: 'Failed to delete roster', description: e?.message || 'Could not delete roster.', variant: 'destructive' });
     }
   };
 
@@ -1434,7 +1470,6 @@ const TeamsPage = () => {
                       src={currentTeam.logo_url}
                       alt={`${currentTeam.name} logo`}
                       className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
-                      loading="lazy"
                       decoding="async"
                       onError={(e) => {
                         console.log('Team logo failed to load:', currentTeam.logo_url);
@@ -1488,18 +1523,6 @@ const TeamsPage = () => {
               </div>
             </div>
             
-            {/* Invite moved into Roster management to keep members per roster */}
-            {isCaptain && (
-              <div className="flex space-x-2">
-                <Button
-                  onClick={() => setShowTeamInviteModal(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Invite Members
-                </Button>
-              </div>
-            )}
           </div>
 
           {/* Team Games */}
@@ -1708,7 +1731,6 @@ const TeamsPage = () => {
                         src={getGameLogo(r.game)}
                         alt={`${r.game} logo`}
                         className="w-5 h-5 rounded-sm object-cover"
-                        loading="lazy"
                       />
                     )}
                     <span>{r.game}{r.format ? ` · ${r.format}` : ''}</span>
@@ -1716,6 +1738,15 @@ const TeamsPage = () => {
                   {isCaptain && (
                     <div className="mt-4 flex gap-2">
                       <Button size="sm" variant="outline" className="border-esports-accent/40 text-esports-accent hover:bg-esports-accent/10" onClick={() => openManageRoster(r)}>Manage</Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="border-red-400/40 text-red-400 hover:bg-red-400/10" 
+                        onClick={() => deleteRoster(r)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -2074,35 +2105,6 @@ const TeamsPage = () => {
                 </div>
               </div>
             )}
-            {/* Member picker */}
-            <div>
-              <Label className="text-white">Members ({newRosterMembers.length}/{newRosterTeamSize === 5 ? 7 : newRosterTeamSize})</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-48 overflow-y-auto">
-                {(currentTeam?.members || []).map((m: any) => {
-                  const selected = newRosterMembers.includes(m.user_id);
-                  return (
-                    <button
-                      key={m.user_id}
-                      type="button"
-                      onClick={() => {
-                        setNewRosterMembers(prev => {
-                          if (selected) return prev.filter(id => id !== m.user_id);
-                          const limit = newRosterTeamSize === 5 ? 7 : newRosterTeamSize;
-                          if (prev.length >= limit) return prev;
-                          return [...prev, m.user_id];
-                        });
-                      }}
-                      className={`text-left px-3 py-2 rounded border ${
-                        selected ? 'bg-green-600/30 border-green-500 text-white' : 'bg-gray-800 border-gray-600 text-white/80'
-                      }`}
-                    >
-                      <div className="font-medium">{m.username}</div>
-                      <div className="text-xs text-white/60">{m.email}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" className="border-gray-600 text-gray-300" onClick={() => setRosterModalOpen(false)}>Cancel</Button>
               <Button onClick={createRosterNow} disabled={rosterSubmitting || !newRosterName || !newRosterGame} className="bg-gaming-purple hover:bg-gaming-purple/80">
@@ -2121,8 +2123,31 @@ const TeamsPage = () => {
           </DialogHeader>
           {manageRoster && (
             <div className="space-y-4">
-              <div className="text-white/80">{manageRoster.name} · {manageRoster.game}{manageRoster.format ? ` · ${manageRoster.format}` : ''}</div>
-              {/* Members list removed per request */}
+              {/* Editable Roster Details */}
+              <div className="space-y-4 pb-4 border-b border-white/10">
+                <div>
+                  <Label className="text-white">Roster Name</Label>
+                  <Input
+                    value={editRosterName}
+                    onChange={(e) => setEditRosterName(e.target.value)}
+                    className="bg-gray-800 border-gray-600 text-white mt-1"
+                    placeholder="e.g., Valorant Main, CS2 Academy"
+                  />
+                </div>
+                <div className="text-white/60 text-sm">
+                  <div className="flex items-center gap-2">
+                    {getGameLogo(manageRoster.game) && (
+                      <img
+                        src={getGameLogo(manageRoster.game)}
+                        alt={`${manageRoster.game} logo`}
+                        className="w-4 h-4 rounded-sm object-cover"
+                      />
+                    )}
+                    <span>Game: {manageRoster.game}{manageRoster.format ? ` · ${manageRoster.format}` : ''}</span>
+                  </div>
+                  <div className="mt-1">Team Size: {manageRoster.team_size === 5 ? '7 members (5 + 2 subs)' : `${manageRoster.team_size} members`}</div>
+                </div>
+              </div>
 
               {/* Invite to this roster */}
               <div className="pt-2 border-t border-white/10">
@@ -2176,10 +2201,6 @@ const TeamsPage = () => {
                 <p className="text-xs text-white/50 mt-2">Roster limit: {manageRoster.team_size === 5 ? '7 members (5 + 2 subs)' : `${manageRoster.team_size}`}.</p>
               </div>
 
-              {/* Captain note */}
-              <div className="pt-2 border-t border-white/10 text-xs text-white/60">
-                You can also invite players to the team from the team-level button, then add them here after acceptance.
-              </div>
 
               {/* Pending roster invites (owner view) */}
               {isCaptain && rosterInvites.length > 0 && (
@@ -2378,73 +2399,6 @@ const TeamsPage = () => {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-esports-primary">Selected Games</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {editTeamGames.map(game => (
-                      <Badge key={game} className="bg-gradient-to-r from-esports-accent to-esports-blue text-white">
-                        {game}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Game Selection */}
-            <div className="space-y-4">
-              <div className="text-center">
-                <h3 className="text-2xl font-bold text-esports-primary mb-2">Select Your Games</h3>
-                <p className="text-esports-secondary">
-                  {imagesLoading ? 'Loading game images...' : 'Choose the games your team will compete in'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {esportsGames.games.map((game: any) => (
-                  <div
-                    key={game.name}
-                    className={`relative cursor-pointer transition-all duration-300 ease-out hover:scale-105 ${
-                      editTeamGames.includes(game.name)
-                        ? 'ring-2 ring-esports-accent ring-offset-2 ring-offset-esports-dark'
-                        : 'hover:ring-1 hover:ring-gray-600'
-                    }`}
-                    onClick={() => handleEditGameToggle(game.name)}
-                  >
-                    <div className="bg-esports-card border border-gray-600/30 rounded-lg p-4 text-center hover:border-gray-500/50 transition-all duration-300 ease-out">
-                      <div className="w-12 h-12 mx-auto mb-3 rounded-lg overflow-hidden bg-esports-dark border border-gray-600/30 relative">
-                        {imagesLoading ? (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <div className="w-4 h-4 border-2 border-esports-accent border-t-transparent rounded-full animate-spin"></div>
-                          </div>
-                        ) : gameImages[game.name] ? (
-                          <img
-                            src={gameImages[game.name]}
-                            alt={game.name}
-                            className="w-full h-full object-cover transition-opacity duration-300"
-                            loading="lazy"
-                            decoding="async"
-                            onError={(e) => {
-                              e.currentTarget.src = game.logo;
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Gamepad2 className="h-6 w-6 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                      <h4 className="font-semibold text-esports-primary text-sm mb-1">{game.name}</h4>
-                      {editTeamGames.includes(game.name) && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center animate-in zoom-in-50 duration-200">
-                          <span className="text-white text-xs font-bold">✓</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* Action Buttons */}
@@ -2458,7 +2412,7 @@ const TeamsPage = () => {
               </Button>
               <Button
                 onClick={handleEditTeam}
-                disabled={editSubmitting || !editTeamName || !editTeamTag || editTeamGames.length === 0}
+                disabled={editSubmitting || !editTeamName || !editTeamTag}
                 className="btn-esports-blue px-8 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editSubmitting ? (

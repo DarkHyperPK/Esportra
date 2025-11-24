@@ -18,12 +18,20 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
   requiredRole,
   fallbackPath = '/'
 }) => {
-  const { isAdmin, hasPermission, roles } = useAdmin();
+  const { isAdmin, hasPermission, roles, loading } = useAdmin();
   const { user, profile } = useAuth();
 
   // Check if user is authenticated
   if (!user || !profile) {
     return <Navigate to="/auth/signin" replace />;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+        Loading admin permissions...
+      </div>
+    );
   }
 
   // Check if user is admin

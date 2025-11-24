@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Venue } from "@/hooks/useVenueSearch";
+import { motion } from "framer-motion";
 
 const VenueCard = ({ venue }: { venue: Venue }) => {
   // Check for required fields and provide defaults if needed
@@ -17,12 +18,20 @@ const VenueCard = ({ venue }: { venue: Venue }) => {
   };
 
   return (
-    <div className="card-esports hover-lift rounded-lg overflow-hidden group">
-      <div className="relative">
-        <img 
+    <motion.div 
+      className="card-esports hover-lift rounded-lg overflow-hidden group"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+    >
+      <div className="relative overflow-hidden">
+        <motion.img 
           src={renderVenue.image} 
           alt={renderVenue.name} 
-          className="h-48 w-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="h-48 w-full object-cover"
+          whileHover={{ scale: 1.1 }}
+          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
         />
         <Badge 
           className={`absolute top-3 right-3 ${renderVenue.openNow ? 'bg-gaming-green' : 'bg-gaming-gray'}`}
@@ -73,7 +82,7 @@ const VenueCard = ({ venue }: { venue: Venue }) => {
           </Button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

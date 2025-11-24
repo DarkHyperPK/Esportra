@@ -1,95 +1,771 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { MessageSquare, AlertCircle, CheckCircle, XCircle, Clock, Image as ImageIcon, RefreshCw, X } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/contexts/AdminContext';
 
 type Dispute = {
   id: string;
-  match_id: string;
-  reporter_id: string;
-  reported_id: string;
-  status: 'open'|'resolved'|'rejected';
-  reason: string;
+  tournament_id: string | null;
+  title: string;
+  description: string | null;
+  status: 'open' | 'in_review' | 'resolved' | 'rejected';
+  dispute_reason: string | null;
+  raised_by_user_id: string;
+  evidence_url: string | null;
+  resolution_notes: string | null;
   created_at: string;
+  updated_at: string;
+  tournament_name?: string;
+  raised_by_name?: string;
+};
+
+const statusMeta: Record<Dispute['status'], { label: string; className: string; icon: React.ElementType }> = {
+  open: { label: 'Open', className: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40', icon: Clock },
+  in_review: { label: 'In Review', className: 'bg-blue-500/15 text-blue-300 border-blue-500/40', icon: MessageSquare },
+  resolved: { label: 'Resolved', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
+  rejected: { label: 'Rejected', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
 };
 
 const DisputeCenter: React.FC = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { roles } = useAdmin();
+  const isSuperAdmin = roles.includes('super_admin');
+  const canHandleDisputes = roles.includes('moderator') || roles.includes('ops_admin');
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
-  const [note, setNote] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'tournament' | 'general'>('all');
+  const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
+  const [resolutionNotes, setResolutionNotes] = useState('');
+  const [resolutionStatus, setResolutionStatus] = useState<'resolved' | 'rejected'>('resolved');
+  const [commentText, setCommentText] = useState('');
+  const [commentAttachment, setCommentAttachment] = useState<File | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [comments, setComments] = useState<Array<{ id: string; user_id: string; comment: string; created_at: string; user_name?: string; is_internal: boolean; attachment_url?: string }>>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
 
   const load = async () => {
-    setLoading(true);
-    const { data } = await supabase.from('disputes').select('*').order('created_at', { ascending: false });
-    setDisputes((data as any) || []);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const resolve = async (status: 'resolved'|'rejected') => {
-    if (!selectedId) return;
     try {
-      const { error } = await supabase.from('disputes').update({ status }).eq('id', selectedId);
-      if (error) throw error;
-      // audit
-      await supabase.from('audit_logs').insert({ action_type: 'dispute:'+status, target_type: 'dispute', target_id: selectedId, target_name: selectedId, details: { note } });
-      toast({ title: 'Updated', description: `Dispute ${status}` });
-      setNote('');
-      setSelectedId(null);
-      load();
+    setLoading(true);
+      
+      // Fetch all disputes (both tournament and general support)
+      const { data: disputesData, error } = await supabase
+        .from('tournament_disputes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error fetching disputes:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        console.error('Error details:', error.details);
+        console.error('Error hint:', error.hint);
+        toast({
+          title: 'Error fetching disputes',
+          description: `${error.message} (Code: ${error.code})`,
+          variant: 'destructive',
+        });
+        throw error;
+      }
+
+      console.log('Fetched disputes:', disputesData?.length || 0, 'disputes');
+      console.log('Disputes data:', disputesData);
+
+      // Enrich with user and tournament names
+      const enriched = await Promise.all(
+        (disputesData || []).map(async (d: any) => {
+          const dispute: Dispute = { ...d };
+          
+          // Get user who raised the dispute
+          const { data: user } = await supabase
+            .from('profiles')
+            .select('username, full_name')
+            .eq('id', d.raised_by_user_id)
+            .maybeSingle();
+          
+          dispute.raised_by_name = user?.full_name || user?.username || 'Unknown User';
+          
+          // Get tournament name if it's a tournament dispute
+          if (d.tournament_id) {
+            const { data: tournament } = await supabase
+              .from('tournaments')
+              .select('name')
+              .eq('id', d.tournament_id)
+              .maybeSingle();
+            
+            dispute.tournament_name = tournament?.name || 'Unknown Tournament';
+          } else {
+            dispute.tournament_name = 'General Support';
+          }
+          
+          return dispute;
+        })
+      );
+
+      setDisputes(enriched);
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message || 'Failed', variant: 'destructive' });
+      console.error('Load disputes failed:', e);
+      toast({ title: 'Failed to load disputes', description: e?.message || '', variant: 'destructive' });
+    } finally {
+    setLoading(false);
     }
   };
 
+  const fetchComments = useCallback(async (disputeId: string) => {
+    try {
+      setLoadingComments(true);
+      const { data, error } = await supabase
+        .from('dispute_comments')
+        .select(`
+          id,
+          user_id,
+          comment,
+          is_internal,
+          created_at,
+          attachment_url
+        `)
+        .eq('dispute_id', disputeId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching comments:', error);
+        throw error;
+      }
+
+      // Manually fetch profile data for each comment
+      const enrichedComments = await Promise.all(
+        (data || []).map(async (comment) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, full_name')
+            .eq('id', comment.user_id)
+            .maybeSingle();
+          
+          return {
+            ...comment,
+            user_name: profile?.full_name || profile?.username || 'Unknown User',
+          };
+        })
+      );
+
+      setComments(enrichedComments);
+      console.log('Fetched comments:', enrichedComments.length, 'comments');
+      enrichedComments.forEach((c, idx) => {
+        console.log(`Comment ${idx + 1}:`, {
+          id: c.id,
+          user_id: c.user_id,
+          user_name: c.user_name,
+          has_comment: !!c.comment,
+          has_attachment: !!c.attachment_url,
+          attachment_url: c.attachment_url,
+        });
+      });
+    } catch (error: unknown) {
+      console.error('Error fetching comments:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to load comments',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingComments(false);
+    }
+  }, [toast]);
+
+  useEffect(() => { 
+    load(); 
+  }, []);
+
+  useEffect(() => {
+    if (selectedDispute) {
+      fetchComments(selectedDispute.id);
+    } else {
+      setComments([]);
+    }
+  }, [selectedDispute, fetchComments]);
+
+  // Real-time subscription for comments
+  useEffect(() => {
+    if (!selectedDispute) return;
+
+    const channel = supabase
+      .channel(`admin-dispute-comments-${selectedDispute.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dispute_comments',
+          filter: `dispute_id=eq.${selectedDispute.id}`,
+        },
+        () => {
+          fetchComments(selectedDispute.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [selectedDispute, fetchComments]);
+
+  const handleAddComment = async (disputeId: string) => {
+    if (!user?.id) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to add comments',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!commentText.trim() && !commentAttachment) return;
+
+    try {
+      setSubmittingComment(true);
+      
+      // Check current dispute status
+      const { data: disputeData } = await supabase
+        .from('tournament_disputes')
+        .select('status')
+        .eq('id', disputeId)
+        .single();
+
+      // Upload attachment if provided
+      let attachmentUrl: string | null = null;
+      if (commentAttachment) {
+        setUploadingAttachment(true);
+        
+        // Get dispute reason for categorization
+        const { data: disputeInfo } = await supabase
+          .from('tournament_disputes')
+          .select('dispute_reason, tournament_id')
+          .eq('id', disputeId)
+          .single();
+        
+        const disputeReason = disputeInfo?.dispute_reason || 'general';
+        const fileExt = commentAttachment.name.split('.').pop();
+        
+        // Path structure: {dispute_id}/{dispute_reason}/{user_id}-{timestamp}.{ext}
+        // For general support: {dispute_id}/general_support/{user_id}-{timestamp}.{ext}
+        const fileName = disputeInfo?.tournament_id
+          ? `${disputeId}/${disputeReason}/${user.id}-${Date.now()}.${fileExt}`
+          : `${disputeId}/general_support/${user.id}-${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('tournaments.disputes.evidence')
+          .upload(fileName, commentAttachment, { upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('tournaments.disputes.evidence')
+          .getPublicUrl(fileName);
+
+        attachmentUrl = urlData.publicUrl;
+        setUploadingAttachment(false);
+      }
+
+      const { error: insertError } = await supabase
+        .from('dispute_comments')
+        .insert({
+          dispute_id: disputeId,
+          user_id: user.id,
+          comment: commentText.trim() || '', // Empty string if no text (comment column is NOT NULL)
+          is_internal: false,
+          attachment_url: attachmentUrl,
+        });
+
+      if (insertError) throw insertError;
+
+      // Update dispute: set to in_review if currently open, and update updated_at
+      const updateData: { updated_at: string; status?: string } = {
+        updated_at: new Date().toISOString(),
+      };
+      
+      // Auto-set to in_review if currently open
+      if (disputeData?.status === 'open') {
+        updateData.status = 'in_review';
+      }
+
+      const { error: updateError } = await supabase
+        .from('tournament_disputes')
+        .update(updateData)
+        .eq('id', disputeId);
+
+      if (updateError) throw updateError;
+
+      setCommentText('');
+      setCommentAttachment(null);
+      
+      // Refresh comments and disputes
+      await fetchComments(disputeId);
+      await load();
+      
+      toast({
+        title: 'Comment added',
+        description: disputeData?.status === 'open' 
+          ? 'Your comment has been posted and dispute marked as in review.'
+          : 'Your comment has been posted.',
+      });
+    } catch (error: unknown) {
+      console.error('Error adding comment:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (error as any)?.message || JSON.stringify(error);
+      toast({
+        title: 'Error',
+        description: `Failed to add comment: ${errorMessage}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const resolve = async () => {
+    if (!selectedDispute) return;
+    try {
+      const { error } = await supabase
+        .from('tournament_disputes')
+        .update({
+          status: resolutionStatus,
+          resolution_notes: resolutionNotes || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedDispute.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Updated',
+        description: `Dispute marked as ${resolutionStatus}`,
+      });
+
+      setResolutionNotes('');
+      setSelectedDispute(null);
+      setComments([]);
+      setCommentText('');
+      await load();
+    } catch (e: any) {
+      toast({
+        title: 'Error',
+        description: e.message || 'Failed',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const filteredDisputes = activeTab === 'all'
+    ? disputes
+    : activeTab === 'tournament'
+      ? disputes.filter(d => d.tournament_id !== null)
+      : disputes.filter(d => d.tournament_id === null);
+
   return (
-    <div className="space-y-4">
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader><CardTitle className="text-white">Dispute Center</CardTitle></CardHeader>
+    <div className="min-h-screen bg-[#0a0a0f] py-8 px-4">
+      <div className="max-w-7xl mx-auto">
+        <Card className="bg-[#12121a] border border-white/10">
+          <CardHeader>
+            <CardTitle className="text-white text-2xl flex items-center gap-2">
+              <MessageSquare className="h-6 w-6 text-red-400" />
+              Admin Dispute Center
+            </CardTitle>
+          </CardHeader>
         <CardContent>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-white/5">
+                <TabsTrigger value="all" className="text-white data-[state=active]:bg-red-600">
+                  All Disputes ({disputes.length})
+                </TabsTrigger>
+                <TabsTrigger value="tournament" className="text-white data-[state=active]:bg-red-600">
+                  Tournament ({disputes.filter(d => d.tournament_id !== null).length})
+                </TabsTrigger>
+                <TabsTrigger value="general" className="text-white data-[state=active]:bg-red-600">
+                  General Support ({disputes.filter(d => d.tournament_id === null).length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value={activeTab} className="mt-6">
           {loading ? (
-            <div className="text-gray-400">Loading...</div>
-          ) : disputes.length === 0 ? (
-            <div className="text-gray-400">No disputes</div>
+                  <div className="text-white/70 text-center py-8">Loading disputes...</div>
+                ) : filteredDisputes.length === 0 ? (
+                  <div className="text-white/50 text-center py-8">
+                    <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No disputes found</p>
+                  </div>
           ) : (
             <div className="space-y-3">
-              {disputes.map(d => (
-                <div key={d.id} className={`p-3 rounded border ${selectedId===d.id? 'border-blue-500':'border-gray-700'} bg-gray-900`}
-                     onClick={() => setSelectedId(d.id)}>
-                  <div className="flex justify-between items-center">
-                    <div className="text-white font-medium">Match {d.match_id}</div>
-                    <Badge className={d.status==='open'? 'bg-yellow-600':'bg-green-600'}>{d.status}</Badge>
+                    {filteredDisputes.map((d) => {
+                      const StatusIcon = statusMeta[d.status].icon;
+                      return (
+                        <Card
+                          key={d.id}
+                          className={`bg-white/5 border cursor-pointer transition ${
+                            selectedDispute?.id === d.id
+                              ? 'border-red-500/50 bg-white/10'
+                              : 'border-white/10 hover:border-white/20'
+                          }`}
+                          onClick={() => {
+                            setSelectedDispute(d);
+                            setResolutionNotes(d.resolution_notes || '');
+                            setResolutionStatus(d.status === 'rejected' ? 'rejected' : 'resolved');
+                            fetchComments(d.id);
+                          }}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h3 className="text-white font-semibold">{d.title}</h3>
+                                  <Badge className={statusMeta[d.status].className}>
+                                    <StatusIcon className="h-3 w-3 mr-1" />
+                                    {statusMeta[d.status].label}
+                                  </Badge>
+                                </div>
+                                <p className="text-white/70 text-sm mb-2 line-clamp-2">
+                                  {d.description || 'No description'}
+                                </p>
+                                <div className="flex flex-wrap gap-2 text-xs text-white/50">
+                                  <span>By: {d.raised_by_name}</span>
+                                  <span>•</span>
+                                  <span>{d.tournament_name}</span>
+                                  {d.dispute_reason && (
+                                    <>
+                                      <span>•</span>
+                                      <span>Reason: {d.dispute_reason}</span>
+                                    </>
+                                  )}
+                                  <span>•</span>
+                                  <span>{formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
-                  <div className="text-gray-400 text-sm mt-1">{d.reason}</div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+
+        {selectedDispute && (
+          <Card className="bg-[#12121a] border border-white/10 mt-6">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-red-400" />
+                {selectedDispute.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Dispute Details */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-white/70 text-sm mb-1 block">Description</label>
+                  <p className="text-white text-sm bg-white/5 p-3 rounded-lg border border-white/10">
+                    {selectedDispute.description || 'No description provided'}
+                  </p>
                 </div>
-              ))}
+                {selectedDispute.evidence_url && (
+                  <div>
+                    <label className="text-white/70 text-sm mb-1 block flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      Evidence
+                    </label>
+                    <div className="mt-2">
+                      <img
+                        src={selectedDispute.evidence_url}
+                        alt="Dispute evidence"
+                        className="max-w-full max-h-96 rounded-lg border border-white/20 cursor-pointer hover:opacity-80 transition"
+                        onClick={() => setViewingImage(selectedDispute.evidence_url || null)}
+                        onError={(e) => {
+                          console.error('Failed to load evidence image:', selectedDispute.evidence_url);
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `<span class="text-red-400 text-sm">Failed to load image.</span>`;
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Comments Section - Always show history, but only allow new comments for open/in_review */}
+              {selectedDispute && (
+                <div className="border-t border-white/10 pt-4">
+                  <label className="text-white text-sm font-semibold mb-3 block">Conversation</label>
+                
+                  {/* Comments List - Show for all statuses */}
+                  <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto pr-2">
+                    {loadingComments ? (
+                      <div className="text-center text-white/50 text-sm py-4">
+                        <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2" />
+                        Loading comments...
+                      </div>
+                    ) : comments.length === 0 ? (
+                      <div className="text-white/50 text-sm text-center py-4 bg-white/5 rounded-lg border border-white/10">
+                        No comments yet. {selectedDispute.status === 'open' || selectedDispute.status === 'in_review' ? 'Start the conversation below.' : 'This dispute has been closed.'}
+                      </div>
+                    ) : (
+                      comments.map((comment) => {
+                        const isAdmin = comment.user_id === user?.id;
+                        return (
+                          <div
+                            key={comment.id}
+                            className={`p-3 rounded-lg border ${
+                              isAdmin
+                                ? 'bg-red-500/10 border-red-500/30'
+                                : 'bg-white/5 border-white/10'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between mb-1">
+                              <span className="text-xs font-semibold text-white">
+                                {isAdmin ? 'Admin' : 'User'}: {comment.user_name}
+                              </span>
+                              <span className="text-xs text-white/50">
+                                {new Date(comment.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                            {comment.comment && comment.comment.trim() && (
+                              <p className="text-sm text-white/90 whitespace-pre-wrap mb-2">{comment.comment}</p>
+                            )}
+                            {comment.attachment_url && (
+                              <div className="mt-2">
+                                <img
+                                  src={comment.attachment_url}
+                                  alt="Comment attachment"
+                                  className="max-w-full max-h-64 rounded-lg border border-white/20 cursor-pointer hover:opacity-80 transition"
+                                  onClick={() => setViewingImage(comment.attachment_url || null)}
+                                  onError={(e) => {
+                                    console.error('Failed to load comment image:', comment.attachment_url);
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `<span class="text-red-400 text-sm">Failed to load image.</span>`;
+                                    }
+                                  }}
+                                  onLoad={() => {
+                                    console.log('Successfully loaded comment image:', comment.attachment_url);
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Add Comment - Only show for open/in_review disputes */}
+                  {(selectedDispute.status === 'open' || selectedDispute.status === 'in_review') && (
+                    <>
+                      {isSuperAdmin && (
+                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4">
+                          <p className="text-yellow-300 text-sm">
+                            <strong>View-Only Mode:</strong> As a super admin, you can view all disputes and comments for oversight, but only moderators and ops admins can actively handle disputes (add comments, resolve, reject).
+                          </p>
+                        </div>
+                      )}
+                      {canHandleDisputes && (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            placeholder="Add a comment or ask a question..."
+                            className="bg-white/5 border-white/20 text-white placeholder:text-white/40 min-h-[80px]"
+                            disabled={isSuperAdmin}
+                          />
+                        
+                          {/* File Upload */}
+                          <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+                              <ImageIcon className="h-4 w-4" />
+                              <span>Attach image (optional)</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    if (file.size > 5 * 1024 * 1024) {
+                                      toast({
+                                        title: 'File too large',
+                                        description: 'Image must be less than 5MB',
+                                        variant: 'destructive',
+                                      });
+                                      return;
+                                    }
+                                    if (!file.type.startsWith('image/')) {
+                                      toast({
+                                        title: 'Invalid file',
+                                        description: 'Please upload an image file',
+                                        variant: 'destructive',
+                                      });
+                                      return;
+                                    }
+                                    setCommentAttachment(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                            {commentAttachment && (
+                              <div className="flex items-center gap-2 text-sm text-white/70">
+                                <span>{commentAttachment.name}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setCommentAttachment(null)}
+                                  className="text-red-400 hover:text-red-300 h-auto p-1"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+
+                          <Button
+                            onClick={() => handleAddComment(selectedDispute.id)}
+                            disabled={submittingComment || uploadingAttachment || (!commentText.trim() && !commentAttachment) || isSuperAdmin}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            {submittingComment || uploadingAttachment ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                {uploadingAttachment ? 'Uploading...' : 'Posting...'}
+                              </>
+                            ) : (
+                              <>
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                Add Comment
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* Show message for resolved/rejected disputes */}
+                  {(selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && (
+                    <div className="text-white/50 text-sm text-center py-3 bg-white/5 rounded-lg border border-white/10">
+                      This dispute has been {selectedDispute.status === 'resolved' ? 'resolved' : 'rejected'}. No further comments can be added.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Resolution Section - Only show for open/in_review disputes */}
+              {canHandleDisputes && selectedDispute && (selectedDispute.status === 'open' || selectedDispute.status === 'in_review') && (
+                <div className="border-t border-white/10 pt-4">
+                  <label className="text-white text-sm font-semibold mb-2 block">Resolution</label>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-white/70 text-sm">Resolution Notes</label>
+                      <Textarea
+                        value={resolutionNotes}
+                        onChange={(e) => setResolutionNotes(e.target.value)}
+                        placeholder="Enter resolution notes..."
+                        className="bg-white/5 border-white/20 text-white placeholder:text-white/40 min-h-[120px]"
+                        disabled={isSuperAdmin}
+                      />
+                    </div>
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => {
+                          setResolutionStatus('resolved');
+                          resolve();
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                        disabled={isSuperAdmin}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Resolve
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setResolutionStatus('rejected');
+                          resolve();
+                        }}
+                        variant="outline"
+                        className="border-red-600 text-red-400 hover:bg-red-600/10 flex-1"
+                        disabled={isSuperAdmin}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Reject
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setSelectedDispute(null);
+                          setComments([]);
+                          setCommentText('');
+                          setCommentAttachment(null);
+                        }}
+                        variant="ghost"
+                        className="text-white/70 hover:text-white hover:bg-white/10"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {selectedId && (
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader><CardTitle className="text-white">Resolution</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <Textarea value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Resolution note" className="bg-gray-700 border-gray-600 text-white" />
-            <div className="flex gap-2">
-              <Button onClick={()=>resolve('resolved')} className="bg-green-600 hover:bg-green-700 text-white">Resolve</Button>
-              <Button onClick={()=>resolve('rejected')} variant="outline" className="border-red-600 text-red-400 hover:bg-red-600/10">Reject</Button>
+        )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+
+      {/* Image Viewer Modal */}
+      <Dialog open={!!viewingImage} onOpenChange={(open) => !open && setViewingImage(null)}>
+        <DialogContent className="bg-[#12121a] border border-white/10 max-w-5xl max-h-[90vh] p-0">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <button
+              onClick={() => setViewingImage(null)}
+              className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+              aria-label="Close image viewer"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            {viewingImage && (
+              <img
+                src={viewingImage}
+                alt="Full size image"
+                className="max-w-full max-h-[90vh] object-contain"
+                onError={(e) => {
+                  console.error('Failed to load full size image:', viewingImage);
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.innerHTML = `<div class="p-8 text-center"><span class="text-red-400">Failed to load image.</span></div>`;
+                  }
+                }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default DisputeCenter;
-
-

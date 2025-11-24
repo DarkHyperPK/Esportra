@@ -45,7 +45,10 @@ const OrganizerDisputesPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    load(); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty - only load once on mount
 
   const updateStatus = async (id: string, status: Dispute['status']) => {
     try {

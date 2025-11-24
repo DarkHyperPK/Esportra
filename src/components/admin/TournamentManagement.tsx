@@ -84,14 +84,10 @@ const TournamentManagement: React.FC = () => {
     try {
       setLoading(true);
       
+      // Fetch tournaments without complex joins to avoid relationship errors
       let query = supabase
         .from('tournaments')
-        .select(`
-          *,
-          organizer:profiles!tournaments_user_id_fkey(username, full_name),
-          venue:venues(name),
-          registrations:tournament_participants(count)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
 
@@ -112,12 +108,31 @@ const TournamentManagement: React.FC = () => {
 
       if (error) throw error;
 
+      // Fetch related data separately
+      const tournamentIds = (data || []).map(t => t.id);
+      const userIds = Array.from(new Set((data || []).map(t => t.user_id).filter(Boolean)));
+      const venueIds = Array.from(new Set((data || []).map(t => t.venue_id).filter(Boolean).filter(Boolean)));
+      
+      // Fetch profiles, venues, and registration counts
+      const [profilesResult, venuesResult, registrationsResult] = await Promise.all([
+        userIds.length > 0 ? supabase.from('profiles').select('id, username, full_name').in('id', userIds) : { data: [], error: null },
+        venueIds.length > 0 ? supabase.from('venues').select('id, name').in('id', venueIds) : { data: [], error: null },
+        tournamentIds.length > 0 ? supabase.from('tournament_participants').select('tournament_id').in('tournament_id', tournamentIds) : { data: [], error: null }
+      ]);
+      
+      const profilesMap = Object.fromEntries((profilesResult.data || []).map((p: any) => [p.id, p]));
+      const venuesMap = Object.fromEntries((venuesResult.data || []).map((v: any) => [v.id, v]));
+      const registrationCounts = (registrationsResult.data || []).reduce((acc: any, p: any) => {
+        acc[p.tournament_id] = (acc[p.tournament_id] || 0) + 1;
+        return acc;
+      }, {});
+
       // Transform data
       const transformedTournaments = (data || []).map(tournament => ({
         ...tournament,
-        organizer_name: tournament.organizer?.full_name || tournament.organizer?.username || 'Unknown',
-        venue_name: tournament.venue?.name,
-        registration_count: tournament.registrations?.[0]?.count || 0
+        organizer_name: profilesMap[tournament.user_id]?.full_name || profilesMap[tournament.user_id]?.username || 'Unknown',
+        venue_name: venuesMap[tournament.venue_id]?.name,
+        registration_count: registrationCounts[tournament.id] || 0
       }));
 
       setTournaments(transformedTournaments);

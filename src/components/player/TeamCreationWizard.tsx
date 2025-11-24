@@ -81,7 +81,6 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editTag, setEditTag] = useState('');
-  const [editGames, setEditGames] = useState<string[]>([]);
   
   // Team creation state
   const [selectedGames, setSelectedGames] = useState<string[]>([]); // deprecated for initial creation; rosters handle games
@@ -213,8 +212,8 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
             role: m.role,
             verified: m.profiles.is_verified,
           })),
-          tournament_wins: 0, // TODO: Calculate from tournament results
-          total_matches: 0, // TODO: Calculate from match history
+          tournament_wins: 0,
+          total_matches: 0,
         });
       } else {
         setUserTeam(null);
@@ -276,7 +275,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
       
       // Direct upload attempt - this will give us a clearer error if there are permission issues
       const { error } = await supabase.storage
-        .from('team-logos')
+        .from('teams.logos')
         .upload(filePath, file);
       
       if (error) {
@@ -293,7 +292,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
       console.log('File uploaded successfully');
       
       const { data } = supabase.storage
-        .from('team-logos')
+        .from('teams.logos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', data.publicUrl);
@@ -541,7 +540,6 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                     if (userTeam) {
                       setEditName(userTeam.name);
                       setEditTag(userTeam.tag);
-                      setEditGames(userTeam.games || []);
                     }
                     setShowEditModal(true);
                   }}
@@ -686,16 +684,6 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                 <Label className="text-white">Team Tag</Label>
                 <Input value={editTag} onChange={(e) => setEditTag(e.target.value.toUpperCase())} className="bg-white/10 border-white/20 text-white" maxLength={6} />
               </div>
-              <div>
-                <Label className="text-white">Games</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {esportsGames.games.map((g: any) => (
-                    <Badge key={g.name} onClick={() => setEditGames(prev => prev.includes(g.name) ? prev.filter(id => id !== g.name) : [...prev, g.name])} className={`${editGames.includes(g.name) ? 'bg-cyan-500/30 text-cyan-300 border-cyan-400/40' : 'bg-white/10 text-white/70 border-white/20'} cursor-pointer`}>
-                      {g.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowEditModal(false)} className="border-white/30 text-white hover:bg-white/10">Cancel</Button>
                 <Button onClick={async () => {
@@ -703,7 +691,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                   try {
                     const { error } = await supabase
                       .from('teams')
-                      .update({ name: editName, tag: editTag, games: editGames, updated_at: new Date().toISOString() })
+                      .update({ name: editName, tag: editTag, updated_at: new Date().toISOString() })
                       .eq('id', userTeam.id);
                     if (error) throw error;
                     await fetchUserTeam();

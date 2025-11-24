@@ -3,9 +3,63 @@ import { Gamepad2, Calendar, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
 
 const HeroSection = () => {
   const { user } = useAuth();
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // Get the public URL for the hero image from the new bucket
+    const getHeroImage = async () => {
+      try {
+        // Try games bucket first (for game assets)
+        const { data: gamesBucketData } = supabase.storage
+          .from('system.assets.games')
+          .getPublicUrl('website-main.jpg');
+        
+        const gamesTestResponse = await fetch(gamesBucketData.publicUrl, { method: 'HEAD' });
+        if (gamesTestResponse.ok) {
+          setHeroImageUrl(gamesBucketData.publicUrl);
+          console.log('[HeroSection] Using games bucket:', gamesBucketData.publicUrl);
+          return;
+        }
+      } catch (error) {
+        console.warn('[HeroSection] Games bucket check failed:', error);
+      }
+      
+      try {
+        // Try website bucket as fallback
+        const { data: websiteBucketData } = supabase.storage
+          .from('system.assets.website')
+          .getPublicUrl('website-main.jpg');
+        
+        const websiteTestResponse = await fetch(websiteBucketData.publicUrl, { method: 'HEAD' });
+        if (websiteTestResponse.ok) {
+          setHeroImageUrl(websiteBucketData.publicUrl);
+          console.log('[HeroSection] Using website bucket:', websiteBucketData.publicUrl);
+          return;
+        }
+      } catch (error) {
+        console.warn('[HeroSection] Website bucket check failed:', error);
+      }
+      
+      // Fallback to old bucket
+      try {
+        const { data: oldBucketData } = supabase.storage
+          .from('website-assets')
+          .getPublicUrl('website-main.jpg');
+        setHeroImageUrl(oldBucketData.publicUrl);
+        console.log('[HeroSection] Using old bucket:', oldBucketData.publicUrl);
+      } catch (error) {
+        console.error('[HeroSection] Both buckets failed, using hardcoded URL');
+        // Final fallback to hardcoded URL
+        setHeroImageUrl('https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/website-assets/website-main.jpg');
+      }
+    };
+    getHeroImage();
+  }, []);
   
   return (
     <div className="relative flex items-center pt-0 mt-0 overflow-hidden" style={{ minHeight: '100vh', backgroundColor: '#0f1115' }}>
@@ -14,7 +68,7 @@ const HeroSection = () => {
       <div 
         className="absolute inset-0 w-full h-full z-0"
         style={{ 
-          backgroundImage: "url('https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/website-assets/website-main.jpg')",
+          backgroundImage: heroImageUrl ? `url('${heroImageUrl}')` : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'

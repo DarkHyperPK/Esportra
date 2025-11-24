@@ -61,6 +61,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
   const [gameBanner, setGameBanner] = useState<string | null>(null);
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
   const carouselTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Normalize game name for RAWG search
@@ -77,25 +78,57 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
     const fetchGameImages = async () => {
       try {
         const searchName = getRawgGameName(game);
+        console.log(`[TournamentCard] Fetching RAWG images for game: ${searchName}`);
         const response = await fetch(`${RAWG_API_URL}?key=${RAWG_API_KEY}&search=${encodeURIComponent(searchName)}`);
+        
+        if (!response.ok) {
+          console.error(`[TournamentCard] RAWG API error: ${response.status} ${response.statusText}`);
+          throw new Error(`RAWG API error: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log(`[TournamentCard] RAWG search results for ${searchName}:`, data?.results?.length || 0, 'results');
+        
         if (data && data.results && data.results.length > 0) {
           const gameData = data.results[0];
+          console.log(`[TournamentCard] Found game: ${gameData.name}, ID: ${gameData.id}`);
           setGameLogo(gameData.background_image || null);
+          
           // Fetch screenshots for the game
-          const screenshotsRes = await fetch(`${RAWG_API_URL}/${gameData.id}/screenshots?key=${RAWG_API_KEY}`);
-          const screenshotsData = await screenshotsRes.json();
-          if (screenshotsData && screenshotsData.results && screenshotsData.results.length > 0) {
-            if (isMounted) {
-              type RawgShot = { image: string };
-              setScreenshots((screenshotsData.results as RawgShot[]).map((s) => s.image));
-              setGameBanner(screenshotsData.results[0].image);
+          try {
+            const screenshotsRes = await fetch(`${RAWG_API_URL}/${gameData.id}/screenshots?key=${RAWG_API_KEY}`);
+            if (!screenshotsRes.ok) {
+              console.warn(`[TournamentCard] Failed to fetch screenshots: ${screenshotsRes.status}`);
+              throw new Error(`Screenshots API error: ${screenshotsRes.status}`);
             }
-          } else if (isMounted) {
-            setScreenshots([gameData.background_image_additional, gameData.background_image].filter(Boolean));
-            setGameBanner(gameData.background_image_additional || gameData.background_image || null);
+            const screenshotsData = await screenshotsRes.json();
+            console.log(`[TournamentCard] Screenshots for ${gameData.name}:`, screenshotsData?.results?.length || 0);
+            
+            if (screenshotsData && screenshotsData.results && screenshotsData.results.length > 0) {
+              if (isMounted) {
+                type RawgShot = { image: string };
+                const screenshotUrls = (screenshotsData.results as RawgShot[]).map((s) => s.image);
+                setScreenshots(screenshotUrls);
+                setGameBanner(screenshotUrls[0]);
+                console.log(`[TournamentCard] Set banner and ${screenshotUrls.length} screenshots`);
+              }
+            } else if (isMounted) {
+              const fallbackImages = [gameData.background_image_additional, gameData.background_image].filter(Boolean);
+              setScreenshots(fallbackImages);
+              setGameBanner(gameData.background_image_additional || gameData.background_image || null);
+              console.log(`[TournamentCard] Using fallback images: ${fallbackImages.length}`);
+            }
+          } catch (screenshotErr) {
+            console.error(`[TournamentCard] Error fetching screenshots:`, screenshotErr);
+            // Fallback to background images
+            if (isMounted) {
+              const fallbackImages = [gameData.background_image_additional, gameData.background_image].filter(Boolean);
+              setScreenshots(fallbackImages);
+              setGameBanner(gameData.background_image_additional || gameData.background_image || null);
+            }
           }
         } else {
+          console.warn(`[TournamentCard] No RAWG results found for: ${searchName}`);
           if (isMounted) {
             setGameLogo(null);
             setScreenshots([]);
@@ -103,6 +136,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
           }
         }
       } catch (err) {
+        console.error(`[TournamentCard] Error fetching RAWG images for ${game}:`, err);
         if (isMounted) {
           setGameLogo(null);
           setScreenshots([]);
@@ -114,17 +148,49 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
     return () => { isMounted = false; };
   }, [game]);
 
-  // Carousel logic
+  // Preload images for smooth transitions
+  useEffect(() => {
+    if (screenshots.length === 0) return;
+    
+    const preloadImages = async () => {
+      const loaded = new Set<string>();
+      const loadPromises = screenshots.map((imgSrc) => {
+        return new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            loaded.add(imgSrc);
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = imgSrc;
+          // Timeout after 5 seconds to prevent hanging
+          setTimeout(() => resolve(), 5000);
+        });
+      });
+      
+      await Promise.all(loadPromises);
+      setImagesLoaded(loaded);
+    };
+    
+    preloadImages();
+  }, [screenshots]);
+
+  // Carousel logic - start immediately, don't wait for images
   useEffect(() => {
     if (screenshots.length <= 1) return;
+    
     if (carouselTimeout.current) clearTimeout(carouselTimeout.current);
+    
+    // Start carousel immediately, even if images aren't loaded yet
+    // This ensures the carousel is visible
     carouselTimeout.current = setTimeout(() => {
       setCarouselIndex((prev) => (prev + 1) % screenshots.length);
-    }, 2000); // 2 seconds per image
+    }, 4000); // 4 seconds per image
+    
     return () => {
       if (carouselTimeout.current) clearTimeout(carouselTimeout.current);
     };
-  }, [carouselIndex, screenshots]);
+  }, [carouselIndex, screenshots.length]);
 
   return (
     <motion.div
@@ -134,16 +200,63 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       className="card-esports hover-lift rounded-lg flex flex-col relative overflow-hidden min-h-[280px] w-full"
     >
-      {/* Carousel background images */}
-      {screenshots.map((img, idx) => (
-        <img
-          key={img}
-          src={img}
-          alt={game + ' screenshot'}
-          className={`absolute inset-0 w-full h-full object-cover pointer-events-none select-none z-0 transition-opacity duration-1000 ${carouselIndex === idx ? 'opacity-25' : 'opacity-0'}`}
-          style={{ filter: 'blur(3px)' }}
-        />
-      ))}
+      {/* Carousel background images with smooth fade using framer-motion */}
+      <div className="absolute inset-0 w-full h-full z-0 overflow-hidden bg-gray-900">
+        {screenshots.length > 0 ? (
+          screenshots.map((img, idx) => {
+            const isActive = carouselIndex === idx;
+            return (
+              <motion.div
+                key={`carousel-bg-${idx}`}
+                className="absolute inset-0 w-full h-full"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: isActive ? 0.25 : 0 }}
+                transition={{ 
+                  duration: 1.5, 
+                  ease: [0.4, 0, 0.2, 1],
+                  type: 'tween'
+                }}
+                style={{
+                  pointerEvents: 'none',
+                  zIndex: isActive ? 1 : 0,
+                  willChange: 'opacity'
+                }}
+              >
+                <img
+                  src={img}
+                  alt={game + ' screenshot ' + (idx + 1)}
+                  className="w-full h-full object-cover select-none"
+                  style={{ 
+                    filter: 'blur(3px)',
+                    display: 'block'
+                  }}
+                  onLoad={() => {
+                    console.log(`[TournamentCard] Carousel image ${idx + 1} loaded:`, img);
+                    if (!imagesLoaded.has(img)) {
+                      setImagesLoaded(prev => new Set([...prev, img]));
+                    }
+                  }}
+                  onError={(e) => {
+                    console.error(`[TournamentCard] Failed to load carousel image ${idx + 1}:`, img, e);
+                  }}
+                  loading="lazy"
+                />
+              </motion.div>
+            );
+          })
+        ) : gameBanner ? (
+          // Fallback: Show single banner if no screenshots
+          <div 
+            className="absolute inset-0 w-full h-full opacity-25"
+            style={{
+              backgroundImage: `url(${gameBanner})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              filter: 'blur(3px)'
+            }}
+          />
+        ) : null}
+      </div>
       {/* Card content */}
       <div className="flex items-center gap-4 p-4 pb-2 relative z-10">
         <div className="h-12 w-12 rounded-md bg-esports-dark flex items-center justify-center overflow-hidden border border-gaming-gray/40">
@@ -152,15 +265,28 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
               src={gameLogo}
               alt={game + ' logo'}
               className="h-full w-full object-cover"
-              loading="lazy"
+              onError={(e) => {
+                console.error(`[TournamentCard] Failed to load game logo:`, gameLogo);
+                // Fallback to tournament image
+                const target = e.target as HTMLImageElement;
+                if (image_url) {
+                  target.src = image_url;
+                }
+              }}
             />
-          ) : (
+          ) : image_url ? (
             <img
-              src={image_url || '/default-tournament.jpg'}
+              src={image_url}
               alt={name}
               className="h-full w-full object-cover"
-              loading="lazy"
+              onError={(e) => {
+                console.error(`[TournamentCard] Failed to load tournament image:`, image_url);
+              }}
             />
+          ) : (
+            <div className="h-full w-full bg-gray-700 flex items-center justify-center">
+              <span className="text-gray-400 text-xs">{game?.charAt(0) || '?'}</span>
+            </div>
           )}
         </div>
         <div>

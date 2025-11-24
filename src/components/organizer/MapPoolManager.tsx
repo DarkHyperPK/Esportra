@@ -50,7 +50,7 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
 
         // Fetch current tournament map pool
         const { data: poolData, error: poolError } = await supabase
-          .from('tournament_map_pools')
+          .from('valorant_tournament_map_pools')
           .select('map_id')
           .eq('tournament_id', tournamentId);
 
@@ -79,7 +79,7 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
       if (isInPool) {
         // Remove from pool
         const { error } = await supabase
-          .from('tournament_map_pools')
+          .from('valorant_tournament_map_pools')
           .delete()
           .eq('tournament_id', tournamentId)
           .eq('map_id', mapId);
@@ -92,7 +92,7 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
         });
       } else {
         // Add to pool
-        const { error } = await supabase.from('tournament_map_pools').insert({
+        const { error } = await supabase.from('valorant_tournament_map_pools').insert({
           tournament_id: tournamentId,
           map_id: mapId,
         });
@@ -160,7 +160,7 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
       }
 
       // Add to pool
-      await supabase.from('tournament_map_pools').insert({
+      await supabase.from('valorant_tournament_map_pools').insert({
         tournament_id: tournamentId,
         map_id: data.id,
       });

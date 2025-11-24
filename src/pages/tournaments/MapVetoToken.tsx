@@ -23,7 +23,7 @@ const MapVetoToken: React.FC = () => {
       try {
         // Find veto by team1 or team2 token
         const { data, error: fetchError } = await supabase
-          .from('match_map_vetos')
+          .from('valorant_match_map_vetos')
           .select(`
             *,
             tournament:tournaments(id, name, game, organizer_id),

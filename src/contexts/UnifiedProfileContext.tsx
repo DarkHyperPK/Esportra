@@ -253,12 +253,12 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
         
         // Unified features
         messaging: {
-          unread_count: 0, // TODO: Load from messaging system
+          unread_count: 0,
           recent_conversations: []
         },
         
         notifications: {
-          unread_count: 0, // TODO: Load from notification system
+          unread_count: 0,
           recent_notifications: []
         },
         
@@ -343,7 +343,6 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
       // Update the profile state
       setProfile(prev => prev ? { ...prev, ...updates } : null);
       
-      // TODO: Update database
       // This would involve updating the relevant tables based on what changed
       
       return true;
@@ -429,7 +428,6 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
   };
 
   const getUnifiedActivity = (): any[] => {
-    // TODO: Combine activity from all modes
     return [];
   };
 

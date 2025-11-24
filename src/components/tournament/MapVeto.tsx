@@ -10,6 +10,7 @@ import { Clock, Shield, CheckCircle, XCircle, Play, Copy, Check, RotateCcw, Swor
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRole } from '@/contexts/RoleContext';
+import { valorantTables } from '@/utils/gameTables';
 
 interface GameMap {
   id: string;
@@ -226,7 +227,48 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   const [availableMaps, setAvailableMaps] = useState<GameMap[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
   const [isCaptain, setIsCaptain] = useState(false);
+  
+  // Preload map images for better UX
+  const preloadMapImages = useCallback((maps: GameMap[]) => {
+    const imageUrls = maps
+      .map(map => {
+        let url = map.map_image_url;
+        if (!url) {
+          console.warn(`[MapVeto] Map ${map.map_name} has no image URL`);
+          return null;
+        }
+        // Fix old bucket URLs - try both buckets
+        if (url.includes('website-assets')) {
+          // Try games bucket first (for game assets), fallback to website
+          url = url.replace('website-assets/', 'system.assets.games/');
+        } else if (url.includes('system.assets.website') && !url.includes('system.assets.games')) {
+          // If in website bucket but should be in games, try games first
+          // Keep website as fallback
+        }
+        return { url, mapName: map.map_name };
+      })
+      .filter((item): item is { url: string; mapName: string } => item !== null);
+    
+    console.log(`[MapVeto] Preloading ${imageUrls.length} map images...`);
+    
+    // Preload all images in parallel with better error handling
+    imageUrls.forEach(({ url, mapName }) => {
+      const img = new Image();
+      img.onload = () => {
+        console.log(`[MapVeto] ✅ Preloaded image for ${mapName}`);
+        setImagesLoaded(prev => new Set([...prev, url]));
+      };
+      img.onerror = (e) => {
+        console.error(`[MapVeto] ❌ Failed to preload image for ${mapName}:`, url, e);
+        // Still mark as "loaded" to prevent infinite retries, but log the error
+        setImagesLoaded(prev => new Set([...prev, url]));
+      };
+      // Set src after event handlers
+      img.src = url;
+    });
+  }, []);
   const [userTeamId, setUserTeamId] = useState<string | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
@@ -243,6 +285,50 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   const [allAvailableMaps, setAllAvailableMaps] = useState<GameMap[]>([]); // All maps for selection dialog
   const [dialogManuallyClosed, setDialogManuallyClosed] = useState(false); // Track if user manually closed the dialog
   const scrollContainerRef = useRef<HTMLDivElement>(null); // Ref to preserve scroll position
+  const copiedLinkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Save scroll position before state updates - MUST be defined before handleMapAction uses it
+  const saveScrollPosition = useCallback(() => {
+    if (matchId) {
+      // Find the dialog content container
+      const dialogContent = document.querySelector('[data-radix-dialog-content]') as HTMLElement;
+      if (dialogContent) {
+        sessionStorage.setItem(`mapVeto_scroll_${matchId}`, dialogContent.scrollTop.toString());
+      }
+    }
+  }, [matchId]);
+
+  // Preserve scroll position after state updates (for dialog content)
+  useEffect(() => {
+    // Find the dialog content container (parent with overflow-y-auto)
+    const dialogContent = document.querySelector('[data-radix-dialog-content]') as HTMLElement;
+    if (dialogContent) {
+      const savedScroll = sessionStorage.getItem(`mapVeto_scroll_${matchId}`);
+      if (savedScroll) {
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          dialogContent.scrollTop = parseInt(savedScroll, 10);
+          sessionStorage.removeItem(`mapVeto_scroll_${matchId}`);
+        });
+      }
+    }
+  }, [veto?.current_action_number, matchId]);
+
+  // Save scroll on scroll event
+  useEffect(() => {
+    const dialogContent = document.querySelector('[data-radix-dialog-content]') as HTMLElement;
+    if (dialogContent) {
+      const handleScroll = () => {
+        if (matchId) {
+          sessionStorage.setItem(`mapVeto_scroll_${matchId}`, dialogContent.scrollTop.toString());
+        }
+      };
+      dialogContent.addEventListener('scroll', handleScroll, { passive: true });
+      return () => {
+        dialogContent.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, [matchId]);
 
   // Fetch team logos
   useEffect(() => {
@@ -395,22 +481,64 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     try {
       setLoading(true);
 
-      const { data: vetoData, error: vetoError } = await supabase
-        .from('match_map_vetos')
-        .select('*')
-        .eq('match_id', matchId)
-        .maybeSingle();
+      // OPTIMIZED: Fetch veto data and maps in parallel (maps don't depend on veto)
+      const [vetoResult, mapsResult] = await Promise.all([
+        supabase
+          .from(valorantTables.match_vetos)
+          .select('*')
+          .eq('match_id', matchId)
+          .maybeSingle(),
+        
+        // Fetch maps in parallel - they don't depend on veto data
+        (async () => {
+          let maps: GameMap[] = [];
+          
+          // Try map pool first
+          const { data: poolMaps, error: poolError } = await supabase
+            .from(valorantTables.map_pools)
+            .select('map_id, game_maps(*)')
+            .eq('tournament_id', tournamentId);
+
+          if (!poolError && poolMaps && poolMaps.length > 0) {
+            maps = (poolMaps || [])
+              .map((p: any) => p.game_maps)
+              .filter((m: any) => m && m.is_active) as GameMap[];
+          }
+
+          // Fallback to all game maps if pool is empty
+          if (maps.length === 0 && game) {
+            const { data: gameMaps, error: gameMapsError } = await supabase
+              .from('game_maps')
+              .select('*')
+              .eq('game', game)
+              .eq('is_active', true)
+              .order('map_name');
+
+            if (!gameMapsError && gameMaps) {
+              maps = gameMaps as GameMap[];
+            }
+          }
+          
+          return maps;
+        })()
+      ]);
+
+      const { data: vetoData, error: vetoError } = vetoResult;
+      const maps = mapsResult;
 
       if (vetoError && vetoError.code !== 'PGRST116') {
         throw vetoError;
       }
 
+      // Preload map images immediately for better UX
+      if (maps && maps.length > 0) {
+        preloadMapImages(maps);
+      }
+
       if (!vetoData) {
         const { data: initializedVetoId, error: initError } = await supabase.rpc('initialize_match_veto', {
           p_match_id: matchId,
-          p_tournament_id: tournamentId,
-          p_team1_id: team1Id,
-          p_team2_id: team2Id,
+          p_veto_format: 'standard_7',
         });
 
         if (initError) {
@@ -420,7 +548,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
         if (initializedVetoId) {
           const { data: newVeto, error: fetchError } = await supabase
-            .from('match_map_vetos')
+            .from(valorantTables.match_vetos)
             .select('*')
             .eq('id', initializedVetoId)
             .single();
@@ -440,6 +568,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
               best_of: hasBestOf ? dbBestOf : (matchBestOf || bestOf || null),
             };
             setVeto(vetoWithBestOf as MatchMapVeto);
+            setAvailableMaps(maps); // Set maps immediately
             
             // If veto is pending and organizer, show BO selection dialog if best_of is not set
             if (newVeto.status === 'pending' && !hasBestOf) {
@@ -456,25 +585,23 @@ export const MapVeto: React.FC<MapVetoProps> = ({
               
               // Auto-start if BO is already set in DB
               if (hasBestOf) {
-                const { error: startError } = await supabase
-                  .from('match_map_vetos')
+                // OPTIMIZED: Update and fetch in one go using RETURNING
+                const { data: updatedVeto, error: startError } = await supabase
+                  .from(valorantTables.match_vetos)
                   .update({
                     status: 'in_progress',
                     started_at: new Date().toISOString(),
                     turn_started_at: new Date().toISOString(),
                   })
-                  .eq('id', initializedVetoId);
+                  .eq('id', initializedVetoId)
+                  .select()
+                  .single();
                 
-                if (!startError) {
-                  const { data: updatedVeto } = await supabase
-                    .from('match_map_vetos')
-                    .select('*')
-                    .eq('id', initializedVetoId)
-                    .single();
-                  if (updatedVeto) {
-                    setVeto(updatedVeto as MatchMapVeto);
-                    return;
-                  }
+                if (!startError && updatedVeto) {
+                  setVeto(updatedVeto as MatchMapVeto);
+                  setAvailableMaps(maps);
+                  setLoading(false);
+                  return;
                 }
               }
             }
@@ -490,6 +617,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           best_of: hasBestOf ? vetoData.best_of : (matchBestOf || bestOf || null),
         };
         setVeto(vetoWithBestOf as MatchMapVeto);
+        setAvailableMaps(maps); // Set maps immediately
         
         // Initialize selectedMapPool if it exists
         const mapPool = (vetoData as any).selected_map_pool;
@@ -513,58 +641,29 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           }
           
           if (hasBestOf) {
-            // Auto-start if BO is set in DB
-            const { error: startError } = await supabase
-              .from('match_map_vetos')
+            // OPTIMIZED: Update and fetch in one go using RETURNING
+            const { data: updatedVeto, error: startError } = await supabase
+              .from(valorantTables.match_vetos)
               .update({
                 status: 'in_progress',
                 started_at: new Date().toISOString(),
                 turn_started_at: new Date().toISOString(),
               })
-              .eq('id', vetoData.id);
+              .eq('id', vetoData.id)
+              .select()
+              .single();
             
-            if (!startError) {
-              const { data: updatedVeto } = await supabase
-                .from('match_map_vetos')
-                .select('*')
-                .eq('id', vetoData.id)
-                .single();
-              if (updatedVeto) {
-                setVeto(updatedVeto as MatchMapVeto);
-              }
+            if (!startError && updatedVeto) {
+              setVeto(updatedVeto as MatchMapVeto);
             }
           }
         }
       }
 
-      let maps: GameMap[] = [];
+      // Maps are already fetched in parallel above - use them
+      // If veto has a selected_map_pool, fetch maps directly from game_maps using those IDs
+      let finalMaps = maps; // Use maps from parallel fetch
       
-      const { data: poolMaps, error: poolError } = await supabase
-        .from('tournament_map_pools')
-        .select('map_id, game_maps(*)')
-        .eq('tournament_id', tournamentId);
-
-      if (!poolError && poolMaps && poolMaps.length > 0) {
-        maps = (poolMaps || [])
-          .map((p: any) => p.game_maps)
-          .filter((m: any) => m && m.is_active) as GameMap[];
-      }
-
-      if (maps.length === 0 && game) {
-        const { data: gameMaps, error: gameMapsError } = await supabase
-          .from('game_maps')
-          .select('*')
-          .eq('game', game)
-          .eq('is_active', true)
-          .order('map_name');
-
-        if (gameMapsError) {
-          throw gameMapsError;
-        }
-        maps = (gameMaps as GameMap[]) || [];
-      }
-
-      // If veto has a selected_map_pool, fetch those specific maps
       const matchBestOf = vetoData ? (vetoData as any)?.match?.best_of : null;
       const vetoWithMapPool = vetoData ? {
         ...vetoData,
@@ -576,29 +675,52 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       if (vetoWithMapPool) {
         const mapPool = (vetoWithMapPool as any).selected_map_pool;
         if (mapPool && Array.isArray(mapPool) && mapPool.length > 0) {
-          // Fetch maps directly from game_maps using the selected_map_pool IDs
+          // IMPORTANT: Fetch maps directly from game_maps using selected_map_pool IDs
+          // Don't filter the already-fetched maps - they might not include all maps in the pool
+          const mapPoolIds = mapPool.map(id => String(id));
+          
+          console.log('[MapVeto] Fetching maps directly from selected_map_pool:', {
+            mapPoolSize: mapPool.length,
+            mapPoolIds: mapPoolIds,
+            totalMapsBeforeFetch: maps.length
+          });
+          
           const { data: poolMapsData, error: poolMapsError } = await supabase
             .from('game_maps')
             .select('*')
-            .in('id', mapPool)
+            .in('id', mapPoolIds)
             .eq('is_active', true)
             .order('map_name');
           
           if (!poolMapsError && poolMapsData && poolMapsData.length > 0) {
-            maps = poolMapsData as GameMap[];
+            // Double-check that all maps match the selected pool (handle UUID/string mismatches)
+            finalMaps = poolMapsData.filter(m => mapPoolIds.includes(String(m.id))) as GameMap[];
+            
+            console.log('[MapVeto] Maps fetched from selected_map_pool:', {
+              mapPoolSize: mapPool.length,
+              fetchedMaps: poolMapsData.length,
+              filteredMaps: finalMaps.length,
+              filteredMapIds: finalMaps.map(m => String(m.id))
+            });
           } else {
             // Fallback: filter existing maps if direct fetch fails
-            maps = maps.filter(m => mapPool.includes(m.id));
+            console.warn('[MapVeto] Failed to fetch maps from selected_map_pool, using fallback filter:', {
+              error: poolMapsError,
+              mapPoolSize: mapPool.length,
+              totalMapsBeforeFilter: maps.length
+            });
+            finalMaps = maps.filter(m => mapPoolIds.includes(String(m.id)));
           }
         }
       }
 
-      if (maps.length === 0) {
+      if (finalMaps.length === 0) {
         console.warn('[MapVeto] No maps available:', {
           game,
           hasVeto: !!vetoData,
           mapPool: vetoWithMapPool ? (vetoWithMapPool as any).selected_map_pool : null,
-          mapsFromTournament: maps.length
+          mapsFromTournament: maps.length,
+          finalMapsCount: finalMaps.length
         });
         // Don't show toast if maps are just not loaded yet (veto might be pending)
         if (vetoData && vetoData.status === 'in_progress') {
@@ -610,7 +732,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         }
       }
 
-      setAvailableMaps(maps);
+      setAvailableMaps(finalMaps);
       
       // Store all maps for the selection dialog (before filtering by selected_map_pool)
       // This ensures organizers can see all maps when selecting the pool
@@ -623,6 +745,8 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           .order('map_name');
         if (allGameMaps) {
           setAllAvailableMaps(allGameMaps as GameMap[]);
+          // Preload images for all available maps too
+          preloadMapImages(allGameMaps as GameMap[]);
         }
       }
     } catch (error: any) {
@@ -635,7 +759,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [matchId, tournamentId, game, toast, isOrganizer, user?.id, matchStatus]);
+  }, [matchId, tournamentId, game, toast, isOrganizer, user?.id, matchStatus, preloadMapImages]);
 
   useEffect(() => {
     fetchVetoData();
@@ -700,15 +824,27 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
 
   // Check if organizer is also a captain - show role switch prompt
+  // ONLY show after veto is properly initialized (map pool and BO selected, status is 'in_progress')
+  // This allows organizers to complete the setup process first
   useEffect(() => {
     const effectiveIsOrganizer = isOrganizer || currentRole === 'organizer';
     const organizerIsCaptain = effectiveIsOrganizer && isCaptain && userTeamId;
-    if (organizerIsCaptain && veto && veto.status !== 'completed') {
+    
+    // Only show prompt if:
+    // 1. User is organizer AND captain
+    // 2. Veto exists
+    // 3. Veto is 'in_progress' (setup complete - map pool and BO selected)
+    // 4. Veto is not completed
+    const hasMapPool = veto?.selected_map_pool && Array.isArray(veto.selected_map_pool) && veto.selected_map_pool.length > 0;
+    const hasBestOf = veto?.best_of !== null && veto?.best_of !== undefined && veto.best_of > 1;
+    const isVetoReady = veto && veto.status === 'in_progress' && hasMapPool && hasBestOf;
+    
+    if (organizerIsCaptain && isVetoReady && veto.status !== 'completed') {
       setShowRoleSwitchPrompt(true);
     } else {
       setShowRoleSwitchPrompt(false);
     }
-  }, [isOrganizer, currentRole, isCaptain, userTeamId, veto?.status]);
+  }, [isOrganizer, currentRole, isCaptain, userTeamId, veto?.status, veto?.selected_map_pool, veto?.best_of]);
 
   useEffect(() => {
     if (!matchId) return;
@@ -722,7 +858,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         {
           event: '*',
           schema: 'public',
-          table: 'match_map_vetos',
+          table: valorantTables.match_vetos,
           filter: `match_id=eq.${matchId}`,
         },
         async (payload) => {
@@ -756,13 +892,85 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                 return updatedVeto;
               }
               
-              // Check if any key fields changed
-              const prevBanned = [...(prevVeto.team1_banned_maps || []), ...(prevVeto.team2_banned_maps || [])];
-              const newBanned = [...(updatedVeto.team1_banned_maps || []), ...(updatedVeto.team2_banned_maps || [])];
-              const prevPicked1 = Array.isArray(prevVeto.team1_picked_maps) ? [...prevVeto.team1_picked_maps] : (prevVeto.team1_picked_maps ? [prevVeto.team1_picked_maps] : []);
-              const prevPicked2 = Array.isArray(prevVeto.team2_picked_maps) ? [...prevVeto.team2_picked_maps] : (prevVeto.team2_picked_maps ? [prevVeto.team2_picked_maps] : []);
-              const newPicked1 = Array.isArray(updatedVeto.team1_picked_maps) ? [...updatedVeto.team1_picked_maps] : (updatedVeto.team1_picked_maps ? [updatedVeto.team1_picked_maps] : []);
-              const newPicked2 = Array.isArray(updatedVeto.team2_picked_maps) ? [...updatedVeto.team2_picked_maps] : (updatedVeto.team2_picked_maps ? [updatedVeto.team2_picked_maps] : []);
+              // If selected_map_pool changed, we need to refetch maps
+              const prevMapPool = prevVeto.selected_map_pool;
+              const newMapPool = updatedVeto.selected_map_pool;
+              const mapPoolChanged = JSON.stringify(prevMapPool) !== JSON.stringify(newMapPool);
+              
+              if (mapPoolChanged && newMapPool && Array.isArray(newMapPool) && newMapPool.length > 0) {
+                console.log('[MapVeto] Map pool changed in real-time update, will refetch maps');
+                // Trigger a refetch of maps based on the new map pool
+                setTimeout(async () => {
+                  const mapPoolIds = newMapPool.map(id => String(id));
+                  const { data: gameMaps } = await supabase
+                    .from('game_maps')
+                    .select('*')
+                    .in('id', mapPoolIds)
+                    .eq('is_active', true)
+                    .order('map_name');
+                  
+                  if (gameMaps) {
+                    const filteredMaps = gameMaps.filter(m => mapPoolIds.includes(String(m.id)));
+                    setAvailableMaps(filteredMaps as GameMap[]);
+                    console.log('[MapVeto] Real-time: Maps updated after map pool change:', {
+                      mapPoolSize: newMapPool.length,
+                      fetchedMaps: gameMaps.length,
+                      filteredMaps: filteredMaps.length
+                    });
+                  }
+                }, 100);
+              }
+              
+              // Normalize banned maps for comparison
+              const normalizeBannedMapsForCompare = (bannedMaps: any): string[] => {
+                if (!bannedMaps) return [];
+                if (Array.isArray(bannedMaps)) return bannedMaps;
+                if (typeof bannedMaps === 'string') {
+                  try {
+                    const parsed = JSON.parse(bannedMaps);
+                    return Array.isArray(parsed) ? parsed : [bannedMaps];
+                  } catch {
+                    return [bannedMaps];
+                  }
+                }
+                return [bannedMaps];
+              };
+              
+              // Normalize picked maps for comparison
+              const normalizePickedMapsForCompare = (pickedMaps: any): any[] => {
+                if (!pickedMaps) return [];
+                if (Array.isArray(pickedMaps)) return pickedMaps;
+                if (typeof pickedMaps === 'string') {
+                  try {
+                    const parsed = JSON.parse(pickedMaps);
+                    return Array.isArray(parsed) ? parsed : [];
+                  } catch {
+                    return [];
+                  }
+                }
+                return [pickedMaps];
+              };
+              
+              // Normalize and compare banned maps
+              const prevBanned1 = normalizeBannedMapsForCompare(prevVeto.team1_banned_maps);
+              const prevBanned2 = normalizeBannedMapsForCompare(prevVeto.team2_banned_maps);
+              const newBanned1 = normalizeBannedMapsForCompare(updatedVeto.team1_banned_maps);
+              const newBanned2 = normalizeBannedMapsForCompare(updatedVeto.team2_banned_maps);
+              
+              const prevBanned = [...prevBanned1, ...prevBanned2];
+              const newBanned = [...newBanned1, ...newBanned2];
+              
+              // Compare banned maps by content, not just length
+              const bannedMapsChanged = prevBanned.length !== newBanned.length ||
+                prevBanned.some(id => !newBanned.includes(id)) ||
+                newBanned.some(id => !prevBanned.includes(id));
+              
+              // Normalize and compare picked maps
+              const prevPicked1 = normalizePickedMapsForCompare(prevVeto.team1_picked_maps);
+              const prevPicked2 = normalizePickedMapsForCompare(prevVeto.team2_picked_maps);
+              const newPicked1 = normalizePickedMapsForCompare(updatedVeto.team1_picked_maps);
+              const newPicked2 = normalizePickedMapsForCompare(updatedVeto.team2_picked_maps);
+              
               const prevPicked = [...prevPicked1, ...prevPicked2];
               const newPicked = [...newPicked1, ...newPicked2];
               
@@ -771,31 +979,42 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                 prevPicked.some((prevMap: any, idx: number) => {
                   const newMap = newPicked[idx] as any;
                   if (!newMap) return true;
-                  return prevMap?.map_id !== newMap?.map_id || prevMap?.side !== newMap?.side;
+                  const prevMapId = prevMap?.map_id || prevMap;
+                  const newMapId = newMap?.map_id || newMap;
+                  return prevMapId !== newMapId || prevMap?.side !== newMap?.side;
                 }) ||
                 newPicked.some((newMap: any, idx: number) => {
                   const prevMap = prevPicked[idx] as any;
                   if (!prevMap) return true;
-                  return prevMap?.map_id !== newMap?.map_id || prevMap?.side !== newMap?.side;
+                  const prevMapId = prevMap?.map_id || prevMap;
+                  const newMapId = newMap?.map_id || newMap;
+                  return prevMapId !== newMapId || prevMap?.side !== newMap?.side;
                 });
               
+              // ALWAYS update on real-time events to ensure UI syncs across all users
+              // The comparison logic was preventing necessary updates
               const hasChanges = 
-                prevBanned.length !== newBanned.length || 
+                bannedMapsChanged ||
                 pickedMapsChanged ||
                 prevVeto.current_action_number !== updatedVeto.current_action_number ||
                 prevVeto.current_action !== updatedVeto.current_action ||
                 prevVeto.status !== updatedVeto.status ||
                 prevVeto.best_of !== updatedVeto.best_of ||
                 prevVeto.selected_map_id !== updatedVeto.selected_map_id ||
-                prevVeto.current_team_id !== updatedVeto.current_team_id;
+                prevVeto.current_team_id !== updatedVeto.current_team_id ||
+                prevVeto.team1_link_token !== updatedVeto.team1_link_token ||
+                prevVeto.team2_link_token !== updatedVeto.team2_link_token;
               
+              // Always update to ensure real-time sync - don't skip updates
               if (hasChanges) {
                 console.log('[MapVeto] Veto state changed, updating UI:', {
                   actionNumber: `${prevVeto.current_action_number} -> ${updatedVeto.current_action_number}`,
                   action: `${prevVeto.current_action} -> ${updatedVeto.current_action}`,
                   status: `${prevVeto.status} -> ${updatedVeto.status}`,
                   banned: `${prevBanned.length} -> ${newBanned.length}`,
+                  bannedMaps: { prev: prevBanned, new: newBanned },
                   picked: `${prevPicked.length} -> ${newPicked.length}`,
+                  currentTeam: `${prevVeto.current_team_id} -> ${updatedVeto.current_team_id}`,
                 });
                 
                 // Show BO dialog if status changed to pending and best_of is not set
@@ -803,11 +1022,42 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                 if (updatedVeto.status === 'pending' && (updatedVeto.best_of === null || updatedVeto.best_of === undefined || updatedVeto.best_of === 0) && effectiveIsOrganizer) {
                   setShowBODialog(true);
                 }
-                return updatedVeto;
+              } else {
+                // Even if no changes detected, update to ensure consistency
+                // This handles edge cases where the comparison might miss subtle changes
+                console.log('[MapVeto] Real-time update received, ensuring state consistency');
               }
               
-              console.log('[MapVeto] No changes detected in veto UPDATE, keeping previous state');
-              return prevVeto;
+              // CRITICAL: Ensure availableMaps stays in sync with selected_map_pool
+              // This prevents different views from showing different numbers of maps
+              // availableMaps should always contain ALL maps from selected_map_pool
+              // The filtering (banned/picked) happens in availableMapsToShow
+              if (updatedVeto.selected_map_pool && Array.isArray(updatedVeto.selected_map_pool) && updatedVeto.selected_map_pool.length > 0) {
+                // Use setTimeout to avoid blocking the state update
+                setTimeout(async () => {
+                  const mapPoolIds = updatedVeto.selected_map_pool.map((id: any) => String(id));
+                  const { data: gameMaps } = await supabase
+                    .from('game_maps')
+                    .select('*')
+                    .in('id', mapPoolIds)
+                    .eq('is_active', true)
+                    .order('map_name');
+                  
+                  if (gameMaps) {
+                    const filteredMaps = gameMaps.filter(m => mapPoolIds.includes(String(m.id))) as GameMap[];
+                    setAvailableMaps(filteredMaps);
+                    console.log('[MapVeto] Real-time: availableMaps refreshed to ensure sync across all views:', {
+                      mapPoolSize: updatedVeto.selected_map_pool.length,
+                      fetchedMaps: gameMaps.length,
+                      filteredMaps: filteredMaps.length,
+                      mapIds: filteredMaps.map(m => String(m.id))
+                    });
+                  }
+                }, 50);
+              }
+              
+              // Always return the updated veto to ensure UI reflects latest state
+              return updatedVeto;
             });
           } else if (payload.eventType === 'INSERT' && payload.new) {
             const newVeto = payload.new as MatchMapVeto;
@@ -834,7 +1084,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         {
           event: '*',
           schema: 'public',
-          table: 'match_map_veto_actions',
+          table: valorantTables.veto_actions,
           filter: `match_id=eq.${matchId}`,
         },
         async (payload) => {
@@ -861,7 +1111,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
             // Immediately refetch the veto state to get the updated current_action_number
             // This ensures the UI updates instantly when another client performs an action
             const { data: updatedVeto, error } = await supabase
-              .from('match_map_vetos')
+              .from(valorantTables.match_vetos)
               .select('*')
               .eq('match_id', matchId)
               .maybeSingle();
@@ -886,7 +1136,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           } else if (payload.eventType === 'DELETE' && payload.old) {
             console.log('[MapVeto] Processing action DELETE:', payload.old);
             const { data: updatedVeto, error } = await supabase
-              .from('match_map_vetos')
+              .from(valorantTables.match_vetos)
               .select('*')
               .eq('match_id', matchId)
               .maybeSingle();
@@ -903,7 +1153,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       .subscribe((status) => {
         console.log('[MapVeto] Subscription status for match-veto:', status);
         if (status === 'SUBSCRIBED') {
-          console.log('[MapVeto] Successfully subscribed to match_map_vetos and match_map_veto_actions real-time updates');
+          console.log('[MapVeto] Successfully subscribed to valorant_match_map_vetos and valorant_match_map_veto_actions real-time updates');
         } else if (status === 'CHANNEL_ERROR') {
           console.error('[MapVeto] Error subscribing to map veto real-time:', status);
         } else if (status === 'TIMED_OUT') {
@@ -931,7 +1181,11 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         title: 'Link copied!',
         description: 'Share this link with your team.',
       });
-      setTimeout(() => setCopiedLink(null), 2000);
+      // Clear any existing timeout
+      if (copiedLinkTimeoutRef.current) {
+        clearTimeout(copiedLinkTimeoutRef.current);
+      }
+      copiedLinkTimeoutRef.current = setTimeout(() => setCopiedLink(null), 2000);
     } catch (err) {
       toast({
         title: 'Failed to copy',
@@ -940,6 +1194,15 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       });
     }
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copiedLinkTimeoutRef.current) {
+        clearTimeout(copiedLinkTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleMapAction = async (mapId: string) => {
     // Allow actions if veto exists and has best_of set (even if status is still 'pending' - it will be updated)
@@ -1046,7 +1309,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         console.log('[MapVeto] current_action is null, refetching veto data...');
         // Refetch directly from database
         const { data: refreshedVeto, error: refetchError } = await supabase
-          .from('match_map_vetos')
+          .from(valorantTables.match_vetos)
           .select('*')
           .eq('match_id', matchId)
           .single();
@@ -1081,25 +1344,93 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
       if (!map) throw new Error('Map not found');
 
-      // Use currentVeto instead of veto to ensure we have the latest state
-      const allBannedMaps = [...(currentVeto.team1_banned_maps || []), ...(currentVeto.team2_banned_maps || [])];
-      if (allBannedMaps.includes(mapId)) {
-        toast({
-          title: 'Map already used',
-          description: 'This map has already been banned or picked.',
-          variant: 'destructive',
-        });
-        setActionLoading(null);
-        return;
-      }
-
+      // Normalize banned maps to ensure proper array handling
+      const normalizeBannedMaps = (bannedMaps: any): string[] => {
+        if (!bannedMaps) return [];
+        if (Array.isArray(bannedMaps)) return bannedMaps;
+        if (typeof bannedMaps === 'string') {
+          try {
+            const parsed = JSON.parse(bannedMaps);
+            return Array.isArray(parsed) ? parsed : [bannedMaps];
+          } catch {
+            return [bannedMaps];
+          }
+        }
+        return [bannedMaps];
+      };
+      
+      const normalizePickedMaps = (pickedMaps: any): PickedMap[] => {
+        if (!pickedMaps) return [];
+        if (Array.isArray(pickedMaps)) return pickedMaps;
+        if (typeof pickedMaps === 'string') {
+          try {
+            const parsed = JSON.parse(pickedMaps);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        }
+        return [pickedMaps];
+      };
+      
       // Handle different action types
       if (actionType === 'pick') {
+        // For 'pick' action, check if map is already used
+        const team1Banned = normalizeBannedMaps(currentVeto.team1_banned_maps);
+        const team2Banned = normalizeBannedMaps(currentVeto.team2_banned_maps);
+        const allBannedMaps = [...team1Banned, ...team2Banned];
+        
+        // Also check picked maps
+        const team1Picked = normalizePickedMaps(currentVeto.team1_picked_maps);
+        const team2Picked = normalizePickedMaps(currentVeto.team2_picked_maps);
+        const allPickedMapIds = [
+          ...team1Picked.map((p: any) => p?.map_id || p).filter(Boolean),
+          ...team2Picked.map((p: any) => p?.map_id || p).filter(Boolean),
+        ];
+        
+        const allUsedMaps = [...allBannedMaps, ...allPickedMapIds];
+        if (allUsedMaps.includes(mapId)) {
+          toast({
+            title: 'Map already used',
+            description: 'This map has already been banned or picked.',
+            variant: 'destructive',
+          });
+          setActionLoading(null);
+          return;
+        }
         // Map pick - side selection comes in next action (pick_side)
         // DO NOT show side dialog here - it will be shown for the OPPOSITE team
         // when they click on a map during the pick_side action
         await performMapAction(mapId, 'pick', null);
+      } else if (actionType === 'ban') {
+        // For 'ban' action, check if map is already used
+        const team1Banned = normalizeBannedMaps(currentVeto.team1_banned_maps);
+        const team2Banned = normalizeBannedMaps(currentVeto.team2_banned_maps);
+        const allBannedMaps = [...team1Banned, ...team2Banned];
+        
+        // Also check picked maps
+        const team1Picked = normalizePickedMaps(currentVeto.team1_picked_maps);
+        const team2Picked = normalizePickedMaps(currentVeto.team2_picked_maps);
+        const allPickedMapIds = [
+          ...team1Picked.map((p: any) => p?.map_id || p).filter(Boolean),
+          ...team2Picked.map((p: any) => p?.map_id || p).filter(Boolean),
+        ];
+        
+        const allUsedMaps = [...allBannedMaps, ...allPickedMapIds];
+        if (allUsedMaps.includes(mapId)) {
+          toast({
+            title: 'Map already used',
+            description: 'This map has already been banned or picked.',
+            variant: 'destructive',
+          });
+          setActionLoading(null);
+          return;
+        }
+        // Ban action
+        await performMapAction(mapId, 'ban', null);
       } else if (actionType === 'pick_side') {
+        // For 'pick_side', the map SHOULD already be in picked_maps - that's the whole point!
+        // Don't check if map is already used - we're selecting a side for an already-picked map
         // Side selection - need to show side dialog
         // The pick_side action is always immediately after a pick action
         // The side is picked by the OPPOSITE team from the one that picked the map
@@ -1242,9 +1573,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           setActionLoading(null);
           return;
         }
-      } else {
-        // Ban action
-        await performMapAction(mapId, actionType, null);
       }
     } catch (error: any) {
       // Silently handle actions that were already processed (no error toast)
@@ -1278,7 +1606,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       // Fetch the latest veto state to ensure we have the most recent current_action_number
       // This prevents duplicate key errors from race conditions
       const { data: latestVeto, error: fetchError } = await supabase
-        .from('match_map_vetos')
+        .from(valorantTables.match_vetos)
         .select('current_action_number, current_action, team1_id, team2_id, team1_banned_maps, team2_banned_maps, team1_picked_maps, team2_picked_maps, best_of')
         .eq('id', veto.id)
         .single();
@@ -1332,7 +1660,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       // Check if an action with this number already exists (prevent duplicate)
       // This is a race condition check - if another client already performed this action
       const { data: existingAction } = await supabase
-        .from('match_map_veto_actions')
+        .from(valorantTables.veto_actions)
         .select('id, action_type, map_id')
         .eq('veto_id', veto.id)
         .eq('action_number', currentActionNum)
@@ -1356,13 +1684,28 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         if (isSameAction) {
           console.log('[MapVeto] Duplicate action detected - same type and map. Refetching veto state...');
           
+          // For ban/pick actions, refetch and update state immediately
+          if (actionType === 'ban' || actionType === 'pick') {
+            const { data: refreshedVeto } = await supabase
+              .from(valorantTables.match_vetos)
+              .select('*')
+              .eq('id', veto.id)
+              .single();
+            
+            if (refreshedVeto) {
+              setVeto(refreshedVeto as MatchMapVeto);
+              console.log('[MapVeto] Veto state updated after duplicate action - UI should reflect latest state');
+            }
+            return; // Silently succeed - real-time will also update UI
+          }
+          
           // For pick_side, silently succeed - real-time will update UI
           if (actionType === 'pick_side') {
             console.log(`[MapVeto] ${actionType} action already exists, checking if veto state needs to advance...`);
             
             // Refetch veto state to get the latest state
             const { data: refreshedVeto } = await supabase
-              .from('match_map_vetos')
+              .from(valorantTables.match_vetos)
               .select('*')
               .eq('id', veto.id)
               .single();
@@ -1383,7 +1726,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                 
                 // Get the action from the database to see what side was selected
                 const { data: existingActionData } = await supabase
-                  .from('match_map_veto_actions')
+                  .from(valorantTables.veto_actions)
                   .select('side, map_id')
                   .eq('veto_id', veto.id)
                   .eq('action_number', currentActionNum)
@@ -1468,7 +1811,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                     
                     // Update veto state to advance
                     const { data: advancedVeto } = await supabase
-                      .from('match_map_vetos')
+                      .from(valorantTables.match_vetos)
                       .update(updateData)
                       .eq('id', veto.id)
                       .select()
@@ -1495,7 +1838,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           
           // For other actions, refetch and update state
           const { data: refreshedVeto } = await supabase
-            .from('match_map_vetos')
+            .from(valorantTables.match_vetos)
             .select('*')
             .eq('id', veto.id)
             .single();
@@ -1542,7 +1885,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           // We need to refetch the veto state to get the correct current action number
           console.warn('[MapVeto] Different action with same number - state out of sync. Refetching...');
           const { data: refreshedVeto } = await supabase
-            .from('match_map_vetos')
+            .from(valorantTables.match_vetos)
             .select('*')
             .eq('id', veto.id)
             .single();
@@ -1560,7 +1903,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
               // Check if maybe we should use the next action number instead
               // Get all actions to see what the actual last action number is
               const { data: allActions } = await supabase
-                .from('match_map_veto_actions')
+                .from(valorantTables.veto_actions)
                 .select('action_number')
                 .eq('veto_id', veto.id)
                 .order('action_number', { ascending: false })
@@ -1578,7 +1921,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                   
                   // Update the veto state to use the correct action number
                   const { error: updateError } = await supabase
-                    .from('match_map_vetos')
+                    .from(valorantTables.match_vetos)
                     .update({ 
                       current_action_number: expectedNextActionNum,
                       updated_at: new Date().toISOString()
@@ -1588,7 +1931,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                   if (!updateError) {
                     // Refetch to get the updated state
                     const { data: correctedVeto } = await supabase
-                      .from('match_map_vetos')
+                      .from(valorantTables.match_vetos)
                       .select('*')
                       .eq('id', veto.id)
                       .single();
@@ -1619,7 +1962,22 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         }
       }
 
-      const { error: actionError } = await supabase.from('match_map_veto_actions').insert({
+      // Log the action being inserted for debugging
+      console.log('[MapVeto] Inserting action:', {
+        actionType,
+        actionNumber: currentActionNum,
+        expectedTeamId,
+        team1Id: latestVeto.team1_id,
+        team2Id: latestVeto.team2_id,
+        currentAction: latestVeto.current_action,
+        vetoFormat: currentVetoFormat,
+        isFinalPickSide: actionType === 'pick_side' && (
+          (currentVetoFormat === 'bo3' && currentActionNum === 9) ||
+          (currentVetoFormat === 'bo5' && currentActionNum === 11)
+        ),
+      });
+
+      const { error: actionError } = await supabase.from(valorantTables.veto_actions).insert({
         veto_id: veto.id,
         match_id: matchId,
         team_id: expectedTeamId,
@@ -1630,6 +1988,30 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       });
 
       if (actionError) {
+        console.error('[MapVeto] Action insert error details:', {
+          code: actionError.code,
+          message: actionError.message,
+          details: actionError.details,
+          hint: actionError.hint,
+          table: valorantTables.veto_actions,
+          data: {
+            veto_id: veto.id,
+            match_id: matchId,
+            team_id: expectedTeamId,
+            action_type: actionType,
+            map_id: mapId,
+            action_number: currentActionNum,
+            side: side || null,
+          },
+          userContext: {
+            userId: user?.id,
+            isOrganizer,
+            currentRole,
+            userTeamId,
+            isCaptain,
+          }
+        });
+        
         // Handle duplicate key error specifically
         if (actionError.code === '23505') {
           // For pick_side, silently succeed - real-time will update UI
@@ -1637,7 +2019,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
             console.log(`[MapVeto] ${actionType} action already exists, UI will update via real-time`);
             // Refetch veto to get latest state
             const { data: latestVeto } = await supabase
-              .from('match_map_vetos')
+              .from(valorantTables.match_vetos)
               .select('*')
               .eq('id', veto.id)
               .single();
@@ -1873,10 +2255,24 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                 ...(updateData.team2_banned_maps || latestVeto.team2_banned_maps || [])
               ];
               
-              const allPickedMaps = [
-                ...(updateData.team1_picked_maps || latestVeto.team1_picked_maps || []),
-                ...(updateData.team2_picked_maps || latestVeto.team2_picked_maps || [])
-              ];
+              // Normalize picked maps to ensure they're arrays before spreading
+              const normalizePickedMapsForAutoAssign = (pickedMaps: any): PickedMap[] => {
+                if (!pickedMaps) return [];
+                if (Array.isArray(pickedMaps)) return pickedMaps;
+                if (typeof pickedMaps === 'string') {
+                  try {
+                    const parsed = JSON.parse(pickedMaps);
+                    return Array.isArray(parsed) ? parsed : [];
+                  } catch {
+                    return [];
+                  }
+                }
+                return [pickedMaps];
+              };
+              
+              const team1PickedForAuto = normalizePickedMapsForAutoAssign(updateData.team1_picked_maps || latestVeto.team1_picked_maps);
+              const team2PickedForAuto = normalizePickedMapsForAutoAssign(updateData.team2_picked_maps || latestVeto.team2_picked_maps);
+              const allPickedMaps = [...team1PickedForAuto, ...team2PickedForAuto];
               
               const allUsedMaps = [
                 ...allBannedMaps,
@@ -1965,13 +2361,29 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         updateData.veto_format = currentVetoFormat; // Update format to match BO
       } else {
         // Veto is complete - set selected_map_id to the last picked map
-        const allPickedMaps = [
-          ...(updateData.team1_picked_maps || veto.team1_picked_maps || []),
-          ...(updateData.team2_picked_maps || veto.team2_picked_maps || []),
-        ];
+        // Normalize picked maps to ensure they're arrays before spreading
+        const normalizePickedMapsForUpdate = (pickedMaps: any): PickedMap[] => {
+          if (!pickedMaps) return [];
+          if (Array.isArray(pickedMaps)) return pickedMaps;
+          if (typeof pickedMaps === 'string') {
+            try {
+              const parsed = JSON.parse(pickedMaps);
+              return Array.isArray(parsed) ? parsed : [];
+            } catch {
+              return [];
+            }
+          }
+          // If it's a single object, wrap it in an array
+          return [pickedMaps];
+        };
+        
+        const team1Picked = normalizePickedMapsForUpdate(updateData.team1_picked_maps || veto.team1_picked_maps);
+        const team2Picked = normalizePickedMapsForUpdate(updateData.team2_picked_maps || veto.team2_picked_maps);
+        const allPickedMaps = [...team1Picked, ...team2Picked];
+        
         if (allPickedMaps.length > 0) {
           const lastPickedMap = allPickedMaps[allPickedMaps.length - 1];
-          updateData.selected_map_id = lastPickedMap.map_id;
+          updateData.selected_map_id = lastPickedMap.map_id || lastPickedMap;
         }
         
         updateData.status = 'completed';
@@ -1981,7 +2393,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       }
 
       const { data: updatedVeto, error: updateError } = await supabase
-        .from('match_map_vetos')
+        .from(valorantTables.match_vetos)
         .update(updateData)
         .eq('id', veto.id)
         .select()
@@ -1990,7 +2402,23 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       if (updateError) throw updateError;
 
       if (updatedVeto) {
+        // IMMEDIATELY update state to ensure UI syncs across all clients
         setVeto(updatedVeto as MatchMapVeto);
+        
+        // Also refetch after a short delay to ensure absolute latest state
+        // This handles any race conditions or missed real-time events
+        setTimeout(async () => {
+          const { data: latestVetoData } = await supabase
+            .from(valorantTables.match_vetos)
+            .select('*')
+            .eq('id', veto.id)
+            .single();
+          
+          if (latestVetoData) {
+            setVeto(latestVetoData as MatchMapVeto);
+            console.log('[MapVeto] State refreshed after action to ensure sync across all clients');
+          }
+        }, 150);
       }
 
       toast({
@@ -2058,10 +2486,10 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     if (!veto || !effectiveIsOrganizer) return;
 
     // Validate map pool is selected
-    if (selectedMapPool.length === 0) {
+    if (selectedMapPool.length !== 7) {
       toast({
-        title: 'Map Pool Required',
-        description: 'Please select at least one map for the veto pool.',
+        title: 'Invalid Map Pool',
+        description: `You must select exactly 7 maps for the veto pool. Currently selected: ${selectedMapPool.length} maps.`,
         variant: 'destructive',
       });
       return;
@@ -2075,7 +2503,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       const firstAction = VETO_SEQUENCES[vetoFormat][0];
       
       const { error: updateError } = await supabase
-        .from('match_map_vetos')
+        .from(valorantTables.match_vetos)
         .update({
           best_of: bo,
           veto_format: vetoFormat,
@@ -2092,19 +2520,30 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       if (updateError) throw updateError;
 
       // Update availableMaps to only show selected pool
+      // Convert map pool IDs to strings for consistent comparison
+      const mapPoolIds = selectedMapPool.map(id => String(id));
       const { data: gameMaps } = await supabase
         .from('game_maps')
         .select('*')
-        .in('id', selectedMapPool)
+        .in('id', mapPoolIds)
         .eq('is_active', true)
         .order('map_name');
 
       if (gameMaps) {
-        setAvailableMaps(gameMaps as GameMap[]);
+        // Double-check that all maps match the selected pool (handle UUID/string mismatches)
+        const filteredMaps = gameMaps.filter(m => mapPoolIds.includes(String(m.id)));
+        setAvailableMaps(filteredMaps as GameMap[]);
+        console.log('[MapVeto] handleSetBO - Maps set:', {
+          selectedMapPoolSize: selectedMapPool.length,
+          mapPoolIds: mapPoolIds,
+          fetchedMaps: gameMaps.length,
+          filteredMaps: filteredMaps.length,
+          mapIds: filteredMaps.map(m => String(m.id))
+        });
       }
 
       const { data: updatedVeto } = await supabase
-        .from('match_map_vetos')
+        .from(valorantTables.match_vetos)
         .select('*')
         .eq('id', veto.id)
         .single();
@@ -2113,6 +2552,23 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         setVeto(updatedVeto as MatchMapVeto);
         setShowBODialog(false);
         setDialogStep('map_pool'); // Reset dialog step for next time
+        
+        // Check if organizer is also a captain - show role switch prompt after BO is set
+        // Wait a moment for state to update, then check
+        setTimeout(() => {
+          const effectiveIsOrganizer = isOrganizer || currentRole === 'organizer';
+          if (effectiveIsOrganizer && isCaptain && userTeamId) {
+            const hasMapPool = updatedVeto.selected_map_pool && Array.isArray(updatedVeto.selected_map_pool) && updatedVeto.selected_map_pool.length > 0;
+            const hasBestOf = updatedVeto.best_of !== null && updatedVeto.best_of !== undefined && updatedVeto.best_of > 1;
+            const isVetoReady = updatedVeto.status === 'in_progress' && hasMapPool && hasBestOf;
+            
+            if (isVetoReady && updatedVeto.status !== 'completed') {
+              console.log('[MapVeto] Showing role switch prompt after BO selection');
+              setShowRoleSwitchPrompt(true);
+            }
+          }
+        }, 300);
+        
         // Show toast immediately
         toast({
           title: `BO${bo} Selected`,
@@ -2146,18 +2602,92 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     );
   }
 
-  const allBannedMaps = [...(veto.team1_banned_maps || []), ...(veto.team2_banned_maps || [])];
-  const availableMapsToShow = availableMaps.filter((m) => !allBannedMaps.includes(m.id));
+  // Normalize banned_maps to arrays (handle JSON strings and non-array values)
+  const normalizeBannedMaps = (bannedMaps: any): string[] => {
+    if (!bannedMaps) return [];
+    if (Array.isArray(bannedMaps)) return bannedMaps;
+    if (typeof bannedMaps === 'string') {
+      try {
+        const parsed = JSON.parse(bannedMaps);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        // If it's a plain string (single map ID), return as array
+        return [bannedMaps];
+      }
+    }
+    // If it's a single value, wrap it in an array
+    return [bannedMaps];
+  };
   
+  // Normalize picked_maps to arrays (handle JSON strings and non-array values)
+  const normalizePickedMaps = (pickedMaps: any): PickedMap[] => {
+    if (!pickedMaps) return [];
+    if (Array.isArray(pickedMaps)) return pickedMaps;
+    if (typeof pickedMaps === 'string') {
+      try {
+        const parsed = JSON.parse(pickedMaps);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    // If it's a single object, wrap it in an array
+    return [pickedMaps];
+  };
+  
+  // Normalize banned maps arrays (ensure they're always arrays of strings)
+  const team1Banned = normalizeBannedMaps(veto.team1_banned_maps);
+  const team2Banned = normalizeBannedMaps(veto.team2_banned_maps);
+  const allBannedMaps = [...team1Banned, ...team2Banned];
+  
+  // Get all picked map IDs (from both teams)
+  const team1Picked = normalizePickedMaps(veto.team1_picked_maps);
+  const team2Picked = normalizePickedMaps(veto.team2_picked_maps);
+  const allPickedMapIds = [
+    ...team1Picked.map((p: PickedMap) => p?.map_id || p).filter(Boolean),
+    ...team2Picked.map((p: PickedMap) => p?.map_id || p).filter(Boolean),
+  ];
+  
+  // Filter out both banned AND picked maps
+  // Convert all IDs to strings for consistent comparison
+  const allUsedMaps = [
+    ...allBannedMaps.map(id => String(id)),
+    ...allPickedMapIds.map(id => String(id))
+  ];
+  const availableMapsToShow = availableMaps.filter((m) => {
+    const mapId = String(m.id);
+    return !allUsedMaps.includes(mapId);
+  });
+  
+  // Debug logging to help identify filtering issues
+  console.log('[MapVeto] Map filtering debug:', {
+    totalAvailable: availableMaps.length,
+    banned: allBannedMaps.length,
+    picked: allPickedMapIds.length,
+    used: allUsedMaps.length,
+    filtered: availableMapsToShow.length,
+    bannedMaps: allBannedMaps,
+    pickedMaps: allPickedMapIds,
+    allAvailableMapIds: availableMaps.map(m => String(m.id)),
+    availableMapIds: availableMapsToShow.map(m => String(m.id)),
+    vetoStatus: veto?.status,
+    selectedMapPool: veto?.selected_map_pool,
+    currentAction: veto?.current_action,
+    currentActionNumber: veto?.current_action_number
+  });
+  
+  // Build allPickedMaps array for display (already normalized above)
   const allPickedMaps = [
-    ...(veto.team1_picked_maps || []).map((p: PickedMap) => ({ ...p, team: 'team1', teamName: team1Name })),
-    ...(veto.team2_picked_maps || []).map((p: PickedMap) => ({ ...p, team: 'team2', teamName: team2Name })),
+    ...team1Picked.map((p: PickedMap) => ({ ...p, team: 'team1', teamName: team1Name })),
+    ...team2Picked.map((p: PickedMap) => ({ ...p, team: 'team2', teamName: team2Name })),
   ];
   
   const getMapStatus = (mapId: string) => {
-    const isBanned = allBannedMaps.includes(mapId);
-    const isTeam1Ban = veto.team1_banned_maps?.includes(mapId);
-    const isTeam2Ban = veto.team2_banned_maps?.includes(mapId);
+    // Convert to string for consistent comparison
+    const mapIdStr = String(mapId);
+    const isBanned = allBannedMaps.map(id => String(id)).includes(mapIdStr);
+    const isTeam1Ban = team1Banned.map(id => String(id)).includes(mapIdStr);
+    const isTeam2Ban = team2Banned.map(id => String(id)).includes(mapIdStr);
     const pickedMap = allPickedMaps.find((p: any) => p.map_id === mapId);
     const isPicked = !!pickedMap || veto.selected_map_id === mapId;
     
@@ -2182,8 +2712,8 @@ export const MapVeto: React.FC<MapVetoProps> = ({
             action
           );
           
-          const team1Picks = Array.isArray(veto.team1_picked_maps) ? veto.team1_picked_maps : (veto.team1_picked_maps ? [veto.team1_picked_maps] : []);
-          const team2Picks = Array.isArray(veto.team2_picked_maps) ? veto.team2_picked_maps : (veto.team2_picked_maps ? [veto.team2_picked_maps] : []);
+          const team1Picks = normalizePickedMaps(veto.team1_picked_maps);
+          const team2Picks = normalizePickedMaps(veto.team2_picked_maps);
           const pickerTeamPicks = mapPickerTeamId === veto.team1_id ? team1Picks : team2Picks;
           
           // Count picks up to this action
@@ -2209,12 +2739,23 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       }
     }
     
+    // Get team logo for the map picker (the team that picked the map)
+    let pickedByTeamLogo: string | null = null;
+    if (pickedMap?.teamName) {
+      // Determine which team picked this map
+      const team1Picks = normalizePickedMaps(veto.team1_picked_maps);
+      const team2Picks = normalizePickedMaps(veto.team2_picked_maps);
+      const isTeam1Pick = team1Picks.some((p: any) => p.map_id === mapId);
+      pickedByTeamLogo = isTeam1Pick ? team1Logo : team2Logo;
+    }
+    
     return { 
       isBanned, 
       isTeam1Ban, 
       isTeam2Ban, 
       isPicked,
       pickedBy: pickedMap?.teamName, // Map picker (for reference, but not displayed)
+      pickedByTeamLogo, // Team logo for the map picker
       pickedSide: pickedMap?.side,
       sidePickerTeamId,
       sidePickerTeamName,
@@ -2330,49 +2871,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       }
     }
   };
-
-  // Preserve scroll position after state updates (for dialog content)
-  useEffect(() => {
-    // Find the dialog content container (parent with overflow-y-auto)
-    const dialogContent = document.querySelector('[data-radix-dialog-content]') as HTMLElement;
-    if (dialogContent) {
-      const savedScroll = sessionStorage.getItem(`mapVeto_scroll_${matchId}`);
-      if (savedScroll) {
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(() => {
-          dialogContent.scrollTop = parseInt(savedScroll, 10);
-          sessionStorage.removeItem(`mapVeto_scroll_${matchId}`);
-        });
-      }
-    }
-  }, [veto?.current_action_number, matchId]);
-
-  // Save scroll position before state updates
-  const saveScrollPosition = useCallback(() => {
-    if (matchId) {
-      // Find the dialog content container
-      const dialogContent = document.querySelector('[data-radix-dialog-content]') as HTMLElement;
-      if (dialogContent) {
-        sessionStorage.setItem(`mapVeto_scroll_${matchId}`, dialogContent.scrollTop.toString());
-      }
-    }
-  }, [matchId]);
-
-  // Save scroll on scroll event
-  useEffect(() => {
-    const dialogContent = document.querySelector('[data-radix-dialog-content]') as HTMLElement;
-    if (dialogContent) {
-      const handleScroll = () => {
-        if (matchId) {
-          sessionStorage.setItem(`mapVeto_scroll_${matchId}`, dialogContent.scrollTop.toString());
-        }
-      };
-      dialogContent.addEventListener('scroll', handleScroll, { passive: true });
-      return () => {
-        dialogContent.removeEventListener('scroll', handleScroll);
-      };
-    }
-  }, [matchId]);
 
   return (
     <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
@@ -2569,7 +3067,16 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                 }
                 
                 return mapsWithSides.map((mapData, idx) => {
-                  const mapImageUrl = mapData.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+                  // Fix map image URL - try games bucket first (for game assets), fallback to website
+              let mapImageUrl = mapData.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+              if (mapImageUrl && mapImageUrl.includes('website-assets')) {
+                mapImageUrl = mapImageUrl.replace('website-assets/', 'system.assets.games/');
+              } else if (mapImageUrl && mapImageUrl.includes('system.assets.website') && !mapImageUrl.includes('system.assets.games')) {
+                // If in website bucket, try games bucket (maps are game assets)
+                mapImageUrl = mapImageUrl.replace('system.assets.website/', 'system.assets.games/');
+              }
+              
+              const isImageLoaded = imagesLoaded.has(mapImageUrl);
                   
                   return (
                     <div
@@ -2580,12 +3087,30 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                       <div 
                         className="relative w-full h-[160px] sm:h-[180px] md:h-[200px] lg:h-[220px]"
                         style={{
-                          backgroundImage: `url(${mapImageUrl})`,
+                          backgroundImage: isImageLoaded ? `url(${mapImageUrl})` : 'none',
                           backgroundSize: 'cover',
                           backgroundPosition: 'center',
-                          backgroundRepeat: 'no-repeat'
+                          backgroundRepeat: 'no-repeat',
+                          backgroundColor: isImageLoaded ? 'transparent' : '#0a0a0a'
                         }}
                       >
+                        {/* Loading placeholder */}
+                        {!isImageLoaded && (
+                          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                            <div className="animate-pulse text-gray-500 text-xs">Loading map...</div>
+                          </div>
+                        )}
+                        {/* Preload image */}
+                        {!isImageLoaded && (
+                          <img
+                            src={mapImageUrl}
+                            alt=""
+                            className="hidden"
+                            onLoad={() => setImagesLoaded(prev => new Set([...prev, mapImageUrl]))}
+                            onError={() => console.warn(`[MapVeto] Failed to load image: ${mapImageUrl}`)}
+                            loading="eager"
+                          />
+                        )}
                         {/* Gradient Overlay - Smooth gradient for text contrast */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 via-black/40 to-transparent" />
                         
@@ -2614,12 +3139,12 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                         </div>
                         
                         {/* Map Name and Team Info - Positioned at bottom of image in gradient area */}
-                        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 z-20 text-center">
+                        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 pb-4 sm:pb-5 md:pb-6 lg:pb-7 z-20 text-center">
                           <div className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1 sm:mb-1.5" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
                             {mapData.map_name}
                           </div>
                           {mapData.side && mapData.sidePickerTeamId && (
-                            <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs md:text-sm text-white/90">
+                            <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs md:text-sm text-white/90 mt-1 sm:mt-1.5">
                               {mapData.side === 'attack' ? (
                                 <Sword className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-orange-400 flex-shrink-0" />
                               ) : (
@@ -2940,7 +3465,13 @@ export const MapVeto: React.FC<MapVetoProps> = ({
               }
 
               const canInteract = isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && veto.best_of !== null && veto.best_of !== undefined));
-              const mapImageUrl = mapToShow.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+              // Fix map image URL - try games bucket first (for game assets), fallback to website
+              let mapImageUrl = mapToShow.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+              if (mapImageUrl && mapImageUrl.includes('website-assets')) {
+                mapImageUrl = mapImageUrl.replace('website-assets/', 'system.assets.games/');
+              } else if (mapImageUrl && mapImageUrl.includes('system.assets.website') && !mapImageUrl.includes('system.assets.games')) {
+                mapImageUrl = mapImageUrl.replace('system.assets.website/', 'system.assets.games/');
+              }
 
               return (
                 <div className="grid grid-cols-1 gap-4 max-w-md mx-auto">
@@ -2993,7 +3524,13 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                 const mapStatus = getMapStatus(map.id);
                 const canInteract = !mapStatus.isBanned && !mapStatus.isPicked && isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && veto.best_of !== null && veto.best_of !== undefined));
               
-              const mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+              // Fix map image URL - try games bucket first (for game assets), fallback to website
+              let mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+              if (mapImageUrl && mapImageUrl.includes('website-assets')) {
+                mapImageUrl = mapImageUrl.replace('website-assets/', 'system.assets.games/');
+              } else if (mapImageUrl && mapImageUrl.includes('system.assets.website') && !mapImageUrl.includes('system.assets.games')) {
+                mapImageUrl = mapImageUrl.replace('system.assets.website/', 'system.assets.games/');
+              }
               
               return (
                 <div
@@ -3058,16 +3595,24 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                           {map.map_name}
                         </div>
                         
-                        {/* Green Checkmark and Team Name */}
+                        {/* Team Logo - Show logo instead of name in Available Maps section */}
                         {(() => {
+                          const pickedTeamLogo = mapStatus.pickedByTeamLogo;
                           const pickedTeamName = mapStatus.pickedBy || '';
                           
                           return (
                             <div className="flex flex-col items-center justify-center gap-1 sm:gap-2">
-                              <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-green-500" />
-                              <span className="text-[10px] sm:text-xs font-bold text-white/80 uppercase tracking-wide text-center">
-                                {pickedTeamName}
-                              </span>
+                              {pickedTeamLogo ? (
+                                <img 
+                                  src={pickedTeamLogo} 
+                                  alt={pickedTeamName}
+                                  className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 object-contain flex-shrink-0"
+                                />
+                              ) : (
+                                <span className="text-[10px] sm:text-xs font-bold text-white/80 uppercase tracking-wide text-center">
+                                  {pickedTeamName}
+                                </span>
+                              )}
                             </div>
                           );
                         })()}
@@ -3182,18 +3727,32 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                   <DialogTitle className="text-white text-2xl font-black tracking-tight">Step 1: Select Map Pool</DialogTitle>
                   <div className="flex items-center gap-2 px-4 py-1.5 bg-white/5 rounded-full border border-white/10">
                     <span className="text-white/60 text-sm font-medium">Selected:</span>
-                    <span className="text-green-400 text-sm font-bold">{selectedMapPool.length}</span>
+                    <span className={cn(
+                      "text-sm font-bold",
+                      selectedMapPool.length === 7 ? "text-green-400" : "text-yellow-400"
+                    )}>
+                      {selectedMapPool.length}/7
+                    </span>
                   </div>
                 </div>
                 <DialogDescription className="text-white/60 text-base leading-relaxed mt-2">
-                  Select which maps are available for this match veto. Valorant rotates maps, so choose the current active map pool.
+                  Select exactly 7 maps for the veto pool. Valorant rotates maps, so choose the current active map pool. You must select exactly 7 maps to proceed.
                 </DialogDescription>
               </DialogHeader>
               <div className="flex-1 overflow-y-auto px-8 py-6">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {(allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps).map((map, index) => {
                     const isSelected = selectedMapPool.includes(map.id);
-                    const mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+                    // Fix map image URL - try games bucket first (for game assets), fallback to website
+              let mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+              if (mapImageUrl && mapImageUrl.includes('website-assets')) {
+                mapImageUrl = mapImageUrl.replace('website-assets/', 'system.assets.games/');
+              } else if (mapImageUrl && mapImageUrl.includes('system.assets.website') && !mapImageUrl.includes('system.assets.games')) {
+                mapImageUrl = mapImageUrl.replace('system.assets.website/', 'system.assets.games/');
+              } else if (mapImageUrl && mapImageUrl.includes('system.assets.website') && !mapImageUrl.includes('system.assets.games')) {
+                mapImageUrl = mapImageUrl.replace('system.assets.website/', 'system.assets.games/');
+              }
+              const isImageLoaded = imagesLoaded.has(mapImageUrl);
                     
                     return (
                       <motion.button
@@ -3207,23 +3766,53 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                           if (isSelected) {
                             setSelectedMapPool(prev => prev.filter(id => id !== map.id));
                           } else {
-                            setSelectedMapPool(prev => [...prev, map.id]);
+                            // Only allow selection if less than 7 maps are selected
+                            if (selectedMapPool.length < 7) {
+                              setSelectedMapPool(prev => [...prev, map.id]);
+                            } else {
+                              toast({
+                                title: 'Maximum Maps Reached',
+                                description: 'You can only select exactly 7 maps for the veto pool.',
+                                variant: 'destructive',
+                              });
+                            }
                           }
                         }}
+                        disabled={!isSelected && selectedMapPool.length >= 7}
                         className={cn(
-                          "group relative rounded-lg overflow-hidden border-2 transition-all duration-200 cursor-pointer",
+                          "group relative rounded-lg overflow-hidden border-2 transition-all duration-200",
                           isSelected
-                            ? "border-green-500 shadow-lg shadow-green-500/20"
-                            : "border-white/20 hover:border-white/40"
+                            ? "border-green-500 shadow-lg shadow-green-500/20 cursor-pointer"
+                            : selectedMapPool.length >= 7
+                            ? "border-white/10 opacity-50 cursor-not-allowed"
+                            : "border-white/20 hover:border-white/40 cursor-pointer"
                         )}
                         style={{
-                          backgroundImage: `url(${mapImageUrl})`,
+                          backgroundImage: isImageLoaded ? `url(${mapImageUrl})` : 'none',
                           backgroundSize: 'cover',
                           backgroundPosition: 'center',
                           backgroundRepeat: 'no-repeat',
-                          minHeight: '180px'
+                          minHeight: '180px',
+                          backgroundColor: isImageLoaded ? 'transparent' : '#1a1a1a'
                         }}
                       >
+                        {/* Loading placeholder */}
+                        {!isImageLoaded && (
+                          <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                            <div className="animate-pulse text-gray-500 text-xs">Loading...</div>
+                          </div>
+                        )}
+                        {/* Preload image */}
+                        {!isImageLoaded && (
+                          <img
+                            src={mapImageUrl}
+                            alt=""
+                            className="hidden"
+                            onLoad={() => setImagesLoaded(prev => new Set([...prev, mapImageUrl]))}
+                            onError={() => console.warn(`[MapVeto] Failed to load image: ${mapImageUrl}`)}
+                            loading="eager"
+                          />
+                        )}
                         {/* Gradient overlay from bottom */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
                         
@@ -3244,10 +3833,27 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                     );
                   })}
                 </div>
-                {selectedMapPool.length === 0 && (
-                  <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                    <p className="text-yellow-400 text-sm font-medium text-center">
-                      Please select at least one map to continue.
+                {selectedMapPool.length < 7 && (
+                  <div className={cn(
+                    "mt-6 p-4 rounded-lg border",
+                    selectedMapPool.length === 0
+                      ? "bg-red-500/10 border-red-500/30"
+                      : "bg-yellow-500/10 border-yellow-500/30"
+                  )}>
+                    <p className={cn(
+                      "text-sm font-medium text-center",
+                      selectedMapPool.length === 0 ? "text-red-400" : "text-yellow-400"
+                    )}>
+                      {selectedMapPool.length === 0
+                        ? "You must select exactly 7 maps to continue."
+                        : `Please select ${7 - selectedMapPool.length} more map${7 - selectedMapPool.length === 1 ? '' : 's'} to continue. (Required: 7 maps)`}
+                    </p>
+                  </div>
+                )}
+                {selectedMapPool.length === 7 && (
+                  <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p className="text-green-400 text-sm font-medium text-center">
+                      ✓ All 7 maps selected. You can proceed to BO selection.
                     </p>
                   </div>
                 )}
@@ -3271,21 +3877,27 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                 </Button>
                 <Button
                   onClick={() => {
-                    if (selectedMapPool.length > 0) {
+                    if (selectedMapPool.length === 7) {
                       setDialogStep('bo');
-                    } else {
+                    } else if (selectedMapPool.length === 0) {
                       toast({
                         title: 'Map Pool Required',
-                        description: 'Please select at least one map to continue.',
+                        description: 'You must select exactly 7 maps to continue.',
+                        variant: 'destructive',
+                      });
+                    } else {
+                      toast({
+                        title: 'Incomplete Map Pool',
+                        description: `You have selected ${selectedMapPool.length} maps. Please select exactly 7 maps to continue.`,
                         variant: 'destructive',
                       });
                     }
                   }}
-                  disabled={selectedMapPool.length === 0}
+                  disabled={selectedMapPool.length !== 7}
                   className="bg-green-500 hover:bg-green-600 text-white font-semibold px-8 shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Continue to BO Selection
-                  <span className="ml-2 text-green-100">({selectedMapPool.length})</span>
+                  <span className="ml-2 text-green-100">({selectedMapPool.length}/7)</span>
                 </Button>
               </DialogFooter>
             </>
@@ -3295,11 +3907,11 @@ export const MapVeto: React.FC<MapVetoProps> = ({
                 <DialogTitle className="text-white text-2xl font-black tracking-tight mb-2">Step 2: Select Best Of Format</DialogTitle>
                 <DialogDescription className="text-white/60 text-base leading-relaxed">
                   Choose the format for this match. This will determine the map veto sequence.
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="text-white/40">Selected maps:</span>
-                    <span className="text-green-400 font-bold">{selectedMapPool.length}</span>
-                  </div>
                 </DialogDescription>
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-white/40">Selected maps:</span>
+                  <span className="text-green-400 font-bold">{selectedMapPool.length}</span>
+                </div>
               </DialogHeader>
               <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-2xl mx-auto">

@@ -58,9 +58,9 @@ const MatchResultUpload: React.FC<Props> = ({ tournamentId, matchId, teamId, isC
       const imageUrls: string[] = [];
       for (const file of files) {
         const path = `${tournamentId}/${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`;
-        const { data: up, error: upErr } = await supabase.storage.from('tournament-results').upload(path, file, { upsert: false });
+        const { data: up, error: upErr } = await supabase.storage.from('tournaments.results').upload(path, file, { upsert: false });
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from('tournament-results').getPublicUrl(path);
+        const { data: pub } = supabase.storage.from('tournaments.results').getPublicUrl(path);
         imageUrls.push(pub.publicUrl);
       }
 

@@ -122,7 +122,7 @@ const OrganizerVerificationForm: React.FC<OrganizerVerificationFormProps> = ({
       if (cnicFront) {
         const ext = cnicFront.name.split('.').pop() || 'jpg';
         const path = `${user.id}/cnic_front_${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('kyc-documents').upload(path, cnicFront, { upsert: true, contentType: cnicFront.type });
+        const { error } = await supabase.storage.from('users.documents.kyc').upload(path, cnicFront, { upsert: true, contentType: cnicFront.type });
         if (error) throw error;
         cnicFrontPath = path;
       }
@@ -130,17 +130,17 @@ const OrganizerVerificationForm: React.FC<OrganizerVerificationFormProps> = ({
       if (cnicBack) {
         const ext = cnicBack.name.split('.').pop() || 'jpg';
         const path = `${user.id}/cnic_back_${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('kyc-documents').upload(path, cnicBack, { upsert: true, contentType: cnicBack.type });
+        const { error } = await supabase.storage.from('users.documents.kyc').upload(path, cnicBack, { upsert: true, contentType: cnicBack.type });
         if (error) throw error;
         cnicBackPath = path;
       }
 
       // Derive public URLs (even if bucket is private, this yields a URL string for storage)
       const cnicFrontUrl = cnicFrontPath
-        ? supabase.storage.from('kyc-documents').getPublicUrl(cnicFrontPath).data.publicUrl
+        ? supabase.storage.from('users.documents.kyc').getPublicUrl(cnicFrontPath).data.publicUrl
         : null;
       const cnicBackUrl = cnicBackPath
-        ? supabase.storage.from('kyc-documents').getPublicUrl(cnicBackPath).data.publicUrl
+        ? supabase.storage.from('users.documents.kyc').getPublicUrl(cnicBackPath).data.publicUrl
         : null;
 
       // Build robust payload matching enforced columns
