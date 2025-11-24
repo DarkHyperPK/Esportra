@@ -1,53 +1,47 @@
-# Esportra - Esports Tournament Platform
+# Esportra
 
-A comprehensive esports tournament management platform built with React, TypeScript, and Supabase.
+**Tournaments, Teams, Victory.**
 
-## 🚀 Features
+Esportra is a comprehensive esports tournament management platform that enables players, teams, organizers, and venue owners to create, manage, and participate in competitive gaming tournaments.
 
-### For Players
-- **Team Management**: Create teams, manage rosters for multiple games
-- **Tournament Registration**: Register teams for tournaments
-- **Roster System**: Multi-game roster support (max 3 rosters per team)
-- **Team Invitations**: Invite members via email with notification system
-- **Match Results**: Upload match results with screenshots
-- **Live Matches**: View party codes for live tournament matches
-- **Dispute System**: Raise disputes with evidence upload
+## About
 
-### For Organizers
-- **Tournament Creation**: Create and manage tournaments
-- **Bracket Generation**: Automatic bracket generation with scheduling
-- **Match Management**: Edit matches, set schedules, manage live matches
-- **Ban Management**: Ban teams/players from tournaments
-- **Dispute Resolution**: Review and resolve player disputes
-- **Team Overview**: View all registered teams and their members
-- **Live Match Control**: Set party codes for live matches
+Esportra provides a complete ecosystem for esports competitions, featuring:
 
-### For Admins
-- **User Management**: Complete user administration system
-- **System Settings**: Platform-wide configuration
-- **Role Management**: Manage user roles and permissions
+- **Tournament Management**: Create and manage tournaments with brackets, match scheduling, and real-time updates
+- **Team Management**: Build and manage teams with roster systems and team-based registrations
+- **Map Veto System**: Integrated map selection and veto system for competitive matches
+- **Dispute Resolution**: Comprehensive dispute management system with evidence upload and conversation threads
+- **Venue Integration**: Connect with gaming venues and organize LAN events
+- **Role-Based Access**: Support for players, organizers, venue owners, and administrators
 
+## Getting Started
 
-## 📚 Key Features Documentation
+This is a React + TypeScript application built with Vite, using Supabase as the backend.
 
-### Roster System
-Teams can create multiple rosters (max 3) for different games. Each roster is game-specific and can have different members. See `ROSTER_ORGANIZATION_MODEL.md` for details.
+### Prerequisites
 
-### Tournament Registration
-Teams register specific rosters for tournaments. The system validates:
-- Roster exists for tournament game
-- Roster has required number of members
-- Team captain eligibility
+- Node.js 18+ 
+- npm or yarn
+- Supabase account
 
-### Bracket System
-- Automatic bracket generation from registrations
-- Supports 8, 16, 24, 32 team brackets
-- Match scheduling and live match management
-- Real-time synchronization via Supabase Realtime
+### Installation
 
-### Authentication & Roles
-- Multi-role system: Player, Organizer, Admin
-- Role-based access control (RBAC)
-- Secure authentication via Supabase Auth
+```bash
+npm install
+npm run dev
+```
 
+## Changelog
 
+For detailed version history and updates, see [CHANGELOG.md](./CHANGELOG.md).
+
+Recent versions:
+- **v0.2.3** - Dispute system improvements, bracket fixes, and map veto enhancements
+- **v0.2.2** - Version bump and release preparation
+- **v0.2.1** - Map veto UI improvements and landing page enhancements
+- **v0.2.0** - Map veto system, real-time updates, and tournament management features
+
+## License
+
+Private - All rights reserved
