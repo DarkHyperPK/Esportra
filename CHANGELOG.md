@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-01-29
+
+### Fixed
+- **Bracket UI**: Fixed checkmarks appearing on all teams - now only shows on completed matches where that team won
+- **Map Veto System**: Fixed 4 maps not loading (Breeze, Icebox, Split, Sunset) - updated to use `system.assets.games` bucket with fallback
+- **Dispute Comments**: Fixed moderator/admin attachments not visible to users - added image display in comment history
+- **Dispute Comments**: Fixed NOT NULL constraint error when uploading images without text - now uses empty string instead of null
+- **Dispute Resolution**: Fixed resolution section (Resolve/Reject buttons) showing after dispute is already resolved/rejected
+- **Dispute Comments**: Fixed conversation history not visible after resolution - both parties can now see full history
+
+### Added
+- **Dispute System**: Added image upload capability for users when commenting on disputes (tournament and general support)
+- **Dispute System**: Added inline image viewer modal - images now open in modal instead of new tab (prevents exposing Supabase URLs)
+- **Dispute System**: Added conversation history visibility for both parties even after resolution
+- **Dispute System**: Added closure message for resolved/rejected disputes indicating no further comments allowed
+- **Map Veto System**: Added fallback logic to check both `system.assets.games` and `system.assets.website` buckets for map images
+- **Hero Section**: Added fallback logic to check both storage buckets for hero image
+
+### Changed
+- **Dispute System**: Comment input and resolution section now only visible for open/in_review disputes
+- **Dispute System**: Conversation history always visible regardless of dispute status
+- **Map Veto System**: Updated all map image URLs to prioritize `system.assets.games` bucket (game assets)
+- **Image Display**: All dispute evidence and comment attachments now use inline modal viewer instead of opening in new tabs
+
 ## [0.2.2] - 2025-11-21
 
 ### Changed
