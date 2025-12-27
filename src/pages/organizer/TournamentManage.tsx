@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -14,8 +15,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Tournament as TournamentType } from '@/hooks/useTournaments';
 import { TournamentStatus } from '@/types/tournament';
 import { supabase } from '@/lib/supabase';
-import { Users, Trophy, Settings, Edit2, Trash2, GamepadIcon, Ban as BanIcon, AlertTriangle } from 'lucide-react';
+import { Users, Trophy, Settings, Edit2, Trash2, GamepadIcon, Ban as BanIcon, AlertTriangle, Plus, ArrowUp, ArrowDown, Layers, Lock, Unlock, Shuffle, ArrowRight } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import type { StaffPermission } from '@/lib/tournamentStaff';
 import {
@@ -37,6 +45,8 @@ import SingleEliminationBracketCustom, { BracketTeam, BracketMatch } from '@/com
 import BanManagement from '@/components/organizer/BanManagement';
 import DisputeCenter from '@/components/organizer/DisputeCenter';
 import TournamentStaffManager from '@/components/organizer/TournamentStaffManager';
+import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
+import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 
@@ -62,10 +72,23 @@ interface DatabaseTournament {
   check_in_required?: boolean;
   check_in_deadline?: string | null;
   auto_remove_unchecked?: boolean;
+  start_date?: string | null;
+  end_date?: string | null;
+  registration_deadline?: string | null;
+  venue_id?: string | null;
+  banner_url?: string | null;
+  logo_url?: string | null;
+  max_teams?: number | null;
+  min_teams?: number | null;
+  format?: string | null;
+  is_public?: boolean;
 }
 
-interface Tournament extends DatabaseTournament {
+interface LocalTournament extends DatabaseTournament {
   current_participants: number;
+  check_in_required?: boolean;
+  check_in_deadline?: string | null;
+  auto_remove_unchecked?: boolean;
 }
 
 interface TournamentRegistration {
@@ -170,7 +193,7 @@ const TournamentDashboard = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const userId = user?.id;
-  const [tournament, setTournament] = useState<TournamentType | null>(null);
+  const [tournament, setTournament] = useState<LocalTournament | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -197,15 +220,19 @@ const TournamentDashboard = () => {
   const [savingCheckInSettings, setSavingCheckInSettings] = useState(false);
   const [removingUnchecked, setRemovingUnchecked] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [cascadeWarnings, setCascadeWarnings] = useState<Array<{ entity: string; count: number; description?: string }>>([]);
   const [hasStaffAccess, setHasStaffAccess] = useState(false);
   const [staffPermissions, setStaffPermissions] = useState<StaffPermission[]>([]);
+  const [stages, setStages] = useState<any[]>([]);
+  const [matchCount, setMatchCount] = useState(0);
   const [now, setNow] = useState(Date.now());
 
   const fetchTournamentData = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Starting to fetch tournament data for slug:', slug);
-      
+
       if (!slug) {
         console.error('No tournament slug provided');
         throw new TournamentError(
@@ -243,7 +270,10 @@ const TournamentDashboard = () => {
           updated_at,
           check_in_required,
           check_in_deadline,
-          auto_remove_unchecked
+          check_in_required,
+          check_in_deadline,
+          auto_remove_unchecked,
+          team_size
         `)
         .eq('slug', slug)
         .single();
@@ -276,7 +306,10 @@ const TournamentDashboard = () => {
             updated_at,
             check_in_required,
             check_in_deadline,
-            auto_remove_unchecked
+            check_in_required,
+            check_in_deadline,
+            auto_remove_unchecked,
+            team_size
           `)
           .eq('id', slug)
           .single();
@@ -332,8 +365,8 @@ const TournamentDashboard = () => {
       const typedTournamentData = (tournamentData as DatabaseTournament)!;
 
       // Check if the current user is the tournament organizer
-      console.log('Checking user permissions:', { 
-        tournamentOrganizerId: typedTournamentData.organizer_id, 
+      console.log('Checking user permissions:', {
+        tournamentOrganizerId: typedTournamentData.organizer_id,
         currentUserId: user?.id,
         isOrganizer: typedTournamentData.organizer_id === user?.id
       });
@@ -368,7 +401,7 @@ const TournamentDashboard = () => {
         staffPerms = (staffRecord.permissions || []) as StaffPermission[];
       }
 
-      const [countResponse, registrationsResponse, bansResponse] = await Promise.all([
+      const [countResponse, registrationsResponse, bansResponse, stagesResponse, matchesResponse] = await Promise.all([
         supabase
           .from('tournament_participants')
           .select('*', { count: 'exact', head: true })
@@ -381,7 +414,16 @@ const TournamentDashboard = () => {
           .from('tournament_bans')
           .select('user_id, team_id')
           .eq('tournament_id', typedTournamentData.id)
-          .eq('is_active', true)
+          .eq('is_active', true),
+        supabase
+          .from('tournament_stages')
+          .select('*')
+          .eq('tournament_id', typedTournamentData.id)
+          .order('stage_order', { ascending: true }),
+        supabase
+          .from('tournament_matches')
+          .select('id', { count: 'exact', head: true })
+          .eq('tournament_id', typedTournamentData.id)
       ]);
 
       if (countResponse.error) {
@@ -402,13 +444,34 @@ const TournamentDashboard = () => {
         );
       }
 
+      if (bansResponse.error) {
+        console.error('Error fetching bans:', bansResponse.error);
+        throw new DatabaseError(
+          'Failed to fetch tournament bans',
+          'DATABASE_ERROR',
+          { error: bansResponse.error }
+        );
+      }
+
+      if (stagesResponse.error) {
+        console.error('Error fetching stages:', stagesResponse.error);
+        throw new DatabaseError(
+          'Failed to fetch tournament stages',
+          'DATABASE_ERROR',
+          { error: stagesResponse.error }
+        );
+      }
+
       const count = countResponse.count || 0;
+      setStages(stagesResponse.data || []);
+      setMatchCount(matchesResponse.count || 0);
+
       const registrationsData = registrationsResponse.data;
-      
+
       // Get banned user_ids and team_ids
-      const bannedUserIds = new Set((bansResponse.data || []).filter(b => b.user_id).map(b => b.user_id));
-      const bannedTeamIds = new Set((bansResponse.data || []).filter(b => b.team_id).map(b => b.team_id));
-      
+      const bannedUserIds = new Set(((bansResponse.data as any[]) || []).filter(b => b.user_id).map(b => b.user_id));
+      const bannedTeamIds = new Set(((bansResponse.data as any[]) || []).filter(b => b.team_id).map(b => b.team_id));
+
       // Filter out banned participants
       const filteredRegistrations = (registrationsData || []).filter((reg: any) => {
         if (reg.user_id && bannedUserIds.has(reg.user_id)) return false;
@@ -488,14 +551,14 @@ const TournamentDashboard = () => {
       // Resolve team rosters: use roster_id from registration to get roster-specific members
       for (const p of participants) {
         if (p.participant_type !== 'team') continue;
-        
+
         // If existing string contains plain names (not UUIDs), keep it
         if (p.team_members && typeof p.team_members === 'string' && p.team_members.trim().length > 0) {
           const tokens = p.team_members.split(',').map(s => s.trim()).filter(Boolean);
           const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
           if (tokens.some(t => !looksLikeUuid(t))) continue;
         }
-        
+
         try {
           // Get the registration row to access roster_id
           const { data: regRow } = await supabase
@@ -503,50 +566,50 @@ const TournamentDashboard = () => {
             .select('roster_id, team_id')
             .eq('id', p.id)
             .maybeSingle();
-          
+
           const rosterId = (regRow as any)?.roster_id || null;
           let teamId = p.team_id as string | null || (regRow as any)?.team_id || null;
           let ownerId: string | null = null;
-          
+
           // Resolve team id by exact name if missing
           if (!teamId && p.team_name) {
             const exact = await (supabase as any).from('teams').select('id, owner_id, logo_url').eq('name', p.team_name).maybeSingle();
-            if (exact.data) { 
-              teamId = exact.data.id; 
-              ownerId = exact.data.owner_id; 
-              if (!p.team_logo) p.team_logo = exact.data.logo_url || null; 
+            if (exact.data) {
+              teamId = exact.data.id;
+              ownerId = exact.data.owner_id;
+              if (!p.team_logo) p.team_logo = exact.data.logo_url || null;
             }
             if (!teamId) {
               const fuzzy = await (supabase as any).from('teams').select('id, owner_id, logo_url').ilike('name', `%${p.team_name}%`).limit(1).maybeSingle();
               if (fuzzy.data) {
-                teamId = fuzzy.data.id; 
-                ownerId = fuzzy.data.owner_id; 
+                teamId = fuzzy.data.id;
+                ownerId = fuzzy.data.owner_id;
                 if (!p.team_logo) p.team_logo = fuzzy.data.logo_url || null;
               }
             }
           }
-          
+
           if (teamId && !ownerId) {
             const meta = await (supabase as any).from('teams').select('owner_id, logo_url').eq('id', teamId).maybeSingle();
             if (meta.data) {
-              ownerId = meta.data.owner_id || null; 
+              ownerId = meta.data.owner_id || null;
               if (!p.team_logo) p.team_logo = meta.data.logo_url || null;
             }
           }
-          
+
           let names: string[] = [];
-          
+
           // Priority 1: Use roster_id from registration to get roster-specific members
           if (rosterId) {
             const { data: roster, error: rosterError } = await supabase.rpc('get_roster_members', { r_id: rosterId });
             if (rosterError) {
               console.error('Error fetching roster members:', rosterError, 'for roster_id:', rosterId);
             } else {
-              names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+              names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0, 8)}`);
               console.log('Resolved members from roster_id:', rosterId, 'names:', names);
             }
           }
-          
+
           // Priority 2: If no roster_id, resolve roster by team_id + tournament game
           if (names.length === 0 && teamId && typedTournamentData.game) {
             const game = (typedTournamentData.game || '').trim().toLowerCase();
@@ -554,13 +617,13 @@ const TournamentDashboard = () => {
               .from('team_rosters')
               .select('id, name, game, created_at')
               .eq('team_id', teamId);
-            
+
             if (rostersError) {
               console.error('Error fetching rosters:', rostersError, 'for team_id:', teamId);
             } else {
               const list = rosters || [];
               let pickedRosterId: string | null = null;
-              
+
               if (list.length === 1) {
                 pickedRosterId = list[0].id;
               } else if (list.length > 1) {
@@ -570,47 +633,47 @@ const TournamentDashboard = () => {
                   pickedRosterId = byGame[0].id;
                 } else if (byGame.length > 0) {
                   // Multiple matches, pick most recent
-                  const sorted = [...byGame].sort((a: any, b: any) => 
+                  const sorted = [...byGame].sort((a: any, b: any) =>
                     new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
                   );
                   pickedRosterId = sorted[0].id;
                 } else if (list.length > 0) {
                   // No game match, pick most recent
-                  const sorted = [...list].sort((a: any, b: any) => 
+                  const sorted = [...list].sort((a: any, b: any) =>
                     new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
                   );
                   pickedRosterId = sorted[0].id;
                 }
               }
-              
+
               if (pickedRosterId) {
                 const { data: roster, error: rosterError2 } = await supabase.rpc('get_roster_members', { r_id: pickedRosterId });
                 if (rosterError2) {
                   console.error('Error fetching roster members (priority 2):', rosterError2, 'for roster_id:', pickedRosterId);
                 } else {
-                  names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+                  names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0, 8)}`);
                   console.log('Resolved members from inferred roster_id:', pickedRosterId, 'names:', names);
                 }
               }
             }
           }
-          
+
           // Priority 3: Final fallback to organization-wide team members (legacy)
           if (names.length === 0 && teamId) {
             const { data: roster, error: teamRosterError } = await (supabase as any).rpc('get_team_roster', { t_id: teamId });
             if (teamRosterError) {
               console.error('Error fetching team roster:', teamRosterError, 'for team_id:', teamId);
             } else {
-              names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+              names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0, 8)}`);
               if (names.length === 0 && ownerId) {
                 const { data: owner } = await supabase.from('profiles').select('id, username, full_name').eq('id', ownerId).maybeSingle();
-                const ownerName = owner?.username || owner?.full_name || `player_${String(ownerId).substring(0,8)}`;
+                const ownerName = owner?.username || owner?.full_name || `player_${String(ownerId).substring(0, 8)}`;
                 names = [ownerName];
               }
               console.log('Resolved members from team_roster fallback:', names);
             }
           }
-          
+
           if (names.length > 0) {
             p.team_members = names.join(', ');
             console.log('Final member list for participant:', p.id, 'team_name:', p.team_name, 'members:', p.team_members);
@@ -656,7 +719,7 @@ const TournamentDashboard = () => {
             }
           });
         }
-      } catch {}
+      } catch { }
 
       // Attach team logos where team_id is available
       const participantTeamIds = Array.from(new Set(participants.filter(p => p.participant_type === 'team' && p.team_id).map(p => p.team_id))) as string[];
@@ -678,14 +741,14 @@ const TournamentDashboard = () => {
       const now = new Date();
       const start = new Date(typedTournamentData.start_date);
       console.log('Tournament data:', typedTournamentData);
-      
+
       // Get venue name if venue_id exists
       let venueName = '';
       if (typedTournamentData.venue_id) {
         // For now, just use venue_id as venue name
         venueName = `Venue ${typedTournamentData.venue_id}`;
       }
-      
+
       // Only allow the three statuses
       let computedStatus: 'upcoming' | 'ongoing' | 'completed' = 'upcoming';
       if (typedTournamentData.status === 'completed') {
@@ -694,7 +757,7 @@ const TournamentDashboard = () => {
         computedStatus = 'ongoing';
       }
 
-      const tournament: TournamentType = {
+      const transformedTournament: LocalTournament = {
         id: typedTournamentData.id,
         name: typedTournamentData.name,
         game: typedTournamentData.game,
@@ -705,7 +768,6 @@ const TournamentDashboard = () => {
         prize_pool: typedTournamentData.prize_pool?.toString() || '0',
         description: typedTournamentData.description || '',
         organizer_id: typedTournamentData.organizer_id,
-        user_id: typedTournamentData.organizer_id || '',
         entry_fee: typedTournamentData.entry_fee?.toString() || '0',
         is_online: !typedTournamentData.venue_id,
         created_at: typedTournamentData.created_at,
@@ -717,6 +779,7 @@ const TournamentDashboard = () => {
         check_in_required: typedTournamentData.check_in_required ?? false,
         check_in_deadline: typedTournamentData.check_in_deadline,
         auto_remove_unchecked: typedTournamentData.auto_remove_unchecked ?? true,
+        slug: typedTournamentData.slug,
       };
 
       // Pick logo: RAWG API first, then local mapping, then DB games table, then tournament image
@@ -733,16 +796,16 @@ const TournamentDashboard = () => {
             setGameLogo(localGame.logo);
           } else {
             const { data: gameData } = await (supabase as any)
-        .from('games')
-        .select('logo_url')
-        .eq('name', typedTournamentData.game)
+              .from('games')
+              .select('logo_url')
+              .eq('name', typedTournamentData.game)
               .maybeSingle();
             if (gameData?.logo_url) {
-        setGameLogo(gameData.logo_url);
-            } else if (tournament.image_url) {
-              setGameLogo(tournament.image_url);
-      } else {
-        setGameLogo(null);
+              setGameLogo(gameData.logo_url);
+            } else if (transformedTournament.image_url) {
+              setGameLogo(transformedTournament.image_url);
+            } else {
+              setGameLogo(null);
             }
           }
         }
@@ -750,20 +813,20 @@ const TournamentDashboard = () => {
         const localGame = (esportsGames as any).games.find((g: any) => normalize(g.name) === normalize(typedTournamentData.game));
         if (localGame?.logo) {
           setGameLogo(localGame.logo);
-        } else if (tournament.image_url) {
-          setGameLogo(tournament.image_url);
+        } else if (transformedTournament.image_url) {
+          setGameLogo(transformedTournament.image_url);
         } else {
           setGameLogo(null);
         }
       }
 
       // Set the tournament data
-      setTournament(tournament);
-      setCheckInRequiredSetting(!!tournament.check_in_required);
-      setAutoRemoveUncheckedSetting(tournament.auto_remove_unchecked ?? true);
+      setTournament(transformedTournament);
+      setCheckInRequiredSetting(!!transformedTournament.check_in_required);
+      setAutoRemoveUncheckedSetting(transformedTournament.auto_remove_unchecked ?? true);
       setCheckInDeadlineSetting(
-        tournament.check_in_deadline
-          ? new Date(tournament.check_in_deadline).toISOString().slice(0, 16)
+        transformedTournament.check_in_deadline
+          ? new Date(transformedTournament.check_in_deadline).toISOString().slice(0, 16)
           : ''
       );
       setParticipants(participants as Participant[]);
@@ -780,7 +843,25 @@ const TournamentDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [slug, userId]);
+  }, [slug, userId, toast]);
+
+  // Lightweight function to refresh only stages without full page reload
+  const refreshStages = useCallback(async () => {
+    if (!tournament?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('tournament_stages')
+        .select('*')
+        .eq('tournament_id', tournament.id)
+        .order('stage_order', { ascending: true });
+
+      if (error) throw error;
+      setStages(data || []);
+    } catch (error) {
+      console.error('Error refreshing stages:', error);
+    }
+  }, [tournament?.id]);
+
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -857,7 +938,7 @@ const TournamentDashboard = () => {
               .from('tournament_participants')
               .select('*')
               .eq('tournament_id', tournament.id);
-            
+
             if (registrationsData) {
               const regs = (registrationsData as any[]) || [];
               const soloUserIds = Array.from(new Set(regs.filter(r => r.participant_type !== 'team' && r.user_id).map(r => r.user_id)));
@@ -963,6 +1044,52 @@ const TournamentDashboard = () => {
     };
   }, [tournament?.id]);
 
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('tournaments')
+        .update({ status: newStatus })
+        .eq('id', tournament.id);
+
+      if (error) throw error;
+
+      setTournament(prev => prev ? { ...prev, status: newStatus as any } : null);
+      toast({
+        title: 'Status Updated',
+        description: `Tournament status changed to ${newStatus}`,
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to update status: ${(error as any)?.message || JSON.stringify(error) || 'Unknown error'}`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open':
+      case 'upcoming': return 'border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.15)]';
+      case 'ongoing': return 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.15)]';
+      case 'completed': return 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]';
+      case 'cancelled': return 'border-gray-500';
+      default: return 'border-white/10';
+    }
+  };
+
+  const getStatusTextColor = (status: string) => {
+    switch (status) {
+      case 'open':
+      case 'upcoming': return 'text-purple-400';
+      case 'ongoing': return 'text-red-400';
+      case 'completed': return 'text-emerald-400';
+      case 'cancelled': return 'text-gray-400';
+      default: return 'text-white';
+    }
+  };
+
   const handleDelete = async () => {
     if (!isOrganizer) {
       toast({
@@ -974,11 +1101,18 @@ const TournamentDashboard = () => {
     }
     try {
       setIsDeleting(true);
-      await tournamentApi.deleteTournament(slug!);
+
+      // Soft delete: set deleted_at timestamp
+      const { error } = await supabase
+        .from('tournaments')
+        .update({ deleted_at: new Date().toISOString() } as any)
+        .eq('id', tournament?.id);
+
+      if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: 'Tournament deleted successfully',
+        title: 'Tournament deleted',
+        description: `${tournament?.name} has been moved to deleted tournaments. You can restore it within 7 days.`,
       });
       navigate('/organizer/tournaments');
     } catch (error) {
@@ -1020,11 +1154,11 @@ const TournamentDashboard = () => {
       setTournament((prev) =>
         prev
           ? {
-              ...prev,
-              check_in_required: payload.check_in_required,
-              auto_remove_unchecked: payload.auto_remove_unchecked,
-              check_in_deadline: payload.check_in_deadline,
-            }
+            ...prev,
+            check_in_required: payload.check_in_required,
+            auto_remove_unchecked: payload.auto_remove_unchecked,
+            check_in_deadline: payload.check_in_deadline,
+          }
           : prev
       );
     } catch (error: any) {
@@ -1117,8 +1251,8 @@ const TournamentDashboard = () => {
                       .select('id, gamer_tag, username, full_name')
                       .in('id', ids);
                     const mapTok = new Map<string, string>();
-                    (profsTok || []).forEach((p: any) => mapTok.set(p.id, p.gamer_tag || p.username || p.full_name || `player_${String(p.id).substring(0,8)}`));
-                    regTeamMembers = ids.map((id: string) => mapTok.get(id) || `player_${String(id).substring(0,8)}`);
+                    (profsTok || []).forEach((p: any) => mapTok.set(p.id, p.gamer_tag || p.username || p.full_name || `player_${String(p.id).substring(0, 8)}`));
+                    regTeamMembers = ids.map((id: string) => mapTok.get(id) || `player_${String(id).substring(0, 8)}`);
                   }
                 }
               } else {
@@ -1132,7 +1266,7 @@ const TournamentDashboard = () => {
             }
           }
         }
-      } catch {}
+      } catch { }
       if (!teamId && p.team_name) {
         const { data: teamRow } = await supabase
           .from('teams')
@@ -1153,7 +1287,7 @@ const TournamentDashboard = () => {
       let members: string[] = [];
 
       const toNames = (rows: any[]) =>
-        (rows || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
+        (rows || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0, 8)}`);
 
       // Step 0: Check if participant already has resolved readable member names (from fetchTournamentData loop)
       if (p.team_members && typeof p.team_members === 'string' && p.team_members.trim().length > 0) {
@@ -1293,10 +1427,10 @@ const TournamentDashboard = () => {
       } else {
         // Fallback: use provided userId
         if (!userId) {
-          toast({ 
-            title: 'Error', 
-            description: 'Cannot determine user ID for ban.', 
-            variant: 'destructive' 
+          toast({
+            title: 'Error',
+            description: 'Cannot determine user ID for ban.',
+            variant: 'destructive'
           });
           return;
         }
@@ -1322,10 +1456,10 @@ const TournamentDashboard = () => {
       if (deleteError) {
         console.error('Error deleting participant:', deleteError);
         // Ban was inserted, but deletion failed - log error but don't fail completely
-        toast({ 
-          title: 'Warning', 
-          description: 'Participant was banned but registration removal failed. Please refresh.', 
-          variant: 'destructive' 
+        toast({
+          title: 'Warning',
+          description: 'Participant was banned but registration removal failed. Please refresh.',
+          variant: 'destructive'
         });
       } else {
         toast({ title: 'Banned', description: 'Participant has been banned from this tournament.' });
@@ -1337,10 +1471,10 @@ const TournamentDashboard = () => {
       fetchTournamentData(); // Refresh participants
     } catch (error: any) {
       console.error('Error banning participant:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to ban participant.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to ban participant.',
+        variant: 'destructive'
       });
     }
   };
@@ -1474,7 +1608,7 @@ const TournamentDashboard = () => {
   // Update BracketSVGStyle for more aggressive SVG and parent container overrides
   const BracketSVGStyle = () => {
     return (
-    <style>{`
+      <style>{`
       .bracket-svg-root,
       .bracket-svg-root > div,
       .bracket-svg-root svg {
@@ -1492,47 +1626,47 @@ const TournamentDashboard = () => {
         background: transparent !important;
       }
     `}</style>
-  );
+    );
   };
 
   // Add a blurred background and animated border/glow
   const BracketPremiumOverlay = () => {
     return (
-    <>
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 0,
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        background: 'rgba(18,18,22,0.7)',
-        borderRadius: 32,
-        pointerEvents: 'none',
-      }} />
-      <div className="bracket-glow-border" style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        borderRadius: 32,
-        boxShadow: '0 0 32px 4px #a259ff88, 0 0 0 4px #18181b',
-        border: '2px solid #a259ff',
-        pointerEvents: 'none',
-        animation: 'bracketGlow 2s infinite alternate',
-        zIndex: 2,
-      }} />
-      <style>{`
+      <>
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          zIndex: 0,
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          background: 'rgba(18,18,22,0.7)',
+          borderRadius: 32,
+          pointerEvents: 'none',
+        }} />
+        <div className="bracket-glow-border" style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          borderRadius: 32,
+          boxShadow: '0 0 32px 4px #a259ff88, 0 0 0 4px #18181b',
+          border: '2px solid #a259ff',
+          pointerEvents: 'none',
+          animation: 'bracketGlow 2s infinite alternate',
+          zIndex: 2,
+        }} />
+        <style>{`
         @keyframes bracketGlow {
           0% { box-shadow: 0 0 32px 4px #a259ff44, 0 0 0 4px #18181b; }
           100% { box-shadow: 0 0 48px 8px #a259ffcc, 0 0 0 4px #18181b; }
         }
       `}</style>
-    </>
-  );
+      </>
+    );
   };
 
   const formatCountdown = useCallback((ms: number) => {
@@ -1711,134 +1845,256 @@ const TournamentDashboard = () => {
               <Edit2 className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden xs:inline">Edit</span>
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="text-xs sm:text-sm px-2 sm:px-4">
-                  <Trash2 className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="hidden xs:inline">Delete</span>
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Tournament</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this tournament? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-red-500 hover:bg-red-600"
-                  >
-                    {isDeleting ? "Deleting..." : "Delete"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button variant="destructive" size="sm" className="text-xs sm:text-sm px-2 sm:px-4" onClick={async () => {
+              // Check cascade effects before showing modal
+              try {
+                const warnings = [];
+                if (tournament?.current_participants && tournament.current_participants > 0) {
+                  warnings.push({
+                    entity: 'participant',
+                    count: tournament.current_participants,
+                    description: 'will be removed from this tournament'
+                  });
+                }
+                setCascadeWarnings(warnings);
+                setDeleteModalOpen(true);
+              } catch (error) {
+                console.error('Error checking cascade effects:', error);
+              }
+            }}>
+              <Trash2 className="mr-1 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Delete</span>
+            </Button>
+
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmationModal
+              isOpen={deleteModalOpen}
+              onClose={() => {
+                setDeleteModalOpen(false);
+                setCascadeWarnings([]);
+              }}
+              onConfirm={handleDelete}
+              entityType="tournament"
+              entityName={tournament?.name || 'Tournament'}
+              isDeleting={isDeleting}
+              cascadeWarnings={cascadeWarnings}
+              requireNameConfirmation={cascadeWarnings.length > 0 || tournament?.status !== 'upcoming'}
+              customWarning={
+                tournament?.status === 'ongoing'
+                  ? 'This tournament is currently ongoing. Deleting it will affect all participants.'
+                  : tournament?.status === 'completed'
+                    ? 'This tournament is completed. All historical data will be preserved but hidden.'
+                    : undefined
+              }
+            />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
-          <Card className="bg-gaming-dark border-gaming-gray/30">
-            <CardHeader className="pb-2 sm:pb-6">
-              <CardTitle className="flex items-center text-sm sm:text-base">
-                <Trophy className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                Prize Pool
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xl sm:text-2xl font-bold text-gaming-green">{tournament.prize_pool}</p>
-            </CardContent>
-          </Card>
+        {/* Premium Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-8">
+          {/* Prize Pool Card */}
+          <div className="relative group">
+            <Card whileHover={{ y: 0 }} className="relative glass-premium rounded-2xl overflow-hidden transition-all duration-300 border-2 border-white/5 hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-3 text-sm text-gray-400 font-medium uppercase tracking-wider">
+                  <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                    <Trophy className="h-4 w-4 text-white" />
+                  </div>
+                  Prize Pool
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-3xl sm:text-4xl font-bold text-white">
+                  {tournament.prize_pool}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card className="bg-gaming-dark border-gaming-gray/30">
-            <CardHeader className="pb-2 sm:pb-6">
-              <CardTitle className="flex items-center text-sm sm:text-base">
-                <Users className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                Participants
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xl sm:text-2xl font-bold">{tournament.current_participants} / {tournament.max_participants}</p>
-            </CardContent>
-          </Card>
+          {/* Participants Card */}
+          <div className="relative group">
+            <Card whileHover={{ y: 0 }} className="relative glass-premium rounded-2xl overflow-hidden transition-all duration-300 border-2 border-white/5 hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-3 text-sm text-gray-400 font-medium uppercase tracking-wider">
+                  <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                    <Users className="h-4 w-4 text-white" />
+                  </div>
+                  Participants
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-3xl sm:text-4xl font-bold text-white">
+                  <span className="text-white">{tournament.current_participants}</span>
+                  <span className="text-gray-600 mx-1">/</span>
+                  <span className="text-gray-500">{tournament.max_participants}</span>
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-          <Card className="bg-gaming-dark border-gaming-gray/30 sm:col-span-2 lg:col-span-1">
-            <CardHeader className="pb-2 sm:pb-6">
-              <CardTitle className="flex items-center text-sm sm:text-base">
-                <Settings className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xl sm:text-2xl font-bold capitalize">{tournament.status}</p>
-            </CardContent>
-          </Card>
+          {/* Status Card */}
+          <div className="relative group sm:col-span-2 lg:col-span-1">
+            <Card whileHover={{ y: 0 }} className={cn("relative glass-premium rounded-2xl overflow-hidden transition-all duration-300 border-2", getStatusColor(tournament.status))}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-3 text-sm text-gray-400 font-medium uppercase tracking-wider">
+                  <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                    <Settings className="h-4 w-4 text-white" />
+                  </div>
+                  Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <Select
+                  value={tournament.status}
+                  onValueChange={handleStatusChange}
+                >
+                  <SelectTrigger className={cn("border-0 bg-transparent p-0 h-auto text-2xl sm:text-3xl font-bold focus:ring-0 transition-colors duration-300", getStatusTextColor(tournament.status))}>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open" className="text-purple-400 focus:text-purple-400">Upcoming</SelectItem>
+                    <SelectItem value="ongoing" className="text-red-400 focus:text-red-400">Ongoing (Live)</SelectItem>
+                    <SelectItem value="completed" className="text-emerald-400 focus:text-emerald-400">Completed</SelectItem>
+                    <SelectItem value="cancelled" className="text-gray-400 focus:text-gray-400">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full overflow-x-auto flex-nowrap justify-start sm:justify-center pb-2 sm:pb-0 scrollbar-hide">
-            <TabsTrigger value="overview" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Overview</TabsTrigger>
-            <TabsTrigger value="participants" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Participants</TabsTrigger>
-            <TabsTrigger value="brackets" disabled={!canEditBracket} className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Brackets</TabsTrigger>
-            <TabsTrigger value="bans" disabled={!canManageTeams} className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Bans</TabsTrigger>
-            <TabsTrigger value="disputes" disabled={!canAssistDisputes} className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Disputes</TabsTrigger>
-            {canManageStaff && (
-              <TabsTrigger value="staff" className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Staff</TabsTrigger>
-            )}
-            <TabsTrigger value="settings" disabled={!isOrganizer} className="text-[10px] xs:text-xs sm:text-sm whitespace-nowrap px-2 xs:px-3">Settings</TabsTrigger>
-          </TabsList>
+          {/* Premium Tab Navigation */}
+          <div className="mb-6">
+            <TabsList className="w-full flex-nowrap justify-start sm:justify-center p-1.5 bg-black/50 border border-white/10 rounded-2xl backdrop-blur-sm overflow-hidden">
+              <TabsTrigger
+                value="overview"
+                className="text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-xl data-[state=active]:bg-white/10 data-[state=active]:border data-[state=active]:border-white/20 data-[state=active]:text-white transition-all duration-300"
+              >
+                Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="participants"
+                className="text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-xl data-[state=active]:bg-white/10 data-[state=active]:border data-[state=active]:border-white/20 data-[state=active]:text-white transition-all duration-300"
+              >
+                Participants
+              </TabsTrigger>
+              <TabsTrigger
+                value="stages"
+                className="text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-xl data-[state=active]:bg-white/10 data-[state=active]:border data-[state=active]:border-white/20 data-[state=active]:text-white transition-all duration-300"
+              >
+                Stages
+              </TabsTrigger>
+              {matchCount > 0 && (
+                <TabsTrigger
+                  value="brackets"
+                  disabled={!canEditBracket}
+                  className="text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-xl data-[state=active]:bg-white/10 data-[state=active]:border data-[state=active]:border-white/20 data-[state=active]:text-white transition-all duration-300"
+                >
+                  Brackets
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="bans"
+                disabled={!canManageTeams}
+                className="text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-xl data-[state=active]:bg-white/10 data-[state=active]:border data-[state=active]:border-white/20 data-[state=active]:text-white transition-all duration-300"
+              >
+                Bans
+              </TabsTrigger>
+              <TabsTrigger
+                value="disputes"
+                disabled={!canAssistDisputes}
+                className="text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-xl data-[state=active]:bg-white/10 data-[state=active]:border data-[state=active]:border-white/20 data-[state=active]:text-white transition-all duration-300"
+              >
+                Disputes
+              </TabsTrigger>
+              {canManageStaff && (
+                <TabsTrigger
+                  value="staff"
+                  className="text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-xl data-[state=active]:bg-white/10 data-[state=active]:border data-[state=active]:border-white/20 data-[state=active]:text-white transition-all duration-300"
+                >
+                  Staff
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="settings"
+                disabled={!isOrganizer}
+                className="text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-xl data-[state=active]:bg-white/10 data-[state=active]:border data-[state=active]:border-white/20 data-[state=active]:text-white transition-all duration-300"
+              >
+                Settings
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="overview">
-            <Card className="bg-gaming-dark border-gaming-gray/30 mb-6">
-              <CardHeader>
-                <CardTitle>Overview</CardTitle>
+            <Card whileHover={{ y: 0 }} className="glass-premium rounded-2xl border-0 mb-6">
+              <CardHeader className="pb-4 border-b border-white/5">
+                <CardTitle className="text-lg font-semibold text-white">Overview</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="mb-4">
-                  <h2 className="text-xl font-semibold mb-2">{tournament.name}</h2>
-                  <p className="text-gray-300 mb-2">{tournament.description}</p>
+              <CardContent className="pt-6">
+                {/* Tournament Name & Description */}
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-3">{tournament.name}</h2>
+                  <p className="text-gray-400 leading-relaxed">{tournament.description || 'No description provided.'}</p>
                 </div>
-                <div className="flex flex-wrap gap-8 mb-4">
-                  <div>
-                    <span className="block text-sm text-gray-400">Date & Time</span>
-                    <span className="block font-semibold">{tournament.date} at {tournament.time}</span>
+
+                {/* Info Grid - Row 1 */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                    <span className="block text-xs text-gray-500 uppercase tracking-wider mb-1">Date & Time</span>
+                    <span className="block text-sm font-medium text-white">{tournament.date} at {tournament.time}</span>
                   </div>
-                  <div>
-                    <span className="block text-sm text-gray-400">Venue</span>
-                    <span className="block font-semibold">{tournament.venue}</span>
+                  <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                    <span className="block text-xs text-gray-500 uppercase tracking-wider mb-1">Venue</span>
+                    <span className="block text-sm font-medium text-white">{tournament.venue || 'Online'}</span>
                   </div>
-                  <div>
-                    <span className="block text-sm text-gray-400">Entry Fee</span>
-                    <span className="block font-semibold">{tournament.entry_fee || 'Free'}</span>
+                  <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                    <span className="block text-xs text-gray-500 uppercase tracking-wider mb-1">Entry Fee</span>
+                    <span className="block text-sm font-medium text-white">{tournament.entry_fee || 'Free'}</span>
                   </div>
-                  <div>
-                    <span className="block text-sm text-gray-400">Format</span>
-                    <span className="block font-semibold">{tournament.is_online ? 'Online' : 'LAN'}</span>
+                  <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                    <span className="block text-xs text-gray-500 uppercase tracking-wider mb-1">Format</span>
+                    <span className="block text-sm font-medium text-white">{tournament.is_online ? 'Online' : 'LAN'}</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-8">
-                  <div>
-                    <span className="block text-sm text-gray-400">Participants</span>
-                    <span className="block font-semibold">{tournament.current_participants} / {tournament.max_participants}</span>
+
+                {/* Info Grid - Row 2 */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10">
+                    <span className="block text-xs text-gray-500 uppercase tracking-wider mb-1">Participants</span>
+                    <span className="text-lg font-bold text-white">
+                      {tournament.current_participants} / {tournament.max_participants}
+                    </span>
                   </div>
-                  <div>
-                    <span className="block text-sm text-gray-400">Teams Registered</span>
-                    <span className="block font-semibold">{participants.filter(p => p.participant_type === 'team').length}</span>
+                  <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10">
+                    <span className="block text-xs text-gray-500 uppercase tracking-wider mb-1">Teams Registered</span>
+                    <span className="text-lg font-bold text-white">
+                      {participants.filter(p => p.participant_type === 'team').length}
+                    </span>
                   </div>
-                  <div>
-                    <span className="block text-sm text-gray-400">Solo Players</span>
-                    <span className="block font-semibold">{participants.filter(p => p.participant_type === 'solo').length}</span>
+                  <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10">
+                    <span className="block text-xs text-gray-500 uppercase tracking-wider mb-1">Solo Players</span>
+                    <span className="text-lg font-bold text-white">
+                      {participants.filter(p => p.participant_type === 'solo').length}
+                    </span>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
+          <TabsContent value="stages">
+            <StageManagementTab
+              tournamentId={tournament.id}
+              stages={stages}
+              onUpdate={refreshStages}
+              game={tournament.game || ''}
+            />
+          </TabsContent>
+
           <TabsContent value="participants">
             {showCheckInSummary && (
-              <Card className="bg-[#080d18] border border-white/5 mb-6">
+              <Card className="glass-premium rounded-2xl border-0 mb-6">
                 <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <CardTitle className="text-lg text-white">Check-In Monitor</CardTitle>
@@ -1850,13 +2106,12 @@ const TournamentDashboard = () => {
                     </p>
                   </div>
                   <Badge
-                    className={`text-xs ${
-                      isCheckInClosed
-                        ? 'bg-red-500/10 text-red-200 border-red-500/40'
-                        : checkInProgress === 100
-                          ? 'bg-green-500/10 text-green-200 border-green-500/40'
-                          : 'bg-amber-500/10 text-amber-200 border-amber-500/40'
-                    }`}
+                    className={`text-xs ${isCheckInClosed
+                      ? 'bg-red-500/10 text-red-200 border-red-500/40'
+                      : checkInProgress === 100
+                        ? 'bg-green-500/10 text-green-200 border-green-500/40'
+                        : 'bg-amber-500/10 text-amber-200 border-amber-500/40'
+                      }`}
                   >
                     {isCheckInClosed
                       ? 'Closed'
@@ -1933,450 +2188,450 @@ const TournamentDashboard = () => {
                 </CardContent>
               </Card>
             )}
-            <Card className="bg-gaming-dark border-gaming-gray/30">
-              <CardHeader>
-                <CardTitle>Teams</CardTitle>
+            <Card className="glass-premium rounded-2xl border-0">
+              <CardHeader className="border-b border-white/5">
+                <CardTitle className="text-lg font-semibold text-white">Teams</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 {participants.filter(p => p.participant_type === 'team').length === 0 ? (
                   <p className="text-gray-400">No teams registered yet.</p>
                 ) : (
                   <>
                     {/* Desktop Table View */}
-                    <div className="hidden md:block overflow-x-auto rounded-lg border border-gaming-gray/30">
-                        <table className="min-w-full bg-gaming-dark text-white">
-                          <thead className="bg-gaming-gray/20">
-                            <tr>
-                              <th className="py-3 px-4 text-left text-sm font-semibold">Logo</th>
-                              <th className="py-3 px-4 text-left text-sm font-semibold">Team Name</th>
-                              <th className="py-3 px-4 text-left text-sm font-semibold">Registered</th>
-                              <th className="py-3 px-4 text-right text-sm font-semibold">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                        {participants
-                          .filter(p => p.participant_type === 'team')
-                                .map((participant) => (
-                            <tr key={participant.id} className="border-t border-gaming-gray/30 hover:bg-gaming-gray/10 cursor-pointer transition-colors"
-                              onClick={async () => {
-                                setSelectedTeam(participant);
-                                setTeamLoading(true);
-                                setTeamCaptain(null);
-                                try {
-                                  // Parse any pre-saved members; if they look like UUIDs, we will resolve them to profile names
-                                  const rawTokens = participant.team_members ? participant.team_members.split(',').map(s => s.trim()).filter(Boolean) : [];
-                                  const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-                                  const tokensAreIds = rawTokens.some(t => looksLikeUuid(t));
-                                  if (rawTokens.length > 0 && !tokensAreIds) {
-                                    setSelectedTeamMembers(rawTokens);
-                                  }
-                                  // Resolve team id and owner
-                                  let teamId = participant.team_id as string | null;
-                                  let ownerId: string | null = null;
-                                  let logoUrl: string | null = participant.team_logo || null;
-                                  if (!teamId) {
-                                    // Try exact name match first
-                                    const exact = await supabase
-                                      .from('teams')
-                                      .select('id, owner_id, logo_url')
-                                      .eq('name', participant.team_name || '')
-                                      .maybeSingle();
-                                    if (exact.data) {
-                                      teamId = exact.data.id; ownerId = exact.data.owner_id; logoUrl = logoUrl || exact.data.logo_url || null;
-                                    } else {
-                                      // Try fuzzy name
-                                      const fuzzy = await supabase
+                    <div className="hidden md:block overflow-x-auto rounded-xl border border-white/5">
+                      <table className="min-w-full text-white">
+                        <thead className="bg-white/[0.02]">
+                          <tr>
+                            <th className="py-4 px-5 text-left text-xs uppercase tracking-wider text-gray-500 font-medium">Logo</th>
+                            <th className="py-4 px-5 text-left text-xs uppercase tracking-wider text-gray-500 font-medium">Team Name</th>
+                            <th className="py-4 px-5 text-left text-xs uppercase tracking-wider text-gray-500 font-medium">Registered</th>
+                            <th className="py-4 px-5 text-right text-xs uppercase tracking-wider text-gray-500 font-medium">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {participants
+                            .filter(p => p.participant_type === 'team')
+                            .map((participant) => (
+                              <tr key={participant.id} className="border-t border-gaming-gray/30 hover:bg-gaming-gray/10 cursor-pointer transition-colors"
+                                onClick={async () => {
+                                  setSelectedTeam(participant);
+                                  setTeamLoading(true);
+                                  setTeamCaptain(null);
+                                  try {
+                                    // Parse any pre-saved members; if they look like UUIDs, we will resolve them to profile names
+                                    const rawTokens = participant.team_members ? participant.team_members.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                    const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+                                    const tokensAreIds = rawTokens.some(t => looksLikeUuid(t));
+                                    if (rawTokens.length > 0 && !tokensAreIds) {
+                                      setSelectedTeamMembers(rawTokens);
+                                    }
+                                    // Resolve team id and owner
+                                    let teamId = participant.team_id as string | null;
+                                    let ownerId: string | null = null;
+                                    let logoUrl: string | null = participant.team_logo || null;
+                                    if (!teamId) {
+                                      // Try exact name match first
+                                      const exact = await supabase
                                         .from('teams')
                                         .select('id, owner_id, logo_url')
-                                        .ilike('name', `%${participant.team_name || ''}%`)
-                                        .limit(1)
+                                        .eq('name', participant.team_name || '')
                                         .maybeSingle();
-                                      if (fuzzy.data) {
-                                        teamId = fuzzy.data.id; ownerId = fuzzy.data.owner_id; logoUrl = logoUrl || fuzzy.data.logo_url || null;
-                                      }
-                                    }
-                                  } else {
-                                    const byId = await supabase
-                                      .from('teams')
-                                      .select('id, owner_id, logo_url')
-                                      .eq('id', teamId)
-                                      .maybeSingle();
-                                    if (byId.data) {
-                                      ownerId = byId.data.owner_id; logoUrl = logoUrl || byId.data.logo_url || null;
-                                    }
-                                  }
-                                  if (logoUrl && selectedTeam) selectedTeam.team_logo = logoUrl;
-                                  // First, try reading names saved in tournament registration directly
-                                  if (tournament?.id && participant.team_name) {
-                                    const { data: regRow } = await supabase
-                                      .from('tournament_participants')
-                                      .select('team_members')
-                                      .eq('tournament_id', tournament.id)
-                                      .eq('team_name', participant.team_name)
-                                      .maybeSingle();
-                                    if (regRow?.team_members) {
-                                      const raw = Array.isArray(regRow.team_members)
-                                        ? (regRow.team_members as any[]).map(String)
-                                        : String(regRow.team_members);
-                                      const tokens = (Array.isArray(raw) ? raw : raw.split(',')).map((s: string) => s.trim()).filter(Boolean);
-                                      const looksUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-                                      const hasPlainNames = tokens.some(t => !looksUuid(t));
-                                      if (tokens.length > 0 && hasPlainNames) {
-                                        setSelectedTeamMembers(tokens);
-                                        setTeamLoading(false);
-                                        setTeamDialogOpen(true);
-                                        return;
-                                      }
-                                      if (tokens.length > 0) {
-                                        let namesResolved: string[] = [];
-                                        if (tokens.every(looksUuid)) {
-                                          const { data: prows } = await supabase
-                                            .from('profiles')
-                                            .select('id, gamer_tag, username, full_name')
-                                            .in('id', tokens);
-                                          const mapTok = new Map<string, string>();
-                                          (prows || []).forEach((p: any) => mapTok.set(p.id, p.gamer_tag || p.username || p.full_name || `player_${String(p.id).substring(0,8)}`));
-                                          namesResolved = tokens.map(id => mapTok.get(id) || `player_${String(id).substring(0,8)}`);
-                                        } else {
-                                          const uniq = Array.from(new Set(tokens));
-                                          const [byTag, byUser, byFull] = await Promise.all([
-                                            supabase.from('profiles').select('id, gamer_tag, username, full_name').in('gamer_tag', uniq),
-                                            supabase.from('profiles').select('id, gamer_tag, username, full_name').in('username', uniq),
-                                            supabase.from('profiles').select('id, gamer_tag, username, full_name').in('full_name', uniq),
-                                          ]);
-                                          const map = new Map<string, string>();
-                                          (byTag.data || []).forEach((p: any) => map.set(p.gamer_tag, p.gamer_tag || p.username || p.full_name));
-                                          (byUser.data || []).forEach((p: any) => map.set(p.username, p.gamer_tag || p.username || p.full_name));
-                                          (byFull.data || []).forEach((p: any) => map.set(p.full_name, p.gamer_tag || p.username || p.full_name));
-                                          namesResolved = uniq.map(t => map.get(t) || t);
+                                      if (exact.data) {
+                                        teamId = exact.data.id; ownerId = exact.data.owner_id; logoUrl = logoUrl || exact.data.logo_url || null;
+                                      } else {
+                                        // Try fuzzy name
+                                        const fuzzy = await supabase
+                                          .from('teams')
+                                          .select('id, owner_id, logo_url')
+                                          .ilike('name', `%${participant.team_name || ''}%`)
+                                          .limit(1)
+                                          .maybeSingle();
+                                        if (fuzzy.data) {
+                                          teamId = fuzzy.data.id; ownerId = fuzzy.data.owner_id; logoUrl = logoUrl || fuzzy.data.logo_url || null;
                                         }
-                                        if (namesResolved.length > 0) {
-                                          setSelectedTeamMembers(namesResolved);
+                                      }
+                                    } else {
+                                      const byId = await supabase
+                                        .from('teams')
+                                        .select('id, owner_id, logo_url')
+                                        .eq('id', teamId)
+                                        .maybeSingle();
+                                      if (byId.data) {
+                                        ownerId = byId.data.owner_id; logoUrl = logoUrl || byId.data.logo_url || null;
+                                      }
+                                    }
+                                    if (logoUrl && selectedTeam) selectedTeam.team_logo = logoUrl;
+                                    // First, try reading names saved in tournament registration directly
+                                    if (tournament?.id && participant.team_name) {
+                                      const { data: regRow } = await supabase
+                                        .from('tournament_participants')
+                                        .select('team_members')
+                                        .eq('tournament_id', tournament.id)
+                                        .eq('team_name', participant.team_name)
+                                        .maybeSingle();
+                                      if (regRow?.team_members) {
+                                        const raw = Array.isArray(regRow.team_members)
+                                          ? (regRow.team_members as any[]).map(String)
+                                          : String(regRow.team_members);
+                                        const tokens = (Array.isArray(raw) ? raw : raw.split(',')).map((s: string) => s.trim()).filter(Boolean);
+                                        const looksUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+                                        const hasPlainNames = tokens.some(t => !looksUuid(t));
+                                        if (tokens.length > 0 && hasPlainNames) {
+                                          setSelectedTeamMembers(tokens);
                                           setTeamLoading(false);
                                           setTeamDialogOpen(true);
                                           return;
                                         }
+                                        if (tokens.length > 0) {
+                                          let namesResolved: string[] = [];
+                                          if (tokens.every(looksUuid)) {
+                                            const { data: prows } = await supabase
+                                              .from('profiles')
+                                              .select('id, gamer_tag, username, full_name')
+                                              .in('id', tokens);
+                                            const mapTok = new Map<string, string>();
+                                            (prows || []).forEach((p: any) => mapTok.set(p.id, p.gamer_tag || p.username || p.full_name || `player_${String(p.id).substring(0, 8)}`));
+                                            namesResolved = tokens.map(id => mapTok.get(id) || `player_${String(id).substring(0, 8)}`);
+                                          } else {
+                                            const uniq = Array.from(new Set(tokens));
+                                            const [byTag, byUser, byFull] = await Promise.all([
+                                              supabase.from('profiles').select('id, gamer_tag, username, full_name').in('gamer_tag', uniq),
+                                              supabase.from('profiles').select('id, gamer_tag, username, full_name').in('username', uniq),
+                                              supabase.from('profiles').select('id, gamer_tag, username, full_name').in('full_name', uniq),
+                                            ]);
+                                            const map = new Map<string, string>();
+                                            (byTag.data || []).forEach((p: any) => map.set(p.gamer_tag, p.gamer_tag || p.username || p.full_name));
+                                            (byUser.data || []).forEach((p: any) => map.set(p.username, p.gamer_tag || p.username || p.full_name));
+                                            (byFull.data || []).forEach((p: any) => map.set(p.full_name, p.gamer_tag || p.username || p.full_name));
+                                            namesResolved = uniq.map(t => map.get(t) || t);
+                                          }
+                                          if (namesResolved.length > 0) {
+                                            setSelectedTeamMembers(namesResolved);
+                                            setTeamLoading(false);
+                                            setTeamDialogOpen(true);
+                                            return;
+                                          }
+                                        }
                                       }
                                     }
-                                  }
 
-                                  // Resolve members via roster (not organization-wide)
-                                  let names: string[] = [];
-                                  
-                                  // Step 1: Get roster_id from registration
-                                  const { data: regRowForRoster } = await supabase
-                                    .from('tournament_participants')
-                                    .select('roster_id')
-                                    .eq('id', participant.id)
-                                    .maybeSingle();
-                                  const rosterId = (regRowForRoster as any)?.roster_id || null;
-                                  
-                                  // Step 2: Use roster_id to fetch roster members
-                                  if (rosterId) {
-                                    const { data: roster } = await supabase.rpc('get_roster_members', { r_id: rosterId });
-                                    names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
-                                    console.log('Row onClick: Resolved members from roster_id:', rosterId, 'names:', names);
-                                  }
-                                  
-                                  // Step 3: If no roster_id, match roster by team_id + tournament game
-                                  if (names.length === 0 && teamId && tournament?.game) {
-                                    const game = (tournament.game || '').trim().toLowerCase();
-                                    const { data: rosters } = await supabase
-                                      .from('team_rosters')
-                                      .select('id, name, game, created_at')
-                                      .eq('team_id', teamId);
-                                    const list = rosters || [];
-                                    let pickedRosterId: string | null = null;
-                                    if (list.length === 1) {
-                                      pickedRosterId = list[0].id;
-                                    } else if (list.length > 1) {
-                                      const byGame = list.filter((r: any) => String(r.game || '').trim().toLowerCase() === game);
-                                      if (byGame.length === 1) {
-                                        pickedRosterId = byGame[0].id;
-                                      } else if (byGame.length > 0) {
-                                        const sorted = [...byGame].sort((a: any, b: any) => 
-                                          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-                                        );
-                                        pickedRosterId = sorted[0].id;
-                                      } else if (list.length > 0) {
-                                        const sorted = [...list].sort((a: any, b: any) => 
-                                          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-                                        );
-                                        pickedRosterId = sorted[0].id;
+                                    // Resolve members via roster (not organization-wide)
+                                    let names: string[] = [];
+
+                                    // Step 1: Get roster_id from registration
+                                    const { data: regRowForRoster } = await supabase
+                                      .from('tournament_participants')
+                                      .select('roster_id')
+                                      .eq('id', participant.id)
+                                      .maybeSingle();
+                                    const rosterId = (regRowForRoster as any)?.roster_id || null;
+
+                                    // Step 2: Use roster_id to fetch roster members
+                                    if (rosterId) {
+                                      const { data: roster } = await supabase.rpc('get_roster_members', { r_id: rosterId });
+                                      names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0, 8)}`);
+                                      console.log('Row onClick: Resolved members from roster_id:', rosterId, 'names:', names);
+                                    }
+
+                                    // Step 3: If no roster_id, match roster by team_id + tournament game
+                                    if (names.length === 0 && teamId && tournament?.game) {
+                                      const game = (tournament.game || '').trim().toLowerCase();
+                                      const { data: rosters } = await supabase
+                                        .from('team_rosters')
+                                        .select('id, name, game, created_at')
+                                        .eq('team_id', teamId);
+                                      const list = rosters || [];
+                                      let pickedRosterId: string | null = null;
+                                      if (list.length === 1) {
+                                        pickedRosterId = list[0].id;
+                                      } else if (list.length > 1) {
+                                        const byGame = list.filter((r: any) => String(r.game || '').trim().toLowerCase() === game);
+                                        if (byGame.length === 1) {
+                                          pickedRosterId = byGame[0].id;
+                                        } else if (byGame.length > 0) {
+                                          const sorted = [...byGame].sort((a: any, b: any) =>
+                                            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+                                          );
+                                          pickedRosterId = sorted[0].id;
+                                        } else if (list.length > 0) {
+                                          const sorted = [...list].sort((a: any, b: any) =>
+                                            new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+                                          );
+                                          pickedRosterId = sorted[0].id;
+                                        }
+                                      }
+                                      if (pickedRosterId) {
+                                        const { data: roster } = await supabase.rpc('get_roster_members', { r_id: pickedRosterId });
+                                        names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0, 8)}`);
+                                        console.log('Row onClick: Resolved members from inferred roster_id:', pickedRosterId, 'names:', names);
                                       }
                                     }
-                                    if (pickedRosterId) {
-                                      const { data: roster } = await supabase.rpc('get_roster_members', { r_id: pickedRosterId });
-                                      names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
-                                      console.log('Row onClick: Resolved members from inferred roster_id:', pickedRosterId, 'names:', names);
+
+                                    // Step 4: Fallback to organization-wide members (legacy)
+                                    if (names.length === 0 && teamId) {
+                                      const { data: roster } = await supabase.rpc('get_team_roster', { t_id: teamId });
+                                      names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0, 8)}`);
+                                      if (names.length === 0 && ownerId) {
+                                        const { data: ownerProfile } = await supabase
+                                          .from('profiles')
+                                          .select('id, username, full_name')
+                                          .eq('id', ownerId)
+                                          .maybeSingle();
+                                        const ownerName = ownerProfile?.username || ownerProfile?.full_name || `player_${String(ownerId).substring(0, 8)}`;
+                                        names = [ownerName];
+                                      }
                                     }
-                                  }
-                                  
-                                  // Step 4: Fallback to organization-wide members (legacy)
-                                  if (names.length === 0 && teamId) {
-                                    const { data: roster } = await supabase.rpc('get_team_roster', { t_id: teamId });
-                                    names = (roster || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0,8)}`);
-                                    if (names.length === 0 && ownerId) {
-                                      const { data: ownerProfile } = await supabase
+
+                                    // Step 5: If registration stored user IDs, resolve them as names
+                                    if (names.length === 0 && tokensAreIds && rawTokens.length > 0) {
+                                      const { data: profsTok } = await supabase
                                         .from('profiles')
                                         .select('id, username, full_name')
-                                        .eq('id', ownerId)
-                                        .maybeSingle();
-                                      const ownerName = ownerProfile?.username || ownerProfile?.full_name || `player_${String(ownerId).substring(0,8)}`;
-                                      names = [ownerName];
+                                        .in('id', rawTokens);
+                                      const mapTok = new Map<string, string>();
+                                      (profsTok || []).forEach((p: any) => mapTok.set(p.id, p.username || p.full_name || `player_${String(p.id).substring(0, 8)}`));
+                                      names = rawTokens.map(id => mapTok.get(id) || `player_${String(id).substring(0, 8)}`);
                                     }
-                                  }
-                                  
-                                  // Step 5: If registration stored user IDs, resolve them as names
-                                  if (names.length === 0 && tokensAreIds && rawTokens.length > 0) {
-                                    const { data: profsTok } = await supabase
-                                      .from('profiles')
-                                      .select('id, username, full_name')
-                                      .in('id', rawTokens);
-                                    const mapTok = new Map<string, string>();
-                                    (profsTok || []).forEach((p: any) => mapTok.set(p.id, p.username || p.full_name || `player_${String(p.id).substring(0,8)}`));
-                                    names = rawTokens.map(id => mapTok.get(id) || `player_${String(id).substring(0,8)}`);
-                                  }
-                                  
-                                  // Step 6: Last resort - show parsed tokens
-                                  if (names.length === 0 && rawTokens.length > 0 && !tokensAreIds) {
-                                    names = rawTokens;
-                                  }
-                                  
-                                  if (names.length > 0) {
-                                    setSelectedTeamMembers(names);
-                                    console.log('Row onClick: Final members set:', names);
-                                  } else {
-                                    console.warn('Row onClick: No members found for participant:', participant.team_name);
+
+                                    // Step 6: Last resort - show parsed tokens
+                                    if (names.length === 0 && rawTokens.length > 0 && !tokensAreIds) {
+                                      names = rawTokens;
+                                    }
+
+                                    if (names.length > 0) {
+                                      setSelectedTeamMembers(names);
+                                      console.log('Row onClick: Final members set:', names);
+                                    } else {
+                                      console.warn('Row onClick: No members found for participant:', participant.team_name);
+                                      setSelectedTeamMembers([]);
+                                    }
+                                  } catch {
                                     setSelectedTeamMembers([]);
+                                  } finally {
+                                    setTeamLoading(false);
                                   }
-                                } catch {
-                                  setSelectedTeamMembers([]);
-                                } finally {
-                                  setTeamLoading(false);
+                                  setTeamDialogOpen(true);
+                                }}
+                              >
+                                <td className="py-3 px-4">
+                                  {participant.team_logo ? (
+                                    <img src={participant.team_logo} alt={participant.team_name || 'team'} className="w-10 h-10 rounded-lg object-contain" />
+                                  ) : (
+                                    <span className="w-10 h-10 inline-flex items-center justify-center rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 text-sm font-semibold text-gray-400">
+                                      {(participant.team_name || 'T')[0]}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 font-semibold">{participant.team_name}</td>
+                                <td className="py-3 px-4 text-sm text-gray-400">
+                                  {new Date(participant.created_at).toLocaleDateString(undefined, {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                  })}
+                                  {tournament.check_in_required && (
+                                    <div className="mt-1">
+                                      {renderCheckInBadge(participant) || (
+                                        <span className="text-xs text-slate-500">Pending</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Button size="sm" variant="secondary" className="text-xs"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Use the row's onClick handler which will populate members
+                                        // We'll just wait a bit for the async operation
+                                        setSelectedTeam(participant);
+                                        // Manually trigger member resolution (same as row onClick does)
+                                        const row = e.currentTarget.closest('tr');
+                                        if (row) {
+                                          (row as any).click();
+                                        }
+                                      }}
+                                    >
+                                      Manage
+                                    </Button>
+                                    <Button size="sm" variant="destructive"
+                                      onClick={(e) => { e.stopPropagation(); setBanDialogOpen(true); setBanTarget({ id: participant.id, userId: participant.user_id }); }}
+                                      className="flex items-center gap-1 text-xs"
+                                    >
+                                      <BanIcon className="w-3.5 h-3.5" />
+                                      <span className="hidden sm:inline">Ban</span>
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="md:hidden space-y-3">
+                      {participants
+                        .filter(p => p.participant_type === 'team')
+                        .map((participant) => {
+                          // Parse team members for display
+                          const rawTokens = participant.team_members ? participant.team_members.split(',').map(s => s.trim()).filter(Boolean) : [];
+                          const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+                          const tokensAreIds = rawTokens.some(t => looksLikeUuid(t));
+                          const displayMembers = rawTokens.length > 0 && !tokensAreIds ? rawTokens : [];
+
+                          const handleOpenDialog = async () => {
+                            setSelectedTeam(participant);
+                            setTeamLoading(true);
+                            setTeamCaptain(null);
+
+                            // First, try to use the already-parsed members from display
+                            if (displayMembers.length > 0) {
+                              setSelectedTeamMembers(displayMembers);
+                              setTeamLoading(false);
+                              setTeamDialogOpen(true);
+                              return;
+                            }
+
+                            // Otherwise, try to resolve from database
+                            try {
+                              let teamId = participant.team_id as string | null;
+                              let ownerId: string | null = null;
+                              let logoUrl: string | null = participant.team_logo || null;
+
+                              if (!teamId && participant.team_name) {
+                                const exact = await supabase
+                                  .from('teams')
+                                  .select('id, owner_id, logo_url')
+                                  .eq('name', participant.team_name || '')
+                                  .maybeSingle();
+                                if (exact.data) {
+                                  teamId = exact.data.id;
+                                  ownerId = exact.data.owner_id;
+                                  logoUrl = logoUrl || exact.data.logo_url || null;
                                 }
-                                setTeamDialogOpen(true);
-                              }}
+                              }
+
+                              if (tournament?.id && participant.team_name) {
+                                const { data: regRow } = await supabase
+                                  .from('tournament_participants')
+                                  .select('team_members')
+                                  .eq('tournament_id', tournament.id)
+                                  .eq('team_name', participant.team_name)
+                                  .maybeSingle();
+
+                                if (regRow?.team_members) {
+                                  const raw = Array.isArray(regRow.team_members)
+                                    ? (regRow.team_members as any[]).map(String)
+                                    : String(regRow.team_members);
+                                  const tokens = (Array.isArray(raw) ? raw : raw.split(',')).map((s: string) => s.trim()).filter(Boolean);
+                                  const looksUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
+                                  const hasPlainNames = tokens.some(t => !looksUuid(t));
+
+                                  if (tokens.length > 0 && hasPlainNames) {
+                                    setSelectedTeamMembers(tokens);
+                                    setTeamLoading(false);
+                                    setTeamDialogOpen(true);
+                                    return;
+                                  }
+                                }
+                              }
+
+                              // Fallback: use raw tokens if available
+                              if (rawTokens.length > 0) {
+                                setSelectedTeamMembers(rawTokens);
+                              } else {
+                                setSelectedTeamMembers([]);
+                              }
+                            } catch (error) {
+                              console.error('Error loading team members:', error);
+                              setSelectedTeamMembers([]);
+                            } finally {
+                              setTeamLoading(false);
+                            }
+
+                            setTeamDialogOpen(true);
+                          };
+
+                          return (
+                            <div
+                              key={participant.id}
+                              className="bg-gaming-dark border border-gaming-gray/30 rounded-lg p-3 sm:p-4 space-y-2.5 sm:space-y-3 hover:border-emerald-400/40 transition-colors"
                             >
-                              <td className="py-3 px-4">
+                              <div className="flex items-center gap-2.5 sm:gap-3">
                                 {participant.team_logo ? (
-                                  <img src={participant.team_logo} alt={participant.team_name || 'team'} className="w-10 h-10 rounded object-cover border border-gray-700" />
+                                  <img src={participant.team_logo} alt={participant.team_name || 'team'} className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-contain flex-shrink-0" />
                                 ) : (
-                                  <span className="w-10 h-10 inline-flex items-center justify-center rounded bg-gray-800 border border-gray-700 text-sm font-semibold">
+                                  <span className="w-12 h-12 sm:w-14 sm:h-14 inline-flex items-center justify-center rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 text-sm sm:text-base font-semibold text-gray-400 flex-shrink-0">
                                     {(participant.team_name || 'T')[0]}
                                   </span>
                                 )}
-                              </td>
-                              <td className="py-3 px-4 font-semibold">{participant.team_name}</td>
-                              <td className="py-3 px-4 text-sm text-gray-400">
-                                {new Date(participant.created_at).toLocaleDateString(undefined, {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                })}
-                                {tournament.check_in_required && (
-                                  <div className="mt-1">
-                                    {renderCheckInBadge(participant) || (
-                                      <span className="text-xs text-slate-500">Pending</span>
-                                    )}
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-white text-sm sm:text-base truncate">{participant.team_name}</h4>
+                                  <p className="text-xs text-gray-400 mt-0.5">
+                                    {new Date(participant.created_at).toLocaleDateString(undefined, {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })}
+                                  </p>
+                                  {tournament.check_in_required && (
+                                    <div className="mt-1">
+                                      {renderCheckInBadge(participant) || (
+                                        <span className="text-xs text-slate-500">Awaiting check-in</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Team Members Section */}
+                              {displayMembers.length > 0 && (
+                                <div className="pt-2 border-t border-gaming-gray/30">
+                                  <p className="text-xs text-gray-400 mb-1.5 font-medium">Members ({displayMembers.length}):</p>
+                                  <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                                    {displayMembers.map((member, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-[10px] sm:text-xs text-gray-300 bg-gaming-gray/20 border border-gaming-gray/40"
+                                      >
+                                        {member}
+                                      </span>
+                                    ))}
                                   </div>
-                                )}
-                              </td>
-                                    <td className="py-3 px-4">
-                                <div className="flex items-center justify-end gap-2">
-                                <Button size="sm" variant="secondary" className="text-xs"
-                                  onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    // Use the row's onClick handler which will populate members
-                                    // We'll just wait a bit for the async operation
-                                    setSelectedTeam(participant);
-                                    // Manually trigger member resolution (same as row onClick does)
-                                    const row = e.currentTarget.closest('tr');
-                                    if (row) {
-                                      (row as any).click();
-                                    }
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-2 pt-2 border-t border-gaming-gray/30">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="flex-1 text-xs h-8 sm:h-9"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenDialog();
                                   }}
                                 >
                                   Manage
                                 </Button>
-                                      <Button size="sm" variant="destructive"
-                                  onClick={(e) => { e.stopPropagation(); setBanDialogOpen(true); setBanTarget({ id: participant.id, userId: participant.user_id }); }}
-                                        className="flex items-center gap-1 text-xs"
-                                      >
-                                  <BanIcon className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">Ban</span>
-                                      </Button>
-                                </div>
-                                    </td>
-                                  </tr>
-                          ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      
-                      {/* Mobile Card View */}
-                      <div className="md:hidden space-y-3">
-                        {participants
-                          .filter(p => p.participant_type === 'team')
-                          .map((participant) => {
-                            // Parse team members for display
-                            const rawTokens = participant.team_members ? participant.team_members.split(',').map(s => s.trim()).filter(Boolean) : [];
-                            const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-                            const tokensAreIds = rawTokens.some(t => looksLikeUuid(t));
-                            const displayMembers = rawTokens.length > 0 && !tokensAreIds ? rawTokens : [];
-                            
-                            const handleOpenDialog = async () => {
-                              setSelectedTeam(participant);
-                              setTeamLoading(true);
-                              setTeamCaptain(null);
-                              
-                              // First, try to use the already-parsed members from display
-                              if (displayMembers.length > 0) {
-                                setSelectedTeamMembers(displayMembers);
-                                setTeamLoading(false);
-                                setTeamDialogOpen(true);
-                                return;
-                              }
-                              
-                              // Otherwise, try to resolve from database
-                              try {
-                                let teamId = participant.team_id as string | null;
-                                let ownerId: string | null = null;
-                                let logoUrl: string | null = participant.team_logo || null;
-                                
-                                if (!teamId && participant.team_name) {
-                                  const exact = await supabase
-                                    .from('teams')
-                                    .select('id, owner_id, logo_url')
-                                    .eq('name', participant.team_name || '')
-                                    .maybeSingle();
-                                  if (exact.data) {
-                                    teamId = exact.data.id;
-                                    ownerId = exact.data.owner_id;
-                                    logoUrl = logoUrl || exact.data.logo_url || null;
-                                  }
-                                }
-                                
-                                if (tournament?.id && participant.team_name) {
-                                  const { data: regRow } = await supabase
-                                    .from('tournament_participants')
-                                    .select('team_members')
-                                    .eq('tournament_id', tournament.id)
-                                    .eq('team_name', participant.team_name)
-                                    .maybeSingle();
-                                    
-                                  if (regRow?.team_members) {
-                                    const raw = Array.isArray(regRow.team_members)
-                                      ? (regRow.team_members as any[]).map(String)
-                                      : String(regRow.team_members);
-                                    const tokens = (Array.isArray(raw) ? raw : raw.split(',')).map((s: string) => s.trim()).filter(Boolean);
-                                    const looksUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-                                    const hasPlainNames = tokens.some(t => !looksUuid(t));
-                                    
-                                    if (tokens.length > 0 && hasPlainNames) {
-                                      setSelectedTeamMembers(tokens);
-                                      setTeamLoading(false);
-                                      setTeamDialogOpen(true);
-                                      return;
-                                    }
-                                  }
-                                }
-                                
-                                // Fallback: use raw tokens if available
-                                if (rawTokens.length > 0) {
-                                  setSelectedTeamMembers(rawTokens);
-                                } else {
-                                  setSelectedTeamMembers([]);
-                                }
-                              } catch (error) {
-                                console.error('Error loading team members:', error);
-                                setSelectedTeamMembers([]);
-                              } finally {
-                                setTeamLoading(false);
-                              }
-                              
-                              setTeamDialogOpen(true);
-                            };
-                            
-                            return (
-                              <div
-                                key={participant.id}
-                                className="bg-gaming-dark border border-gaming-gray/30 rounded-lg p-3 sm:p-4 space-y-2.5 sm:space-y-3 hover:border-emerald-400/40 transition-colors"
-                              >
-                                <div className="flex items-center gap-2.5 sm:gap-3">
-                                  {participant.team_logo ? (
-                                    <img src={participant.team_logo} alt={participant.team_name || 'team'} className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover border border-gray-700 flex-shrink-0" />
-                                  ) : (
-                                    <span className="w-12 h-12 sm:w-14 sm:h-14 inline-flex items-center justify-center rounded-lg bg-gray-800 border border-gray-700 text-sm sm:text-base font-semibold flex-shrink-0">
-                                      {(participant.team_name || 'T')[0]}
-                                    </span>
-                                  )}
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className="font-semibold text-white text-sm sm:text-base truncate">{participant.team_name}</h4>
-                                    <p className="text-xs text-gray-400 mt-0.5">
-                                      {new Date(participant.created_at).toLocaleDateString(undefined, {
-                                        year: 'numeric',
-                                        month: 'short',
-                                        day: 'numeric',
-                                      })}
-                                    </p>
-                                    {tournament.check_in_required && (
-                                      <div className="mt-1">
-                                        {renderCheckInBadge(participant) || (
-                                          <span className="text-xs text-slate-500">Awaiting check-in</span>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                
-                                {/* Team Members Section */}
-                                {displayMembers.length > 0 && (
-                                  <div className="pt-2 border-t border-gaming-gray/30">
-                                    <p className="text-xs text-gray-400 mb-1.5 font-medium">Members ({displayMembers.length}):</p>
-                                    <div className="flex flex-wrap gap-1 sm:gap-1.5">
-                                      {displayMembers.map((member, idx) => (
-                                        <span
-                                          key={idx}
-                                          className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-[10px] sm:text-xs text-gray-300 bg-gaming-gray/20 border border-gaming-gray/40"
-                                        >
-                                          {member}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                <div className="flex items-center gap-2 pt-2 border-t border-gaming-gray/30">
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    className="flex-1 text-xs h-8 sm:h-9"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenDialog();
-                                    }}
-                                  >
-                                    Manage
-                                      </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    className="flex-1 text-xs h-8 sm:h-9 flex items-center justify-center gap-1"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setBanDialogOpen(true);
-                                      setBanTarget({ id: participant.id, userId: participant.user_id });
-                                    }}
-                                  >
-                                    <BanIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                                    <span className="hidden xs:inline">Ban</span>
-                                  </Button>
-                      </div>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="flex-1 text-xs h-8 sm:h-9 flex items-center justify-center gap-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setBanDialogOpen(true);
+                                    setBanTarget({ id: participant.id, userId: participant.user_id });
+                                  }}
+                                >
+                                  <BanIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                  <span className="hidden xs:inline">Ban</span>
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
-                            );
-                          })}
-                  </div>
                   </>
                 )}
               </CardContent>
@@ -2423,46 +2678,46 @@ const TournamentDashboard = () => {
             </Dialog>
           </TabsContent>
 
-          <TabsContent value="brackets">
-            {!canEditBracket ? (
-              <PermissionNotice message="Bracket controls are limited to organizers or staff with bracket permissions." />
-            ) : (
-            <Card className="mb-8">
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                <CardTitle>Brackets</CardTitle>
-                  <Button
-                    onClick={() => {
-                      console.log('Navigating to brackets for tournament:', slug);
-                      navigate(`/tournaments/${slug}/brackets`);
-                    }}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                  >
-                    View Full Bracket System
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <h3 className="text-lg font-semibold text-white mb-2">Professional Bracket System</h3>
-                  <p className="text-gray-400 mb-4">
-                    Access the full bracket visualization with team count selection (8, 16, 24, 32 teams) and mock data generation.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      console.log('Opening bracket system for tournament:', slug);
-                      navigate(`/tournaments/${slug}/brackets`);
-                    }}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                  >
-                    Open Bracket System
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-            )}
-          </TabsContent>
-
+          {matchCount > 0 && (
+            <TabsContent value="brackets">
+              {!canEditBracket ? (
+                <PermissionNotice message="Bracket controls are limited to organizers or staff with bracket permissions." />
+              ) : (
+                <Card className="mb-8">
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Brackets</CardTitle>
+                      <Button
+                        onClick={() => {
+                          console.log('Navigating to brackets for tournament:', slug);
+                          navigate(`/tournaments/${slug}/brackets`);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                      >
+                        View Full Bracket System
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8">
+                      <p className="text-gray-400 mb-4">
+                        Manage your tournament brackets here.
+                      </p>
+                      <Button
+                        onClick={() => {
+                          console.log('Opening bracket system for tournament:', slug);
+                          navigate(`/tournaments/${slug}/brackets`);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                      >
+                        Open Bracket System
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          )}
           <TabsContent value="bans">
             {!canManageTeams ? (
               <PermissionNotice message="Only organizers or staff with team management permissions can manage bans." />
@@ -2492,7 +2747,7 @@ const TournamentDashboard = () => {
               {tournament?.id && user?.id ? (
                 <TournamentStaffManager tournamentId={tournament.id} organizerId={user.id} />
               ) : (
-                <Card className="bg-gaming-dark border-gaming-gray/30">
+                <Card className="glass-premium rounded-2xl border-0">
                   <CardContent className="text-sm text-gray-400 py-6">
                     Sign in to assign moderators to this tournament.
                   </CardContent>
@@ -2506,141 +2761,117 @@ const TournamentDashboard = () => {
             {!isOrganizer ? (
               <PermissionNotice message="Tournament settings are available only to the organizer." />
             ) : (
-            <>
-            <Card className="bg-gaming-dark border-gaming-gray/30">
-              <CardHeader>
-                <CardTitle>Tournament Settings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold mb-1">Date & Time</h3>
-                    <p className="text-gray-400">{tournament.date} at {tournament.time}</p>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">Venue</h3>
-                    <p className="text-gray-400">{tournament.venue}</p>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">Entry Fee</h3>
-                    <p className="text-gray-400">{tournament.entry_fee || 'Free'}</p>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">Format</h3>
-                    <p className="text-gray-400">{tournament.is_online ? 'Online' : 'LAN'}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              <>
+                <Card className="glass-premium rounded-2xl border-0">
+                  <CardHeader className="border-b border-white/5">
+                    <CardTitle className="text-lg font-semibold text-white">Check-In Requirements</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-5">
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                      <div>
+                        <p className="font-semibold text-white">Require check-in</p>
+                        <p className="text-sm text-gray-400">
+                          Force captains to confirm attendance before brackets are generated.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={checkInRequiredSetting}
+                        onCheckedChange={setCheckInRequiredSetting}
+                      />
+                    </div>
 
-            <Card className="bg-gaming-dark border-gaming-gray/30 mt-6">
-              <CardHeader>
-                <CardTitle>Check-In Requirements</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-white">Require check-in</p>
-                    <p className="text-sm text-gray-400">
-                      Force captains to confirm attendance before brackets are generated.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={checkInRequiredSetting}
-                    onCheckedChange={setCheckInRequiredSetting}
-                  />
-                </div>
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                      <label className="block text-xs text-gray-500 uppercase tracking-wider mb-2">Check-in deadline</label>
+                      <input
+                        type="datetime-local"
+                        value={checkInDeadlineSetting}
+                        onChange={(e) => setCheckInDeadlineSetting(e.target.value)}
+                        disabled={!checkInRequiredSetting}
+                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white disabled:opacity-50 focus:border-white/30 focus:outline-none"
+                      />
+                      <p className="text-xs text-gray-500 mt-2">
+                        Players will see the deadline in their tournament view with a live countdown.
+                      </p>
+                    </div>
 
-                <div>
-                  <label className="block text-sm text-gray-300 mb-1">Check-in deadline</label>
-                  <input
-                    type="datetime-local"
-                    value={checkInDeadlineSetting}
-                    onChange={(e) => setCheckInDeadlineSetting(e.target.value)}
-                    disabled={!checkInRequiredSetting}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-white disabled:opacity-50"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Players will see the deadline in their tournament view with a live countdown.
-                  </p>
-                </div>
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                      <div>
+                        <p className="font-semibold text-white">Auto-remove no-shows</p>
+                        <p className="text-sm text-gray-400">
+                          Automatically mark unchecked teams as cancelled after the deadline.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={autoRemoveUncheckedSetting}
+                        onCheckedChange={setAutoRemoveUncheckedSetting}
+                        disabled={!checkInRequiredSetting}
+                      />
+                    </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-white">Auto-remove no-shows</p>
-                    <p className="text-sm text-gray-400">
-                      Automatically mark unchecked teams as cancelled after the deadline.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={autoRemoveUncheckedSetting}
-                    onCheckedChange={setAutoRemoveUncheckedSetting}
-                    disabled={!checkInRequiredSetting}
-                  />
-                </div>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <Button
+                        onClick={handleSaveCheckInSettings}
+                        disabled={savingCheckInSettings}
+                        className="bg-white/10 hover:bg-white/20 text-white border border-white/20 w-full sm:w-auto"
+                      >
+                        {savingCheckInSettings ? 'Saving...' : 'Save Settings'}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleRemoveUncheckedParticipants}
+                        disabled={removingUnchecked || !checkInRequiredSetting}
+                        className="w-full sm:w-auto"
+                      >
+                        {removingUnchecked ? 'Removing...' : 'Remove Unchecked Teams'}
+                      </Button>
+                    </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    onClick={handleSaveCheckInSettings}
-                    disabled={savingCheckInSettings}
-                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-                  >
-                    {savingCheckInSettings ? 'Saving...' : 'Save Settings'}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleRemoveUncheckedParticipants}
-                    disabled={removingUnchecked || !checkInRequiredSetting}
-                    className="w-full sm:w-auto"
-                  >
-                    {removingUnchecked ? 'Removing...' : 'Remove Unchecked Teams'}
-                  </Button>
-                </div>
-
-                <div className="flex items-start gap-2 text-xs text-gray-400">
-                  <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5" />
-                  Participants who miss check-in will be set to &quot;Cancelled&quot; and lose their spot.
-                </div>
-              </CardContent>
-            </Card>
-            </>
+                    <div className="flex items-start gap-2 text-xs text-gray-400 p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                      <AlertTriangle className="w-4 h-4 text-gray-400 mt-0.5" />
+                      Participants who miss check-in will be set to &quot;Cancelled&quot; and lose their spot.
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
             )}
           </TabsContent>
         </Tabs>
-      </main>
+      </main >
       <Footer />
-      {banDialogOpen && (
-        <AlertDialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
-          <AlertDialogContent className="bg-[#12121a] border-white/10 text-white">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-white">Ban Participant</AlertDialogTitle>
-              <AlertDialogDescription className="text-white/70">
-                Are you sure you want to ban this participant? This will remove their registration and prevent them from joining this tournament again.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="my-4">
-              <label className="block mb-2 font-semibold text-white">Ban Reason (required)</label>
-              <input
-                className="w-full p-2.5 rounded-lg border border-white/20 bg-white/5 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50"
-                value={banReason}
-                onChange={e => setBanReason(e.target.value)}
-                placeholder="Enter reason for ban..."
-              />
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setBanDialogOpen(false)} className="border-white/20 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={!banReason.trim()}
-                className="bg-red-600 hover:bg-red-700 text-white"
-                onClick={() => banTarget && handleBan(banTarget.id, banTarget.userId)}
-              >
-                Ban
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-    </div>
+      {
+        banDialogOpen && (
+          <AlertDialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+            <AlertDialogContent className="bg-[#12121a] border-white/10 text-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-white">Ban Participant</AlertDialogTitle>
+                <AlertDialogDescription className="text-white/70">
+                  Are you sure you want to ban this participant? This will remove their registration and prevent them from joining this tournament again.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="my-4">
+                <label className="block mb-2 font-semibold text-white">Ban Reason (required)</label>
+                <input
+                  className="w-full p-2.5 rounded-lg border border-white/20 bg-white/5 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50"
+                  value={banReason}
+                  onChange={e => setBanReason(e.target.value)}
+                  placeholder="Enter reason for ban..."
+                />
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setBanDialogOpen(false)} className="border-white/20 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={!banReason.trim()}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => banTarget && handleBan(banTarget.id, banTarget.userId)}
+                >
+                  Ban
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )
+      }
+    </div >
   );
 };
 

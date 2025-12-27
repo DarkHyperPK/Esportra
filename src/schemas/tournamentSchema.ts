@@ -1,0 +1,128 @@
+import { z } from 'zod';
+
+// Helper to check if number is power of 2
+const isPowerOfTwo = (n: number) => n > 0 && (n & (n - 1)) === 0;
+
+// Step 1: Basic Info Schema
+const basicInfoBase = z.object({
+    name: z.string()
+        .min(3, 'Tournament name must be at least 3 characters')
+        .max(100, 'Tournament name cannot exceed 100 characters'),
+    game: z.string().min(1, 'Please select a game'),
+    isOnline: z.boolean(),
+    visibility: z.enum(['public', 'unlisted', 'private']),
+    startDate: z.string().min(1, 'Start date is required'),
+    startTime: z.string().min(1, 'Start time is required'),
+    endDate: z.string().optional(),
+    endTime: z.string().optional(),
+    venue: z.string().optional(),
+});
+
+export const basicInfoSchema = basicInfoBase.refine(
+    (data) => data.isOnline || (data.venue && data.venue.length > 0),
+    { message: 'Venue is required for LAN tournaments', path: ['venue'] }
+);
+
+// Step 2: Format & Rules Schema
+const formatRulesBase = z.object({
+    bracketType: z.enum(['single_elimination', 'double_elimination', 'battle_royale']),
+    matchCount: z.number().min(1).max(20).optional(), // Optional because it defaults to 1
+    maxTeams: z.number()
+        .min(2, 'Minimum 2 teams required')
+        .max(1024, 'Maximum 1024 teams allowed'),
+    teamSize: z.number().min(1).max(10),
+    seedingType: z.enum(['random', 'manual', 'skill_based']),
+    thirdPlaceMatch: z.boolean(),
+});
+
+export const formatRulesSchema = formatRulesBase.refine(
+    (data) => {
+        // For elimination brackets, recommend power of 2
+        if (data.bracketType === 'single_elimination' || data.bracketType === 'double_elimination') {
+            return true; // Warning only, not blocking
+        }
+        return true;
+    },
+    { message: 'Power of 2 recommended for elimination brackets', path: ['maxTeams'] }
+);
+
+// Step 3: Branding Schema
+export const brandingSchema = z.object({
+    bannerUrl: z.string().nullable().optional(),
+    logoUrl: z.string().nullable().optional(),
+    prizePool: z.string().min(1, 'Prize pool is required'),
+    entryFee: z.string().min(1, 'Entry fee is required (use "Free" if no fee)'),
+    description: z.string()
+        .min(20, 'Description must be at least 20 characters')
+        .max(5000, 'Description cannot exceed 5000 characters'),
+    discordUrl: z.string().url().optional().or(z.literal('')),
+    twitterUrl: z.string().url().optional().or(z.literal('')),
+    streamUrl: z.string().url().optional().or(z.literal('')),
+});
+
+// Step 4: Registration Schema
+export const registrationSchema = z.object({
+    registrationOpens: z.string().min(1, 'Registration open date is required'),
+    registrationCloses: z.string().min(1, 'Registration close date is required'),
+    checkInRequired: z.boolean(),
+    checkInWindowMinutes: z.number().min(5).max(120),
+    autoRemoveUnchecked: z.boolean(),
+    waitlistEnabled: z.boolean(),
+    waitlistMax: z.number().min(0).max(100),
+});
+
+// Full tournament schema
+export const fullTournamentSchema = basicInfoBase
+    .merge(formatRulesBase)
+    .merge(brandingSchema)
+    .merge(registrationSchema)
+    .refine(
+        (data) => data.isOnline || (data.venue && data.venue.length > 0),
+        { message: 'Venue is required for LAN tournaments', path: ['venue'] }
+    );
+
+// Helper function to validate a specific step
+export const validateStep = (step: number, data: any): { valid: boolean; errors: Record<string, string> } => {
+    const schemas: Record<number, z.ZodSchema> = {
+        1: basicInfoSchema,
+        2: formatRulesSchema,
+        3: brandingSchema,
+        4: registrationSchema,
+        5: fullTournamentSchema, // Review validates everything
+    };
+
+    const schema = schemas[step];
+    if (!schema) return { valid: true, errors: {} };
+
+    try {
+        schema.parse(data);
+        return { valid: true, errors: {} };
+    } catch (e) {
+        if (e instanceof z.ZodError) {
+            const errors: Record<string, string> = {};
+            e.errors.forEach((err) => {
+                const path = err.path.join('.');
+                errors[path] = err.message;
+            });
+            return { valid: false, errors };
+        }
+        return { valid: false, errors: { _form: 'Validation failed' } };
+    }
+};
+
+// Power of 2 suggestions
+export const POWER_OF_TWO_OPTIONS = [4, 8, 16, 32, 64, 128, 256, 512, 1024];
+
+// Bracket type labels
+export const BRACKET_TYPE_LABELS: Record<string, string> = {
+    single_elimination: 'Single Elimination',
+    double_elimination: 'Double Elimination',
+    battle_royale: 'Battle Royale / Points',
+};
+
+// Seeding type labels
+export const SEEDING_TYPE_LABELS: Record<string, string> = {
+    random: 'Random Seeding',
+    manual: 'Manual Seeding',
+    skill_based: 'Skill-based (Ranking)',
+};

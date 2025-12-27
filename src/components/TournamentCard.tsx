@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, Trophy, CheckCircle } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
 import { motion } from 'framer-motion';
+import { useRawgGame } from '@/hooks/useRawgGame';
 
 interface TournamentCardProps {
   id: string;
@@ -26,10 +27,8 @@ interface TournamentCardProps {
   registrationData?: { id: string } | null;
   currentUserId?: string;
   slug: string;
+  onDelete?: () => void;
 }
-
-const RAWG_API_KEY = '55e8210bf73448108b7f3c6707739206';
-const RAWG_API_URL = 'https://api.rawg.io/api/games';
 
 export const TournamentCard: React.FC<TournamentCardProps> = ({
   id,
@@ -50,147 +49,15 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
   currentUserId,
   slug,
   status,
+  onDelete,
 }) => {
   const navigate = useNavigate();
   const { currentRole } = useRole();
   const ownerId = organizer_id || user_id;
   const isOrganizer = currentRole === 'organizer' && currentUserId && ownerId && currentUserId === ownerId;
 
-  // RAWG game image state
-  const [gameLogo, setGameLogo] = useState<string | null>(null);
-  const [gameBanner, setGameBanner] = useState<string | null>(null);
-  const [screenshots, setScreenshots] = useState<string[]>([]);
-  const [carouselIndex, setCarouselIndex] = useState(0);
-  const [imagesLoaded, setImagesLoaded] = useState<Set<string>>(new Set());
-  const carouselTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  // Normalize game name for RAWG search
-  const getRawgGameName = (game: string) => {
-    const normalized = game.trim().toLowerCase();
-    if (normalized === 'cs2' || normalized === 'counter strike 2' || normalized === 'counter-strike 2') {
-      return 'Counter-Strike 2';
-    }
-    return game;
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchGameImages = async () => {
-      try {
-        const searchName = getRawgGameName(game);
-        console.log(`[TournamentCard] Fetching RAWG images for game: ${searchName}`);
-        const response = await fetch(`${RAWG_API_URL}?key=${RAWG_API_KEY}&search=${encodeURIComponent(searchName)}`);
-        
-        if (!response.ok) {
-          console.error(`[TournamentCard] RAWG API error: ${response.status} ${response.statusText}`);
-          throw new Error(`RAWG API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log(`[TournamentCard] RAWG search results for ${searchName}:`, data?.results?.length || 0, 'results');
-        
-        if (data && data.results && data.results.length > 0) {
-          const gameData = data.results[0];
-          console.log(`[TournamentCard] Found game: ${gameData.name}, ID: ${gameData.id}`);
-          setGameLogo(gameData.background_image || null);
-          
-          // Fetch screenshots for the game
-          try {
-            const screenshotsRes = await fetch(`${RAWG_API_URL}/${gameData.id}/screenshots?key=${RAWG_API_KEY}`);
-            if (!screenshotsRes.ok) {
-              console.warn(`[TournamentCard] Failed to fetch screenshots: ${screenshotsRes.status}`);
-              throw new Error(`Screenshots API error: ${screenshotsRes.status}`);
-            }
-            const screenshotsData = await screenshotsRes.json();
-            console.log(`[TournamentCard] Screenshots for ${gameData.name}:`, screenshotsData?.results?.length || 0);
-            
-            if (screenshotsData && screenshotsData.results && screenshotsData.results.length > 0) {
-              if (isMounted) {
-                type RawgShot = { image: string };
-                const screenshotUrls = (screenshotsData.results as RawgShot[]).map((s) => s.image);
-                setScreenshots(screenshotUrls);
-                setGameBanner(screenshotUrls[0]);
-                console.log(`[TournamentCard] Set banner and ${screenshotUrls.length} screenshots`);
-              }
-            } else if (isMounted) {
-              const fallbackImages = [gameData.background_image_additional, gameData.background_image].filter(Boolean);
-              setScreenshots(fallbackImages);
-              setGameBanner(gameData.background_image_additional || gameData.background_image || null);
-              console.log(`[TournamentCard] Using fallback images: ${fallbackImages.length}`);
-            }
-          } catch (screenshotErr) {
-            console.error(`[TournamentCard] Error fetching screenshots:`, screenshotErr);
-            // Fallback to background images
-            if (isMounted) {
-              const fallbackImages = [gameData.background_image_additional, gameData.background_image].filter(Boolean);
-              setScreenshots(fallbackImages);
-              setGameBanner(gameData.background_image_additional || gameData.background_image || null);
-            }
-          }
-        } else {
-          console.warn(`[TournamentCard] No RAWG results found for: ${searchName}`);
-          if (isMounted) {
-            setGameLogo(null);
-            setScreenshots([]);
-            setGameBanner(null);
-          }
-        }
-      } catch (err) {
-        console.error(`[TournamentCard] Error fetching RAWG images for ${game}:`, err);
-        if (isMounted) {
-          setGameLogo(null);
-          setScreenshots([]);
-          setGameBanner(null);
-        }
-      }
-    };
-    fetchGameImages();
-    return () => { isMounted = false; };
-  }, [game]);
-
-  // Preload images for smooth transitions
-  useEffect(() => {
-    if (screenshots.length === 0) return;
-    
-    const preloadImages = async () => {
-      const loaded = new Set<string>();
-      const loadPromises = screenshots.map((imgSrc) => {
-        return new Promise<void>((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            loaded.add(imgSrc);
-            resolve();
-          };
-          img.onerror = () => resolve();
-          img.src = imgSrc;
-          // Timeout after 5 seconds to prevent hanging
-          setTimeout(() => resolve(), 5000);
-        });
-      });
-      
-      await Promise.all(loadPromises);
-      setImagesLoaded(loaded);
-    };
-    
-    preloadImages();
-  }, [screenshots]);
-
-  // Carousel logic - start immediately, don't wait for images
-  useEffect(() => {
-    if (screenshots.length <= 1) return;
-    
-    if (carouselTimeout.current) clearTimeout(carouselTimeout.current);
-    
-    // Start carousel immediately, even if images aren't loaded yet
-    // This ensures the carousel is visible
-    carouselTimeout.current = setTimeout(() => {
-      setCarouselIndex((prev) => (prev + 1) % screenshots.length);
-    }, 4000); // 4 seconds per image
-    
-    return () => {
-      if (carouselTimeout.current) clearTimeout(carouselTimeout.current);
-    };
-  }, [carouselIndex, screenshots.length]);
+  // Use the custom hook for game images and carousel
+  const { gameLogo, gameBanner, screenshots, carouselIndex } = useRawgGame(game);
 
   return (
     <motion.div
@@ -211,8 +78,8 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
                 className="absolute inset-0 w-full h-full"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: isActive ? 0.25 : 0 }}
-                transition={{ 
-                  duration: 1.5, 
+                transition={{
+                  duration: 1.5,
                   ease: [0.4, 0, 0.2, 1],
                   type: 'tween'
                 }}
@@ -226,15 +93,12 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
                   src={img}
                   alt={game + ' screenshot ' + (idx + 1)}
                   className="w-full h-full object-cover select-none"
-                  style={{ 
+                  style={{
                     filter: 'blur(3px)',
                     display: 'block'
                   }}
                   onLoad={() => {
                     console.log(`[TournamentCard] Carousel image ${idx + 1} loaded:`, img);
-                    if (!imagesLoaded.has(img)) {
-                      setImagesLoaded(prev => new Set([...prev, img]));
-                    }
                   }}
                   onError={(e) => {
                     console.error(`[TournamentCard] Failed to load carousel image ${idx + 1}:`, img, e);
@@ -246,7 +110,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
           })
         ) : gameBanner ? (
           // Fallback: Show single banner if no screenshots
-          <div 
+          <div
             className="absolute inset-0 w-full h-full opacity-25"
             style={{
               backgroundImage: `url(${gameBanner})`,
@@ -325,12 +189,26 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
               <svg className="w-5 h-5 text-white opacity-90" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 11c0-1.104-.896-2-2-2s-2 .896-2 2 .896 2 2 2 2-.896 2-2zm0 0c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0v2m0 4h.01" /></svg>
               You are the organizer
             </div>
-            <Button
-              className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-semibold text-base py-2 mb-2"
-              onClick={() => navigate(`/organizer/tournament/${slug || id}`)}
-            >
-              Manage
-            </Button>
+            <div className="flex gap-2 mb-2">
+              <Button
+                className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-semibold text-base py-2"
+                onClick={() => navigate(`/organizer/tournament/${slug || id}`)}
+              >
+                Manage
+              </Button>
+              {onDelete && (
+                <Button
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700 text-white font-semibold text-base py-2 px-4"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
           </>
         ) : registrationData ? (
           <button

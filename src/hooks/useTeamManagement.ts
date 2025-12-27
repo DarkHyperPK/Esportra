@@ -71,7 +71,7 @@ export interface TeamInvite {
 export const useTeamManagement = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const [userTeams, setUserTeams] = useState<Team[]>([]);
   const [teamInvites, setTeamInvites] = useState<TeamInvite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,10 +154,10 @@ export const useTeamManagement = () => {
         uniqueTeams.map(async (team) => {
           const teamId = team.id;
           const teamCreatedBy = team.owner_id;
-          
+
           // Fix missing captain in team_members
           await fixTeamCaptain(teamId, teamCreatedBy);
-          
+
           const { data: members } = await supabase
             .rpc('get_team_members', { t_id: teamId });
 
@@ -232,11 +232,11 @@ export const useTeamManagement = () => {
       setInvitesLoading(true);
 
       const { data: invites, error } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .select(`
           id,
           team_id,
-          user_id,
+          invited_user_id,
           invited_by,
           status,
           message,
@@ -252,16 +252,16 @@ export const useTeamManagement = () => {
             avatar_url
           )
         `)
-        .eq('user_id', user.id)
+        .eq('invited_user_id', user.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const formattedInvites: TeamInvite[] = (invites || []).map(invite => ({
+      const formattedInvites: TeamInvite[] = (invites || []).map((invite: any) => ({
         id: invite.id,
         team_id: invite.team_id,
-        user_id: invite.user_id,
+        user_id: invite.invited_user_id,
         invited_by: invite.invited_by,
         status: invite.status,
         message: invite.message,
@@ -273,8 +273,8 @@ export const useTeamManagement = () => {
           logo_url: invite.teams.logo_url,
         },
         inviter: {
-          username: invite.profiles.username,
-          avatar_url: invite.profiles.avatar_url,
+          username: invite.profiles?.username,
+          avatar_url: invite.profiles?.avatar_url,
         },
       }));
 
@@ -513,10 +513,10 @@ export const useTeamManagement = () => {
 
       // Handle existing invites (pending/declined/accepted)
       const { data: existingInvite } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .select('id, status')
         .eq('team_id', teamId)
-        .eq('user_id', userId)
+        .eq('invited_user_id', userId)
         .limit(1)
         .maybeSingle();
 
@@ -524,7 +524,7 @@ export const useTeamManagement = () => {
         if (existingInvite.status === 'accepted') {
           // User previously accepted, but may have left. Re-open invite to allow re-joining.
           await supabase
-            .from('team_invites')
+            .from('team_invitations')
             .update({ status: 'pending', responded_at: null, created_at: new Date().toISOString() })
             .eq('id', existingInvite.id);
           await supabase.from('notifications').insert({
@@ -556,7 +556,7 @@ export const useTeamManagement = () => {
         if (existingInvite.status === 'declined') {
           // Re-open the invite
           await supabase
-            .from('team_invites')
+            .from('team_invitations')
             .update({ status: 'pending', responded_at: null, created_at: new Date().toISOString() })
             .eq('id', existingInvite.id);
           await supabase.from('notifications').insert({
@@ -575,10 +575,10 @@ export const useTeamManagement = () => {
 
       // Create invite
       const { error: inviteError } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .insert({
           team_id: teamId,
-          user_id: userId,
+          invited_user_id: userId,
           invited_by: user.id,
           status: 'pending',
           message,
@@ -621,7 +621,7 @@ export const useTeamManagement = () => {
     try {
       // Get invite details
       const { data: invite, error: inviteError } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .select('*')
         .eq('id', inviteId)
         .single();
@@ -633,7 +633,7 @@ export const useTeamManagement = () => {
         .from('team_members')
         .insert({
           team_id: invite.team_id,
-          user_id: invite.user_id,
+          user_id: invite.invited_user_id,
           role: 'member',
           is_active: true,
           joined_at: new Date().toISOString(),
@@ -643,7 +643,7 @@ export const useTeamManagement = () => {
 
       // Update invite status
       const { error: updateError } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .update({
           status: 'accepted',
           responded_at: new Date().toISOString(),
@@ -659,7 +659,7 @@ export const useTeamManagement = () => {
           .delete()
           .eq('team_id', invite.team_id)
           .eq('type', 'team_invite')
-          .eq('user_id', invite.user_id);
+          .eq('user_id', invite.invited_user_id);
       } catch (notifError) {
         console.warn('Failed to clean up notifications:', notifError);
       }
@@ -690,7 +690,7 @@ export const useTeamManagement = () => {
     try {
       // Get invite details first
       const { data: invite, error: inviteError } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .select('*')
         .eq('id', inviteId)
         .single();
@@ -698,7 +698,7 @@ export const useTeamManagement = () => {
       if (inviteError) throw inviteError;
 
       const { error } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .update({
           status: 'declined',
           responded_at: new Date().toISOString(),
@@ -714,7 +714,7 @@ export const useTeamManagement = () => {
           .delete()
           .eq('team_id', invite.team_id)
           .eq('type', 'team_invite')
-          .eq('user_id', invite.user_id);
+          .eq('user_id', invite.invited_user_id);
       } catch (notifError) {
         console.warn('Failed to clean up notifications:', notifError);
       }
@@ -744,7 +744,7 @@ export const useTeamManagement = () => {
       console.log('=== REMOVE MEMBER DEBUG ===');
       console.log('Team ID:', teamId);
       console.log('User ID to remove:', userId);
-      
+
       const { data, error } = await supabase
         .from('team_members')
         .delete()
@@ -758,7 +758,7 @@ export const useTeamManagement = () => {
 
       console.log('Member removed successfully, refreshing teams...');
       await fetchUserTeams();
-      
+
       return true;
     } catch (error) {
       console.error('Error removing member:', error);
@@ -804,7 +804,7 @@ export const useTeamManagement = () => {
       console.log('Team ID:', teamId);
       console.log('New Captain ID:', newCaptainId);
       console.log('Current User ID:', user?.id);
-      
+
       // Update the team's owner_id field to the new captain
       const { error: teamError } = await supabase
         .from('teams')
@@ -872,7 +872,7 @@ export const useTeamManagement = () => {
         console.warn('Error deleting tournament_participants:', registrationsError);
         // Continue anyway - try to clean up other things
       }
-      
+
       // Also try to delete from tournament_participants (legacy table if it exists)
       try {
         await supabase
@@ -886,7 +886,7 @@ export const useTeamManagement = () => {
 
       // 2) Delete any pending/in-flight invites for this team
       const { error: invitesError } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .delete()
         .eq('team_id', teamId);
       if (invitesError) throw invitesError;
@@ -987,7 +987,7 @@ export const useTeamManagement = () => {
     disbandTeam,
     leaveTeam,
     getVerifiedUsers,
-    
+
     // Refresh functions
     fetchUserTeams,
     fetchTeamInvites,

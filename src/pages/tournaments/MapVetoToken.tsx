@@ -23,12 +23,14 @@ const MapVetoToken: React.FC = () => {
       try {
         // Find veto by team1 or team2 token
         const { data, error: fetchError } = await supabase
-          .from('valorant_match_map_vetos')
+          .from('match_map_vetos')
           .select(`
             *,
             tournament:tournaments(id, name, game, organizer_id),
             match:tournament_matches(
               id,
+              stage_id,
+              best_of,
               team1:teams!tournament_matches_team1_id_fkey(id, name),
               team2:teams!tournament_matches_team2_id_fkey(id, name)
             )
@@ -48,12 +50,47 @@ const MapVetoToken: React.FC = () => {
         const isTeam1 = data.team1_link_token === token;
         const teamId = isTeam1 ? data.team1_id : data.team2_id;
 
+        // Fetch stage config to get the correct bestOf
+        let stageConfig: any = null;
+        const matchData = data.match as any;
+        let effectiveBestOf = matchData?.best_of || data.best_of || 1;
+
+        // Robustly check for stage_id and fetch config
+        const stageId = matchData?.stage_id;
+        console.log('[MapVetoToken] matchData keys:', matchData ? Object.keys(matchData) : 'null');
+        console.log('[MapVetoToken] stageId from matchData:', stageId);
+
+        if (stageId) {
+          console.log('[MapVetoToken] Found stage_id:', stageId);
+          const { data: stageData, error: stageError } = await supabase
+            .from('tournament_stages')
+            .select('config')
+            .eq('id', stageId)
+            .single();
+
+          if (!stageError && stageData?.config) {
+            stageConfig = stageData.config;
+            // Stage config bestOf takes priority
+            // Check both camelCase (new wizard) and snake_case (old wizard)
+            if (stageConfig.bestOf) {
+              effectiveBestOf = Number(stageConfig.bestOf);
+              console.log('[MapVetoToken] Using stage config bestOf:', effectiveBestOf);
+            } else if (stageConfig.veto?.best_of) {
+              effectiveBestOf = Number(stageConfig.veto.best_of);
+              console.log('[MapVetoToken] Using stage config veto.best_of:', effectiveBestOf);
+            }
+          }
+        } else {
+          console.warn('[MapVetoToken] No stage_id found in match data');
+        }
+
         setVetoData({
           veto: data,
-          match: data.match,
+          match: matchData ? { ...matchData, effectiveBestOf } : { effectiveBestOf },
           tournament: data.tournament,
           teamId,
           isTeam1,
+          stageConfig,
         });
       } catch (err: any) {
         console.error('Error fetching veto:', err);
@@ -113,8 +150,12 @@ const MapVetoToken: React.FC = () => {
           team1Name={match?.team1?.name || 'Team 1'}
           team2Name={match?.team2?.name || 'Team 2'}
           game={tournament?.game}
-          bestOf={(match as any)?.best_of || 1}
-          forcedTeamId={teamId} // Force which team this token belongs to
+          bestOf={match?.effectiveBestOf || veto.best_of}
+          forcedTeamId={teamId}
+          // @ts-ignore
+          debugStageId={match?.stage_id}
+          // @ts-ignore
+          debugStageConfig={vetoData.stageConfig}
           onComplete={() => {
             // Optionally redirect or show completion message
           }}

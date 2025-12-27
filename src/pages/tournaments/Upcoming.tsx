@@ -17,13 +17,13 @@ const UpcomingTournaments = () => {
   const availableGames = Array.from(new Set(tournaments.map(t => t.game))).sort();
 
   // Filter tournaments based on selected games
-  const filteredTournaments = selectedGames.length > 0 
+  const filteredTournaments = selectedGames.length > 0
     ? tournaments.filter(tournament => selectedGames.includes(tournament.game))
     : tournaments;
 
   const handleGameToggle = (game: string) => {
-    setSelectedGames(prev => 
-      prev.includes(game) 
+    setSelectedGames(prev =>
+      prev.includes(game)
         ? prev.filter(g => g !== game)
         : [...prev, game]
     );
@@ -36,14 +36,14 @@ const UpcomingTournaments = () => {
   const fetchTournaments = async () => {
     try {
       console.log('Fetching upcoming tournaments...');
-      
+
       // First, let's check if we can see any tournaments at all
       const { data: allTournaments, error: allError } = await supabase
         .from('tournaments')
-        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, created_at, updated_at');
-      
+        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at');
+
       console.log('All tournaments in DB:', allTournaments);
-      
+
       if (allError) {
         console.error('Error fetching all tournaments:', allError);
       }
@@ -51,16 +51,16 @@ const UpcomingTournaments = () => {
       // Now fetch with ordering
       const { data, error } = await supabase
         .from('tournaments')
-        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, created_at, updated_at')
+        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at')
         .order('start_date', { ascending: true });
-      
+
       if (error) {
         console.error('Error fetching tournaments:', error);
         throw error;
       }
-      
+
       console.log('Raw tournament data:', data);
-      
+
       // Get participant counts and registration data
       const tournamentsWithExtras = await Promise.all(
         (data || []).map(async (tournament) => {
@@ -83,7 +83,7 @@ const UpcomingTournaments = () => {
             }
           }
           console.log('TournamentCard initialData:', registrationData);
-          
+
           // Transform tournament data to match expected interface
           return {
             id: tournament.id,
@@ -104,11 +104,12 @@ const UpcomingTournaments = () => {
             image_url: tournament.banner_url || tournament.logo_url,
             team_size: 1,
             slug: tournament.slug,
+            status: tournament.status || 'upcoming',
             registrationData,
           };
         })
       );
-      
+
       // Filter tournaments to only those whose start date/time is in the future and are not completed/finished
       const now = new Date();
       const filteredTournaments = tournamentsWithExtras.filter(t => {
@@ -116,11 +117,15 @@ const UpcomingTournaments = () => {
           // Use the original start_date from the database for filtering
           const originalTournament = data?.find(orig => orig.id === t.id);
           if (!originalTournament?.start_date) return false;
-          
+
           const start = new Date(originalTournament.start_date);
-          const isUpcoming = start > now;
-          const isCompleted = (t as any).status === 'completed' || ((t as any).finished === true);
-          return isUpcoming && !isCompleted;
+          const isFuture = start > now;
+          const isActive = t.status === 'open' || t.status === 'ongoing' || t.status === 'upcoming';
+          const isCompleted = t.status === 'completed' || t.status === 'cancelled';
+
+          // Show if it's in the future OR if it's currently active (open/ongoing)
+          // This ensures we don't hide tournaments that are "open" but technically started in the past
+          return (isFuture || isActive) && !isCompleted;
         } catch (error) {
           console.error('Error processing tournament date:', {
             tournamentId: t.id,
@@ -130,7 +135,7 @@ const UpcomingTournaments = () => {
           return false;
         }
       });
-      
+
       console.log('Filtered upcoming tournaments:', filteredTournaments);
       setTournaments(filteredTournaments);
     } catch (error) {
@@ -152,7 +157,7 @@ const UpcomingTournaments = () => {
     <div className="min-h-screen bg-esports-dark text-white flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8 text-esports-primary">Upcoming Tournaments</h1>
-        
+
         {/* Game Filter */}
         {availableGames.length > 0 && (
           <GameFilter
@@ -162,7 +167,7 @@ const UpcomingTournaments = () => {
             availableGames={availableGames}
           />
         )}
-        
+
         {/* Results Counter */}
         {!isLoading && tournaments.length > 0 && (
           <div className="mb-4">
@@ -174,7 +179,7 @@ const UpcomingTournaments = () => {
             </p>
           </div>
         )}
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
           {isLoading ? (
             Array(6).fill(0).map((_, i) => (
@@ -182,7 +187,7 @@ const UpcomingTournaments = () => {
             ))
           ) : filteredTournaments.length > 0 ? (
             filteredTournaments.map((tournament) => (
-              <TournamentCard 
+              <TournamentCard
                 key={tournament.id}
                 id={tournament.id}
                 name={tournament.name}

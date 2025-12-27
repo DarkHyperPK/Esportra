@@ -8,14 +8,14 @@ import { AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const OngoingTournaments = () => {
-  const { tournaments, loading, error } = useTournaments('ongoing');
+  const { data: tournaments = [], isLoading: loading, error } = useTournaments('ongoing');
   const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-esports-dark text-white flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Live Tournaments</h1>
-        
+
         {loading ? (
           <div className="flex items-center justify-center p-8">
             <LoaderCircle className="h-8 w-8 animate-spin" />
@@ -23,7 +23,7 @@ const OngoingTournaments = () => {
         ) : error ? (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{(error as Error).message || 'An error occurred'}</AlertDescription>
           </Alert>
         ) : tournaments.length === 0 ? (
           <div className="text-center py-8">
@@ -52,10 +52,7 @@ const OngoingTournaments = () => {
                   currentUserId={user?.id}
                   slug={tournament.slug}
                 />
-                <div className="mt-4 p-4 bg-gaming-dark border border-gaming-gray/30 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-2">Brackets / Fixtures</h3>
-                  <p className="text-gray-400">Brackets and match fixtures will be shown here once the tournament starts.</p>
-                </div>
+
               </div>
             ))}
           </div>

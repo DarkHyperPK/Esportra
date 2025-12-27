@@ -135,13 +135,13 @@ const PlayerTeams = () => {
     // Create team
     const { data: team, error: teamError } = await supabase
       .from('teams')
-      .insert({ 
-        name: teamName, 
-        tag: teamTag, 
-        logo_url: logoUrl, 
+      .insert({
+        name: teamName,
+        tag: teamTag,
+        logo_url: logoUrl,
         game: game || 'Unknown', // Ensure game field is not null
         games: [game || 'Unknown'], // Also set games array
-        owner_id: user?.id 
+        owner_id: user?.id
       })
       .select()
       .single();
@@ -203,7 +203,7 @@ const PlayerTeams = () => {
     };
 
     window.addEventListener('teamInviteAccepted', handleTeamInviteAccepted);
-    
+
     return () => {
       window.removeEventListener('teamInviteAccepted', handleTeamInviteAccepted);
     };
@@ -298,7 +298,7 @@ const PlayerTeams = () => {
       setInviteLoading(false);
       return;
     }
-    const { data: existingInvite } = await supabase.from('team_invites').select('id, status').eq('team_id', inviteModal.teamId).eq('user_id', user.id).single();
+    const { data: existingInvite } = await supabase.from('team_invitations').select('id, status').eq('team_id', inviteModal.teamId).eq('invited_user_id', user.id).single();
     if (existingInvite && existingInvite.status === 'pending') {
       setInviteError('User already has a pending invite.');
       setInviteLoading(false);
@@ -307,9 +307,9 @@ const PlayerTeams = () => {
     // Get current user (inviter)
     const { data: { user: inviter } } = await supabase.auth.getUser();
     // Insert invite
-    const { error: inviteError } = await supabase.from('team_invites').insert({
+    const { error: inviteError } = await supabase.from('team_invitations').insert({
       team_id: inviteModal.teamId,
-      user_id: user.id,
+      invited_user_id: user.id,
       invited_by: inviter.id,
       status: 'pending',
     });
@@ -346,7 +346,7 @@ const PlayerTeams = () => {
           Create Team
         </Button>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {teams.map((team) => (
           <Card key={team.id} className="bg-gradient-to-br from-gaming-dark via-gaming-darker to-gaming-dark border border-gaming-purple/30 rounded-xl shadow-lg overflow-hidden p-6 flex flex-col gap-4">
@@ -370,7 +370,7 @@ const PlayerTeams = () => {
                   <TabsTrigger value="members">Members</TabsTrigger>
                   <TabsTrigger value="stats">Stats</TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="members">
                   <div className="space-y-3">
                     {team.members.map((member) => (
@@ -405,7 +405,7 @@ const PlayerTeams = () => {
                           <Plus className="mr-2 h-4 w-4" />
                           Invite Member
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => {}}>
+                        <Button variant="outline" size="sm" onClick={() => { }}>
                           Edit
                         </Button>
                         <Button variant="destructive" size="sm" onClick={() => setDeleteModal({ open: true, team })}>
@@ -415,7 +415,7 @@ const PlayerTeams = () => {
                     )}
                   </div>
                 </TabsContent>
-                
+
                 <TabsContent value="stats">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-esports-dark rounded-md p-4 text-center">
@@ -425,7 +425,7 @@ const PlayerTeams = () => {
                       <div className="text-2xl font-bold">{team.tournamentWins}</div>
                       <div className="text-sm text-gray-400">Tournaments Won</div>
                     </div>
-                    
+
                     <div className="bg-esports-dark rounded-md p-4 text-center">
                       <div className="flex justify-center">
                         <Users className="h-10 w-10 text-blue-500 mb-1" />
@@ -433,7 +433,7 @@ const PlayerTeams = () => {
                       <div className="text-2xl font-bold">{team.totalMatches}</div>
                       <div className="text-sm text-gray-400">Matches Played</div>
                     </div>
-                    
+
                     <div className="col-span-2 bg-esports-dark rounded-md p-4">
                       <div className="flex justify-between items-center mb-2">
                         <div className="text-sm text-gray-400">Win Rate</div>
@@ -442,21 +442,21 @@ const PlayerTeams = () => {
                         </div>
                       </div>
                       <div className="w-full h-2 bg-gaming-gray/20 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-gaming-purple"
                           style={{ width: `${(team.tournamentWins / team.totalMatches) * 100}%` }}
                         />
                       </div>
                     </div>
                   </div>
-                  
+
                   <Button variant="outline" className="w-full mt-4">View Detailed Stats</Button>
                 </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
         ))}
-        
+
         <Card className="bg-gaming-dark border-gaming-gray/30 border-dashed flex flex-col justify-center items-center p-10 min-h-[300px]">
           <div className="rounded-full bg-esports-dark p-4 mb-4">
             <Users size={32} className="text-gaming-purple" />

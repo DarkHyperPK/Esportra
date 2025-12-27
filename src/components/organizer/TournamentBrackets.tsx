@@ -33,7 +33,7 @@ const TournamentBrackets = () => {
           <TabsTrigger value="double-elimination">Double Elimination</TabsTrigger>
           <TabsTrigger value="round-robin">Round Robin</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="single-elimination">
           <Card className="bg-gaming-dark border-gaming-gray/30">
             <CardHeader>
@@ -58,7 +58,7 @@ const TournamentBrackets = () => {
                               <div>0</div>
                             </div>
                           </div>
-                          
+
                           <div className="border border-gaming-gray/30 p-3 rounded-md">
                             <div className="flex justify-between items-center">
                               <div>Team Delta</div>
@@ -69,7 +69,7 @@ const TournamentBrackets = () => {
                               <div>1</div>
                             </div>
                           </div>
-                          
+
                           <div className="border border-gaming-gray/30 p-3 rounded-md">
                             <div className="flex justify-between items-center">
                               <div>Team Epsilon</div>
@@ -80,7 +80,7 @@ const TournamentBrackets = () => {
                               <div className="font-bold">2</div>
                             </div>
                           </div>
-                          
+
                           <div className="border border-gaming-gray/30 p-3 rounded-md">
                             <div className="flex justify-between items-center">
                               <div>Team Theta</div>
@@ -94,11 +94,11 @@ const TournamentBrackets = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center mx-4">
                       <div className="border-t-2 border-b-2 border-r-2 border-gaming-gray/30 h-64 w-8" />
                     </div>
-                    
+
                     <div className="w-full">
                       <h4 className="text-center text-sm text-gray-400 mb-2">Semi Finals</h4>
                       <div className="space-y-24 pt-8">
@@ -112,7 +112,7 @@ const TournamentBrackets = () => {
                             <div>1</div>
                           </div>
                         </div>
-                        
+
                         <div className="border border-gaming-gray/30 p-3 rounded-md">
                           <div className="flex justify-between items-center">
                             <div>Team Zeta</div>
@@ -125,11 +125,11 @@ const TournamentBrackets = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center mx-4">
                       <div className="border-t-2 border-b-2 border-r-2 border-gaming-gray/30 h-32 w-8" />
                     </div>
-                    
+
                     <div className="w-full">
                       <h4 className="text-center text-sm text-gray-400 mb-2">Finals</h4>
                       <div className="pt-12">
@@ -155,7 +155,7 @@ const TournamentBrackets = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="double-elimination">
           <Card className="bg-gaming-dark border-gaming-gray/30">
             <CardHeader>
@@ -169,7 +169,7 @@ const TournamentBrackets = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="round-robin">
           <Card className="bg-gaming-dark border-gaming-gray/30">
             <CardHeader>

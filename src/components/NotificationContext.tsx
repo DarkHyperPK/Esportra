@@ -29,7 +29,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  type InviteRow = { id: string; team_id: string; created_at: string; message?: string };
+  type InviteRow = { id: string; team_id: string; created_at: string; message?: string; status?: string };
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -42,9 +42,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
     // Also load pending team invites directly as synthetic notifications in case no row exists in notifications table
     const { data: invites } = await supabase
-      .from('team_invites')
+      .from('team_invitations')
       .select('id, team_id, created_at, message')
-      .eq('user_id', user.id)
+      .eq('invited_user_id', user.id)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
@@ -88,7 +88,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         },
         (payload) => {
           console.log('[Notifications] Realtime update:', payload.eventType);
-          
+
           if (payload.eventType === 'INSERT' && payload.new) {
             // New notification added
             const newNotification = payload.new as Notification;
@@ -122,18 +122,18 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       .subscribe();
 
     const invitesChannel = supabase
-      .channel(`team_invites_${user.id}`)
+      .channel(`team_invitations_${user.id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'team_invites',
-          filter: `user_id=eq.${user.id}`,
+          table: 'team_invitations',
+          filter: `invited_user_id=eq.${user.id}`,
         },
         (payload) => {
           console.log('[Notifications] Team invite update:', payload.eventType);
-          
+
           // Update notifications state directly instead of refetching
           if (payload.eventType === 'INSERT' && payload.new) {
             const newInvite = payload.new as InviteRow;
@@ -147,7 +147,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
               is_read: false,
               created_at: newInvite.created_at,
             };
-            
+
             setNotifications(prev => {
               const exists = prev.some(n => n.id === syntheticNotification.id);
               if (exists) return prev;
@@ -178,9 +178,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
                 is_read: false,
                 created_at: updatedInvite.created_at,
               };
-              
+
               setNotifications(prev => {
-                const updated = prev.map(n => 
+                const updated = prev.map(n =>
                   n.id === syntheticNotification.id ? syntheticNotification : n
                 );
                 setUnreadCount(updated.filter(n => !n.is_read).length);
@@ -226,4 +226,4 @@ export const useNotifications = () => {
   const ctx = useContext(NotificationContext);
   if (!ctx) throw new Error('useNotifications must be used within a NotificationProvider');
   return ctx;
-}; 
+};

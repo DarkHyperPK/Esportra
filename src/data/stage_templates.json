@@ -1,0 +1,74 @@
+{
+    "templates": [
+        {
+            "id": "single_elimination",
+            "name": "Single Elimination",
+            "description": "A straightforward knockout tournament where one loss means elimination.",
+            "stages": [
+                {
+                    "name": "Playoffs",
+                    "format": "single_elimination",
+                    "stage_order": 1,
+                    "capacity": 16,
+                    "advancement_count": 0
+                }
+            ]
+        },
+        {
+            "id": "double_elimination",
+            "name": "Double Elimination",
+            "description": "Teams have two chances; they move to a lower bracket after their first loss.",
+            "stages": [
+                {
+                    "name": "Main Bracket",
+                    "format": "double_elimination",
+                    "stage_order": 1,
+                    "capacity": 16,
+                    "advancement_count": 0
+                }
+            ]
+        },
+        {
+            "id": "qualifiers_to_finals",
+            "name": "Qualifiers to Finals",
+            "description": "Two stages: an initial qualifier stage followed by a final knockout bracket.",
+            "stages": [
+                {
+                    "name": "Qualifiers",
+                    "format": "single_elimination",
+                    "stage_order": 1,
+                    "capacity": 32,
+                    "advancement_count": 8
+                },
+                {
+                    "name": "Finals",
+                    "format": "single_elimination",
+                    "stage_order": 2,
+                    "capacity": 8,
+                    "advancement_count": 0
+                }
+            ]
+        },
+        {
+            "id": "group_to_playoffs",
+            "name": "Group Stage to Playoffs",
+            "description": "Teams are split into groups, with the top teams advancing to a knockout bracket.",
+            "stages": [
+                {
+                    "name": "Group Stage",
+                    "format": "round_robin",
+                    "stage_order": 1,
+                    "capacity": 16,
+                    "advancement_count": 8
+                },
+                {
+                    "name": "Playoffs",
+                    "format": "single_elimination",
+                    "stage_order": 2,
+                    "capacity": 8,
+                    "advancement_count": 0
+                }
+            ]
+        }
+    ]
+}

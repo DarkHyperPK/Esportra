@@ -51,7 +51,7 @@ export const useTournamentCreation = () => {
   const handleSelectChange = (field: string, value: string) => {
     setFormData(prev => {
       const updates: Partial<FormData> = { [field]: value };
-      
+
       // If game is changed, set both structure and teamSize to the game's default format
       if (field === 'game') {
         const game = esportsGames.games.find(g => g.name.toLowerCase() === value.toLowerCase());
@@ -63,7 +63,7 @@ export const useTournamentCreation = () => {
           }
         }
       }
-      
+
       // If structure is changed, update teamSize to match
       if (field === 'structure') {
         const game = esportsGames.games.find(g => g.name.toLowerCase() === prev.game.toLowerCase());
@@ -74,7 +74,7 @@ export const useTournamentCreation = () => {
           }
         }
       }
-      
+
       return { ...prev, ...updates };
     });
   };
@@ -85,9 +85,9 @@ export const useTournamentCreation = () => {
   };
 
   const validateForm = (): boolean => {
-    if (!formData.name || !formData.game || !formData.structure || !formData.teamSize || 
-        !formData.date || !formData.time || (!formData.isOnline && !formData.venue) || !formData.maxParticipants || 
-        !formData.prizePool || !formData.description) {
+    if (!formData.name || !formData.game || !formData.structure || !formData.teamSize ||
+      !formData.date || !formData.time || (!formData.isOnline && !formData.venue) || !formData.maxParticipants ||
+      !formData.prizePool || !formData.description) {
       setError("Please fill in all required fields");
       return false;
     }
@@ -104,7 +104,7 @@ export const useTournamentCreation = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -113,19 +113,19 @@ export const useTournamentCreation = () => {
       });
       return;
     }
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       // Parse dates and times
       const startDateTime = new Date(`${formData.date}T${formData.time}`);
       const endDateTime = new Date(startDateTime.getTime() + (2 * 60 * 60 * 1000)); // 2 hours later
       const registrationDeadline = new Date(startDateTime.getTime() - (24 * 60 * 60 * 1000)); // 1 day before
-      
+
       // Parse entry fee and prize pool, clamp to DB numeric(10,2) safe range
       const toMoney = (val: string, freeAsZero = false) => {
         if (freeAsZero && (val || '').trim().toLowerCase() === 'free') return 0;
@@ -138,7 +138,7 @@ export const useTournamentCreation = () => {
 
       const entryFee = toMoney(formData.entryFee, true);
       const prizePool = toMoney(formData.prizePool);
-      
+
       // Map structure to format
       const formatMap: { [key: string]: string } = {
         'single_elimination': 'single_elimination',
@@ -147,7 +147,7 @@ export const useTournamentCreation = () => {
         'swiss': 'swiss',
         'custom': 'custom'
       };
-      
+
       // Build base slug and ensure uniqueness by appending a numeric suffix on conflict
       let slug = slugify(formData.name, { lower: true, strict: true });
       let uniqueSlug = slug;
@@ -160,10 +160,10 @@ export const useTournamentCreation = () => {
         if (existing && existing.length > 0) {
           uniqueSlug = `${slug}-${Date.now().toString(36).slice(-4)}`;
         }
-      } catch {}
+      } catch { }
       slug = uniqueSlug;
       console.log('Generated slug:', slug);
-      
+
       const { data: tournament, error: tournamentError } = await supabase
         .from('tournaments')
         .insert({
@@ -186,11 +186,11 @@ export const useTournamentCreation = () => {
           // Use null unless you have a valid venue_id (UUID) to relate
           venue_id: formData.isOnline ? null : null,
           is_public: true,
-          
+
         })
         .select()
         .single();
-        
+
       if (tournamentError) {
         console.error('Create tournament insert error:', {
           code: (tournamentError as any).code,
@@ -200,7 +200,7 @@ export const useTournamentCreation = () => {
         });
         throw tournamentError;
       }
-      
+
       console.log('Tournament created successfully:', tournament);
       console.log('Tournament slug:', tournament?.slug);
       console.log('Tournament id:', tournament?.id);
@@ -209,7 +209,7 @@ export const useTournamentCreation = () => {
         title: "Tournament Created",
         description: "Your tournament has been successfully created!",
       });
-      
+
       const navigationPath = tournament?.slug ? `/organizer/tournament/${tournament.slug}` : `/organizer/tournament/${tournament.id}`;
       console.log('Navigating to:', navigationPath);
       navigate(navigationPath);

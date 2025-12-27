@@ -5,12 +5,12 @@ import { useRole } from '@/contexts/RoleContext';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Trophy } from 'lucide-react';
-import CreateTournamentForm from '@/components/tournament/CreateTournamentForm';
+import { WizardContainer } from '@/components/tournament/wizard';
 
 const CreateTournament = () => {
   const { user } = useAuth();
   const { canCreateTournaments, currentRole } = useRole();
-  
+
   if (!user) {
     return (
       <div className="min-h-screen bg-esports-dark text-white flex flex-col">
@@ -51,8 +51,8 @@ const CreateTournament = () => {
 
   return (
     <div className="min-h-screen bg-esports-dark text-white flex flex-col">
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <CreateTournamentForm />
+      <main className="flex-grow">
+        <WizardContainer />
       </main>
       <Footer />
     </div>

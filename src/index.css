@@ -240,6 +240,42 @@ img {
 .animation-delay-2000 { animation-delay: 2s; }
 .animation-delay-4000 { animation-delay: 4s; }
 
+/* Premium UI - Slow drift animation (45s loop) */
+@keyframes premium-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-2%, 1%) scale(1.02); }
+  50% { transform: translate(1%, -1%) scale(0.99); }
+  75% { transform: translate(2%, 2%) scale(1.01); }
+}
+.animate-premium-drift { animation: premium-drift 45s ease-in-out infinite; }
+
+/* Premium glass effect - heavily darkened with subtle transparency */
+.glass-premium {
+  backdrop-filter: blur(24px) saturate(200%);
+  background: linear-gradient(
+    180deg,
+    rgba(8, 8, 12, 0.92) 0%,
+    rgba(5, 5, 8, 0.95) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+/* Section divider fade effect */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 20%,
+    rgba(120, 80, 200, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 80%,
+    transparent 100%
+  );
+}
+
 /* Glass effects */
 .glass { backdrop-filter: blur(20px) saturate(180%); background: linear-gradient(135deg, rgba(255,255,255,.1), rgba(255,255,255,.05)); border:1px solid rgba(255,255,255,.2); box-shadow:0 8px 32px rgba(0,0,0,.3); }
 .glass-dark { backdrop-filter: blur(20px) saturate(180%); background: linear-gradient(135deg, rgba(0,0,0,.4), rgba(0,0,0,.2)); border:1px solid rgba(255,255,255,.1); box-shadow:0 8px 32px rgba(0,0,0,.5); }

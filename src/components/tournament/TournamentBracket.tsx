@@ -9,19 +9,26 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useTournamentBracket } from '@/hooks/useTournamentBracket';
-import { 
-  CheckCircle, 
-  XCircle, 
+import {
+  CheckCircle,
+  XCircle,
   Eye,
-  Camera
+  Camera,
+  Map as MapIcon
 } from 'lucide-react';
+import SingleEliminationBracketCustom, { BracketMatch } from '@/components/bracket/SingleEliminationBracketCustom';
+import DoubleEliminationBracket from '@/components/bracket/DoubleEliminationBracket';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { MapVeto } from '@/components/tournament/MapVeto';
 
 interface Team {
   id: string;
   name: string;
-  tag: string;
+  tag?: string;
   logo_url?: string;
-  members: any[];
+  members?: any[];
 }
 
 interface Match {
@@ -29,8 +36,8 @@ interface Match {
   tournament_id: string;
   round: number;
   match_number: number;
-  team1_id: string;
-  team2_id: string;
+  team1_id: string | null;
+  team2_id: string | null;
   team1_score?: number;
   team2_score?: number;
   status: 'pending' | 'in_progress' | 'completed' | 'disputed';
@@ -71,22 +78,27 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
   const { user } = useAuth();
   const { canReportScores, canVerifyResults } = useRole();
   const { toast } = useToast();
-  
+
   const {
     matches,
     matchResults,
+    stages,
+    currentStage,
+    selectedStageId,
+    setSelectedStageId,
     loading,
     error,
     generateBracket,
     reportMatchScore,
     verifyMatchResult
   } = useTournamentBracket(tournamentId);
-  
+
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [showScoreDialog, setShowScoreDialog] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [showVetoDialog, setShowVetoDialog] = useState(false);
   const [pendingResult, setPendingResult] = useState<MatchResult | null>(null);
-  
+
   // Score reporting form
   const [team1Score, setTeam1Score] = useState('');
   const [team2Score, setTeam2Score] = useState('');
@@ -97,38 +109,19 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
   const [verificationNotes, setVerificationNotes] = useState('');
   const [verificationStatus, setVerificationStatus] = useState<'verified' | 'rejected'>('verified');
 
-  const handleGenerateBracket = async () => {
-    try {
-      setSubmitting(true);
-      await generateBracket();
-      toast({
-        title: 'Bracket Generated',
-        description: 'Tournament bracket created successfully',
-        variant: 'default',
-      });
-      onBracketUpdate?.();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to generate bracket',
-        variant: 'destructive',
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
+
 
   const handleReportScore = async () => {
     if (!selectedMatch || !user) return;
 
     try {
       setSubmitting(true);
-      await reportMatchScore(
-        selectedMatch.id,
-        parseInt(team1Score),
-        parseInt(team2Score),
+      await reportMatchScore({
+        matchId: selectedMatch.id,
+        team1Score: parseInt(team1Score),
+        team2Score: parseInt(team2Score),
         screenshots
-      );
+      });
 
       toast({
         title: 'Score Reported',
@@ -156,11 +149,11 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
 
     try {
       setSubmitting(true);
-      await verifyMatchResult(
-        pendingResult.id,
-        verificationStatus,
-        verificationNotes
-      );
+      await verifyMatchResult({
+        resultId: pendingResult.id,
+        status: verificationStatus as 'verified' | 'rejected',
+        notes: verificationNotes
+      });
 
       toast({
         title: 'Result Verified',
@@ -189,23 +182,186 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
   const canReportScore = (match: Match) => {
     if (!user || !canReportScores) return false;
     if (match.status === 'completed') return false;
-    
+
     // Check if user is captain of either team
-    const isTeam1Captain = match.team1?.members?.some(member => 
+    const isTeam1Captain = match.team1?.members?.some(member =>
       member.user_id === user.id && member.role === 'captain'
     );
-    const isTeam2Captain = match.team2?.members?.some(member => 
+    const isTeam2Captain = match.team2?.members?.some(member =>
       member.user_id === user.id && member.role === 'captain'
     );
-    
+
     return isTeam1Captain || isTeam2Captain;
   };
 
-  const getRoundName = (round: number, totalRounds: number) => {
-    if (round === totalRounds) return 'Final';
-    if (round === totalRounds - 1) return 'Semi-Final';
-    if (round === totalRounds - 2) return 'Quarter-Final';
-    return `Round ${round}`;
+  const canVeto = (match: Match) => {
+    if (!user) return false;
+    if (match.status === 'completed') return false;
+
+    // Check stage config for veto enabled
+    const vetoEnabled = (currentStage?.config as any)?.veto?.enabled;
+    if (!vetoEnabled) return false;
+
+    // Check if user is captain or organizer
+    const isTeam1Captain = match.team1?.members?.some(m => m.user_id === user.id && m.role === 'captain');
+    const isTeam2Captain = match.team2?.members?.some(m => m.user_id === user.id && m.role === 'captain');
+
+    return isTeam1Captain || isTeam2Captain || isOrganizer;
+  };
+
+  // Transform API matches to BracketMatch format
+  const bracketMatches: (BracketMatch & { bracket_side?: string })[] = matches.map(m => ({
+    id: m.id,
+    match_number: m.match_number,
+    round: m.round,
+    status: m.status,
+    winner_id: m.winner_id,
+    team1_id: m.team1_id,
+    team2_id: m.team2_id,
+    bracket_side: m.bracket_side,
+    team1: m.team1 ? {
+      id: m.team1.id,
+      name: m.team1.name,
+      logo: m.team1.logo_url,
+      score: m.team1_score,
+      isWinner: m.winner_id === m.team1.id
+    } : null,
+    team2: m.team2 ? {
+      id: m.team2.id,
+      name: m.team2.name,
+      logo: m.team2.logo_url,
+      score: m.team2_score,
+      isWinner: m.winner_id === m.team2.id
+    } : null
+  }));
+
+  // Find user's team ID to auto-expand their matches
+  const userTeamId = matches.find(m =>
+    (m.team1 as any)?.members?.some((mem: any) => mem.user_id === user?.id) ||
+    (m.team2 as any)?.members?.some((mem: any) => mem.user_id === user?.id)
+  ) ? (matches.find(m => (m.team1 as any)?.members?.some((mem: any) => mem.user_id === user?.id))?.team1_id)
+    : matches.find(m => (m.team2 as any)?.members?.some((mem: any) => mem.user_id === user?.id))?.team2_id;
+
+  const handleMatchAction = (matchId: string) => {
+    const match = matches.find(m => m.id === matchId);
+    if (!match) return;
+
+    if (isOrganizer && canVerifyResults) {
+      const result = getMatchResult(matchId);
+      if (result && result.status === 'pending') {
+        setSelectedMatch(match as any);
+        setPendingResult(result as any);
+        setShowVerificationDialog(true);
+        return;
+      }
+    }
+
+    if (canReportScore(match) && match.status === 'pending') {
+      setSelectedMatch(match as any);
+      setShowScoreDialog(true);
+    }
+  };
+
+  const renderMatchActions = (match: BracketMatch) => {
+    const originalMatch = matches.find(m => m.id === match.id);
+    if (!originalMatch) return null;
+
+    const actions = [];
+    const isPending = originalMatch.status === 'pending';
+    const isCompleted = originalMatch.status === 'completed';
+
+    // Verify Result (Organizer)
+    if (isOrganizer && canVerifyResults) {
+      const result = getMatchResult(match.id);
+      if (result && result.status === 'pending') {
+        actions.push(
+          <Button
+            key="verify"
+            size="sm"
+            variant="default"
+            className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+            onClick={() => {
+              setSelectedMatch(originalMatch as any);
+              setPendingResult(result as any);
+              setShowVerificationDialog(true);
+            }}
+          >
+            <CheckCircle className="w-3 h-3 mr-2" />
+            Verify Result
+          </Button>
+        );
+      }
+    }
+
+    // Veto (Captains/Organizer)
+    if (canVeto(originalMatch) && !isCompleted) {
+      actions.push(
+        <Button
+          key="veto"
+          size="sm"
+          variant="outline"
+          className="w-full border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+          onClick={() => {
+            setSelectedMatch(originalMatch as any);
+            setShowVetoDialog(true);
+          }}
+        >
+          <MapIcon className="w-3 h-3 mr-2" />
+          Map Veto
+        </Button>
+      );
+    }
+
+    // Report Score (Captains)
+    if (canReportScore(originalMatch) && isPending) {
+      actions.push(
+        <Button
+          key="report"
+          size="sm"
+          variant="outline"
+          className="w-full border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+          onClick={() => {
+            setSelectedMatch(originalMatch as any);
+            setShowScoreDialog(true);
+          }}
+        >
+          <Camera className="w-3 h-3 mr-2" />
+          Report Score
+        </Button>
+      );
+    }
+
+    if (actions.length === 0) {
+      return (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="w-full text-xs text-gray-500"
+          disabled
+        >
+          No actions available
+        </Button>
+      );
+    }
+
+    return <div className="flex flex-col gap-2 w-full">{actions}</div>;
+  };
+
+  const getMatchActionLabel = (match: BracketMatch) => {
+    // This is a fallback if renderMatchActions is not used or supported
+    const originalMatch = matches.find(m => m.id === match.id);
+    if (!originalMatch) return 'View Details';
+
+    if (isOrganizer && canVerifyResults) {
+      const result = getMatchResult(match.id);
+      if (result && result.status === 'pending') return 'Verify Result';
+    }
+
+    if (canReportScore(originalMatch) && originalMatch.status === 'pending') {
+      return 'Report Score';
+    }
+
+    return 'View Details';
   };
 
   if (loading) {
@@ -220,152 +376,67 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
     );
   }
 
-  const totalRounds = Math.max(...matches.map(m => m.round), 0);
-  const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1);
-
   return (
     <div className="space-y-6">
       {/* Bracket Header */}
       <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold text-white">Tournament Bracket</h3>
-          {isOrganizer && matches.length === 0 && (
-            <Button
-              onClick={handleGenerateBracket}
-              disabled={submitting}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {submitting ? 'Generating...' : 'Generate Bracket'}
-            </Button>
-          )}
+          {/* Generate Bracket button removed as it is now handled in Stage Management */}
         </div>
-        
+
         {matches.length === 0 ? (
-          <p className="text-gray-400">Bracket available soon. Check back later.</p>
+          <div className="text-center py-8">
+            <p className="text-gray-400 mb-2">Bracket not generated yet.</p>
+            {isOrganizer && (
+              <p className="text-sm text-gray-500">
+                Go to the <strong>Stages</strong> tab to generate the bracket for this stage.
+              </p>
+            )}
+          </div>
         ) : (
           <div className="text-sm text-gray-400">
-            {matches.length} matches across {totalRounds} rounds
+            {matches.length} matches across {Math.max(...matches.map(m => m.round), 0)} rounds
           </div>
         )}
       </div>
 
+      {/* Stage Selection Tabs */}
+      {stages.length > 1 && (
+        <Tabs value={selectedStageId} onValueChange={setSelectedStageId} className="mb-8">
+          <TabsList className="bg-gray-800 border border-gray-700">
+            {stages.map((stage: any) => (
+              <TabsTrigger
+                key={stage.id}
+                value={stage.id}
+                className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+              >
+                {stage.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
+
       {/* Bracket Visualization */}
-      {matches.length > 0 && (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
-          <div className="flex overflow-x-auto space-x-8">
-            {rounds.map(round => {
-              const roundMatches = matches.filter(m => m.round === round);
-              return (
-                <div key={round} className="flex-shrink-0">
-                  <h4 className="text-lg font-semibold text-white mb-4 text-center">
-                    {getRoundName(round, totalRounds)}
-                  </h4>
-                  <div className="space-y-4">
-                    {roundMatches.map(match => {
-                      const result = getMatchResult(match.id);
-                      return (
-                        <div
-                          key={match.id}
-                          className="bg-gray-700/50 border border-gray-600/50 rounded-lg p-4 min-w-[300px]"
-                        >
-                          <div className="space-y-3">
-                            {/* Team 1 */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                {match.team1?.logo_url && (
-                                  <img
-                                    src={match.team1.logo_url}
-                                    alt={match.team1.name}
-                                    className="w-8 h-8 rounded"
-                                  />
-                                )}
-                                <div>
-                                  <div className="font-medium text-white">{match.team1?.name || 'TBD'}</div>
-                                  <div className="text-sm text-gray-400">[{match.team1?.tag || 'TBD'}]</div>
-                                </div>
-                              </div>
-                              <div className="text-lg font-bold text-white">
-                                {match.team1_score !== null ? match.team1_score : '-'}
-                              </div>
-                            </div>
-
-                            {/* VS */}
-                            <div className="text-center text-gray-400 font-medium">VS</div>
-
-                            {/* Team 2 */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                {match.team2?.logo_url && (
-                                  <img
-                                    src={match.team2.logo_url}
-                                    alt={match.team2.name}
-                                    className="w-8 h-8 rounded"
-                                  />
-                                )}
-                                <div>
-                                  <div className="font-medium text-white">{match.team2?.name || 'TBD'}</div>
-                                  <div className="text-sm text-gray-400">[{match.team2?.tag || 'TBD'}]</div>
-                                </div>
-                              </div>
-                              <div className="text-lg font-bold text-white">
-                                {match.team2_score !== null ? match.team2_score : '-'}
-                              </div>
-                            </div>
-
-                            {/* Match Status */}
-                            <div className="flex items-center justify-between pt-2 border-t border-gray-600/50">
-                              <Badge 
-                                variant={
-                                  match.status === 'completed' ? 'default' :
-                                  match.status === 'in_progress' ? 'secondary' :
-                                  match.status === 'disputed' ? 'destructive' : 'outline'
-                                }
-                                className="text-xs"
-                              >
-                                {match.status.replace('_', ' ')}
-                              </Badge>
-                              
-                              <div className="flex gap-2">
-                                {canReportScore(match) && match.status === 'pending' && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedMatch(match);
-                                      setShowScoreDialog(true);
-                                    }}
-                                    className="bg-green-600 hover:bg-green-700 text-white"
-                                  >
-                                    <Camera className="w-3 h-3 mr-1" />
-                                    Report Score
-                                  </Button>
-                                )}
-                                
-                                {isOrganizer && canVerifyResults && result && result.status === 'pending' && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedMatch(match);
-                                      setPendingResult(result);
-                                      setShowVerificationDialog(true);
-                                    }}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                                  >
-                                    <Eye className="w-3 h-3 mr-1" />
-                                    Verify
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      {matches.length > 0 && currentStage && (
+        currentStage.format === 'double_elimination' ? (
+          <DoubleEliminationBracket
+            matches={bracketMatches}
+            userTeamId={userTeamId}
+            onMatchAction={handleMatchAction}
+            getMatchActionLabel={getMatchActionLabel}
+            renderMatchActions={renderMatchActions}
+          />
+        ) : (
+          <SingleEliminationBracketCustom
+            matches={bracketMatches}
+            userTeamId={userTeamId}
+            onMatchAction={handleMatchAction}
+            getMatchActionLabel={getMatchActionLabel}
+            renderMatchActions={renderMatchActions}
+          />
+        )
       )}
 
       {/* Score Reporting Dialog */}
@@ -377,7 +448,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
               Report the final score for {selectedMatch?.team1?.name} vs {selectedMatch?.team2?.name}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -403,7 +474,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="screenshots" className="text-white">Screenshots (Proof)</Label>
               <Input
@@ -419,7 +490,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
               </p>
             </div>
           </div>
-          
+
           <div className="flex justify-end gap-3">
             <Button
               variant="outline"
@@ -448,7 +519,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
               Review the reported score and screenshots for {selectedMatch?.team1?.name} vs {selectedMatch?.team2?.name}
             </DialogDescription>
           </DialogHeader>
-          
+
           {pendingResult && (
             <div className="space-y-4">
               {/* Reported Score */}
@@ -463,7 +534,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   </div>
                 </div>
               </div>
-              
+
               {/* Screenshots */}
               {pendingResult.screenshots.length > 0 && (
                 <div>
@@ -480,7 +551,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
                   </div>
                 </div>
               )}
-              
+
               {/* Verification Notes */}
               <div>
                 <Label htmlFor="verificationNotes" className="text-white">Verification Notes</Label>
@@ -494,7 +565,7 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
               </div>
             </div>
           )}
-          
+
           <div className="flex justify-end gap-3">
             <Button
               variant="outline"
@@ -524,6 +595,31 @@ const TournamentBracket: React.FC<TournamentBracketProps> = ({
               Verify
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Veto Dialog */}
+      <Dialog open={showVetoDialog} onOpenChange={setShowVetoDialog}>
+        <DialogContent className="bg-gray-900 border border-gray-700 max-w-4xl h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white">Map Veto</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Perform map veto for {selectedMatch?.team1?.name} vs {selectedMatch?.team2?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedMatch && (
+            <MapVeto
+              matchId={selectedMatch.id}
+              tournamentId={tournamentId}
+              team1Id={selectedMatch.team1_id || ''}
+              team2Id={selectedMatch.team2_id || ''}
+              team1Name={selectedMatch.team1?.name || 'Team 1'}
+              team2Name={selectedMatch.team2?.name || 'Team 2'}
+              bestOf={(currentStage?.config as any)?.veto?.bestOf || 1}
+              game="valorant" // This should ideally be dynamic but MapVeto handles generic tables now
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

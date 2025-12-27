@@ -1,0 +1,12 @@
+Abyss: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Abyss.webp
+Ascent: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Ascent.webp
+Bind: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Bind.webp
+Breeze: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Breeze.webp
+Corrode: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Corrode.webp
+Fracture: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Fracture.webp
+Haven: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/haven.jpg
+Icebox: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Icebox.webp
+Lotus: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Lotus.webp
+Pearl: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/pearl.jpg
+Split: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/split.jpg
+Sunset: https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Sunset.webp

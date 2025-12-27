@@ -2,6 +2,8 @@
   "games": [
     {
       "name": "Fortnite",
+      "type": "battle_royale",
+      "lobbySize": 100,
       "formats": [
         {
           "name": "Solo",
@@ -29,6 +31,8 @@
     },
     {
       "name": "PUBG",
+      "type": "battle_royale",
+      "lobbySize": 100,
       "formats": [
         {
           "name": "Solo",
@@ -51,6 +55,7 @@
     },
     {
       "name": "Valorant",
+      "type": "bracket",
       "formats": [
         {
           "name": "5v5",
@@ -63,6 +68,7 @@
     },
     {
       "name": "CS2",
+      "type": "bracket",
       "formats": [
         {
           "name": "5v5",
@@ -75,6 +81,7 @@
     },
     {
       "name": "League of Legends",
+      "type": "bracket",
       "formats": [
         {
           "name": "5v5",
@@ -87,6 +94,7 @@
     },
     {
       "name": "Dota 2",
+      "type": "bracket",
       "formats": [
         {
           "name": "5v5",
@@ -99,6 +107,7 @@
     },
     {
       "name": "Rocket League",
+      "type": "bracket",
       "formats": [
         {
           "name": "1v1",
@@ -121,16 +130,13 @@
     },
     {
       "name": "Apex Legends",
+      "type": "battle_royale",
+      "lobbySize": 60,
       "formats": [
         {
           "name": "Solo",
           "value": "solo",
           "teamSize": 1
-        },
-        {
-          "name": "Duo",
-          "value": "duo",
-          "teamSize": 2
         },
         {
           "name": "Trio",
@@ -142,4 +148,4 @@
       "logo": "https://ggmoxgiddhhvimbdolsl.supabase.co/storage/v1/object/sign/game-logos/apexlegends.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzJiNmUyM2M0LWI1ZmItNDRhZS1hYTM5LTI0ZTUyMzJlYjIzNCJ9.eyJ1cmwiOiJnYW1lLWxvZ29zL2FwZXhsZWdlbmRzLnBuZyIsImlhdCI6MTc0NjUyNDc5MywiZXhwIjozMzI1MDk4ODc5M30.H1ACwYiMrViqDDmg6wCmNKyvUcOsrT7yfYORvmGTS2I"
     }
   ]
-} 
+}

@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.2.4] - 2025-12-27
+
+### Fixed
+- **Map Veto System**: Fixed BO format defaulting to BO1 issue - now correctly reads `bestOf` from stage configuration
+- **Map Veto System**: Fixed missing `stage_id` on tournament matches - added SQL migration to populate existing records
+- **Map Veto System**: Fixed 5th map not displaying in BO5 - corrected decider map detection logic to find leftover unbanned map
+- **Map Veto System**: Fixed decider map side selection display in VetoSelectedMaps component
+- **Bracket Generation**: Fixed match persistence to use `.upsert()` instead of `.insert()` - now updates existing matches with correct data
+- **Captain Match Page**: Fixed "Active Match" section to show next upcoming match instead of last completed match
+- **Submission History**: Fixed confusing "Pending" status display - changed to simple history view without status badges
+
+### Added
+- **Database Migrations**: Added `20251227_fix_existing_match_data.sql` to populate missing `stage_id` and correct `best_of` values
+- **Database Migrations**: Added `20251227_fix_reset_bracket_bestof.sql` to fix bracket reset function
+- **Submission History**: Added screenshot thumbnail display (h-20) with click-to-expand functionality
+- **Map Veto System**: Added robust fallback logic for `bestOf` format - checks `config.bestOf` then `config.veto.best_of`
+- **Debug Tools**: Re-added debug props to MapVetoToken for troubleshooting stage config issues
+
+### Changed
+- **Data Flow Standardization**: Standardized "Best Of" format storage to `stage.config.bestOf` (camelCase) as single source of truth
+- **Map Veto System**: Updated MapVetoToken to explicitly fetch and derive `effectiveBestOf` from stage configuration
+- **Bracket System**: Updated `persistMatches` to correctly determine `best_of` value prioritizing match > stage config > default
+- **Stage Wizard**: Updated StageSetupWizard to write `bestOf` to top-level config object
+- **Format Rules**: Removed duplicate write to `config.veto.best_of` in StepFormatRules (write once to `config.bestOf`)
+- **Submission History**: Renamed "Upload Status" to "Submission History" for clarity
+- **Submission History**: Simplified display to show only comment and screenshot without status tracking
+- **Debug Overlay**: Made map veto debug overlay draggable for better UX
+
+### Technical Improvements
+- Added comprehensive logging in MapVetoToken for stage config debugging
+- Improved bracket queries to support legacy `config.veto.best_of` for backward compatibility
+- Enhanced match persistence logic to ensure `stage_id` is always saved with new matches
+- Updated active match logic to filter by `pending` or `in_progress` status and sort by round/match number
+
 ## [0.2.3] - 2025-01-29
 
 ### Fixed
@@ -95,6 +130,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - User authentication and role management
 - Basic match result reporting
 
+[0.2.4]: https://github.com/DarkHyperPK/Esportra/compare/v0.2.3...v0.2.4
+[0.2.3]: https://github.com/DarkHyperPK/Esportra/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/DarkHyperPK/Esportra/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/DarkHyperPK/Esportra/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/DarkHyperPK/Esportra/compare/v0.1.0...v0.2.0
