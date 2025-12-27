@@ -450,18 +450,18 @@ const DisputeCenter: React.FC = () => {
                                   <span>•</span>
                                   <span>{formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}</span>
                                 </div>
-                              </div>
-                            </div>
+                  </div>
+                </div>
                           </CardContent>
                         </Card>
                       );
                     })}
-                  </div>
-                )}
+            </div>
+          )}
               </TabsContent>
             </Tabs>
-          </CardContent>
-        </Card>
+        </CardContent>
+      </Card>
 
         {selectedDispute && (
           <Card className="bg-[#12121a] border border-white/10 mt-6">
@@ -729,9 +729,9 @@ const DisputeCenter: React.FC = () => {
                   </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-        )}
+          </CardContent>
+        </Card>
+      )}
             </div>
 
       {/* Image Viewer Modal */}

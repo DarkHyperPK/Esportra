@@ -1,0 +1,123 @@
+// Tournament wizard types
+
+export type BracketType = 'single_elimination' | 'double_elimination' | 'battle_royale';
+export type SeedingType = 'random' | 'manual' | 'skill_based';
+export type Visibility = 'public' | 'unlisted' | 'private';
+
+export interface TournamentStage {
+    id?: string;
+    name: string;
+    format: BracketType;
+    stage_order: number;
+    config?: any;
+}
+
+export interface TournamentWizardData {
+    // Step 1: Basic Info
+    name: string;
+    game: string;
+    isOnline: boolean;
+    visibility: Visibility;
+    startDate: string;
+    startTime: string;
+    endDate: string;
+    endTime: string;
+    venue: string;
+    status: string;
+
+    // Step 2: Format & Rules
+    bracketType: BracketType; // Main format (legacy/fallback)
+    stages: TournamentStage[];
+    matchCount: number; // For Battle Royale
+    maxTeams: number;
+    teamSize: number;
+    seedingType: SeedingType;
+    thirdPlaceMatch: boolean;
+
+    // Step 3: Branding
+    bannerUrl: string | null;
+    logoUrl: string | null;
+    prizePool: string;
+    entryFee: string;
+    description: string;
+    discordUrl: string;
+    twitterUrl: string;
+    streamUrl: string;
+
+    // Step 4: Registration
+    registrationOpens: string;
+    registrationCloses: string;
+    checkInRequired: boolean;
+    checkInWindowMinutes: number;
+    autoRemoveUnchecked: boolean;
+    waitlistEnabled: boolean;
+    waitlistMax: number;
+}
+
+export interface WizardStepProps {
+    data: TournamentWizardData;
+    updateData: (updates: Partial<TournamentWizardData>) => void;
+    errors: Record<string, string>;
+    isEditMode?: boolean;
+    tournamentId?: string;
+}
+
+export interface WizardStep {
+    id: number;
+    title: string;
+    description: string;
+    isValid: boolean;
+    isComplete: boolean;
+}
+
+export const WIZARD_STEPS: Omit<WizardStep, 'isValid' | 'isComplete'>[] = [
+    { id: 1, title: 'Basic Info', description: 'Name, game, and schedule' },
+    { id: 2, title: 'Format & Rules', description: 'Bracket type and settings' },
+    { id: 3, title: 'Branding', description: 'Images and prize pool' },
+    { id: 4, title: 'Registration', description: 'Sign-up and check-in' },
+    { id: 5, title: 'Review', description: 'Confirm and create' },
+];
+
+export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
+    // Step 1
+    name: '',
+    game: '',
+    isOnline: true,
+    visibility: 'public',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    venue: '',
+    status: 'draft',
+
+    // Step 2
+    bracketType: 'single_elimination',
+    stages: [
+        { name: 'Main Stage', format: 'single_elimination', stage_order: 1 }
+    ],
+    matchCount: 1,
+    maxTeams: 16,
+    teamSize: 5,
+    seedingType: 'random',
+    thirdPlaceMatch: false,
+
+    // Step 3
+    bannerUrl: null,
+    logoUrl: null,
+    prizePool: '',
+    entryFee: 'Free',
+    description: '',
+    discordUrl: '',
+    twitterUrl: '',
+    streamUrl: '',
+
+    // Step 4
+    registrationOpens: '',
+    registrationCloses: '',
+    checkInRequired: true,
+    checkInWindowMinutes: 30,
+    autoRemoveUnchecked: true,
+    waitlistEnabled: false,
+    waitlistMax: 10,
+};

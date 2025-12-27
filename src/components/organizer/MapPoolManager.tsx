@@ -50,7 +50,7 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
 
         // Fetch current tournament map pool
         const { data: poolData, error: poolError } = await supabase
-          .from('valorant_tournament_map_pools')
+          .from('tournament_map_pools')
           .select('map_id')
           .eq('tournament_id', tournamentId);
 
@@ -75,37 +75,54 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
 
   // Toggle map in pool
   const toggleMapInPool = async (mapId: string, isInPool: boolean) => {
+    console.log('[MapPoolManager] Toggling map:', mapId, 'isInPool:', isInPool, 'tournamentId:', tournamentId);
+
+    // Optimistic update
+    if (isInPool) {
+      setPoolMaps((prev) => prev.filter((id) => id !== mapId));
+    } else {
+      if (poolMaps.length >= 7) {
+        toast({
+          title: 'Map limit reached',
+          description: 'You can only select up to 7 maps for the pool.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setPoolMaps((prev) => [...prev, mapId]);
+    }
+
     try {
       if (isInPool) {
         // Remove from pool
+        console.log('[MapPoolManager] Removing from DB...');
         const { error } = await supabase
-          .from('valorant_tournament_map_pools')
+          .from('tournament_map_pools')
           .delete()
           .eq('tournament_id', tournamentId)
           .eq('map_id', mapId);
 
         if (error) throw error;
-        setPoolMaps((prev) => prev.filter((id) => id !== mapId));
-        toast({
-          title: 'Map removed',
-          description: 'Map has been removed from the pool',
-        });
+        console.log('[MapPoolManager] Removed successfully');
       } else {
         // Add to pool
-        const { error } = await supabase.from('valorant_tournament_map_pools').insert({
+        console.log('[MapPoolManager] Adding to DB...');
+        const { error } = await supabase.from('tournament_map_pools').insert({
           tournament_id: tournamentId,
           map_id: mapId,
         });
 
         if (error) throw error;
-        setPoolMaps((prev) => [...prev, mapId]);
-        toast({
-          title: 'Map added',
-          description: 'Map has been added to the pool',
-        });
+        console.log('[MapPoolManager] Added successfully');
       }
     } catch (error: any) {
-      console.error('Error toggling map:', error);
+      console.error('[MapPoolManager] Error toggling map:', error);
+      // Revert optimistic update
+      if (isInPool) {
+        setPoolMaps((prev) => [...prev, mapId]);
+      } else {
+        setPoolMaps((prev) => prev.filter((id) => id !== mapId));
+      }
       toast({
         title: 'Error',
         description: error.message || 'Failed to update map pool',
@@ -160,7 +177,7 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
       }
 
       // Add to pool
-      await supabase.from('valorant_tournament_map_pools').insert({
+      await supabase.from('tournament_map_pools').insert({
         tournament_id: tournamentId,
         map_id: data.id,
       });
@@ -209,34 +226,19 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
               Select maps available for veto in this tournament
             </CardDescription>
           </div>
-          <Button
-            onClick={() => setShowAddDialog(true)}
-            size="sm"
-            className="bg-blue-600 hover:bg-blue-500"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Map
-          </Button>
         </div>
       </CardHeader>
       <CardContent>
         {allMaps.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <p>No maps available for {game}.</p>
-            <Button
-              onClick={() => setShowAddDialog(true)}
-              variant="outline"
-              className="mt-4"
-            >
-              Add First Map
-            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {allMaps.map((map) => {
               const isInPool = poolMaps.includes(map.id);
               const mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
-              
+
               return (
                 <div
                   key={map.id}
@@ -257,14 +259,14 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
                 >
                   {/* Gradient overlay from bottom */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-                  
+
                   {/* Checkmark indicator - top right */}
                   {isInPool && (
                     <div className="absolute top-2 right-2 z-20 bg-green-500 rounded-full p-1.5 shadow-lg">
                       <Check className="h-4 w-4 text-white" strokeWidth={3} />
                     </div>
                   )}
-                  
+
                   {/* Map name in bottom gradient area */}
                   <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
                     <span className="text-white font-bold text-sm sm:text-base block text-center" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>

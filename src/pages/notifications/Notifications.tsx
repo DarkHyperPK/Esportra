@@ -35,20 +35,20 @@ const NotificationsPage = () => {
         .select('is_admin')
         .eq('id', user.id)
         .single();
-      
+
       if (profile?.is_admin) {
-        toast({ 
-          title: 'Cannot join team', 
+        toast({
+          title: 'Cannot join team',
           description: 'Admins cannot join teams as members. You can only create and manage teams.',
-          variant: 'destructive' 
+          variant: 'destructive'
         });
         return;
       }
 
       const { data: invite, error: inviteErr } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .select('*')
-        .eq('user_id', notification.user_id)
+        .eq('invited_user_id', notification.user_id)
         .eq('team_id', notification.team_id)
         .eq('status', 'pending')
         .maybeSingle();
@@ -58,7 +58,7 @@ const NotificationsPage = () => {
       // Add user as active member
       const { error: addErr } = await supabase.from('team_members').insert({
         team_id: invite.team_id,
-        user_id: invite.user_id,
+        user_id: invite.invited_user_id,
         role: 'member',
         is_active: true,
         joined_at: new Date().toISOString(),
@@ -67,7 +67,7 @@ const NotificationsPage = () => {
 
       // Update invite status
       const { error: updErr } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .update({ status: 'accepted', responded_at: new Date().toISOString() })
         .eq('id', invite.id);
       if (updErr) throw updErr;
@@ -90,7 +90,7 @@ const NotificationsPage = () => {
 
       toast({ title: 'Invite accepted', description: 'You have joined the team!', variant: 'default' });
       await refreshNotifications();
-      
+
       // Dispatch custom event to refresh team data
       window.dispatchEvent(new CustomEvent('teamInviteAccepted'));
     } catch (e: any) {
@@ -103,9 +103,9 @@ const NotificationsPage = () => {
   const handleRejectInvite = async (notification) => {
     try {
       const { data: invite, error: inviteErr } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .select('*')
-        .eq('user_id', notification.user_id)
+        .eq('invited_user_id', notification.user_id)
         .eq('team_id', notification.team_id)
         .eq('status', 'pending')
         .maybeSingle();
@@ -113,7 +113,7 @@ const NotificationsPage = () => {
       if (!invite) { toast({ title: 'Invite not found', variant: 'destructive' }); return; }
 
       const { error: updErr } = await supabase
-        .from('team_invites')
+        .from('team_invitations')
         .update({ status: 'rejected', responded_at: new Date().toISOString() })
         .eq('id', invite.id);
       if (updErr) throw updErr;
@@ -144,16 +144,16 @@ const NotificationsPage = () => {
   const handleDeleteNotification = async (notificationId: string) => {
     try {
       setIsDeleting(true);
-      
+
       // Check if it's a synthetic notification (team invite)
       if (String(notificationId).startsWith('invite-')) {
-        // For team invites, we need to delete from team_invites table
+        // For team invites, we need to delete from team_invitations table
         const inviteId = notificationId.replace('invite-', '');
         const { error } = await supabase
-          .from('team_invites')
+          .from('team_invitations')
           .delete()
           .eq('id', inviteId);
-        
+
         if (error) throw error;
       } else {
         // For regular notifications, delete from notifications table
@@ -161,23 +161,23 @@ const NotificationsPage = () => {
           .from('notifications')
           .delete()
           .eq('id', notificationId);
-        
+
         if (error) throw error;
       }
 
-      toast({ 
-        title: 'Notification deleted', 
+      toast({
+        title: 'Notification deleted',
         description: 'The notification has been removed.',
-        variant: 'default' 
+        variant: 'default'
       });
-      
+
       await refreshNotifications();
     } catch (error) {
       console.error('Delete notification error:', error);
-      toast({ 
-        title: 'Could not delete notification', 
+      toast({
+        title: 'Could not delete notification',
         description: 'Please try again later.',
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     } finally {
       setIsDeleting(false);
@@ -187,49 +187,49 @@ const NotificationsPage = () => {
   // Delete multiple notifications
   const handleBulkDelete = async () => {
     if (selectedNotifications.length === 0) return;
-    
+
     try {
       setIsDeleting(true);
-      
+
       // Separate synthetic and regular notifications
       const syntheticIds = selectedNotifications.filter(id => String(id).startsWith('invite-'));
       const regularIds = selectedNotifications.filter(id => !String(id).startsWith('invite-'));
-      
+
       // Delete synthetic notifications (team invites)
       if (syntheticIds.length > 0) {
         const inviteIds = syntheticIds.map(id => id.replace('invite-', ''));
         const { error: inviteError } = await supabase
-          .from('team_invites')
+          .from('team_invitations')
           .delete()
           .in('id', inviteIds);
-        
+
         if (inviteError) throw inviteError;
       }
-      
+
       // Delete regular notifications
       if (regularIds.length > 0) {
         const { error: notificationError } = await supabase
           .from('notifications')
           .delete()
           .in('id', regularIds);
-        
+
         if (notificationError) throw notificationError;
       }
 
-      toast({ 
-        title: 'Notifications deleted', 
+      toast({
+        title: 'Notifications deleted',
         description: `${selectedNotifications.length} notification(s) have been removed.`,
-        variant: 'default' 
+        variant: 'default'
       });
-      
+
       setSelectedNotifications([]);
       await refreshNotifications();
     } catch (error) {
       console.error('Bulk delete error:', error);
-      toast({ 
-        title: 'Could not delete notifications', 
+      toast({
+        title: 'Could not delete notifications',
         description: 'Please try again later.',
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     } finally {
       setIsDeleting(false);
@@ -243,37 +243,37 @@ const NotificationsPage = () => {
       const regularIds = unreadNotifications
         .filter(n => !String(n.id).startsWith('invite-'))
         .map(n => n.id);
-      
+
       if (regularIds.length > 0) {
         const { error } = await supabase
           .from('notifications')
           .update({ is_read: true })
           .in('id', regularIds);
-        
+
         if (error) throw error;
       }
 
-      toast({ 
-        title: 'All marked as read', 
+      toast({
+        title: 'All marked as read',
         description: 'All notifications have been marked as read.',
-        variant: 'default' 
+        variant: 'default'
       });
-      
+
       await refreshNotifications();
     } catch (error) {
       console.error('Mark all read error:', error);
-      toast({ 
-        title: 'Could not mark as read', 
+      toast({
+        title: 'Could not mark as read',
         description: 'Please try again later.',
-        variant: 'destructive' 
+        variant: 'destructive'
       });
     }
   };
 
   // Toggle notification selection
   const toggleNotificationSelection = (notificationId: string) => {
-    setSelectedNotifications(prev => 
-      prev.includes(notificationId) 
+    setSelectedNotifications(prev =>
+      prev.includes(notificationId)
         ? prev.filter(id => id !== notificationId)
         : [...prev, notificationId]
     );
@@ -388,13 +388,12 @@ const NotificationsPage = () => {
             {filtered.map((n) => (
               <Card
                 key={n.id}
-                className={`transition border-gaming-gray/30 ${
-                  selectedNotifications.includes(n.id) 
-                    ? 'border-blue-500 shadow-lg bg-blue-500/10' 
-                    : !n.is_read 
-                      ? 'border-gaming-purple/60 shadow-lg bg-gaming-purple/10' 
+                className={`transition border-gaming-gray/30 ${selectedNotifications.includes(n.id)
+                    ? 'border-blue-500 shadow-lg bg-blue-500/10'
+                    : !n.is_read
+                      ? 'border-gaming-purple/60 shadow-lg bg-gaming-purple/10'
                       : 'bg-gaming-dark'
-                }`}
+                  }`}
               >
                 <CardContent className="flex flex-col md:flex-row md:items-center gap-3 p-4">
                   {/* Selection checkbox */}
@@ -406,9 +405,9 @@ const NotificationsPage = () => {
                       className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
                     />
                   </div>
-                  
+
                   {/* Main content */}
-                  <div 
+                  <div
                     className="flex-1 cursor-pointer"
                     onClick={async () => {
                       setSelected(n);
@@ -424,32 +423,32 @@ const NotificationsPage = () => {
                     </div>
                     <div className="text-gray-300 text-sm mb-1 line-clamp-2">{n.message}</div>
                     {n.type === 'team_invite' && !n.is_read && (
-                          <div className="flex gap-2 mt-2">
+                      <div className="flex gap-2 mt-2">
                         <Button size="sm" onClick={e => { e.stopPropagation(); handleAcceptInvite(n); }} className="bg-green-600 hover:bg-green-700 text-white border-0 shadow-sm hover:shadow ring-1 ring-green-400/20">
                           Accept Invite
                         </Button>
                         <Button size="sm" onClick={e => { e.stopPropagation(); handleRejectInvite(n); }} className="bg-red-600 hover:bg-red-700 text-white border-0 shadow-sm hover:shadow ring-1 ring-red-400/20">
                           Reject
                         </Button>
-                          </div>
-                        )}
+                      </div>
+                    )}
                     {n.reason && (
                       <div className="text-xs text-gaming-purple/80 mt-1">Reason: {n.reason}</div>
                     )}
                   </div>
-                  
+
                   {/* Right side actions */}
                   <div className="flex items-center gap-2">
                     <div className="text-xs text-gray-500 min-w-[120px] text-right">
                       {new Date(n.created_at).toLocaleString()}
                     </div>
-                    
+
                     {/* Action buttons */}
                     <div className="flex items-center gap-1">
                       {n.link && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={e => { e.stopPropagation(); navigate(n.link!); }}
                           className="border-gray-600 text-white hover:bg-gray-700"
                         >
@@ -457,22 +456,22 @@ const NotificationsPage = () => {
                         </Button>
                       )}
                       {!n.is_read && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={async e => { e.stopPropagation(); await markAsRead(n.id); }}
                           className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
                         >
                           Mark Read
                         </Button>
                       )}
-                      
+
                       {/* More actions dropdown */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={e => e.stopPropagation()}
                             className="text-gray-400 hover:text-white hover:bg-gray-700"
                           >
@@ -520,7 +519,7 @@ const NotificationsPage = () => {
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* Bulk Delete Confirmation Dialog */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="bg-gray-800 border-gray-600">
@@ -556,4 +555,4 @@ const NotificationsPage = () => {
   );
 };
 
-export default NotificationsPage; 
+export default NotificationsPage;

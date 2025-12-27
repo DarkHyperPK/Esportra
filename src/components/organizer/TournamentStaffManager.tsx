@@ -23,32 +23,32 @@ const STAFF_PERMISSIONS: {
   label: string;
   description: string;
 }[] = [
-  {
-    id: "scores:update",
-    label: "Update scores",
-    description: "Report match scores and advances",
-  },
-  {
-    id: "teams:manage",
-    label: "Manage teams",
-    description: "Edit rosters & participation",
-  },
-  {
-    id: "bracket:edit",
-    label: "Edit brackets",
-    description: "Adjust brackets or schedules",
-  },
-  {
-    id: "announcements:send",
-    label: "Send announcements",
-    description: "Post tournament-wide updates",
-  },
-  {
-    id: "disputes:assist",
-    label: "Assist disputes",
-    description: "Help organizers triage disputes",
-  },
-];
+    {
+      id: "scores:update",
+      label: "Update scores",
+      description: "Report match scores and advances",
+    },
+    {
+      id: "teams:manage",
+      label: "Manage teams",
+      description: "Edit rosters & participation",
+    },
+    {
+      id: "bracket:edit",
+      label: "Edit brackets",
+      description: "Adjust brackets or schedules",
+    },
+    {
+      id: "announcements:send",
+      label: "Send announcements",
+      description: "Post tournament-wide updates",
+    },
+    {
+      id: "disputes:assist",
+      label: "Assist disputes",
+      description: "Help organizers triage disputes",
+    },
+  ];
 
 const PRESETS: Record<
   string,
@@ -216,10 +216,10 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
 
   return (
     <div className="space-y-6">
-      <Card className="bg-[#080d18] border border-white/5 shadow-xl shadow-black/30 backdrop-blur">
-        <CardHeader>
-          <CardTitle className="text-xl text-slate-100 flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-cyan-300" />
+      <Card className="glass-premium rounded-2xl border-0">
+        <CardHeader className="border-b border-white/5">
+          <CardTitle className="text-xl text-white flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-emerald-400" />
             Organizer Staff
           </CardTitle>
         </CardHeader>
@@ -227,7 +227,7 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
           <div className="grid md:grid-cols-3 gap-5">
             <div className="md:col-span-1 space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="mod-email" className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                <Label htmlFor="mod-email" className="text-xs uppercase tracking-widest text-gray-400">
                   Invite by email
                 </Label>
                 <Input
@@ -235,59 +235,55 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="teammate@example.com"
-                  className="bg-[#0f1524] border-white/10 text-white placeholder:text-slate-500"
+                  className="bg-black/30 border-white/10 text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-emerald-500"
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              <div className="space-y-3">
+                <Label className="text-xs uppercase tracking-widest text-gray-500 font-medium">
                   Presets
                 </Label>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="space-y-2">
                   {Object.entries(PRESETS).map(([key, preset]) => (
-                    <Button
+                    <button
                       key={key}
                       type="button"
-                      variant="outline"
-                      className={`justify-start rounded-xl border ${
-                        role === key
-                          ? 'border-cyan-400/70 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-white shadow-[0_10px_30px_rgba(6,182,212,0.25)]'
-                          : 'border-white/10 text-slate-300 hover:border-white/20 hover:bg-white/5'
-                      }`}
+                      className={`w-full text-left p-4 rounded-xl border transition-all ${role === key
+                        ? 'border-emerald-500 bg-emerald-500/10'
+                        : 'border-white/10 hover:border-white/20 hover:bg-white/5'
+                        }`}
                       onClick={() => setRole(key)}
                     >
-                      <div>
-                        <div className="font-semibold text-sm">{preset.name}</div>
-                        <div className="text-xs text-slate-400">
-                          {preset.description}
-                        </div>
+                      <div className="font-medium text-white text-sm">{preset.name}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {preset.description}
                       </div>
-                    </Button>
+                    </button>
                   ))}
                 </div>
               </div>
             </div>
             <div className="md:col-span-2">
-              <Label className="text-xs uppercase tracking-[0.2em] text-slate-400 mb-3 block">
+              <Label className="text-xs uppercase tracking-widest text-gray-400 mb-3 block">
                 Custom permissions
               </Label>
-              <div className="space-y-3 rounded-2xl border border-white/5 bg-gradient-to-br from-[#0b111f] via-[#0c1325] to-[#070a13] p-4">
+              <div className="space-y-3 rounded-2xl border border-white/5 bg-white/[0.02] p-4">
                 {STAFF_PERMISSIONS.map((perm) => (
                   <div
                     key={perm.id}
-                    className="flex items-center justify-between py-3 px-3 rounded-xl bg-white/0 hover:bg-white/5 transition"
+                    className="flex items-center justify-between py-3 px-3 rounded-xl bg-transparent hover:bg-white/5 transition"
                   >
                     <div>
-                      <div className="text-sm font-medium text-slate-100">
+                      <div className="text-sm font-medium text-white">
                         {perm.label}
                       </div>
-                      <div className="text-xs text-slate-400">
+                      <div className="text-xs text-gray-400">
                         {perm.description}
                       </div>
                     </div>
                     <Switch
                       checked={permissions.includes(perm.id)}
                       onCheckedChange={() => togglePermission(perm.id)}
-                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-cyan-500 data-[state=checked]:to-blue-500 data-[state=unchecked]:bg-white/10 border border-white/10"
+                      className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-white/10 border border-white/10"
                     />
                   </div>
                 ))}
@@ -296,7 +292,7 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
                 <Button
                   onClick={handleInvite}
                   disabled={submitting}
-                  className="bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white shadow-[0_12px_40px_rgba(14,165,233,0.45)] hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 flex items-center gap-2 px-6 py-5 rounded-2xl transition-all"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-2 px-6 py-5 rounded-xl transition-all"
                 >
                   {submitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -311,18 +307,18 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
         </CardContent>
       </Card>
 
-      <Card className="bg-[#080d18] border border-white/5 shadow-xl shadow-black/30">
-        <CardHeader>
-          <CardTitle className="text-xl text-slate-100">Active Staff</CardTitle>
+      <Card className="glass-premium rounded-2xl border-0">
+        <CardHeader className="border-b border-white/5">
+          <CardTitle className="text-xl text-white">Active Staff</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center gap-2 text-gray-300">
+            <div className="flex items-center gap-2 text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading staff...
             </div>
           ) : staff.length === 0 ? (
-            <div className="text-slate-400 text-sm">
+            <div className="text-gray-400 text-sm">
               No moderators assigned yet. Invite someone above.
             </div>
           ) : (
@@ -330,7 +326,7 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
               {staff.map((member) => (
                 <div
                   key={member.id}
-                  className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-white/5 rounded-2xl p-4 bg-white/2"
+                  className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-white/5 rounded-xl p-4 bg-white/[0.02]"
                 >
                   <div className="flex items-center gap-3">
                     <Avatar>
@@ -343,16 +339,16 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
                     </Avatar>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <div className="text-slate-100 font-semibold">
-                        {member.profiles?.full_name ||
-                          member.profiles?.username ||
+                        <div className="text-white font-semibold">
+                          {member.profiles?.full_name ||
+                            member.profiles?.username ||
                             member.profiles?.email}
                         </div>
                         <Badge
                           variant="outline"
                           className={
                             member.status === 'active'
-                              ? 'border-green-400/40 text-green-200 bg-green-500/10'
+                              ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
                               : member.status === 'pending'
                                 ? 'border-amber-400/40 text-amber-200 bg-amber-500/10'
                                 : 'border-red-400/40 text-red-200 bg-red-500/10'
@@ -365,7 +361,7 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
                               : 'Active'}
                         </Badge>
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-gray-500">
                         {member.status === 'pending' ? 'Invited ' : 'Updated '}
                         {formatDistanceToNow(new Date(member.created_at), {
                           addSuffix: true,
@@ -376,7 +372,7 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
                           <Badge
                             key={perm}
                             variant="secondary"
-                            className="bg-[#10182a] border border-white/10 text-slate-200"
+                            className="bg-white/[0.03] border border-white/10 text-gray-300"
                           >
                             {permissionLabel[perm] || perm}
                           </Badge>
@@ -388,7 +384,7 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-cyan-400/50 text-cyan-200 hover:bg-cyan-500/10"
+                      className="border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/10"
                       disabled={editingId === member.id}
                       onClick={() => handleUpdate(member.id)}
                     >

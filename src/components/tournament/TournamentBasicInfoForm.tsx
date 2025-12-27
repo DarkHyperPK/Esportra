@@ -60,8 +60,8 @@ const TournamentBasicInfoForm = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-2">Tournament Name</label>
-          <Input 
-            placeholder="Enter tournament name" 
+          <Input
+            placeholder="Enter tournament name"
             value={formData.name}
             name="name"
             onChange={onInputChange}
@@ -70,8 +70,8 @@ const TournamentBasicInfoForm = ({
         </div>
         <div>
           <label className="block text-sm font-medium mb-2">Game</label>
-          <Select 
-            value={formData.game} 
+          <Select
+            value={formData.game}
             onValueChange={(value) => onSelectChange('game', value)}
           >
             <SelectTrigger>
@@ -138,8 +138,8 @@ const TournamentBasicInfoForm = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-2">Date</label>
-          <Input 
-            type="date" 
+          <Input
+            type="date"
             value={formData.date}
             name="date"
             onChange={onInputChange}
@@ -148,8 +148,8 @@ const TournamentBasicInfoForm = ({
         </div>
         <div>
           <label className="block text-sm font-medium mb-2">Time</label>
-          <Input 
-            type="time" 
+          <Input
+            type="time"
             value={formData.time}
             name="time"
             onChange={onInputChange}
@@ -189,9 +189,9 @@ const TournamentBasicInfoForm = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-2">Max Participants</label>
-          <Input 
-            type="number" 
-            placeholder="Enter max participants" 
+          <Input
+            type="number"
+            placeholder="Enter max participants"
             value={formData.maxParticipants}
             name="maxParticipants"
             onChange={onInputChange}

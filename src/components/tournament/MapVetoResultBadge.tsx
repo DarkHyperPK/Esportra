@@ -14,7 +14,7 @@ export const MapVetoResultBadge: React.FC<MapVetoResultBadgeProps> = ({ matchId 
     const fetchVetoResult = async () => {
       try {
         const { data: veto, error } = await supabase
-          .from('valorant_match_map_vetos')
+          .from('match_map_vetos')
           .select('selected_map_id')
           .eq('match_id', matchId)
           .eq('status', 'completed')

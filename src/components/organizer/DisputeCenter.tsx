@@ -989,7 +989,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
             <DialogFooter>
               <Button variant="outline" onClick={() => setResolutionDialogOpen(false)}>
                 {selectedDispute ? 'Close' : 'Cancel'}
-              </Button>
+            </Button>
           </DialogFooter>
           )}
         </DialogContent>

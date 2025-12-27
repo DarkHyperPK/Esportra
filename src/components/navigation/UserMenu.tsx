@@ -13,12 +13,12 @@ import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { supabase } from "@/lib/supabase";
 import RoleSwitcher from "@/components/RoleSwitcher";
-import IdentitySwitcher from "@/components/IdentitySwitcher";
 
-const UserMenu = ({ 
-  handleSignOut 
-}: { 
-  handleSignOut: () => Promise<void>; 
+
+const UserMenu = ({
+  handleSignOut
+}: {
+  handleSignOut: () => Promise<void>;
 }) => {
   const { user, profile } = useAuth();
   const { currentRole: userRole } = useRole();
@@ -165,9 +165,6 @@ const UserMenu = ({
           <div className="space-y-2 border-b border-white/10 px-4 py-3">
             <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
               <RoleSwitcher />
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-              <IdentitySwitcher />
             </div>
           </div>
         )}
