@@ -8,10 +8,13 @@ interface VetoSelectedMapsProps {
     availableMaps: GameMap[];
     team1Name: string;
     team2Name: string;
+    team1Id?: string | null;
+    team2Id?: string | null;
     team1Logo?: string | null;
     team2Logo?: string | null;
     imagesLoaded: Set<string>;
     setImagesLoaded: React.Dispatch<React.SetStateAction<Set<string>>>;
+    bestOf: number;
 }
 
 export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
@@ -19,13 +22,19 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     availableMaps,
     team1Name,
     team2Name,
+    team1Id,
+    team2Id,
     team1Logo,
     team2Logo,
     imagesLoaded,
     setImagesLoaded,
+    bestOf,
 }) => {
-    const currentBestOf = veto.best_of ?? 1;
+    const currentBestOf = bestOf || 1;
     const vetoFormat = getVetoFormat(currentBestOf);
+
+    const effectiveTeam1Id = veto.team1_id || team1Id;
+    const effectiveTeam2Id = veto.team2_id || team2Id;
 
     // Normalize picked_maps to arrays
     const normalizePickedMaps = (pickedMaps: any): PickedMap[] => {
@@ -86,8 +95,8 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                             const mapPickerTeamId = getTeamForAction(
                                 actionNumber,
                                 vetoFormat,
-                                veto.team1_id!,
-                                veto.team2_id!,
+                                effectiveTeam1Id!,
+                                effectiveTeam2Id!,
                                 action
                             );
                             pickActions.push({ actionNumber, action, teamId: mapPickerTeamId });
@@ -108,8 +117,8 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                 const sidePickerTeamId = getSidePickerTeam(
                                     pickAction.actionNumber,
                                     vetoFormat,
-                                    veto.team1_id!,
-                                    veto.team2_id!
+                                    effectiveTeam1Id!,
+                                    effectiveTeam2Id!
                                 );
 
                                 const map = availableMaps.find(m => m.id === mapId);
@@ -120,9 +129,9 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                         map_image_url: map.map_image_url,
                                         side: (pickedMapData as any).side,
                                         sidePickerTeamId,
-                                        sidePickerTeamName: sidePickerTeamId === veto.team1_id ? team1Name : team2Name,
+                                        sidePickerTeamName: sidePickerTeamId === effectiveTeam1Id ? team1Name : team2Name,
                                         mapPickerTeamId: pickAction.teamId,
-                                        mapPickerTeamName: pickAction.teamId === veto.team1_id ? team1Name : team2Name,
+                                        mapPickerTeamName: pickAction.teamId === effectiveTeam1Id ? team1Name : team2Name,
                                         mapNumber: mapNumber++,
                                         pickActionNumber: pickAction.actionNumber
                                     });
@@ -132,16 +141,17 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                         }
                     }
 
-                    if ((vetoFormat === 'bo3' || vetoFormat === 'bo5') && (veto.status === 'completed' || veto.status === 'in_progress')) {
-                        const finalPickSideActionNumber = vetoFormat === 'bo3' ? 9 : 11;
+                    // Add decider map for BO3, BO5, and BO1 - vetoFormat is NUMBER now
+                    if ((vetoFormat === 1 || vetoFormat === 3 || vetoFormat === 5) && (veto.status === 'completed' || veto.status === 'in_progress')) {
+                        const finalPickSideActionNumber = vetoFormat === 1 ? 7 : (vetoFormat === 3 ? 9 : 11);
                         const currentActionNum = veto.current_action_number || 0;
 
                         if (currentActionNum >= finalPickSideActionNumber || veto.status === 'completed') {
                             const finalSidePickerTeamId = getSidePickerTeam(
-                                finalPickSideActionNumber - 1,
+                                finalPickSideActionNumber,
                                 vetoFormat,
-                                veto.team1_id!,
-                                veto.team2_id!
+                                effectiveTeam1Id!,
+                                effectiveTeam2Id!
                             );
 
                             // Find the decider map: it's the leftover map that wasn't banned or picked
@@ -169,7 +179,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
 
                             if (deciderMap) {
                                 // Find the side selection from the finalSidePickerTeamId's picks
-                                const finalSidePickerPicks = finalSidePickerTeamId === veto.team1_id ? team1Picks : team2Picks;
+                                const finalSidePickerPicks = finalSidePickerTeamId === effectiveTeam1Id ? team1Picks : team2Picks;
                                 const deciderPickData = finalSidePickerPicks.find((p: any) => p.map_id === deciderMap.id) as any;
 
                                 usedMapIds.add(deciderMap.id);
@@ -179,7 +189,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                     map_image_url: deciderMap.map_image_url,
                                     side: deciderPickData?.side,
                                     sidePickerTeamId: finalSidePickerTeamId,
-                                    sidePickerTeamName: finalSidePickerTeamId === veto.team1_id ? team1Name : team2Name,
+                                    sidePickerTeamName: finalSidePickerTeamId === effectiveTeam1Id ? team1Name : team2Name,
                                     mapPickerTeamId: null, // Decider has no picker, it's the leftover
                                     mapPickerTeamName: 'Decider',
                                     mapNumber: mapNumber++,

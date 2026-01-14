@@ -38,6 +38,7 @@ interface VetoDialogsProps {
     setDialogStep?: any;
     selectedMapPool?: any;
     setSelectedMapPool?: any;
+    bestOf: number;
 }
 
 export const VetoDialogs: React.FC<VetoDialogsProps> = ({
@@ -59,6 +60,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
     setActionLoading,
     team1Name,
     team2Name,
+    bestOf,
 }) => {
     return (
         <>
@@ -171,7 +173,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                     {(() => {
                         if (!veto) return null;
                         const currentActionNum = veto.current_action_number || 1;
-                        const vetoFormat = getVetoFormat(veto.best_of || 1);
+                        const vetoFormat = getVetoFormat(bestOf || 1);
                         const pickActionNumber = currentActionNum - 1;
 
                         const sidePickerTeamId = getSidePickerTeam(

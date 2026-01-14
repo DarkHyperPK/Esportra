@@ -7,14 +7,16 @@ interface VetoTurnIndicatorProps {
     veto: MatchMapVeto;
     isUserTurn: boolean;
     currentTeamName: string;
+    bestOf: number;
 }
 
 export const VetoTurnIndicator: React.FC<VetoTurnIndicatorProps> = ({
     veto,
     isUserTurn,
     currentTeamName,
+    bestOf,
 }) => {
-    if (!((veto.status === 'in_progress' || (veto.status === 'pending' && veto.best_of !== null && veto.best_of !== undefined)))) {
+    if (!((veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined)))) {
         return null;
     }
 

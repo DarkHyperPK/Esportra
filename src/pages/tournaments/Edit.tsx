@@ -84,13 +84,13 @@ const EditTournament = () => {
         status: tournamentData.status || 'draft',
 
         // Step 2: Format & Rules
-        bracketType: tournamentData.format as any, // Fallback
+        bracketType: (stages.length > 0 ? stages[0].format : 'single_elimination') as any, // Derive from first stage
         stages: stages.map(s => ({
           id: s.id,
           name: s.name,
           format: s.format as any,
           stage_order: s.stage_order,
-          config: s.config
+          best_of: (s as any).best_of || 1
         })),
         matchCount: tournamentData.match_count || 1,
         maxTeams: tournamentData.max_teams || 16,

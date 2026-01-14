@@ -11,7 +11,6 @@ import TournamentsList from "@/components/organizer/TournamentsList";
 import ParticipantsList from "@/components/organizer/ParticipantsList";
 import TournamentSchedule from "@/components/organizer/TournamentSchedule";
 import TournamentAnalytics from "@/components/organizer/TournamentAnalytics";
-import TournamentBrackets from "@/components/organizer/TournamentBrackets";
 import { Button } from "@/components/ui/button";
 
 const OrganizerDashboard = () => {
@@ -32,14 +31,14 @@ const OrganizerDashboard = () => {
             <p className="text-gray-400">Welcome back, {profile?.full_name || profile?.username}</p>
           </div>
           <div className="flex gap-4">
-            <Button 
+            <Button
               onClick={() => navigate('/organizer/tournaments')}
               className="bg-gaming-blue hover:bg-gaming-blue/80"
             >
               <Trophy className="mr-2 h-4 w-4" />
               Manage Tournaments
             </Button>
-            <Button 
+            <Button
               onClick={() => navigate('/tournaments/create')}
               className="bg-gaming-purple hover:bg-gaming-purple/80"
             >
@@ -56,7 +55,7 @@ const OrganizerDashboard = () => {
               <h2 className="text-xl font-semibold mb-4">Management</h2>
               <nav className="space-y-2">
                 <TabsList className="flex flex-col w-full bg-transparent">
-                  <TabsTrigger 
+                  <TabsTrigger
                     value="tournaments"
                     onClick={() => setActiveTab("tournaments")}
                     className={"justify-start " + (activeTab === "tournaments" ? "bg-gaming-purple/20" : "")}
@@ -64,8 +63,8 @@ const OrganizerDashboard = () => {
                     <Trophy className="mr-2 h-5 w-5" />
                     My Tournaments
                   </TabsTrigger>
-                  
-                  <TabsTrigger 
+
+                  <TabsTrigger
                     value="participants"
                     onClick={() => setActiveTab("participants")}
                     className={"justify-start " + (activeTab === "participants" ? "bg-gaming-purple/20" : "")}
@@ -73,17 +72,10 @@ const OrganizerDashboard = () => {
                     <Users className="mr-2 h-5 w-5" />
                     Participants
                   </TabsTrigger>
-                  
-                  <TabsTrigger 
-                    value="brackets"
-                    onClick={() => setActiveTab("brackets")}
-                    className={"justify-start " + (activeTab === "brackets" ? "bg-gaming-purple/20" : "")}
-                  >
-                    <GitBranch className="mr-2 h-5 w-5" />
-                    Brackets
-                  </TabsTrigger>
-                  
-                  <TabsTrigger 
+
+
+
+                  <TabsTrigger
                     value="schedule"
                     onClick={() => setActiveTab("schedule")}
                     className={"justify-start " + (activeTab === "schedule" ? "bg-gaming-purple/20" : "")}
@@ -91,8 +83,8 @@ const OrganizerDashboard = () => {
                     <Calendar className="mr-2 h-5 w-5" />
                     Schedule
                   </TabsTrigger>
-                  
-                  <TabsTrigger 
+
+                  <TabsTrigger
                     value="analytics"
                     onClick={() => setActiveTab("analytics")}
                     className={"justify-start " + (activeTab === "analytics" ? "bg-gaming-purple/20" : "")}
@@ -100,8 +92,8 @@ const OrganizerDashboard = () => {
                     <BarChart3 className="mr-2 h-5 w-5" />
                     Analytics
                   </TabsTrigger>
-                  
-                  <TabsTrigger 
+
+                  <TabsTrigger
                     value="history"
                     onClick={() => setActiveTab("history")}
                     className={"justify-start " + (activeTab === "history" ? "bg-gaming-purple/20" : "")}
@@ -132,7 +124,7 @@ const OrganizerDashboard = () => {
                       <div className="text-3xl font-bold">3</div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card className="bg-gaming-dark border-gaming-gray/30">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg font-medium">Upcoming</CardTitle>
@@ -142,7 +134,7 @@ const OrganizerDashboard = () => {
                       <div className="text-3xl font-bold">5</div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card className="bg-gaming-dark border-gaming-gray/30">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg font-medium">Total Participants</CardTitle>
@@ -153,16 +145,12 @@ const OrganizerDashboard = () => {
                     </CardContent>
                   </Card>
                 </div>
-                
+
                 <TournamentsList />
               </TabsContent>
 
               <TabsContent value="participants" className="m-0">
                 <ParticipantsList />
-              </TabsContent>
-
-              <TabsContent value="brackets" className="m-0">
-                <TournamentBrackets />
               </TabsContent>
 
               <TabsContent value="schedule" className="m-0">

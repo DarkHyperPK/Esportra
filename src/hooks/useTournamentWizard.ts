@@ -87,8 +87,14 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
     const nextStep = useCallback(() => {
         if (validateCurrentStep()) {
             setCurrentStep(prev => Math.min(prev + 1, WIZARD_STEPS.length));
+        } else {
+            toast({
+                title: 'Validation Error',
+                description: 'Please fix the errors before proceeding.',
+                variant: 'destructive',
+            });
         }
-    }, [validateCurrentStep]);
+    }, [validateCurrentStep, toast]);
 
     // Go to previous step
     const prevStep = useCallback(() => {
@@ -198,7 +204,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         name: stage.name,
                         format: stage.format,
                         stage_order: stage.stage_order,
-                        config: stage.config || {}
+                        best_of: (stage as any).best_of || 1,  // New column
                     }));
 
                     const { error: stagesError } = await supabase
@@ -272,7 +278,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         name: stage.name,
                         format: stage.format,
                         stage_order: stage.stage_order,
-                        config: stage.config || {}
+                        best_of: (stage as any).best_of || 1,  // New column
                     }));
 
                     const { error: stagesError } = await supabase

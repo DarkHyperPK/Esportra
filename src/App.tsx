@@ -64,6 +64,8 @@ const TournamentBrackets = React.lazy(() => import("./pages/tournaments/Brackets
 const TournamentDetailsUser = React.lazy(() => import("./pages/tournaments/Details"));
 const TournamentDetails = React.lazy(() => import("./pages/admin/TournamentDetails"));
 const CaptainMatchPage = React.lazy(() => import("./pages/tournaments/CaptainMatchPage"));
+const ManageBracketPage = React.lazy(() => import("./pages/organizer/ManageBracketPage"));
+const FullscreenBracketPage = React.lazy(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
 
 const ADMIN_ROLE_SETS = {
   anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
@@ -396,6 +398,11 @@ const AppContent = React.memo(() => {
                   <TournamentBrackets />
                 </ProtectedRoute>
               } />
+              <Route path="/organizer/tournament/:slug/manage-bracket/:stageId" element={
+                <ProtectedRoute allowedRoles={['organizer']}>
+                  <ManageBracketPage />
+                </ProtectedRoute>
+              } />
               <Route path="/organizer/disputes" element={
                 <ProtectedRoute allowedRoles={['organizer']}>
                   <OrganizerDisputesPage />
@@ -425,6 +432,7 @@ const AppContent = React.memo(() => {
               } />
               <Route path="/tournaments/edit/:slug" element={<EditTournament />} />
               <Route path="/tournaments/:slug/brackets" element={<TournamentBrackets />} />
+              <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />
               <Route path="/tournaments/:slug/captain-match" element={
                 <ProtectedRoute>
                   <CaptainMatchPage />

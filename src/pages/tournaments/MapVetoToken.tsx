@@ -27,13 +27,13 @@ const MapVetoToken: React.FC = () => {
           .select(`
             *,
             tournament:tournaments(id, name, game, organizer_id),
-            match:tournament_matches(
+            match:brkt_matches(
               id,
-              stage_id,
-              best_of,
-              team1:teams!tournament_matches_team1_id_fkey(id, name),
-              team2:teams!tournament_matches_team2_id_fkey(id, name)
-            )
+              status,
+              best_of
+            ),
+            team1:teams!match_map_vetos_team1_id_fkey(id, name),
+            team2:teams!match_map_vetos_team2_id_fkey(id, name)
           `)
           .or(`team1_link_token.eq.${token},team2_link_token.eq.${token}`)
           .single();
@@ -46,43 +46,30 @@ const MapVetoToken: React.FC = () => {
           return;
         }
 
+        // Check if match is live - block veto access until match is in_progress
+        const matchData = data.match as any;
+        if (matchData?.status !== 'in_progress') {
+          setError('Match not live yet. Please wait for the organizer to set the match live before starting map veto.');
+          setLoading(false);
+          return;
+        }
+
         // Determine which team this token belongs to
         const isTeam1 = data.team1_link_token === token;
         const teamId = isTeam1 ? data.team1_id : data.team2_id;
 
         // Fetch stage config to get the correct bestOf
-        let stageConfig: any = null;
-        const matchData = data.match as any;
-        let effectiveBestOf = matchData?.best_of || data.best_of || 1;
+        let effectiveBestOf = 1;
+        if (matchData?.best_of) {
+          effectiveBestOf = matchData.best_of;
+        } else if (veto.best_of) {
+          effectiveBestOf = veto.best_of;
+        }
 
         // Robustly check for stage_id and fetch config
-        const stageId = matchData?.stage_id;
+        const stageId = veto.stage_id; // Use stage_id from veto directly if needed, or remove if unused
         console.log('[MapVetoToken] matchData keys:', matchData ? Object.keys(matchData) : 'null');
-        console.log('[MapVetoToken] stageId from matchData:', stageId);
-
-        if (stageId) {
-          console.log('[MapVetoToken] Found stage_id:', stageId);
-          const { data: stageData, error: stageError } = await supabase
-            .from('tournament_stages')
-            .select('config')
-            .eq('id', stageId)
-            .single();
-
-          if (!stageError && stageData?.config) {
-            stageConfig = stageData.config;
-            // Stage config bestOf takes priority
-            // Check both camelCase (new wizard) and snake_case (old wizard)
-            if (stageConfig.bestOf) {
-              effectiveBestOf = Number(stageConfig.bestOf);
-              console.log('[MapVetoToken] Using stage config bestOf:', effectiveBestOf);
-            } else if (stageConfig.veto?.best_of) {
-              effectiveBestOf = Number(stageConfig.veto.best_of);
-              console.log('[MapVetoToken] Using stage config veto.best_of:', effectiveBestOf);
-            }
-          }
-        } else {
-          console.warn('[MapVetoToken] No stage_id found in match data');
-        }
+        console.log('[MapVetoToken] stageId from veto:', stageId);
 
         setVetoData({
           veto: data,
@@ -90,7 +77,7 @@ const MapVetoToken: React.FC = () => {
           tournament: data.tournament,
           teamId,
           isTeam1,
-          stageConfig,
+          stageConfig: null,
         });
       } catch (err: any) {
         console.error('Error fetching veto:', err);
@@ -152,10 +139,6 @@ const MapVetoToken: React.FC = () => {
           game={tournament?.game}
           bestOf={match?.effectiveBestOf || veto.best_of}
           forcedTeamId={teamId}
-          // @ts-ignore
-          debugStageId={match?.stage_id}
-          // @ts-ignore
-          debugStageConfig={vetoData.stageConfig}
           onComplete={() => {
             // Optionally redirect or show completion message
           }}

@@ -260,33 +260,43 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
     // Reset state when opening
     useEffect(() => {
+        console.log('[StageWizard] Open changed:', open, 'Existing stages:', existingStages?.length);
+        console.log('[StageWizard] Current step:', step);
+        console.log('[StageWizard] Stages config:', stagesConfig.length);
+
         if (open) {
             fetchMaps();
 
             if (existingStages && existingStages.length > 0) {
                 // Edit Mode
+                console.log('[StageWizard] Loading existing stages:', existingStages.map(s => ({ id: s.id, name: s.name })));
                 setStagesConfig(existingStages.map(s => {
-                    const vetoConfig = s.config?.veto || {};
+                    // Use new columns directly instead of config JSONB
                     let mapPoolId = null;
                     let customMapIds: string[] = [];
+                    const stageAny = s as any;
 
-                    if (vetoConfig.use_tournament_pool) {
-                        mapPoolId = 'tournament_pool';
-                    } else if (vetoConfig.map_pool && Array.isArray(vetoConfig.map_pool) && vetoConfig.map_pool.length > 0) {
+                    // Read map_pool from new column
+                    if (stageAny.map_pool && Array.isArray(stageAny.map_pool) && stageAny.map_pool.length > 0) {
                         mapPoolId = 'custom';
-                        customMapIds = vetoConfig.map_pool;
+                        customMapIds = stageAny.map_pool;
                     }
 
-                    return {
+                    // Read bestOf from new column
+                    const bestOf = stageAny.best_of || 1;
+
+                    const result = {
                         id: s.id,
                         name: s.name,
                         format: s.format,
                         capacity: s.capacity || '',
                         advancement_count: s.advancement_count || '',
-                        best_of: vetoConfig.best_of || 1,
+                        best_of: bestOf,
                         map_pool_id: mapPoolId,
                         custom_map_ids: customMapIds
                     };
+                    console.log('[StageWizard] Mapped stage:', result);
+                    return result;
                 }));
                 setDeletedStageIds([]);
                 setStep('manual-config');
@@ -390,26 +400,28 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             }
 
             // 2. Handle Upserts (Update or Insert)
+            console.log('[StageWizard] Saving stages:', stagesConfig.map(s => ({ id: s.id, name: s.name, capacity: s.capacity })));
             for (let i = 0; i < stagesConfig.length; i++) {
                 const stage = stagesConfig[i];
-                const config: any = {};
 
-                // Add Veto config
-                // Add Veto config
-                if (stage.best_of > 1 || stage.map_pool_id) {
-                    config.bestOf = stage.best_of; // Standardized location
-                    config.veto = {
-                        best_of: stage.best_of, // Keep for legacy compatibility
+                // Normalize bestOf to valid values: 1, 3, or 5
+                const normalizedBestOf = stage.best_of === 3 ? 3 : stage.best_of === 5 ? 5 : 1;
+
+                // Always build complete config for easy overriding
+                const config: any = {
+                    bestOf: normalizedBestOf,
+                    veto: {
+                        best_of: normalizedBestOf,
                         use_tournament_pool: stage.map_pool_id === 'tournament_pool',
                         map_pool: stage.map_pool_id === 'custom' ? stage.custom_map_ids : null
-                    };
-                }
+                    }
+                };
 
                 const stageData = {
                     tournament_id: tournamentId,
                     name: stage.name,
                     format: stage.format,
-                    stage_order: i + 1, // Reset order based on current list
+                    stage_order: i + 1,
                     capacity: stage.capacity === '' ? null : Number(stage.capacity),
                     advancement_count: stage.advancement_count === '' ? null : Number(stage.advancement_count),
                     status: 'upcoming',
@@ -418,7 +430,14 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
                 if (stage.id) {
                     // Update
-                    const { error } = await supabase
+                    console.log('[StageWizard] Updating stage:', {
+                        id: stage.id,
+                        name: stageData.name,
+                        capacity: stageData.capacity,
+                        capacityType: typeof stageData.capacity,
+                        advancement_count: stageData.advancement_count
+                    });
+                    const { error, data } = await supabase
                         .from('tournament_stages')
                         .update({
                             name: stageData.name,
@@ -426,9 +445,13 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                             stage_order: stageData.stage_order,
                             capacity: stageData.capacity,
                             advancement_count: stageData.advancement_count,
-                            config: stageData.config
+                            best_of: stageData.best_of || 1,
+                            map_pool: stageData.map_pool || [],
+                            veto_enabled: stageData.veto_enabled !== false
                         })
-                        .eq('id', stage.id);
+                        .eq('id', stage.id)
+                        .select();
+                    console.log('[StageWizard] Update result:', { error, data });
                     if (error) throw error;
                 } else {
                     // Insert
@@ -648,7 +671,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         <Input
                             type="number"
                             value={stage.capacity}
-                            onChange={(e) => updateStageConfig(currentStageIndex, 'capacity', e.target.value)}
+                            onChange={(e) => updateStageConfig(currentStageIndex, 'capacity', e.target.value === '' ? '' : Number(e.target.value))}
                             placeholder="Unlimited"
                             disabled={isCapacityLinked}
                             className={cn(
@@ -667,7 +690,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         <Input
                             type="number"
                             value={stage.advancement_count}
-                            onChange={(e) => updateStageConfig(currentStageIndex, 'advancement_count', e.target.value)}
+                            onChange={(e) => updateStageConfig(currentStageIndex, 'advancement_count', e.target.value === '' ? '' : Number(e.target.value))}
                             disabled={currentStageIndex === stagesConfig.length - 1} // Last stage doesn't advance
                             placeholder="None"
                             className="bg-black/20 border-white/10 focus:border-emerald-500/50"
