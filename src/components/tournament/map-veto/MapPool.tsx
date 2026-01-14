@@ -2,6 +2,7 @@ import React from 'react';
 import { Sword, Shield as ShieldIcon, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto, GameMap, PickedMap, VETO_SEQUENCES, getVetoFormat, getTeamForAction, getSidePickerTeam } from '@/hooks/useMapVetoMachine';
+import { vetoService } from '@/services/vetoService';
 
 interface MapPoolProps {
     veto: MatchMapVeto;
@@ -14,8 +15,11 @@ interface MapPoolProps {
     currentTeamName: string;
     team1Name: string;
     team2Name: string;
+    team1Id?: string | null;
+    team2Id?: string | null;
     team1Logo?: string | null;
     team2Logo?: string | null;
+    bestOf: number;
 }
 
 export const MapPool: React.FC<MapPoolProps> = ({
@@ -29,14 +33,20 @@ export const MapPool: React.FC<MapPoolProps> = ({
     currentTeamName,
     team1Name,
     team2Name,
+    team1Id,
+    team2Id,
     team1Logo,
     team2Logo,
+    bestOf,
 }) => {
-    if (!((veto.status === 'in_progress' || (veto.status === 'pending' && veto.best_of !== null && veto.best_of !== undefined)))) {
+    if (!((veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined)))) {
         return null;
     }
 
-    const currentBestOf = veto.best_of ?? 1;
+    const effectiveTeam1Id = veto.team1_id || team1Id;
+    const effectiveTeam2Id = veto.team2_id || team2Id;
+
+    const currentBestOf = bestOf || 1;
     const vetoFormat = getVetoFormat(currentBestOf);
 
     // Normalize helpers
@@ -116,8 +126,8 @@ export const MapPool: React.FC<MapPoolProps> = ({
                     const mapPickerTeamId = getTeamForAction(
                         actionNumber,
                         vetoFormat,
-                        veto.team1_id!,
-                        veto.team2_id!,
+                        effectiveTeam1Id!,
+                        effectiveTeam2Id!,
                         action
                     );
 
@@ -134,12 +144,30 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         sidePickerTeamId = getSidePickerTeam(
                             actionNumber,
                             vetoFormat,
-                            veto.team1_id!,
-                            veto.team2_id!
+                            effectiveTeam1Id!,
+                            effectiveTeam2Id!
                         );
-                        sidePickerTeamName = sidePickerTeamId === veto.team1_id ? team1Name : team2Name;
+                        sidePickerTeamName = sidePickerTeamId === effectiveTeam1Id ? team1Name : team2Name;
                         break;
                     }
+                }
+            }
+
+            // If still no sidePickerTeamId, check if it's the decider map
+            if (!sidePickerTeamId) {
+                const finalPickSideActionNumber = vetoFormat === 1 ? 7 : (vetoFormat === 3 ? 9 : 11);
+                // We can use getSidePickerTeam directly for the decider action
+                const step = vetoService.getStep(vetoFormat, finalPickSideActionNumber);
+                if (step?.isDecider && step.action === 'pick_side') {
+                    // Check if this map is indeed the decider (leftover or in the picks but not from a 'pick' action)
+                    // A simple check: if it's in allPickedMaps but didn't match any 'pick' action above, it's the decider
+                    sidePickerTeamId = getSidePickerTeam(
+                        finalPickSideActionNumber,
+                        vetoFormat,
+                        effectiveTeam1Id!,
+                        effectiveTeam2Id!
+                    );
+                    sidePickerTeamName = sidePickerTeamId === effectiveTeam1Id ? team1Name : team2Name;
                 }
             }
         }
@@ -182,9 +210,11 @@ export const MapPool: React.FC<MapPoolProps> = ({
                     const currentActionNum = veto.current_action_number || 1;
                     const sequence = VETO_SEQUENCES[vetoFormat];
 
+                    // Check for final pick_side (decider map) - bestOf is NUMBER now
                     const isFinalPickSide =
-                        (vetoFormat === 'bo3' && currentActionNum === 9) ||
-                        (vetoFormat === 'bo5' && currentActionNum === 11);
+                        (vetoFormat === 3 && currentActionNum === 9) ||
+                        (vetoFormat === 5 && currentActionNum === 11) ||
+                        (vetoFormat === 1 && currentActionNum === 7);
 
                     const pickActionNumber = currentActionNum - 1;
 
@@ -213,13 +243,13 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         const pickActionTeamId = getTeamForAction(
                             pickActionNumber,
                             vetoFormat,
-                            veto.team1_id!,
-                            veto.team2_id!,
+                            effectiveTeam1Id!,
+                            effectiveTeam2Id!,
                             pickActionType
                         );
 
-                        let teamPicks = pickActionTeamId === veto.team1_id ? team1Picked : team2Picked;
-                        let isTeam1 = pickActionTeamId === veto.team1_id;
+                        let teamPicks = pickActionTeamId === effectiveTeam1Id ? team1Picked : team2Picked;
+                        let isTeam1 = pickActionTeamId === effectiveTeam1Id;
 
                         let mapIndex = -1;
                         for (let i = teamPicks.length - 1; i >= 0; i--) {
@@ -249,7 +279,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         return <div className="text-center py-8 text-gray-400">Map not found</div>;
                     }
 
-                    const canInteract = isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && veto.best_of !== null && veto.best_of !== undefined));
+                    const canInteract = isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined));
 
                     const mapImageUrl = mapToShow.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
 
@@ -311,7 +341,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3 lg:gap-4">
                     {availableMapsToShow.map((map) => {
                         const mapStatus = getMapStatus(map.id);
-                        const canInteract = !mapStatus.isBanned && !mapStatus.isPicked && isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && veto.best_of !== null && veto.best_of !== undefined));
+                        const canInteract = !mapStatus.isBanned && !mapStatus.isPicked && isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined));
 
                         console.log('[MapPool] Render Map:', {
                             mapId: map.id,

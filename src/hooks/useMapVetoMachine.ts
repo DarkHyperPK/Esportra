@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useToast } from '@/hooks/use-toast';
 import { valorantTables } from '@/utils/gameTables';
+import { vetoService, BestOf, TeamSide } from '@/services/vetoService';
 
 // Types
 export interface GameMap {
@@ -27,8 +28,7 @@ export interface MatchMapVeto {
     team2_id: string | null;
     team1_link_token: string | null;
     team2_link_token: string | null;
-    veto_format: 'standard_7' | 'standard_5' | 'standard_9';
-    best_of?: number | null;
+    best_of: 1 | 3 | 5;  // Standardized to NUMBER (was veto_format TEXT)
     status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
     current_team_id: string | null;
     current_action: 'ban' | 'pick' | 'pick_side' | null;
@@ -44,59 +44,65 @@ export interface MatchMapVeto {
     completed_at: string | null;
 }
 
-// Constants
-export const VETO_SEQUENCES = {
-    bo1: ['ban', 'ban', 'ban', 'ban', 'ban', 'pick', 'pick_side'],
-    bo3: ['ban', 'ban', 'pick', 'pick_side', 'pick', 'pick_side', 'ban', 'ban', 'pick_side'],
-    bo5: ['ban', 'ban', 'pick', 'pick_side', 'pick', 'pick_side', 'pick', 'pick_side', 'pick', 'pick_side', 'pick_side'],
-    standard_7: ['ban', 'ban', 'pick', 'pick', 'ban', 'ban', 'pick'],
-    standard_5: ['ban', 'ban', 'pick', 'pick', 'ban'],
-    standard_9: ['ban', 'ban', 'pick', 'pick', 'ban', 'ban', 'pick', 'pick', 'ban'],
-};
-
 // Helper Functions
-export const getVetoFormat = (bestOf: number): 'bo1' | 'bo3' | 'bo5' => {
-    if (bestOf === 1) return 'bo1';
-    if (bestOf === 3) return 'bo3';
-    if (bestOf === 5) return 'bo5';
-    return 'bo3';
+// getBestOf: Normalize to valid bestOf value (1, 3, or 5)
+export const getBestOf = (value: number | null | undefined): 1 | 3 | 5 => {
+    if (value === 1) return 1;
+    if (value === 3) return 3;
+    if (value === 5) return 5;
+    return 1;  // Default to BO1
 };
 
+// Legacy helper - kept for backward compatibility during migration
+export const getVetoFormat = (bestOf: number): 1 | 3 | 5 => getBestOf(bestOf);
+
+// Service-wrapped helper functions
 export const getTeamForAction = (
     actionNumber: number,
-    vetoFormat: 'bo1' | 'bo3' | 'bo5',
+    bestOf: 1 | 3 | 5,
     team1Id: string,
     team2Id: string,
     actionType?: string
 ): string => {
-    if (vetoFormat === 'bo3') {
-        if (actionNumber === 5) return team2Id;
-        if (actionNumber === 7) return team2Id;
-        if (actionNumber === 8) return team1Id;
-    }
-    if (vetoFormat === 'bo5') {
-        if (actionNumber === 5) return team2Id;
-        if (actionNumber === 9) return team2Id;
-    }
-    return (actionNumber % 2 === 1) ? team1Id : team2Id;
+    const teamSide = vetoService.getTeamForAction(bestOf, actionNumber);
+    return teamSide === 'T1' ? team1Id : team2Id;
 };
 
 export const getSidePickerTeam = (
-    pickActionNumber: number,
-    vetoFormat: 'bo1' | 'bo3' | 'bo5',
+    actionNumber: number,
+    bestOf: 1 | 3 | 5,
     team1Id: string,
     team2Id: string
 ): string => {
-    if (vetoFormat === 'bo3' && pickActionNumber === 8) return team1Id;
-    if (vetoFormat === 'bo5' && pickActionNumber === 10) return team1Id;
+    const step = vetoService.getStep(bestOf, actionNumber);
+    if (!step) return team1Id;
 
-    // For regular picks, the side picker is the OPPOSITE of the map picker
-    // First, find out who picked the map
-    const pickActionType = VETO_SEQUENCES[vetoFormat][pickActionNumber - 1];
-    const mapPickerTeamId = getTeamForAction(pickActionNumber, vetoFormat, team1Id, team2Id, pickActionType);
+    // Case 1: It's a decider side pick (e.g., Action 9 in BO3)
+    if (step.isDecider && step.action === 'pick_side') {
+        return step.team === 'T1' ? team1Id : team2Id;
+    }
 
-    // Return the opposite team
-    return mapPickerTeamId === team1Id ? team2Id : team1Id;
+    // Case 2: It's a regular side pick action (e.g., Action 4 or 6 in BO3)
+    // We need to look at the PICK action that preceded it
+    if (step.action === 'pick_side') {
+        const sidePickerSide = vetoService.getSidePickerForMap(bestOf, actionNumber - 1);
+        return sidePickerSide === 'T1' ? team1Id : team2Id;
+    }
+
+    // Case 3: It's a pick action, and we want to know who WILL pick the side (used in UI summaries)
+    if (step.action === 'pick') {
+        const sidePickerSide = vetoService.getSidePickerForMap(bestOf, actionNumber);
+        return sidePickerSide === 'T1' ? team1Id : team2Id;
+    }
+
+    return team1Id;
+};
+
+// Legacy constant for components that still import it directly
+export const VETO_SEQUENCES: Record<number, string[]> = {
+    1: vetoService.getSequence(1).map(s => s.action),
+    3: vetoService.getSequence(3).map(s => s.action),
+    5: vetoService.getSequence(5).map(s => s.action),
 };
 
 // --- FSM Types & Logic ---
@@ -104,7 +110,7 @@ export const getSidePickerTeam = (
 export type VetoState = 'INIT' | 'BAN' | 'PICK' | 'PICK_SIDE' | 'COMPLETE';
 
 export type TransitionResult =
-    | { ok: true }
+    | { ok: true; reason?: never }
     | { ok: false; reason: 'NOT_YOUR_TURN' | 'INVALID_STATE' | 'FORBIDDEN' | 'DUPLICATE_ACTION' | 'INVALID_MAP' | 'MAP_ALREADY_USED' };
 
 export interface TurnContext {
@@ -241,7 +247,7 @@ export const useMapVetoMachine = ({
     const [allAvailableMaps, setAllAvailableMaps] = useState<GameMap[]>([]); // Same as availableMaps now
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [showBODialog, setShowBODialog] = useState(false);
-    const [dialogStep, setDialogStep] = useState<'map_pool' | 'bo'>('bo'); // Default to BO since map pool is auto-fetched
+    const [dialogStep, setDialogStep] = useState<'map_pool' | 'bo'>(bestOf ? 'map_pool' : 'bo'); // Default to BO unless bestOf is provided
     const [selectedBO, setSelectedBO] = useState<number | null>(null);
     // const [selectedMapPool, setSelectedMapPool] = useState<string[]>([]); // Removed
     const [showRoleSwitchPrompt, setShowRoleSwitchPrompt] = useState(false);
@@ -363,107 +369,182 @@ export const useMapVetoMachine = ({
         fetchTeamLogos();
     }, [team1Id, team2Id]);
 
+    const [dbBestOf, setDbBestOf] = useState<number | null>(null);
+    const isInitialLoadRef = useRef(true);
+
     // Auto-initialize veto if stuck in pending with best_of set but no current_team_id
     // ALSO: Auto-update best_of if it changes in the tournament settings
     useEffect(() => {
         const autoInitializeOrUpdateVeto = async () => {
             if (!veto) return;
 
-            // Case 1: Stuck in pending
-            if (veto.status === 'pending' && veto.best_of && !veto.current_team_id) {
-                console.log('[MapVeto] Auto-initializing stuck veto...');
-                const vetoFormat = getVetoFormat(veto.best_of);
-                const firstAction = VETO_SEQUENCES[vetoFormat][0];
-
-                await supabase
-                    .from(valorantTables.match_vetos)
-                    .update({
-                        status: 'in_progress',
-                        veto_format: vetoFormat,
-                        started_at: new Date().toISOString(),
-                        turn_started_at: new Date().toISOString(),
-                        current_action: firstAction,
-                        current_action_number: 1,
-                        current_team_id: veto.team1_id,
-                    })
-                    .eq('id', veto.id);
+            // CRITICAL: Never auto-reset a completed veto
+            if (veto.status === 'completed') {
+                isInitialLoadRef.current = false;
                 return;
             }
 
-            // Case 2: Best Of Mismatch (e.g. user changed tournament format)
-            // If the bestOf prop differs from the veto record, we need to reset and update
-            // Guard: Only reset if we haven't already reset for this bestOf value
-            if (bestOf && veto.best_of !== bestOf && lastResetBestOfRef.current !== bestOf) {
-                console.log(`[MapVeto] Best Of mismatch detected. Props: ${bestOf}, Veto: ${veto.best_of}. Resetting veto...`);
-                lastResetBestOfRef.current = bestOf; // Mark that we're resetting for this value
-                const vetoFormat = getVetoFormat(bestOf);
-                const firstAction = VETO_SEQUENCES[vetoFormat][0];
+            try {
+                // Case 1: Stuck in pending
+                if (veto.status === 'pending' && !veto.current_team_id) {
+                    console.log('[MapVeto] Auto-initializing stuck veto...');
+                    // Use DB best_of if available, then veto's existing, then prop
+                    const effectiveBestOf = getBestOf(dbBestOf || veto.best_of || bestOf);
+                    const firstAction = VETO_SEQUENCES[effectiveBestOf][0];
 
-                await supabase
-                    .from(valorantTables.match_vetos)
-                    .update({
-                        best_of: bestOf,
-                        veto_format: vetoFormat,
-                        status: 'in_progress',
-                        current_action: firstAction,
-                        current_action_number: 1,
-                        current_team_id: veto.team1_id,
-                        team1_banned_maps: [],
-                        team2_banned_maps: [],
-                        team1_picked_maps: [],
-                        team2_picked_maps: [],
-                        selected_map_id: null,
-                        completed_at: null,
-                        started_at: new Date().toISOString(),
-                        turn_started_at: new Date().toISOString(),
-                    })
-                    .eq('id', veto.id);
+                    console.log('[MapVeto] Auto-init using best_of:', effectiveBestOf);
+
+                    await supabase
+                        .from(valorantTables.match_vetos)
+                        .update({
+                            status: 'in_progress',
+                            best_of: effectiveBestOf,
+                            started_at: new Date().toISOString(),
+                            turn_started_at: new Date().toISOString(),
+                            current_action: firstAction,
+                            current_action_number: 1,
+                            current_team_id: veto.team1_id,
+                        })
+                        .eq('id', veto.id);
+
+                    isInitialLoadRef.current = false;
+                    return;
+                }
+
+                // Case 2: Best Of Mismatch (e.g. user changed tournament format)
+                // Use dbBestOf as the source of truth if available, otherwise use prop
+                const targetBestOf = getBestOf(dbBestOf || bestOf);
+
+                if (targetBestOf) {
+                    // Only check for mismatch AFTER initial load has stabilized
+                    if (isInitialLoadRef.current) {
+                        console.log('[MapVeto] Initial load, skipping mismatch check');
+                        isInitialLoadRef.current = false;
+                        return;
+                    }
+
+                    if (veto.best_of !== targetBestOf && lastResetBestOfRef.current !== targetBestOf) {
+                        console.log(`[MapVeto] Best Of mismatch detected. Target: ${targetBestOf}, Veto best_of: ${veto.best_of}. Resetting veto...`);
+                        lastResetBestOfRef.current = targetBestOf;
+                        const firstAction = VETO_SEQUENCES[targetBestOf][0];
+
+                        const { error } = await supabase
+                            .from(valorantTables.match_vetos)
+                            .update({
+                                best_of: targetBestOf,
+                                status: 'in_progress',
+                                current_action: firstAction,
+                                current_action_number: 1,
+                                current_team_id: veto.team1_id,
+                                team1_banned_maps: [],
+                                team2_banned_maps: [],
+                                team1_picked_maps: [],
+                                team2_picked_maps: [],
+                                selected_map_id: null,
+                                completed_at: null,
+                                started_at: new Date().toISOString(),
+                                turn_started_at: new Date().toISOString(),
+                            })
+                            .eq('id', veto.id);
+
+                        if (error) throw error;
+                    }
+                }
+            } catch (error) {
+                console.error('[MapVeto] Error in auto-init:', error);
+            } finally {
+                isInitialLoadRef.current = false;
             }
         };
 
         autoInitializeOrUpdateVeto();
-    }, [veto?.id, veto?.status, veto?.best_of, veto?.current_team_id, veto?.team1_id, veto?.current_action_number, bestOf]);
+    }, [veto?.id, veto?.status, veto?.best_of, veto?.current_team_id, veto?.team1_id, veto?.current_action_number, bestOf, dbBestOf]);
 
     // Fetch Veto Data
     const fetchVetoData = useCallback(async () => {
         try {
-            const { data, error } = await supabase
+            // 1. Fetch the veto record
+            const { data: vetoData, error: vetoError } = await supabase
                 .from(valorantTables.match_vetos)
                 .select('*')
                 .eq('match_id', matchId)
                 .maybeSingle();
 
-            if (error) throw error;
+            if (vetoError) throw vetoError;
 
-            if (data) {
+            // 2. Fetch the stage's best_of as the ultimate source of truth
+            let stageBestOf = bestOf;
+            let stageId: string | null = null;
+
+            if (matchId) {
+                // Query brkt_matches (graph engine) to get stage_id via version
+                const { data: brktMatch } = await (supabase as any)
+                    .from('brkt_matches')
+                    .select('version_id')
+                    .eq('id', matchId)
+                    .single();
+
+                if (brktMatch?.version_id) {
+                    // Get stage_id from the bracket version
+                    const { data: versionData } = await (supabase as any)
+                        .from('brkt_versions')
+                        .select('stage_id')
+                        .eq('id', brktMatch.version_id)
+                        .single();
+
+                    if (versionData?.stage_id) {
+                        stageId = versionData.stage_id;
+                        const { data: stageData } = await supabase
+                            .from('tournament_stages')
+                            .select('best_of')
+                            .eq('id', stageId)
+                            .single() as any;
+
+                        if (stageData?.best_of) {
+                            stageBestOf = stageData.best_of;
+                            setDbBestOf(stageBestOf);
+                            console.log('[MapVeto] Synced best_of from stage DB:', stageBestOf);
+                        }
+                    }
+                }
+            }
+
+            if (vetoData) {
                 // Cast Json to PickedMap[]
                 const typedData = {
-                    ...data,
-                    team1_picked_maps: (data.team1_picked_maps as unknown) as PickedMap[] || [],
-                    team2_picked_maps: (data.team2_picked_maps as unknown) as PickedMap[] || [],
+                    ...vetoData,
+                    team1_picked_maps: (vetoData.team1_picked_maps as unknown) as PickedMap[] || [],
+                    team2_picked_maps: (vetoData.team2_picked_maps as unknown) as PickedMap[] || [],
                 } as MatchMapVeto;
 
+                // If the veto exists but its best_of doesn't match the stage, 
+                // the autoInitializeOrUpdateVeto effect will handle the reset/update
+                // if it's not completed.
                 setVeto(typedData);
+
+                // If we have a more accurate best_of from the stage DB, we should use it
+                // for the auto-init logic if the prop was missing or different.
+                if (stageBestOf && stageBestOf !== bestOf) {
+                    setSelectedBO(stageBestOf);
+                }
             } else {
                 // Create new veto if none exists
-                // We should create it if we have the necessary info, especially if bestOf is set (from tournament config)
-                // or if the user is an organizer.
                 if (matchId && tournamentId && team1Id && team2Id) {
-                    console.log('[MapVeto] No veto found, creating new one...');
+                    console.log('[MapVeto] No veto found, creating new one with best_of:', stageBestOf);
 
-                    const initialStatus = bestOf ? 'in_progress' : 'pending';
-                    const initialFormat = bestOf ? getVetoFormat(bestOf) : 'standard_7'; // Default fallback
-                    const initialAction = bestOf ? VETO_SEQUENCES[initialFormat][0] : null;
+                    const initialBestOf = getBestOf(stageBestOf || 1);
+                    const initialStatus = initialBestOf ? 'in_progress' : 'pending';
+                    const initialAction = VETO_SEQUENCES[initialBestOf][0];
 
                     const newVeto = {
                         match_id: matchId,
                         tournament_id: tournamentId,
+                        stage_id: stageId,
                         team1_id: team1Id,
                         team2_id: team2Id,
                         status: initialStatus,
-                        veto_format: initialFormat,
-                        best_of: bestOf || null,
-                        current_team_id: bestOf ? team1Id : null, // Start with team 1 if ready
+                        best_of: initialBestOf,
+                        current_team_id: team1Id,
                         current_action: initialAction,
                         current_action_number: 1,
                         team1_banned_maps: [],
@@ -481,17 +562,12 @@ export const useMapVetoMachine = ({
                         .single();
 
                     if (createError) {
-                        // If error is duplicate key, it means it was created concurrently
                         if (createError.code === '23505') {
                             console.log('[MapVeto] Veto created concurrently, refetching...');
-                            // Recursively call fetch to get the created one
-                            // But avoid infinite loop with a flag? 
-                            // Actually, just let the next effect cycle or realtime handle it, 
-                            // but for now let's try one retry or just return null and wait for realtime.
+                            fetchVetoData();
                             return;
                         }
-                        console.error('Error creating veto:', createError);
-                        setVeto(null);
+                        throw createError;
                     } else if (createdVeto) {
                         const typedVeto = {
                             ...createdVeto,
@@ -499,7 +575,6 @@ export const useMapVetoMachine = ({
                             team2_picked_maps: [],
                         } as MatchMapVeto;
                         setVeto(typedVeto);
-                        console.log('[MapVeto] Created new veto:', typedVeto);
                     }
                 } else {
                     setVeto(null);
@@ -510,7 +585,7 @@ export const useMapVetoMachine = ({
         } finally {
             setLoading(false);
         }
-    }, [matchId, isOrganizer, currentRole, tournamentId, team1Id, team2Id, bestOf]);
+    }, [matchId, tournamentId, team1Id, team2Id, bestOf]);
 
     // Fetch all available maps (Tournament Pool)
     useEffect(() => {
@@ -652,14 +727,15 @@ export const useMapVetoMachine = ({
         if (!veto) return;
 
         // We no longer check for map pool since it's from tournament
-        const needsBO = (!veto.best_of && veto.best_of !== 0);
+        const needsBO = (veto.best_of === null || veto.best_of === undefined);
 
         const shouldShowDialog =
             veto.status === 'pending' &&
             effectiveIsOrganizer &&
             !showBODialog &&
             !dialogManuallyClosed &&
-            needsBO;
+            needsBO &&
+            !bestOf; // Don't show dialog if bestOf is provided via props (auto-init will handle it)
 
         if (shouldShowDialog) {
             setDialogStep('bo');
@@ -693,7 +769,7 @@ export const useMapVetoMachine = ({
         };
 
         const validation = validateTransition(currentState, 'SET_BO', context);
-        if (!validation.ok) {
+        if (validation.ok === false) {
             toast({
                 title: 'Action Failed',
                 description: `Cannot set Best Of: ${validation.reason}`,
@@ -707,16 +783,14 @@ export const useMapVetoMachine = ({
         // No map pool check needed here as we use tournament pool
 
         setSelectedBO(bo);
-        const vetoFormat = getVetoFormat(bo);
-        const firstAction = VETO_SEQUENCES[vetoFormat][0];
+        const normalizedBestOf = getBestOf(bo);
+        const firstAction = VETO_SEQUENCES[normalizedBestOf][0];
 
         try {
             const { error } = await supabase
                 .from(valorantTables.match_vetos)
                 .update({
-                    best_of: bo,
-                    veto_format: vetoFormat,
-                    // selected_map_pool: selectedMapPool, // Removed
+                    best_of: normalizedBestOf,  // Now INTEGER
                     status: 'in_progress',
                     started_at: new Date().toISOString(),
                     turn_started_at: new Date().toISOString(),
@@ -754,7 +828,7 @@ export const useMapVetoMachine = ({
         };
 
         const validation = validateTransition(currentState, 'RESET', context);
-        if (!validation.ok) {
+        if (validation.ok === false) {
             toast({
                 title: 'Action Failed',
                 description: `Cannot reset veto: ${validation.reason}`,
@@ -804,7 +878,7 @@ export const useMapVetoMachine = ({
         else event = 'PICK_SIDE';
 
         const validation = validateTransition(currentState, event, context, { mapId, veto });
-        if (!validation.ok) {
+        if (validation.ok === false) {
             toast({
                 title: 'Action Failed',
                 description: `Cannot perform action: ${validation.reason}`,
@@ -857,17 +931,14 @@ export const useMapVetoMachine = ({
             // --------------------------------------
 
             const currentActionNum = latestVeto.current_action_number || 1;
-            const currentVetoFormat = getVetoFormat(latestVeto.best_of || 1);
-            const currentSequence = VETO_SEQUENCES[currentVetoFormat];
+            const currentBestOf = getBestOf(latestVeto.best_of || 1);
 
-            // 2. Calculate expected team
+            // 2. Calculate expected team using Service
             let expectedTeamId: string;
             if (actionType === 'pick_side') {
-                const pickActionNumber = currentActionNum - 1;
-                expectedTeamId = getSidePickerTeam(pickActionNumber, currentVetoFormat, latestVeto.team1_id!, latestVeto.team2_id!);
+                expectedTeamId = getSidePickerTeam(currentActionNum, currentBestOf, latestVeto.team1_id!, latestVeto.team2_id!);
             } else {
-                const actionTypeForCalc = currentSequence[currentActionNum - 1];
-                expectedTeamId = getTeamForAction(currentActionNum, currentVetoFormat, latestVeto.team1_id!, latestVeto.team2_id!, actionTypeForCalc);
+                expectedTeamId = getTeamForAction(currentActionNum, currentBestOf, latestVeto.team1_id!, latestVeto.team2_id!);
             }
 
             // 3. Insert Action
@@ -883,7 +954,6 @@ export const useMapVetoMachine = ({
 
             if (actionError) {
                 if (actionError.code === '23505') { // Duplicate key
-                    // Silently succeed, let realtime handle it
                     return;
                 }
                 throw actionError;
@@ -891,7 +961,8 @@ export const useMapVetoMachine = ({
 
             // 4. Update Veto State
             const nextActionNumber = currentActionNum + 1;
-            const isComplete = nextActionNumber > currentSequence.length;
+            const nextStep = vetoService.getStep(currentBestOf, nextActionNumber);
+            const isComplete = !nextStep;
 
             let updateData: any = {
                 current_action_number: nextActionNumber,
@@ -916,57 +987,39 @@ export const useMapVetoMachine = ({
                     updateData.team2_picked_maps = [...current, pickedMap];
                 }
             } else if (actionType === 'pick_side') {
-                const pickActionNumber = currentActionNum - 1;
-                const pickActionType = VETO_SEQUENCES[currentVetoFormat][pickActionNumber - 1];
-                const mapPickerTeamId = getTeamForAction(pickActionNumber, currentVetoFormat, latestVeto.team1_id!, latestVeto.team2_id!, pickActionType);
+                // Check if this is a decider map using Service
+                const isDecider = vetoService.isDeciderAction(currentBestOf, currentActionNum);
 
-                // Check if this is the decider map (final pick_side)
-                const isDecider = (currentVetoFormat === 'bo3' && currentActionNum === 9) ||
-                    (currentVetoFormat === 'bo5' && currentActionNum === 11);
+                // If it's a decider, the side picker (expectedTeamId) gets the map in their list
+                // If it's NOT a decider, the side picker is picking for the OTHER team's map
+                const teamToUpdateId = isDecider ? expectedTeamId : (expectedTeamId === veto.team1_id ? veto.team2_id : veto.team1_id);
 
-                if (mapPickerTeamId === veto.team1_id) {
+                if (teamToUpdateId === veto.team1_id) {
                     const current = (latestVeto.team1_picked_maps as unknown as PickedMap[]) || [];
-
                     if (isDecider) {
-                        // Decider map: Add it as a new entry
                         const newMap: PickedMap = { map_id: mapId, side: side || undefined };
                         updateData.team1_picked_maps = [...current, newMap];
                     } else if (current.length > 0) {
-                        // Standard map: Update the side of the last picked map
                         const lastMap = { ...current[current.length - 1] };
                         lastMap.side = side || undefined;
-                        const newMaps = [...current.slice(0, current.length - 1), lastMap];
-                        updateData.team1_picked_maps = newMaps;
+                        updateData.team1_picked_maps = [...current.slice(0, current.length - 1), lastMap];
                     }
                 } else {
                     const current = (latestVeto.team2_picked_maps as unknown as PickedMap[]) || [];
-
                     if (isDecider) {
-                        // Decider map: Add it as a new entry
                         const newMap: PickedMap = { map_id: mapId, side: side || undefined };
                         updateData.team2_picked_maps = [...current, newMap];
                     } else if (current.length > 0) {
-                        // Standard map: Update the side of the last picked map
                         const lastMap = { ...current[current.length - 1] };
                         lastMap.side = side || undefined;
-                        const newMaps = [...current.slice(0, current.length - 1), lastMap];
-                        updateData.team2_picked_maps = newMaps;
+                        updateData.team2_picked_maps = [...current.slice(0, current.length - 1), lastMap];
                     }
                 }
             }
 
-            if (!isComplete) {
-                const nextAction = currentSequence[nextActionNumber - 1];
-                let nextTeamId: string;
-
-                if (nextAction === 'pick_side') {
-                    const nextPickActionNumber = nextActionNumber - 1;
-                    nextTeamId = getSidePickerTeam(nextPickActionNumber, currentVetoFormat, veto.team1_id!, veto.team2_id!);
-                } else {
-                    nextTeamId = getTeamForAction(nextActionNumber, currentVetoFormat, veto.team1_id!, veto.team2_id!, nextAction);
-                }
-                updateData.current_action = nextAction;
-                updateData.current_team_id = nextTeamId;
+            if (!isComplete && nextStep) {
+                updateData.current_action = nextStep.action;
+                updateData.current_team_id = nextStep.team === 'T1' ? latestVeto.team1_id : latestVeto.team2_id;
             } else {
                 updateData.status = 'completed';
                 updateData.completed_at = new Date().toISOString();

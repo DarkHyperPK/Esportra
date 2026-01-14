@@ -87,12 +87,11 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   const isUserTurn = useMemo(() => {
     if (!veto) return false;
-    // Organizer view shouldn't interact as player unless switched (which is handled by isOrganizer check in hook/UI)
-    // But here we check if it's one of the teams the user is captain of
-    if (veto.current_team_id === team1Id && isTeam1Captain) return true;
-    if (veto.current_team_id === team2Id && isTeam2Captain) return true;
+    // Use IDs from the veto object itself to ensure consistency
+    if (veto.current_team_id === veto.team1_id && isTeam1Captain) return true;
+    if (veto.current_team_id === veto.team2_id && isTeam2Captain) return true;
     return false;
-  }, [veto, team1Id, team2Id, isTeam1Captain, isTeam2Captain]);
+  }, [veto, isTeam1Captain, isTeam2Captain]);
 
   // Loading State
   if (loading) {
@@ -127,13 +126,10 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     );
   }
 
-
-
   const effectiveIsOrganizer = isOrganizer; // Simplify for prop passing
-  const currentBestOf = veto.best_of ?? 1;
+  // Use best_of from DB (now INTEGER) as source of truth, fallback to prop, then default to 1
+  const currentBestOf = veto.best_of || bestOf || 1;
   const boText = `BO${currentBestOf}`;
-
-
 
   const currentTeamName = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
 
@@ -141,7 +137,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="w-full max-w-[1400px] mx-auto p-2 sm:p-4 lg:p-6 xl:p-8"
+      className="w-full max-w-[1400px] mx-auto p-2 sm:p-4 lg:p-6 xl:p-8 font-heading"
     >
       {/* DEBUG OVERLAY - REMOVE AFTER FIXING */}
       <motion.div
@@ -155,7 +151,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           <div>Match ID: {matchId}</div>
           <div>Props BestOf: {bestOf}</div>
           <div>Veto BestOf: {veto.best_of}</div>
-          <div>Veto Format: {veto.veto_format}</div>
           <div>Veto Status: {veto.status}</div>
           <div className="mt-2 text-gray-400">---</div>
           <div>Stage ID: {(props as any).debugStageId || 'N/A'}</div>
@@ -191,8 +186,11 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         availableMaps={availableMaps}
         team1Name={team1Name}
         team2Name={team2Name}
+        team1Id={team1Id}
+        team2Id={team2Id}
         imagesLoaded={imagesLoaded}
         setImagesLoaded={setImagesLoaded}
+        bestOf={currentBestOf}
       />
 
       <VetoShareLinks
@@ -212,6 +210,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         veto={veto}
         isUserTurn={isUserTurn}
         currentTeamName={currentTeamName}
+        bestOf={currentBestOf}
       />
 
       <MapPool
@@ -225,6 +224,9 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         currentTeamName={currentTeamName}
         team1Name={team1Name}
         team2Name={team2Name}
+        team1Id={team1Id}
+        team2Id={team2Id}
+        bestOf={currentBestOf}
       />
 
       <VetoDialogs
@@ -251,6 +253,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         setActionLoading={noOp} // Not used in dialog directly for setting loading, but passed for prop compatibility if needed
         team1Name={team1Name}
         team2Name={team2Name}
+        bestOf={currentBestOf}
       />
     </motion.div>
   );

@@ -80,7 +80,6 @@ interface DatabaseTournament {
   logo_url?: string | null;
   max_teams?: number | null;
   min_teams?: number | null;
-  format?: string | null;
   is_public?: boolean;
 }
 
@@ -252,7 +251,6 @@ const TournamentDashboard = () => {
           description,
           slug,
           game,
-          format,
           max_teams,
           min_teams,
           entry_fee,
@@ -288,7 +286,6 @@ const TournamentDashboard = () => {
             description,
             slug,
             game,
-            format,
             max_teams,
             min_teams,
             entry_fee,
@@ -1986,13 +1983,13 @@ const TournamentDashboard = () => {
                 Stages
               </TabsTrigger>
               {matchCount > 0 && (
-                <TabsTrigger
-                  value="brackets"
+                <button
+                  onClick={() => navigate(`/tournaments/${slug}/brackets`)}
                   disabled={!canEditBracket}
-                  className="text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-xl data-[state=active]:bg-white/10 data-[state=active]:border data-[state=active]:border-white/20 data-[state=active]:text-white transition-all duration-300"
+                  className="text-xs sm:text-sm whitespace-nowrap px-4 py-2.5 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Brackets
-                </TabsTrigger>
+                </button>
               )}
               <TabsTrigger
                 value="bans"
@@ -2087,7 +2084,7 @@ const TournamentDashboard = () => {
             <StageManagementTab
               tournamentId={tournament.id}
               stages={stages}
-              onUpdate={refreshStages}
+              onUpdate={() => fetchTournamentData()}
               game={tournament.game || ''}
             />
           </TabsContent>
@@ -2678,46 +2675,7 @@ const TournamentDashboard = () => {
             </Dialog>
           </TabsContent>
 
-          {matchCount > 0 && (
-            <TabsContent value="brackets">
-              {!canEditBracket ? (
-                <PermissionNotice message="Bracket controls are limited to organizers or staff with bracket permissions." />
-              ) : (
-                <Card className="mb-8">
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Brackets</CardTitle>
-                      <Button
-                        onClick={() => {
-                          console.log('Navigating to brackets for tournament:', slug);
-                          navigate(`/tournaments/${slug}/brackets`);
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                      >
-                        View Full Bracket System
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8">
-                      <p className="text-gray-400 mb-4">
-                        Manage your tournament brackets here.
-                      </p>
-                      <Button
-                        onClick={() => {
-                          console.log('Opening bracket system for tournament:', slug);
-                          navigate(`/tournaments/${slug}/brackets`);
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                      >
-                        Open Bracket System
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-          )}
+
           <TabsContent value="bans">
             {!canManageTeams ? (
               <PermissionNotice message="Only organizers or staff with team management permissions can manage bans." />

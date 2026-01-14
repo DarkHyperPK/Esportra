@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,9 +42,7 @@ interface DeletedTournament {
 
 const TournamentList = () => {
   const { user } = useAuth();
-  const [tournaments, setTournaments] = useState<(Tournament & { status: 'upcoming' | 'ongoing' | 'completed', team_size: number })[]>([]);
-  const [deletedTournaments, setDeletedTournaments] = useState<DeletedTournament[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [restoring, setRestoring] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -53,20 +52,17 @@ const TournamentList = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [cascadeWarnings, setCascadeWarnings] = useState<Array<{ entity: string; count: number; description?: string }>>([]);
 
-  useEffect(() => {
-    fetchTournaments();
-    fetchDeletedTournaments();
-  }, [user]);
+  // Fetch Tournaments
+  const { data: tournaments = [], isLoading: loading } = useQuery({
+    queryKey: ['organizer-tournaments', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
 
-  const fetchTournaments = async () => {
-    if (!user) return;
-    try {
-      setLoading(true);
       const { data, error } = await supabase
         .from('tournaments')
         .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, deleted_at')
         .eq('organizer_id', user.id)
-        .is('deleted_at', null)  // Only fetch non-deleted tournaments
+        .is('deleted_at', null)
         .order('start_date', { ascending: true });
 
       if (error) throw error;
@@ -114,22 +110,19 @@ const TournamentList = () => {
         })
       );
 
-      setTournaments(tournamentsWithCounts as (Tournament & { status: 'upcoming' | 'ongoing' | 'completed', team_size: number })[]);
-    } catch (error) {
-      console.error('Error fetching tournaments:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load tournaments',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      return tournamentsWithCounts as (Tournament & { status: 'upcoming' | 'ongoing' | 'completed', team_size: number })[];
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60, // 1 minute
+    refetchOnWindowFocus: false
+  });
 
-  const fetchDeletedTournaments = async () => {
-    if (!user) return;
-    try {
+  // Fetch Deleted Tournaments
+  const { data: deletedTournaments = [] } = useQuery({
+    queryKey: ['organizer-deleted-tournaments', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+
       const { data, error } = await supabase
         .from('tournaments')
         .select('id, name, game, deleted_at')
@@ -139,7 +132,7 @@ const TournamentList = () => {
 
       if (error) throw error;
 
-      const deletedWithDays = (data || []).map((t: any) => {
+      return (data || []).map((t: any) => {
         const deletedDate = new Date(t.deleted_at);
         const now = new Date();
         const diffTime = 7 * 24 * 60 * 60 * 1000 - (now.getTime() - deletedDate.getTime());
@@ -152,12 +145,13 @@ const TournamentList = () => {
           days_remaining: daysRemaining,
         };
       });
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60, // 1 minute
+    refetchOnWindowFocus: false
+  });
 
-      setDeletedTournaments(deletedWithDays);
-    } catch (error) {
-      console.error('Error fetching deleted tournaments:', error);
-    }
-  };
+
 
   const handleDeleteClick = async (tournamentId: string, tournamentName: string, status: string) => {
     try {
@@ -222,8 +216,9 @@ const TournamentList = () => {
       });
 
       // Refresh both lists
-      fetchTournaments();
-      fetchDeletedTournaments();
+      // Refresh both lists
+      queryClient.invalidateQueries({ queryKey: ['organizer-tournaments'] });
+      queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
       setDeleteModalOpen(false);
       setTournamentToDelete(null);
       setCascadeWarnings([]);
@@ -256,8 +251,9 @@ const TournamentList = () => {
       });
 
       // Refresh both lists
-      fetchTournaments();
-      fetchDeletedTournaments();
+      // Refresh both lists
+      queryClient.invalidateQueries({ queryKey: ['organizer-tournaments'] });
+      queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
     } catch (error: any) {
       console.error('Error restoring tournament:', error);
       toast({
@@ -290,7 +286,7 @@ const TournamentList = () => {
         description: `${tournamentName} has been permanently removed.`,
       });
 
-      fetchDeletedTournaments();
+      queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
     } catch (error: any) {
       console.error('Error permanently deleting tournament:', error);
       toast({

@@ -3,76 +3,27 @@ import { Gamepad2, Calendar, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+
+// LCP-optimized: Use direct URL without any SDK calls
+const HERO_IMAGE_URL = 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/website-main.jpg';
 
 const HeroSection = () => {
   const { user } = useAuth();
-  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
-  
-  useEffect(() => {
-    // Get the public URL for the hero image from the new bucket
-    const getHeroImage = async () => {
-      try {
-        // Try games bucket first (for game assets)
-        const { data: gamesBucketData } = supabase.storage
-          .from('system.assets.games')
-          .getPublicUrl('website-main.jpg');
-        
-        const gamesTestResponse = await fetch(gamesBucketData.publicUrl, { method: 'HEAD' });
-        if (gamesTestResponse.ok) {
-          setHeroImageUrl(gamesBucketData.publicUrl);
-          console.log('[HeroSection] Using games bucket:', gamesBucketData.publicUrl);
-          return;
-        }
-      } catch (error) {
-        console.warn('[HeroSection] Games bucket check failed:', error);
-      }
-      
-      try {
-        // Try website bucket as fallback
-        const { data: websiteBucketData } = supabase.storage
-          .from('system.assets.website')
-          .getPublicUrl('website-main.jpg');
-        
-        const websiteTestResponse = await fetch(websiteBucketData.publicUrl, { method: 'HEAD' });
-        if (websiteTestResponse.ok) {
-          setHeroImageUrl(websiteBucketData.publicUrl);
-          console.log('[HeroSection] Using website bucket:', websiteBucketData.publicUrl);
-          return;
-        }
-      } catch (error) {
-        console.warn('[HeroSection] Website bucket check failed:', error);
-      }
-      
-      // Fallback to old bucket
-      try {
-        const { data: oldBucketData } = supabase.storage
-          .from('website-assets')
-          .getPublicUrl('website-main.jpg');
-        setHeroImageUrl(oldBucketData.publicUrl);
-        console.log('[HeroSection] Using old bucket:', oldBucketData.publicUrl);
-      } catch (error) {
-        console.error('[HeroSection] Both buckets failed, using hardcoded URL');
-        // Final fallback to hardcoded URL
-        setHeroImageUrl('https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/website-assets/website-main.jpg');
-      }
-    };
-    getHeroImage();
-  }, []);
-  
+
+  // Direct URL for fastest LCP - no SDK, no async
+  const heroImageUrl = HERO_IMAGE_URL;
+
   return (
     <div className="relative flex items-center pt-0 mt-0 overflow-hidden" style={{ minHeight: '100vh', backgroundColor: '#0f1115' }}>
-      {/* Background with overlay gradient */}
-      {/* Background with gradient overlay instead of broken image */}
-      <div 
-        className="absolute inset-0 w-full h-full z-0"
-        style={{ 
-          backgroundImage: heroImageUrl ? `url('${heroImageUrl}')` : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }}
+      {/* LCP-optimized: Preload hero image with high priority */}
+      <img
+        src={heroImageUrl}
+        alt=""
+        fetchPriority="high"
+        loading="eager"
+        decoding="async"
+        className="absolute inset-0 w-full h-full z-0 object-cover"
+        style={{ objectPosition: 'center' }}
       />
       {/* Darker overlay for stronger text contrast - increased opacity for better text visibility */}
       <div className="absolute inset-0 z-10 bg-black/65" />
@@ -88,7 +39,7 @@ const HeroSection = () => {
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-4 leading-tight">
-              Esportra: 
+              Esportra:
               <br />
               <span className="text-gradient bg-clip-text text-transparent bg-gradient-to-r from-esports-accent via-gaming-purple to-esports-blue">
                 Tournaments, Teams, Victory.
@@ -101,9 +52,9 @@ const HeroSection = () => {
             <div className="flex flex-col sm:flex-row gap-4 mb-12">
               {!user && (
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button 
-                    size="lg" 
-                    className="bg-gradient-to-r from-gaming-purple to-purple-600 hover:from-gaming-purple/90 hover:to-purple-600/90 text-white px-8 py-5 text-base font-semibold shadow-xl shadow-gaming-purple/30 border-2 border-white/20 rounded-lg backdrop-blur-sm transition-all duration-300" 
+                  <Button
+                    size="lg"
+                    className="bg-gradient-to-r from-gaming-purple to-purple-600 hover:from-gaming-purple/90 hover:to-purple-600/90 text-white px-8 py-5 text-base font-semibold shadow-xl shadow-gaming-purple/30 border-2 border-white/20 rounded-lg backdrop-blur-sm transition-all duration-300"
                     asChild
                   >
                     <Link to="/auth/signup" className="flex items-center gap-2">
@@ -116,18 +67,18 @@ const HeroSection = () => {
                 </motion.div>
               )}
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  className="border-2 border-gaming-blue/80 text-gaming-blue hover:bg-gaming-blue hover:text-white px-8 py-5 text-base font-semibold bg-black/30 backdrop-blur-md rounded-lg shadow-xl shadow-gaming-blue/20 transition-all duration-300 hover:border-gaming-blue" 
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-2 border-gaming-blue/80 text-gaming-blue hover:bg-gaming-blue hover:text-white px-8 py-5 text-base font-semibold bg-black/30 backdrop-blur-md rounded-lg shadow-xl shadow-gaming-blue/20 transition-all duration-300 hover:border-gaming-blue"
                   asChild
                 >
                   <Link to="/about/company" className="flex items-center gap-2">
-                      <span>Learn More</span>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </Link>
+                    <span>Learn More</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </Link>
                 </Button>
               </motion.div>
             </div>
@@ -144,7 +95,7 @@ const HeroSection = () => {
               whileHover={{ y: -8, scale: 1.02 }}
               className="relative rounded-xl overflow-hidden border-2 border-gray-600/30 transition-all duration-300 hover:border-esports-blue hover:shadow-xl hover:shadow-esports-blue/20"
             >
-              <div className="absolute inset-0 bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1598550487031-0898b4852123?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')"}} />
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1598550487031-0898b4852123?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }} />
               <div className="absolute inset-0 bg-gradient-to-br from-esports-dark/90 via-esports-dark/80 to-esports-dark/90" />
               <div className="relative z-10 p-5">
                 <div className="bg-esports-blue/20 p-2.5 rounded-lg w-fit mb-3">
@@ -159,7 +110,7 @@ const HeroSection = () => {
               whileHover={{ y: -8, scale: 1.02 }}
               className="relative rounded-xl overflow-hidden border-2 border-gray-600/30 transition-all duration-300 hover:border-esports-orange hover:shadow-xl hover:shadow-esports-orange/20"
             >
-              <div className="absolute inset-0 bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-1.2.1&auto=format&fit=crop&w=2850&q=80')"}} />
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-1.2.1&auto=format&fit=crop&w=2850&q=80')" }} />
               <div className="absolute inset-0 bg-gradient-to-br from-esports-dark/90 via-esports-dark/80 to-esports-dark/90" />
               <div className="relative z-10 p-5">
                 <div className="bg-esports-orange/20 p-2.5 rounded-lg w-fit mb-3">
@@ -174,7 +125,7 @@ const HeroSection = () => {
               whileHover={{ y: -8, scale: 1.02 }}
               className="relative rounded-xl overflow-hidden border-2 border-gray-600/30 transition-all duration-300 hover:border-esports-green hover:shadow-xl hover:shadow-esports-green/20"
             >
-              <div className="absolute inset-0 bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1514820720301-4c4790309f46?q=80&w=1932&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')"}} />
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1514820720301-4c4790309f46?q=80&w=1932&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }} />
               <div className="absolute inset-0 bg-gradient-to-br from-esports-dark/90 via-esports-dark/80 to-esports-dark/90" />
               <div className="relative z-10 p-5">
                 <div className="bg-esports-green/20 p-2.5 rounded-lg w-fit mb-3">

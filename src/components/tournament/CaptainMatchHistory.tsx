@@ -33,6 +33,7 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
 
             try {
                 setLoading(true);
+                console.log('[CaptainMatchHistory] Fetching results for:', { tournamentId, teamId });
                 const { data, error } = await supabase
                     .from('tournament_match_results')
                     .select('*')
@@ -40,7 +41,11 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                     .eq('team_id', teamId)
                     .order('created_at', { ascending: false });
 
-                if (error) throw error;
+                if (error) {
+                    console.error('[CaptainMatchHistory] Error fetching results:', error);
+                    throw error;
+                }
+                console.log('[CaptainMatchHistory] Fetched results:', data);
                 setResults(data || []);
             } catch (err) {
                 console.error('Error fetching match results:', err);

@@ -140,7 +140,11 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                             onClick={() => {
                                                 const newStages = [...data.stages];
                                                 newStages[index] = { ...stage, format: value as any };
-                                                updateData({ stages: newStages });
+                                                // Also update top-level bracketType to match, ensuring validation passes
+                                                updateData({
+                                                    stages: newStages,
+                                                    bracketType: value as any
+                                                });
                                             }}
                                             className={cn(
                                                 "p-3 rounded-lg border text-left transition-all text-sm",
@@ -157,6 +161,11 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                         </button>
                                     ))}
                             </div>
+                            {errors.bracketType && (
+                                <p className="text-sm text-red-500 mt-2">
+                                    {errors.bracketType}
+                                </p>
+                            )}
 
                             {/* Best Of Selector (Match Format) */}
                             {!isBattleRoyale && (
@@ -169,16 +178,15 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                                 type="button"
                                                 onClick={() => {
                                                     const newStages = [...data.stages];
-                                                    const currentConfig = stage.config || {};
                                                     newStages[index] = {
                                                         ...stage,
-                                                        config: { ...currentConfig, bestOf: bo }
+                                                        best_of: bo  // Save to column directly
                                                     };
                                                     updateData({ stages: newStages });
                                                 }}
                                                 className={cn(
                                                     "flex-1 p-2 rounded border text-sm transition-all",
-                                                    (stage.config?.bestOf || 1) === bo
+                                                    ((stage as any).best_of || 1) === bo
                                                         ? "border-emerald-500 bg-emerald-500/20 text-white"
                                                         : "border-white/10 hover:border-white/20 text-gray-400"
                                                 )}

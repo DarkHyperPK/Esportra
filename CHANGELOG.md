@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.3.0] - 2026-01-15
+
+### Added
+- **Graph-Based Bracket Engine**: Complete rewrite of bracket system using a directed graph architecture
+  - New `brkt_versions`, `brkt_matches`, and `brkt_edges` tables for flexible bracket storage
+  - Support for Single Elimination and Double Elimination formats
+  - Automatic winner advancement through graph edges
+  - Loser bracket routing for Double Elimination
+- **Finals Reset Logic**: Automatic creation of Grand Finals Reset match when Losers Bracket winner wins Grand Finals
+- **Bracket Visualization**: Modern bracket UI with glassmorphism design
+  - Sidebar filter for Winners/Losers/Finals rounds
+  - Dynamic positioning for all bracket types
+  - Real-time updates via Supabase subscriptions
+- **Bracket Export**: High-resolution PNG export of entire bracket
+- **Organizer Management Page**: Dedicated page for bracket management with score entry and match control
+- **Public Bracket View**: Read-only bracket view for participants and spectators
+- **Stage Capacity Support**: Bracket generation respects stage capacity configuration for target bracket size
+
+### Changed
+- **Bracket Generators**: Updated to accept `bracketSize` and `advancementCount` parameters
+- **Tournament Fetch**: ManageBracketPage now supports both UUID and slug-based tournament lookup
+- **Score Validation**: Improved validation to properly handle 0 scores in BO1 matches
+
+### Fixed
+- **Score Entry**: Fixed "Invalid scores" error when entering 1-0 results
+- **Tournament Not Found**: Fixed 406 error when navigating to bracket management
+- **Export Crashes**: Fixed blank exports and crashes during PNG generation
+
+### Roadmap (Coming in v0.3.1)
+- **Multi-Stage Advancement System**: Automatic team advancement between tournament stages
+  - Bracket generation respects `advancement_count` (stops when N teams remain)
+  - Auto-detection of stage completion
+  - Team advancement to next stage with stage unlocking
+- **Format Support**: Round Robin and Swiss format bracket generation
+
 ## [0.2.4] - 2025-12-27
 
 ### Fixed
@@ -130,6 +165,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - User authentication and role management
 - Basic match result reporting
 
+[0.3.0]: https://github.com/DarkHyperPK/Esportra/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/DarkHyperPK/Esportra/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/DarkHyperPK/Esportra/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/DarkHyperPK/Esportra/compare/v0.2.1...v0.2.2

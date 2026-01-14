@@ -60,25 +60,47 @@ export const brandingSchema = z.object({
     streamUrl: z.string().url().optional().or(z.literal('')),
 });
 
-// Step 4: Registration Schema
-export const registrationSchema = z.object({
+// Step 4: Registration Schema (base for merging)
+const registrationSchemaBase = z.object({
     registrationOpens: z.string().min(1, 'Registration open date is required'),
     registrationCloses: z.string().min(1, 'Registration close date is required'),
     checkInRequired: z.boolean(),
-    checkInWindowMinutes: z.number().min(5).max(120),
+    checkInWindowMinutes: z.number(),
     autoRemoveUnchecked: z.boolean(),
     waitlistEnabled: z.boolean(),
     waitlistMax: z.number().min(0).max(100),
 });
 
+// Step 4: Registration Schema (with conditional validation for step 4)
+export const registrationSchema = registrationSchemaBase.refine(
+    (data) => {
+        // Only validate checkInWindowMinutes range when check-in is enabled
+        if (data.checkInRequired) {
+            return data.checkInWindowMinutes >= 5 && data.checkInWindowMinutes <= 120;
+        }
+        return true; // Skip validation when check-in is disabled
+    },
+    { message: 'Check-in window must be between 5 and 120 minutes', path: ['checkInWindowMinutes'] }
+);
+
 // Full tournament schema
 export const fullTournamentSchema = basicInfoBase
     .merge(formatRulesBase)
     .merge(brandingSchema)
-    .merge(registrationSchema)
+    .merge(registrationSchemaBase)
     .refine(
         (data) => data.isOnline || (data.venue && data.venue.length > 0),
         { message: 'Venue is required for LAN tournaments', path: ['venue'] }
+    )
+    .refine(
+        (data) => {
+            // Only validate checkInWindowMinutes range when check-in is enabled
+            if (data.checkInRequired) {
+                return data.checkInWindowMinutes >= 5 && data.checkInWindowMinutes <= 120;
+            }
+            return true;
+        },
+        { message: 'Check-in window must be between 5 and 120 minutes', path: ['checkInWindowMinutes'] }
     );
 
 // Helper function to validate a specific step
@@ -96,6 +118,7 @@ export const validateStep = (step: number, data: any): { valid: boolean; errors:
 
     try {
         schema.parse(data);
+        console.log('[Wizard Validation] Step', step, 'passed');
         return { valid: true, errors: {} };
     } catch (e) {
         if (e instanceof z.ZodError) {
@@ -103,9 +126,11 @@ export const validateStep = (step: number, data: any): { valid: boolean; errors:
             e.errors.forEach((err) => {
                 const path = err.path.join('.');
                 errors[path] = err.message;
+                console.log('[Wizard Validation] Step', step, 'error:', path, '-', err.message);
             });
             return { valid: false, errors };
         }
+        console.log('[Wizard Validation] Step', step, 'unknown error:', e);
         return { valid: false, errors: { _form: 'Validation failed' } };
     }
 };

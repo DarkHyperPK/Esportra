@@ -22,7 +22,6 @@ export interface Tournament {
   current_participants?: number;
   organizer_id?: string;
   slug?: string;
-  format?: 'single_elimination' | 'double_elimination' | 'battle_royale';
 }
 
 type TournamentStatus = 'upcoming' | 'ongoing' | 'completed';

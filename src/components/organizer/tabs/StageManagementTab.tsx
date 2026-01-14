@@ -7,8 +7,11 @@ import { Layers, Plus, Users, Trophy, Lock, Unlock, Shuffle, ArrowRight, ArrowUp
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
-
 import { StageSetupWizard } from '@/components/organizer/wizard/StageSetupWizard';
+import { SingleEliminationGenerator } from '@/services/bracket/SingleEliminationGenerator';
+import { DoubleEliminationGenerator } from '@/services/bracket/DoubleEliminationGenerator';
+import { MatchRepository } from '@/services/bracket/MatchRepository';
+import { GraphValidator } from '@/services/bracket/BracketGenerator';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
@@ -35,8 +38,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         const checkBrackets = async () => {
             const status: Record<string, boolean> = {};
             for (const stage of stages) {
-                const { count } = await supabase
-                    .from('tournament_matches')
+                // Check brkt_versions (new graph engine) instead of tournament_matches
+                const { count } = await (supabase as any)
+                    .from('brkt_versions')
                     .select('*', { count: 'exact', head: true })
                     .eq('stage_id', stage.id);
                 status[stage.id] = (count || 0) > 0;
@@ -114,27 +118,107 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     };
 
     const handleGenerateStageBracket = async (stageId: string) => {
+        // Find the stage to get its format
+        const stage = stages.find(s => s.id === stageId);
+        if (!stage) {
+            toast({ title: 'Error', description: 'Stage not found', variant: 'destructive' });
+            return;
+        }
+
         try {
-            const { error } = await supabase.rpc('generate_stage_bracket', {
-                p_stage_id: stageId
-            });
+            // Get teams/participants for this tournament
+            const { data: participants, error: partError } = await supabase
+                .from('tournament_participants')
+                .select('team_id, teams(id, name, logo_url)')
+                .eq('tournament_id', tournamentId)
+                .not('team_id', 'is', null);
 
-            if (error) throw error;
+            if (partError) throw partError;
 
-            // Immediately update hasBrackets state to reflect the new bracket
+            const teams = participants?.map((p: any) => ({
+                id: p.team_id,
+                name: p.teams?.name || 'Unknown',
+                logo_url: p.teams?.logo_url
+            })) || [];
+
+            if (teams.length < 2) {
+                toast({ title: 'Error', description: 'Need at least 2 teams to generate a bracket.', variant: 'destructive' });
+                return;
+            }
+
+            // Get next version_number
+            const { data: maxVersionData } = await (supabase as any)
+                .from('brkt_versions')
+                .select('version_number')
+                .eq('tournament_id', tournamentId)
+                .order('version_number', { ascending: false })
+                .limit(1)
+                .single();
+            const nextVersionNumber = (maxVersionData?.version_number || 0) + 1;
+
+            // Generate based on stage format
+            const format = stage.format || 'single_elimination';
+            let generator;
+            if (format === 'single_elimination') {
+                generator = new SingleEliminationGenerator();
+            } else if (format === 'double_elimination') {
+                generator = new DoubleEliminationGenerator();
+            } else {
+                toast({ title: 'Error', description: `Unsupported format: ${format}`, variant: 'destructive' });
+                return;
+            }
+
+            const bestOf = (stage.config as any)?.best_of || 3;
+            const bracketSize = stage.capacity || undefined;
+            const graph = generator.generate(teams, tournamentId, stageId, bestOf, bracketSize);
+            graph.version.version_number = nextVersionNumber;
+
+            // Validate
+            const errors = GraphValidator.validate(graph);
+            if (errors.length > 0) {
+                console.error('Validation errors:', errors);
+                throw new Error('Graph validation failed: ' + errors.join(', '));
+            }
+
+            // Save to DB
+            const repo = new MatchRepository();
+            await repo.createVersion(graph);
+
+            // Update state and navigate
             setHasBrackets(prev => ({ ...prev, [stageId]: true }));
-
-            toast({ title: 'Bracket Generated', description: 'The bracket for this stage has been generated.' });
-            onUpdate();
+            toast({ title: 'Success', description: 'Bracket generated successfully!' });
+            navigate(`/organizer/tournament/${slug}/manage-bracket/${stageId}`);
         } catch (error: any) {
             console.error('Error generating bracket:', error);
             toast({ title: 'Error', description: error.message || 'Failed to generate bracket', variant: 'destructive' });
         }
     };
 
+    const handleDeleteStageBracket = async (stageId: string) => {
+        if (!confirm('Are you sure you want to delete this bracket? This action cannot be undone.')) return;
+
+        try {
+            // Delete all brkt_versions for this stage (cascade will delete matches, edges, etc.)
+            const { error } = await (supabase as any)
+                .from('brkt_versions')
+                .delete()
+                .eq('stage_id', stageId);
+
+            if (error) throw error;
+
+            // Update local state
+            setHasBrackets(prev => ({ ...prev, [stageId]: false }));
+            toast({ title: 'Success', description: 'Bracket deleted successfully.' });
+            onUpdate();
+        } catch (error: any) {
+            console.error('Error deleting bracket:', error);
+            toast({ title: 'Error', description: error.message || 'Failed to delete bracket', variant: 'destructive' });
+        }
+    };
+
     const handleViewBracket = (stageId: string) => {
-        // Navigate to the public bracket page with the stage selected
-        navigate(`/tournaments/${slug}/brackets?stageId=${stageId}`);
+        // Navigate to the organizer bracket management page
+        navigate(`/organizer/tournament/${slug}/manage-bracket/${stageId}`);
     };
 
     const handleAdvanceTeams = async (stageId: string) => {
@@ -350,6 +434,18 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                             </>
                                                         )}
                                                     </Button>
+                                                    {/* Delete Bracket Button - only show when bracket exists */}
+                                                    {stageBracketExists && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+                                                            onClick={() => handleDeleteStageBracket(stage.id)}
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5 mr-2" />
+                                                            Delete Bracket
+                                                        </Button>
+                                                    )}
                                                     {isBlocked && (
                                                         <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 border border-white/10 rounded-lg text-xs text-gray-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                                             Complete "{previousStage?.name}" stage first
