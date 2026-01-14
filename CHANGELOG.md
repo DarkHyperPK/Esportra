@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Score Entry**: Fixed "Invalid scores" error when entering 1-0 results
 - **Tournament Not Found**: Fixed 406 error when navigating to bracket management
 - **Export Crashes**: Fixed blank exports and crashes during PNG generation
+- **BO1 Map Veto**: Fixed incorrect display showing 2 maps instead of 1 in "SELECTED MAPS" section
+  - Removed BO1 from decider logic (BO1 has active pick, not a decider)
+  - Fixed side picker team lookup in VetoDialogs for decider actions
 
 ### Roadmap (Coming in v0.3.1)
 - **Multi-Stage Advancement System**: Automatic team advancement between tournament stages

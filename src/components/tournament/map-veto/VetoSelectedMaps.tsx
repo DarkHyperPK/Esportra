@@ -141,9 +141,10 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                         }
                     }
 
-                    // Add decider map for BO3, BO5, and BO1 - vetoFormat is NUMBER now
-                    if ((vetoFormat === 1 || vetoFormat === 3 || vetoFormat === 5) && (veto.status === 'completed' || veto.status === 'in_progress')) {
-                        const finalPickSideActionNumber = vetoFormat === 1 ? 7 : (vetoFormat === 3 ? 9 : 11);
+                    // Add decider map for BO3 and BO5 ONLY (not BO1 - BO1 has active pick at action 6)
+                    // BO1 doesn't have a decider - T1 actively picks from the remaining 2 maps
+                    if ((vetoFormat === 3 || vetoFormat === 5) && (veto.status === 'completed' || veto.status === 'in_progress')) {
+                        const finalPickSideActionNumber = vetoFormat === 3 ? 9 : 11;
                         const currentActionNum = veto.current_action_number || 0;
 
                         if (currentActionNum >= finalPickSideActionNumber || veto.status === 'completed') {

@@ -174,10 +174,20 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                         if (!veto) return null;
                         const currentActionNum = veto.current_action_number || 1;
                         const vetoFormat = getVetoFormat(bestOf || 1);
-                        const pickActionNumber = currentActionNum - 1;
+
+                        // For decider side picks, use the current action number directly
+                        // because there's no preceding 'pick' action - the map is auto-determined
+                        const isFinalDecider =
+                            (vetoFormat === 1 && currentActionNum === 7) ||
+                            (vetoFormat === 3 && currentActionNum === 9) ||
+                            (vetoFormat === 5 && currentActionNum === 11);
+
+                        const actionNumberForSidePicker = isFinalDecider
+                            ? currentActionNum
+                            : currentActionNum - 1;
 
                         const sidePickerTeamId = getSidePickerTeam(
-                            pickActionNumber,
+                            actionNumberForSidePicker,
                             vetoFormat,
                             veto.team1_id!,
                             veto.team2_id!

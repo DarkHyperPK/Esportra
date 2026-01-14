@@ -6,8 +6,8 @@ const valorantBO1: VetoStep[] = [
     { actionNumber: 3, action: 'ban', team: 'T1' },
     { actionNumber: 4, action: 'ban', team: 'T2' },
     { actionNumber: 5, action: 'ban', team: 'T1' },
-    { actionNumber: 6, action: 'pick', team: 'T1' },
-    { actionNumber: 7, action: 'pick_side', team: 'T2', isDecider: true },
+    { actionNumber: 6, action: 'pick', team: 'T1' },      // T1 picks from remaining 2 maps
+    { actionNumber: 7, action: 'pick_side', team: 'T2' }, // T2 picks side for the picked map
 ];
 
 const valorantBO3: VetoStep[] = [
