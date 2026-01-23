@@ -8,21 +8,33 @@ import { useState } from 'react';
 import { BracketSidebarFilter, type FilterState } from '@/components/bracket/BracketSidebarFilter';
 
 interface PublicBracketViewProps {
-    versionId: string;
+    versionId: string | null; // Allow null to show sidebar even if no bracket
     tournamentId: string;
+
+    // Stage Props
+    stages?: any[];
+    selectedStageId?: string | null;
+    onStageSelect?: (stageId: string) => void;
+    versionsMap?: Record<string, string>;
+    onFullscreen?: () => void;
 }
 
 import { BracketRenderer } from '@/components/bracket/BracketRenderer';
 import { BracketExporter } from '@/components/bracket/BracketExporter';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, AlertCircle, Maximize2 } from 'lucide-react';
 
 export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     versionId,
-    tournamentId
+    tournamentId,
+    stages,
+    selectedStageId,
+    onStageSelect,
+    versionsMap,
+    onFullscreen
 }) => {
     const [activeFilter, setActiveFilter] = useState<FilterState>({ type: 'all' });
-    const { data: graphData } = useGraphBracket(versionId);
+    const { data: graphData } = useGraphBracket(versionId || '');
 
     // Fetch teams
     const teamIds = useMemo(() => extractTeamIds(graphData?.nodes || []), [graphData?.nodes]);
@@ -72,40 +84,44 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         };
     }, [matches]);
 
+    // Render loading or empty state ONLY for the content area, preserving the sidebar
+    const renderContent = () => {
+        if (!versionId) {
+            return (
+                <div className="flex flex-col items-center justify-center py-20 text-zinc-500 h-full">
+                    <AlertCircle className="w-10 h-10 mb-3 opacity-20" />
+                    <p>No bracket generated for this stage</p>
+                </div>
+            );
+        }
 
+        if (!graphData || matches.length === 0) {
+            return (
+                <div className="flex items-center justify-center py-20 text-gray-400 h-full">
+                    Loading bracket...
+                </div>
+            );
+        }
 
-    if (!graphData || matches.length === 0) {
         return (
-            <div className="flex items-center justify-center py-20 text-gray-400">
-                Loading bracket...
-            </div>
-        );
-    }
+            <>
+                <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+                    {onFullscreen && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onFullscreen}
+                            className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100"
+                        >
+                            <Maximize2 className="w-4 h-4 mr-2" />
+                            Fullscreen
+                        </Button>
+                    )}
 
-    const isMatchVisible = (match: any) => {
-        if (activeFilter.type === 'all') return true;
-        if (activeFilter.type === 'winners') return match.bracketSide === 'winners' && match.round === activeFilter.round;
-        if (activeFilter.type === 'losers') return match.bracketSide === 'losers' && match.round === activeFilter.round;
-        if (activeFilter.type === 'final') return match.bracketSide === 'final';
-        return false;
-    };
-
-    return (
-        <div className="flex h-[calc(100vh-140px)]">
-            <BracketSidebarFilter
-                winnersRounds={Object.keys(winnersRounds).map(Number).sort((a, b) => a - b)}
-                losersRounds={Object.keys(losersRounds).map(Number).sort((a, b) => a - b)}
-                hasFinals={finalsMatches.length > 0}
-                activeFilter={activeFilter}
-                onFilterChange={setActiveFilter}
-            />
-
-            <div className="relative flex-1 overflow-auto bg-zinc-950/30">
-                <div className="absolute top-4 right-4 z-50">
                     <BracketExporter
                         matches={matches}
                         triggerButton={
-                            <Button variant="outline" size="sm" className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800">
+                            <Button variant="outline" size="sm" className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100">
                                 <Download className="w-4 h-4 mr-2" />
                                 Export
                             </Button>
@@ -117,6 +133,27 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                     matches={matches}
                     activeFilter={activeFilter}
                 />
+            </>
+        );
+    };
+
+    return (
+        <div className="flex h-[calc(100vh-140px)]">
+            <BracketSidebarFilter
+                winnersRounds={Object.keys(winnersRounds).map(Number).sort((a, b) => a - b)}
+                losersRounds={Object.keys(losersRounds).map(Number).sort((a, b) => a - b)}
+                hasFinals={finalsMatches.length > 0}
+                activeFilter={activeFilter}
+                onFilterChange={setActiveFilter}
+
+                stages={stages}
+                selectedStageId={selectedStageId}
+                onStageSelect={onStageSelect}
+                versionsMap={versionsMap}
+            />
+
+            <div className="relative flex-1 overflow-auto bg-zinc-950/30">
+                {renderContent()}
             </div>
         </div>
     );

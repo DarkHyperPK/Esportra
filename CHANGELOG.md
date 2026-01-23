@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.2] - 2026-01-23
+
+### Fixed
+- **Role Switcher UI**: Fixed an issue where the "Switch Role" dialog would close immediately because it was nested inside the dropdown menu. Lifted state to `UserMenu` to persist the dialog.
+- **Bracket Layout**: Fixed public bracket page layout by removing restrictive `max-w-7xl` container constraints, allowing full-width viewing as requested.
+- **Header Cleanup**: Removed redundant "Valorant Split 3" header card from the bracket view to maximize screen real estate for the bracket itself.
+
+### Added
+- **Stage Filtering**: Added a new Stage Selector in the bracket sidebar (e.g., Groups vs Playoffs). Users can now switch between tournament stages seamlessly without leaving the view.
+- **Fullscreen Mode**: Added a dedicated "Fullscreen" button directly within the bracket toolbar, replacing the previous header button.
+- **UI Polish**: Updated sidebar buttons to use "Poppins" font, added premium "Esports" styling (gradients, glows) to stage selectors, and improved active state visibility.
+
 ## [0.3.1] - 2026-01-23
 
 ### Added

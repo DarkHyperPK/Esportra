@@ -1,20 +1,51 @@
 import { useNavigate } from "react-router-dom";
-import { User, Users, MessageSquare } from "lucide-react";
+import { User, Users, MessageSquare, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   FramerDropdownRoot,
   FramerDropdownContent,
   FramerDropdownItem,
   FramerDropdownTrigger,
-  FramerDropdownSeparator
+  FramerDropdownSeparator,
+  useFramerDropdown
 } from "@/components/ui/FramerDropdown";
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { supabase } from "@/lib/supabase";
-import RoleSwitcher from "@/components/RoleSwitcher";
+import RoleSwitcher, { RoleSwitcherDialog } from "@/components/RoleSwitcher";
 
+// Specialized button component for inside the menu
+const RoleSwitcherMenuButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const { currentRole } = useRole();
+  const { close } = useFramerDropdown();
+
+  return (
+    <div className="flex items-center gap-3">
+      <Badge
+        variant="secondary"
+        className={`bg-gradient-to-r from-cyan-500/70 to-sky-500/70 border border-cyan-400/30 text-white flex items-center gap-2`}
+      >
+        {currentRole === 'casual' ? <React.Fragment>Player</React.Fragment> : <React.Fragment>Organizer</React.Fragment>}
+      </Badge>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          onClick();
+          close();
+        }}
+        className="rounded-xl border-white/20 bg-white/5 text-white hover:bg-white/10"
+      >
+        <ArrowRightLeft className="w-4 h-4 mr-2" />
+        Switch Role
+      </Button>
+    </div>
+  );
+};
 
 const UserMenu = ({
   handleSignOut
@@ -29,6 +60,9 @@ const UserMenu = ({
   const [hasPendingInvite, setHasPendingInvite] = useState(false);
   const [hasStaffInvites, setHasStaffInvites] = useState(false);
   const [hasStaffAssignments, setHasStaffAssignments] = useState(false);
+
+  // State for Role Switcher Dialog (Lifted up so it persists after menu close)
+  const [isRoleSwitcherOpen, setIsRoleSwitcherOpen] = useState(false);
 
   const checkTeamStatus = useCallback(async () => {
     if (!user) { setHasTeam(false); return; }
@@ -137,133 +171,136 @@ const UserMenu = ({
         : 'Admin'
     : userRole.charAt(0).toUpperCase() + userRole.slice(1);
 
-
-
   return (
-    <FramerDropdownRoot>
-      <FramerDropdownTrigger>
-        <Button
-          variant="outline"
-          className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-white hover:bg-white/10 hover:text-white"
-        >
-          <User className="mr-2 h-4 w-4" />
-          {profile?.username || 'Account'}
-        </Button>
-      </FramerDropdownTrigger>
-      <FramerDropdownContent align="end" width={320}>
-        <div className="border-b border-white/10 px-5 py-4">
-          <p className="text-sm font-semibold text-white">
-            {profile?.full_name || profile?.username || 'User'}
-          </p>
-          <p className="text-xs uppercase tracking-[0.2em] text-white/50 mt-1">{roleLabel}</p>
-        </div>
-
-        {!admin.isAdmin && (
-          <div className="space-y-2 border-b border-white/10 px-4 py-3">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-              <RoleSwitcher />
-            </div>
-          </div>
-        )}
-
-        <div className="px-1 py-1 space-y-0.5">
-          <FramerDropdownItem to="/user/dashboard">Dashboard</FramerDropdownItem>
-          <FramerDropdownItem to="/auth/profile">Profile</FramerDropdownItem>
-          {!admin.isAdmin && (
-            <FramerDropdownItem to="/verification">Verification Status</FramerDropdownItem>
-          )}
-          {hasTeam ? (
-            <FramerDropdownItem to="/player/teams" icon={<Users className="h-4 w-4" />}>
-              My Team
-            </FramerDropdownItem>
-          ) : (
-            <FramerDropdownItem to="/player/teams">
-              <div className="flex w-full items-center justify-between">
-                <span>Create Your Team</span>
-                {hasPendingInvite && (
-                  <span aria-label="pending invites" className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
-                )}
-              </div>
-            </FramerDropdownItem>
-          )}
-          {hasStaffInvites && (
-            <FramerDropdownItem to="/user/staff-invites">
-              <div className="flex w-full items-center justify-between">
-                <span>Staff Invites</span>
-                <span aria-label="pending staff invites" className="h-2 w-2 rounded-full bg-cyan-400 flex-shrink-0" />
-              </div>
-            </FramerDropdownItem>
-          )}
-          {hasStaffAssignments && (
-            <FramerDropdownItem to="/staff">
-              <div className="flex w-full items-center justify-between">
-                <span>Staff Console</span>
-                <span aria-label="active staff role" className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
-              </div>
-            </FramerDropdownItem>
-          )}
-          <FramerDropdownItem to="/user/raise-dispute" icon={<MessageSquare className="h-4 w-4" />}>
-            Raise a Dispute / Support
-          </FramerDropdownItem>
-          <FramerDropdownItem to="/user/my-disputes" icon={<MessageSquare className="h-4 w-4" />}>
-            My Disputes
-          </FramerDropdownItem>
-        </div>
-
-        <FramerDropdownSeparator />
-
-        <div className="px-1 py-1 space-y-0.5">
-          {admin.isAdmin && admin.roles.includes('super_admin') && (
-            <>
-              <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
-              <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
-              <FramerDropdownItem to="/venue-owner/dashboard">Manage Venues</FramerDropdownItem>
-              <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
-            </>
-          )}
-
-          {!admin.isAdmin && userRole === 'venue_owner' && (
-            <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
-          )}
-          {!admin.isAdmin && userRole === 'organizer' && (
-            <>
-              <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
-              <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
-            </>
-          )}
-
-          {admin.isAdmin && (
-            <>
-              <FramerDropdownItem to="/admin/dashboard">Admin Dashboard</FramerDropdownItem>
-              {admin.hasPermission('admin:assign_roles') && (
-                <FramerDropdownItem to="/admin/access">Admin Access</FramerDropdownItem>
-              )}
-              {admin.hasPermission('verification:review') && (
-                <FramerDropdownItem to="/admin/verification">Verification Queue</FramerDropdownItem>
-              )}
-              {admin.hasPermission('dispute:resolve') && (
-                <FramerDropdownItem to="/admin/disputes">Dispute Center</FramerDropdownItem>
-              )}
-              {admin.hasPermission('settings:update') && (
-                <FramerDropdownItem to="/admin/settings">System Settings</FramerDropdownItem>
-              )}
-              {admin.hasPermission('audit:view') && (
-                <FramerDropdownItem to="/admin/audit">Activity Logs</FramerDropdownItem>
-              )}
-            </>
-          )}
-        </div>
-
-        <div className="border-t border-white/10 px-3 py-3">
-          <button
-            onClick={handleSignOut}
-            className="flex w-full items-center justify-center rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
+    <>
+      <FramerDropdownRoot>
+        <FramerDropdownTrigger>
+          <Button
+            variant="outline"
+            className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-white hover:bg-white/10 hover:text-white"
           >
-            Sign Out
-          </button>
-        </div>
-      </FramerDropdownContent>
-    </FramerDropdownRoot>
+            <User className="mr-2 h-4 w-4" />
+            {profile?.username || 'Account'}
+          </Button>
+        </FramerDropdownTrigger>
+        <FramerDropdownContent align="end" width={320}>
+          <div className="border-b border-white/10 px-5 py-4">
+            <p className="text-sm font-semibold text-white">
+              {profile?.full_name || profile?.username || 'User'}
+            </p>
+            <p className="text-xs uppercase tracking-[0.2em] text-white/50 mt-1">{roleLabel}</p>
+          </div>
+
+          {!admin.isAdmin && (
+            <div className="space-y-2 border-b border-white/10 px-4 py-3">
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                <RoleSwitcherMenuButton onClick={() => setIsRoleSwitcherOpen(true)} />
+              </div>
+            </div>
+          )}
+
+          <div className="px-1 py-1 space-y-0.5">
+            <FramerDropdownItem to="/user/dashboard">Dashboard</FramerDropdownItem>
+            <FramerDropdownItem to="/auth/profile">Profile</FramerDropdownItem>
+            {!admin.isAdmin && (
+              <FramerDropdownItem to="/verification">Verification Status</FramerDropdownItem>
+            )}
+            {hasTeam ? (
+              <FramerDropdownItem to="/player/teams" icon={<Users className="h-4 w-4" />}>
+                My Team
+              </FramerDropdownItem>
+            ) : (
+              <FramerDropdownItem to="/player/teams">
+                <div className="flex w-full items-center justify-between">
+                  <span>Create Your Team</span>
+                  {hasPendingInvite && (
+                    <span aria-label="pending invites" className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
+                  )}
+                </div>
+              </FramerDropdownItem>
+            )}
+            {hasStaffInvites && (
+              <FramerDropdownItem to="/user/staff-invites">
+                <div className="flex w-full items-center justify-between">
+                  <span>Staff Invites</span>
+                  <span aria-label="pending staff invites" className="h-2 w-2 rounded-full bg-cyan-400 flex-shrink-0" />
+                </div>
+              </FramerDropdownItem>
+            )}
+            {hasStaffAssignments && (
+              <FramerDropdownItem to="/staff">
+                <div className="flex w-full items-center justify-between">
+                  <span>Staff Console</span>
+                  <span aria-label="active staff role" className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                </div>
+              </FramerDropdownItem>
+            )}
+            <FramerDropdownItem to="/user/raise-dispute" icon={<MessageSquare className="h-4 w-4" />}>
+              Raise a Dispute / Support
+            </FramerDropdownItem>
+            <FramerDropdownItem to="/user/my-disputes" icon={<MessageSquare className="h-4 w-4" />}>
+              My Disputes
+            </FramerDropdownItem>
+          </div>
+
+          <FramerDropdownSeparator />
+
+          <div className="px-1 py-1 space-y-0.5">
+            {admin.isAdmin && admin.roles.includes('super_admin') && (
+              <>
+                <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
+                <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
+                <FramerDropdownItem to="/venue-owner/dashboard">Manage Venues</FramerDropdownItem>
+                <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
+              </>
+            )}
+
+            {!admin.isAdmin && userRole === 'venue_owner' && (
+              <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
+            )}
+            {!admin.isAdmin && userRole === 'organizer' && (
+              <>
+                <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
+                <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
+              </>
+            )}
+
+            {admin.isAdmin && (
+              <>
+                <FramerDropdownItem to="/admin/dashboard">Admin Dashboard</FramerDropdownItem>
+                {admin.hasPermission('admin:assign_roles') && (
+                  <FramerDropdownItem to="/admin/access">Admin Access</FramerDropdownItem>
+                )}
+                {admin.hasPermission('verification:review') && (
+                  <FramerDropdownItem to="/admin/verification">Verification Queue</FramerDropdownItem>
+                )}
+                {admin.hasPermission('dispute:resolve') && (
+                  <FramerDropdownItem to="/admin/disputes">Dispute Center</FramerDropdownItem>
+                )}
+                {admin.hasPermission('settings:update') && (
+                  <FramerDropdownItem to="/admin/settings">System Settings</FramerDropdownItem>
+                )}
+                {admin.hasPermission('audit:view') && (
+                  <FramerDropdownItem to="/admin/audit">Activity Logs</FramerDropdownItem>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="border-t border-white/10 px-3 py-3">
+            <button
+              onClick={handleSignOut}
+              className="flex w-full items-center justify-center rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
+            >
+              Sign Out
+            </button>
+          </div>
+        </FramerDropdownContent>
+      </FramerDropdownRoot>
+
+      {/* Role Switcher Dialog - Rendered here to survive menu close */}
+      <RoleSwitcherDialog open={isRoleSwitcherOpen} onOpenChange={setIsRoleSwitcherOpen} />
+    </>
   );
 };
 
