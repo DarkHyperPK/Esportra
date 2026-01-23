@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { LoadingSpinner } from '@/components/effects/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
@@ -154,13 +155,12 @@ const TournamentBrackets = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-esports-dark text-white">
-        <main className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 w-1/3 bg-gaming-gray/20 rounded"></div>
-            <div className="h-64 bg-gaming-gray/20 rounded"></div>
+      <div className="min-h-screen bg-transparent text-white relative">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="p-8 rounded-2xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-2xl">
+            <LoadingSpinner size={80} text="Loading Brackets..." />
           </div>
-        </main>
+        </div>
         <Footer />
       </div>
     );
@@ -168,35 +168,43 @@ const TournamentBrackets = () => {
 
   if (!tournament) return <div>Tournament not found</div>;
 
+
+
+  // ... (keep existing code)
+
   return (
-    <div className="min-h-screen bg-esports-dark text-white">
-      <main className="w-full px-4 py-8">
-        <div className="w-full">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-6">
+    <div className="min-h-screen bg-transparent text-white relative overflow-hidden font-sans">
+      <main className="w-full px-4 py-8 relative z-10">
+        {/* Glassmorphism Header Card */}
+        <div className="w-full max-w-7xl mx-auto mb-6 p-6 rounded-2xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-2xl">
+          <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold">{tournament.name}</h1>
+              <h1 className="text-3xl font-bold text-white">{tournament.name}</h1>
               <p className="text-gray-400">{tournament.game}</p>
             </div>
-            <Button
-              onClick={() => navigate(isOrganizerOwner ? `/organizer/tournament/${slug}` : `/tournaments/${slug}`)}
-              variant="outline"
-              className="border-gaming-gray/30"
-            >
-              Back to Tournament
-            </Button>
-            <Button
-              onClick={() => window.open(`/tournaments/${slug}/brackets/fullscreen`, '_blank')}
-              variant="outline"
-              className="ml-2 border-gaming-gray/30"
-            >
-              <Maximize2 className="w-4 h-4 mr-2" />
-              Fullscreen
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => navigate(isOrganizerOwner ? `/organizer/tournament/${slug}` : `/tournaments/${slug}`)}
+                variant="outline"
+                className="border-white/10 bg-black/80 hover:bg-white/10 text-white backdrop-blur-md"
+              >
+                Back to Tournament
+              </Button>
+              <Button
+                onClick={() => window.open(`/tournaments/${slug}/brackets/fullscreen`, '_blank')}
+                variant="outline"
+                className="border-white/10 bg-black/80 hover:bg-white/10 text-white backdrop-blur-md"
+              >
+                <Maximize2 className="w-4 h-4 mr-2" />
+                Fullscreen
+              </Button>
+            </div>
           </div>
+        </div>
 
-          {/* Bracket Content - Container Free */}
-          <div className="relative">
+        {/* Bracket Content - Glassmorphism Container */}
+        <div className="w-full max-w-7xl mx-auto">
+          <div className="p-6 rounded-2xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-2xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-zinc-100">Tournament Brackets</h2>
             </div>

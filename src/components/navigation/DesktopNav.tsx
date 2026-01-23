@@ -13,9 +13,9 @@ import { useAdmin } from "@/contexts/AdminContext";
 import { useNotifications } from "@/components/NotificationContext";
 import UserMenu from "./UserMenu";
 
-const DesktopNav = ({ 
-  handleSignOut 
-}: { 
+const DesktopNav = ({
+  handleSignOut
+}: {
   handleSignOut: () => Promise<void>;
 }) => {
   const { user, profile } = useAuth();
@@ -26,20 +26,20 @@ const DesktopNav = ({
   const isSuperAdmin = admin.isAdmin && admin.roles.includes('super_admin');
 
   const menuItemClass =
-    "w-full rounded-2xl px-4 py-2 text-[0.75rem] font-semibold uppercase tracking-[0.15em] text-white/70 transition-all focus:text-white hover:text-white hover:bg-white/10 focus:bg-white/10";
+    "w-full rounded-2xl px-4 py-2 text-[0.75rem] font-semibold text-white/70 transition-all focus:text-white hover:text-white hover:bg-white/10 focus:bg-white/10";
 
   return (
-    <div className="hidden lg:flex items-center gap-6 font-roboto">
-      <Link to="/" className="text-sm font-semibold uppercase tracking-[0.2em] text-white transition-colors">
+    <div className="hidden lg:flex items-center gap-6 font-heading font-medium">
+      <Link to="/" className="text-base font-semibold text-white transition-colors">
         Home
       </Link>
-      
+
       <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-white transition-colors">
+        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-base font-semibold text-white transition-colors">
           <MapPin className="h-4 w-4" />
           Venues
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
+        <DropdownMenuContent className="z-[1000] border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
           <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/venues/search" className="w-full">Find Venues</Link>
           </DropdownMenuItem>
@@ -55,11 +55,11 @@ const DesktopNav = ({
       </DropdownMenu>
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-white transition-colors">
+        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-base font-semibold text-white transition-colors">
           <Trophy className="h-4 w-4" />
           Tournaments
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
+        <DropdownMenuContent className="z-[1000] border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
           <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/tournaments/upcoming" className="w-full">Upcoming Tournaments</Link>
           </DropdownMenuItem>
@@ -83,11 +83,11 @@ const DesktopNav = ({
       </DropdownMenu>
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-white transition-colors">
+        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-base font-semibold text-white transition-colors">
           <Info className="h-4 w-4" />
           About
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
+        <DropdownMenuContent className="z-[1000] border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
           <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/about/company" className="w-full">About Us</Link>
           </DropdownMenuItem>
@@ -101,11 +101,11 @@ const DesktopNav = ({
       </DropdownMenu>
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-white transition-colors">
+        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-base font-semibold text-white transition-colors">
           <Smartphone className="h-4 w-4" />
           App
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
+        <DropdownMenuContent className="z-[1000] border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
           <DropdownMenuItem asChild className={menuItemClass}>
             <Link to="/app" className="w-full">Download Mobile App</Link>
           </DropdownMenuItem>
@@ -115,8 +115,8 @@ const DesktopNav = ({
       {user ? (
         <>
           {/* Notification Bell */}
-          <Link 
-            to="/notifications" 
+          <Link
+            to="/notifications"
             className="relative rounded-full border border-white/10 bg-white/5 p-2 text-white/70 transition-all hover:bg-white/10 hover:text-white"
           >
             <Bell className="h-5 w-5" />
@@ -126,20 +126,20 @@ const DesktopNav = ({
               </span>
             )}
           </Link>
-          
+
           <UserMenu handleSignOut={handleSignOut} />
         </>
       ) : (
         <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            className="border-white/30 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white" 
+          <Button
+            variant="outline"
+            className="border-white/30 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white"
             asChild
           >
             <Link to="/auth/signin">Log In</Link>
           </Button>
-          <Button 
-            className="bg-gradient-to-r from-[#f43f5e] to-[#fb7185] text-white shadow-[0_15px_40px_rgba(244,63,94,0.35)] hover:from-[#fb7185] hover:to-[#f43f5e]" 
+          <Button
+            className="bg-gradient-to-r from-[#f43f5e] to-[#fb7185] text-white shadow-[0_15px_40px_rgba(244,63,94,0.35)] hover:from-[#fb7185] hover:to-[#f43f5e]"
             asChild
           >
             <Link to="/auth/signup">Sign Up</Link>

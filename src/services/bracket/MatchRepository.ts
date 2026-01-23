@@ -29,7 +29,9 @@ export class MatchRepository {
             team2_id: n.team2_id || null,
             winner_id: n.winner_id || null,
             loser_id: n.loser_id || null,
-            best_of: n.best_of || 3, // Include best_of from stage settings
+            best_of: n.best_of || 3,
+            group_id: n.group_id || null, // Swiss/RR groups (Group A, B, etc.)
+            round_number: n.round_number || null, // Swiss round number
         }));
 
         const { error: matchesError } = await (supabase as any)
@@ -104,10 +106,19 @@ export class MatchRepository {
     }
 
     /**
-     * Fetches the full graph structure (Nodes & Edges) for a version.
-     * Does NOT fetch events or computed state.
+     * Fetches the full graph structure (Version, Nodes & Edges).
      */
-    async getGraphStructure(versionId: string): Promise<{ nodes: BracketNode[], edges: BracketEdge[] }> {
+    async getGraphStructure(versionId: string): Promise<BracketGraph> {
+        // 1. Fetch Version
+        const { data: version, error: versionError } = await (supabase as any)
+            .from('brkt_versions')
+            .select('*')
+            .eq('id', versionId)
+            .single();
+
+        if (versionError) throw versionError;
+
+        // 2. Fetch Matches (Nodes)
         const { data: matches, error: matchesError } = await (supabase as any)
             .from('brkt_matches')
             .select(`
@@ -118,6 +129,7 @@ export class MatchRepository {
 
         if (matchesError) throw matchesError;
 
+        // 3. Fetch Advancements (Edges)
         const { data: advancements, error: edgesError } = await (supabase as any)
             .from('brkt_advancements')
             .select('*')
@@ -127,7 +139,7 @@ export class MatchRepository {
 
         // Handle null or empty data
         if (!matches || !Array.isArray(matches)) {
-            return { nodes: [], edges: [] };
+            return { version, nodes: [], edges: [] };
         }
 
         // Map DB result to BracketNode
@@ -145,6 +157,8 @@ export class MatchRepository {
             winner_id: m.winner_id,
             loser_id: m.loser_id,
             party_code: m.party_code,
+            group_id: m.group_id, // Added for RR
+            round_number: m.round_number, // Added for Swiss
             x: m.layout?.[0]?.x,
             y: m.layout?.[0]?.y
         }));
@@ -154,7 +168,7 @@ export class MatchRepository {
             ? advancements as BracketEdge[]
             : [];
 
-        return { nodes, edges };
+        return { version, nodes, edges };
     }
 }
 

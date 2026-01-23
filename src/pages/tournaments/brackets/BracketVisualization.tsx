@@ -52,13 +52,17 @@ export interface BracketVisualizationProps {
   userTeamId?: string;
   onUploadResult?: (matchId: string) => void;
   onOpenMapVeto?: (match: BracketMatch, matchId: string) => void;
+
   onRefresh?: () => void;
+  onByeAdvance?: (matchId: string) => void;
 }
 
 import { MatchCard } from './MatchCard';
 import { BracketSidebarFilter, type FilterState } from '@/components/bracket/BracketSidebarFilter';
 import { BracketExporter } from '@/components/bracket/BracketExporter';
 import { Download } from 'lucide-react';
+import { GroupStageView } from '@/components/bracket/GroupStageView';
+import { SwissView } from '@/components/bracket/SwissView';
 
 
 const getRawId = (id: string | number) => String(id).replace('db-', '');
@@ -71,10 +75,11 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   tournamentId,
   isOrganizer = false,
   onOpenMapVeto,
-  onRefresh
+  onRefresh,
+  onByeAdvance,
 }) => {
-  // Data Fetching Logic (Replaces Adapter Component)
-  const { data: graphData, refetch: refetchGraph } = useGraphBracket(versionId || '');
+  // Data Fetching Logic with Realtime subscriptions
+  const { data: graphData, refetch: refetchGraph } = useGraphBracket(versionId || '', tournamentId || undefined);
 
   // Fetch match proofs
   const { data: proofs } = useQuery({
@@ -102,7 +107,13 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   });
 
   // Fetch teams
-  const teamIds = useMemo(() => graphData?.nodes ? extractTeamIds(graphData.nodes) : [], [graphData?.nodes]);
+  // Fetch teams
+  const teamIds = useMemo(() => {
+    if (!graphData?.nodes) return [];
+    const ids = extractTeamIds(graphData.nodes);
+    return ids.sort(); // Stable sort to prevent unnecessary refetches
+  }, [graphData?.nodes]);
+
   const { data: teamsData } = useQuery({
     queryKey: ['bracket-teams', teamIds.join(',')],
     queryFn: async () => {
@@ -111,11 +122,12 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       if (error) throw error;
       return data;
     },
-    enabled: teamIds.length > 0
+    enabled: teamIds.length > 0,
+    placeholderData: (prev) => prev, // Keep previous data while fetching
   });
 
   // Adapt data
-  const { matches, teamCount } = useMemo(() => {
+  const { matches: adaptedMatches, teamCount } = useMemo(() => {
     if (propMatches.length > 0) return { matches: propMatches, teamCount: propTeamCount };
     if (!graphData?.nodes || !graphData?.edges) return { matches: [], teamCount: 0 };
 
@@ -128,11 +140,27 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     return { matches: adapted, teamCount: count };
   }, [propMatches, propTeamCount, graphData, teamsData]);
 
+  // Derived matches
+  const matches = useMemo(() => {
+    return adaptedMatches;
+  }, [adaptedMatches]);
+
   // Combined refresh handler
   const handleRefresh = useCallback(() => {
-    if (versionId) refetchGraph();
+    console.log('[BracketVisualization] Handle Refresh triggered. Refetching graph...');
+    if (versionId) {
+      refetchGraph().then(() => console.log('[BracketVisualization] Refetch complete.'));
+    }
     onRefresh?.();
   }, [versionId, refetchGraph, onRefresh]);
+
+  // Detect Format
+  const format = useMemo(() => {
+    if (matches.some(m => m.bracketType === 'group')) return 'round_robin';
+    if (matches.some(m => m.bracketType === 'swiss_round')) return 'swiss';
+    return 'elimination';
+  }, [matches]);
+
   const { toast } = useToast();
 
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
@@ -381,16 +409,27 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
   // Handlers
   const toggleExpand = useCallback((id: string) => setExpandedMatch(p => p === id ? null : id), []);
-  const openGoLive = useCallback((m: BracketMatch) => { setGoLiveMatch(m); setPartyCodeInput(''); setGoLiveDialogOpen(true); }, []);
+  const handleGoLive = useCallback(async (matchOverride?: BracketMatch, codeOverride?: string) => {
+    const match = matchOverride || goLiveMatch;
+    const code = codeOverride || partyCodeInput;
 
-  const handleGoLive = useCallback(async () => {
-    if (!goLiveMatch || !isDbMatch(goLiveMatch.id) || !partyCodeInput.trim()) { toast({ title: 'Party code required', variant: 'destructive' }); return; }
+    if (!match || !isDbMatch(match.id) || !code?.trim()) { toast({ title: 'Party code required', variant: 'destructive' }); return; }
     setIsProcessing(true);
-    const r = await GraphMatchService.goLive(getRawId(goLiveMatch.id), partyCodeInput.trim());
+    const r = await GraphMatchService.goLive(getRawId(match.id), code.trim());
     setIsProcessing(false);
     if (r.success) { toast({ title: '🎮 Match is LIVE!' }); setGoLiveDialogOpen(false); }
     else toast({ title: 'Error', description: r.error, variant: 'destructive' });
   }, [goLiveMatch, partyCodeInput, toast]);
+
+  const openGoLive = useCallback((m: BracketMatch, code?: string) => {
+    if (code) {
+      handleGoLive(m, code);
+    } else {
+      setGoLiveMatch(m);
+      setPartyCodeInput('');
+      setGoLiveDialogOpen(true);
+    }
+  }, [handleGoLive]);
   const openMapVeto = useCallback((m: BracketMatch) => { if (onOpenMapVeto) onOpenMapVeto(m, String(m.id)); else { setMapVetoMatch(m); setMapVetoOpen(true); } }, [onOpenMapVeto]);
   const openPartyCode = useCallback((m: BracketMatch) => { setPartyCodeMatch(m); setPartyCodeOpen(true); setCopiedCode(false); }, []);
   const copyPartyCode = async () => { if (!partyCodeMatch?.partyCode) return; await navigator.clipboard.writeText(partyCodeMatch.partyCode); setCopiedCode(true); toast({ title: '📋 Copied!' }); setTimeout(() => setCopiedCode(false), 2000); };
@@ -446,14 +485,45 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       onSaveScore={saveScore}
       scoreDraftRef={scoreDraftRef}
       proofs={proofs?.[getRawId(match.id)]}
+      onByeAdvance={onByeAdvance}
     />
-  ), [expandedMatch, isOrganizer, isProcessing, handleScoreChange, toggleExpand, openGoLive, openMapVeto, openPartyCode, saveScore, proofs]);
+  ), [expandedMatch, isOrganizer, isProcessing, handleScoreChange, toggleExpand, openGoLive, openMapVeto, openPartyCode, saveScore, proofs, onByeAdvance]);
 
   // Open bracket in fullscreen new tab
   const openFullscreen = useCallback(() => {
     const url = window.location.href;
     window.open(url, '_blank', 'fullscreen=yes,menubar=no,toolbar=no,location=no,status=no');
   }, []);
+
+  // Render Alternative Views
+  if (format === 'round_robin') {
+    return (
+      <div className="p-6">
+        <GroupStageView
+          stageId={graphData?.version?.stage_id || ''}
+          matches={graphData?.nodes || []}
+          isOrganizer={isOrganizer}
+          onMatchUpdate={handleRefresh}
+        />
+      </div>
+    );
+  }
+
+  if (format === 'swiss') {
+    return (
+      <div className="p-6">
+        <SwissView
+          stageId={graphData?.version?.stage_id || ''}
+          versionId={versionId || ''}
+          matches={matches}
+          isOrganizer={isOrganizer}
+          onMatchUpdate={handleRefresh}
+          tournamentId={tournamentId}
+          onByeAdvance={onByeAdvance}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -524,7 +594,8 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
               {matches.map(m => {
                 // Filter logic
                 if (activeFilter.type === 'winners') {
-                  if (m.bracketSide !== 'winners' || m.round !== activeFilter.round) return null;
+                  // Allow explicit 'winners' or undefined (fallback)
+                  if ((m.bracketSide && m.bracketSide !== 'winners') || m.round !== activeFilter.round) return null;
                 }
                 if (activeFilter.type === 'losers') {
                   if (m.bracketSide !== 'losers' || m.round !== activeFilter.round) return null;
@@ -622,7 +693,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                 Cancel
               </Button>
               <Button
-                onClick={handleGoLive}
+                onClick={() => handleGoLive()}
                 disabled={isProcessing || !partyCodeInput.trim()}
                 className="flex-1 h-12 bg-green-600 hover:bg-green-500 text-white font-medium rounded-2xl"
               >

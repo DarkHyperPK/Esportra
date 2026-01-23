@@ -10,7 +10,7 @@ const Card = React.forwardRef<
   <motion.div
     ref={ref}
     className={cn(
-      "rounded-3xl border border-white/5 bg-gradient-to-br from-[#0c0f17]/90 via-[#0c101c]/80 to-[#050608]/90 text-white shadow-[0_25px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl",
+      "rounded-3xl border border-white/5 bg-black/40 text-white backdrop-blur-xl",
       className
     )}
     initial={{ opacity: 0, y: 20 }}

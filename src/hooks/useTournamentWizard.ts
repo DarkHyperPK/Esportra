@@ -196,26 +196,73 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
 
                 if (updateError) throw updateError;
 
-                // Update stages if they exist
-                if (data.stages.length > 0) {
-                    const stagesToUpsert = data.stages.map(stage => ({
-                        id: stage.id, // Include ID for upsert
-                        tournament_id: tournamentId,
-                        name: stage.name,
-                        format: stage.format,
-                        stage_order: stage.stage_order,
-                        best_of: (stage as any).best_of || 1,  // New column
-                    }));
-
-                    const { error: stagesError } = await supabase
+                // Handle stage updates (upsert, insert, delete)
+                if (data.stages.length > 0 || initialData?.stages) {
+                    // Get current stage IDs from the database
+                    const { data: existingDbStages } = await supabase
                         .from('tournament_stages')
-                        .upsert(stagesToUpsert);
+                        .select('id')
+                        .eq('tournament_id', tournamentId);
 
-                    if (stagesError) throw stagesError;
+                    const existingDbStageIds = existingDbStages?.map(s => s.id) || [];
+                    const currentStageIds = data.stages.filter(s => s.id).map(s => s.id);
+
+                    // Find stages to delete (exist in DB but not in current data)
+                    const stagesToDelete = existingDbStageIds.filter(id => !currentStageIds.includes(id));
+
+                    // Delete removed stages
+                    if (stagesToDelete.length > 0) {
+                        const { error: deleteError } = await supabase
+                            .from('tournament_stages')
+                            .delete()
+                            .in('id', stagesToDelete);
+
+                        if (deleteError) throw deleteError;
+                    }
+
+                    // Separate stages with IDs (existing) from stages without IDs (new)
+                    const existingStages = data.stages.filter(stage => stage.id);
+                    const newStages = data.stages.filter(stage => !stage.id);
+
+                    // Upsert existing stages
+                    if (existingStages.length > 0) {
+                        const stagesToUpsert = existingStages.map(stage => ({
+                            id: stage.id,
+                            tournament_id: tournamentId,
+                            name: stage.name,
+                            format: stage.format,
+                            stage_order: stage.stage_order,
+                            best_of: (stage as any).best_of || 1,
+                            capacity: (stage as any).capacity || null,
+                            advancement_count: (stage as any).advancement_count || null,
+                        }));
+
+                        const { error: upsertError } = await supabase
+                            .from('tournament_stages')
+                            .upsert(stagesToUpsert);
+
+                        if (upsertError) throw upsertError;
+                    }
+
+                    // Insert new stages (they get auto-generated IDs)
+                    if (newStages.length > 0) {
+                        const stagesToInsert = newStages.map(stage => ({
+                            tournament_id: tournamentId,
+                            name: stage.name,
+                            format: stage.format,
+                            stage_order: stage.stage_order,
+                            best_of: (stage as any).best_of || 1,
+                            capacity: (stage as any).capacity || null,
+                            advancement_count: (stage as any).advancement_count || null,
+                        }));
+
+                        const { error: insertError } = await supabase
+                            .from('tournament_stages')
+                            .insert(stagesToInsert);
+
+                        if (insertError) throw insertError;
+                    }
                 }
-
-                // Note: We are using upsert to handle updates. 
-                // Deletions are not handled here to prevent accidental data loss.
 
                 toast({
                     title: 'Tournament Updated',
@@ -245,7 +292,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         description: data.description,
                         slug,
                         game: data.game,
-                        format: data.stages[0]?.format || data.bracketType,
+                        // format is stored per-stage, not on tournament level
                         max_teams: data.maxTeams,
                         min_teams: 2,
                         team_size: data.teamSize,
@@ -255,7 +302,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         start_date: startDateTime.toISOString(),
                         end_date: endDateTime.toISOString(),
                         registration_deadline: registrationCloses.toISOString(),
-                        status: 'open',
+                        status: 'upcoming',
                         banner_url: data.bannerUrl,
                         logo_url: data.logoUrl,
                         organizer_id: user.id,
@@ -278,7 +325,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         name: stage.name,
                         format: stage.format,
                         stage_order: stage.stage_order,
-                        best_of: (stage as any).best_of || 1,  // New column
+                        best_of: (stage as any).best_of || 1,
+                        capacity: (stage as any).capacity || null,
+                        advancement_count: (stage as any).advancement_count || null,
                     }));
 
                     const { error: stagesError } = await supabase

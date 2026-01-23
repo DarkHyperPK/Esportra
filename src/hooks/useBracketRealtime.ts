@@ -59,35 +59,9 @@ export function useBracketRealtime({
 
         const channel = supabase.channel(channelName);
 
-        // Subscribe to legacy tournament_matches if tournamentId is present
-        if (tournamentId) {
-            const filter = stageId
-                ? `tournament_id=eq.${tournamentId},stage_id=eq.${stageId}`
-                : `tournament_id=eq.${tournamentId}`;
-
-            channel
-                .on(
-                    'postgres_changes',
-                    { event: '*', schema: 'public', table: 'tournament_matches', filter },
-                    (payload) => {
-                        console.log('[useBracketRealtime] Legacy match update:', payload.eventType);
-                        queryClient.invalidateQueries({ queryKey: ['bracket'] });
-                        queryClient.invalidateQueries({ queryKey: ['tournament_bracket', tournamentId] });
-                        if (slug) queryClient.invalidateQueries({ queryKey: ['bracket', slug] });
-                        if (onUpdate) onUpdate();
-                    }
-                )
-                .on(
-                    'postgres_changes',
-                    { event: '*', schema: 'public', table: 'tournament_match_results', filter: `tournament_id=eq.${tournamentId}` },
-                    (payload) => {
-                        console.log('[useBracketRealtime] Legacy result update:', payload.eventType);
-                        queryClient.invalidateQueries({ queryKey: ['bracket'] });
-                        queryClient.invalidateQueries({ queryKey: ['tournament_bracket', tournamentId] });
-                        if (slug) queryClient.invalidateQueries({ queryKey: ['bracket', slug] });
-                        if (onUpdate) onUpdate();
-                    }
-                );
+        // Legacy match updates removed - relying on brkt_matches for versioned brackets
+        if (tournamentId && !versionId) {
+            console.log('[useBracketRealtime] Legacy tournament_matches subscription skipped (table removed). Please upgrade to brkt_matches.');
         }
 
         // Subscribe to new brkt_matches if versionId is present

@@ -115,9 +115,11 @@ export interface BracketMatch {
     resultComments?: string[];
     partyCode?: string | null;
     bracketSide?: BracketSide;
+    bracketType?: 'winners' | 'losers' | 'final' | 'group' | 'swiss_round';
     nextMatchId?: string | null;
     loserNextMatchId?: string | null;
     stageId?: string | null;
+    groupId?: string | number | null;
     x?: number;
     y?: number;
 }

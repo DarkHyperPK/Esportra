@@ -4,10 +4,21 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, CheckCircle, ArrowRight } from 'lucide-react';
 import BracketVisualization from '@/pages/tournaments/brackets/BracketVisualization';
 import Footer from '@/components/Footer';
 import { useBracketRealtime } from '@/hooks/useBracketRealtime';
+import { stageCompletionService } from '@/services/bracket/StageCompletionService';
+import { GraphMatchService } from '@/services/bracket/GraphMatchService';
+
+interface AdvancingTeam {
+    team_id: string;
+    team_name: string;
+    seed: number;
+}
 
 const ManageBracketPage = () => {
     const { slug, stageId } = useParams<{ slug: string; stageId: string }>();
@@ -21,11 +32,56 @@ const ManageBracketPage = () => {
     const [loading, setLoading] = useState(true);
     const [isOrganizer, setIsOrganizer] = useState(false);
 
-    const fetchData = useCallback(async () => {
+    // Stage completion state
+    const [stageComplete, setStageComplete] = useState(false);
+    const [advancingTeams, setAdvancingTeams] = useState<AdvancingTeam[]>([]);
+    const [nextStage, setNextStage] = useState<any>(null);
+    const [isAdvancing, setIsAdvancing] = useState(false);
+
+    // Debounce ref for stage completion check to prevent race conditions
+    const completionCheckTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    // Check stage completion when stage or versionId changes
+    const checkStageCompletion = useCallback(async () => {
+        if (!stageId || !versionId) return;
+
+        try {
+            const result = await stageCompletionService.checkStageCompletion(stageId);
+            setStageComplete(result.isComplete);
+            setAdvancingTeams(result.advancingTeams || []);
+            setNextStage((result as any).nextStage || null);
+        } catch (error) {
+            console.error('[ManageBracketPage] Error checking stage completion:', error);
+        }
+    }, [stageId, versionId]);
+
+    // Memoized update handler to prevent subscription churn
+    const handleRealtimeUpdate = useCallback(() => {
+        console.log('[ManageBracketPage] Realtime update received');
+        // Debounce stage completion check to prevent race conditions
+        if (completionCheckTimeoutRef.current) {
+            clearTimeout(completionCheckTimeoutRef.current);
+        }
+        completionCheckTimeoutRef.current = setTimeout(() => {
+            checkStageCompletion();
+        }, 500);
+    }, [checkStageCompletion]);
+
+    // Subscribe to realtime bracket updates - automatically invalidates cache when matches change
+    useBracketRealtime({
+        tournamentId: tournament?.id || '',
+        versionId: versionId || undefined,
+        enabled: !!versionId,
+        slug: slug,
+        onUpdate: handleRealtimeUpdate
+    });
+
+
+    const fetchData = useCallback(async (silent = false) => {
         if (!slug || !stageId) return;
 
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             console.log('ManageBracketPage: Fetching data for slug:', slug, 'stageId:', stageId);
 
             // Fetch tournament
@@ -78,6 +134,15 @@ const ManageBracketPage = () => {
 
             if (versionData) {
                 setVersionId(versionData.id);
+
+                // Check stage completion status
+                const completionResult = await stageCompletionService.checkStageCompletion(stageId);
+                setStageComplete(completionResult.isComplete);
+                setAdvancingTeams(completionResult.advancingTeams);
+
+                // Get next stage info
+                const nextStageInfo = await stageCompletionService.getNextStage(stageId);
+                setNextStage(nextStageInfo);
             } else {
                 toast({ title: 'No Bracket', description: 'No bracket found for this stage', variant: 'destructive' });
             }
@@ -86,9 +151,164 @@ const ManageBracketPage = () => {
             console.error('Error fetching data:', error);
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [slug, stageId, user?.id, navigate, toast]);
+
+    // Handle advancing teams to next stage
+    const handleAdvanceTeams = async () => {
+        if (!stageId) return;
+
+        setIsAdvancing(true);
+        try {
+            const result = await stageCompletionService.advanceTeamsToNextStage(stageId);
+
+            if (result.success) {
+                toast({
+                    title: 'Teams Advanced!',
+                    description: `${result.advancedCount} teams have been advanced to the next stage.`
+                });
+
+                // Navigate to tournament management page
+                if (result.nextStageId) {
+                    navigate(`/organizer/tournament/${slug}`);
+                }
+            } else {
+                toast({
+                    title: 'Error',
+                    description: result.error || 'Failed to advance teams',
+                    variant: 'destructive'
+                });
+            }
+        } catch (error: any) {
+            toast({
+                title: 'Error',
+                description: error.message,
+                variant: 'destructive'
+            });
+        } finally {
+            setIsAdvancing(false);
+        }
+    };
+
+    // Handle single BYE advancement
+    const handleByeAdvance = async (matchId: string) => {
+        try {
+            const db = supabase as any;
+
+            // Get the match
+            const { data: match, error: matchError } = await db
+                .from('brkt_matches')
+                .select('*')
+                .eq('id', matchId)
+                .single();
+
+            if (matchError || !match) {
+                toast({ title: 'Error', description: 'Match not found', variant: 'destructive' });
+                return;
+            }
+
+            // Determine which team to advance
+            const winnerId = match.team1_id || match.team2_id;
+            if (!winnerId) {
+                toast({ title: 'Error', description: 'No team to advance', variant: 'destructive' });
+                return;
+            }
+
+            // Use GraphMatchService to save score AND propagate winner to next match
+            const result = await GraphMatchService.saveScoreAndAdvance(
+                matchId,
+                match.team1_id ? 1 : 0, // Winner gets 1
+                match.team2_id ? 1 : 0, // Winner gets 1
+                match.team1_id,
+                match.team2_id
+            );
+
+            if (!result.success) {
+                toast({ title: 'Error', description: result.error || 'Failed to advance BYE', variant: 'destructive' });
+                return;
+            }
+
+            toast({ title: 'BYE Advanced', description: 'Team has been advanced!' });
+            fetchData(true);
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        }
+    };
+
+    // Handle bulk BYE advancement
+    const handleAutoAdvanceByes = async () => {
+        if (!versionId) {
+            console.error('[AutoAdvance] No versionId found');
+            return;
+        }
+
+        console.log('[AutoAdvance] querying versionId:', versionId);
+
+        try {
+            const db = supabase as any;
+
+            // Get all pending matches with exactly one team
+            const { data: byeMatches, error: fetchError } = await db
+                .from('brkt_matches')
+                .select('*')
+                .eq('version_id', versionId)
+                .eq('status', 'pending');
+
+            if (fetchError) throw fetchError;
+
+            if (fetchError) throw fetchError;
+
+            console.log('[AutoAdvance] Pending matches count:', byeMatches?.length);
+            console.log('[AutoAdvance] Pending matches statuses:', byeMatches?.map((m: any) => `${m.id}: ${m.status}, t1=${m.team1_id}, t2=${m.team2_id}`));
+
+            // Filter to only PENDING BYE matches (exactly one team)
+            const actualByeMatches = byeMatches?.filter((m: any) => {
+                const isPending = m.status === 'pending';
+                // Check if one team is missing or TBD
+                // Note: The DB columns team1_id/team2_id might be null strings or empty
+                const t1 = m.team1_id;
+                const t2 = m.team2_id;
+                const isBye = (t1 && !t2) || (!t1 && t2);
+                // Note: If ids are not null but point to TBD teams, this check might fail if we don't join teams. 
+                // But typically TBD teams have null IDs in matches or specific placeholders.
+                // Let's assume for now the DB has NULL for missing teams.
+
+                return isPending && isBye;
+            }) || [];
+
+            console.log('[AutoAdvance] Filtered BYE matches:', actualByeMatches.length);
+
+            if (actualByeMatches.length === 0) {
+                toast({ title: 'No BYEs', description: 'No PENDING BYE matches to advance' });
+                return;
+            }
+
+            // Advance each BYE match using GraphMatchService
+            let advancedCount = 0;
+            for (const match of actualByeMatches) {
+                const result = await GraphMatchService.saveScoreAndAdvance(
+                    match.id,
+                    match.team1_id ? 1 : 0,
+                    match.team2_id ? 1 : 0,
+                    match.team1_id,
+                    match.team2_id
+                );
+
+                if (result.success) advancedCount++;
+            }
+
+            toast({
+                title: 'BYEs Advanced',
+                description: `${advancedCount} BYE match(es) have been processed!`
+            });
+            fetchData(true);
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        }
+    };
+
+
 
     useEffect(() => {
         if (!authLoading) {
@@ -96,13 +316,7 @@ const ManageBracketPage = () => {
         }
     }, [authLoading, fetchData]);
 
-    // Enable realtime updates
-    useBracketRealtime({
-        tournamentId: tournament?.id,
-        versionId: versionId || undefined,
-        slug: slug,
-        enabled: !!tournament?.id && !!versionId
-    });
+
 
     if (loading || authLoading) {
         return (
@@ -124,8 +338,8 @@ const ManageBracketPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-esports-dark text-white">
-            <main className="w-full px-4 py-8">
+        <div className="min-h-screen text-white">
+            <main className="relative w-full px-4 py-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
@@ -145,7 +359,57 @@ const ManageBracketPage = () => {
                             </p>
                         </div>
                     </div>
+
+                    {/* Action Buttons */}
+                    {isOrganizer && (
+                        <Button
+                            onClick={handleAutoAdvanceByes}
+                            className="bg-amber-600 hover:bg-amber-500 text-white font-medium"
+                        >
+                            Auto Advance Byes
+                        </Button>
+                    )}
                 </div>
+
+                {/* Stage Complete Banner */}
+                {
+                    isOrganizer && stageComplete && nextStage && (
+                        <div className="mb-6 p-4 bg-gradient-to-r from-green-900/50 to-emerald-900/50 border border-green-500/50 rounded-lg">
+                            <div className="flex items-center justify-between flex-wrap gap-4">
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle className="w-6 h-6 text-green-400" />
+                                    <div>
+                                        <h3 className="text-lg font-bold text-green-400">
+                                            Stage Complete!
+                                        </h3>
+                                        <p className="text-sm text-gray-300">
+                                            {advancingTeams.length} teams are ready to advance to {nextStage.name}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="text-sm text-gray-400">
+                                        <span className="font-semibold text-white">Advancing: </span>
+                                        {advancingTeams.slice(0, 4).map(t => t.team_name).join(', ')}
+                                        {advancingTeams.length > 4 && ` +${advancingTeams.length - 4} more`}
+                                    </div>
+                                    <Button
+                                        onClick={handleAdvanceTeams}
+                                        disabled={isAdvancing}
+                                        className="bg-green-600 hover:bg-green-700 text-white font-bold"
+                                    >
+                                        {isAdvancing ? 'Advancing...' : (
+                                            <>
+                                                Advance Teams
+                                                <ArrowRight className="w-4 h-4 ml-2" />
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
 
                 {/* Bracket Visualization with Management Controls */}
                 <div className="w-full">
@@ -153,12 +417,13 @@ const ManageBracketPage = () => {
                         versionId={versionId}
                         tournamentId={tournament.id}
                         isOrganizer={isOrganizer}
-                        onRefresh={fetchData}
+                        onRefresh={() => fetchData(true)}
+                        onByeAdvance={handleByeAdvance}
                     />
                 </div>
-            </main>
+            </main >
             <Footer />
-        </div>
+        </div >
     );
 };
 

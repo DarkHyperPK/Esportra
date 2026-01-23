@@ -9,45 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      notifications: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_read: boolean | null
-          link: string | null
-          message: string
-          read: boolean
-          reason: string | null
-          title: string
-          type: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_read?: boolean | null
-          link?: string | null
-          message: string
-          read?: boolean
-          reason?: string | null
-          title: string
-          type: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_read?: boolean | null
-          link?: string | null
-          message?: string
-          read?: boolean
-          reason?: string | null
-          title?: string
-          type?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
+
       profiles: {
         Row: {
           avatar_url: string | null
@@ -155,75 +117,7 @@ export type Database = {
           },
         ]
       }
-      tournament_participants: {
-        Row: {
-          created_at: string
-          gamer_tag: string | null
-          id: string
-          registered_at: string | null
-          registration_type: string
-          status: string
-          team_captain: string | null
-          team_email: string | null
-          team_logo: string | null
-          team_members: string | null
-          team_name: string | null
-          team_phone: string | null
-          tournament_id: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          gamer_tag?: string | null
-          id?: string
-          registered_at?: string | null
-          registration_type: string
-          status?: string
-          team_captain?: string | null
-          team_email?: string | null
-          team_logo?: string | null
-          team_members?: string | null
-          team_name?: string | null
-          team_phone?: string | null
-          tournament_id: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          gamer_tag?: string | null
-          id?: string
-          registered_at?: string | null
-          registration_type?: string
-          status?: string
-          team_captain?: string | null
-          team_email?: string | null
-          team_logo?: string | null
-          team_members?: string | null
-          team_name?: string | null
-          team_phone?: string | null
-          tournament_id?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tournament_participants_tournament_id_fkey"
-            columns: ["tournament_id"]
-            isOneToOne: false
-            referencedRelation: "tournaments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tournament_participants_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
+
       tournaments: {
         Row: {
           created_at: string | null
@@ -580,36 +474,7 @@ export type Database = {
           }
         ]
       }
-      game_maps: {
-        Row: {
-          id: string
-          game: string
-          map_name: string
-          map_image_url: string | null
-          is_active: boolean | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          game: string
-          map_name: string
-          map_image_url?: string | null
-          is_active?: boolean | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          game?: string
-          map_name?: string
-          map_image_url?: string | null
-          is_active?: boolean | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
+
       tournament_map_pools: {
         Row: {
           id: string
@@ -629,22 +494,7 @@ export type Database = {
           map_id?: string
           created_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "tournament_map_pools_tournament_id_fkey"
-            columns: ["tournament_id"]
-            isOneToOne: false
-            referencedRelation: "tournaments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tournament_map_pools_map_id_fkey"
-            columns: ["map_id"]
-            isOneToOne: false
-            referencedRelation: "game_maps"
-            referencedColumns: ["id"]
-          },
-        ]
+
       }
       match_map_vetos: {
         Row: {

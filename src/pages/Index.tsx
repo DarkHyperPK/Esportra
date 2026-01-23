@@ -42,6 +42,7 @@ const Index = () => {
             .from('tournaments')
             .select('*')
             .eq('status', 'open')
+            .eq('is_public', true)
             .limit(4),
 
           // Fetch user registrations if logged in (or empty array)

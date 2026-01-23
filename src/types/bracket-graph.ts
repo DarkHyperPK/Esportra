@@ -1,4 +1,4 @@
-export type BracketType = 'winners' | 'losers' | 'final';
+export type BracketType = 'winners' | 'losers' | 'final' | 'group' | 'swiss_round';
 export type MatchStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'disputed';
 export type AdvancementType = 'winner' | 'loser';
 export type MatchEventType = 'participant_ready' | 'score_reported' | 'dispute_opened' | 'match_finalized' | 'match_reset';
@@ -19,6 +19,10 @@ export interface BracketNode {
     round_index: number;
     match_number: number;
     bracket_type: BracketType;
+
+    // Swiss/RR specific
+    group_id?: string | null;
+    round_number?: number | null;
 
     // Computed State
     team1_id?: string | null;

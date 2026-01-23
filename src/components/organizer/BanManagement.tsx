@@ -63,7 +63,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
       const enriched = await Promise.all(
         (bansData || []).map(async (ban: any) => {
           const enrichedBan: BanRecord = { ...ban };
-          
+
           if (ban.user_id) {
             const { data: profile } = await supabase
               .from('profiles')
@@ -72,7 +72,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
               .maybeSingle();
             enrichedBan.user_name = profile?.username || profile?.full_name || 'Unknown User';
           }
-          
+
           if (ban.team_id) {
             const { data: team } = await supabase
               .from('teams')
@@ -81,7 +81,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
               .maybeSingle();
             enrichedBan.team_name = team?.name || 'Unknown Team';
           }
-          
+
           const { data: bannedBy } = await supabase
             .from('profiles')
             .select('username, full_name')
@@ -140,14 +140,14 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-gaming-dark border-gaming-gray/30">
-        <CardHeader>
+      <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+        <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-red-500" />
             Ban Management
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loading ? (
             <div className="text-gray-400">Loading bans...</div>
           ) : (
@@ -275,7 +275,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
             <AlertDialogTitle>Lift Ban</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to lift the ban for{' '}
-              <strong>{selectedBan?.user_name || selectedBan?.team_name}</strong>? 
+              <strong>{selectedBan?.user_name || selectedBan?.team_name}</strong>?
               They will be able to register for this tournament again.
             </AlertDialogDescription>
           </AlertDialogHeader>

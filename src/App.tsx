@@ -10,6 +10,13 @@ import { PageTransition } from "@/components/PageTransition";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RoleProvider } from "@/contexts/RoleContext";
+import { BackgroundRotator } from "@/components/effects/BackgroundRotator";
+
+import { AnimatedLiquidBackground } from "@/components/effects/AnimatedLiquidBackground";
+import { TransitionLayout } from "@/components/TransitionLayout";
+import { LoadingSpinner } from "@/components/effects/LoadingSpinner";
+import { SeamlessVideoLoop } from "@/components/effects/SeamlessVideoLoop";
+
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import React from 'react';
@@ -126,20 +133,33 @@ const AppContent = React.memo(() => {
   const location = useLocation();
   const isHome = location.pathname === '/';
 
+
   return (
     <>
+
+
+      {/* Global Background - Video Only (Seamless Loop) */}
+      <div className="fixed inset-0 w-full h-full -z-10">
+        <SeamlessVideoLoop
+          src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Tournament%20dashboard%20background%20animation/background.mp4"
+          className="mix-blend-screen opacity-40"
+          style={{ filter: 'contrast(1.2) saturation(1.1)' }}
+          fadeDuration={0.9} // 900ms fade in/out
+        />
+      </div>
+
       <Toaster />
       <Sonner />
       <Navbar />
-      <div>
-        <AnimatePresence mode="wait" initial={false}>
-          <React.Suspense fallback={
-            <div className="flex items-center justify-center min-h-screen bg-[#09090b]">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-            </div>
-          }>
-            <Routes location={location} key={location.pathname}>
-              <Route path="/" element={<PageTransition><Index /></PageTransition>} />
+      <div className="relative z-10">
+        <React.Suspense fallback={
+          <div className="flex items-center justify-center min-h-screen bg-transparent">
+            <LoadingSpinner size={80} text="Loading..." />
+          </div>
+        }>
+          <Routes location={location}>
+            <Route element={<TransitionLayout />}>
+              <Route path="/" element={<Index />} />
 
               {/* Auth Routes */}
               <Route path="/auth/signup" element={<SignUp />} />
@@ -466,9 +486,9 @@ const AppContent = React.memo(() => {
 
               {/* Catch-all route */}
               <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-            </Routes>
-          </React.Suspense>
-        </AnimatePresence>
+            </Route>
+          </Routes>
+        </React.Suspense>
       </div>
     </>
   );

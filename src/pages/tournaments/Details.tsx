@@ -100,6 +100,7 @@ const TournamentDetails = () => {
   const { currentRole } = useRole();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checkInCount, setCheckInCount] = useState(0);
   const [isRegistered, setIsRegistered] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [registrationDetails, setRegistrationDetails] = useState<TournamentRegistration | null>(null);
@@ -136,10 +137,31 @@ const TournamentDetails = () => {
     checkInDeadlineDate instanceof Date &&
     now instanceof Date &&
     now <= checkInDeadlineDate;
-  const checkInCountdown =
-    checkInDeadlineDate instanceof Date
-      ? formatDistanceToNowStrict(checkInDeadlineDate, { addSuffix: true })
-      : null;
+  // Live Check-in Countdown
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  useEffect(() => {
+    if (!checkInDeadlineDate || !(checkInDeadlineDate instanceof Date)) return;
+
+    const updateTimer = () => {
+      const now = new Date();
+      if (now >= checkInDeadlineDate) {
+        setTimeLeft('Closed');
+        return;
+      }
+      setTimeLeft(formatDistanceToNowStrict(checkInDeadlineDate, { addSuffix: true }));
+    };
+
+    // Initial call
+    updateTimer();
+
+    // Update every minute (since formatDistanceToNowString usually shows "in 5 minutes", "in 1 hour")
+    // If we want seconds, we might need a custom formatter, but date-fns is usually enough for "in X minutes"
+    const interval = setInterval(updateTimer, 1000 * 60);
+    return () => clearInterval(interval);
+  }, [checkInDeadlineDate]);
+
+  const checkInCountdown = timeLeft;
 
   const sb: any = supabase;
 
@@ -265,6 +287,17 @@ const TournamentDetails = () => {
         .select('*', { count: 'exact', head: true })
         .eq('tournament_id', tournamentData.id);
       if (countError) throw countError;
+
+      // Fetch check-in count
+      const { count: checkedIn, error: checkInError } = await sb
+        .from('tournament_participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('tournament_id', tournamentData.id)
+        .eq('status', 'checked_in');
+
+      if (!checkInError) {
+        setCheckInCount(checkedIn || 0);
+      }
 
       // Try RPC for accurate count if RLS limits visibility
       let participantCount = count || 0;
@@ -1164,7 +1197,10 @@ const TournamentDetails = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <Users className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">{tournament.current_participants} / {tournament.max_participants} Participants</span>
+                  <span className="text-gray-300">
+                    Registered Participants: {tournament.current_participants}
+                    {requiresCheckIn && <span className="text-emerald-400 ml-2">({checkInCount} Checked In)</span>}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Trophy className="w-4 h-4 text-gray-400" />
@@ -1316,7 +1352,14 @@ const TournamentDetails = () => {
           {/* Organizer: Show all registrations */}
           {isOrganizer && (
             <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 mb-8">
-              <h3 className="text-lg font-semibold text-white mb-4">Participants & Teams</h3>
+              <div className="flex items-center gap-4 mb-4">
+                <h3 className="text-lg font-semibold text-white">Participants & Teams</h3>
+                {requiresCheckIn && (
+                  <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-sm border border-emerald-500/20">
+                    {checkInCount} Checked In
+                  </span>
+                )}
+              </div>
               {registrationsLoading ? (
                 <div className="text-gray-400">Loading registrations...</div>
               ) : allRegistrations.length === 0 ? (

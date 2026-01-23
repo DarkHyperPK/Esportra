@@ -15,7 +15,14 @@ Esportra provides a complete ecosystem for esports competitions, featuring:
 - **Venue Integration**: Connect with gaming venues and organize LAN events
 - **Role-Based Access**: Support for players, organizers, venue owners, and administrators
 
-### New in v0.3.0 - Graph-Based Bracket Engine
+### New in v0.3.1 - Swiss Bracket Engine
+- **Swiss Format**: Full Swiss tournament support with group-based pairing
+- **Auto Round Limit**: Calculates max rounds based on team count (log2)
+- **Undo Round**: Organizers can revert misgenerated rounds
+- **Vanishing Team Fix**: Pairing algorithm ensures no team is ever dropped
+- **Group Context**: Proper group preservation across all rounds
+
+### v0.3.0 - Graph-Based Bracket Engine
 - **Single & Double Elimination**: Full support with automatic winner/loser routing
 - **Finals Reset**: Automatic Grand Finals Reset for Double Elimination
 - **Modern UI**: Clean glassmorphism bracket visualization
@@ -41,20 +48,20 @@ npm run dev
 
 ## Roadmap
 
-**Coming in v0.3.1:**
-- Multi-Stage Advancement System (automatic team progression between stages)
-- Round Robin and Swiss format support
-- Bracket generation respects advancement count
+**Coming in v0.4.0:**
+- Round Robin format support
+- Match scheduling with calendar integration
+- Enhanced team statistics dashboard
 
 ## Changelog
 
 For detailed version history and updates, see [CHANGELOG.md](./CHANGELOG.md).
 
 Recent versions:
+- **v0.3.1** - Swiss bracket engine, undo round, max round limits, pairing fixes
 - **v0.3.0** - Graph-based bracket engine, modern UI, Finals Reset, PNG export
 - **v0.2.4** - Map veto fixes, bracket persistence improvements
 - **v0.2.3** - Dispute system improvements, bracket fixes, and map veto enhancements
-- **v0.2.2** - Version bump and release preparation
 
 ## License
 

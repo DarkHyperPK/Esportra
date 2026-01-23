@@ -1,5 +1,6 @@
 import { MatchRepository } from './MatchRepository';
 import { BracketEdge, MatchEvent } from '@/types/bracket-graph';
+import { stageCompletionService } from './StageCompletionService';
 
 import { supabase } from '@/lib/supabase';
 
@@ -76,6 +77,17 @@ export class AdvancementService {
         // 3. Advance Teams
         await this.advanceTeam(matchId, versionId, 'winner', winnerId);
         await this.advanceTeam(matchId, versionId, 'loser', loserId);
+
+        // 4. Check for Stage Completion and Auto-Advance
+        const { data: version } = await (supabase as any)
+            .from('brkt_versions')
+            .select('stage_id')
+            .eq('id', versionId)
+            .single();
+
+        if (version?.stage_id) {
+            await stageCompletionService.advanceTeamsToNextStage(version.stage_id);
+        }
     }
 
     /**
