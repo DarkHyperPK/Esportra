@@ -43,14 +43,15 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
             </div>
 
             {/* Registration Period */}
+            <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-4">
-                <Label className="flex items-center gap-2">
+                <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                     <Calendar className="w-4 h-4" />
                     Registration Period
                 </Label>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:border-r border-white/10 pr-4">
                         <Label htmlFor="registrationOpens" className="text-sm text-gray-400">
                             Opens at *
                         </Label>
@@ -59,7 +60,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
                             type="datetime-local"
                             value={data.registrationOpens}
                             onChange={(e) => updateData({ registrationOpens: e.target.value })}
-                            className={cn(errors.registrationOpens && 'border-red-500')}
+                            className={cn(errors.registrationOpens && 'border-red-500', "font-bold tracking-tight")}
                         />
                         {errors.registrationOpens && (
                             <p className="text-sm text-red-500">{errors.registrationOpens}</p>
@@ -74,7 +75,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
                             type="datetime-local"
                             value={data.registrationCloses}
                             onChange={(e) => updateData({ registrationCloses: e.target.value })}
-                            className={cn(errors.registrationCloses && 'border-red-500')}
+                            className={cn(errors.registrationCloses && 'border-red-500', "font-bold tracking-tight")}
                         />
                         {errors.registrationCloses && (
                             <p className="text-sm text-red-500">{errors.registrationCloses}</p>
@@ -83,70 +84,63 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
                 </div>
             </div>
 
-            {/* Check-in Settings */}
+            {/* Check-in Settings - Mandatory */}
+            <div className="w-full h-px bg-white/5 my-6" />
             <div className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <UserCheck className="w-5 h-5 text-emerald-400" />
-                        <div>
-                            <div className="font-medium text-white">Require Check-in</div>
-                            <div className="text-sm text-gray-400">
-                                Players must confirm attendance before the tournament starts
-                            </div>
+                <div className="flex items-center gap-3">
+                    <UserCheck className="w-5 h-5 text-emerald-400" />
+                    <div>
+                        <div className="font-medium text-white">Check-in Required</div>
+                        <div className="text-sm text-gray-400">
+                            Teams must confirm attendance before the tournament starts
                         </div>
                     </div>
-                    <Switch
-                        checked={data.checkInRequired}
-                        onCheckedChange={(checked) => updateData({ checkInRequired: checked })}
-                    />
+                    <span className="ml-auto text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">
+                        Mandatory
+                    </span>
                 </div>
 
-                {data.checkInRequired && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="space-y-4 pt-4 border-t border-white/10"
-                    >
-                        <div className="space-y-2">
-                            <Label htmlFor="checkInWindow" className="flex items-center gap-2 text-sm">
-                                <Clock className="w-4 h-4" />
-                                Check-in window (minutes before start)
-                            </Label>
-                            <div className="flex items-center gap-3">
-                                <Input
-                                    id="checkInWindow"
-                                    type="number"
-                                    min={5}
-                                    max={120}
-                                    value={data.checkInWindowMinutes}
-                                    onChange={(e) => updateData({ checkInWindowMinutes: parseInt(e.target.value) || 30 })}
-                                    className="w-24"
-                                />
-                                <span className="text-sm text-gray-400">minutes</span>
-                            </div>
-                            <p className="text-xs text-gray-500">
-                                Players can check in starting {data.checkInWindowMinutes} minutes before the tournament starts
-                            </p>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div className="font-medium text-white text-sm">Auto-remove unchecked</div>
-                                <div className="text-xs text-gray-400">
-                                    Automatically remove players who don't check in
-                                </div>
-                            </div>
-                            <Switch
-                                checked={data.autoRemoveUnchecked}
-                                onCheckedChange={(checked) => updateData({ autoRemoveUnchecked: checked })}
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                    <div className="space-y-2">
+                        <Label htmlFor="checkInWindow" className="flex items-center gap-2 text-sm text-xs font-bold text-gray-500 uppercase tracking-widest">
+                            <Clock className="w-4 h-4" />
+                            Check-in window (minutes before start)
+                        </Label>
+                        <div className="flex items-center gap-3">
+                            <Input
+                                id="checkInWindow"
+                                type="number"
+                                min={5}
+                                max={120}
+                                value={data.checkInWindowMinutes}
+                                onChange={(e) => updateData({ checkInWindowMinutes: parseInt(e.target.value) || 30 })}
+                                className="w-24 font-bold tracking-tight"
                             />
+                            <span className="text-sm text-gray-400">minutes</span>
                         </div>
-                    </motion.div>
-                )}
+                        <p className="text-xs text-gray-500">
+                            Teams can check in starting {data.checkInWindowMinutes} minutes before the tournament starts
+                        </p>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="font-medium text-white text-sm">Auto-remove no-shows</div>
+                            <div className="text-xs text-gray-400">
+                                Automatically remove teams who don't check in
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">
+                                Mandatory
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Waitlist Settings */}
+            <div className="w-full h-px bg-white/5 my-6" />
             <div className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -171,7 +165,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
                         exit={{ opacity: 0, height: 0 }}
                         className="space-y-2 pt-4 border-t border-white/10"
                     >
-                        <Label htmlFor="waitlistMax" className="text-sm">Maximum waitlist size</Label>
+                        <Label htmlFor="waitlistMax" className="text-sm text-xs font-bold text-gray-500 uppercase tracking-widest">Maximum waitlist size</Label>
                         <div className="flex items-center gap-3">
                             <Input
                                 id="waitlistMax"
@@ -180,7 +174,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
                                 max={100}
                                 value={data.waitlistMax}
                                 onChange={(e) => updateData({ waitlistMax: parseInt(e.target.value) || 10 })}
-                                className="w-24"
+                                className="w-24 font-bold tracking-tight"
                             />
                             <span className="text-sm text-gray-400">teams</span>
                         </div>

@@ -166,7 +166,7 @@ export class GraphMatchService {
         team2Score: number,
         team1Id: string | null,
         team2Id: string | null
-    ): Promise<{ success: boolean; error?: string }> {
+    ): Promise<{ success: boolean; error?: string; stageId?: string }> {
         // 1. Save the score
         const scoreResult = await this.saveScore(matchId, team1Score, team2Score, team1Id, team2Id);
         if (!scoreResult.success) {
@@ -201,21 +201,40 @@ export class GraphMatchService {
         }
 
         // 5. Handle Grand Finals Reset (Double Elimination)
-        // If this is a 'final' match and Team 2 (Losers Bracket Winner) wins, we need a reset.
+        // Logic: If the Undefeated Team (Winners Bracket Champ) loses for the first time,
+        // both teams now have 1 loss. This triggers a "Reset Match" (Sudden Death).
         try {
             const { data: match } = await db
                 .from('brkt_matches')
-                .select('bracket_type, round_index, team1_id, team2_id, winner_id, version_id, match_number, best_of')
+                .select('bracket_type, round_index, team1_id, team2_id, winner_id, loser_id, version_id, match_number, best_of')
                 .eq('id', matchId)
                 .single();
 
             if (match && match.bracket_type === 'final') {
-                // Check if Team 2 won (Losers Bracket Champion)
-                // In our generator, Slot 2 of GF is always the Losers Bracket winner.
-                if (match.winner_id === match.team2_id) {
-                    console.log('[GraphMatchService] Grand Finals Reset condition met (Losers Side won). Checking for reset match...');
+                // Count losses for both teams in this bracket version
+                const { count: team1Losses } = await db
+                    .from('brkt_matches')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('version_id', match.version_id)
+                    .eq('loser_id', match.team1_id)
+                    .eq('status', 'completed');
 
-                    // Check if a reset match already exists
+                const { count: team2Losses } = await db
+                    .from('brkt_matches')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('version_id', match.version_id)
+                    .eq('loser_id', match.team2_id)
+                    .eq('status', 'completed');
+
+                console.log(`[GraphMatchService] Finals Loss Check - Team 1: ${team1Losses}, Team 2: ${team2Losses}`);
+
+                // RESET CONDITION:
+                // Both teams must have exactly 1 loss after this match.
+                // This happens when the previously undefeated team (0 losses) loses to the challenger (1 loss).
+                if (team1Losses === 1 && team2Losses === 1) {
+                    console.log('[GraphMatchService] Grand Finals Reset condition met (Both teams have 1 loss). Checking for reset match...');
+
+                    // Check if a reset match already exists (future match)
                     const { data: existingReset } = await db
                         .from('brkt_matches')
                         .select('id')
@@ -224,9 +243,17 @@ export class GraphMatchService {
                         .gt('round_index', match.round_index)
                         .maybeSingle();
 
-                    if (!existingReset) {
+                    // Check if this is ALREADY a reset match (past match)
+                    const { data: previousFinal } = await db
+                        .from('brkt_matches')
+                        .select('id')
+                        .eq('version_id', match.version_id)
+                        .eq('bracket_type', 'final')
+                        .lt('round_index', match.round_index)
+                        .maybeSingle();
+
+                    if (!existingReset && !previousFinal) {
                         console.log('[GraphMatchService] Creating Grand Finals Reset match...');
-                        // Create the reset match
                         const resetMatchId = crypto.randomUUID();
                         const { error: createError } = await db
                             .from('brkt_matches')
@@ -235,20 +262,20 @@ export class GraphMatchService {
                                 version_id: match.version_id,
                                 bracket_type: 'final',
                                 round_index: match.round_index + 1,
-                                match_number: 1, // Reset is always match 1 of the new round
+                                match_number: 1,
                                 status: 'pending',
-                                team1_id: match.team1_id, // Rematch same teams
+                                team1_id: match.team1_id,
                                 team2_id: match.team2_id,
-                                best_of: match.best_of // Keep same format
+                                best_of: match.best_of
                             });
 
                         if (createError) {
                             console.error('[GraphMatchService] Failed to create reset match:', createError);
                         } else {
-                            // Create a layout node for it (optional, but good for consistency if we used layout table)
-                            // But we rely on auto-layout in visualization mostly.
                             console.log('[GraphMatchService] Reset match created successfully:', resetMatchId);
                         }
+                    } else if (previousFinal) {
+                        console.log('[GraphMatchService] This is already a reset match. No further reset needed.');
                     }
                 }
             }
@@ -256,7 +283,36 @@ export class GraphMatchService {
             console.error('[GraphMatchService] Error handling finals reset:', e);
         }
 
-        return { success: true };
+        // 6. Check for stage completion (for multi-stage advancement)
+        let stageComplete = false;
+        let stageId: string | undefined;
+        try {
+            // Get the stage ID from the match's version
+            const { data: matchData } = await db
+                .from('brkt_matches')
+                .select('version_id')
+                .eq('id', matchId)
+                .single();
+
+            if (matchData) {
+                const { data: versionData } = await db
+                    .from('brkt_versions')
+                    .select('stage_id')
+                    .eq('id', matchData.version_id)
+                    .single();
+
+                if (versionData?.stage_id) {
+                    stageId = versionData.stage_id;
+                    // We don't import StageCompletionService here to avoid circular deps
+                    // The UI will check completion status separately
+                    console.log('[GraphMatchService] Match saved for stage:', stageId);
+                }
+            }
+        } catch (e) {
+            console.error('[GraphMatchService] Error checking stage completion:', e);
+        }
+
+        return { success: true, stageId };
     }
 
     /**

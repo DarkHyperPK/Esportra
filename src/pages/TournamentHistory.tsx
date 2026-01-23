@@ -78,7 +78,7 @@ const TournamentHistoryPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white flex flex-col">
+    <div className="min-h-screen bg-transparent text-white flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Tournament History</h1>
         {loading ? (

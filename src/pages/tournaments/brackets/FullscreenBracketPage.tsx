@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { LoadingSpinner } from '@/components/effects/LoadingSpinner';
 import { supabase } from '@/lib/supabase';
 import { PublicBracketView } from './PublicBracketView';
 import { DraggableContainer } from '@/components/DraggableContainer';
@@ -66,23 +67,31 @@ const FullscreenBracketPage = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-esports-dark flex items-center justify-center text-white">
-                <div className="animate-pulse">Loading Bracket...</div>
+            <div className="min-h-screen bg-transparent flex items-center justify-center text-white">
+                <div className="p-8 rounded-2xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-2xl">
+                    <LoadingSpinner size={80} text="Loading Bracket..." />
+                </div>
             </div>
         );
     }
 
     if (!tournament || !activeVersionId) {
         return (
-            <div className="min-h-screen bg-esports-dark flex items-center justify-center text-white">
-                <div>Bracket not found</div>
+            <div className="min-h-screen bg-transparent flex items-center justify-center text-white">
+                <div className="p-8 rounded-2xl bg-black/80 backdrop-blur-xl border border-white/10 text-center">
+                    <div className="text-6xl mb-4">🏆</div>
+                    <h3 className="text-xl font-semibold text-zinc-300 mb-2">Bracket Not Found</h3>
+                    <p className="text-zinc-500">The tournament bracket is not available yet.</p>
+                </div>
             </div>
         );
     }
 
+
+
     return (
-        <div className="w-screen h-screen bg-esports-dark overflow-hidden">
-            <DraggableContainer className="w-full h-full bg-zinc-950">
+        <div className="w-screen h-screen bg-transparent overflow-hidden relative font-sans">
+            <DraggableContainer className="w-full h-full bg-black/30 backdrop-blur-sm border border-white/5">
                 <div className="min-w-[2000px] min-h-[1500px] p-20">
                     <PublicBracketView
                         versionId={activeVersionId}

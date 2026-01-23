@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Gamepad2, Calendar, Trophy } from "lucide-react";
+import { Gamepad2, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
@@ -19,7 +19,8 @@ const HeroSection = () => {
       <img
         src={heroImageUrl}
         alt=""
-        fetchPriority="high"
+        // @ts-expect-error fetchpriority is valid HTML but not typed yet
+        fetchpriority="high"
         loading="eager"
         decoding="async"
         className="absolute inset-0 w-full h-full z-0 object-cover"

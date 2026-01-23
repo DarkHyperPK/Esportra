@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { 
-  MessageSquare, 
-  AlertCircle, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  MessageSquare,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Clock,
   User,
   Calendar,
   FileText,
@@ -136,14 +136,14 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       const enriched = await Promise.all(
         rows.map(async (dispute) => {
           const enrichedDispute: Dispute = { ...dispute };
-          
+
           const { data: raisedBy } = await supabase
             .from('profiles')
             .select('username, full_name')
             .eq('id', dispute.raised_by_user_id)
             .maybeSingle();
           enrichedDispute.raised_by_name = raisedBy?.username || raisedBy?.full_name || 'Unknown User';
-          
+
           if (dispute.team_id) {
             const { data: team } = await supabase
               .from('teams')
@@ -152,7 +152,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
               .maybeSingle();
             enrichedDispute.team_name = team?.name || 'Unknown Team';
           }
-          
+
           if (dispute.assigned_to_user_id) {
             const { data: assignedTo } = await supabase
               .from('profiles')
@@ -205,13 +205,13 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       // Fetch profile data for each unique user_id
       const userIds = [...new Set((data || []).map((c: any) => c.user_id))];
       const profileMap = new Map<string, { full_name?: string; username?: string }>();
-      
+
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, full_name, username')
           .in('id', userIds);
-        
+
         (profiles || []).forEach((profile) => {
           profileMap.set(profile.id, {
             full_name: profile.full_name,
@@ -237,8 +237,8 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       setComments(commentsWithNames);
     } catch (error: unknown) {
       console.error('Error fetching comments:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
+      const errorMessage = error instanceof Error
+        ? error.message
         : (error as any)?.message || JSON.stringify(error);
       console.error('Comment fetch error details:', errorMessage);
       setComments([]);
@@ -255,7 +255,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     if (selectedDispute) {
       setSelectedAssigneeId(
         selectedDispute.assigned_to_user_id ||
-          (canAssistDisputes ? actorUserId : organizerId)
+        (canAssistDisputes ? actorUserId : organizerId)
       );
       // Fetch comments when dispute is selected
       fetchComments(selectedDispute.id);
@@ -359,7 +359,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
 
     try {
       setSubmittingComment(true);
-      
+
       // Check current dispute status
       const { data: disputeData } = await supabase
         .from('tournament_disputes')
@@ -371,19 +371,19 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       let attachmentUrl: string | null = null;
       if (commentAttachment) {
         setUploadingAttachment(true);
-        
+
         // Get dispute reason for categorization
         const { data: disputeInfo } = await supabase
           .from('tournament_disputes')
           .select('dispute_reason')
           .eq('id', disputeId)
           .single();
-        
+
         const disputeReason = disputeInfo?.dispute_reason || 'general';
         const fileExt = commentAttachment.name.split('.').pop();
         // Organized path: {dispute_id}/{dispute_reason}/{user_id}-{timestamp}.{ext}
         const fileName = `${disputeId}/${disputeReason}/${actorUserId}-${Date.now()}.${fileExt}`;
-        
+
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('tournaments.disputes.evidence')
           .upload(fileName, commentAttachment, { upsert: false });
@@ -414,7 +414,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       const updateData: { updated_at: string; status?: string } = {
         updated_at: new Date().toISOString(),
       };
-      
+
       // Auto-set to in_review if currently open
       if (disputeData?.status === 'open') {
         updateData.status = 'in_review';
@@ -429,21 +429,21 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
 
       setCommentText('');
       setCommentAttachment(null);
-      
+
       // Refresh comments and disputes
       await fetchComments(disputeId);
       await fetchDisputes();
-      
+
       toast({
         title: 'Comment added',
-        description: disputeData?.status === 'open' 
+        description: disputeData?.status === 'open'
           ? 'Your comment has been posted and dispute marked as in review.'
           : 'Your comment has been posted.',
       });
     } catch (error: unknown) {
       console.error('Error adding comment:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
+      const errorMessage = error instanceof Error
+        ? error.message
         : (error as any)?.message || JSON.stringify(error);
       toast({
         title: 'Error',
@@ -499,9 +499,9 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       });
 
       if (newStatus === 'resolved' || newStatus === 'rejected') {
-      setResolutionDialogOpen(false);
-      setResolutionNotes('');
-      setSelectedDispute(null);
+        setResolutionDialogOpen(false);
+        setResolutionNotes('');
+        setSelectedDispute(null);
       } else {
         // If still in review, refresh comments
         fetchComments(disputeId);
@@ -509,8 +509,8 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       fetchDisputes();
     } catch (error: unknown) {
       console.error('Error updating dispute:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
+      const errorMessage = error instanceof Error
+        ? error.message
         : (error as any)?.message || JSON.stringify(error);
       toast({
         title: 'Error',
@@ -562,14 +562,14 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
         </Card>
       </div>
 
-      <Card className="bg-gray-900 border border-gray-800">
-        <CardHeader>
+      <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+        <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
           <CardTitle className="flex items-center gap-2 text-white">
             <MessageSquare className="h-5 w-5 text-blue-400" />
             Dispute center
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center gap-2 text-gray-400 text-sm">
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -624,7 +624,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                   <div className="text-gray-400 p-4 bg-gray-800/40 rounded-lg text-sm">No resolved disputes.</div>
                 ) : (
                   resolvedDisputes.map((dispute) => (
-                    <DisputeCard key={dispute.id} dispute={dispute} readonly onAction={() => {}} />
+                    <DisputeCard key={dispute.id} dispute={dispute} readonly onAction={() => { }} />
                   ))
                 )}
               </TabsContent>
@@ -650,7 +650,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
               Review and resolve the dispute: <strong>{selectedDispute?.title}</strong>
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedDispute && (
             <div className="space-y-4">
               <div>
@@ -716,25 +716,25 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                   {(canAssignOthers ||
                     !selectedDispute?.assigned_to_user_id ||
                     selectedDispute?.assigned_to_user_id === actorUserId) && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={
-                        assignmentLoading ||
-                        !selectedDispute ||
-                        !selectedAssigneeId ||
-                        selectedAssigneeId === selectedDispute.assigned_to_user_id
-                      }
-                      onClick={() =>
-                        selectedDispute &&
-                        selectedAssigneeId &&
-                        handleAssignDispute(selectedDispute.id, selectedAssigneeId)
-                      }
-                      className="border-blue-500/40 text-blue-300 hover:bg-blue-500/10"
-                    >
-                      {assignmentLoading ? 'Saving...' : 'Save assignment'}
-                    </Button>
-                  )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={
+                          assignmentLoading ||
+                          !selectedDispute ||
+                          !selectedAssigneeId ||
+                          selectedAssigneeId === selectedDispute.assigned_to_user_id
+                        }
+                        onClick={() =>
+                          selectedDispute &&
+                          selectedAssigneeId &&
+                          handleAssignDispute(selectedDispute.id, selectedAssigneeId)
+                        }
+                        className="border-blue-500/40 text-blue-300 hover:bg-blue-500/10"
+                      >
+                        {assignmentLoading ? 'Saving...' : 'Save assignment'}
+                      </Button>
+                    )}
                 </div>
                 {!canAssignOthers && (
                   <p className="text-xs text-gray-400 mt-2">
@@ -747,7 +747,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
               {selectedDispute && (
                 <div className="border-t border-white/10 pt-4">
                   <label className="text-sm font-semibold mb-2 block">Conversation</label>
-                  
+
                   {/* Comments List - Show for all statuses */}
                   <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto">
                     {loadingComments ? (
@@ -761,16 +761,15 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                       </div>
                     ) : (
                       comments.map((comment) => {
-                        const isOrganizer = comment.user_id === organizerId || 
+                        const isOrganizer = comment.user_id === organizerId ||
                           activeStaff.some(s => s.user_id === comment.user_id);
                         return (
                           <div
                             key={comment.id}
-                            className={`p-3 rounded-lg border ${
-                              isOrganizer
-                                ? 'bg-blue-500/10 border-blue-500/30'
-                                : 'bg-gray-800/40 border-gray-700/50'
-                            }`}
+                            className={`p-3 rounded-lg border ${isOrganizer
+                              ? 'bg-blue-500/10 border-blue-500/30'
+                              : 'bg-gray-800/40 border-gray-700/50'
+                              }`}
                           >
                             <div className="flex items-start justify-between mb-1">
                               <span className="text-xs font-semibold text-white">
@@ -817,7 +816,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                         placeholder="Add a comment or ask a question..."
                         className="bg-white/5 border-gaming-gray/50 text-white placeholder:text-gray-500 min-h-[80px]"
                       />
-                      
+
                       {/* File Upload */}
                       <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
@@ -877,7 +876,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                       </Button>
                     </div>
                   )}
-                  
+
                   {/* Show message for resolved/rejected disputes */}
                   {(selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && (
                     <div className="text-gray-400 text-sm text-center py-3 bg-gray-800/40 rounded-lg border border-gray-700/50">
@@ -913,37 +912,37 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
 
               {canAssistDisputes && selectedDispute && (selectedDispute.status === 'open' || selectedDispute.status === 'in_review') ? (
                 <>
-              <div>
-                <label className="text-sm font-semibold mb-2 block">Resolution Status</label>
-                <div className="flex gap-2 mb-3">
-                  <Button
-                    variant={resolutionStatus === 'resolved' ? 'default' : 'outline'}
-                    onClick={() => setResolutionStatus('resolved')}
-                    className={resolutionStatus === 'resolved' ? 'bg-green-600 hover:bg-green-700' : ''}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Resolve
-                  </Button>
-                  <Button
-                    variant={resolutionStatus === 'rejected' ? 'default' : 'outline'}
-                    onClick={() => setResolutionStatus('rejected')}
-                    className={resolutionStatus === 'rejected' ? 'bg-red-600 hover:bg-red-700' : ''}
-                  >
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Reject
-                  </Button>
-                </div>
-              </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-2 block">Resolution Status</label>
+                    <div className="flex gap-2 mb-3">
+                      <Button
+                        variant={resolutionStatus === 'resolved' ? 'default' : 'outline'}
+                        onClick={() => setResolutionStatus('resolved')}
+                        className={resolutionStatus === 'resolved' ? 'bg-green-600 hover:bg-green-700' : ''}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Resolve
+                      </Button>
+                      <Button
+                        variant={resolutionStatus === 'rejected' ? 'default' : 'outline'}
+                        onClick={() => setResolutionStatus('rejected')}
+                        className={resolutionStatus === 'rejected' ? 'bg-red-600 hover:bg-red-700' : ''}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="text-sm font-semibold mb-2 block">Resolution Notes</label>
-                <Textarea
-                  value={resolutionNotes}
-                  onChange={(e) => setResolutionNotes(e.target.value)}
-                  placeholder="Enter resolution notes or feedback..."
+                  <div>
+                    <label className="text-sm font-semibold mb-2 block">Resolution Notes</label>
+                    <Textarea
+                      value={resolutionNotes}
+                      onChange={(e) => setResolutionNotes(e.target.value)}
+                      placeholder="Enter resolution notes or feedback..."
                       className="bg-white/5 border-gaming-gray/50 text-white placeholder:text-gray-500 min-h-[100px]"
-                />
-              </div>
+                    />
+                  </div>
                 </>
               ) : (
                 <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 text-sm text-yellow-100 p-4">
@@ -955,21 +954,21 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
           )}
 
           {selectedDispute && canAssistDisputes && (selectedDispute.status === 'open' || selectedDispute.status === 'in_review') ? (
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResolutionDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResolutionDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
                 onClick={() => handleUpdateStatus(selectedDispute.id, resolutionStatus)}
-              disabled={!resolutionNotes.trim()}
-              className={
-                resolutionStatus === 'resolved'
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-red-600 hover:bg-red-700'
-              }
-            >
-              {resolutionStatus === 'resolved' ? 'Resolve' : 'Reject'} Dispute
-            </Button>
+                disabled={!resolutionNotes.trim()}
+                className={
+                  resolutionStatus === 'resolved'
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-red-600 hover:bg-red-700'
+                }
+              >
+                {resolutionStatus === 'resolved' ? 'Resolve' : 'Reject'} Dispute
+              </Button>
               {selectedDispute.status === 'in_review' && (
                 <Button
                   variant="outline"
@@ -989,8 +988,8 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
             <DialogFooter>
               <Button variant="outline" onClick={() => setResolutionDialogOpen(false)}>
                 {selectedDispute ? 'Close' : 'Cancel'}
-            </Button>
-          </DialogFooter>
+              </Button>
+            </DialogFooter>
           )}
         </DialogContent>
       </Dialog>

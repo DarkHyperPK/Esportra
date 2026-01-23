@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
+import {
+  FramerDropdownRoot,
+  FramerDropdownTrigger,
+  FramerDropdownContent,
+  FramerDropdownItem,
+  FramerDropdownSeparator
+} from '@/components/ui/FramerDropdown';
 import { Filter, X, ChevronDown } from 'lucide-react';
 
 interface GameFilterProps {
@@ -24,15 +24,15 @@ const GameFilter: React.FC<GameFilterProps> = ({
   onClearAll,
   availableGames
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+
 
   return (
     <div className="flex items-center gap-4 mb-6">
       {/* Filter Dropdown */}
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-        <DropdownMenuTrigger asChild>
-          <Button 
-            variant="outline" 
+      <FramerDropdownRoot>
+        <FramerDropdownTrigger asChild>
+          <Button
+            variant="outline"
             className="border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white"
           >
             <Filter className="w-4 h-4 mr-2" />
@@ -44,33 +44,30 @@ const GameFilter: React.FC<GameFilterProps> = ({
             )}
             <ChevronDown className="w-4 h-4 ml-2" />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent 
-          align="start" 
-          className="w-56 bg-gray-800 border-gray-700"
-        >
+        </FramerDropdownTrigger>
+        <FramerDropdownContent>
           <div className="px-2 py-1.5 text-sm font-medium text-gray-300">
             Select Games
           </div>
-          <DropdownMenuSeparator className="bg-gray-700" />
-          
+          <FramerDropdownSeparator />
+
           {availableGames.map((game) => {
             const isSelected = selectedGames.includes(game);
             return (
-              <DropdownMenuCheckboxItem
+              <FramerDropdownItem
                 key={game}
-                checked={isSelected}
-                onCheckedChange={() => onGameToggle(game)}
-                className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700"
+                isSelected={isSelected}
+                closeOnSelect={false}
+                onClick={() => onGameToggle(game)}
               >
                 {game}
-              </DropdownMenuCheckboxItem>
+              </FramerDropdownItem>
             );
           })}
-          
+
           {selectedGames.length > 0 && (
             <>
-              <DropdownMenuSeparator className="bg-gray-700" />
+              <FramerDropdownSeparator />
               <div className="px-2 py-1.5">
                 <Button
                   variant="ghost"
@@ -84,8 +81,8 @@ const GameFilter: React.FC<GameFilterProps> = ({
               </div>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </FramerDropdownContent>
+      </FramerDropdownRoot>
 
       {/* Active Filters Display */}
       {selectedGames.length > 0 && (

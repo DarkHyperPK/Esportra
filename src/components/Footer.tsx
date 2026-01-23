@@ -3,13 +3,13 @@ import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
-    <footer className="bg-esports-dark border-t border-gray-600/30 pt-12 pb-8">
-      <div className="container mx-auto">
+    <footer className="container mx-auto relative bg-black border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 mt-auto">
+      <div className="">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <img src="/logo.svg" alt="Esportra Logo" className="h-8 w-8" />
-              <span className="text-xl font-bold text-white">Esportra</span>
+              <img src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSportra%20white%20varianttext.png" alt="Esportra Logo" className="h-24 w-auto" />
+              <span className="text-xl font-bold text-white"></span>
             </div>
             <p className="text-gray-400 mb-4">
               The ultimate platform for discovering gaming venues and joining esports tournaments.
@@ -41,7 +41,7 @@ const Footer = () => {
               </a>
             </div>
           </div>
-          
+
           <div>
             <h3 className="text-white font-bold mb-4">Platform</h3>
             <ul className="space-y-2">
@@ -51,7 +51,7 @@ const Footer = () => {
               <li><Link to="/players" className="text-gray-400 hover:text-esports-accent">Players</Link></li>
             </ul>
           </div>
-          
+
           <div>
             <h3 className="text-white font-bold mb-4">Resources</h3>
             <ul className="space-y-2">
@@ -61,7 +61,7 @@ const Footer = () => {
               <li><Link to="/faq" className="text-gray-400 hover:text-gaming-purple">FAQ</Link></li>
             </ul>
           </div>
-          
+
           <div>
             <h3 className="text-white font-bold mb-4">Company</h3>
             <ul className="space-y-2">
@@ -72,7 +72,7 @@ const Footer = () => {
             </ul>
           </div>
         </div>
-        
+
         <div className="border-t border-gaming-gray/30 mt-10 pt-6 text-center">
           <p className="text-gray-400">© {new Date().getFullYear()} Esportra. All rights reserved.</p>
         </div>

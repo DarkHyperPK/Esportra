@@ -216,14 +216,14 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
 
   return (
     <div className="space-y-6">
-      <Card className="glass-premium rounded-2xl border-0">
-        <CardHeader className="border-b border-white/5">
+      <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+        <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
           <CardTitle className="text-xl text-white flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-emerald-400" />
             Organizer Staff
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="p-0 space-y-6">
           <div className="grid md:grid-cols-3 gap-5">
             <div className="md:col-span-1 space-y-6">
               <div className="space-y-2">
@@ -307,11 +307,11 @@ const TournamentStaffManager: React.FC<TournamentStaffManagerProps> = ({
         </CardContent>
       </Card>
 
-      <Card className="glass-premium rounded-2xl border-0">
-        <CardHeader className="border-b border-white/5">
+      <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+        <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
           <CardTitle className="text-xl text-white">Active Staff</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center gap-2 text-gray-400">
               <Loader2 className="h-4 w-4 animate-spin" />

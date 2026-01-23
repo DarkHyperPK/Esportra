@@ -10,7 +10,7 @@ const basicInfoBase = z.object({
         .max(100, 'Tournament name cannot exceed 100 characters'),
     game: z.string().min(1, 'Please select a game'),
     isOnline: z.boolean(),
-    visibility: z.enum(['public', 'unlisted', 'private']),
+    visibility: z.enum(['public', 'unlisted']),
     startDate: z.string().min(1, 'Start date is required'),
     startTime: z.string().min(1, 'Start time is required'),
     endDate: z.string().optional(),
@@ -25,14 +25,14 @@ export const basicInfoSchema = basicInfoBase.refine(
 
 // Step 2: Format & Rules Schema
 const formatRulesBase = z.object({
-    bracketType: z.enum(['single_elimination', 'double_elimination', 'battle_royale']),
+    bracketType: z.enum(['single_elimination', 'double_elimination', 'swiss', 'round_robin', 'battle_royale']).optional().default('single_elimination'),
     matchCount: z.number().min(1).max(20).optional(), // Optional because it defaults to 1
     maxTeams: z.number()
-        .min(2, 'Minimum 2 teams required')
-        .max(1024, 'Maximum 1024 teams allowed'),
+        .min(0, 'Invalid value')
+        .max(256, 'Maximum 256 teams allowed'),
     teamSize: z.number().min(1).max(10),
-    seedingType: z.enum(['random', 'manual', 'skill_based']),
-    thirdPlaceMatch: z.boolean(),
+    seedingType: z.enum(['random', 'manual', 'skill_based']).optional().default('random'),
+    thirdPlaceMatch: z.boolean().optional().default(false),
 });
 
 export const formatRulesSchema = formatRulesBase.refine(
@@ -142,6 +142,8 @@ export const POWER_OF_TWO_OPTIONS = [4, 8, 16, 32, 64, 128, 256, 512, 1024];
 export const BRACKET_TYPE_LABELS: Record<string, string> = {
     single_elimination: 'Single Elimination',
     double_elimination: 'Double Elimination',
+    swiss: 'Swiss',
+    round_robin: 'Round Robin',
     battle_royale: 'Battle Royale / Points',
 };
 

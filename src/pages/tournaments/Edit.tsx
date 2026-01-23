@@ -13,6 +13,7 @@ const EditTournament = () => {
   const [loading, setLoading] = useState(true);
   const [wizardData, setWizardData] = useState<TournamentWizardData | null>(null);
   const [tournamentId, setTournamentId] = useState<string | null>(null);
+  const [participantCount, setParticipantCount] = useState<number>(0);
 
   useEffect(() => {
     if (slug) {
@@ -60,6 +61,16 @@ const EditTournament = () => {
 
       if (stagesError) throw stagesError;
 
+      // 2.5 Fetch Participant Count
+      const { count: participantCount, error: countError } = await supabase
+        .from('tournament_participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('tournament_id', tournamentData.id);
+
+      if (countError) console.error('Error fetching count:', countError);
+
+      setParticipantCount(participantCount || 0);
+
       // 3. Map to Wizard Data
       const startDate = new Date(tournamentData.start_date);
       const endDate = new Date(tournamentData.end_date);
@@ -93,8 +104,8 @@ const EditTournament = () => {
           best_of: (s as any).best_of || 1
         })),
         matchCount: tournamentData.match_count || 1,
-        maxTeams: tournamentData.max_teams || 16,
-        teamSize: tournamentData.team_size || 5,
+        maxTeams: tournamentData.max_teams ?? DEFAULT_WIZARD_DATA.maxTeams,
+        teamSize: tournamentData.team_size ?? DEFAULT_WIZARD_DATA.teamSize,
         seedingType: 'random', // Default, as it's not strictly stored in tournament row usually
         thirdPlaceMatch: false, // Default
 
@@ -151,6 +162,7 @@ const EditTournament = () => {
     <WizardContainer
       initialData={wizardData}
       tournamentId={tournamentId}
+      participantsCount={participantCount}
     />
   );
 };

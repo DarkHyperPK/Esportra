@@ -9,10 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Map as MapIcon, AlertCircle, Plus, Trash2, Pencil, X, ChevronsUpDown } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Map as MapIcon, AlertCircle, Plus, Trash2, Pencil, X, ChevronsUpDown, Book } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
-import stageTemplates from '@/data/stage_templates.json';
+
+import { RECOMMENDED_TEMPLATES } from '@/data/recommended_templates';
+import { StageGuidelineModal } from './StageGuidelineModal';
 import { getGameTableName } from '@/utils/gameTables';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -42,6 +45,15 @@ interface StageConfig {
     best_of: number;
     map_pool_id: string | null; // 'tournament_pool', 'custom', or null (all)
     custom_map_ids: string[]; // For custom map pool
+    settings?: {
+        swiss_rounds?: number;
+        group_count?: number;
+        swiss_groups?: number;
+        points_per_win?: number;
+        points_per_draw?: number;
+        points_per_loss?: number;
+        use_check_in_only?: boolean;
+    };
 }
 
 const DEFAULT_STAGE_CONFIG: StageConfig = {
@@ -52,6 +64,114 @@ const DEFAULT_STAGE_CONFIG: StageConfig = {
     best_of: 1,
     map_pool_id: null,
     custom_map_ids: []
+};
+
+// Validation helper functions
+const isPowerOfTwo = (n: number): boolean => n > 0 && (n & (n - 1)) === 0;
+
+const validateStageConfig = (stage: StageConfig, totalParticipants: number = 0, tournamentMaxParticipants: number | null = null): { valid: boolean; error?: string } => {
+    const format = stage.format;
+    const configuredCapacity = typeof stage.capacity === 'number' ? stage.capacity : 0;
+    // If capacity is not set (Auto/Unlimited), use totalParticipants as the effective capacity for validation
+    const effectiveCapacity = configuredCapacity > 0 ? configuredCapacity : totalParticipants;
+
+    const advancementCount = typeof stage.advancement_count === 'number' ? stage.advancement_count : 0;
+
+    // Rule 1: Minimum capacity for format
+    const minCapacity: Record<string, number> = {
+        'single_elimination': 2,
+        'double_elimination': 4,
+        'swiss': 4,
+        'round_robin': 3
+    };
+
+    // Only validate minimum capacity if we have a known capacity (configured or actual)
+    if (effectiveCapacity > 0 && effectiveCapacity < (minCapacity[format] || 2)) {
+        return { valid: false, error: `${format.replace('_', ' ')} requires at least ${minCapacity[format]} teams.` };
+    }
+
+    // Rule 2: Advancement count must be power of 2 for elimination formats
+    if (advancementCount > 0 && (format === 'single_elimination' || format === 'double_elimination')) {
+        if (!isPowerOfTwo(advancementCount)) {
+            return { valid: false, error: `Advancement count must be a power of 2 (1, 2, 4, 8...) for ${format.replace('_', ' ')}.` };
+        }
+    }
+
+    // Rule 3: Advancement count must be strictly less than capacity (to ensure elimination)
+    if (advancementCount > 0 && effectiveCapacity > 0 && advancementCount >= effectiveCapacity) {
+        return { valid: false, error: 'Advancement count must be strictly less than capacity to ensure elimination.' };
+    }
+
+    // Rule 4: Stage capacity cannot exceed tournament max participants
+    if (tournamentMaxParticipants !== null && configuredCapacity > 0 && configuredCapacity > tournamentMaxParticipants) {
+        return { valid: false, error: `Stage capacity (${configuredCapacity}) cannot exceed tournament limit (${tournamentMaxParticipants}).` };
+    }
+
+    return { valid: true };
+};
+
+// Helper to generate power of 2 advancement options
+const getAdvancementOptions = (capacity: number): number[] => {
+    const options: number[] = [];
+    // If capacity is 0 (unknown), provide reasonable defaults up to 128
+    const max = capacity > 0 ? capacity : 256;
+
+    let n = 2;
+    while (n < max) {
+        options.push(n);
+        n *= 2;
+    }
+    return options.reverse(); // Descending (64, 32, 16...)
+};
+
+// Helper to calculate optimal Swiss groups (Strictly Power of 2 for fair advancement)
+const calculateSwissConfig = (capacity: number, advancement: number): number => {
+    if (capacity <= 0) return 1;
+
+    // We only consider Power of 2 groups to ensure equal advancement spots per group.
+    // Since advancement is a Power of 2, if groups is a Power of 2 (and <= advancement),
+    // then advancement % groups will always be 0.
+    const candidates = [1, 2, 4, 8, 16];
+    let bestGroups = 1;
+    let minDiff = Number.MAX_VALUE;
+
+    for (const g of candidates) {
+        // Constraint: Groups must not exceed advancement count (if advancement is set)
+        if (advancement > 0 && g > advancement) continue;
+
+        const groupSize = capacity / g;
+
+        // Constraint: Group size shouldn't be too small (e.g. < 16) unless capacity is tiny
+        if (groupSize < 16 && g > 1) continue;
+
+        // Find the group count that gets us closest to ~32 teams per group
+        const diff = Math.abs(groupSize - 32);
+
+        // If diff is significantly better, or if it's similar but allows more groups (better distribution), pick it
+        if (diff < minDiff) {
+            minDiff = diff;
+            bestGroups = g;
+        }
+    }
+
+    return bestGroups;
+};
+
+// Format transition validation (Medium Priority)
+const getFormatTransitionWarning = (prevFormat: string | undefined, newFormat: string): string | null => {
+    if (!prevFormat) return null;
+
+    // Unusual transitions that should trigger a warning
+    const unusualTransitions: Record<string, string[]> = {
+        'single_elimination': ['round_robin'], // SE -> RR is unusual
+        'double_elimination': ['swiss', 'round_robin'], // DE -> Swiss/RR is unusual
+    };
+
+    if (unusualTransitions[prevFormat]?.includes(newFormat)) {
+        return `Transitioning from ${prevFormat.replace('_', ' ')} to ${newFormat.replace('_', ' ')} is unusual. Consider using Swiss → Elimination or RR → Elimination flows instead.`;
+    }
+
+    return null;
 };
 
 const MapSelector = ({
@@ -253,6 +373,10 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     const [loading, setLoading] = useState(false);
     const [mapPools, setMapPools] = useState<MapPool[]>([]); // This will now hold ALL available maps
     const [hasTournamentMapPool, setHasTournamentMapPool] = useState(false);
+    const [showGuideline, setShowGuideline] = useState(false);
+    const [participantsCount, setParticipantsCount] = useState<number>(0);
+    const [checkInEnabled, setCheckInEnabled] = useState(false);
+    const [tournamentMaxParticipants, setTournamentMaxParticipants] = useState<number | null>(null);
 
     // Manual Form State (Lifted up for Edit capability)
     const [manualFormState, setManualFormState] = useState<StageConfig>(DEFAULT_STAGE_CONFIG);
@@ -266,6 +390,38 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
         if (open) {
             fetchMaps();
+
+            // Fetch participants count for validation
+            const fetchParticipants = async () => {
+                const { count } = await supabase
+                    .from('tournament_participants')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('tournament_id', tournamentId);
+                if (count !== null) setParticipantsCount(count);
+            };
+            fetchParticipants();
+
+            // Fetch tournament settings (check-in enabled, max participants)
+            const fetchTournamentSettings = async () => {
+                const { data } = await supabase
+                    .from('tournaments')
+                    .select('check_in_enabled, max_teams')
+                    .eq('id', tournamentId)
+                    .single();
+                if (data) {
+                    const d = data as any;
+                    setCheckInEnabled(d.check_in_enabled);
+                    // Treat 0 as unlimited (null) since column is not nullable
+                    const maxTeams = d.max_teams === 0 ? null : d.max_teams;
+                    setTournamentMaxParticipants(maxTeams);
+
+                    // Auto-set manual form capacity if creating new and max teams is set
+                    if (maxTeams && (!existingStages || existingStages.length === 0)) {
+                        setManualFormState(prev => ({ ...prev, capacity: maxTeams }));
+                    }
+                }
+            };
+            fetchTournamentSettings();
 
             if (existingStages && existingStages.length > 0) {
                 // Edit Mode
@@ -355,17 +511,50 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
     const handleTemplateSelect = (templateId: string) => {
         setSelectedTemplateId(templateId);
-        const template = stageTemplates.templates.find(t => t.id === templateId);
+        const template = RECOMMENDED_TEMPLATES.find(t => t.id === templateId);
         if (template) {
-            setStagesConfig(template.stages.map(s => ({
-                name: s.name,
-                format: s.format,
-                capacity: s.capacity,
-                advancement_count: s.advancement_count,
-                best_of: 1, // Default to BO1
-                map_pool_id: hasTournamentMapPool ? 'tournament_pool' : null,
-                custom_map_ids: []
-            })));
+            setStagesConfig(template.stages.map((s, i) => {
+                let adv = s.advancement_count;
+                // Auto-adjust advancement count if it exceeds current participants
+                if (typeof adv === 'number' && participantsCount > 0 && adv >= participantsCount) {
+                    // Find largest power of 2 strictly less than participantsCount
+                    let adjusted = 1;
+                    while (adjusted * 2 < participantsCount) {
+                        adjusted *= 2;
+                    }
+                    adv = adjusted;
+                }
+
+                const cap = (i === 0 && tournamentMaxParticipants) ? tournamentMaxParticipants : (Number(s.capacity) || 0);
+                let swissGroups = s.settings?.swiss_groups || 1;
+                let swissRounds = s.settings?.swiss_rounds;
+
+                if (s.format === 'swiss') {
+                    const effectiveCap = cap || participantsCount;
+                    if (effectiveCap > 0 && (typeof adv === 'number' ? adv : 0) > 0) {
+                        swissGroups = calculateSwissConfig(effectiveCap, typeof adv === 'number' ? adv : 0);
+                        if (!swissRounds) {
+                            const groupSize = effectiveCap / swissGroups;
+                            swissRounds = Math.ceil(Math.log2(groupSize)) + 2;
+                        }
+                    }
+                }
+
+                return {
+                    name: s.name,
+                    format: s.format,
+                    capacity: (i === 0 && tournamentMaxParticipants) ? tournamentMaxParticipants : '', // Auto-detect max teams for first stage
+                    advancement_count: adv || '',
+                    best_of: s.best_of,
+                    map_pool_id: hasTournamentMapPool ? 'tournament_pool' : null,
+                    custom_map_ids: [],
+                    settings: {
+                        ...s.settings,
+                        swiss_groups: swissGroups,
+                        swiss_rounds: swissRounds
+                    }
+                };
+            }));
             setCurrentStageIndex(0);
             setStep('template-config');
         }
@@ -383,12 +572,43 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             }
         }
 
+        // Logic: Recalculate Swiss groups if capacity or advancement changes
+        if (newConfig[index].format === 'swiss' && (field === 'capacity' || field === 'advancement_count')) {
+            const cap = Number(newConfig[index].capacity) || participantsCount;
+            const adv = Number(newConfig[index].advancement_count);
+            if (cap > 0 && adv > 0) {
+                const groups = calculateSwissConfig(cap, adv);
+                const groupSize = cap / groups;
+                const rounds = Math.ceil(Math.log2(groupSize)) + 2;
+
+                newConfig[index].settings = {
+                    ...newConfig[index].settings,
+                    swiss_groups: groups,
+                    swiss_rounds: rounds
+                };
+            }
+        }
+
         setStagesConfig(newConfig);
     };
 
     const handleSaveStages = async () => {
         try {
             setLoading(true);
+
+            // 0. Validate all stages
+            for (const stage of stagesConfig) {
+                const validation = validateStageConfig(stage, participantsCount, tournamentMaxParticipants);
+                if (!validation.valid) {
+                    toast({
+                        title: `Invalid Stage: ${stage.name}`,
+                        description: validation.error,
+                        variant: "destructive"
+                    });
+                    setLoading(false);
+                    return;
+                }
+            }
 
             // 1. Handle Deletions
             if (deletedStageIds.length > 0) {
@@ -407,16 +627,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                 // Normalize bestOf to valid values: 1, 3, or 5
                 const normalizedBestOf = stage.best_of === 3 ? 3 : stage.best_of === 5 ? 5 : 1;
 
-                // Always build complete config for easy overriding
-                const config: any = {
-                    bestOf: normalizedBestOf,
-                    veto: {
-                        best_of: normalizedBestOf,
-                        use_tournament_pool: stage.map_pool_id === 'tournament_pool',
-                        map_pool: stage.map_pool_id === 'custom' ? stage.custom_map_ids : null
-                    }
-                };
-
                 const stageData = {
                     tournament_id: tournamentId,
                     name: stage.name,
@@ -425,7 +635,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     capacity: stage.capacity === '' ? null : Number(stage.capacity),
                     advancement_count: stage.advancement_count === '' ? null : Number(stage.advancement_count),
                     status: 'upcoming',
-                    config: config
+                    best_of: normalizedBestOf
                 };
 
                 if (stage.id) {
@@ -437,6 +647,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         capacityType: typeof stageData.capacity,
                         advancement_count: stageData.advancement_count
                     });
+                    const normalizedBestOf = stage.best_of === 3 ? 3 : stage.best_of === 5 ? 5 : 1;
                     const { error, data } = await supabase
                         .from('tournament_stages')
                         .update({
@@ -445,9 +656,10 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                             stage_order: stageData.stage_order,
                             capacity: stageData.capacity,
                             advancement_count: stageData.advancement_count,
-                            best_of: stageData.best_of || 1,
-                            map_pool: stageData.map_pool || [],
-                            veto_enabled: stageData.veto_enabled !== false
+                            best_of: normalizedBestOf,
+                            map_pool: stage.map_pool_id === 'custom' ? stage.custom_map_ids : [],
+                            config: stage.settings, // Save format specific settings
+                            veto_enabled: true
                         })
                         .eq('id', stage.id)
                         .select();
@@ -459,9 +671,30 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         .from('tournament_stages')
                         .insert({
                             ...stageData,
+                            map_pool: stage.map_pool_id === 'custom' ? stage.custom_map_ids : [],
+                            config: stage.settings,
                             status: 'upcoming'
                         });
                     if (error) throw error;
+                }
+            }
+
+            // 3. Update tournament max_teams from first stage capacity
+            if (stagesConfig.length > 0) {
+                const firstStageCapacity = stagesConfig[0].capacity;
+                if (Number(firstStageCapacity) > 0) {
+                    const maxTeams = Number(firstStageCapacity);
+                    if (maxTeams > 0) {
+                        console.log('[StageWizard] Updating tournament max_teams to:', maxTeams);
+                        const { error: tournamentError } = await supabase
+                            .from('tournaments')
+                            .update({ max_teams: maxTeams } as any)
+                            .eq('id', tournamentId);
+                        if (tournamentError) {
+                            console.error('Error updating tournament max_teams:', tournamentError);
+                            // Don't throw - stage save succeeded, this is secondary
+                        }
+                    }
                 }
             }
 
@@ -561,7 +794,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             exit="exit"
             className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4"
         >
-            {stageTemplates.templates.map((template) => (
+            {RECOMMENDED_TEMPLATES.map((template) => (
                 <Card
                     key={template.id}
                     className={cn(
@@ -646,14 +879,19 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         <Select
                             value={stage.format}
                             onValueChange={(val) => updateStageConfig(currentStageIndex, 'format', val)}
-                            disabled={selectedTemplateId === 'single_elimination' || selectedTemplateId === 'double_elimination'}
+                            disabled={selectedTemplateId === 'recommended_multi_stage' && currentStageIndex === 0 && stage.format === 'single_elimination'}
                         >
                             <SelectTrigger className="bg-black/20 border-white/10">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="single_elimination">Single Elimination</SelectItem>
-                                <SelectItem value="double_elimination">Double Elimination</SelectItem>
+                                <SelectItem
+                                    value="double_elimination"
+                                    disabled={selectedTemplateId === 'recommended_multi_stage' && currentStageIndex === 0}
+                                >
+                                    Double Elimination
+                                </SelectItem>
                                 <SelectItem value="round_robin">Round Robin</SelectItem>
                                 <SelectItem value="swiss">Swiss</SelectItem>
                             </SelectContent>
@@ -662,6 +900,12 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     <div className="space-y-2">
                         <Label className="text-gray-300 flex items-center justify-between">
                             Capacity (Teams)
+                            {currentStageIndex === 0 && (
+                                <span className="text-xs text-gray-400">
+                                    {participantsCount} Registered
+                                    {tournamentMaxParticipants && ` / ${tournamentMaxParticipants} Max`}
+                                </span>
+                            )}
                             {isCapacityLinked && (
                                 <span className="text-xs text-emerald-400 flex items-center gap-1">
                                     <Check className="h-3 w-3" /> Linked to Prev. Stage
@@ -684,17 +928,115 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                 Recommended: {prevStage.advancement_count} teams (from Stage {currentStageIndex})
                             </p>
                         )}
+                        {/* Check-in option for first stage only */}
+                        {currentStageIndex === 0 && checkInEnabled && (
+                            <div className="space-y-2 mt-2">
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id={`useCheckInOnly-${currentStageIndex}`}
+                                        className="rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-500"
+                                        checked={stage.settings?.use_check_in_only || false}
+                                        onChange={(e) => {
+                                            const newSettings = { ...stage.settings, use_check_in_only: e.target.checked };
+                                            updateStageConfig(currentStageIndex, 'settings', newSettings);
+                                        }}
+                                    />
+                                    <label
+                                        htmlFor={`useCheckInOnly-${currentStageIndex}`}
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-300"
+                                    >
+                                        Use Checked-in Teams Only
+                                    </label>
+                                </div>
+                            </div>
+                        )}
                     </div>
+
+
+                    {/* Format Specific Settings */}
+                    {stage.format === 'swiss' && (
+                        <>
+                            <div className="space-y-2">
+                                <Label className="text-gray-300">Number of Groups</Label>
+                                <Input
+                                    type="number"
+                                    value={stage.settings?.swiss_groups || ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                        const newSettings = { ...stage.settings, swiss_groups: val };
+                                        updateStageConfig(currentStageIndex, 'settings', newSettings);
+                                    }}
+                                    placeholder="1"
+                                    className="bg-black/20 border-white/10 focus:border-emerald-500/50"
+                                />
+                                <p className="text-xs text-gray-500">Split teams into multiple Swiss groups.</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-gray-300">Number of Rounds</Label>
+                                <Input
+                                    type="number"
+                                    value={stage.settings?.swiss_rounds || ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                        const newSettings = { ...stage.settings, swiss_rounds: val };
+                                        updateStageConfig(currentStageIndex, 'settings', newSettings);
+                                    }}
+                                    placeholder="Auto (Log2)"
+                                    className="bg-black/20 border-white/10 focus:border-emerald-500/50"
+                                />
+                                <p className="text-xs text-gray-500">Leave empty for automatic calculation.</p>
+                            </div>
+                        </>
+                    )}
+
+                    {stage.format === 'round_robin' && (
+                        <div className="space-y-2">
+                            <Label className="text-gray-300">Number of Groups</Label>
+                            <Input
+                                type="number"
+                                value={stage.settings?.group_count || ''}
+                                onChange={(e) => {
+                                    const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                    const newSettings = { ...stage.settings, group_count: val };
+                                    updateStageConfig(currentStageIndex, 'settings', newSettings);
+                                }}
+                                placeholder="1"
+                                className="bg-black/20 border-white/10 focus:border-emerald-500/50"
+                            />
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <Label className="text-gray-300">Advancement (Teams to Next)</Label>
-                        <Input
-                            type="number"
-                            value={stage.advancement_count}
-                            onChange={(e) => updateStageConfig(currentStageIndex, 'advancement_count', e.target.value === '' ? '' : Number(e.target.value))}
-                            disabled={currentStageIndex === stagesConfig.length - 1} // Last stage doesn't advance
-                            placeholder="None"
-                            className="bg-black/20 border-white/10 focus:border-emerald-500/50"
-                        />
+                        {stage.format === 'swiss' || stage.format === 'single_elimination' || stage.format === 'double_elimination' ? (
+                            <Select
+                                value={String(stage.advancement_count || '')}
+                                onValueChange={(val) => {
+                                    const adv = Number(val);
+                                    updateStageConfig(currentStageIndex, 'advancement_count', adv);
+                                }}
+                                disabled={currentStageIndex === stagesConfig.length - 1}
+                            >
+                                <SelectTrigger className="bg-black/20 border-white/10">
+                                    <SelectValue placeholder="Select count" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {getAdvancementOptions(typeof stage.capacity === 'number' ? stage.capacity : (tournamentMaxParticipants || 256)).map(opt => (
+                                        <SelectItem key={opt} value={String(opt)}>{opt} Teams</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Input
+                                type="number"
+                                value={stage.advancement_count}
+                                onChange={(e) => updateStageConfig(currentStageIndex, 'advancement_count', e.target.value === '' ? '' : Number(e.target.value))}
+                                disabled={currentStageIndex === stagesConfig.length - 1} // Last stage doesn't advance
+                                placeholder="None"
+                                className="bg-black/20 border-white/10 focus:border-emerald-500/50"
+                            />
+                        )}
                     </div>
                 </div>
 
@@ -771,6 +1113,12 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                                     <Badge variant="secondary" className="text-[10px] h-5">{s.format.replace('_', ' ')}</Badge>
                                                     <span>•</span>
                                                     <span>{s.capacity || 'Unlimited'} Teams</span>
+                                                    {s.advancement_count && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="text-emerald-400">Top {s.advancement_count} advance</span>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -856,29 +1204,197 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="single_elimination">Single Elimination</SelectItem>
-                                        <SelectItem value="double_elimination">Double Elimination</SelectItem>
-                                        <SelectItem value="round_robin">Round Robin</SelectItem>
-                                        <SelectItem value="swiss">Swiss</SelectItem>
+                                        <SelectItem
+                                            value="double_elimination"
+                                            disabled={typeof manualFormState.capacity === 'number' && manualFormState.capacity < 4}
+                                        >
+                                            Double Elimination {typeof manualFormState.capacity === 'number' && manualFormState.capacity < 4 && '(min 4 teams)'}
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="round_robin"
+                                            disabled={typeof manualFormState.capacity === 'number' && manualFormState.capacity < 3}
+                                        >
+                                            Round Robin {typeof manualFormState.capacity === 'number' && manualFormState.capacity < 3 && '(min 3 teams)'}
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="swiss"
+                                            disabled={typeof manualFormState.capacity === 'number' && manualFormState.capacity < 4}
+                                        >
+                                            Swiss {typeof manualFormState.capacity === 'number' && manualFormState.capacity < 4 && '(min 4 teams)'}
+                                        </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            {/* Format Specific Settings (Manual) */}
+                            {manualFormState.format === 'swiss' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label>Number of Rounds</Label>
+                                        <Input
+                                            type="number"
+                                            value={manualFormState.settings?.swiss_rounds || ''}
+                                            onChange={(e) => {
+                                                const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                                const newSettings = { ...manualFormState.settings, swiss_rounds: val };
+                                                setManualFormState({ ...manualFormState, settings: newSettings });
+                                            }}
+                                            placeholder="Auto (Log2)"
+                                        />
+                                        <p className="text-xs text-gray-500">Leave empty for automatic calculation.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Number of Groups</Label>
+                                        <Input
+                                            type="number"
+                                            value={manualFormState.settings?.swiss_groups || ''}
+                                            onChange={(e) => {
+                                                const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                                const newSettings = { ...manualFormState.settings, swiss_groups: val };
+                                                setManualFormState({ ...manualFormState, settings: newSettings });
+                                            }}
+                                            placeholder="1"
+                                        />
+                                        <p className="text-xs text-gray-500">Split teams into multiple Swiss groups.</p>
+                                    </div>
+                                </>
+                            )}
+
+                            {manualFormState.format === 'round_robin' && (
+                                <div className="space-y-2">
+                                    <Label>Number of Groups</Label>
+                                    <Input
+                                        type="number"
+                                        value={manualFormState.settings?.group_count || ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                            const newSettings = { ...manualFormState.settings, group_count: val };
+                                            setManualFormState({ ...manualFormState, settings: newSettings });
+                                        }}
+                                        placeholder="1"
+                                    />
+                                </div>
+                            )}
                             <div className="space-y-2">
-                                <Label>Capacity</Label>
-                                <Input
-                                    type="number"
-                                    value={manualFormState.capacity}
-                                    onChange={(e) => setManualFormState({ ...manualFormState, capacity: e.target.value === '' ? '' : Number(e.target.value) })}
-                                    placeholder="Unlimited"
-                                />
+                                {(() => {
+                                    // Stage 1 (index 0 or new stage when no stages exist): capacity comes from tournament
+                                    const isFirstStage = editingStageIndex === 0 || (editingStageIndex === null && stagesConfig.length === 0);
+                                    // Later stages: capacity may be linked to previous stage's advancement
+                                    const prevStageIdx = editingStageIndex !== null ? editingStageIndex - 1 : stagesConfig.length - 1;
+                                    const prevStage = prevStageIdx >= 0 ? stagesConfig[prevStageIdx] : null;
+                                    const isLinkedToPrev = !isFirstStage && prevStage && prevStage.advancement_count;
+
+                                    return (
+                                        <>
+                                            <Label className="flex items-center justify-between">
+                                                <span>Capacity</span>
+                                                {isFirstStage && (
+                                                    <span className="text-xs text-gray-400">
+                                                        {participantsCount} Registered
+                                                        {tournamentMaxParticipants && ` / ${tournamentMaxParticipants} Max`}
+                                                    </span>
+                                                )}
+                                                {isLinkedToPrev && (
+                                                    <span className="text-xs text-emerald-400">← From Stage {prevStageIdx + 1} Advancement</span>
+                                                )}
+                                            </Label>
+                                            <Input
+                                                type="number"
+                                                value={isLinkedToPrev ? prevStage.advancement_count : manualFormState.capacity}
+                                                onChange={(e) => {
+                                                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                                                    let newSettings = { ...manualFormState.settings };
+
+                                                    if (manualFormState.format === 'swiss' && typeof val === 'number' && val > 0) {
+                                                        const groups = calculateSwissConfig(val, Number(manualFormState.advancement_count) || 0);
+                                                        const groupSize = val / groups;
+                                                        const rounds = Math.ceil(Math.log2(groupSize)) + 2;
+                                                        newSettings = { ...newSettings, swiss_groups: groups, swiss_rounds: rounds };
+                                                    }
+
+                                                    setManualFormState({ ...manualFormState, capacity: val, settings: newSettings });
+                                                }}
+                                                placeholder={isFirstStage ? "Set by Tournament" : "Unlimited"}
+                                                disabled={isFirstStage || !!isLinkedToPrev}
+                                                className={cn(
+                                                    (isFirstStage || isLinkedToPrev) && "bg-gray-800/50 text-gray-400 cursor-not-allowed"
+                                                )}
+                                            />
+                                            {isFirstStage && checkInEnabled && (
+                                                <div className="space-y-2 mt-2">
+                                                    <p className="text-xs text-gray-500">Capacity is determined by tournament's max teams setting</p>
+                                                    <div className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id="useCheckInOnly"
+                                                            className="rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-500"
+                                                            checked={manualFormState.settings?.use_check_in_only || false}
+                                                            onChange={(e) => {
+                                                                const newSettings = { ...manualFormState.settings, use_check_in_only: e.target.checked };
+                                                                setManualFormState({ ...manualFormState, settings: newSettings });
+                                                            }}
+                                                        />
+                                                        <label
+                                                            htmlFor="useCheckInOnly"
+                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-300"
+                                                        >
+                                                            Use Checked-in Teams Only
+                                                        </label>
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-500 ml-6">
+                                                        If checked, only teams that have checked in will be included in the bracket.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                             </div>
                             <div className="space-y-2">
-                                <Label>Advancement</Label>
-                                <Input
-                                    type="number"
-                                    value={manualFormState.advancement_count}
-                                    onChange={(e) => setManualFormState({ ...manualFormState, advancement_count: e.target.value === '' ? '' : Number(e.target.value) })}
-                                    placeholder="None"
-                                />
+                                {(() => {
+                                    // Check if this is/will be the last stage
+                                    const isLastStage = editingStageIndex !== null
+                                        ? editingStageIndex === stagesConfig.length - 1
+                                        : true; // New stages are always "last" until another is added
+
+                                    return (
+                                        <>
+                                            <Label className="flex items-center justify-between">
+                                                <span>Advancement Count</span>
+                                                {isLastStage && stagesConfig.length > 0 && editingStageIndex !== null && (
+                                                    <span className="text-xs text-amber-400">Last Stage - No Next Stage</span>
+                                                )}
+                                            </Label>
+                                            <Select
+                                                value={String(manualFormState.advancement_count || '')}
+                                                onValueChange={(val) => {
+                                                    const adv = Number(val);
+                                                    setManualFormState({
+                                                        ...manualFormState,
+                                                        advancement_count: adv
+                                                    });
+                                                }}
+                                                disabled={isLastStage && editingStageIndex !== null && stagesConfig.length > 0}
+                                            >
+                                                <SelectTrigger className={cn(
+                                                    (isLastStage && editingStageIndex !== null) && "bg-gray-800/50 text-gray-400 cursor-not-allowed"
+                                                )}>
+                                                    <SelectValue placeholder={isLastStage && editingStageIndex !== null ? "N/A (Final Stage)" : "Select teams advancing"} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {getAdvancementOptions(typeof manualFormState.capacity === 'number' ? manualFormState.capacity : participantsCount).map(opt => (
+                                                        <SelectItem key={opt} value={String(opt)}>{opt} Teams</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            {isLastStage && editingStageIndex !== null && stagesConfig.length > 0 ? (
+                                                <p className="text-xs text-gray-500">Add another stage first to enable advancement</p>
+                                            ) : (
+                                                <p className="text-xs text-gray-500">Must be a power of 2 less than capacity</p>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -923,19 +1439,81 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                             )}
                             <Button
                                 onClick={() => {
-                                    if (!manualFormState.name) return;
+                                    if (!manualFormState.name) {
+                                        toast({
+                                            title: "Name Required",
+                                            description: "Please enter a name for this stage.",
+                                            variant: "destructive"
+                                        });
+                                        return;
+                                    }
+
+                                    // Validate stage configuration
+                                    const validation = validateStageConfig(manualFormState, participantsCount, tournamentMaxParticipants);
+                                    if (!validation.valid) {
+                                        toast({
+                                            title: "Invalid Configuration",
+                                            description: validation.error,
+                                            variant: "destructive"
+                                        });
+                                        return;
+                                    }
+
+                                    // Check for unusual format transitions (Medium Priority)
+                                    if (stagesConfig.length > 0) {
+                                        const prevStage = stagesConfig[stagesConfig.length - 1];
+                                        const transitionWarning = getFormatTransitionWarning(prevStage.format, manualFormState.format);
+                                        if (transitionWarning) {
+                                            toast({
+                                                title: "Unusual Format Transition",
+                                                description: transitionWarning,
+                                                variant: "destructive"
+                                            });
+                                            // Note: This is a warning, not a block - we still allow the user to proceed
+                                        }
+                                    }
 
                                     if (editingStageIndex !== null) {
-                                        // Update existing
+                                        // Update existing stage
                                         const newConfig = [...stagesConfig];
-                                        newConfig[editingStageIndex] = manualFormState;
+                                        // Create a copy to avoid mutation
+                                        const updatedStage = { ...manualFormState };
+
+                                        // Apply advancement linking
+                                        if (updatedStage.advancement_count && editingStageIndex < newConfig.length - 1) {
+                                            const advCount = Number(updatedStage.advancement_count);
+                                            if (!isNaN(advCount)) {
+                                                newConfig[editingStageIndex + 1] = {
+                                                    ...newConfig[editingStageIndex + 1],
+                                                    capacity: advCount
+                                                };
+                                            }
+                                        }
+
+                                        newConfig[editingStageIndex] = updatedStage;
                                         setStagesConfig(newConfig);
                                         setEditingStageIndex(null);
                                     } else {
-                                        // Add new
-                                        setStagesConfig([...stagesConfig, manualFormState]);
+                                        // Add new stage
+                                        // Create a copy to avoid mutation
+                                        const newStage = { ...manualFormState };
+                                        const newStages = [...stagesConfig, newStage];
+
+                                        // If previous stage has advancement_count, link this stage's capacity
+                                        if (stagesConfig.length > 0) {
+                                            const prevStage = stagesConfig[stagesConfig.length - 1];
+                                            if (prevStage.advancement_count) {
+                                                // Update the NEW stage's capacity, which is the last one in newStages
+                                                newStages[newStages.length - 1] = {
+                                                    ...newStages[newStages.length - 1],
+                                                    capacity: Number(prevStage.advancement_count)
+                                                };
+                                            }
+                                        }
+
+                                        setStagesConfig(newStages);
                                     }
-                                    setManualFormState(DEFAULT_STAGE_CONFIG);
+                                    setManualFormState({ ...DEFAULT_STAGE_CONFIG });
                                 }}
                                 className="bg-emerald-600 hover:bg-emerald-500 text-white"
                             >
@@ -1031,102 +1609,129 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     );
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col bg-gaming-dark border-gaming-gray/30">
-                <DialogHeader>
-                    <DialogTitle className="text-xl font-bold text-white">
-                        {step === 'mode-select' && 'Create Tournament Stages'}
-                        {step === 'template-select' && 'Select a Template'}
-                        {step === 'template-config' && 'Configure Stages'}
-                        {step === 'manual-config' && 'Manual Stage Setup'}
-                        {step === 'review' && 'Review & Create'}
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-400">
-                        {step === 'mode-select' && 'Choose how you want to set up your tournament structure.'}
-                        {step === 'template-select' && 'Pick a starting point for your tournament.'}
-                        {step === 'template-config' && 'Customize the details for each stage.'}
-                        {step === 'manual-config' && 'Add and configure stages one by one.'}
-                        {step === 'review' && 'Double check everything before creating.'}
-                    </DialogDescription>
-                </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto min-h-[400px] px-1 overflow-x-hidden">
-                    <AnimatePresence mode="wait">
-                        {step === 'mode-select' && renderModeSelection()}
-                        {step === 'template-select' && renderTemplateSelection()}
-                        {step === 'template-config' && renderTemplateConfig()}
-                        {step === 'manual-config' && renderManualSetup()}
-                        {step === 'review' && renderReview()}
-                    </AnimatePresence>
-                </div>
+        <>
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col bg-gaming-dark border-gaming-gray/30">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-white flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                                {step === 'mode-select' && 'Create Tournament Stages'}
+                                {step === 'template-select' && 'Select a Template'}
+                                {step === 'template-config' && 'Configure Stages'}
+                                {step === 'manual-config' && 'Manual Stage Setup'}
+                                {step === 'review' && 'Review & Create'}
+                            </span>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setShowGuideline(true)}
+                                            className="text-gray-400 hover:text-emerald-400 hover:bg-emerald-400/10"
+                                        >
+                                            <div className="relative">
+                                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                                                <Book className="h-5 w-5" />
+                                            </div>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Tournament Stages Guideline</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                            {step === 'mode-select' && 'Choose how you want to set up your tournament structure.'}
+                            {step === 'template-select' && 'Pick a starting point for your tournament.'}
+                            {step === 'template-config' && 'Customize the details for each stage.'}
+                            {step === 'manual-config' && 'Add and configure stages one by one.'}
+                            {step === 'review' && 'Double check everything before creating.'}
+                        </DialogDescription>
+                    </DialogHeader>
 
-                <DialogFooter className="mt-4 border-t border-white/10 pt-4">
-                    {step !== 'mode-select' && (
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                if (step === 'template-select') setStep('mode-select');
-                                else if (step === 'template-config') {
-                                    if (currentStageIndex > 0) setCurrentStageIndex(currentStageIndex - 1);
-                                    else setStep('template-select');
-                                }
-                                else if (step === 'manual-config') setStep('mode-select');
-                                else if (step === 'review') {
-                                    // Go back to where we came from
-                                    // We need to know if we came from template or manual
-                                    // Simple heuristic: if selectedTemplateId is set, go to template-config, else manual-config
-                                    if (selectedTemplateId) setStep('template-config');
-                                    else setStep('manual-config');
-                                }
-                            }}
-                            className="border-white/10 hover:bg-white/5 text-gray-300"
-                        >
-                            <ArrowLeft className="h-4 w-4 mr-2" /> Back
-                        </Button>
-                    )}
+                    <div className="flex-1 overflow-y-auto min-h-[400px] px-1 overflow-x-hidden">
+                        <AnimatePresence mode="wait">
+                            {step === 'mode-select' && renderModeSelection()}
+                            {step === 'template-select' && renderTemplateSelection()}
+                            {step === 'template-config' && renderTemplateConfig()}
+                            {step === 'manual-config' && renderManualSetup()}
+                            {step === 'review' && renderReview()}
+                        </AnimatePresence>
+                    </div>
 
-                    {step === 'template-select' && (
-                        <Button
-                            disabled={!selectedTemplateId}
-                            onClick={() => handleTemplateSelect(selectedTemplateId!)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                        >
-                            Next <ChevronRight className="h-4 w-4 ml-2" />
-                        </Button>
-                    )}
+                    <DialogFooter className="mt-4 border-t border-white/10 pt-4">
+                        {step !== 'mode-select' && (
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    if (step === 'template-select') setStep('mode-select');
+                                    else if (step === 'template-config') {
+                                        if (currentStageIndex > 0) setCurrentStageIndex(currentStageIndex - 1);
+                                        else setStep('template-select');
+                                    }
+                                    else if (step === 'manual-config') setStep('mode-select');
+                                    else if (step === 'review') {
+                                        // Go back to where we came from
+                                        // We need to know if we came from template or manual
+                                        // Simple heuristic: if selectedTemplateId is set, go to template-config, else manual-config
+                                        if (selectedTemplateId) setStep('template-config');
+                                        else setStep('manual-config');
+                                    }
+                                }}
+                                className="border-white/10 hover:bg-white/5 text-gray-300"
+                            >
+                                <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                            </Button>
+                        )}
 
-                    {step === 'template-config' && (
-                        <Button
-                            onClick={() => {
-                                if (currentStageIndex < stagesConfig.length - 1) {
-                                    setCurrentStageIndex(currentStageIndex + 1);
-                                } else {
-                                    setStep('review');
-                                }
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                        >
-                            {currentStageIndex < stagesConfig.length - 1 ? 'Next Stage' : 'Review'} <ChevronRight className="h-4 w-4 ml-2" />
-                        </Button>
-                    )}
+                        {step === 'template-select' && (
+                            <Button
+                                disabled={!selectedTemplateId}
+                                onClick={() => handleTemplateSelect(selectedTemplateId!)}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            >
+                                Next <ChevronRight className="h-4 w-4 ml-2" />
+                            </Button>
+                        )}
 
-                    {step === 'manual-config' && (
-                        <Button
-                            onClick={() => setStep('review')}
-                            disabled={stagesConfig.length === 0}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                        >
-                            Review <ChevronRight className="h-4 w-4 ml-2" />
-                        </Button>
-                    )}
+                        {step === 'template-config' && (
+                            <Button
+                                onClick={() => {
+                                    if (currentStageIndex < stagesConfig.length - 1) {
+                                        setCurrentStageIndex(currentStageIndex + 1);
+                                    } else {
+                                        setStep('review');
+                                    }
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            >
+                                {currentStageIndex < stagesConfig.length - 1 ? 'Next Stage' : 'Review'} <ChevronRight className="h-4 w-4 ml-2" />
+                            </Button>
+                        )}
 
-                    {step === 'review' && (
-                        <Button onClick={handleSaveStages} disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white">
-                            {loading ? 'Saving...' : (stagesConfig.some(s => s.id) ? 'Update Stages' : 'Create Stages')}
-                        </Button>
-                    )}
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                        {step === 'manual-config' && (
+                            <Button
+                                onClick={() => setStep('review')}
+                                disabled={stagesConfig.length === 0}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            >
+                                Finish & Review ({stagesConfig.length}) <ChevronRight className="h-4 w-4 ml-2" />
+                            </Button>
+                        )}
+
+                        {step === 'review' && (
+                            <Button onClick={handleSaveStages} disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+                                {loading ? 'Saving...' : (stagesConfig.some(s => s.id) ? 'Update Stages' : 'Create Stages')}
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+
+            </Dialog >
+            <StageGuidelineModal open={showGuideline} onOpenChange={setShowGuideline} />
+        </>
     );
 };

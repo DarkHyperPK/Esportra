@@ -33,7 +33,7 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     headingHeight = 40,
     headingMargin = 40,
     bracketSpacing = 80,
-    disableAnimations = false
+    disableAnimations = false,
 }) => {
     // Helper to get raw ID (remove 'source-' prefix if present)
     const getRawId = (id: string) => id.replace('source-', '');

@@ -1,8 +1,8 @@
 // Tournament wizard types
 
-export type BracketType = 'single_elimination' | 'double_elimination' | 'battle_royale';
+export type BracketType = 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin' | 'battle_royale';
 export type SeedingType = 'random' | 'manual' | 'skill_based';
-export type Visibility = 'public' | 'unlisted' | 'private';
+export type Visibility = 'public' | 'unlisted';
 
 export interface TournamentStage {
     id?: string;
@@ -60,6 +60,7 @@ export interface WizardStepProps {
     errors: Record<string, string>;
     isEditMode?: boolean;
     tournamentId?: string;
+    participantsCount?: number;
 }
 
 export interface WizardStep {
@@ -97,8 +98,8 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
         { name: 'Main Stage', format: 'single_elimination', stage_order: 1 }
     ],
     matchCount: 1,
-    maxTeams: 16,
-    teamSize: 5,
+    maxTeams: 0,
+    teamSize: 7,
     seedingType: 'random',
     thirdPlaceMatch: false,
 

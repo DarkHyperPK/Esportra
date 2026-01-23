@@ -51,6 +51,9 @@ const TournamentList = () => {
       const { data: tournamentsData, error: tournamentsError } = await supabase
         .from('tournaments')
         .select('*')
+        .eq('is_public', true)
+        .neq('status', 'draft')
+        .neq('status', 'cancelled')
         .order('start_date', { ascending: true });
 
       if (tournamentsError) {
@@ -184,7 +187,7 @@ const TournamentList = () => {
                       </div>
                       <div className="flex items-center text-gray-400">
                         <Users className="mr-2 h-4 w-4" />
-                        {tournament.current_participants} / {tournament.max_participants} Participants
+                        Registered Participants: {tournament.current_participants}
                       </div>
                       <div className="flex items-center text-gaming-green">
                         <Trophy className="mr-2 h-4 w-4" />
