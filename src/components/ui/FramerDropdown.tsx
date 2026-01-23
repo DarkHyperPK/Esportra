@@ -21,7 +21,7 @@ interface FramerDropdownContextType {
 
 const FramerDropdownContext = createContext<FramerDropdownContextType | undefined>(undefined);
 
-const useFramerDropdown = () => {
+export const useFramerDropdown = () => {
     const context = useContext(FramerDropdownContext);
     if (!context) throw new Error("FramerDropdown components must be used within FramerDropdownRoot");
     return context;
