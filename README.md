@@ -15,36 +15,16 @@ Esportra provides a complete ecosystem for esports competitions, featuring:
 - **Venue Integration**: Connect with gaming venues and organize LAN events
 - **Role-Based Access**: Support for players, organizers, venue owners, and administrators
 
-### New in v0.3.1 - Swiss Bracket Engine
+### New in v0.3.2 - Enhanced Bracket Experience
+- **Stage Filtering**: Switch between tournament stages (Groups vs Playoffs) directly in the bracket view
+- **Fullscreen Mode**: Immersive full-screen bracket visualization
+- **UI Improvements**: Premium esports styling, refined layout, and better navigation
+- **Role Switching**: Improved UX for organizers testing participant views
+
+### v0.3.1 - Swiss Bracket Engine
 - **Swiss Format**: Full Swiss tournament support with group-based pairing
 - **Auto Round Limit**: Calculates max rounds based on team count (log2)
 - **Undo Round**: Organizers can revert misgenerated rounds
-- **Vanishing Team Fix**: Pairing algorithm ensures no team is ever dropped
-- **Group Context**: Proper group preservation across all rounds
-
-### v0.3.0 - Graph-Based Bracket Engine
-- **Single & Double Elimination**: Full support with automatic winner/loser routing
-- **Finals Reset**: Automatic Grand Finals Reset for Double Elimination
-- **Modern UI**: Clean glassmorphism bracket visualization
-- **PNG Export**: High-resolution bracket export for sharing
-- **Stage Capacity**: Generate brackets based on configured stage size
-
-## Getting Started
-
-This is a React + TypeScript application built with Vite, using Supabase as the backend.
-
-### Prerequisites
-
-- Node.js 18+ 
-- npm or yarn
-- Supabase account
-
-### Installation
-
-```bash
-npm install
-npm run dev
-```
 
 ## Roadmap
 
@@ -58,10 +38,9 @@ npm run dev
 For detailed version history and updates, see [CHANGELOG.md](./CHANGELOG.md).
 
 Recent versions:
+- **v0.3.2** - Stage filters, Fullscreen mode, UI polish, Layout fixes
 - **v0.3.1** - Swiss bracket engine, undo round, max round limits, pairing fixes
 - **v0.3.0** - Graph-based bracket engine, modern UI, Finals Reset, PNG export
-- **v0.2.4** - Map veto fixes, bracket persistence improvements
-- **v0.2.3** - Dispute system improvements, bracket fixes, and map veto enhancements
 
 ## License
 
