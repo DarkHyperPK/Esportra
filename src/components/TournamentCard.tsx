@@ -167,7 +167,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-400">
           <Users className="h-4 w-4" />
-          <span>{current_participants}/{max_participants} Participants</span>
+          <span>Registered Participants: {current_participants}</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
           <Trophy className="h-4 w-4 text-green-400" />

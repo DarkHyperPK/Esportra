@@ -16,9 +16,11 @@ import { TournamentWizardData } from '@/types/tournamentWizard';
 interface WizardContainerProps {
     initialData?: TournamentWizardData;
     tournamentId?: string;
+    participantsCount?: number;
 }
 
-const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tournamentId }) => {
+const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tournamentId, participantsCount }) => {
+    // ... hooks ...
     const {
         currentStep,
         data,
@@ -39,7 +41,8 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
             case 1:
                 return <StepBasicInfo data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId} />;
             case 2:
-                return <StepFormatRules data={data} updateData={updateData} errors={errors} tournamentId={tournamentId} />;
+                // Ensure StepFormatRules receives the required props
+                return <StepFormatRules data={data} updateData={updateData} errors={errors} tournamentId={tournamentId} participantsCount={participantsCount} />;
             case 3:
                 return <StepBranding data={data} updateData={updateData} errors={errors} />;
             case 4:
@@ -55,11 +58,11 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
     const isFirstStep = currentStep === 1;
 
     return (
-        <div className="min-h-screen bg-esports-darker py-6 px-4">
-            <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-transparent text-white relative overflow-hidden font-sans">
+            <div className="max-w-4xl mx-auto relative z-10 py-6 px-4">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight">
                         {tournamentId ? 'Edit Tournament' : 'Create Tournament'}
                     </h1>
                     <p className="text-gray-400">
@@ -74,8 +77,13 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
                     onStepClick={goToStep}
                 />
 
-                {/* Form Container */}
-                <div className="bg-gaming-dark rounded-xl border border-gray-700 p-6 md:p-8">
+                {/* Form Container - GLASS STYLE */}
+                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden group">
+                    {/* Optional: MotionTiles for extra flair, same as dashboard */}
+                    <div className="absolute inset-0 opacity-20 pointer-events-none">
+                        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+                    </div>
+
                     <AnimatePresence mode="wait">
                         {renderStep()}
                     </AnimatePresence>
@@ -88,7 +96,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
                             <Button
                                 variant="outline"
                                 onClick={prevStep}
-                                className="border-gray-700"
+                                className="border-gray-700 bg-black/20 hover:bg-white/10 text-white"
                             >
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 Back
@@ -100,7 +108,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
                             <Button
                                 variant="ghost"
                                 onClick={clearDraft}
-                                className="text-gray-400 hover:text-red-400"
+                                className="text-gray-400 hover:text-red-400 hover:bg-red-500/10"
                             >
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Clear Draft
@@ -120,7 +128,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
                             <Button
                                 onClick={submitTournament}
                                 disabled={isSubmitting || Object.keys(errors).length > 0}
-                                className="bg-emerald-500 hover:bg-emerald-600 min-w-[160px]"
+                                className="bg-emerald-500 hover:bg-emerald-600 min-w-[160px] text-white font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                             >
                                 {isSubmitting ? (
                                     <>
@@ -134,7 +142,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
                         ) : (
                             <Button
                                 onClick={nextStep}
-                                className="bg-emerald-500 hover:bg-emerald-600"
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                             >
                                 Next
                                 <ArrowRight className="w-4 h-4 ml-2" />

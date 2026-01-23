@@ -17,7 +17,7 @@ interface Team {
 /**
  * Maps bracket_type to BracketSide
  */
-function mapBracketType(bracketType: string): BracketSide {
+function mapBracketType(bracketType: string): BracketSide | undefined {
     switch (bracketType) {
         case 'winners':
             return 'winners';
@@ -26,7 +26,7 @@ function mapBracketType(bracketType: string): BracketSide {
         case 'final':
             return 'final';
         default:
-            return 'winners';
+            return undefined;
     }
 }
 
@@ -95,9 +95,11 @@ export function adaptGraphToBracketMatches(
             bestOf: (node as any).best_of,
             partyCode: (node as any).party_code,
             bracketSide: mapBracketType(node.bracket_type),
+            bracketType: node.bracket_type,
             nextMatchId: winnerEdge ? `db-${winnerEdge.target_match_id}` : null,
             loserNextMatchId: loserEdge ? `db-${loserEdge.target_match_id}` : null,
             stageId: node.version_id, // Use version_id as stage reference
+            groupId: (node as any).group_id, // Map group_id for Swiss/Group stages
             x: node.x,
             y: node.y
         };

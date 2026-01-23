@@ -1,12 +1,13 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { User, Users, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  FramerDropdownRoot,
+  FramerDropdownContent,
+  FramerDropdownItem,
+  FramerDropdownTrigger,
+  FramerDropdownSeparator
+} from "@/components/ui/FramerDropdown";
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
@@ -136,12 +137,11 @@ const UserMenu = ({
         : 'Admin'
     : userRole.charAt(0).toUpperCase() + userRole.slice(1);
 
-  const menuItemClass = "w-full rounded-2xl px-4 py-2.5 text-sm text-white transition focus:bg-white/5 focus:text-white hover:bg-white/5 flex items-center";
-  const menuItemWithBadgeClass = "w-full rounded-2xl px-4 py-2.5 text-sm text-white transition focus:bg-white/5 focus:text-white hover:bg-white/5 flex items-center justify-between";
+
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <FramerDropdownRoot>
+      <FramerDropdownTrigger>
         <Button
           variant="outline"
           className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-white hover:bg-white/10 hover:text-white"
@@ -149,11 +149,8 @@ const UserMenu = ({
           <User className="mr-2 h-4 w-4" />
           {profile?.username || 'Account'}
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="z-[100] w-[320px] overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(6,8,16,0.96)] p-0 text-white shadow-[0_35px_80px_rgba(0,0,0,0.65)] backdrop-blur-2xl"
-      >
+      </FramerDropdownTrigger>
+      <FramerDropdownContent align="end" width={320}>
         <div className="border-b border-white/10 px-5 py-4">
           <p className="text-sm font-semibold text-white">
             {profile?.full_name || profile?.username || 'User'}
@@ -169,128 +166,89 @@ const UserMenu = ({
           </div>
         )}
 
-        <div className="px-3 py-3 space-y-1.5">
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/user/dashboard" className="w-full">Dashboard</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/auth/profile" className="w-full">Profile</Link>
-          </DropdownMenuItem>
+        <div className="px-1 py-1 space-y-0.5">
+          <FramerDropdownItem to="/user/dashboard">Dashboard</FramerDropdownItem>
+          <FramerDropdownItem to="/auth/profile">Profile</FramerDropdownItem>
           {!admin.isAdmin && (
-            <DropdownMenuItem asChild className={menuItemClass}>
-              <Link to="/verification" className="w-full">Verification Status</Link>
-            </DropdownMenuItem>
+            <FramerDropdownItem to="/verification">Verification Status</FramerDropdownItem>
           )}
           {hasTeam ? (
-            <DropdownMenuItem asChild className={menuItemClass}>
-              <Link to="/player/teams" className="flex w-full items-center gap-2">
-                <Users className="h-4 w-4 text-white/70 flex-shrink-0" />
-                <span>My Team</span>
-              </Link>
-            </DropdownMenuItem>
+            <FramerDropdownItem to="/player/teams" icon={<Users className="h-4 w-4" />}>
+              My Team
+            </FramerDropdownItem>
           ) : (
-            <DropdownMenuItem asChild className={menuItemWithBadgeClass}>
-              <Link to="/player/teams" className="flex w-full items-center gap-2">
+            <FramerDropdownItem to="/player/teams">
+              <div className="flex w-full items-center justify-between">
                 <span>Create Your Team</span>
                 {hasPendingInvite && (
                   <span aria-label="pending invites" className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
                 )}
-              </Link>
-            </DropdownMenuItem>
+              </div>
+            </FramerDropdownItem>
           )}
           {hasStaffInvites && (
-            <DropdownMenuItem asChild className={menuItemWithBadgeClass}>
-              <Link to="/user/staff-invites" className="flex w-full items-center gap-2">
+            <FramerDropdownItem to="/user/staff-invites">
+              <div className="flex w-full items-center justify-between">
                 <span>Staff Invites</span>
                 <span aria-label="pending staff invites" className="h-2 w-2 rounded-full bg-cyan-400 flex-shrink-0" />
-              </Link>
-            </DropdownMenuItem>
+              </div>
+            </FramerDropdownItem>
           )}
           {hasStaffAssignments && (
-            <DropdownMenuItem asChild className={menuItemWithBadgeClass}>
-              <Link to="/staff" className="flex w-full items-center gap-2">
+            <FramerDropdownItem to="/staff">
+              <div className="flex w-full items-center justify-between">
                 <span>Staff Console</span>
                 <span aria-label="active staff role" className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
-              </Link>
-            </DropdownMenuItem>
+              </div>
+            </FramerDropdownItem>
           )}
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/user/raise-dispute" className="flex w-full items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-white/70 flex-shrink-0" />
-              <span>Raise a Dispute / Support</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/user/my-disputes" className="flex w-full items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-white/70 flex-shrink-0" />
-              <span>My Disputes</span>
-            </Link>
-          </DropdownMenuItem>
+          <FramerDropdownItem to="/user/raise-dispute" icon={<MessageSquare className="h-4 w-4" />}>
+            Raise a Dispute / Support
+          </FramerDropdownItem>
+          <FramerDropdownItem to="/user/my-disputes" icon={<MessageSquare className="h-4 w-4" />}>
+            My Disputes
+          </FramerDropdownItem>
         </div>
 
-        <div className="border-t border-white/10 px-3 py-3 space-y-1.5">
+        <FramerDropdownSeparator />
+
+        <div className="px-1 py-1 space-y-0.5">
           {admin.isAdmin && admin.roles.includes('super_admin') && (
             <>
-              <DropdownMenuItem asChild className={menuItemClass}>
-                <Link to="/organizer/tournaments" className="w-full">Manage Tournaments</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className={menuItemClass}>
-                <Link to="/tournaments/create" className="w-full">Create Tournament</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className={menuItemClass}>
-                <Link to="/venue-owner/dashboard" className="w-full">Manage Venues</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className={menuItemClass}>
-                <Link to="/venues/list-venue" className="w-full">List New Venue</Link>
-              </DropdownMenuItem>
+              <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
+              <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
+              <FramerDropdownItem to="/venue-owner/dashboard">Manage Venues</FramerDropdownItem>
+              <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
             </>
           )}
 
           {!admin.isAdmin && userRole === 'venue_owner' && (
-            <DropdownMenuItem asChild className={menuItemClass}>
-              <Link to="/venues/list-venue" className="w-full">List New Venue</Link>
-            </DropdownMenuItem>
+            <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
           )}
           {!admin.isAdmin && userRole === 'organizer' && (
             <>
-              <DropdownMenuItem asChild className={menuItemClass}>
-                <Link to="/organizer/tournaments" className="w-full">Manage Tournaments</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className={menuItemClass}>
-                <Link to="/tournaments/create" className="w-full">Create Tournament</Link>
-              </DropdownMenuItem>
+              <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
+              <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
             </>
           )}
 
           {admin.isAdmin && (
             <>
-              <DropdownMenuItem asChild className={menuItemClass}>
-                <Link to="/admin/dashboard" className="w-full">Admin Dashboard</Link>
-              </DropdownMenuItem>
+              <FramerDropdownItem to="/admin/dashboard">Admin Dashboard</FramerDropdownItem>
               {admin.hasPermission('admin:assign_roles') && (
-                <DropdownMenuItem asChild className={menuItemClass}>
-                  <Link to="/admin/access" className="w-full">Admin Access</Link>
-                </DropdownMenuItem>
+                <FramerDropdownItem to="/admin/access">Admin Access</FramerDropdownItem>
               )}
               {admin.hasPermission('verification:review') && (
-                <DropdownMenuItem asChild className={menuItemClass}>
-                  <Link to="/admin/verification" className="w-full">Verification Queue</Link>
-                </DropdownMenuItem>
+                <FramerDropdownItem to="/admin/verification">Verification Queue</FramerDropdownItem>
               )}
               {admin.hasPermission('dispute:resolve') && (
-                <DropdownMenuItem asChild className={menuItemClass}>
-                  <Link to="/admin/disputes" className="w-full">Dispute Center</Link>
-                </DropdownMenuItem>
+                <FramerDropdownItem to="/admin/disputes">Dispute Center</FramerDropdownItem>
               )}
               {admin.hasPermission('settings:update') && (
-                <DropdownMenuItem asChild className={menuItemClass}>
-                  <Link to="/admin/settings" className="w-full">System Settings</Link>
-                </DropdownMenuItem>
+                <FramerDropdownItem to="/admin/settings">System Settings</FramerDropdownItem>
               )}
               {admin.hasPermission('audit:view') && (
-                <DropdownMenuItem asChild className={menuItemClass}>
-                  <Link to="/admin/audit" className="w-full">Activity Logs</Link>
-                </DropdownMenuItem>
+                <FramerDropdownItem to="/admin/audit">Activity Logs</FramerDropdownItem>
               )}
             </>
           )}
@@ -304,8 +262,8 @@ const UserMenu = ({
             Sign Out
           </button>
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </FramerDropdownContent>
+    </FramerDropdownRoot>
   );
 };
 

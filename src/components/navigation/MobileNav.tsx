@@ -8,6 +8,7 @@ import { UserRole } from "@/types/auth";
 import RoleSwitcher from "@/components/RoleSwitcher";
 
 import { motion, AnimatePresence } from "framer-motion";
+import { MotionTiles } from "@/components/effects/MotionTiles";
 
 const MobileNav = ({
   isOpen,
@@ -31,9 +32,13 @@ const MobileNav = ({
           animate={{ height: "auto", opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          className="md:hidden relative z-50 border-t border-white/10 bg-gradient-to-b from-[#080a12]/95 via-[#05060b]/90 to-[#030307]/90 backdrop-blur-2xl shadow-[0_25px_45px_rgba(0,0,0,0.65)] overflow-visible"
+          className="md:hidden fixed top-[88px] left-0 right-0 mx-4 z-[998] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-3xl overflow-hidden shadow-[0_25px_45px_rgba(0,0,0,0.65)]"
         >
-          <div className="space-y-1 px-3 pt-4 pb-4">
+          {/* Background Effects */}
+          <MotionTiles />
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-transparent to-blue-500/20 opacity-20 pointer-events-none mix-blend-overlay" />
+
+          <div className="space-y-1 px-3 pt-4 pb-4 relative z-10">
             {/* General Navigation */}
             <motion.div
               className="mb-3 space-y-1"

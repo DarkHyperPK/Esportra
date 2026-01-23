@@ -1,7 +1,15 @@
 import { BracketGraph, BracketNode, BracketEdge } from '@/types/bracket-graph';
 
 export interface IBracketGenerator {
-    generate(teams: any[], tournamentId: string, stageId?: string, bestOf?: number, bracketSize?: number): BracketGraph;
+    generate(
+        teams: any[],
+        tournamentId: string,
+        stageId?: string,
+        bestOf?: number,
+        bracketSize?: number,
+        advancementCount?: number,
+        config?: any
+    ): BracketGraph;
 }
 
 export class GraphValidator {

@@ -8,7 +8,14 @@ interface Team {
 }
 
 export class SingleEliminationGenerator implements IBracketGenerator {
-    generate(teams: Team[], tournamentId: string, stageId?: string, bestOf: number = 3, bracketSize?: number): BracketGraph {
+    generate(
+        teams: Team[],
+        tournamentId: string,
+        stageId?: string,
+        bestOf: number = 3,
+        bracketSize?: number,
+        advancementCount?: number
+    ): BracketGraph {
         const versionId = crypto.randomUUID();
         const nodes: BracketNode[] = [];
         const edges: BracketEdge[] = [];
@@ -17,7 +24,15 @@ export class SingleEliminationGenerator implements IBracketGenerator {
         // Use provided bracketSize if available, otherwise calculate based on teams
         const targetSize = bracketSize || numTeams || 2;
         const powerOfTwo = Math.pow(2, Math.ceil(Math.log2(targetSize)));
-        const numRounds = Math.log2(powerOfTwo);
+
+        // Calculate rounds based on advancementCount
+        // If advancementCount is set, stop when that many teams remain
+        // Example: 32 teams, advance 8 → log2(32) - log2(8) = 5 - 3 = 2 rounds
+        const fullRounds = Math.log2(powerOfTwo);
+        const effectiveAdvCount = advancementCount && advancementCount > 0 ? advancementCount : 1;
+        const targetRemainingTeams = Math.max(1, Math.pow(2, Math.ceil(Math.log2(effectiveAdvCount))));
+        const numRounds = Math.max(1, fullRounds - Math.log2(targetRemainingTeams));
+
         const numByes = powerOfTwo - numTeams;
 
         // Standard bracket seeding: 1 vs N, 2 vs N-1, etc.
@@ -54,14 +69,7 @@ export class SingleEliminationGenerator implements IBracketGenerator {
                         match.team2_id = team2.id;
                     }
 
-                    // Handle BYEs - if one team is missing, auto-advance the other
-                    if (match.team1_id && !match.team2_id) {
-                        match.winner_id = match.team1_id;
-                        match.status = 'completed';
-                    } else if (!match.team1_id && match.team2_id) {
-                        match.winner_id = match.team2_id;
-                        match.status = 'completed';
-                    }
+                    // BYE matches stay pending - organizer will manually advance them
                 }
 
                 nodes.push(match);
@@ -89,14 +97,7 @@ export class SingleEliminationGenerator implements IBracketGenerator {
                     };
                     edges.push(edge);
 
-                    // If source match has a winner (BYE), propagate to next match
-                    if (currentMatch.winner_id) {
-                        if (edge.target_slot === 1) {
-                            nextMatch.team1_id = currentMatch.winner_id;
-                        } else {
-                            nextMatch.team2_id = currentMatch.winner_id;
-                        }
-                    }
+                    // BYE propagation happens when organizer manually advances
                 }
             }
         }
@@ -135,22 +136,48 @@ export class SingleEliminationGenerator implements IBracketGenerator {
 
     /**
      * Generates bracket positions for standard seeding.
-     * For bracketSize 8: returns [0, 7, 3, 4, 1, 6, 2, 5]
-     * Meaning: Seed 1 -> position 0, Seed 2 -> position 7, etc.
+     * For bracketSize 8: ensures 1v8, 4v5, 2v7, 3v6 pairings
+     * This uses the standard recursive algorithm that separates top seeds.
      */
     private generateBracketPositions(bracketSize: number): number[] {
-        if (bracketSize === 1) return [0];
-        if (bracketSize === 2) return [0, 1];
+        // Generate the slot order for standard seeding
+        // This returns the order in which seeds should be placed
+        const slots = this.getStandardBracketSlots(bracketSize);
 
-        const half = bracketSize / 2;
-        const topHalf = this.generateBracketPositions(half);
-
-        const positions: number[] = [];
-        for (let i = 0; i < topHalf.length; i++) {
-            positions.push(topHalf[i] * 2);
-            positions.push((half - 1 - topHalf[i]) * 2 + 1);
+        // Create mapping: slots[i] tells us where seed i goes
+        const positions: number[] = new Array(bracketSize);
+        for (let i = 0; i < bracketSize; i++) {
+            positions[i] = slots[i];
         }
 
         return positions;
+    }
+
+    /**
+     * Standard bracket slot generation using recursive halving.
+     * For 8 slots: returns slot assignments ensuring:
+     * - Seed 1 vs Seed 8 (slots 0,1)
+     * - Seed 4 vs Seed 5 (slots 2,3)  
+     * - Seed 2 vs Seed 7 (slots 6,7)
+     * - Seed 3 vs Seed 6 (slots 4,5)
+     */
+    private getStandardBracketSlots(n: number): number[] {
+        if (n === 1) return [0];
+        if (n === 2) return [0, 1];
+
+        const slots: number[] = new Array(n);
+        const halfSize = n / 2;
+
+        // Recursively get positions for the upper half of the bracket
+        const upperSlots = this.getStandardBracketSlots(halfSize);
+
+        for (let i = 0; i < halfSize; i++) {
+            // Seed i+1 goes to position upperSlots[i] * 2
+            slots[i] = upperSlots[i] * 2;
+            // Their opponent (seed n-i) goes to the adjacent slot
+            slots[n - 1 - i] = upperSlots[i] * 2 + 1;
+        }
+
+        return slots;
     }
 }

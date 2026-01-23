@@ -40,7 +40,8 @@ const UpcomingTournaments = () => {
       // First, let's check if we can see any tournaments at all
       const { data: allTournaments, error: allError } = await supabase
         .from('tournaments')
-        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at');
+        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at')
+        .eq('is_public', true);
 
       console.log('All tournaments in DB:', allTournaments);
 
@@ -52,6 +53,8 @@ const UpcomingTournaments = () => {
       const { data, error } = await supabase
         .from('tournaments')
         .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at')
+
+        .eq('is_public', true)
         .order('start_date', { ascending: true });
 
       if (error) {
@@ -154,7 +157,7 @@ const UpcomingTournaments = () => {
   };
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white flex flex-col">
+    <div className="min-h-screen bg-transparent text-white flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8 text-esports-primary">Upcoming Tournaments</h1>
 

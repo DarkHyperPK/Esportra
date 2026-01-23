@@ -144,7 +144,7 @@ const TournamentDetails = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                <span>{tournament.current_participants}/{tournament.max_participants} Participants</span>
+                <span>Registered Participants: {tournament.current_participants}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Trophy className="h-5 w-5" />

@@ -58,22 +58,24 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
             )}
 
             {/* Tournament Name */}
+            <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-2">
-                <Label htmlFor="name">Tournament Name *</Label>
+                <Label htmlFor="name" className="text-xs font-bold text-gray-500 uppercase tracking-widest">Tournament Name *</Label>
                 <Input
                     id="name"
                     placeholder="e.g., Summer Showdown 2024"
                     value={data.name}
                     onChange={(e) => updateData({ name: e.target.value })}
-                    className={cn(errors.name && 'border-red-500')}
+                    className={cn("font-bold tracking-tight", errors.name && 'border-red-500')}
                 />
                 {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
             </div>
 
             {/* Game Selection */}
+            <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                    <Label>Game *</Label>
+                    <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Game *</Label>
                     {isEditMode && <Lock className="w-3 h-3 text-gray-500" />}
                 </div>
                 <Select
@@ -127,8 +129,9 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
             </AnimatePresence>
 
             {/* Tournament Type */}
+            <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-3">
-                <Label>Tournament Type</Label>
+                <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Tournament Type</Label>
                 <RadioGroup
                     value={data.isOnline ? 'online' : 'lan'}
                     onValueChange={(value) => updateData({ isOnline: value === 'online' })}
@@ -176,7 +179,8 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         exit={{ opacity: 0, height: 0 }}
                         className="space-y-2 overflow-hidden"
                     >
-                        <Label htmlFor="venue">Venue *</Label>
+                        <div className="w-full h-px bg-white/5 my-6" />
+                        <Label htmlFor="venue" className="text-xs font-bold text-gray-500 uppercase tracking-widest">Venue *</Label>
                         <Input
                             id="venue"
                             placeholder="Enter venue name or address"
@@ -190,22 +194,22 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
             </AnimatePresence>
 
             {/* Visibility */}
+            <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-3">
-                <Label>Visibility</Label>
+                <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Visibility</Label>
                 <RadioGroup
                     value={data.visibility}
                     onValueChange={(value: any) => updateData({ visibility: value })}
-                    className="grid grid-cols-3 gap-3"
+                    className="grid grid-cols-2 gap-4"
                 >
                     {[
-                        { value: 'public', icon: Eye, label: 'Public', desc: 'Anyone can see' },
-                        { value: 'unlisted', icon: EyeOff, label: 'Unlisted', desc: 'Link only' },
-                        { value: 'private', icon: Lock, label: 'Private', desc: 'Invite only' },
+                        { value: 'public', icon: Eye, label: 'Public', desc: 'Visible to everyone' },
+                        { value: 'unlisted', icon: EyeOff, label: 'Unlisted (Draft)', desc: 'Only you can see' },
                     ].map((option) => (
                         <label
                             key={option.value}
                             className={cn(
-                                "flex flex-col items-center p-3 rounded-lg border-2 cursor-pointer transition-all text-center",
+                                "flex flex-col items-center p-4 rounded-lg border-2 cursor-pointer transition-all text-center",
                                 data.visibility === option.value
                                     ? "border-emerald-500 bg-emerald-500/10"
                                     : "border-white/10 hover:border-white/20"
@@ -213,20 +217,21 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         >
                             <RadioGroupItem value={option.value} className="sr-only" />
                             <option.icon className={cn(
-                                "w-5 h-5 mb-1",
+                                "w-6 h-6 mb-2",
                                 data.visibility === option.value ? "text-emerald-400" : "text-gray-400"
                             )} />
                             <div className="text-sm font-medium text-white">{option.label}</div>
-                            <div className="text-xs text-gray-500">{option.desc}</div>
+                            <div className="text-xs text-gray-500 mt-1">{option.desc}</div>
                         </label>
                     ))}
                 </RadioGroup>
             </div>
 
             {/* Date and Time */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="startDate" className="flex items-center gap-2">
+            <div className="w-full h-px bg-white/5 my-6" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2 md:border-r border-white/10 pr-4">
+                    <Label htmlFor="startDate" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                         <Calendar className="w-4 h-4" />
                         Start Date *
                     </Label>
@@ -236,12 +241,12 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         min={today}
                         value={data.startDate}
                         onChange={(e) => updateData({ startDate: e.target.value })}
-                        className={cn(errors.startDate && 'border-red-500', "[color-scheme:dark]")}
+                        className={cn(errors.startDate && 'border-red-500', "[color-scheme:dark] font-bold tracking-tight")}
                     />
                     {errors.startDate && <p className="text-sm text-red-500">{errors.startDate}</p>}
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="startTime" className="flex items-center gap-2">
+                <div className="space-y-2 pl-2">
+                    <Label htmlFor="startTime" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                         <Clock className="w-4 h-4" />
                         Start Time *
                     </Label>
@@ -250,7 +255,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         type="time"
                         value={data.startTime}
                         onChange={(e) => updateData({ startTime: e.target.value })}
-                        className={cn(errors.startTime && 'border-red-500', "[color-scheme:dark]")}
+                        className={cn(errors.startTime && 'border-red-500', "[color-scheme:dark] font-bold tracking-tight")}
                     />
                     {errors.startTime && <p className="text-sm text-red-500">{errors.startTime}</p>}
                 </div>

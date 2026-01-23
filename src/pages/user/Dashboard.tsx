@@ -49,7 +49,7 @@ const UserDashboard = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user) return;
-      
+
       setLoading(true);
       try {
         // Try to fetch venue bookings (handle gracefully if table doesn't exist)
@@ -83,7 +83,7 @@ const UserDashboard = () => {
               status: booking.status,
               created_at: booking.created_at
             })) || [];
-            
+
             setBookings(formattedBookings);
           }
         } catch (err) {
@@ -95,14 +95,14 @@ const UserDashboard = () => {
         try {
           // Step 1: Get all teams the user is a member of (from team_members and team_roster_members)
           const userTeamIds = new Set<string>();
-          
+
           // Get teams where user is owner
           const { data: ownedTeams } = await supabase
             .from('teams')
             .select('id')
             .eq('owner_id', user.id);
           (ownedTeams || []).forEach(team => userTeamIds.add(team.id));
-          
+
           // Get teams where user is a member
           const { data: teamMemberships } = await supabase
             .from('team_members')
@@ -110,7 +110,7 @@ const UserDashboard = () => {
             .eq('user_id', user.id)
             .eq('is_active', true);
           (teamMemberships || []).forEach(membership => userTeamIds.add(membership.team_id));
-          
+
           // Get teams where user is in a roster
           const { data: rosterMemberships } = await supabase
             .from('team_roster_members')
@@ -122,13 +122,13 @@ const UserDashboard = () => {
               userTeamIds.add(rm.team_rosters.team_id);
             }
           });
-          
+
           const teamIdsArray = Array.from(userTeamIds);
-          
+
           // Step 2: Fetch tournament participations
           // We'll fetch in multiple queries and combine results since Supabase .or() doesn't work well with .in()
           const allParticipations: any[] = [];
-          
+
           // Query 1: Solo registrations
           const { data: soloData } = await supabase
             .from('tournament_participants')
@@ -154,7 +154,7 @@ const UserDashboard = () => {
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
           if (soloData) allParticipations.push(...soloData);
-          
+
           // Query 2: Team captain registrations
           const { data: captainData } = await supabase
             .from('tournament_participants')
@@ -180,7 +180,7 @@ const UserDashboard = () => {
             .eq('team_captain_id', user.id)
             .order('created_at', { ascending: false });
           if (captainData) allParticipations.push(...captainData);
-          
+
           // Query 3: Team member registrations (if user has teams)
           let teamMemberData: any[] = [];
           if (teamIdsArray.length > 0) {
@@ -209,7 +209,7 @@ const UserDashboard = () => {
               .order('created_at', { ascending: false });
             if (memberData) teamMemberData = memberData;
           }
-          
+
           // Combine and deduplicate by participation id
           const participationMap = new Map<string, any>();
           [...allParticipations, ...teamMemberData].forEach(p => {
@@ -228,17 +228,17 @@ const UserDashboard = () => {
               if (participation.user_id === user.id) {
                 return true;
               }
-              
+
               // Team captain
               if (participation.team_captain_id === user.id) {
                 return true;
               }
-              
+
               // Team member - check if team_id is in user's teams
               if (participation.team_id && userTeamIds.has(participation.team_id)) {
                 return true;
               }
-              
+
               return false;
             });
 
@@ -253,14 +253,14 @@ const UserDashboard = () => {
                 registered_at: participation.created_at
               }))
               .filter(t => t.id != null); // Filter out any null/undefined tournament IDs
-            
+
             console.log('[Dashboard] Found tournament registrations:', {
               userTeams: userTeamIds.size,
               totalParticipations: participationData?.length || 0,
               userParticipations: userParticipations.length,
               formattedTournaments: formattedTournaments.length
             });
-            
+
             setTournaments(formattedTournaments);
           }
         } catch (err) {
@@ -282,7 +282,7 @@ const UserDashboard = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-esports-dark text-white flex flex-col">
+      <div className="min-h-screen bg-transparent text-white flex flex-col">
         <main className="flex-grow container mx-auto px-4 py-8 flex justify-center items-center">
           <p>Loading...</p>
         </main>
@@ -296,7 +296,7 @@ const UserDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white flex flex-col">
+    <div className="min-h-screen bg-transparent text-white flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
@@ -319,13 +319,13 @@ const UserDashboard = () => {
               <TabsTrigger value="bookings">Venue Bookings</TabsTrigger>
               <TabsTrigger value="tournaments">Tournaments</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="bookings">
               <h2 className="text-xl font-semibold mb-4">My Venue Bookings</h2>
               {loading ? (
                 <div className="space-y-4">
                   {Array(3).fill(0).map((_, index) => (
-                    <Card key={index} className="bg-gaming-dark border-gaming-gray/30">
+                    <Card key={index} className="bg-black/80 backdrop-blur-xl border-white/10">
                       <CardHeader className="pb-2">
                         <Skeleton className="h-6 w-1/3 bg-gaming-gray/30" />
                         <Skeleton className="h-4 w-1/4 bg-gaming-gray/30" />
@@ -340,7 +340,7 @@ const UserDashboard = () => {
                   ))}
                 </div>
               ) : bookings.length === 0 ? (
-                <Card className="bg-gaming-dark border-gaming-gray/30">
+                <Card className="bg-black/80 backdrop-blur-xl border-white/10">
                   <CardHeader>
                     <CardTitle>No Bookings Yet</CardTitle>
                     <CardDescription>You haven't made any venue bookings yet</CardDescription>
@@ -354,15 +354,15 @@ const UserDashboard = () => {
               ) : (
                 <div className="space-y-4">
                   {bookings.map(booking => (
-                    <Card key={booking.id} className="bg-gaming-dark border-gaming-gray/30">
+                    <Card key={booking.id} className="bg-black/80 backdrop-blur-xl border-white/10">
                       <CardHeader className="pb-2">
                         <div className="flex justify-between">
                           <CardTitle>{booking.venue_name}</CardTitle>
-                          <Badge 
-                            variant={booking.status === 'completed' ? 'default' : 
-                                    booking.status === 'confirmed' ? 'secondary' : 
-                                    booking.status === 'pending' ? 'outline' : 
-                                    'destructive'}
+                          <Badge
+                            variant={booking.status === 'completed' ? 'default' :
+                              booking.status === 'confirmed' ? 'secondary' :
+                                booking.status === 'pending' ? 'outline' :
+                                  'destructive'}
                           >
                             {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                           </Badge>
@@ -392,13 +392,13 @@ const UserDashboard = () => {
                 </div>
               )}
             </TabsContent>
-            
+
             <TabsContent value="tournaments">
               <h2 className="text-xl font-semibold mb-4">My Tournament Registrations</h2>
               {loading ? (
                 <div className="space-y-4">
                   {[...Array(3)].map((_, i) => (
-                    <Card key={i} className="bg-gaming-dark border-gaming-gray/30">
+                    <Card key={i} className="bg-black/80 backdrop-blur-xl border-white/10">
                       <CardContent className="p-6">
                         <div className="space-y-3">
                           <Skeleton className="h-5 w-3/4 bg-gaming-gray/30" />
@@ -410,7 +410,7 @@ const UserDashboard = () => {
                   ))}
                 </div>
               ) : tournaments.length === 0 ? (
-                <Card className="bg-gaming-dark border-gaming-gray/30">
+                <Card className="bg-black/80 backdrop-blur-xl border-white/10">
                   <CardHeader>
                     <CardTitle>No Tournament Registrations</CardTitle>
                     <CardDescription>You haven't registered for any tournaments yet</CardDescription>
@@ -424,7 +424,7 @@ const UserDashboard = () => {
               ) : (
                 <div className="space-y-4">
                   {tournaments.map(tournament => (
-                    <Card key={tournament.id} className="bg-gaming-dark border-gaming-gray/30">
+                    <Card key={tournament.id} className="bg-black/80 backdrop-blur-xl border-white/10">
                       <CardHeader className="pb-2">
                         <div className="flex justify-between">
                           <CardTitle>{tournament.name}</CardTitle>

@@ -3,15 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Layers, Plus, Users, Trophy, Lock, Unlock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, Eye } from 'lucide-react';
+import { Layers, Plus, Users, Trophy, Lock, Unlock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, Eye, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import { StageSetupWizard } from '@/components/organizer/wizard/StageSetupWizard';
 import { SingleEliminationGenerator } from '@/services/bracket/SingleEliminationGenerator';
 import { DoubleEliminationGenerator } from '@/services/bracket/DoubleEliminationGenerator';
+import { SwissGenerator } from '@/services/bracket/SwissGenerator';
+import { RoundRobinGenerator } from '@/services/bracket/RoundRobinGenerator';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { GraphValidator } from '@/services/bracket/BracketGenerator';
+import { StageCompletionService } from '@/services/bracket/StageCompletionService';
+import { useStageRealtime } from '@/hooks/useStageRealtime';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
@@ -33,6 +37,21 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const [newStageCapacity, setNewStageCapacity] = useState<number | ''>('');
     const [newStageAdvancement, setNewStageAdvancement] = useState<number | ''>('');
     const [hasBrackets, setHasBrackets] = useState<Record<string, boolean>>({});
+    const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+    const [deleteBracketDialogOpen, setDeleteBracketDialogOpen] = useState(false);
+    const [stageToDelete, setStageToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Subscribe to realtime stage updates - this will trigger onUpdate when stages change
+    useStageRealtime({
+        tournamentId,
+        enabled: true,
+        onStageStatusChange: (stageId, newStatus) => {
+            console.log(`[StageManagementTab] Stage ${stageId} status changed to: ${newStatus}`);
+            // Trigger parent refresh to get latest stage data
+            onUpdate();
+        }
+    });
 
     useEffect(() => {
         const checkBrackets = async () => {
@@ -65,8 +84,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     stage_order: newOrder,
                     capacity: newStageCapacity === '' ? null : Number(newStageCapacity),
                     advancement_count: newStageAdvancement === '' ? null : Number(newStageAdvancement),
-                    status: 'upcoming',
-                    config: {}
+                    status: 'upcoming'
                 });
 
             if (error) throw error;
@@ -86,6 +104,37 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
     const handleDeleteStage = async (stageId: string) => {
         try {
+            const db = supabase as any;
+
+            // First, get all versions for this stage
+            const { data: versions } = await db
+                .from('brkt_versions')
+                .select('id')
+                .eq('stage_id', stageId);
+
+            if (versions && versions.length > 0) {
+                const versionIds = versions.map((v: any) => v.id);
+
+                // Delete edges for these versions
+                await db
+                    .from('brkt_advancements')
+                    .delete()
+                    .in('version_id', versionIds);
+
+                // Delete nodes for these versions
+                await db
+                    .from('brkt_matches')
+                    .delete()
+                    .in('version_id', versionIds);
+
+                // Delete versions
+                await db
+                    .from('brkt_versions')
+                    .delete()
+                    .eq('stage_id', stageId);
+            }
+
+            // Now delete the stage
             const { error } = await supabase
                 .from('tournament_stages')
                 .delete()
@@ -93,11 +142,118 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             if (error) throw error;
 
-            toast({ title: 'Stage deleted', description: 'The stage has been removed.' });
+            // Fix #7: Reorder remaining stages to close gaps
+            const remainingStages = stages
+                .filter(s => s.id !== stageId)
+                .sort((a, b) => a.stage_order - b.stage_order);
+
+            for (let i = 0; i < remainingStages.length; i++) {
+                if (remainingStages[i].stage_order !== i + 1) {
+                    await supabase
+                        .from('tournament_stages')
+                        .update({ stage_order: i + 1 })
+                        .eq('id', remainingStages[i].id);
+                }
+            }
+
+            toast({ title: 'Stage deleted', description: 'The stage and its bracket data have been removed.' });
             onUpdate();
         } catch (error: any) {
             console.error('Error deleting stage:', error);
             toast({ title: 'Error', description: error.message || 'Failed to delete stage', variant: 'destructive' });
+        }
+    };
+
+    const handleDeleteAllStages = async () => {
+        try {
+            setIsDeleting(true);
+            const db = supabase as any;
+
+            // Get all stage IDs
+            const stageIds = stages.map(s => s.id);
+
+            // Get all versions for these stages
+            const { data: versions } = await db
+                .from('brkt_versions')
+                .select('id')
+                .in('stage_id', stageIds);
+
+            if (versions && versions.length > 0) {
+                const versionIds = versions.map((v: any) => v.id);
+
+                // Delete edges, nodes, then versions
+                await db.from('brkt_advancements').delete().in('version_id', versionIds);
+                await db.from('brkt_matches').delete().in('version_id', versionIds);
+                await db.from('brkt_versions').delete().in('stage_id', stageIds);
+            }
+
+            // Delete all stages
+            const { error } = await supabase
+                .from('tournament_stages')
+                .delete()
+                .eq('tournament_id', tournamentId);
+
+            if (error) throw error;
+
+            toast({ title: 'All stages deleted', description: 'All tournament stages and bracket data have been removed.' });
+            setDeleteAllDialogOpen(false);
+            onUpdate();
+        } catch (error: any) {
+            console.error('Error deleting all stages:', error);
+            toast({ title: 'Error', description: error.message || 'Failed to delete stages', variant: 'destructive' });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // Reset All Stages - keeps stages but clears brackets and resets status
+    const [resetAllDialogOpen, setResetAllDialogOpen] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+
+    const handleResetAllStages = async () => {
+        try {
+            setIsResetting(true);
+            const db = supabase as any;
+
+            // Get all stage IDs
+            const stageIds = stages.map(s => s.id);
+
+            // Get all versions for these stages
+            const { data: versions } = await db
+                .from('brkt_versions')
+                .select('id')
+                .in('stage_id', stageIds);
+
+            if (versions && versions.length > 0) {
+                const versionIds = versions.map((v: any) => v.id);
+
+                // Delete bracket data: layout, edges, matches, versions
+                await db.from('brkt_layout').delete().in('version_id', versionIds);
+                await db.from('brkt_advancements').delete().in('version_id', versionIds);
+                await db.from('brkt_matches').delete().in('version_id', versionIds);
+                await db.from('brkt_versions').delete().in('stage_id', stageIds);
+            }
+
+            // Delete stage participants (advanced teams)
+            await db.from('stage_participants').delete().in('stage_id', stageIds);
+
+            // Reset all stage statuses to 'upcoming'
+            await supabase
+                .from('tournament_stages')
+                .update({ status: 'upcoming' })
+                .eq('tournament_id', tournamentId);
+
+            // Clear hasBrackets state
+            setHasBrackets({});
+
+            toast({ title: 'All stages reset', description: 'All brackets and team data have been cleared. Stages are ready to generate new brackets.' });
+            setResetAllDialogOpen(false);
+            onUpdate();
+        } catch (error: any) {
+            console.error('Error resetting all stages:', error);
+            toast({ title: 'Error', description: error.message || 'Failed to reset stages', variant: 'destructive' });
+        } finally {
+            setIsResetting(false);
         }
     };
 
@@ -126,20 +282,45 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         }
 
         try {
-            // Get teams/participants for this tournament
-            const { data: participants, error: partError } = await supabase
-                .from('tournament_participants')
-                .select('team_id, teams(id, name, logo_url)')
-                .eq('tournament_id', tournamentId)
-                .not('team_id', 'is', null);
+            // Get teams/participants for this stage
+            let teams: Array<{ id: string; name: string; logo_url?: string | null }> = [];
 
-            if (partError) throw partError;
+            if (stage.stage_order === 1) {
+                // First stage: Get all registered teams from tournament_participants
+                let query = supabase
+                    .from('tournament_participants')
+                    .select('team_id, teams(id, name, logo_url)')
+                    .eq('tournament_id', tournamentId)
+                    .not('team_id', 'is', null);
 
-            const teams = participants?.map((p: any) => ({
-                id: p.team_id,
-                name: p.teams?.name || 'Unknown',
-                logo_url: p.teams?.logo_url
-            })) || [];
+                // Mandatory: Filter for checked-in teams only
+                console.log('[StageManagement] Filtering for checked-in teams only (Mandatory)');
+                query = query.eq('status', 'checked_in');
+
+                const { data: participants, error: partError } = await query;
+
+                if (partError) throw partError;
+
+                teams = participants?.map((p: any) => ({
+                    id: p.team_id,
+                    name: p.teams?.name || 'Unknown',
+                    logo_url: p.teams?.logo_url
+                })) || [];
+            } else {
+                // Subsequent stages: Get teams from stage_participants (advanced from previous stage)
+                const { data: stageParticipants, error: spError } = await (supabase as any)
+                    .from('stage_participants')
+                    .select('team_id, teams:team_id(id, name, logo_url)')
+                    .eq('stage_id', stageId);
+
+                if (spError) throw spError;
+
+                teams = stageParticipants?.map((sp: any) => ({
+                    id: sp.team_id,
+                    name: sp.teams?.name || 'Unknown',
+                    logo_url: sp.teams?.logo_url
+                })) || [];
+            }
 
             if (teams.length < 2) {
                 toast({ title: 'Error', description: 'Need at least 2 teams to generate a bracket.', variant: 'destructive' });
@@ -159,18 +340,47 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             // Generate based on stage format
             const format = stage.format || 'single_elimination';
             let generator;
+            let bracketSize: number | undefined = undefined;
+
+            // Bracket Size remains undefined to allow auto-sizing based on participant count
+
             if (format === 'single_elimination') {
                 generator = new SingleEliminationGenerator();
             } else if (format === 'double_elimination') {
                 generator = new DoubleEliminationGenerator();
+            } else if (format === 'swiss') {
+                generator = new SwissGenerator();
+                // For Swiss, bracketSize is number of rounds.
+                // Check stage.config for swiss_rounds
+                const swissConfig = stage.config as any;
+                console.log('[StageManagement] Swiss config from stage:', swissConfig);
+                if (swissConfig && swissConfig.swiss_rounds) {
+                    bracketSize = Number(swissConfig.swiss_rounds);
+                }
+            } else if (format === 'round_robin') {
+                generator = new RoundRobinGenerator();
+                // For Round Robin, bracketSize is number of groups.
+                // Check stage.config for group_count
+                const rrConfig = stage.config as any;
+                if (rrConfig && rrConfig.group_count) {
+                    bracketSize = Number(rrConfig.group_count);
+                }
             } else {
                 toast({ title: 'Error', description: `Unsupported format: ${format}`, variant: 'destructive' });
                 return;
             }
 
             const bestOf = (stage.config as any)?.best_of || 3;
-            const bracketSize = stage.capacity || undefined;
-            const graph = generator.generate(teams, tournamentId, stageId, bestOf, bracketSize);
+            const advancementCount = stage.advancement_count || undefined;
+            console.log('[StageManagement] Calling generator with:', {
+                format,
+                teams: teams.length,
+                bestOf,
+                bracketSize,
+                advancementCount,
+                config: stage.config
+            });
+            const graph = generator.generate(teams, tournamentId, stageId, bestOf, bracketSize, advancementCount, stage.config);
             graph.version.version_number = nextVersionNumber;
 
             // Validate
@@ -184,8 +394,39 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             const repo = new MatchRepository();
             await repo.createVersion(graph);
 
+            // Check for immediate completion (e.g. Byes)
+            const completionService = new StageCompletionService();
+            const { isComplete } = await completionService.checkStageCompletion(stageId);
+
+            if (isComplete) {
+                const { error: updateError } = await supabase
+                    .from('tournament_stages')
+                    .update({ status: 'completed' })
+                    .eq('id', stageId);
+
+                if (!updateError) {
+                    toast({ title: 'Stage Completed', description: 'Stage automatically completed due to Byes.' });
+                    onUpdate();
+                }
+            }
+
             // Update state and navigate
             setHasBrackets(prev => ({ ...prev, [stageId]: true }));
+
+            // Runtime BYE warning (Medium Priority)
+            if (format === 'single_elimination' || format === 'double_elimination') {
+                const actualBracketSize = Math.pow(2, Math.ceil(Math.log2(teams.length)));
+                const byeCount = actualBracketSize - teams.length;
+                const byePercentage = (byeCount / actualBracketSize) * 100;
+                if (byePercentage > 50) {
+                    toast({
+                        title: 'Warning: High BYE Count',
+                        description: `${byeCount} of ${actualBracketSize} slots are BYEs (${byePercentage.toFixed(0)}%). Consider adjusting team count.`,
+                        variant: 'destructive'
+                    });
+                }
+            }
+
             toast({ title: 'Success', description: 'Bracket generated successfully!' });
             navigate(`/organizer/tournament/${slug}/manage-bracket/${stageId}`);
         } catch (error: any) {
@@ -194,25 +435,35 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         }
     };
 
-    const handleDeleteStageBracket = async (stageId: string) => {
-        if (!confirm('Are you sure you want to delete this bracket? This action cannot be undone.')) return;
+    const handleDeleteStageBracket = (stageId: string) => {
+        setStageToDelete(stageId);
+        setDeleteBracketDialogOpen(true);
+    };
+
+    const confirmDeleteStageBracket = async () => {
+        if (!stageToDelete) return;
 
         try {
+            setIsDeleting(true);
             // Delete all brkt_versions for this stage (cascade will delete matches, edges, etc.)
             const { error } = await (supabase as any)
                 .from('brkt_versions')
                 .delete()
-                .eq('stage_id', stageId);
+                .eq('stage_id', stageToDelete);
 
             if (error) throw error;
 
             // Update local state
-            setHasBrackets(prev => ({ ...prev, [stageId]: false }));
+            setHasBrackets(prev => ({ ...prev, [stageToDelete]: false }));
             toast({ title: 'Success', description: 'Bracket deleted successfully.' });
+            setDeleteBracketDialogOpen(false);
+            setStageToDelete(null);
             onUpdate();
         } catch (error: any) {
             console.error('Error deleting bracket:', error);
             toast({ title: 'Error', description: error.message || 'Failed to delete bracket', variant: 'destructive' });
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -223,12 +474,14 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
     const handleAdvanceTeams = async (stageId: string) => {
         try {
-            const { data, error } = await supabase.rpc('advance_teams_to_next_stage', {
-                p_current_stage_id: stageId
-            });
+            const service = new StageCompletionService();
+            const result = await service.advanceTeamsToNextStage(stageId);
 
-            if (error) throw error;
-            toast({ title: 'Teams Advanced', description: `${data} teams have been advanced to the next stage.` });
+            if (!result.success) {
+                throw new Error(result.error);
+            }
+
+            toast({ title: 'Teams Advanced', description: `${result.advancedCount} teams have been advanced to the next stage.` });
             onUpdate();
         } catch (error: any) {
             console.error('Error advancing teams:', error);
@@ -271,31 +524,43 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
     return (
         <>
-            <Card className="bg-gaming-dark border-gaming-gray/30">
-                <CardHeader className="flex flex-row items-center justify-between">
+            <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4 flex flex-row items-center justify-between space-y-0">
                     <div>
                         <CardTitle>Tournament Stages</CardTitle>
                         <p className="text-sm text-gray-400 mt-1">Manage the different phases of your tournament.</p>
                     </div>
                     <div className="flex gap-2">
+                        {stages.length > 0 && (
+                            <Button
+                                onClick={() => setResetAllDialogOpen(true)}
+                                variant="outline"
+                                className="border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 flex items-center gap-2"
+                            >
+                                <RefreshCw className="w-4 h-4" />
+                                Reset All
+                            </Button>
+                        )}
+                        {stages.length > 0 && (
+                            <Button
+                                onClick={() => setDeleteAllDialogOpen(true)}
+                                variant="outline"
+                                className="border-red-500/30 text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Delete All
+                            </Button>
+                        )}
                         <Button
                             onClick={() => setWizardOpen(true)}
-                            variant="outline"
-                            className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2"
                         >
                             <Layers className="w-4 h-4" />
                             {stages.length > 0 ? 'Manage Stages' : 'Create Tournament Stages'}
                         </Button>
-                        <Button
-                            onClick={() => setAddStageDialogOpen(true)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Add Stage
-                        </Button>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                     {stages.length === 0 ? (
                         <div className="text-center py-12 border-2 border-dashed border-gaming-gray/20 rounded-xl">
                             <Layers className="w-12 h-12 text-gaming-gray/40 mx-auto mb-4" />
@@ -430,7 +695,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                         ) : (
                                                             <>
                                                                 <Shuffle className="w-3.5 h-3.5 mr-2" />
-                                                                Generate Bracket
+                                                                {stage.format === 'swiss' ? 'Generate Round 1' :
+                                                                    stage.format === 'round_robin' ? 'Generate Groups' :
+                                                                        'Generate Bracket'}
                                                             </>
                                                         )}
                                                     </Button>
@@ -486,7 +753,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     <DialogHeader>
                         <DialogTitle>Add Tournament Stage</DialogTitle>
                         <DialogDescription>
-                            Define a new stage for your tournament.
+                            {stages.length === 0
+                                ? 'Define the first stage for your tournament.'
+                                : `Adding Stage ${stages.length + 1}. Capacity will be linked to Stage ${stages.length}'s advancement count.`}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -494,7 +763,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                             <label className="text-sm font-medium text-gray-200">Stage Name</label>
                             <input
                                 className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-white outline-none focus:border-emerald-500/50"
-                                placeholder="e.g. Qualifiers, Playoffs"
+                                placeholder="e.g. Qualifiers, Playoffs, Finals"
                                 value={newStageName}
                                 onChange={(e) => setNewStageName(e.target.value)}
                             />
@@ -514,30 +783,164 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Capacity</label>
-                                <input
-                                    type="number"
-                                    className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-white outline-none focus:border-emerald-500/50"
-                                    placeholder="Unlimited"
-                                    value={newStageCapacity}
-                                    onChange={(e) => setNewStageCapacity(e.target.value === '' ? '' : parseInt(e.target.value))}
-                                />
+                                <label className="text-sm font-medium text-gray-200 flex items-center justify-between">
+                                    <span>Capacity</span>
+                                    {stages.length > 0 && stages[stages.length - 1]?.advancement_count && (
+                                        <span className="text-xs text-emerald-400">From Stage {stages.length}</span>
+                                    )}
+                                </label>
+                                {stages.length === 0 ? (
+                                    <>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-white outline-none focus:border-emerald-500/50"
+                                            placeholder="From tournament max teams"
+                                            value={newStageCapacity}
+                                            onChange={(e) => setNewStageCapacity(e.target.value === '' ? '' : parseInt(e.target.value))}
+                                            disabled
+                                        />
+                                        <p className="text-xs text-gray-500">Stage 1 capacity = tournament max teams</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-gray-800/50 border border-emerald-500/30 rounded-md px-3 py-2 text-gray-300 cursor-not-allowed"
+                                            value={stages[stages.length - 1]?.advancement_count || 'Not set'}
+                                            disabled
+                                        />
+                                        <p className="text-xs text-gray-500">
+                                            {stages[stages.length - 1]?.advancement_count
+                                                ? `${stages[stages.length - 1]?.advancement_count} teams from Stage ${stages.length}`
+                                                : `⚠️ Stage ${stages.length} has no advancement count set`}
+                                        </p>
+                                    </>
+                                )}
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-200">Advancement</label>
+                                <label className="text-sm font-medium text-gray-200">Advancement Count</label>
                                 <input
                                     type="number"
                                     className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-white outline-none focus:border-emerald-500/50"
-                                    placeholder="None"
+                                    placeholder="N/A (Last Stage)"
                                     value={newStageAdvancement}
                                     onChange={(e) => setNewStageAdvancement(e.target.value === '' ? '' : parseInt(e.target.value))}
                                 />
+                                <p className="text-xs text-gray-500">Teams advancing to next stage</p>
                             </div>
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setAddStageDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAddStage} className="bg-emerald-600 hover:bg-emerald-500">Create Stage</Button>
+                        <Button
+                            onClick={() => {
+                                // Auto-set capacity from previous stage advancement
+                                if (stages.length > 0) {
+                                    const prevAdvancement = stages[stages.length - 1]?.advancement_count;
+                                    if (prevAdvancement) {
+                                        setNewStageCapacity(prevAdvancement);
+                                    }
+                                }
+                                handleAddStage();
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-500"
+                            disabled={!newStageName || (stages.length > 0 && !stages[stages.length - 1]?.advancement_count)}
+                        >
+                            Create Stage
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete All Confirmation Dialog */}
+            <Dialog open={deleteAllDialogOpen} onOpenChange={setDeleteAllDialogOpen}>
+                <DialogContent className="bg-gaming-dark border border-red-500/30 sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-400">Delete All Stages</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete all {stages.length} stage(s) and their bracket data? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/30">
+                            <p className="text-sm text-red-300">⚠️ This will permanently delete:</p>
+                            <ul className="text-sm text-gray-400 mt-2 list-disc list-inside">
+                                <li>All {stages.length} tournament stages</li>
+                                <li>All generated brackets</li>
+                                <li>All match data for these stages</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteAllDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            onClick={handleDeleteAllStages}
+                            className="bg-red-600 hover:bg-red-500"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete All Stages'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Bracket Confirmation Dialog */}
+            <Dialog open={deleteBracketDialogOpen} onOpenChange={setDeleteBracketDialogOpen}>
+                <DialogContent className="bg-gaming-dark border border-red-500/30 sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-400">Delete Bracket?</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete the bracket for this stage? All match data and scores will be lost.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/30">
+                            <p className="text-sm text-red-300">⚠️ This action cannot be undone.</p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteBracketDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            onClick={confirmDeleteStageBracket}
+                            className="bg-red-600 hover:bg-red-500"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete Bracket'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Reset All Confirmation Dialog */}
+            <Dialog open={resetAllDialogOpen} onOpenChange={setResetAllDialogOpen}>
+                <DialogContent className="bg-gaming-dark border border-yellow-500/30 sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-yellow-400">Reset All Stages</DialogTitle>
+                        <DialogDescription>
+                            This will clear all brackets and reset stage statuses, but keep your stage configuration.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                            <p className="text-sm text-yellow-300">⚠️ This will reset:</p>
+                            <ul className="text-sm text-gray-400 mt-2 list-disc list-inside">
+                                <li>All generated brackets</li>
+                                <li>All match results and scores</li>
+                                <li>All team advancements between stages</li>
+                                <li>All stage statuses (back to 'upcoming')</li>
+                            </ul>
+                            <p className="text-sm text-green-400 mt-3">✓ Your stage configuration will be preserved</p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setResetAllDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            onClick={handleResetAllStages}
+                            className="bg-yellow-600 hover:bg-yellow-500"
+                            disabled={isResetting}
+                        >
+                            {isResetting ? 'Resetting...' : 'Reset All Stages'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

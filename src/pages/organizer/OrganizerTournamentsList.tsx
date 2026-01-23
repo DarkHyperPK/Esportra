@@ -40,18 +40,18 @@ const OrganizerTournamentsList: React.FC = () => {
 
       const mappedTournaments: Tournament[] = Array.isArray(data)
         ? (data as any[]).map((t) => ({
-            id: t.id,
-            name: t.name,
-            game: t.game,
-            date: t.date,
-            time: t.time,
-            venue: t.venue,
-            max_participants: t.max_participants,
-            current_participants: 0,
-            status: 'upcoming',
-            team_size: t.team_size ?? 1,
-            slug: t.slug,
-          }))
+          id: t.id,
+          name: t.name,
+          game: t.game,
+          date: t.date,
+          time: t.time,
+          venue: t.venue,
+          max_participants: t.max_participants,
+          current_participants: 0,
+          status: 'upcoming',
+          team_size: t.team_size ?? 1,
+          slug: t.slug,
+        }))
         : [];
 
       setTournaments(mappedTournaments);
@@ -102,7 +102,7 @@ const OrganizerTournamentsList: React.FC = () => {
                   </div>
                   <div className="flex items-center text-gray-400">
                     <span className="mr-2">👥</span>
-                    {tournament.current_participants} / {tournament.max_participants} Participants
+                    Registered Participants: {tournament.current_participants}
                   </div>
                   <div className="flex justify-between items-center mt-4">
                     <span className="text-sm text-gray-400">

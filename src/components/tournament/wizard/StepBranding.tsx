@@ -21,27 +21,33 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
             </div>
 
             {/* Image Uploads */}
+            <div className="w-full h-px bg-white/5 my-6" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <ImageUploader
-                    value={data.bannerUrl}
-                    onChange={(url) => updateData({ bannerUrl: url })}
-                    aspectRatio="banner"
-                    label="Tournament Banner"
-                    helperText="Displayed on the tournament page header"
-                />
-                <ImageUploader
-                    value={data.logoUrl}
-                    onChange={(url) => updateData({ logoUrl: url })}
-                    aspectRatio="logo"
-                    label="Tournament Logo"
-                    helperText="Displayed on cards and brackets"
-                />
+                <div className="md:border-r border-white/10 pr-6">
+                    <ImageUploader
+                        value={data.bannerUrl}
+                        onChange={(url) => updateData({ bannerUrl: url })}
+                        aspectRatio="banner"
+                        label="Tournament Banner"
+                        helperText="Displayed on the tournament page header"
+                    />
+                </div>
+                <div>
+                    <ImageUploader
+                        value={data.logoUrl}
+                        onChange={(url) => updateData({ logoUrl: url })}
+                        aspectRatio="logo"
+                        label="Tournament Logo"
+                        helperText="Displayed on cards and brackets"
+                    />
+                </div>
             </div>
 
             {/* Prize Pool & Entry Fee */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="prizePool" className="flex items-center gap-2">
+            <div className="w-full h-px bg-white/5 my-6" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2 md:border-r border-white/10 pr-6">
+                    <Label htmlFor="prizePool" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                         <DollarSign className="w-4 h-4" />
                         Prize Pool (PKR) *
                     </Label>
@@ -50,12 +56,12 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                         placeholder="e.g., 50000"
                         value={data.prizePool}
                         onChange={(e) => updateData({ prizePool: e.target.value })}
-                        className={cn(errors.prizePool && 'border-red-500')}
+                        className={cn("font-bold tracking-tight", errors.prizePool && 'border-red-500')}
                     />
                     {errors.prizePool && <p className="text-sm text-red-500">{errors.prizePool}</p>}
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="entryFee" className="flex items-center gap-2">
+                    <Label htmlFor="entryFee" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                         <DollarSign className="w-4 h-4" />
                         Entry Fee (PKR)
                     </Label>
@@ -64,7 +70,7 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                         placeholder="Enter amount or 'Free'"
                         value={data.entryFee}
                         onChange={(e) => updateData({ entryFee: e.target.value })}
-                        className={cn(errors.entryFee && 'border-red-500')}
+                        className={cn("font-bold tracking-tight", errors.entryFee && 'border-red-500')}
                     />
                     {errors.entryFee && <p className="text-sm text-red-500">{errors.entryFee}</p>}
                     <p className="text-xs text-gray-500">Type "Free" for no entry fee</p>
@@ -72,8 +78,9 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
             </div>
 
             {/* Description */}
+            <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-2">
-                <Label htmlFor="description" className="flex items-center gap-2">
+                <Label htmlFor="description" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                     <FileText className="w-4 h-4" />
                     Tournament Description *
                 </Label>
@@ -105,14 +112,15 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
             </div>
 
             {/* Social Links */}
+            <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-4">
-                <Label className="flex items-center gap-2">
+                <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                     <LinkIcon className="w-4 h-4" />
                     Social Links (optional)
                 </Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2 md:border-r border-white/10 pr-4">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                             <MessageCircle className="w-4 h-4" />
                             Discord
                         </div>
@@ -124,8 +132,8 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                         />
                         {errors.discordUrl && <p className="text-xs text-red-500">{errors.discordUrl}</p>}
                     </div>
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <div className="space-y-2 md:border-r border-white/10 pr-4">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                             <Twitter className="w-4 h-4" />
                             Twitter/X
                         </div>
@@ -138,7 +146,7 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                         {errors.twitterUrl && <p className="text-xs text-red-500">{errors.twitterUrl}</p>}
                     </div>
                     <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                             📺 Stream
                         </div>
                         <Input

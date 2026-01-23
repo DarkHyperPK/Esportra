@@ -6,11 +6,17 @@ interface ReadOnlyMatchCardProps {
     y: number;
 }
 
-export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({ match, x, y }) => {
+export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
+    match,
+    x,
+    y,
+}) => {
     const team1Won = match.winner?.id && match.winner.id === match.team1?.id;
     const team2Won = match.winner?.id && match.winner.id === match.team2?.id;
     const isCompleted = match.status === 'completed';
     const isLive = match.status === 'live';
+
+
 
     return (
         <div
@@ -31,7 +37,8 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({ match, x, 
                 )}
 
                 {/* Team 1 */}
-                <div className={`
+                <div
+                    className={`
                     flex items-center justify-between h-[35px] px-3
                     ${team1Won ? 'bg-slate-700/50' : ''}
                     border-b border-slate-700/50
@@ -45,7 +52,7 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({ match, x, 
                             </div>
                         )}
                         <span className={`text-xs font-medium truncate ${team1Won ? 'text-white' : 'text-slate-400'}`}>
-                            {match.team1?.name || 'TBD'}
+                            {match.team1?.name || (isCompleted ? 'BYE' : 'TBD')}
                         </span>
                     </div>
                     <div className="flex items-center">
@@ -57,7 +64,8 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({ match, x, 
                 </div>
 
                 {/* Team 2 */}
-                <div className={`
+                <div
+                    className={`
                     flex items-center justify-between h-[35px] px-3
                     ${team2Won ? 'bg-slate-700/50' : ''}
                 `}>
@@ -70,7 +78,7 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({ match, x, 
                             </div>
                         )}
                         <span className={`text-xs font-medium truncate ${team2Won ? 'text-white' : 'text-slate-400'}`}>
-                            {match.team2?.name || 'TBD'}
+                            {match.team2?.name || (isCompleted ? 'BYE' : 'TBD')}
                         </span>
                     </div>
                     <div className="flex items-center">

@@ -1,9 +1,10 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import MobileNav from "./navigation/MobileNav";
 import DesktopNav from "./navigation/DesktopNav";
+import { BurgerMenu } from "./ui/BurgerMenu";
 import { motion, AnimatePresence } from "framer-motion";
 
 const Navbar = () => {
@@ -11,6 +12,8 @@ const Navbar = () => {
   const { signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isManageBracketPage = location.pathname.includes('/manage-bracket/');
 
   const handleSignOut = async () => {
     try {
@@ -26,40 +29,45 @@ const Navbar = () => {
     }
   };
 
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <motion.nav
       data-mounted
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-      className="sticky top-0 z-50"
+      className={`${isManageBracketPage ? 'relative' : 'sticky top-0'} z-[999]`}
     >
-      <div className="w-full px-4 py-3 sm:px-8">
-        <div className="relative flex w-full items-center justify-between overflow-hidden rounded-[32px] glass-premium">
-          <div className="pointer-events-none absolute inset-0 opacity-20">
+      <div className="max-w-5xl mx-auto w-full px-4 py-3 sm:px-8">
+        <div
+          className={`relative flex w-full items-center justify-between rounded-3xl border border-white/10 shadow-lg transition-all duration-300 ${isScrolled ? "bg-black" : "bg-black/20 backdrop-blur-xl"
+            }`}
+        >
+          <div className="pointer-events-none absolute inset-0 opacity-20 overflow-hidden rounded-3xl">
             <div className="absolute inset-0 bg-gradient-to-b from-white/8 via-transparent to-transparent" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(120,80,200,0.08),_transparent_60%)]" />
+            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
           </div>
           <div className="relative z-10 flex w-full items-center justify-between px-6 py-3 text-white">
             {/* Logo and Brand */}
-            <motion.div
-              className="flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-2 shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
+            <div className="flex items-center gap-3">
               <Link to="/" className="flex items-center gap-2 select-none">
-                <motion.img
-                  src="/logo.svg"
+                <img
+                  src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
                   alt="Esportra Logo"
-                  className="h-8 w-8"
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.6 }}
+                  className="h-10 w-auto"
                 />
-                <span className="text-base font-semibold tracking-[0.2em] text-white uppercase">
-                  Esportra
-                </span>
               </Link>
-            </motion.div>
+            </div>
 
             {/* Desktop Navigation */}
             <DesktopNav handleSignOut={handleSignOut} />
@@ -69,21 +77,11 @@ const Navbar = () => {
               className="lg:hidden"
               whileTap={{ scale: 0.9 }}
             >
-              <button
+              <BurgerMenu
+                isOpen={mobileMenuOpen}
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="rounded-full border border-white/10 bg-white/5 p-2 text-gray-100 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                <motion.svg
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  animate={{ rotate: mobileMenuOpen ? 90 : 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </motion.svg>
-              </button>
+                className="bg-white/5 hover:bg-white/10 text-white"
+              />
             </motion.div>
           </div>
 

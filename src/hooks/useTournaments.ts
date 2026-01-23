@@ -22,6 +22,7 @@ export interface Tournament {
   current_participants?: number;
   organizer_id?: string;
   slug?: string;
+  is_public?: boolean;
 }
 
 type TournamentStatus = 'upcoming' | 'ongoing' | 'completed';
@@ -55,6 +56,7 @@ export function useTournaments(status?: TournamentStatus) {
       const { data: tournamentsData, error } = await supabase
         .from('tournaments')
         .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, created_at, updated_at, status')
+        .eq('is_public', true)
         .order('start_date', { ascending: true });
 
       if (error) throw error;

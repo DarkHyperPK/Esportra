@@ -75,8 +75,8 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                     label: `Stage ${i + 1}`,
                     value: `${stage.name} (${BRACKET_TYPE_LABELS[stage.format]})`
                 })),
-                { label: 'Max Teams', value: `${data.maxTeams} teams` },
-                { label: 'Team Size', value: `${data.teamSize} players per team` },
+                { label: 'Max Teams', value: 'Configured in Manage Stages' },
+                { label: 'Team Size', value: 'Configured in Manage Stages' },
                 ...(data.bracketType !== 'battle_royale' ? [
                     { label: 'Seeding', value: SEEDING_TYPE_LABELS[data.seedingType] },
                     ...(data.thirdPlaceMatch ? [{ label: 'Third Place Match', value: 'Yes' }] : [])
@@ -182,7 +182,7 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {section.items.map((item, i) => (
                                 <div key={i} className="space-y-1">
-                                    <div className="text-xs text-gray-500">{item.label}</div>
+                                    <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">{item.label}</div>
                                     <div className="text-sm text-white flex items-center gap-1">
                                         {(item as any).icon}
                                         {item.value}
