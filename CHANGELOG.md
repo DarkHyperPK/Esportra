@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3] - 2026-01-23
+
+### Documentation
+- **Updated README**: Added documentation for Stage Filters, Fullscreen Bracket, and recent UI improvements.
+- **Updated KNOWN_ISSUES**: Clarified limitations and versioning for the Swiss Engine.
+- **Updated Roadmap**: Reflected current progress on v0.3.x features.
+
 ## [0.3.2] - 2026-01-23
 
 ### Fixed

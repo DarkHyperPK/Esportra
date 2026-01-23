@@ -1,6 +1,9 @@
 # Known Issues
 
-## Swiss Bracket System (v0.2.4)
+## Fullscreen & Layout (v0.3.2)
+- **Mobile View**: Fullscreen mode might need landscape orientation for optimal viewing on smaller devices.
+
+## Swiss Bracket System (v0.3.1)
 
 ### 1. Undo Round Destructiveness
 - **Issue**: The "Undo Round" feature performs a *hard delete* of match records from the database (`brkt_matches`).
