@@ -1,6 +1,10 @@
 # Changelog
 
-## [0.1.7] - 2026-01-25
+## [0.3.4] - 2026-01-25
+
+### Added
+- **Premium Loading Screen**: Implemented a sophisticated, animated loading state for the Teams page/roster synchronization, replacing the generic spinner.
+- **Tournament Wins Stat**: Added a "Trophies" card to the Team Dashboard stats bar to showcase tournament victories (currently awaiting backend schema update for auto-population).
 
 ### Fixed
 - **Manage Roster Modal**: Fixed modal alignment by removing conflicting `relative` class, ensuring it centers correctly on screen.
@@ -14,9 +18,10 @@
 ## [0.3.3] - 2026-01-23
 
 ### Documentation
-- **Updated README**: Added documentation for Stage Filters, Fullscreen Bracket, and recent UI improvements.
-- **Updated KNOWN_ISSUES**: Clarified limitations and versioning for the Swiss Engine.
-- **Updated Roadmap**: Reflected current progress on v0.3.x features.
+- **Updated README**: Added documentation- **v0.3.4** - Premium Loading Screen, Tournament Wins Stat, UI/UX polish
+- **v0.3.2** - Stage filters, Fullscreen mode, UI polish, Layout fixes
+- **v0.3.1** - Swiss bracket engine, undo round, max round limits, pairing fixes
+- **v0.3.0** - Graph-based bracket engine, modern UI, Finals Reset, PNG exportadmap**: Reflected current progress on v0.3.x features.
 
 ## [0.3.2] - 2026-01-23
 
@@ -26,7 +31,10 @@
 - **Header Cleanup**: Removed redundant "Valorant Split 3" header card from the bracket view to maximize screen real estate for the bracket itself.
 
 ### Added
-- **Stage Filtering**: Added a new Stage Selector in the bracket sidebar (e.g., Groups vs Playoffs). Users can now switch between tournament stages seamlessly without leaving the view.
+- **Stage Filtering**: Added a new Stage Selector in the bracket sidebar (e.g., Groups vs- **Workaround**: Use the "Refresh" button or switch tabs if matches don't appear instantly.
+
+## Team Stats (v0.3.4)
+- **Tournament Wins**: The "Trophies" stat is currently a placeholder (0) or requires manual calculation until the `tournaments` table schema includes a dedicated `winner_id` or `standings` link.ges seamlessly without leaving the view.
 - **Fullscreen Mode**: Added a dedicated "Fullscreen" button directly within the bracket toolbar, replacing the previous header button.
 - **UI Polish**: Updated sidebar buttons to use "Poppins" font, added premium "Esports" styling (gradients, glows) to stage selectors, and improved active state visibility.
 

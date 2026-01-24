@@ -102,7 +102,7 @@ const TeamsPage = () => {
   const [selectedInvitees, setSelectedInvitees] = useState<Array<{ id: string; email: string; username?: string }>>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<Array<{ id: string; email: string; username?: string }>>([]);
   const [isSearchingInvitee, setIsSearchingInvitee] = useState(false);
-  const [teamStats, setTeamStats] = useState({ matches: 0, wins: 0, winRate: 0 });
+  const [teamStats, setTeamStats] = useState({ matches: 0, wins: 0, winRate: 0, tournamentWins: 0 });
   const [selectedTournament, setSelectedTournament] = useState<any>(null);
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
 
@@ -194,7 +194,11 @@ const TeamsPage = () => {
       const wins = data?.filter(m => m.winner_id === currentTeam.id).length || 0;
       const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
 
-      setTeamStats({ matches, wins, winRate });
+      // Mock tournament wins for now - will be replaced with actual DB query when schema supports it
+      // const { count: tournamentWins } = await supabase.from('tournaments') ...
+      const tournamentWins = 0;
+
+      setTeamStats({ matches, wins, winRate, tournamentWins });
     } catch (err) {
       console.error('Error fetching team stats:', err);
     }
@@ -1419,13 +1423,34 @@ const TeamsPage = () => {
 
   if (fetchingTeam) {
     return (
-      <div className="min-h-screen bg-esports-dark flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-esports-blue to-esports-cyan rounded-xl flex items-center justify-center">
-            <Users className="h-8 w-8 text-white animate-pulse" />
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center overflow-hidden relative">
+        {/* Background ambience */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-black to-black opacity-50" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:30px_30px] opacity-20" />
+
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Logo/Icon Pulse */}
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 animate-pulse" />
+            <div className="w-20 h-20 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center backdrop-blur-xl shadow-2xl relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent" />
+              <Users className="w-8 h-8 text-white/80 animate-pulse" />
+            </div>
+            {/* Corner accents */}
+            <div className="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-indigo-500/50" />
+            <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-indigo-500/50" />
           </div>
-          <div className="text-esports-primary text-xl font-semibold">Loading teams...</div>
-          <div className="text-esports-secondary text-sm mt-2">Please wait while we fetch your team data</div>
+
+          <div className="space-y-3 text-center">
+            <h2 className="text-2xl font-heading font-light uppercase tracking-[0.2em] text-white flex items-center justify-center gap-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0s' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0.15s' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0.3s' }} />
+            </h2>
+            <p className="text-white/30 text-xs font-mono tracking-widest uppercase animate-pulse">
+              Synchronizing Roster Data
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -1608,6 +1633,13 @@ const TeamsPage = () => {
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Win Rate</span>
                       <span className="text-xl font-mono text-indigo-400 font-medium">{teamStats.winRate}%</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Trophies</span>
+                      <span className="text-xl font-mono text-yellow-400 font-medium flex items-center gap-1">
+                        <Trophy className="w-3 h-3" />
+                        {teamStats.tournamentWins || 0}
+                      </span>
                     </div>
                   </div>
                 </div>
