@@ -19,3 +19,6 @@
 - **Issue**: Sometimes the "Matches" list needs a manual refresh or group tab switch to reflect newly generated rounds immediately if the realtime subscription lags.
 - **Impact**: Minor UX inconvenience.
 - **Workaround**: Use the "Refresh" button or switch tabs if matches don't appear instantly.
+
+## Team Stats (v0.3.4)
+- **Tournament Wins**: The "Trophies" stat is currently a placeholder (0) or requires manual calculation until the `tournaments` table schema includes a dedicated `winner_id` or `standings` link.

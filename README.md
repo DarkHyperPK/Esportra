@@ -28,8 +28,6 @@ Esportra provides a complete ecosystem for esports competitions, featuring:
 
 ## Roadmap
 
-## Roadmap
-
 **Coming in v0.4.0:**
 - Round Robin format support
 - Match scheduling with calendar integration
@@ -42,6 +40,7 @@ Esportra provides a complete ecosystem for esports competitions, featuring:
 For detailed version history and updates, see [CHANGELOG.md](./CHANGELOG.md).
 
 Recent versions:
+- **v0.3.4** - Premium Loading Screen, Tournament Wins Stat, UI/UX polish
 - **v0.3.2** - Stage filters, Fullscreen mode, UI polish, Layout fixes
 - **v0.3.1** - Swiss bracket engine, undo round, max round limits, pairing fixes
 - **v0.3.0** - Graph-based bracket engine, modern UI, Finals Reset, PNG export

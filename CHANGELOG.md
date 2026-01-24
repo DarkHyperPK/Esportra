@@ -18,10 +18,9 @@
 ## [0.3.3] - 2026-01-23
 
 ### Documentation
-- **Updated README**: Added documentation- **v0.3.4** - Premium Loading Screen, Tournament Wins Stat, UI/UX polish
-- **v0.3.2** - Stage filters, Fullscreen mode, UI polish, Layout fixes
-- **v0.3.1** - Swiss bracket engine, undo round, max round limits, pairing fixes
-- **v0.3.0** - Graph-based bracket engine, modern UI, Finals Reset, PNG exportadmap**: Reflected current progress on v0.3.x features.
+- **Updated README**: Added documentation for Stage Filters, Fullscreen Bracket, and recent UI improvements.
+- **Updated KNOWN_ISSUES**: Clarified limitations and versioning for the Swiss Engine.
+- **Updated Roadmap**: Reflected current progress on v0.3.x features.
 
 ## [0.3.2] - 2026-01-23
 
