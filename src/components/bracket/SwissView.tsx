@@ -6,6 +6,7 @@ import { BracketMatch } from '@/types/bracketTypes';
 import { MatchCard } from '@/pages/tournaments/brackets/MatchCard';
 import { Button } from '@/components/ui/button';
 import { SwissGenerator } from '@/services/bracket/SwissGenerator';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { RefreshCw, Undo2, Check, Copy, Gamepad2, Swords, Filter } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,6 +23,7 @@ interface SwissViewProps {
     onMatchUpdate?: () => void;
     tournamentId?: string;
     onByeAdvance?: (matchId: string) => void;
+    stage?: any;
 }
 
 // Extracted Component to prevent re-renders
@@ -38,7 +40,8 @@ const SwissGroupPanel = React.memo(({
     openPartyCode,
     saveScore,
     scoreDraftRef,
-    onByeAdvance
+    onByeAdvance,
+    advancementCount
 }: {
     groupMatches: BracketMatch[],
     groupStandings: TeamStanding[],
@@ -52,7 +55,8 @@ const SwissGroupPanel = React.memo(({
     openPartyCode: (m: BracketMatch) => void,
     saveScore: (m: BracketMatch) => void,
     scoreDraftRef: React.MutableRefObject<Record<string, { t1: string; t2: string }>>,
-    onByeAdvance?: (matchId: string) => void
+    onByeAdvance?: (matchId: string) => void,
+    advancementCount?: number
 }) => {
     const [selectedRound, setSelectedRound] = useState<string>('all');
 
@@ -134,6 +138,7 @@ const SwissGroupPanel = React.memo(({
                     <StandingsTable
                         standings={groupStandings}
                         title="Live Standings"
+                        advancementCount={advancementCount}
                     />
                 </div>
             </div>
@@ -148,7 +153,8 @@ export const SwissView: React.FC<SwissViewProps> = ({
     isOrganizer,
     onMatchUpdate,
     tournamentId,
-    onByeAdvance
+    onByeAdvance,
+    stage
 }) => {
     const { toast } = useToast();
     const [standings, setStandings] = useState<TeamStanding[]>([]);
@@ -173,7 +179,6 @@ export const SwissView: React.FC<SwissViewProps> = ({
 
     // Load Standings
     useEffect(() => {
-        console.log('[SwissView] Matches updated:', matches.length);
         const loadStandings = async () => {
             const data = await standingsService.calculateStandings(stageId);
             setStandings(data);
@@ -183,29 +188,57 @@ export const SwissView: React.FC<SwissViewProps> = ({
 
     // Group Logic
     const groups = useMemo(() => {
-        if (matches.length > 0) {
-            console.log('[SwissView] First match sample:', matches[0]);
-        }
         const uniqueGroups = Array.from(new Set(matches.map(m => m.groupId || (m as any).group_id).filter(Boolean)));
-        console.log('[SwissView] Unique groups found:', uniqueGroups);
         return uniqueGroups.sort();
     }, [matches]);
 
     const hasGroups = groups.length > 0;
 
+    // Determine current round
+    const allRounds = matches.map(m => m.round || (m as any).round_number || 1);
+    const currentRound = allRounds.length > 0 ? Math.max(...allRounds) : 0;
+    const isRoundComplete = matches.filter(m => (m.round || (m as any).round_number) === currentRound).every(m => m.status === 'completed');
+
+    // Calculate Max Rounds
+    const totalTeams = standings.length > 0
+        ? standings.length
+        : new Set([
+            ...matches.map(m => m.team1?.id).filter(Boolean),
+            ...matches.map(m => m.team2?.id).filter(Boolean)
+        ] as string[]).size;
+
+    const configuredMaxRounds = stage?.config?.swiss_rounds ? parseInt(stage.config.swiss_rounds) : null;
+    const maxRounds = configuredMaxRounds || (totalTeams > 0 ? Math.ceil(Math.log2(totalTeams)) : 99);
+
+    // Debug logging
+    console.log('[SwissView] Stage config:', {
+        stageId,
+        hasStage: !!stage,
+        config: stage?.config,
+        configuredMaxRounds,
+        maxRounds,
+        currentRound
+    });
+
+    const isMaxRoundsReached = currentRound >= maxRounds;
+
+
     // Handlers
     const handleGenerateNextRound = async () => {
+        if (isMaxRoundsReached) {
+            toast({ title: 'Stage Completed', description: 'Max rounds reached.', variant: 'default' });
+            return;
+        }
+
         setIsGenerating(true);
         try {
-            // Determine current round (max round across all matches)
+            // Re-calc current round just primarily safe
             const allRounds = matches.map(m => m.round || (m as any).round_number || 1);
-            const currentRound = allRounds.length > 0 ? Math.max(...allRounds) : 0;
+            const cr = allRounds.length > 0 ? Math.max(...allRounds) : 0;
 
-            console.log('Generating next round. Current:', currentRound, 'Stage:', stageId, 'Version:', versionId);
-
-            const result = await SwissGenerator.generateNextRound(stageId, versionId, currentRound);
+            const result = await SwissGenerator.generateNextRound(stageId, versionId, cr);
             if (result.success) {
-                toast({ title: 'Round Generated', description: `Round ${currentRound + 1} pairings created.` });
+                toast({ title: 'Round Generated', description: `Round ${cr + 1} pairings created.` });
                 onMatchUpdate?.();
             } else {
                 toast({ title: 'Error', description: result.message, variant: 'destructive' });
@@ -219,22 +252,21 @@ export const SwissView: React.FC<SwissViewProps> = ({
     };
 
     const handleUndoRound = async () => {
-        // Determine current round (max round across all matches)
         const allRounds = matches.map(m => m.round || (m as any).round_number || 1);
-        const currentRound = allRounds.length > 0 ? Math.max(...allRounds) : 0;
+        const cr = allRounds.length > 0 ? Math.max(...allRounds) : 0;
 
-        if (currentRound <= 1) {
+        if (cr <= 1) {
             toast({ title: 'Cannot Undo', description: 'Cannot delete the first round. Reset the stage instead.', variant: 'destructive' });
             return;
         }
 
-        if (!confirm(`Are you sure you want to delete Round ${currentRound}? This cannot be undone.`)) return;
+        if (!confirm(`Are you sure you want to delete Round ${cr}? This cannot be undone.`)) return;
 
         setIsGenerating(true);
         try {
-            const result = await SwissGenerator.deleteRound(stageId, currentRound);
+            const result = await SwissGenerator.deleteRound(stageId, cr);
             if (result.success) {
-                toast({ title: 'Round Deleted', description: `Round ${currentRound} has been removed.` });
+                toast({ title: 'Round Deleted', description: `Round ${cr} has been removed.` });
                 onMatchUpdate?.();
             } else {
                 toast({ title: 'Error', description: result.message, variant: 'destructive' });
@@ -244,6 +276,54 @@ export const SwissView: React.FC<SwissViewProps> = ({
             toast({ title: 'Error', description: 'Failed to delete round.', variant: 'destructive' });
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleAutoAdvanceByes = async () => {
+        if (!versionId) return;
+
+        try {
+            const db = supabase as any;
+            const { data: byeMatches, error: fetchError } = await db
+                .from('brkt_matches')
+                .select('*')
+                .eq('version_id', versionId)
+                .eq('status', 'pending');
+
+            if (fetchError) throw fetchError;
+
+            // Filter to only PENDING BYE matches (exactly one team)
+            const actualByeMatches = byeMatches?.filter((m: any) => {
+                const isPending = m.status === 'pending';
+                const t1 = m.team1_id;
+                const t2 = m.team2_id;
+                return isPending && ((t1 && !t2) || (!t1 && t2));
+            }) || [];
+
+            if (actualByeMatches.length === 0) {
+                toast({ title: 'No BYEs', description: 'No PENDING BYE matches to advance' });
+                return;
+            }
+
+            let advancedCount = 0;
+            for (const match of actualByeMatches) {
+                const isBo1 = (match.best_of || 1) === 1;
+                const winScore = isBo1 ? 13 : 1;
+
+                const result = await GraphMatchService.saveScoreAndAdvance(
+                    match.id,
+                    match.team1_id ? winScore : 0,
+                    match.team2_id ? winScore : 0,
+                    match.team1_id,
+                    match.team2_id
+                );
+                if (result.success) advancedCount++;
+            }
+
+            toast({ title: 'BYEs Advanced', description: `${advancedCount} BYE match(es) have been processed!` });
+            onMatchUpdate?.();
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
         }
     };
 
@@ -341,29 +421,19 @@ export const SwissView: React.FC<SwissViewProps> = ({
         }
     }, [toast, onMatchUpdate]);
 
-
-    // Determine current round for the header
-    const allRounds = matches.map(m => m.round || (m as any).round_number || 1);
-    const currentRound = allRounds.length > 0 ? Math.max(...allRounds) : 0;
-    const isRoundComplete = matches.filter(m => (m.round || (m as any).round_number) === currentRound).every(m => m.status === 'completed');
-
-    // Calculate Max Rounds for display (32 teams -> 5 rounds)
-    // Use standings count if available, otherwise estimate from matches
-    const totalTeams = standings.length > 0 ? standings.length : new Set(matches.map(m => m.team1.id).concat(matches.map(m => m.team2?.id).filter(Boolean) as string[])).size;
-    const maxRounds = totalTeams > 0 ? Math.ceil(Math.log2(totalTeams)) : 99;
-    const isMaxRoundsReached = currentRound >= maxRounds;
-
-
     return (
         <div className="space-y-6">
-            {/* Header / Controls */}
-            <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-xl border border-white/5">
-                <div>
-                    <h2 className="text-2xl font-bold text-white">Swiss Stage</h2>
-                    <p className="text-zinc-400">Round {currentRound} of {maxRounds < 99 ? maxRounds : '?'} {isMaxRoundsReached ? '(Final)' : 'in progress'}</p>
-                </div>
-                {isOrganizer && (
+            {/* Controls */}
+            {isOrganizer && (
+                <div className="flex items-center justify-between gap-2 mb-4 relative">
+                    {/* Left: Auto Advance */}
                     <div className="flex gap-2">
+                        <Button
+                            onClick={handleAutoAdvanceByes}
+                            className="bg-amber-600 hover:bg-amber-500 text-white font-medium"
+                        >
+                            Auto Advance Byes
+                        </Button>
                         <Button
                             variant="outline"
                             onClick={handleUndoRound}
@@ -373,17 +443,31 @@ export const SwissView: React.FC<SwissViewProps> = ({
                             <Undo2 className="w-4 h-4 mr-2" />
                             Undo Round
                         </Button>
-                        <Button
-                            onClick={handleGenerateNextRound}
-                            disabled={!isRoundComplete || isGenerating || isMaxRoundsReached}
-                            className={`bg-indigo-600 hover:bg-indigo-500 ${isMaxRoundsReached ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-                            {isMaxRoundsReached ? 'Stage Complete' : `Generate Round ${currentRound + 1}`}
-                        </Button>
                     </div>
-                )}
-            </div>
+
+                    {/* Center: Stage Complete Indicator */}
+                    {isMaxRoundsReached && (
+                        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full animate-in fade-in zoom-in duration-300">
+                            <Check className="w-4 h-4 text-green-500" />
+                            <span className="text-green-400 font-bold uppercase tracking-wider text-sm">Stage Completed</span>
+                        </div>
+                    )}
+
+                    {/* Right: Generate Round (Hidden if complete) */}
+                    <div>
+                        {!isMaxRoundsReached && (
+                            <Button
+                                onClick={handleGenerateNextRound}
+                                disabled={!isRoundComplete || isGenerating}
+                                className="bg-indigo-600 hover:bg-indigo-500"
+                            >
+                                <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
+                                Generate Round {currentRound + 1}
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {hasGroups ? (
                 <Tabs defaultValue={groups[0] as string} className="w-full">
@@ -422,6 +506,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                                     saveScore={saveScore}
                                     scoreDraftRef={scoreDraftRef}
                                     onByeAdvance={onByeAdvance}
+                                    advancementCount={stage?.advancement_count}
                                 />
                             </TabsContent>
                         );
@@ -442,6 +527,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                     saveScore={saveScore}
                     scoreDraftRef={scoreDraftRef}
                     onByeAdvance={onByeAdvance}
+                    advancementCount={stage?.advancement_count}
                 />
             )}
 

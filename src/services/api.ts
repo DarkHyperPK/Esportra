@@ -17,7 +17,7 @@ export const profileApi = {
       .select('*')
       .eq('id', userId)
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -29,7 +29,7 @@ export const profileApi = {
       .eq('id', userId)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   }
@@ -42,7 +42,7 @@ export const tournamentApi = {
       .from('tournaments')
       .select('*')
       .order('start_date', { ascending: true });
-    
+
     if (error) throw error;
     return data;
   },
@@ -53,7 +53,7 @@ export const tournamentApi = {
       .select('*')
       .eq('id', id)
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -64,7 +64,7 @@ export const tournamentApi = {
       .insert(tournament)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -76,14 +76,14 @@ export const tournamentApi = {
       .eq('id', id)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
 
   deleteTournament: async (id: string) => {
     try {
-      console.log('Starting tournament deletion process for tournament:', id);
+      // console.log('Starting tournament deletion process for tournament:', id);
 
       // Start a Supabase transaction
       const { data: { user } } = await supabase.auth.getUser();
@@ -106,7 +106,7 @@ export const tournamentApi = {
       }
 
       // 1. First delete all tournament participants
-      console.log('Step 1: Deleting tournament participants...');
+      // console.log('Step 1: Deleting tournament participants...');
       const { error: participantsError } = await supabase
         .from('tournament_participants')
         .delete()
@@ -129,7 +129,7 @@ export const tournamentApi = {
       }
 
       // 2. Then delete all tournament registrations
-      console.log('Step 2: Deleting tournament registrations...');
+      // console.log('Step 2: Deleting tournament registrations...');
       const { error: registrationsError } = await supabase
         .from('tournament_participants')
         .delete()
@@ -152,7 +152,7 @@ export const tournamentApi = {
       }
 
       // 3. Finally delete the tournament itself
-      console.log('Step 3: Deleting tournament...');
+      // console.log('Step 3: Deleting tournament...');
       const { error: tournamentError } = await supabase
         .from('tournaments')
         .delete()
@@ -163,17 +163,19 @@ export const tournamentApi = {
         throw tournamentError;
       }
 
-      console.log('Successfully deleted tournament and all related data');
+      // console.log('Successfully deleted tournament and all related data');
       return true;
 
     } catch (error: unknown) {
       const e = error as { message?: string; code?: string; details?: unknown };
+      /*
       console.error('Tournament deletion error:', {
         error: e,
         message: e.message,
         code: e.code,
         details: e.details
       });
+      */
       throw error;
     }
   }
@@ -186,7 +188,7 @@ export const registrationApi = {
       .from('tournament_participants')
       .select('*')
       .eq('tournament_id', tournamentId);
-    
+
     if (error) throw error;
     return data;
   },
@@ -197,7 +199,7 @@ export const registrationApi = {
       .insert(registration)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -209,7 +211,7 @@ export const registrationApi = {
       .eq('id', id)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -219,7 +221,7 @@ export const registrationApi = {
       .from('tournament_participants')
       .delete()
       .eq('id', id);
-    
+
     if (error) throw error;
   }
 };
@@ -231,7 +233,7 @@ export const venueApi = {
       .from('venues')
       .select('*')
       .order('name', { ascending: true });
-    
+
     if (error) throw error;
     return data;
   },
@@ -242,7 +244,7 @@ export const venueApi = {
       .select('*')
       .eq('id', id)
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -253,7 +255,7 @@ export const venueApi = {
       .insert(venue)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -265,7 +267,7 @@ export const venueApi = {
       .eq('id', id)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -275,7 +277,7 @@ export const venueApi = {
       .from('venues')
       .delete()
       .eq('id', id);
-    
+
     if (error) throw error;
   }
 };
@@ -288,7 +290,7 @@ export const bookingApi = {
       .select('*')
       .eq('venue_id', venueId)
       .order('booking_date', { ascending: true });
-    
+
     if (error) throw error;
     return data;
   },
@@ -299,7 +301,7 @@ export const bookingApi = {
       .insert(booking)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -311,7 +313,7 @@ export const bookingApi = {
       .eq('id', id)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -321,7 +323,7 @@ export const bookingApi = {
       .from('venue_bookings')
       .delete()
       .eq('id', id);
-    
+
     if (error) throw error;
   }
 };
@@ -334,7 +336,7 @@ export const roleApi = {
       .select('*')
       .eq('user_id', userId)
       .single();
-    
+
     if (error) throw error;
     return data;
   },
@@ -345,7 +347,7 @@ export const roleApi = {
       .upsert({ user_id: userId, role })
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   }

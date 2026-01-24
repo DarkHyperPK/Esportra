@@ -166,7 +166,7 @@ export class GraphMatchService {
         team2Score: number,
         team1Id: string | null,
         team2Id: string | null
-    ): Promise<{ success: boolean; error?: string; stageId?: string }> {
+    ): Promise<{ success: boolean; error?: string; stageId?: string; stageComplete?: boolean }> {
         // 1. Save the score
         const scoreResult = await this.saveScore(matchId, team1Score, team2Score, team1Id, team2Id);
         if (!scoreResult.success) {
@@ -303,16 +303,37 @@ export class GraphMatchService {
 
                 if (versionData?.stage_id) {
                     stageId = versionData.stage_id;
-                    // We don't import StageCompletionService here to avoid circular deps
-                    // The UI will check completion status separately
                     console.log('[GraphMatchService] Match saved for stage:', stageId);
+
+                    // Check if all matches in this stage are completed
+                    const { data: pendingMatches, count: pendingCount } = await db
+                        .from('brkt_matches')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('version_id', matchData.version_id)
+                        .neq('status', 'completed');
+
+                    if (pendingCount === 0) {
+                        // All matches completed - auto-update stage status to 'completed'
+                        console.log('[GraphMatchService] All matches completed - setting stage to completed:', stageId);
+                        const { error: updateError } = await db
+                            .from('tournament_stages')
+                            .update({ status: 'completed' })
+                            .eq('id', stageId);
+
+                        if (updateError) {
+                            console.error('[GraphMatchService] Failed to update stage status:', updateError);
+                        } else {
+                            stageComplete = true;
+                            console.log('[GraphMatchService] Stage automatically marked as completed');
+                        }
+                    }
                 }
             }
         } catch (e) {
             console.error('[GraphMatchService] Error checking stage completion:', e);
         }
 
-        return { success: true, stageId };
+        return { success: true, stageId, stageComplete };
     }
 
     /**

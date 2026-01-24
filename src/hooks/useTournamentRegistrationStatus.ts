@@ -19,15 +19,12 @@ export function useTournamentRegistrationStatus(tournamentIds: string[]) {
     }
     setLoading(true);
     const fetchStatus = async () => {
-      console.log('[useTournamentRegistrationStatus] user.id:', user.id);
-      console.log('[useTournamentRegistrationStatus] tournamentIds:', tournamentIds);
-      // Fetch all registrations for this user and these tournaments
       const { data, error } = await supabase
         .from('tournament_participants')
         .select('tournament_id')
         .in('tournament_id', tournamentIds)
         .eq('user_id', user.id);
-      console.log('[useTournamentRegistrationStatus] Supabase data:', data, 'error:', error);
+
       if (error) {
         setStatusMap({});
         setLoading(false);

@@ -19,26 +19,26 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
   const { user, session, loading: authLoading, error: authError } = useAuthState();
   const { signIn, signInWithGoogle, signOut } = useAuthActions();
   const { updateProfile } = useProfileManagement();
-  const { 
+  const {
     profile,
     loading: profileLoading,
     error: profileError,
     fetchProfile,
     clearProfile
   } = useProfile();
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   // Use the signUp from useAuthActions directly
   const { signUp: originalSignUp } = useAuthActions();
-  
+
   // Wrapper for signUp to ensure it returns void
   const signUp = async (
-    email: string, 
-    password: string, 
-    username: string, 
+    email: string,
+    password: string,
+    username: string,
     fullName?: string,
     role?: UserRole
   ): Promise<void> => {
@@ -52,22 +52,22 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
 
   // Track previous user ID to detect actual user changes
   const prevUserIdRef = React.useRef<string | null>(null);
-  
+
   // Track previous profile ID to prevent loops
   const prevProfileIdRef = React.useRef<string | null>(null);
-  
+
   // Handle auth state changes - only refetch when user actually changes
   useEffect(() => {
     if (!isMounted) return;
-    
+
     // Skip if still loading auth state
     if (authLoading) return;
-    
+
     const currentUserId = user?.id || null;
     const currentProfileId = profile?.id || null;
     const prevUserId = prevUserIdRef.current;
     const prevProfileId = prevProfileIdRef.current;
-    
+
     // Only refetch if user actually changed (not just on tab switch)
     // Also check if profile ID changed to avoid loops
     if (currentUserId === prevUserId && currentProfileId === prevProfileId && profile) {
@@ -75,56 +75,55 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
       setLoading(false);
       return;
     }
-    
+
     // Update refs for next comparison
     prevUserIdRef.current = currentUserId;
     prevProfileIdRef.current = currentProfileId;
-    
+
     const handleUserChange = async () => {
       setError(null);
-      
+
+      /*
       console.log("🔄 AuthContext: handleUserChange called", {
         user: user ? { id: user.id, email: user.email } : null,
         authLoading,
         profileLoading,
         timestamp: new Date().toISOString()
       });
-      
+      */
+
       if (user) {
         // Only fetch if we don't already have a profile for this user
         if (profile && profile.id === user.id) {
-          console.log("✅ Profile already loaded, skipping refetch");
+          // console.log("✅ Profile already loaded, skipping refetch");
           setLoading(false);
           return;
         }
-        
+
         try {
-          console.log("✅ Auth state changed, user is logged in:", user.id);
+          // console.log("✅ Auth state changed, user is logged in:", user.id);
           const profileResult = await fetchProfile(user.id);
-          
+
           // If we couldn't fetch a profile but we're authenticated
           if (!profileResult) {
             console.log("⚠️ No profile found for authenticated user. User may need to complete profile setup.");
           } else {
-            console.log("✅ Profile loaded successfully");
+
             // Update profile ID ref after successful fetch
             prevProfileIdRef.current = profileResult.id;
           }
         } catch (err: any) {
-          console.error("❌ Error fetching profile:", err);
           setError(err.message || "Failed to load profile");
         } finally {
-          console.log("🏁 Setting loading to false");
           setLoading(false);
         }
       } else {
-        console.log("🚪 Auth state changed, no user logged in");
         clearProfile();
         prevProfileIdRef.current = null;
         setLoading(false);
       }
     };
-    
+
     handleUserChange();
   }, [user?.id, authLoading, isMounted]); // Removed profile?.id from dependencies to prevent loops
 
@@ -142,7 +141,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
       console.error("No user is currently signed in.");
       return;
     }
-    
+
     await updateProfile(updates, user.id);
     await fetchProfile(user.id);
   };
@@ -151,16 +150,16 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     await signOut();
     clearProfile();
   };
-  
+
   // Role-based utility functions
   const isOrganizer = (): boolean => {
     return profile?.role === 'organizer';
   };
-  
+
   const isVenueOwner = (): boolean => {
     return profile?.role === 'venue_owner';
   };
-  
+
   const isCasual = (): boolean => {
     return profile?.role === 'casual';
   };

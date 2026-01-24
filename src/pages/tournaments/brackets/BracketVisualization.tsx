@@ -55,6 +55,7 @@ export interface BracketVisualizationProps {
 
   onRefresh?: () => void;
   onByeAdvance?: (matchId: string) => void;
+  stage?: any;
 }
 
 import { MatchCard } from './MatchCard';
@@ -77,6 +78,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   onOpenMapVeto,
   onRefresh,
   onByeAdvance,
+  stage,
 }) => {
   // Data Fetching Logic with Realtime subscriptions
   const { data: graphData, refetch: refetchGraph } = useGraphBracket(versionId || '', tournamentId || undefined);
@@ -520,6 +522,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           onMatchUpdate={handleRefresh}
           tournamentId={tournamentId}
           onByeAdvance={onByeAdvance}
+          stage={stage}
         />
       </div>
     );

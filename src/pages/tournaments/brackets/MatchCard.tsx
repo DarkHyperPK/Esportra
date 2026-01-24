@@ -71,9 +71,10 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     const [actionMode, setActionMode] = useState<'default' | 'party_code'>('default');
     const [partyCode, setPartyCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     // Scoring Hints based on BestOf
-    const bestOf = match.bestOf || 1;
+    const bestOf = match.bestOf || (match as any).best_of || 1;
     const isBo1 = bestOf === 1;
     const inputPlaceholder = isBo1 ? "13" : "0";
     const scoreTitle = isBo1 ? "Enter Rounds (e.g. 13)" : "Enter Map Wins (e.g. 2)";
@@ -92,10 +93,10 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
         const num = parseInt(value);
         if (isNaN(num)) return;
 
-        // For BO3/BO5, enforce max score (e.g. can't have 3 wins in BO3)
-        if (maxScore !== undefined && num > maxScore) {
-            return; // Ignore input if it exceeds max
-        }
+        // Validation relaxed to allow Round Scores even if BO3 (User request)
+        // if (maxScore !== undefined && num > maxScore) {
+        //    return; // Ignore input if it exceeds max
+        // }
 
         onScoreChange?.(id, team, value);
     };
@@ -123,6 +124,8 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     // Status Badge Color
     const statusColor = isLive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : isComplete ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-zinc-800/50 text-zinc-500 border-zinc-800';
 
+    const showInputs = canAct && (isLive || isEditing);
+
     const style: React.CSSProperties = x !== undefined && y !== undefined ? {
         position: 'absolute', left: x, top: y, width: CARD_WIDTH, minHeight: CARD_HEIGHT, zIndex: isExp ? 50 : 10
     } : {
@@ -144,7 +147,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                 }}
             >
 
-                <div className="p-5 relative cursor-pointer" onClick={() => onToggleExpand?.(id) || onMatchClick?.()}>
+                <div className="p-5 relative cursor-pointer" onClick={() => onToggleExpand ? onToggleExpand(id) : onMatchClick?.()}>
 
                     {/* VS Divider - Minimalist */}
                     <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none opacity-30 group-hover:opacity-50 transition-opacity">
@@ -161,7 +164,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                             ) : (
                                 <span className="text-xs font-semibold text-zinc-500">{(match.team1?.name || 'T1').slice(0, 2).toUpperCase()}</span>
                             )}
-                            <span className={`text-sm font-medium truncate max-w-[140px] ${w1 ? 'text-white' : 'text-zinc-400'}`}>
+                            <span className={`text-sm font-medium truncate max-w-[140px] ${w1 && !isEditing ? 'text-white' : 'text-zinc-400'}`}>
                                 {match.team1?.name || (isComplete ? 'BYE' : 'TBD')}
                             </span>
                         </div>
@@ -169,7 +172,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                             {(!match.team1?.name || match.team1.name === 'TBD') && (
                                 <Trophy className="w-4 h-4 text-zinc-800" />
                             )}
-                            {canAct && isLive ? (
+                            {showInputs ? (
                                 <AnimatePresence mode="wait" initial={false}>
                                     <motion.input
                                         key="input-t1"
@@ -179,7 +182,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                         transition={{ duration: 0.2 }}
                                         type="number"
                                         min="0"
-                                        max={maxScore}
+                                        // max={maxScore} // Removed to allow freer input (rounds vs maps)
                                         className="w-10 h-8 bg-white/10 border border-white/20 text-center rounded-md font-bold text-sm focus:border-green-400 focus:outline-none"
                                         defaultValue={draft.t1 || match.team1_score?.toString() || ''}
                                         placeholder={inputPlaceholder}
@@ -215,7 +218,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                             ) : (
                                 <span className="text-xs font-semibold text-zinc-500">{(match.team2?.name || 'T2').slice(0, 2).toUpperCase()}</span>
                             )}
-                            <span className={`text-sm font-medium truncate max-w-[140px] ${w2 ? 'text-white' : 'text-zinc-400'}`}>
+                            <span className={`text-sm font-medium truncate max-w-[140px] ${w2 && !isEditing ? 'text-white' : 'text-zinc-400'}`}>
                                 {match.team2?.name || (isComplete ? 'BYE' : 'TBD')}
                             </span>
                         </div>
@@ -223,7 +226,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                             {(!match.team2?.name || match.team2.name === 'TBD') && (
                                 <Trophy className="w-4 h-4 text-zinc-800" />
                             )}
-                            {canAct && isLive ? (
+                            {showInputs ? (
                                 <AnimatePresence mode="wait" initial={false}>
                                     <motion.input
                                         key="input-t2"
@@ -233,7 +236,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                         transition={{ duration: 0.2 }}
                                         type="number"
                                         min="0"
-                                        max={maxScore}
+                                        // max={maxScore}
                                         className="w-10 h-8 bg-white/10 border border-white/20 text-center rounded-md font-bold text-sm focus:border-green-400 focus:outline-none"
                                         defaultValue={draft.t2 || match.team2_score?.toString() || ''}
                                         placeholder={inputPlaceholder}
@@ -277,14 +280,29 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                 Advance BYE
                             </Button>
                         )}
-                        {canAct && isLive && (
+                        {canAct && isComplete && !isEditing && (
                             <Button
                                 size="sm"
-                                className="h-6 px-3 bg-green-600 hover:bg-green-500 text-white font-medium rounded text-xs"
-                                onClick={(e) => { e.stopPropagation(); onSaveScore(match); }}
+                                variant="outline"
+                                className="h-6 px-3 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 font-medium rounded text-xs"
+                                onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
                                 disabled={isProcessing}
                             >
-                                Save
+                                Edit
+                            </Button>
+                        )}
+                        {canAct && (isLive || isEditing) && (
+                            <Button
+                                size="sm"
+                                className={`h-6 px-3 ${isEditing ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-green-600 hover:bg-green-500'} text-white font-medium rounded text-xs`}
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (onSaveScore) await onSaveScore(match);
+                                    setIsEditing(false);
+                                }}
+                                disabled={isProcessing}
+                            >
+                                {isEditing ? 'Update' : 'Save'}
                             </Button>
                         )}
                         <ChevronDown className={`w-3 h-3 text-zinc-600 transition-transform cursor-pointer ${isExp ? 'rotate-180' : ''}`} onClick={() => onToggleExpand(id)} />

@@ -162,7 +162,7 @@ export const useTournamentCreation = () => {
         }
       } catch { }
       slug = uniqueSlug;
-      console.log('Generated slug:', slug);
+
 
       const { data: tournament, error: tournamentError } = await supabase
         .from('tournaments')
@@ -201,9 +201,8 @@ export const useTournamentCreation = () => {
         throw tournamentError;
       }
 
-      console.log('Tournament created successfully:', tournament);
-      console.log('Tournament slug:', tournament?.slug);
-      console.log('Tournament id:', tournament?.id);
+      // Tournament created successfully
+
 
       toast({
         title: "Tournament Created",
@@ -211,7 +210,7 @@ export const useTournamentCreation = () => {
       });
 
       const navigationPath = tournament?.slug ? `/organizer/tournament/${tournament.slug}` : `/organizer/tournament/${tournament.id}`;
-      console.log('Navigating to:', navigationPath);
+
       navigate(navigationPath);
     } catch (err: any) {
       console.error('Error creating tournament:', err);

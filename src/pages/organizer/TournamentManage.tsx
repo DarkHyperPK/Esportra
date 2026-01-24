@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { TypewriterEffect } from '@/components/effects/TypewriterEffect';
 import { FluidButton } from '@/components/effects/FluidButton';
 import { MotionTiles } from '@/components/effects/MotionTiles';
-import { Users, Trophy, Settings, Edit2, Trash2, GamepadIcon, Ban as BanIcon, AlertTriangle, Plus, ArrowUp, ArrowDown, Layers, Lock, Unlock, Shuffle, ArrowRight, Eye, Clock, Calendar, MapPin } from 'lucide-react';
+import { Users, Trophy, Settings, Edit2, Trash2, GamepadIcon, Ban as BanIcon, AlertTriangle, Plus, ArrowUp, ArrowDown, Layers, Lock, Unlock, Shuffle, ArrowRight, Eye, Clock, Calendar, MapPin, CheckCircle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -278,6 +278,52 @@ const TournamentDashboard = () => {
   const [stages, setStages] = useState<any[]>([]);
   const [matchCount, setMatchCount] = useState(0);
   const [now, setNow] = useState(Date.now());
+
+  // Overdue Check & Auto-Extension Effect
+  useEffect(() => {
+    const checkOverdue = async () => {
+      if (!tournament || !isOrganizer || stages.length === 0) return;
+
+      const endDate = tournament.end_date ? new Date(tournament.end_date) : null;
+      if (!endDate) return;
+
+      const currentTime = new Date();
+      const isOverdue = currentTime > endDate;
+      const incompleteStages = stages.some(stage => stage.status !== 'completed');
+
+      if (isOverdue && incompleteStages && tournament.status !== 'completed') {
+        console.log('[TournamentManage] Tournament is overdue with incomplete stages. Extending matches...');
+
+        // Extend by 24 hours
+        const newEndDate = new Date();
+        newEndDate.setDate(newEndDate.getDate() + 1);
+
+        try {
+          const { error } = await supabase
+            .from('tournaments')
+            .update({ end_date: newEndDate.toISOString() })
+            .eq('id', tournament.id);
+
+          if (!error) {
+            toast({
+              title: 'Tournament Extended',
+              description: 'Tournament end time has passed with incomplete stages. Extended by 24 hours.',
+              variant: 'default', // Using default/info variant, or maybe helpful color
+              duration: 6000
+            });
+            // Update local state
+            setTournament(prev => prev ? ({ ...prev, end_date: newEndDate.toISOString() }) : null);
+          } else {
+            console.error('Failed to auto-extend tournament:', error);
+          }
+        } catch (err) {
+          console.error('Error auto-extending tournament:', err);
+        }
+      }
+    };
+
+    checkOverdue();
+  }, [tournament?.id, tournament?.end_date, stages.length, isOrganizer]);
 
 
   const handleTeamClick = async (participant: Participant) => {
@@ -1296,6 +1342,32 @@ const TournamentDashboard = () => {
     }
   };
 
+  const handleMarkFinished = async () => {
+    if (!isOrganizer) return;
+
+    // Validate stages
+    const incomplete = stages.some(s => s.status !== 'completed');
+    if (incomplete) {
+      toast({
+        title: 'Cannot Finish',
+        description: 'All stages must be completed before finishing the tournament.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      await handleStatusChange('completed');
+      toast({
+        title: 'Tournament Finished',
+        description: 'Tournament has been marked as completed. Winner crowned!',
+        variant: 'default', // success?
+      });
+    } catch (e) {
+      console.error('Error finishing tournament:', e);
+    }
+  };
+
 
 
 
@@ -2071,51 +2143,6 @@ const TournamentDashboard = () => {
 
             {/* Right: Actions & Status */}
             <div className="flex flex-col items-end gap-4">
-              <div className="flex items-center gap-2">
-                <TooltipProvider>
-                  <UITooltip>
-                    <TooltipTrigger asChild>
-                      <FluidButton liquidColor="#ffffff20" variant="ghost" size="icon" className="h-10 w-10 text-white/50 hover:text-white hover:bg-white/10 rounded-full" onClick={() => window.open(`/tournaments/${slug}`, '_blank')}>
-                        <Eye className="w-5 h-5" />
-                      </FluidButton>
-                    </TooltipTrigger>
-                    <TooltipContent>View Public</TooltipContent>
-                  </UITooltip>
-                  <div className="w-px h-6 bg-white/10 mx-1" />
-                  <FluidButton
-                    liquidColor="#f59e0b" // Amber
-                    onClick={() => navigate(`/organizer/tournament/${slug}/edit`)}
-                    className="bg-amber-500/10 text-white font-bold border border-amber-500/20 hover:bg-amber-500 hover:text-white gap-2 rounded-full px-5 transition-all"
-                  >
-                    <Edit2 className="w-4 h-4" /> Edit
-                  </FluidButton>
-                  <FluidButton
-                    liquidColor="#ef4444" // Red
-                    onClick={() => setDeleteModalOpen(true)}
-                    className="bg-red-500/10 text-white font-bold border border-red-500/20 hover:bg-red-500 hover:text-white gap-2 rounded-full px-5 transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" /> Delete
-                  </FluidButton>
-                </TooltipProvider>
-              </div>
-
-              {/* Big Status Selector */}
-              <div className="relative">
-                <Select value={tournament.status} onValueChange={handleStatusChange}>
-                  <SelectTrigger className="w-[180px] h-12 rounded-xl bg-black/50 border border-white/10 text-white font-bold px-4 hover:border-white/20 transition-all focus:ring-0 backdrop-blur-md">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${tournament.status === 'ongoing' ? 'bg-red-500 animate-pulse' : tournament.status === 'open' ? 'bg-purple-500' : 'bg-emerald-500'}`} />
-                      <SelectValue />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#09090b] border-white/10 text-white">
-                    <SelectItem value="open">Upcoming</SelectItem>
-                    <SelectItem value="ongoing">Live Now</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           </div>
 
@@ -2142,7 +2169,7 @@ const TournamentDashboard = () => {
             <div className="flex flex-col items-center lg:items-start lg:border-r border-white/5 px-4 gap-1">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Format</span>
               <span className="text-2xl lg:text-3xl font-black text-white">
-                {tournament.format?.contains('elimination') ? 'Elimination' : 'Swiss'}
+                {tournament.format?.includes('elimination') ? 'Elimination' : 'Swiss'}
                 <span className="text-xs bg-white/10 px-2 py-0.5 rounded ml-2 align-middle font-normal text-gray-300">
                   {gameFormatSize || tournament.team_size}v{gameFormatSize || tournament.team_size}
                 </span>
@@ -2168,7 +2195,34 @@ const TournamentDashboard = () => {
 
         {/* Floating Animated Dropdown Nav */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="sticky top-4 z-40 mb-8 flex justify-center perspective-1000">
+          {/* Mobile View: Select Dropdown for Tabs */}
+          <div className="md:hidden sticky top-4 z-40 mb-6">
+            <div className="relative">
+              <Select value={activeTab} onValueChange={handleTabChange}>
+                <SelectTrigger className="w-full h-12 bg-[#09090b]/90 backdrop-blur-xl border-white/10 text-white rounded-xl px-4 font-bold tracking-wide">
+                  <SelectValue placeholder="Select View" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#09090b] border-white/10 text-white z-[60]">
+                  {['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'staff', 'settings'].map((tab) => {
+                    // Filter tabs based on permissions
+                    if (tab === 'bans' && !canManageTeams) return null;
+                    if (tab === 'disputes' && !canAssistDisputes) return null;
+                    if (tab === 'staff' && !canManageStaff) return null;
+                    if (tab === 'settings' && !isOrganizer) return null;
+
+                    return (
+                      <SelectItem key={tab} value={tab} className="capitalize font-medium focus:bg-white/10 focus:text-white cursor-pointer py-3">
+                        {tab}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Desktop View: Floating Animated Tabs */}
+          <div className="hidden md:flex sticky top-4 z-40 mb-8 justify-center perspective-1000">
             <motion.div
               className="p-1 bg-black/70 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl inline-flex relative overflow-hidden"
               initial={{ y: -50, opacity: 0 }}
@@ -2176,7 +2230,20 @@ const TournamentDashboard = () => {
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               <TabsList className="bg-transparent p-0 h-auto gap-1">
-                {['overview', 'participants', 'stages', 'bans', 'disputes', 'staff', 'settings'].map((tab) => {
+                {['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'staff', 'settings'].map((tab) => {
+                  if (tab === 'brackets') {
+                    return (
+                      <button
+                        key="brackets"
+                        onClick={() => navigate(`/tournaments/${slug}/brackets`)}
+                        disabled={!canEditBracket}
+                        className="px-6 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-all flex items-center justify-center h-full"
+                      >
+                        Brackets
+                      </button>
+                    );
+                  }
+
                   if (tab === 'bans' && !canManageTeams) return null;
                   if (tab === 'disputes' && !canAssistDisputes) return null;
                   if (tab === 'staff' && !canManageStaff) return null;
@@ -2192,13 +2259,6 @@ const TournamentDashboard = () => {
                     </TabsTrigger>
                   );
                 })}
-                <button
-                  onClick={() => navigate(`/tournaments/${slug}/brackets`)}
-                  disabled={!canEditBracket}
-                  className="px-6 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-all flex items-center justify-center h-full"
-                >
-                  Brackets
-                </button>
               </TabsList>
             </motion.div>
           </div>
@@ -2253,12 +2313,14 @@ const TournamentDashboard = () => {
                       {participants.filter(p => p.participant_type === 'team').length}
                     </span>
                   </div>
-                  <div className="flex flex-col px-4 gap-1">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Solo Players</span>
-                    <span className="text-3xl font-black text-white tracking-tight">
-                      {participants.filter(p => p.participant_type === 'solo').length}
-                    </span>
-                  </div>
+                  {!tournament.format?.includes('team') && (
+                    <div className="flex flex-col px-4 gap-1">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Solo Players</span>
+                      <span className="text-3xl font-black text-white tracking-tight">
+                        {participants.filter(p => p.participant_type === 'solo').length}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

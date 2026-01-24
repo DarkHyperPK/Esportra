@@ -155,13 +155,27 @@ export const useTeamManagement = () => {
           const teamId = team.id;
           const teamCreatedBy = team.owner_id;
 
-          // Fix missing captain in team_members
-          await fixTeamCaptain(teamId, teamCreatedBy);
+          // Optimization: Removed blocking fixTeamCaptain call from read path
+          // await fixTeamCaptain(teamId, teamCreatedBy);
 
-          const { data: members } = await supabase
-            .rpc('get_team_members', { t_id: teamId });
+          // Safe RPC call with fallback
+          let members = [];
+          try {
+            const { data: memberData, error: memberError } = await supabase
+              .rpc('get_team_members', { t_id: teamId });
 
-          console.log('Raw members data for team', teamId, ':', members);
+            if (memberError) {
+              console.error('Error fetching team members:', memberError);
+            } else {
+              members = memberData || [];
+            }
+          } catch (err) {
+            console.error('Exception fetching team members:', err);
+            // Fallback to empty members is better than crashing or infinite loading
+            members = [];
+          }
+
+
 
           // Calculate tournament stats (fallback to participants table; simple counts)
           const { count: totalMatches } = await supabase
@@ -186,7 +200,7 @@ export const useTeamManagement = () => {
             updated_at: team.updated_at,
             is_active: team.is_active,
             members: (members || []).map((m: any) => {
-              console.log('Mapping member:', m);
+
               const mappedMember = {
                 id: m.user_id,
                 user_id: m.user_id,
@@ -198,7 +212,7 @@ export const useTeamManagement = () => {
                 joined_at: m.joined_at,
                 is_active: m.is_active,
               };
-              console.log('Mapped member:', mappedMember);
+
               return mappedMember;
             }),
             tournament_wins: 0,
@@ -218,7 +232,7 @@ export const useTeamManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user?.id, toast]);
 
   // Fetch team invites
   const fetchTeamInvites = useCallback(async () => {
@@ -281,6 +295,10 @@ export const useTeamManagement = () => {
       setTeamInvites(formattedInvites);
     } catch (error) {
       console.error('Error fetching team invites:', error);
+      // Detailed error logging
+      if (typeof error === 'object' && error !== null) {
+        console.error('Error details:', JSON.stringify(error));
+      }
       toast({
         title: 'Error',
         description: 'Failed to load team invites',
@@ -289,7 +307,7 @@ export const useTeamManagement = () => {
     } finally {
       setInvitesLoading(false);
     }
-  }, [user, toast]);
+  }, [user?.id, toast]);
 
   // Create a new team
   const createTeam = async (teamData: CreateTeamData): Promise<Team | null> => {

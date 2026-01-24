@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TeamStanding } from '@/services/bracket/StandingsService';
-import { Info } from 'lucide-react';
+import { Info, ArrowUp } from 'lucide-react';
 import {
     Tooltip,
     TooltipContent,
@@ -88,7 +88,10 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                                         </div>
                                         <div className="text-right">
                                             {isAdvancing && (
-                                                <Badge variant="default" className="bg-green-500/20 text-green-400 hover:bg-green-500/30 border-0 text-[10px] px-1.5 h-5">Q</Badge>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <ArrowUp className="w-3 h-3 text-green-500" />
+                                                    <Badge variant="default" className="bg-green-500/20 text-green-400 hover:bg-green-500/30 border-0 text-[10px] px-1.5 h-5">Q</Badge>
+                                                </div>
                                             )}
                                             {isEliminated && (
                                                 <Badge variant="destructive" className="bg-red-500/20 text-red-400 hover:bg-red-500/30 border-0 text-[10px] px-1.5 h-5">ELIM</Badge>

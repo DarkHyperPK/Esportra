@@ -215,11 +215,15 @@ const ManageBracketPage = () => {
                 return;
             }
 
+            // Determine which team to advance
+            const isBo1 = (match.best_of || 1) === 1;
+            const winScore = isBo1 ? 13 : 1;
+
             // Use GraphMatchService to save score AND propagate winner to next match
             const result = await GraphMatchService.saveScoreAndAdvance(
                 matchId,
-                match.team1_id ? 1 : 0, // Winner gets 1
-                match.team2_id ? 1 : 0, // Winner gets 1
+                match.team1_id ? winScore : 0, // Winner gets 13 (BO1) or 1
+                match.team2_id ? winScore : 0, // Winner gets 13 (BO1) or 1
                 match.team1_id,
                 match.team2_id
             );
@@ -340,76 +344,6 @@ const ManageBracketPage = () => {
     return (
         <div className="min-h-screen text-white">
             <main className="relative w-full px-4 py-8">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/organizer/tournament/${slug}`)}
-                            className="text-gray-400 hover:text-white"
-                        >
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Dashboard
-                        </Button>
-                        <div>
-                            <h1 className="text-2xl font-bold">{tournament.name}</h1>
-                            <p className="text-gray-400 text-sm">
-                                {stage?.name || 'Bracket'} Management
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    {isOrganizer && (
-                        <Button
-                            onClick={handleAutoAdvanceByes}
-                            className="bg-amber-600 hover:bg-amber-500 text-white font-medium"
-                        >
-                            Auto Advance Byes
-                        </Button>
-                    )}
-                </div>
-
-                {/* Stage Complete Banner */}
-                {
-                    isOrganizer && stageComplete && nextStage && (
-                        <div className="mb-6 p-4 bg-gradient-to-r from-green-900/50 to-emerald-900/50 border border-green-500/50 rounded-lg">
-                            <div className="flex items-center justify-between flex-wrap gap-4">
-                                <div className="flex items-center gap-3">
-                                    <CheckCircle className="w-6 h-6 text-green-400" />
-                                    <div>
-                                        <h3 className="text-lg font-bold text-green-400">
-                                            Stage Complete!
-                                        </h3>
-                                        <p className="text-sm text-gray-300">
-                                            {advancingTeams.length} teams are ready to advance to {nextStage.name}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="text-sm text-gray-400">
-                                        <span className="font-semibold text-white">Advancing: </span>
-                                        {advancingTeams.slice(0, 4).map(t => t.team_name).join(', ')}
-                                        {advancingTeams.length > 4 && ` +${advancingTeams.length - 4} more`}
-                                    </div>
-                                    <Button
-                                        onClick={handleAdvanceTeams}
-                                        disabled={isAdvancing}
-                                        className="bg-green-600 hover:bg-green-700 text-white font-bold"
-                                    >
-                                        {isAdvancing ? 'Advancing...' : (
-                                            <>
-                                                Advance Teams
-                                                <ArrowRight className="w-4 h-4 ml-2" />
-                                            </>
-                                        )}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )
-                }
 
                 {/* Bracket Visualization with Management Controls */}
                 <div className="w-full">
@@ -419,6 +353,7 @@ const ManageBracketPage = () => {
                         isOrganizer={isOrganizer}
                         onRefresh={() => fetchData(true)}
                         onByeAdvance={handleByeAdvance}
+                        stage={stage}
                     />
                 </div>
             </main >

@@ -1,17 +1,13 @@
 import { Link } from "react-router-dom";
-import { MapPin, Trophy, Info, Smartphone, Bell } from "lucide-react";
+import { MapPin, Trophy, Info, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useNotifications } from "@/components/NotificationContext";
 import UserMenu from "./UserMenu";
+
+import { FramerDropdownRoot, FramerDropdownTrigger, FramerDropdownContent, FramerDropdownItem } from "@/components/ui/FramerDropdown";
 
 const DesktopNav = ({
   handleSignOut
@@ -30,87 +26,61 @@ const DesktopNav = ({
 
   return (
     <div className="hidden lg:flex items-center gap-6 font-heading font-medium">
+
+      {/* Nav Link: Home */}
       <Link to="/" className="text-base font-semibold text-white transition-colors">
         Home
       </Link>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-base font-semibold text-white transition-colors">
+      {/* Dropdown: Venues */}
+      <FramerDropdownRoot>
+        <FramerDropdownTrigger className="group inline-flex items-center gap-2 text-base font-semibold text-white transition-colors hover:text-white/80 outline-none">
           <MapPin className="h-4 w-4" />
           Venues
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="z-[1000] border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/venues/search" className="w-full">Find Venues</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/venues/featured" className="w-full">Featured Venues</Link>
-          </DropdownMenuItem>
+        </FramerDropdownTrigger>
+        <FramerDropdownContent className="min-w-[220px]">
+          <FramerDropdownItem to="/venues/search">Find Venues</FramerDropdownItem>
+          <FramerDropdownItem to="/venues/featured">Featured Venues</FramerDropdownItem>
           {(userRole === 'venue_owner' || isSuperAdmin) && (
-            <DropdownMenuItem asChild className={menuItemClass}>
-              <Link to="/venues/list-venue" className="w-full">List Your Venue</Link>
-            </DropdownMenuItem>
+            <FramerDropdownItem to="/venues/list-venue">List Your Venue</FramerDropdownItem>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </FramerDropdownContent>
+      </FramerDropdownRoot>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-base font-semibold text-white transition-colors">
+      {/* Dropdown: Tournaments */}
+      <FramerDropdownRoot>
+        <FramerDropdownTrigger className="group inline-flex items-center gap-2 text-base font-semibold text-white transition-colors hover:text-white/80 outline-none">
           <Trophy className="h-4 w-4" />
           Tournaments
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="z-[1000] border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/tournaments/upcoming" className="w-full">Upcoming Tournaments</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/tournaments/ongoing" className="w-full">Live Tournaments</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/tournament-history" className="w-full">Tournament History</Link>
-          </DropdownMenuItem>
+        </FramerDropdownTrigger>
+        <FramerDropdownContent className="min-w-[220px]">
+          <FramerDropdownItem to="/tournaments/upcoming">Upcoming Tournaments</FramerDropdownItem>
+          <FramerDropdownItem to="/tournaments/ongoing">Live Tournaments</FramerDropdownItem>
+          <FramerDropdownItem to="/tournament-history">Tournament History</FramerDropdownItem>
           {(userRole === 'organizer' || isSuperAdmin) && (
             <>
-              <DropdownMenuItem asChild className={menuItemClass}>
-                <Link to="/organizer/tournaments" className="w-full">Manage Tournaments</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className={menuItemClass}>
-                <Link to="/tournaments/create" className="w-full">Create Tournament</Link>
-              </DropdownMenuItem>
+              <div className="h-px bg-white/10 my-1 mx-2" />
+              <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
+              <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </FramerDropdownContent>
+      </FramerDropdownRoot>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-base font-semibold text-white transition-colors">
+      {/* Dropdown: About */}
+      <FramerDropdownRoot>
+        <FramerDropdownTrigger className="group inline-flex items-center gap-2 text-base font-semibold text-white transition-colors hover:text-white/80 outline-none">
           <Info className="h-4 w-4" />
           About
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="z-[1000] border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/about/company" className="w-full">About Us</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/about/contact" className="w-full">Contact</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/about/faq" className="w-full">FAQ</Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </FramerDropdownTrigger>
+        <FramerDropdownContent className="min-w-[200px]">
+          <FramerDropdownItem to="/about/company">About Us</FramerDropdownItem>
+          <FramerDropdownItem to="/about/contact">Contact</FramerDropdownItem>
+          <FramerDropdownItem to="/about/faq">FAQ</FramerDropdownItem>
+        </FramerDropdownContent>
+      </FramerDropdownRoot>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className="inline-flex items-center gap-2 text-base font-semibold text-white transition-colors">
-          <Smartphone className="h-4 w-4" />
-          App
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="z-[1000] border border-white/10 bg-[#0f111a]/95 p-2 text-white shadow-[0_15px_40px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
-          <DropdownMenuItem asChild className={menuItemClass}>
-            <Link to="/app" className="w-full">Download Mobile App</Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+
 
       {user ? (
         <>

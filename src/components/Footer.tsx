@@ -1,80 +1,92 @@
-
 import { Link } from "react-router-dom";
+import { Twitter, Instagram, Facebook, Linkedin, Mail, Github } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="container mx-auto relative bg-black border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 mt-auto">
-      <div className="">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <img src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSportra%20white%20varianttext.png" alt="Esportra Logo" className="h-24 w-auto" />
-              <span className="text-xl font-bold text-white"></span>
-            </div>
-            <p className="text-gray-400 mb-4">
-              The ultimate platform for discovering gaming venues and joining esports tournaments.
+    <footer className="bg-[#0a0a0a] border-t border-white/5 pt-24 pb-12 overflow-hidden">
+      <div className="container mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 lg:gap-24 mb-24">
+
+          {/* Brand Col */}
+          <div className="lg:col-span-1">
+            <Link to="/" className="inline-block mb-8">
+              <img
+                src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
+                alt="eSPORTRA"
+                className="h-10 opacity-90"
+              />
+            </Link>
+            <p className="text-white/40 font-light leading-relaxed mb-8 max-w-xs">
+              Elevating the digital arena. We're building the infrastructure for the next generation of competitive excellence.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-esports-accent">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
-                </svg>
-              </a>
-              <a href="#" className="text-gray-400 hover:text-esports-accent">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
-                </svg>
-              </a>
-              <a href="#" className="text-gray-400 hover:text-esports-accent">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                </svg>
-              </a>
-              <a href="#" className="text-gray-400 hover:text-esports-accent">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
-                  <rect x="2" y="9" width="4" height="12"></rect>
-                  <circle cx="4" cy="4" r="2"></circle>
-                </svg>
-              </a>
+            <div className="flex gap-5">
+              {[Twitter, Instagram, Facebook, Github].map((Icon, i) => (
+                <a key={i} href="#" className="text-white/20 hover:text-white transition-colors duration-300">
+                  <Icon className="w-5 h-5" />
+                </a>
+              ))}
             </div>
           </div>
 
+          {/* Links Col 1: Platform */}
           <div>
-            <h3 className="text-white font-bold mb-4">Platform</h3>
-            <ul className="space-y-2">
-              <li><Link to="/venues" className="text-gray-400 hover:text-esports-accent">Gaming Venues</Link></li>
-              <li><Link to="/tournaments" className="text-gray-400 hover:text-esports-accent">Tournaments</Link></li>
-              <li><Link to="/teams" className="text-gray-400 hover:text-esports-accent">Teams</Link></li>
-              <li><Link to="/players" className="text-gray-400 hover:text-esports-accent">Players</Link></li>
+            <h4 className="text-white text-sm font-medium tracking-[0.2em] uppercase mb-10">System</h4>
+            <ul className="space-y-4">
+              {['Venues', 'Tournaments', 'Teams', 'Leaderboards'].map((link) => (
+                <li key={link}>
+                  <Link to={`/${link.toLowerCase()}`} className="text-white/40 hover:text-white font-light transition-all duration-300">
+                    {link}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
+          {/* Links Col 2: Resources */}
           <div>
-            <h3 className="text-white font-bold mb-4">Resources</h3>
-            <ul className="space-y-2">
-              <li><Link to="/for-venues" className="text-gray-400 hover:text-gaming-purple">For Venue Owners</Link></li>
-              <li><Link to="/for-organizers" className="text-gray-400 hover:text-gaming-purple">For Tournament Organizers</Link></li>
-              <li><Link to="/blog" className="text-gray-400 hover:text-gaming-purple">Blog</Link></li>
-              <li><Link to="/faq" className="text-gray-400 hover:text-gaming-purple">FAQ</Link></li>
+            <h4 className="text-white text-sm font-medium tracking-[0.2em] uppercase mb-10">Resources</h4>
+            <ul className="space-y-4">
+              {['For Organizers', 'For Venues', 'Community', 'FAQ'].map((link) => (
+                <li key={link}>
+                  <Link to={`/${link.toLowerCase().replace(' ', '-')}`} className="text-white/40 hover:text-white font-light transition-all duration-300">
+                    {link}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          <div>
-            <h3 className="text-white font-bold mb-4">Company</h3>
-            <ul className="space-y-2">
-              <li><Link to="/about" className="text-gray-400 hover:text-gaming-purple">About Us</Link></li>
-              <li><Link to="/careers" className="text-gray-400 hover:text-gaming-purple">Careers</Link></li>
-              <li><Link to="/contact" className="text-gray-400 hover:text-gaming-purple">Contact</Link></li>
-              <li><Link to="/privacy" className="text-gray-400 hover:text-gaming-purple">Privacy Policy</Link></li>
+          {/* Links Col 3: Company */}
+          <div className="relative">
+            <h4 className="text-white text-sm font-medium tracking-[0.2em] uppercase mb-10">Company</h4>
+            <ul className="space-y-4">
+              {['About', 'Privacy', 'Contact', 'Terms'].map((link) => (
+                <li key={link}>
+                  <Link to={`/${link.toLowerCase()}`} className="text-white/40 hover:text-white font-light transition-all duration-300">
+                    {link}
+                  </Link>
+                </li>
+              ))}
             </ul>
+
+            {/* Subtle bottom-right accent */}
+            <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-blue-500/5 blur-[80px] rounded-full pointer-events-none" />
           </div>
+
         </div>
 
-        <div className="border-t border-gaming-gray/30 mt-10 pt-6 text-center">
-          <p className="text-gray-400">© {new Date().getFullYear()} Esportra. All rights reserved.</p>
+        {/* Bottom Bar */}
+        <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
+          <p className="text-white/20 text-xs font-light tracking-widest uppercase">
+            © {new Date().getFullYear()} eSPORTRA. All rights reserved.
+          </p>
+          <div className="flex items-center gap-8">
+            <span className="text-[10px] text-white/10 tracking-[0.3em] uppercase hidden md:block">Esports. Elevated.</span>
+            <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.02] border border-white/5 rounded-full">
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-[10px] text-white/40 uppercase tracking-widest">Protocol Active</span>
+            </div>
+          </div>
         </div>
       </div>
     </footer>
