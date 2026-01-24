@@ -54,8 +54,7 @@ const MobileNav = ({
                 { to: "/", label: "Home" },
                 { to: "/venues/search", label: "Venues" },
                 { to: "/tournaments/upcoming", label: "Tournaments" },
-                { to: "/about/company", label: "About" },
-                { to: "/app", label: "Download App" }
+                { to: "/about/company", label: "About" }
               ].map((item, index) => (
                 <motion.div
                   key={item.to}

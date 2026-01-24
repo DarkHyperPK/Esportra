@@ -98,7 +98,6 @@ const OngoingTournaments = React.lazy(() => import("./pages/tournaments/Ongoing"
 const CreateTournament = React.lazy(() => import("./pages/tournaments/Create"));
 
 // About
-const AboutCompany = React.lazy(() => import("./pages/about/Company"));
 const ContactPage = React.lazy(() => import("./pages/about/Contact"));
 const FAQPage = React.lazy(() => import("./pages/about/FAQ"));
 const AboutPage = React.lazy(() => import("./pages/About"));
@@ -462,7 +461,7 @@ const AppContent = React.memo(() => {
 
               {/* Company Pages */}
               <Route path="/about" element={<AboutPage />} />
-              <Route path="/about/company" element={<AboutCompany />} />
+              <Route path="/about/company" element={<AboutPage />} />
               <Route path="/about/contact" element={<ContactPage />} />
               <Route path="/about/faq" element={<FAQPage />} />
               <Route path="/careers" element={<CareersPage />} />

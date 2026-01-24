@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.7] - 2026-01-25
+
+### Fixed
+- **Manage Roster Modal**: Fixed modal alignment by removing conflicting `relative` class, ensuring it centers correctly on screen.
+- **Tab Reload Optimization**: Fixed an issue where switching tabs caused unnecessary page reloads by optimizing the `useEffect` dependency in `Teams.tsx`.
+
+### Changed
+- **Player Card Aesthetics**: 
+    - Removed the "verified" checkmark indicator.
+    - Updated Captain tag to be hidden by default and appear on hover with a premium "Gold/Amber" gradient and shimmer effect.
+
 ## [0.3.3] - 2026-01-23
 
 ### Documentation

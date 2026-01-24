@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion } from "framer-motion";
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
@@ -11,26 +12,27 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase';
 import { Link } from 'react-router-dom';
 import TeamCreationWizard from '@/components/player/TeamCreationWizard';
 import { Plus, Users, Settings, Crown, Trash2, UserMinus, UserPlus, Calendar, Trophy, Gamepad2, Edit, X, Upload, Save } from 'lucide-react';
 import esportsGames from '@/data/esportsGames.json';
+import PlayerCard from '@/components/player/PlayerCard';
 
 const TeamsPage = () => {
   const { user, profile } = useAuth();
   const { canCreateTeams, currentRole } = useRole();
-  const { 
-    userTeams, 
-    fetchUserTeams, 
-    createTeam, 
-    inviteUserToTeam, 
-    removeMemberFromTeam, 
-    transferCaptaincy, 
+  const {
+    userTeams,
+    fetchUserTeams,
+    createTeam,
+    inviteUserToTeam,
+    removeMemberFromTeam,
+    transferCaptaincy,
     disbandTeam,
     leaveTeam,
-    fetchingTeam 
+    fetchingTeam
   } = useTeamManagement();
   const { toast } = useToast();
 
@@ -42,11 +44,11 @@ const TeamsPage = () => {
   const [editTeamLogoFile, setEditTeamLogoFile] = useState<File | null>(null);
   const [editTeamLogoUrl, setEditTeamLogoUrl] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
-  
+
   // Game images for edit modal
   const [gameImages, setGameImages] = useState<Record<string, string>>({});
   const [imagesLoading, setImagesLoading] = useState(true);
-  
+
   type TeamMember = {
     id: string;
     user_id: string;
@@ -100,6 +102,9 @@ const TeamsPage = () => {
   const [selectedInvitees, setSelectedInvitees] = useState<Array<{ id: string; email: string; username?: string }>>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<Array<{ id: string; email: string; username?: string }>>([]);
   const [isSearchingInvitee, setIsSearchingInvitee] = useState(false);
+  const [teamStats, setTeamStats] = useState({ matches: 0, wins: 0, winRate: 0 });
+  const [selectedTournament, setSelectedTournament] = useState<any>(null);
+  const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
 
   // Simple game logo resolver (uses bundled esportsGames.json)
   const getGameLogo = useCallback((gameName: string): string => {
@@ -129,7 +134,7 @@ const TeamsPage = () => {
           if (data?.results?.length > 0) {
             newImages[g] = data.results[0].background_image || '';
           }
-        } catch {/* ignore */}
+        } catch {/* ignore */ }
       }));
       if (Object.keys(newImages).length > 0) {
         setGameImages(prev => ({ ...prev, ...newImages }));
@@ -149,31 +154,51 @@ const TeamsPage = () => {
   // State for tournaments
   type RegistrationWithTournament = {
     id: string;
-    tournaments?: { name: string; start_date: string; prize_pool: string } | null;
+    tournaments?: { name: string; start_date: string; prize_pool: string; slug?: string } | null;
   };
   const [upcomingTournaments, setUpcomingTournaments] = useState<any[]>([]);
   const [teamRegistrations, setTeamRegistrations] = useState<RegistrationWithTournament[]>([]);
 
   const currentTeam = userTeams?.[0];
   const isCaptain = currentTeam?.owner_id === user?.id;
-  
+
   // Debug logging
-  console.log('=== TEAM DEBUG ===');
-  console.log('Current user ID:', user?.id);
-  console.log('Team owner_id:', currentTeam?.owner_id);
-  console.log('Is captain:', isCaptain);
-  console.log('Team members:', currentTeam?.members);
-  console.log('Members count:', currentTeam?.members?.length);
-  console.log('Team logo_url:', currentTeam?.logo_url);
-  console.log('Team data:', currentTeam);
+  // Debug logging removed for production safety
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchUserTeams();
       fetchUpcomingTournaments();
       fetchGameImages();
     }
-  }, [user, fetchUserTeams]);
+  }, [user?.id, fetchUserTeams]);
+
+  useEffect(() => {
+    if (currentTeam?.id) {
+      fetchTeamStats();
+    }
+  }, [currentTeam?.id]);
+
+  const fetchTeamStats = async () => {
+    if (!currentTeam?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('brkt_matches')
+        .select('winner_id, status')
+        .or(`team1_id.eq.${currentTeam.id},team2_id.eq.${currentTeam.id}`)
+        .eq('status', 'completed');
+
+      if (error) throw error;
+
+      const matches = data?.length || 0;
+      const wins = data?.filter(m => m.winner_id === currentTeam.id).length || 0;
+      const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
+
+      setTeamStats({ matches, wins, winRate });
+    } catch (err) {
+      console.error('Error fetching team stats:', err);
+    }
+  };
 
   // Listen for team invite acceptance events
   useEffect(() => {
@@ -183,7 +208,7 @@ const TeamsPage = () => {
     };
 
     window.addEventListener('teamInviteAccepted', handleTeamInviteAccepted);
-    
+
     return () => {
       window.removeEventListener('teamInviteAccepted', handleTeamInviteAccepted);
     };
@@ -212,7 +237,7 @@ const TeamsPage = () => {
           }
         })
       );
-      setGameImages({...images});
+      setGameImages({ ...images });
       if (i + batchSize < games.length) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
@@ -241,63 +266,63 @@ const TeamsPage = () => {
   // Upload team logo for edit
   const uploadTeamLogo = async (file: File): Promise<string | null> => {
     if (!file) return null;
-    
+
     try {
       console.log('=== LOGO UPLOAD DEBUG ===');
       console.log('File:', file);
       console.log('File name:', file.name);
       console.log('File size:', file.size);
       console.log('File type:', file.type);
-      
+
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
         throw new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`);
       }
-      
+
       // Validate file size (5MB limit)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
         throw new Error('File size must be less than 5MB');
       }
-      
+
       const fileExt = file.name.split('.').pop();
       const fileName = `team-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = fileName;
-      
+
       console.log('Uploading to path:', filePath);
       console.log('User ID:', user?.id);
-      
+
       // Try uploading to team-logos bucket
       const { error } = await supabase.storage
         .from('teams.logos')
         .upload(filePath, file);
-      
+
       if (error) {
         console.error('Upload error:', error);
-        
+
         // If it's an RLS policy error, provide helpful message
         if (error.message.includes('row-level security policy')) {
           throw new Error('Storage permissions not configured. Please contact support to set up storage policies.');
         }
-        
+
         throw error;
       }
-      
+
       console.log('File uploaded successfully');
-      
+
       const { data } = supabase.storage
         .from('teams.logos')
         .getPublicUrl(filePath);
-      
+
       console.log('Public URL:', data.publicUrl);
       console.log('========================');
-      
+
       return data.publicUrl;
     } catch (error) {
       console.error('Error uploading logo:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+
       // Provide more helpful error messages
       if (errorMessage.includes('row-level security policy')) {
         toast({
@@ -312,7 +337,7 @@ const TeamsPage = () => {
           variant: 'destructive',
         });
       }
-      
+
       return null;
     }
   };
@@ -337,7 +362,7 @@ const TeamsPage = () => {
         console.log('=== ATTEMPTING LOGO UPLOAD ===');
         console.log('User:', user?.id);
         console.log('File:', editTeamLogoFile.name);
-        
+
         const newLogoUrl = await uploadTeamLogo(editTeamLogoFile);
         if (newLogoUrl) {
           logoUrl = newLogoUrl;
@@ -395,21 +420,22 @@ const TeamsPage = () => {
     try {
       console.log('=== STORAGE ACCESS TEST ===');
       console.log('Testing direct upload to team-logos bucket...');
-      
+
       // Create a small test file
       const testBlob = new Blob(['test'], { type: 'text/plain' });
       const testFile = new File([testBlob], 'test.txt', { type: 'text/plain' });
-      
+
       const { error } = await supabase.storage
         .from('teams.logos')
         .upload(`test-${Date.now()}.txt`, testFile);
-      
+
       if (error) {
         console.error('Storage test failed:', error);
         console.log('Error details:', {
           message: error.message,
-          statusCode: error.statusCode,
-          error: error.error
+          // Use type assertion for potential missing fields in current SDK version
+          statusCode: (error as any).statusCode,
+          error: (error as any).error
         });
       } else {
         console.log('Storage test successful! Bucket is accessible.');
@@ -423,7 +449,72 @@ const TeamsPage = () => {
   // Expose test function to window for debugging
   if (typeof window !== 'undefined') {
     (window as any).testStorageAccess = testStorageAccess;
-  }
+  };
+
+  const handlePlayerCardUpload = async (file: File, teamName: string, memberId: string, username: string) => {
+    if (!file || !user) return;
+
+    // Sanitize team name for folder path
+    const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const sanitizedUsername = username.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${sanitizedUsername}_${memberId}_${Date.now()}.${fileExt}`;
+    const filePath = `player cards/${sanitizedTeamName}/${fileName}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('users.avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('users.avatars')
+        .getPublicUrl(filePath);
+
+      // Update team member's avatar in profiles table if it's the user's own card
+      // OR if we want to store it specifically for this team context?
+      // The user request implies "player cards", which usually means the profile picture 
+      // used in the card. For now, we update the profile avatar_url to keep it simple
+      // unless we have a specific team_member_avatar column.
+      // Based on previous code, PlayerCard uses member.avatar_url from profile.
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', memberId);
+
+      if (updateError) throw updateError;
+
+      // Refresh data
+      toast({
+        title: "Player Card Updated",
+        description: "Your new player card image has been uploaded successfully.",
+      });
+
+      // Trigger refresh
+      window.dispatchEvent(new Event('teamAppsUpdated')); // Using existing event or creating new one
+      // Or just force re-fetch
+      setRefreshKey(prev => prev + 1);
+
+    } catch (error: any) {
+      console.error('Error uploading player card:', error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Could not upload player card image.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (user?.id) fetchUserTeams();
+  }, [user?.id, refreshKey]);
 
   useEffect(() => {
     if (currentTeam) {
@@ -516,7 +607,7 @@ const TeamsPage = () => {
       setPendingInvites(list);
     };
     fetchInvites();
-  }, [user?.id]);
+  }, [user?.id, user?.email]);
 
   const fetchTeamPendingInvites = async () => {
     if (!currentTeam?.id) return;
@@ -563,7 +654,7 @@ const TeamsPage = () => {
   const fetchUpcomingTournaments = async () => {
     try {
       // Attempt with start_date first
-            let query = supabase
+      let query = supabase
         .from('tournaments')
         .select('*')
         .gte('start_date', new Date().toISOString())
@@ -609,9 +700,9 @@ const TeamsPage = () => {
       setTeamRegistrations([]);
       return;
     }
-    
+
     console.log('Fetching team registrations for team:', currentTeam.id);
-    
+
     try {
       // Preferred source: tournament_participants (new canonical)
       const { data: participants, error: partsError } = await supabase
@@ -667,28 +758,28 @@ const TeamsPage = () => {
 
       if (regError) {
         console.error('Error with legacy registrations query:', regError);
-        
+
         // Check if it's a table not found error
         if (regError.message?.includes('relation') || regError.message?.includes('does not exist')) {
           console.log('Tournament registrations table does not exist, setting empty array');
           setTeamRegistrations([]);
           return;
         }
-        
+
         // Try alternative table names
         const { data: altRegistrations, error: altRegError } = await supabase
           .from('tournament_teams')
           .select('*')
           .eq('team_id', currentTeam.id);
-        
+
         console.log('Alternative registrations (tournament_teams) result:', { altRegistrations, altRegError });
-        
+
         if (altRegError) {
           console.error('Both registration table queries failed:', { regError, altRegError });
           setTeamRegistrations([]);
           return;
         }
-        
+
         setTeamRegistrations(altRegistrations || []);
         return;
       }
@@ -696,7 +787,7 @@ const TeamsPage = () => {
       // If basic query works, try to get tournament details separately
       if (registrations && registrations.length > 0) {
         const tournamentIds = registrations.map(reg => reg.tournament_id).filter(Boolean);
-        
+
         if (tournamentIds.length > 0) {
           const { data: tournaments, error: tournamentError } = await supabase
             .from('tournaments')
@@ -721,7 +812,7 @@ const TeamsPage = () => {
       } else {
         setTeamRegistrations([]);
       }
-      
+
       console.log('Set team registrations (fallback path)');
     } catch (error) {
       console.error('Error fetching team registrations:', error);
@@ -731,13 +822,13 @@ const TeamsPage = () => {
 
   const handleLeaveTeam = async () => {
     if (!currentTeam) return;
-    
+
     try {
       await leaveTeam(currentTeam.id);
-      
+
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('teamLeft'));
-      
+
       toast({
         title: "Success",
         description: "You have left the team successfully.",
@@ -754,17 +845,17 @@ const TeamsPage = () => {
 
   const handleRemoveMember = async () => {
     if (!memberToRemove || !currentTeam) return;
-    
+
     try {
       console.log('Removing member:', memberToRemove.username, 'from team:', currentTeam.id);
       const success = await removeMemberFromTeam(currentTeam.id, memberToRemove.user_id);
-      
+
       if (success) {
         // If the removed member is the current user, dispatch teamLeft event
         if (memberToRemove.user_id === user?.id) {
           window.dispatchEvent(new CustomEvent('teamLeft'));
         }
-        
+
         toast({
           title: "Success",
           description: `${memberToRemove.username} has been removed from the team.`,
@@ -788,7 +879,7 @@ const TeamsPage = () => {
 
   const handleTransferCaptaincy = async () => {
     if (!currentTeam || !memberToRemove) return;
-    
+
     // Prevent transferring captaincy to yourself
     if (memberToRemove.user_id === user?.id) {
       toast({
@@ -800,7 +891,7 @@ const TeamsPage = () => {
       setMemberToRemove(null);
       return;
     }
-    
+
     try {
       await transferCaptaincy(currentTeam.id, memberToRemove.user_id);
       toast({
@@ -821,13 +912,13 @@ const TeamsPage = () => {
 
   const handleDisbandTeam = async () => {
     if (!currentTeam) return;
-    
+
     try {
       await disbandTeam(currentTeam.id);
-      
+
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('teamLeft'));
-      
+
       toast({
         title: "Success",
         description: "Team has been disbanded successfully.",
@@ -999,56 +1090,52 @@ const TeamsPage = () => {
     run();
   }, [inviteInput, manageRoster, currentTeam?.members, selectedInvitees]);
 
-  const saveManageRoster = async () => {
+  const handleAddMemberToRoster = async (userId: string) => {
     if (!manageRoster) return;
-    
-    // Validate roster name
-    if (!editRosterName) {
-      toast({ title: 'Invalid details', description: 'Please enter a roster name.', variant: 'destructive' });
-      return;
-    }
-    
-    const maxAllowed = manageRoster.team_size === 5 ? 7 : manageRoster.team_size;
-    
     try {
-      // Update only roster name (game and team size cannot be changed)
-      const { error: updateError } = await supabase
-        .from('team_rosters' as any)
-        .update({
-          name: editRosterName,
-        })
-        .eq('id', manageRoster.id);
-      
-      if (updateError) throw updateError;
-      
-      // Update members (remove excess members if needed)
-      const { data: existing } = await supabase
-        .from('team_roster_members' as any)
-        .select('user_id')
-        .eq('roster_id', manageRoster.id);
-      const currentSet = new Set<string>((existing || []).map((x: any) => x.user_id));
-      const desiredSet = new Set<string>(manageMembers);
-      
-      // Ensure we don't exceed the limit
-      const finalDesiredMembers = Array.from(desiredSet).slice(0, maxAllowed);
-      const finalDesiredSet = new Set(finalDesiredMembers);
-      
-      const toAdd = Array.from(finalDesiredSet).filter(x => !currentSet.has(x)).map(uid => ({ roster_id: manageRoster.id, user_id: uid }));
-      const toRemove = Array.from(currentSet).filter(x => !finalDesiredSet.has(x));
-      
-      if (toAdd.length > 0) {
-        await supabase.from('team_roster_members' as any).insert(toAdd);
+      const { error } = await supabase.from('team_roster_members' as any).insert({
+        roster_id: manageRoster.id,
+        user_id: userId
+      });
+      if (error) throw error;
+      setManageMembers(prev => [...prev, userId]);
+      toast({ title: 'Member added to roster' });
+      // update roster counts locally
+      setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, member_count: (r.member_count || 0) + 1 } : r));
+    } catch (e: any) {
+      toast({ title: 'Failed to add member', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleRemoveFromRoster = async (userId: string) => {
+    if (!manageRoster) return;
+    try {
+      const { error } = await supabase.from('team_roster_members' as any)
+        .delete()
+        .eq('roster_id', manageRoster.id)
+        .eq('user_id', userId);
+      if (error) throw error;
+      setManageMembers(prev => prev.filter(id => id !== userId));
+      toast({ title: 'Member removed from roster' });
+      // update roster counts locally
+      setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, member_count: Math.max(0, (r.member_count || 0) - 1) } : r));
+    } catch (e: any) {
+      toast({ title: 'Failed to remove member', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const saveManageRoster = async () => {
+    if (!manageRoster || !editRosterName) return;
+    try {
+      if (editRosterName !== manageRoster.name) {
+        await supabase.from('team_rosters' as any).update({ name: editRosterName }).eq('id', manageRoster.id);
+        manageRoster.name = editRosterName; // update local ref
+        setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, name: editRosterName } : r));
       }
-      if (toRemove.length > 0) {
-        await supabase.from('team_roster_members' as any).delete().eq('roster_id', manageRoster.id).in('user_id', toRemove);
-      }
-      
-      await fetchRosters();
+      toast({ title: 'Roster updated' });
       setManageRosterModalOpen(false);
-      toast({ title: 'Roster updated', description: 'Roster name has been saved.' });
     } catch (e) {
-      console.error(e);
-      toast({ title: 'Failed to update roster', description: e instanceof Error ? e.message : 'Could not update roster.', variant: 'destructive' });
+      console.error('Failed to update roster', e);
     }
   };
 
@@ -1063,9 +1150,9 @@ const TeamsPage = () => {
         .from('team_rosters' as any)
         .delete()
         .eq('id', roster.id);
-      
+
       if (error) throw error;
-      
+
       await fetchRosters();
       toast({ title: 'Roster deleted', description: `Roster "${roster.name}" has been deleted.` });
     } catch (e: any) {
@@ -1136,7 +1223,7 @@ const TeamsPage = () => {
           message: `You have been invited to join ${currentTeam.name}${manageRoster ? ` (${manageRoster.name})` : ''}.`,
           data: { team_id: currentTeam.id, roster_id: manageRoster?.id || null }
         } as any);
-      } catch {}
+      } catch { }
       toast({ title: 'Invitation sent' });
     } catch (e: any) {
       toast({ title: 'Invite failed', description: e?.message || 'Could not invite user', variant: 'destructive' });
@@ -1185,7 +1272,7 @@ const TeamsPage = () => {
 
   const handleSendAnnouncement = async () => {
     if (!currentTeam || !announcementText.trim()) return;
-    
+
     try {
       // Send announcement to all team members
       const { data: members } = await supabase
@@ -1264,7 +1351,7 @@ const TeamsPage = () => {
         title: "Success",
         description: `Invitations sent to ${selectedUsers.length} user(s).`,
       });
-      
+
       setShowInviteModal(false);
       setSelectedUsers([]);
       setSearchQuery('');
@@ -1345,7 +1432,7 @@ const TeamsPage = () => {
   }
 
   if (!currentTeam) {
-    if (refreshingAfterAccept || fetchingTeam) {
+    if (refreshingAfterAccept) {
       return (
         <div className="min-h-screen bg-esports-dark flex items-center justify-center text-white">
           <div className="text-center">
@@ -1356,37 +1443,44 @@ const TeamsPage = () => {
       );
     }
     return (
-      <div className="min-h-screen bg-esports-dark text-white">
-        <div className="relative max-w-5xl mx-auto px-4 py-16">
-          {/* Decorative background */}
-          <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-            <div className="absolute -top-32 -left-40 w-[36rem] h-[36rem] bg-gradient-to-br from-blue-600/20 via-purple-600/10 to-cyan-500/10 rounded-full blur-3xl" />
-            <div className="absolute -bottom-24 -right-40 w-[32rem] h-[32rem] bg-gradient-to-tr from-cyan-500/10 via-blue-600/10 to-purple-600/20 rounded-full blur-3xl" />
-          </div>
+      <div className="relative min-h-screen text-white font-sans pt-20">
 
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
           {/* Header */}
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs tracking-wide uppercase text-white/70">Get Started</div>
-            <h1 className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-white">Create your esports team</h1>
-            <p className="mt-3 text-lg text-white/70">Form a squad, invite teammates, and register for tournaments in seconds.</p>
+          <div className="text-center mb-16">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-4xl md:text-6xl font-heading font-light uppercase tracking-[0.1em] text-white"
+            >
+              Start Your Legacy
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mt-4 text-lg text-white/60 font-light tracking-wide max-w-2xl mx-auto"
+            >
+              Create a team. Recruit players. Dominate the bracket.
+            </motion.p>
           </div>
 
-          {/* Pending invitations for users without a team */}
+          {/* Pending invitations */}
           {pendingInvites.length > 0 && (
-            <div className="mx-auto max-w-3xl mb-8">
-              <div className="p-[1px] rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600">
-                <div className="rounded-2xl bg-[#0F1115] px-6 py-6 border border-white/10 shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
-                  <h2 className="text-xl font-semibold text-white mb-4">Pending invitations</h2>
-                  <div className="space-y-3">
+            <div className="mx-auto max-w-3xl mb-12">
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+                <div className="px-6 py-6">
+                  <h2 className="text-lg font-heading uppercase tracking-widest text-white/80 mb-6">Pending Invites</h2>
+                  <div className="space-y-4">
                     {pendingInvites.map((inv) => (
-                      <div key={inv.id} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg p-3">
-                        <div className="text-white/90 text-sm">
-                          {inv.team_name ? inv.team_name : `Team ${String(inv.team_id).slice(0,8)}`}
-                          {inv.roster_id ? ` · ${inv.roster_name ? inv.roster_name : `roster ${String(inv.roster_id).slice(0,8)}`}` : ''}
+                      <div key={inv.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors">
+                        <div className="text-white/90">
+                          <span className="font-semibold">{inv.team_name || 'Unknown Team'}</span>
+                          <span className="text-white/50 text-sm ml-2">invites you to join</span>
                         </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => acceptInvite(inv.id)}>Accept</Button>
-                          <Button size="sm" variant="outline" className="border-red-400 text-red-400 hover:bg-red-400/20" onClick={() => declineInvite(inv.id)}>Decline</Button>
+                        <div className="flex gap-3">
+                          <Button size="sm" className="bg-emerald-500/80 hover:bg-emerald-500 text-white rounded-full px-6" onClick={() => acceptInvite(inv.id)}>JOIN</Button>
+                          <Button size="sm" variant="ghost" className="text-white/40 hover:text-white hover:bg-white/10 rounded-full" onClick={() => declineInvite(inv.id)}>DECLINE</Button>
                         </div>
                       </div>
                     ))}
@@ -1395,58 +1489,48 @@ const TeamsPage = () => {
               </div>
             </div>
           )}
-          
+
           {/* CTA Card */}
-          <div className="mx-auto max-w-3xl">
-            <div className="p-[1px] rounded-2xl bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-500">
-              <div className="rounded-2xl bg-[#0F1115] px-6 py-7 md:px-10 md:py-9 border border-white/10 shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
-                <div className="flex items-center gap-6">
-                  <div className="shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600/90 border border-white/10 flex items-center justify-center">
-                    <Users className="w-9 h-9 text-white" />
+          <div className="mx-auto max-w-4xl">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-12 text-center overflow-hidden">
+
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                    <Users className="w-8 h-8 text-white" />
                   </div>
-                  <div className="flex-1">
-                    <h2 className="text-2xl md:text-3xl font-bold text-white">Create Your Esports Team</h2>
-                    <p className="mt-2 text-white/70">You’ll be the captain. Add a logo, choose your games, and invite players with a shareable link.</p>
-                    <div className="mt-5 flex items-center gap-3">
-                      <Button 
-                        size="lg"
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold px-6 md:px-8"
-                        onClick={() => setShowTeamCreationWizard(true)}
-                      >
-                        <Plus className="w-5 h-5 mr-2" />
-                        Create Team
-                      </Button>
-                      <span className="text-xs text-white/50">Takes less than a minute</span>
-                    </div>
-                  </div>
+
+                  <h2 className="text-3xl md:text-4xl font-heading font-light uppercase tracking-widest text-white mb-4">
+                    Establish Your Team
+                  </h2>
+                  <p className="text-white/60 text-lg max-w-xl mb-10 leading-relaxed">
+                    Every champion starts somewhere. Register your team name, upload your logo, and begin your journey to the top of the leaderboard.
+                  </p>
+
+                  <Button
+                    size="lg"
+                    className="h-14 px-10 bg-white text-black hover:bg-white/90 rounded-full font-heading font-bold uppercase tracking-widest text-sm transition-all hover:scale-105 shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                    onClick={() => setShowTeamCreationWizard(true)}
+                  >
+                    Create Team
+                  </Button>
                 </div>
-                {/* Features */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                  <div className="flex items-center gap-2 text-white/70">
-                    <Gamepad2 className="w-4 h-4 text-cyan-400" />
-                    Select supported games
-                  </div>
-                  <div className="flex items-center gap-2 text-white/70">
-                    <Users className="w-4 h-4 text-blue-400" />
-                    Invite and manage members
-                  </div>
-                  <div className="flex items-center gap-2 text-white/70">
-                    <Trophy className="w-4 h-4 text-purple-400" />
-                    Register for tournaments
-                  </div>
-                </div>
+
+                {/* Decorative Grid */}
+                <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 to-transparent" />
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20" />
               </div>
             </div>
           </div>
         </div>
-        
+
         {/* Team Creation Wizard Modal */}
         {showTeamCreationWizard && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex-center p-4">
-            <div className="card-esports max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex-center p-4">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-[#0F1115] border border-white/10 rounded-3xl shadow-2xl">
               <TeamCreationWizard onClose={() => {
                 setShowTeamCreationWizard(false);
-                // Refresh team data when wizard closes
                 fetchUserTeams();
               }} />
             </div>
@@ -1457,39 +1541,28 @@ const TeamsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white">
-      <div className="container-professional spacing-section">
+    <div className="relative min-h-screen text-white font-sans pt-20">
+
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Team Header */}
-        <div className="card-esports spacing-card mb-8 cv-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-4">
+        <div className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 mb-8 relative overflow-hidden group">
+          {/* Subtle gradient glow */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
+
+          <div className="relative z-10 flex items-center justify-between mb-8">
+            <div className="flex items-center gap-8">
+
               <div className="relative">
-                <div className="w-20 h-20 bg-esports-card border-2 border-white/20 rounded-xl flex items-center justify-center overflow-hidden group hover:border-esports-accent/50 transition-all duration-300">
+                <div className="w-24 h-24 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center overflow-hidden shadow-2xl">
                   {currentTeam.logo_url ? (
                     <img
                       src={currentTeam.logo_url}
                       alt={`${currentTeam.name} logo`}
-                      className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
-                      decoding="async"
-                      onError={(e) => {
-                        console.log('Team logo failed to load:', currentTeam.logo_url);
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling.style.display = 'flex';
-                      }}
-                      onLoad={() => {
-                        console.log('Team logo loaded successfully:', currentTeam.logo_url);
-                      }}
+                      className="w-full h-full object-contain p-2"
                     />
-                  ) : null}
-                  {/* Fallback content - always present but hidden when image loads */}
-                  <div 
-                    className={`w-full h-full flex flex-col items-center justify-center text-center ${
-                      currentTeam.logo_url ? 'hidden' : 'flex'
-                    }`}
-                  >
-                    <Users className="h-8 w-8 text-gray-400 mb-1" />
-                    <div className="text-xs text-gray-400 font-medium">No Logo</div>
-                  </div>
+                  ) : (
+                    <Users className="w-10 h-10 text-white/20" />
+                  )}
                 </div>
                 {isCaptain && (
                   <button
@@ -1497,42 +1570,60 @@ const TeamsPage = () => {
                       initializeEditForm();
                       setShowEditTeam(true);
                     }}
-                    className="absolute -bottom-1 -right-1 w-6 h-6 bg-esports-accent text-white rounded-full flex items-center justify-center text-xs hover:bg-cyan-600 transition-all duration-200 hover:scale-110 shadow-lg"
-                    title={currentTeam.logo_url ? "Edit team" : "Add team logo"}
+                    className="absolute -bottom-2 -right-2 w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
                   >
-                    <Edit className="w-3 h-3" />
+                    <Edit className="w-4 h-4" />
                   </button>
                 )}
               </div>
+
               <div>
-                <h1 className="text-3xl font-bold text-white mb-2">{currentTeam.name}</h1>
-                <div className="flex items-center space-x-4">
-                  <Badge variant="secondary" className="bg-blue-500/20 text-blue-200 border-blue-400">
-                    {currentTeam.tag}
-                  </Badge>
-                  <Badge variant="outline" className="border-white/30 text-white">
-                    {currentTeam.members?.length || 0} members
-                  </Badge>
-                  {isCaptain && (
-                    <Badge variant="outline" className="border-yellow-400 text-yellow-200 bg-yellow-500/20">
-                      <Crown className="w-3 h-3 mr-1" />
-                      Team Captain
+                <h1 className="text-4xl font-heading font-light uppercase tracking-widest text-white mb-2">{currentTeam.name}</h1>
+                <div className="flex items-center flex-wrap gap-4">
+                  <div className="flex items-center space-x-3">
+                    <Badge variant="secondary" className="bg-white/10 text-white border-0 font-mono">
+                      {currentTeam.tag}
                     </Badge>
-                  )}
+                    <Badge variant="outline" className="border-white/20 text-white/60">
+                      {currentTeam.members?.length || 0} MEMBERS
+                    </Badge>
+                    {isCaptain && (
+                      <Badge variant="outline" className="border-white/20 text-white/80 bg-white/5">
+                        <Crown className="w-3 h-3 mr-1" />
+                        CAPTAIN
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Stats Bar */}
+                  <div className="flex items-center gap-6 pl-6 border-l border-white/10">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Total Matches</span>
+                      <span className="text-xl font-mono text-white font-medium">{teamStats.matches}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Wins</span>
+                      <span className="text-xl font-mono text-emerald-400 font-medium">{teamStats.wins}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Win Rate</span>
+                      <span className="text-xl font-mono text-indigo-400 font-medium">{teamStats.winRate}%</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            
+
           </div>
 
           {/* Team Games */}
           {currentTeam.games && currentTeam.games.length > 0 && (
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-white mb-2">Games</h3>
+            <div className="mb-4 pt-6 border-t border-white/5">
+              <h3 className="text-xs font-heading font-medium uppercase tracking-widest text-white/40 mb-3">Supported Games</h3>
               <div className="flex flex-wrap gap-2">
                 {currentTeam.games.map((game: string, index: number) => (
-                  <Badge key={index} variant="outline" className="border-white/30 text-white">
-                    <Gamepad2 className="w-3 h-3 mr-1" />
+                  <Badge key={index} variant="outline" className="border-white/10 text-white/60 hover:text-white hover:border-white/30 transition-colors uppercase tracking-wider py-1.5 pl-2 pr-3">
+                    <Gamepad2 className="w-3 h-3 mr-2 opacity-50" />
                     {game}
                   </Badge>
                 ))}
@@ -1542,160 +1633,108 @@ const TeamsPage = () => {
 
           {/* Team Description */}
           {currentTeam.description && (
-            <p className="text-white/80 text-lg">{currentTeam.description}</p>
+            <p className="text-white/60 text-lg font-light leading-relaxed max-w-3xl mt-6">{currentTeam.description}</p>
           )}
         </div>
 
-        {/* Team Captain */}
-        <div className="card-esports spacing-card mb-8 cv-auto">
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-            <Crown className="w-6 h-6 mr-2 text-yellow-400" />
-            Team Captain
-          </h2>
-          {(() => {
-            // Try to find captain in members list first
-            let captainMember = currentTeam.members?.find((member: any) => member.user_id === currentTeam.owner_id || member.id === currentTeam.owner_id);
-            
-            // If not found in members, create a captain object from current user data
-            if (!captainMember && isCaptain) {
-              captainMember = {
-                user_id: user?.id,
-                username: profile?.username || 'Captain',
-                email: user?.email || '',
-                avatar_url: profile?.avatar_url,
-                role: 'captain'
-              };
-            }
-            // Fallback to fetched owner profile
-            if (!captainMember && ownerProfile) {
-              captainMember = {
-                user_id: currentTeam.owner_id,
-                username: ownerProfile.username || 'Captain',
-                email: ownerProfile.email || '',
-                avatar_url: ownerProfile.avatar_url,
-                role: 'captain'
-              };
-            }
-            
-            console.log('=== CAPTAIN SECTION DEBUG ===');
-            console.log('Captain member found:', captainMember);
-            console.log('Is captain:', isCaptain);
-            console.log('Current user ID:', user?.id);
-            console.log('Team owner_id:', currentTeam.owner_id);
-            console.log('================================');
-            
-            return captainMember ? (
-              <div className="bg-yellow-500/10 border border-yellow-400/30 shadow-lg shadow-yellow-500/10 rounded-lg p-4 mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <Avatar className="ring-2 ring-yellow-400">
-                      <AvatarImage src={captainMember.avatar_url} />
-                      <AvatarFallback className="bg-gradient-to-br from-yellow-400 to-yellow-600 text-white">
-                        {captainMember.username?.charAt(0) || 'C'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-1">
-                      <Crown className="w-3 h-3 text-yellow-900" />
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="text-xl font-bold text-white">
-                        {captainMember.username}
-                      </h3>
-                      <div className="flex items-center space-x-1 bg-yellow-500/20 px-3 py-1 rounded-full border border-yellow-400/30">
-                        <Crown className="w-4 h-4 text-yellow-400" />
-                        <span className="text-sm font-medium text-yellow-300">Captain</span>
-                      </div>
-                    </div>
-                    <p className="text-white/60">
-                      {captainMember.email}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center text-white/60 py-8">
-                <Crown className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Captain information not found</p>
-                <p className="text-sm">User ID: {user?.id}, Team owner_id: {currentTeam?.owner_id}</p>
-              </div>
-            );
-          })()}
-        </div>
 
         {/* Team Members */}
-        <div className="card-esports spacing-card mb-8">
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-            <Users className="w-6 h-6 mr-2" />
-            Team Members
+        <div className="mb-12">
+          <h2 className="text-xl font-heading font-light uppercase tracking-widest text-white mb-8 flex items-center gap-3">
+            <Users className="w-5 h-5 text-white/60" />
+            Core Roster
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {/* Captain Card */}
+            {currentTeam.owner_id && ownerProfile && (
+              <PlayerCard
+                member={{
+                  user_id: currentTeam.owner_id,
+                  username: ownerProfile.username || 'Captain',
+                  avatar_url: ownerProfile.avatar_url,
+                  role: 'Captain',
+                  verified: true,
+                  stats: { rating: 99, kd: '1.50', winRate: '70%', hs: '50%' } // Mock stats
+                }}
+                isOwner={true}
+                isCurrentUser={user?.id === currentTeam.owner_id}
+                onUploadImage={
+                  user?.id === currentTeam.owner_id
+                    ? () => {
+                      // Trigger file input
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) handlePlayerCardUpload(file, currentTeam.name, currentTeam.owner_id, profile?.username || 'user');
+                      };
+                      input.click();
+                    }
+                    : undefined
+                }
+                onEdit={undefined}
+              />
+            )}
+
+            {/* Other Members */}
             {teamMembers.filter(m => m.user_id !== currentTeam.owner_id).map((member) => (
-              <div key={member.user_id} className="rounded-lg p-4 border bg-white/5 border-white/10">
-                <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarImage src={member.avatar_url || undefined} />
-                    <AvatarFallback>{(member.username || member.email || 'U').charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-white">{member.username || member.email}</h3>
-                    <p className="text-white/60 text-sm">{member.email || ''}</p>
-                  </div>
-                  {isCaptain && member.user_id !== user?.id && (
-                    <div className="flex space-x-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setMemberToRemove(member as any);
-                          setShowTransferCaptaincy(true);
-                        }}
-                        className="text-yellow-400 border-yellow-400 hover:bg-yellow-400/20"
-                        title="Transfer Captaincy"
-                      >
-                        <Crown className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setMemberToRemove(member as any);
-                          setShowRemoveMember(true);
-                        }}
-                        className="text-red-400 border-red-400 hover:bg-red-400/20"
-                        title="Remove Member"
-                      >
-                        <UserMinus className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <PlayerCard
+                key={member.user_id}
+                member={{
+                  user_id: member.user_id,
+                  username: member.username || 'Member',
+                  avatar_url: member.avatar_url,
+                  role: 'Member',
+                  verified: false,
+                  stats: { rating: 88, kd: '1.20', winRate: '60%', hs: '40%' } // Mock stats
+                }}
+                isOwner={false}
+                isCurrentUser={user?.id === member.user_id}
+                onUploadImage={
+                  user?.id === member.user_id
+                    ? () => {
+                      // Trigger file input
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) handlePlayerCardUpload(file, currentTeam.name, member.user_id, member.username || 'member');
+                      };
+                      input.click();
+                    }
+                    : undefined
+                }
+                onEdit={undefined}
+              />
             ))}
           </div>
-          {teamMembers.filter(m => m.user_id !== currentTeam.owner_id).length === 0 && (
+          {teamMembers.filter(m => m.user_id !== currentTeam.owner_id).length === 0 && !currentTeam.owner_id && (
             <div className="text-center text-white/60 py-8">
               <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No other team members yet</p>
-              <p className="text-sm">Invite members to join your team</p>
+              <p>No team members yet</p>
+              <p className="text-sm">Invite players to fill your roster</p>
             </div>
-          )}
-        </div>
+          )}        </div>
 
         {/* Pending Invitations for current user */}
         {pendingInvites.length > 0 && (
-          <div className="card-esports spacing-card mb-8 cv-auto">
-            <h2 className="text-2xl font-bold text-white mb-4">Pending Invitations</h2>
+          <div className="w-full bg-[#121214]/60 backdrop-blur-xl border border-white/5 rounded-2xl p-6 mb-8 hover:border-indigo-500/30 transition-colors">
+            <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+              Pending Invitations
+            </h2>
             <div className="space-y-3">
               {pendingInvites.map((inv) => (
-                <div key={inv.id} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-white">
-                    Team invite {inv.team_id.slice(0, 8)}{inv.roster_id ? ` · roster ${String(inv.roster_id).slice(0, 8)}` : ''}
+                <div key={inv.id} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors">
+                  <div className="text-white font-medium">
+                    Team invite <span className="text-indigo-400 font-mono">{inv.team_id.slice(0, 8)}</span>
+                    {inv.roster_id ? <span className="text-white/60"> · roster {String(inv.roster_id).slice(0, 8)}</span> : ''}
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => acceptInvite(inv.id)}>Accept</Button>
-                    <Button size="sm" variant="outline" className="border-red-400 text-red-400 hover:bg-red-400/20" onClick={() => declineInvite(inv.id)}>Decline</Button>
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => acceptInvite(inv.id)}>Accept</Button>
+                    <Button size="sm" variant="ghost" className="text-white/40 hover:text-red-400 hover:bg-red-500/10" onClick={() => declineInvite(inv.id)}>Decline</Button>
                   </div>
                 </div>
               ))}
@@ -1704,48 +1743,58 @@ const TeamsPage = () => {
         )}
 
         {/* Rosters */}
-        <div className="card-esports spacing-card mb-8 cv-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">Rosters</h2>
+        <div className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 mb-8">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-xl font-heading font-light uppercase tracking-widest text-white flex items-center gap-3">
+              <Gamepad2 className="w-5 h-5 text-white/60" />
+              Active Rosters
+            </h2>
             {isCaptain && (
-              <Button onClick={openCreateRoster} className="bg-gaming-purple hover:bg-gaming-purple/80 text-white">
-                Create Roster
+              <Button onClick={openCreateRoster} className="bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-full px-6">
+                <Plus className="w-4 h-4 mr-2" />
+                CREATE ROSTER
               </Button>
             )}
           </div>
+
           {rosters.length === 0 ? (
-            <div className="text-white/60">No rosters yet.</div>
+            <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/5">
+              <div className="text-white/40 font-light tracking-wide">NO ACTIVE ROSTERS FOUND</div>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {rosters.map((r) => (
-                <div key={r.id} className="bg-gradient-to-br from-[#111216] to-[#161821] border border-white/10 rounded-xl p-5 hover:border-esports-accent/40 transition-all hover:shadow-[0_8px_30px_rgba(0,212,255,0.15)]">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="font-semibold text-white">{r.name}</div>
-                    <div className="text-xs text-white/60">
+                <div key={r.id} className="group relative bg-[#0a0a0a]/40 backdrop-blur-sm border border-white/10 hover:border-white/20 rounded-xl p-6 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="font-heading font-medium text-white tracking-wide">{r.name}</div>
+                    <Badge variant="secondary" className="bg-white/5 text-white/60 border-0 font-mono text-xs">
                       {r.member_count || 0}/{r.team_size === 5 ? 7 : r.team_size}
-                    </div>
+                    </Badge>
                   </div>
-                  <div className="text-white/80 text-sm flex items-center gap-2">
+
+                  <div className="flex items-center gap-3 text-white/50 text-sm font-light mb-6">
                     {getGameLogo(r.game) && (
                       <img
                         src={getGameLogo(r.game)}
                         alt={`${r.game} logo`}
-                        className="w-5 h-5 rounded-sm object-cover"
+                        className="w-4 h-4 object-contain grayscale opacity-60"
                       />
                     )}
-                    <span>{r.game}{r.format ? ` · ${r.format}` : ''}</span>
+                    <span className="uppercase tracking-wider">{r.game}</span>
+                    <span className="w-1 h-1 rounded-full bg-white/20" />
+                    <span>{r.format || 'Standard'}</span>
                   </div>
+
                   {isCaptain && (
-                    <div className="mt-4 flex gap-2">
-                      <Button size="sm" variant="outline" className="border-esports-accent/40 text-esports-accent hover:bg-esports-accent/10" onClick={() => openManageRoster(r)}>Manage</Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="border-red-400/40 text-red-400 hover:bg-red-400/10" 
+                    <div className="flex gap-2 pt-4 border-t border-white/5">
+                      <Button size="sm" variant="ghost" className="h-9 flex-1 text-white/60 hover:text-white hover:bg-white/5 uppercase text-xs tracking-wider" onClick={() => openManageRoster(r)}>Manage</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 w-9 p-0 text-white/40 hover:text-red-400 hover:bg-red-500/10"
                         onClick={() => deleteRoster(r)}
                       >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Delete
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   )}
@@ -1756,42 +1805,56 @@ const TeamsPage = () => {
         </div>
 
         {/* Registered Tournaments */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-8 border border-white/20 cv-auto">
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-            <Trophy className="w-6 h-6 mr-2" />
-            Registered Tournaments
+        <div className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 mb-8">
+          <h2 className="text-xl font-heading font-light uppercase tracking-widest text-white mb-8 flex items-center gap-3">
+            <Trophy className="w-5 h-5 text-white/60" />
+            Tournament Entries
           </h2>
+
           {teamRegistrations.length > 0 ? (
             <div className="space-y-4">
               {teamRegistrations.map((registration) => (
-                <div key={registration.id} className="bg-white/5 rounded-lg p-4 border border-white/10">
-                  <div className="flex items-center justify-between">
+                <div
+                  key={registration.id}
+                  onClick={() => {
+                    setSelectedTournament(registration.tournaments);
+                    setIsTournamentModalOpen(true);
+                  }}
+                  className="group flex items-center justify-between p-6 bg-black/40 backdrop-blur-md border border-white/10 hover:border-indigo-500/50 hover:bg-black/60 rounded-2xl transition-all duration-500 cursor-pointer relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                  <div className="flex items-center gap-6 relative z-10">
+                    <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/5 group-hover:scale-110 group-hover:bg-indigo-500/10 group-hover:border-indigo-500/20 transition-all duration-500">
+                      <Trophy className="w-7 h-7 text-white/40 group-hover:text-indigo-400 transition-colors" />
+                    </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-white hover:text-esports-accent transition-colors">
-                        <Link to={registration.tournaments?.slug ? `/tournaments/${registration.tournaments.slug}` : '#'}>
-                          {registration.tournaments?.name || 'Tournament'}
-                        </Link>
+                      <h3 className="text-xl font-heading font-medium text-white tracking-wide group-hover:text-indigo-300 transition-colors">
+                        {registration.tournaments?.name || 'Tournament'}
                       </h3>
-                      <p className="text-white/60">
-                        {new Date(registration.tournaments?.start_date).toLocaleDateString()}
-                      </p>
-                      <Badge variant="outline" className="border-green-400 text-green-200 mt-1">
-                        Registered
-                      </Badge>
+                      <div className="flex items-center gap-3 mt-2">
+                        <Badge variant="outline" className="text-[10px] bg-white/5 border-white/10 text-white/40 uppercase tracking-widest px-2 py-0.5">
+                          Starts {registration.tournaments?.start_date ? new Date(registration.tournaments.start_date).toLocaleDateString() : 'TBD'}
+                        </Badge>
+                        <span className="w-1 h-1 rounded-full bg-white/20" />
+                        <span className="text-[10px] text-white/30 uppercase tracking-widest">Entry Confirmed</span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-white/60">Prize Pool</p>
-                      <p className="text-white font-semibold">${registration.tournaments?.prize_pool}</p>
+                  </div>
+
+                  <div className="text-right relative z-10">
+                    <div className="text-white font-mono text-2xl group-hover:text-indigo-400 transition-colors">
+                      ${registration.tournaments?.prize_pool}
                     </div>
+                    <div className="text-white/20 text-[10px] uppercase tracking-[0.2em] mt-1">Total Prize</div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center text-white/60 py-8">
-              <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No registered tournaments yet</p>
-              <p className="text-sm">Register your team for upcoming tournaments</p>
+            <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/5">
+              <div className="text-white/40 font-light tracking-wide">NO ACTIVE CAMPAIGNS</div>
+              <p className="text-white/20 text-sm mt-2">Register for tournaments to compete</p>
             </div>
           )}
         </div>
@@ -1806,7 +1869,7 @@ const TeamsPage = () => {
             <Calendar className="w-4 h-4 mr-2" />
             Refresh Data
           </Button>
-          
+
           {!isCaptain && (
             <Button
               onClick={handleLeaveTeam}
@@ -1817,7 +1880,7 @@ const TeamsPage = () => {
               Leave Team
             </Button>
           )}
-          
+
           {isCaptain && (
             <>
               <Button
@@ -1843,14 +1906,17 @@ const TeamsPage = () => {
 
       {/* Invite Members Modal */}
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Invite Members</DialogTitle>
+        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <DialogHeader className="relative z-10">
+            <DialogTitle className="text-3xl font-heading font-light uppercase tracking-widest text-white mb-2">Invite Members</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             <div>
-              <Label htmlFor="search" className="text-white">Search Users</Label>
+              <Label htmlFor="search" className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">Search Users</Label>
               <Input
                 id="search"
                 placeholder="Search by username or email..."
@@ -1859,32 +1925,34 @@ const TeamsPage = () => {
                   setSearchQuery(e.target.value);
                   searchUsers(e.target.value);
                 }}
-                className="bg-gray-800 border-gray-600 text-white"
+                className="bg-white/5 border-white/10 text-white focus:border-indigo-500/50 focus:bg-white/10 transition-all font-heading tracking-wide"
               />
             </div>
 
             {searchResults.length > 0 && (
-              <div className="max-h-48 overflow-y-auto space-y-2">
+              <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                 {searchResults.map((user) => (
                   <div
                     key={user.id}
-                    className="flex items-center justify-between p-3 bg-gray-800 rounded-lg border border-gray-600"
+                    className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-colors group"
                   >
                     <div className="flex items-center space-x-3">
-                      <Avatar className="w-8 h-8">
+                      <Avatar className="w-8 h-8 border border-white/10">
                         <AvatarImage src={user.avatar_url} />
-                        <AvatarFallback>{user.username?.charAt(0) || 'U'}</AvatarFallback>
+                        <AvatarFallback className="bg-indigo-600 text-[10px] text-white">{user.username?.charAt(0) || 'U'}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-semibold text-white">{user.username}</p>
-                        <p className="text-gray-400 text-sm">{user.email}</p>
+                        <p className="font-bold text-white group-hover:text-indigo-400 transition-colors text-sm">{user.username}</p>
+                        <p className="text-white/30 text-xs">{user.email}</p>
                       </div>
                     </div>
                     <Button
                       size="sm"
                       onClick={() => toggleUserSelection(user)}
                       variant={selectedUsers.some(u => u.id === user.id) ? "default" : "outline"}
-                      className={selectedUsers.some(u => u.id === user.id) ? "bg-green-600" : ""}
+                      className={selectedUsers.some(u => u.id === user.id)
+                        ? "bg-indigo-600 hover:bg-indigo-700 text-white border-0 shadow-[0_0_15px_rgba(79,70,229,0.3)]"
+                        : "border-white/10 text-white/60 hover:text-white hover:bg-white/10 hover:border-white/30"}
                     >
                       {selectedUsers.some(u => u.id === user.id) ? "Selected" : "Select"}
                     </Button>
@@ -1894,20 +1962,20 @@ const TeamsPage = () => {
             )}
 
             {selectedUsers.length > 0 && (
-              <div>
-                <Label className="text-white">Selected Members</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <Label className="text-[10px] uppercase tracking-widest text-white/40 mb-3 block">Selected Members</Label>
+                <div className="flex flex-wrap gap-2">
                   {selectedUsers.map((user) => (
                     <div
                       key={user.id}
-                      className="flex items-center space-x-2 bg-green-600/20 border border-green-400 rounded-lg px-3 py-2"
+                      className="flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-3 py-1 animate-in fade-in"
                     >
-                      <span className="text-green-200">{user.username}</span>
+                      <span className="text-indigo-300 text-xs font-medium">{user.username}</span>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => removeFromSelection(user.id)}
-                        className="text-green-200 hover:text-red-400 p-0 h-auto"
+                        className="text-indigo-400 hover:text-white p-0 h-4 w-4 rounded-full"
                       >
                         <X className="w-3 h-3" />
                       </Button>
@@ -1918,28 +1986,28 @@ const TeamsPage = () => {
             )}
 
             <div>
-              <Label htmlFor="message" className="text-white">Invite Message (Optional)</Label>
+              <Label htmlFor="message" className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">Invite Message (Optional)</Label>
               <Input
                 id="message"
                 placeholder="Add a personal message..."
                 value={inviteMessage}
                 onChange={(e) => setInviteMessage(e.target.value)}
-                className="bg-gray-800 border-gray-600 text-white"
+                className="bg-white/5 border-white/10 text-white focus:border-indigo-500/50"
               />
             </div>
 
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end space-x-2 pt-2">
               <Button
                 onClick={() => setShowInviteModal(false)}
                 variant="outline"
-                className="border-gray-600 text-gray-300"
+                className="border-white/10 text-white/60 hover:text-white hover:bg-white/5"
               >
                 Cancel
               </Button>
               <Button
                 onClick={sendInvites}
                 disabled={selectedUsers.length === 0}
-                className="bg-green-600 hover:bg-green-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)] disabled:opacity-50 disabled:shadow-none"
               >
                 Send Invites ({selectedUsers.length})
               </Button>
@@ -1950,19 +2018,22 @@ const TeamsPage = () => {
 
       {/* Team Invite Modal */}
       <Dialog open={showTeamInviteModal} onOpenChange={setShowTeamInviteModal}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Invite Members to Team</DialogTitle>
+        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <DialogHeader className="relative z-10">
+            <DialogTitle className="text-2xl font-heading font-light uppercase tracking-widest text-white">Invite Members to Team</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <Label className="text-white">Invite by Email</Label>
-              <div className="flex gap-2 mt-2">
+              <Label className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">Invite by Email</Label>
+              <div className="flex gap-2">
                 <Input
                   placeholder="member@example.com"
                   value={inviteSearch}
                   onChange={(e) => setInviteSearch(e.target.value)}
-                  className="bg-gray-800 border-gray-600 text-white flex-1"
+                  className="bg-white/5 border-white/10 text-white flex-1 focus:border-indigo-500/50"
                 />
                 <Button onClick={async () => {
                   // re-use inviteByEmail with no roster context
@@ -2008,26 +2079,29 @@ const TeamsPage = () => {
                   } finally {
                     setInvitingUserId(null);
                   }
-                }} disabled={!!invitingUserId} className="bg-green-600 hover:bg-green-700 text-white">
+                }} disabled={!!invitingUserId} className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]">
                   {invitingUserId ? 'Sending...' : 'Send'}
                 </Button>
               </div>
             </div>
             <div>
-              <Label className="text-white">Pending Team Invites</Label>
+              <Label className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">Pending Team Invites</Label>
               {teamInvites.length === 0 ? (
-                <div className="text-white/60 text-sm mt-2">No pending invites.</div>
+                <div className="text-white/30 text-sm italic py-2">No pending invitations</div>
               ) : (
-                <div className="mt-2 space-y-2">
+                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
                   {teamInvites.map(inv => (
-                    <div key={inv.id} className="flex items-center justify-between p-2 bg-gray-800 rounded border border-gray-700">
+                    <div key={inv.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10">
                       <div className="text-white text-sm">
-                        {inv.invited_email || inv.invited_user_id?.slice(0,8)} · {inv.created_at ? new Date(inv.created_at).toLocaleString() : ''}
+                        <span className="text-indigo-300 font-mono">{inv.invited_email || inv.invited_user_id?.slice(0, 8)}</span>
+                        <span className="text-white/30 text-xs ml-2">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''}</span>
                       </div>
-                      <Button size="sm" variant="outline" className="border-red-400 text-red-400 hover:bg-red-400/20" onClick={async () => {
+                      <Button size="sm" variant="ghost" className="text-white/40 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0" onClick={async () => {
                         await supabase.from('team_invitations' as any).delete().eq('id', inv.id);
                         setTeamInvites(prev => prev.filter(i => i.id !== inv.id));
-                      }}>Cancel</Button>
+                      }}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -2038,77 +2112,118 @@ const TeamsPage = () => {
       </Dialog>
       {/* Create Roster Modal */}
       <Dialog open={rosterModalOpen} onOpenChange={setRosterModalOpen}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Create Roster</DialogTitle>
+        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-xl shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-3xl z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-hidden p-0">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.05] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
+
+          <DialogHeader className="p-8 pb-4 relative z-10">
+            <DialogTitle className="text-3xl font-heading font-light uppercase tracking-[0.15em] text-white">Create Roster</DialogTitle>
+            <DialogDescription className="text-white/40 text-[10px] uppercase tracking-widest mt-1">Initialize a new competitive lineup</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-white">Roster Name</Label>
-              <Input
-                value={newRosterName}
-                onChange={(e) => setNewRosterName(e.target.value)}
-                className="bg-gray-800 border-gray-600 text-white"
-                placeholder="e.g., Valorant Main, CS2 Academy"
-              />
-            </div>
-            <div>
-              <Label className="text-white">Game</Label>
-              <select
-                value={newRosterGame}
-                onChange={(e) => {
-                  setNewRosterGame(e.target.value);
-                  const game = (esportsGames as any).games.find((g: any) => g.name === e.target.value);
-                  if (game) {
-                    setNewRosterFormat(game.defaultFormat);
-                    const fmt = game.formats.find((f: any) => f.value === game.defaultFormat) || game.formats[0];
-                    setNewRosterTeamSize(fmt?.teamSize || 5);
-                  }
-                }}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
-              >
-                <option value="" disabled>Select game</option>
-                {(esportsGames as any).games.map((g: any) => (<option key={g.name} value={g.name}>{g.name}</option>))}
-              </select>
-            </div>
-            {newRosterGame && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-white">Format</Label>
-                  <select
-                    value={newRosterFormat}
-                    onChange={(e) => {
-                      setNewRosterFormat(e.target.value);
-                      const game = (esportsGames as any).games.find((g: any) => g.name === newRosterGame);
-                      const fmt = game?.formats.find((f: any) => f.value === e.target.value);
-                      const fmtSize = (e.target.value === '5v5') ? 5 : (fmt?.teamSize || 5);
-                      setNewRosterTeamSize(fmtSize);
-                    }}
-                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
-                  >
-                    {((esportsGames as any).games.find((g: any) => g.name === newRosterGame)?.formats || []).map((f: any) => (
-                      <option key={f.value} value={f.value}>{f.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-white">Team Size</Label>
-                  <Input
-                    value={newRosterTeamSize}
-                    readOnly
-                    disabled
-                    className="bg-gray-800 border-gray-600 text-white opacity-70 cursor-not-allowed"
-                  />
-                  <p className="text-xs text-white/50 mt-1">
-                    {newRosterTeamSize === 5 ? '5 starters · up to 2 subs (max 7 members)' : `Roster must have exactly ${newRosterTeamSize} members`}
-                  </p>
-                </div>
+
+          <div className="p-8 pt-4 space-y-8 relative z-10">
+            <div className="space-y-6">
+              <div>
+                <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3 block">Roster Name</Label>
+                <Input
+                  value={newRosterName}
+                  onChange={(e) => setNewRosterName(e.target.value)}
+                  className="bg-white/[0.03] border-white/10 text-white focus:border-indigo-500/50 focus:bg-white/[0.06] transition-all h-12 rounded-xl px-4 font-heading tracking-wide placeholder:text-white/10"
+                  placeholder="e.g., VALORANT MAIN, CS2 ACADEMY"
+                />
               </div>
-            )}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" className="border-gray-600 text-gray-300" onClick={() => setRosterModalOpen(false)}>Cancel</Button>
-              <Button onClick={createRosterNow} disabled={rosterSubmitting || !newRosterName || !newRosterGame} className="bg-gaming-purple hover:bg-gaming-purple/80">
-                {rosterSubmitting ? 'Creating...' : 'Create Roster'}
+
+              <div>
+                <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3 block">Target Game</Label>
+                <Select
+                  value={newRosterGame}
+                  onValueChange={(val) => {
+                    setNewRosterGame(val);
+                    const game = (esportsGames as any).games.find((g: any) => g.name === val);
+                    if (game) {
+                      setNewRosterFormat(game.defaultFormat);
+                      const fmt = game.formats.find((f: any) => f.value === game.defaultFormat) || game.formats[0];
+                      setNewRosterTeamSize(fmt?.teamSize || 5);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-white/[0.03] border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 transition-all h-12 rounded-xl focus:ring-0 px-4">
+                    <SelectValue placeholder="Select competitive game" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0f1115] border-white/10 text-white rounded-xl shadow-2xl backdrop-blur-xl">
+                    {(esportsGames as any).games.map((g: any) => (
+                      <SelectItem key={g.name} value={g.name} className="hover:bg-white/5 focus:bg-white/10 transition-colors py-3 cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          {getGameLogo(g.name) ? (
+                            <img src={getGameLogo(g.name)} alt="" className="w-5 h-5 rounded-sm object-cover opacity-80" />
+                          ) : (
+                            <Gamepad2 className="w-4 h-4 text-indigo-400/60" />
+                          )}
+                          <span className="font-medium">{g.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {newRosterGame && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="grid grid-cols-2 gap-6"
+                >
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3 block">Format</Label>
+                    <Select
+                      value={newRosterFormat}
+                      onValueChange={(val) => {
+                        setNewRosterFormat(val);
+                        const game = (esportsGames as any).games.find((g: any) => g.name === newRosterGame);
+                        const fmt = game?.formats.find((f: any) => f.value === val);
+                        const fmtSize = (val === '5v5') ? 5 : (fmt?.teamSize || 5);
+                        setNewRosterTeamSize(fmtSize);
+                      }}
+                    >
+                      <SelectTrigger className="w-full bg-white/[0.03] border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 transition-all h-12 rounded-xl focus:ring-0 px-4">
+                        <SelectValue placeholder="Format" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#0f1115] border-white/10 text-white rounded-xl shadow-2xl backdrop-blur-xl">
+                        {((esportsGames as any).games.find((g: any) => g.name === newRosterGame)?.formats || []).map((f: any) => (
+                          <SelectItem key={f.value} value={f.value} className="hover:bg-white/5 py-3 cursor-pointer">{f.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3 block">Capacity</Label>
+                    <div className="h-12 flex items-center px-4 bg-white/[0.02] border border-white/[0.05] rounded-xl text-white/60 font-mono text-sm">
+                      {newRosterTeamSize} Members
+                    </div>
+                    <p className="text-[9px] text-white/20 mt-2 uppercase tracking-widest leading-relaxed">
+                      {newRosterTeamSize === 5 ? 'Includes 2 Substitutes/Reserves' : 'Fixed size recruitment'}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <Button
+                variant="outline"
+                className="flex-1 border-white/10 text-white/60 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-[10px]"
+                onClick={() => setRosterModalOpen(false)}
+              >
+                DISCARD
+              </Button>
+              <Button
+                onClick={createRosterNow}
+                disabled={rosterSubmitting || !newRosterName || !newRosterGame}
+                className="flex-1 bg-white text-black hover:bg-white/90 h-12 rounded-xl font-heading font-bold tracking-widest text-[10px] shadow-[0_0_30px_rgba(255,255,255,0.1)] disabled:opacity-20 transition-all hover:scale-[1.02]"
+              >
+                {rosterSubmitting ? 'INITIALIZING...' : 'CREATE ROSTER'}
               </Button>
             </div>
           </div>
@@ -2117,103 +2232,238 @@ const TeamsPage = () => {
 
       {/* Manage Roster Modal */}
       <Dialog open={manageRosterModalOpen} onOpenChange={setManageRosterModalOpen}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Manage Roster</DialogTitle>
+        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[90vh] overflow-y-auto custom-scrollbar overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <DialogHeader className="mb-4 relative z-10">
+            <DialogTitle className="text-3xl font-heading font-light uppercase tracking-widest text-white">Manage Roster</DialogTitle>
           </DialogHeader>
           {manageRoster && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Editable Roster Details */}
-              <div className="space-y-4 pb-4 border-b border-white/10">
+              <div className="space-y-5 pb-6 border-b border-white/5">
                 <div>
-                  <Label className="text-white">Roster Name</Label>
+                  <Label className="text-[10px] uppercase tracking-widest text-white/40 mb-2 block">Roster Name</Label>
                   <Input
                     value={editRosterName}
                     onChange={(e) => setEditRosterName(e.target.value)}
-                    className="bg-gray-800 border-gray-600 text-white mt-1"
+                    className="bg-white/5 border-white/10 text-white focus:border-indigo-500/50 focus:bg-white/10 transition-all font-heading tracking-wide"
                     placeholder="e.g., Valorant Main, CS2 Academy"
                   />
                 </div>
-                <div className="text-white/60 text-sm">
-                  <div className="flex items-center gap-2">
-                    {getGameLogo(manageRoster.game) && (
+
+                <div className="flex flex-wrap gap-3">
+                  <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 flex items-center gap-2">
+                    {getGameLogo(manageRoster.game) ? (
                       <img
                         src={getGameLogo(manageRoster.game)}
                         alt={`${manageRoster.game} logo`}
-                        className="w-4 h-4 rounded-sm object-cover"
+                        className="w-4 h-4 rounded-sm object-cover opacity-80"
                       />
+                    ) : (
+                      <Gamepad2 className="w-3.5 h-3.5 text-indigo-400" />
                     )}
-                    <span>Game: {manageRoster.game}{manageRoster.format ? ` · ${manageRoster.format}` : ''}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] uppercase tracking-widest text-white/30 leading-none mb-0.5">Game</span>
+                      <span className="text-xs font-medium text-white/80 leading-none">{manageRoster.game}</span>
+                    </div>
                   </div>
-                  <div className="mt-1">Team Size: {manageRoster.team_size === 5 ? '7 members (5 + 2 subs)' : `${manageRoster.team_size} members`}</div>
+
+                  {manageRoster.format && (
+                    <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 flex items-center gap-2">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] uppercase tracking-widest text-white/30 leading-none mb-0.5">Format</span>
+                        <span className="text-xs font-medium text-white/80 leading-none">{manageRoster.format}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 flex items-center gap-2">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] uppercase tracking-widest text-white/30 leading-none mb-0.5">Size</span>
+                      <span className="text-xs font-medium text-white/80 leading-none">{manageRoster.team_size === 5 ? '7 (5+2)' : manageRoster.team_size}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
+              {/* Roster Members Management */}
+              <div className="pb-6 border-b border-white/5 space-y-6">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 block mb-1">Current Lineup</Label>
+                    <h3 className="text-xl font-heading font-light text-white tracking-tight">Active Roster</h3>
+                  </div>
+                  <Badge variant="outline" className="bg-white/5 border-white/10 text-white/60 font-mono py-1 px-3">
+                    {manageMembers.length + 1} / {manageRoster.team_size === 5 ? 7 : manageRoster.team_size}
+                  </Badge>
+                </div>
+
+                {/* Member List - Premium Glassmorphic Items */}
+                <div className="space-y-3 max-h-56 overflow-y-auto custom-scrollbar pr-2">
+                  {/* Captain (Implicit Member) */}
+                  {currentTeam && ownerProfile && (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.06] border border-white/10 relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent" />
+                      <div className="flex items-center gap-4 relative z-10">
+                        <div className="relative">
+                          <Avatar className="w-10 h-10 border-2 border-indigo-500/50 shadow-xl">
+                            <AvatarImage src={ownerProfile.avatar_url} />
+                            <AvatarFallback className="text-xs bg-indigo-900 text-indigo-200">{ownerProfile.username?.charAt(0) || '?'}</AvatarFallback>
+                          </Avatar>
+                          <Crown className="absolute -top-1 -right-1 w-4 h-4 text-yellow-500 bg-[#0a0a0a] rounded-full p-0.5 border border-white/10" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-heading font-medium text-white block">{ownerProfile.username || 'Captain'}</span>
+                          <span className="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Team Captain</span>
+                        </div>
+                      </div>
+                      <Badge className="bg-white/5 border-white/10 text-white/40 text-[8px] uppercase tracking-tighter relative z-10">Permanent</Badge>
+                    </div>
+                  )}
+
+                  {manageMembers.length === 0 && !ownerProfile ? (
+                    <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
+                      <Users className="w-8 h-8 text-white/10 mb-2" />
+                      <p className="text-white/20 text-xs font-light tracking-wide uppercase">Roster is currently empty</p>
+                    </div>
+                  ) : (
+                    manageMembers.map(uid => {
+                      const member = teamMembers.find(m => m.user_id === uid);
+                      if (!member) return null;
+                      return (
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          key={uid}
+                          className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.08] hover:border-white/10 transition-all group relative overflow-hidden"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="flex items-center gap-4 relative z-10">
+                            <div className="relative">
+                              <Avatar className="w-10 h-10 border-2 border-white/10 shadow-xl group-hover:border-indigo-500/50 transition-colors">
+                                <AvatarImage src={member.avatar_url} />
+                                <AvatarFallback className="text-xs bg-indigo-900/50 text-indigo-200">{member.username?.charAt(0) || '?'}</AvatarFallback>
+                              </Avatar>
+                              <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0a0a0a]" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-heading font-medium text-white/90 group-hover:text-white transition-colors block">{member.username || 'Unknown User'}</span>
+                              <span className="text-[10px] uppercase tracking-widest text-white/30">Active Member</span>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-full opacity-0 group-hover:opacity-100 transition-all relative z-10"
+                            onClick={() => handleRemoveFromRoster(uid)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </div>
+
+
+              </div>
+
               {/* Invite to this roster */}
-              <div className="pt-2 border-t border-white/10">
-                <Label className="text-white">Invite to this roster (email)</Label>
-                <div className="flex gap-2 mt-2">
+              <div className="space-y-4">
+                <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 block">External Recruitment</Label>
+                <div className="flex gap-2">
                   <Input
-                    placeholder="member@example.com"
+                    placeholder="player@example.com"
                     value={inviteInput}
                     onChange={(e) => setInviteInput(e.target.value)}
-                    className="bg-gray-800 border-gray-600 text-white flex-1"
+                    className="bg-white/[0.03] border-white/10 text-white flex-1 focus:border-indigo-500/50 h-12 rounded-xl px-4"
                   />
-                  <Button size="sm" onClick={addInviteeByEmail} className="bg-blue-600 hover:bg-blue-700 text-white">
-                    Add
+                  <Button size="icon" onClick={addInviteeByEmail} className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)] w-12 h-12 rounded-xl transition-all hover:scale-105 active:scale-95">
+                    <Plus className="w-6 h-6" />
                   </Button>
                 </div>
+
                 {/* Typeahead suggestions */}
                 {inviteInput && suggestedUsers.length > 0 && (
-                  <div className="mt-2 max-h-40 overflow-y-auto rounded border border-white/10 bg-[#0f1115]">
+                  <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-[#0f1115] shadow-2xl backdrop-blur-xl z-50 relative">
                     {suggestedUsers.map(u => (
                       <button
                         key={u.id}
                         type="button"
-                        className="w-full text-left px-3 py-2 hover:bg-white/5 text-white flex justify-between"
+                        className="w-full text-left px-4 py-3 hover:bg-white/5 text-white flex items-center justify-between group transition-colors border-b border-white/[0.05] last:border-0"
                         onClick={() => {
                           setSelectedInvitees(prev => [...prev, { id: u.id, email: u.email, username: u.username }]);
                           setInviteInput('');
                           setSuggestedUsers([]);
                         }}
                       >
-                        <span>{u.username || u.email}</span>
-                        <span className="text-xs text-white/60">{u.email}</span>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-8 h-8 border border-white/10">
+                            <AvatarImage src={(u as any).avatar_url} />
+                            <AvatarFallback className="text-xs bg-indigo-900/50 text-indigo-300">{u.username?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <span className="group-hover:text-indigo-400 transition-colors font-medium text-sm">{u.username || u.email}</span>
+                        </div>
+                        <span className="text-[10px] text-white/20 tracking-tighter">{u.email}</span>
                       </button>
                     ))}
                   </div>
                 )}
+
                 {selectedInvitees.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 pt-2">
                     {selectedInvitees.map(p => (
-                      <div key={p.id} className="px-2 py-1 bg-white/10 border border-white/20 rounded text-sm text-white flex items-center gap-2">
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        key={p.id}
+                        className="pl-3 pr-2 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-xs text-indigo-300 flex items-center gap-2 group hover:bg-indigo-500/20 transition-colors"
+                      >
                         <span>{p.username || p.email}</span>
-                        <button onClick={() => setSelectedInvitees(prev => prev.filter(x => x.id !== p.id))} className="text-red-400 hover:text-red-300">×</button>
-                      </div>
+                        <button onClick={() => setSelectedInvitees(prev => prev.filter(x => x.id !== p.id))} className="text-indigo-400 hover:text-white transition-colors">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </motion.div>
                     ))}
                   </div>
                 )}
-                <div className="mt-2 text-right">
-                  <Button size="sm" onClick={sendBatchRosterInvites} disabled={selectedInvitees.length === 0} className="bg-green-600 hover:bg-green-700 text-white">
-                    Send {selectedInvitees.length} invite{selectedInvitees.length === 1 ? '' : 's'}
+
+                <div className="flex justify-between items-center bg-white/[0.02] border border-white/[0.05] p-4 rounded-xl">
+                  <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-medium">
+                    Lineup Capacity: <span className="text-indigo-400">{manageRoster.team_size === 5 ? '7 Slots' : `${manageRoster.team_size} Slots`}</span>
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={sendBatchRosterInvites}
+                    disabled={selectedInvitees.length === 0}
+                    className="bg-emerald-500/80 hover:bg-emerald-500 text-white px-6 h-9 rounded-full font-heading uppercase tracking-widest text-[10px] transition-all disabled:opacity-30"
+                  >
+                    Send Invites ({selectedInvitees.length})
                   </Button>
                 </div>
-                <p className="text-xs text-white/50 mt-2">Roster limit: {manageRoster.team_size === 5 ? '7 members (5 + 2 subs)' : `${manageRoster.team_size}`}.</p>
               </div>
 
 
               {/* Pending roster invites (owner view) */}
               {isCaptain && rosterInvites.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-white/10">
-                  <Label className="text-white">Pending Invites</Label>
-                  <div className="mt-2 space-y-2">
+                <div className="mt-8 pt-6 border-t border-white/5 space-y-4">
+                  <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 block">Pending Inbound</Label>
+                  <div className="space-y-2">
                     {rosterInvites.map(inv => (
-                      <div key={inv.id} className="flex items-center justify-between p-2 bg-gray-800 rounded border border-gray-700">
-                        <div className="text-white text-sm">
-                          {inv.invited_email || inv.invited_user_id?.slice(0,8)} · {inv.created_at ? new Date(inv.created_at).toLocaleString() : ''}
+                      <div key={inv.id} className="flex items-center justify-between p-3 bg-white/[0.03] rounded-xl border border-white/[0.05] group">
+                        <div className="flex flex-col">
+                          <span className="text-sm text-white/80 font-medium">{inv.invited_email || inv.invited_user_id?.slice(0, 8)}</span>
+                          <span className="text-[10px] text-white/20 uppercase tracking-tight">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''} at {inv.created_at ? new Date(inv.created_at).toLocaleTimeString() : ''}</span>
                         </div>
-                        <Button size="sm" variant="outline" className="border-red-400 text-red-400 hover:bg-red-400/20" onClick={() => cancelRosterInvite(inv.id)}>
-                          Cancel
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-400/50 hover:text-red-400 hover:bg-red-500/10 rounded-full h-8 px-4 text-[10px] uppercase tracking-widest"
+                          onClick={() => cancelRosterInvite(inv.id)}
+                        >
+                          Revoke
                         </Button>
                       </div>
                     ))}
@@ -2221,9 +2471,9 @@ const TeamsPage = () => {
                 </div>
               )}
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" className="border-gray-600 text-gray-300" onClick={() => setManageRosterModalOpen(false)}>Close</Button>
-                <Button onClick={saveManageRoster} className="bg-gaming-purple hover:bg-gaming-purple/80">Save</Button>
+              <div className="flex gap-3 pt-6">
+                <Button variant="outline" className="flex-1 border-white/10 text-white/60 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-xs" onClick={() => setManageRosterModalOpen(false)}>DISMISS</Button>
+                <Button onClick={saveManageRoster} className="flex-1 bg-white text-black hover:bg-white/90 h-12 rounded-xl font-heading font-bold tracking-widest text-xs shadow-xl transition-all hover:scale-[1.02]">SAVE CHANGES</Button>
               </div>
             </div>
           )}
@@ -2232,20 +2482,23 @@ const TeamsPage = () => {
 
       {/* Remove Member Confirmation */}
       <AlertDialog open={showRemoveMember} onOpenChange={setShowRemoveMember}>
-        <AlertDialogContent className="bg-gray-900 border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">Remove Member</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300">
-              Are you sure you want to remove {memberToRemove?.username} from the team? This action cannot be undone.
+        <AlertDialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <AlertDialogHeader className="relative z-10">
+            <AlertDialogTitle className="text-2xl font-heading font-light uppercase tracking-widest text-white">Remove Member</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/40 text-sm leading-relaxed mt-4">
+              Are you sure you want to remove <span className="text-red-400 font-medium">{memberToRemove?.username}</span> from the team? This action is permanent and cannot be reversed.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-600 text-gray-300">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 h-11 rounded-xl px-6 transition-all">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemoveMember}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600/80 hover:bg-red-600 text-white h-11 rounded-xl px-6 font-heading tracking-widest text-xs transition-all hover:scale-105"
             >
-              Remove
+              CONFIRM REMOVAL
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2253,20 +2506,23 @@ const TeamsPage = () => {
 
       {/* Transfer Captaincy Confirmation */}
       <AlertDialog open={showTransferCaptaincy} onOpenChange={setShowTransferCaptaincy}>
-        <AlertDialogContent className="bg-gray-900 border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">Transfer Captaincy</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300">
-              Are you sure you want to transfer captaincy to {memberToRemove?.username}? You will no longer be the captain of this team.
+        <AlertDialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <AlertDialogHeader className="relative z-10">
+            <AlertDialogTitle className="text-2xl font-heading font-light uppercase tracking-widest text-white">Transfer Captaincy</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/40 text-sm leading-relaxed mt-4">
+              Are you sure you want to transfer leadership to <span className="text-indigo-400 font-medium">{memberToRemove?.username}</span>? You will relinquish all captain permissions for this team.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-600 text-gray-300">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 h-11 rounded-xl px-6 transition-all">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleTransferCaptaincy}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+              className="bg-white text-black hover:bg-white/90 h-11 rounded-xl px-6 font-heading font-bold tracking-widest text-xs transition-all hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
             >
-              Transfer
+              TRANSFER CONTROL
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2274,161 +2530,254 @@ const TeamsPage = () => {
 
       {/* Disband Team Confirmation */}
       <AlertDialog open={showDisbandTeam} onOpenChange={setShowDisbandTeam}>
-        <AlertDialogContent className="bg-gray-900 border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">Disband Team</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300">
-              Are you sure you want to disband this team? This action will remove all members and cannot be undone.
+        <AlertDialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <AlertDialogHeader className="relative z-10">
+            <AlertDialogTitle className="text-2xl font-heading font-light uppercase tracking-widest text-white text-red-500">Disband Team</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/40 text-sm leading-relaxed mt-4">
+              Are you sure you want to disband this team? This will <span className="text-red-400 font-medium whitespace-nowrap">permanently delete</span> all rosters and remove all members. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-600 text-gray-300">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 h-11 rounded-xl px-6 transition-all">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDisbandTeam}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600 hover:bg-red-500 text-white h-11 rounded-xl px-6 font-heading font-bold tracking-widest text-xs transition-all hover:scale-105 shadow-[0_0_30px_rgba(239,68,68,0.2)]"
             >
-              Disband
+              DISBAND TEAM
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Team Announcement Modal */}
       <Dialog open={showTeamAnnouncement} onOpenChange={setShowTeamAnnouncement}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Send Team Announcement</DialogTitle>
+        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-lg shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-3xl p-0 overflow-hidden relative">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
+          <DialogHeader className="p-8 pb-4 relative z-10">
+            <DialogTitle className="text-2xl font-heading font-light uppercase tracking-[0.2em] text-white">Broadcast</DialogTitle>
+            <DialogDescription className="text-white/40 text-[10px] uppercase tracking-widest mt-1">Send an announcement to all members</DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4">
+
+          <div className="p-8 pt-4 space-y-6 relative z-10">
             <div>
-              <Label htmlFor="announcement" className="text-white">Message</Label>
+              <Label htmlFor="announcement" className="text-[10px] uppercase tracking-widest text-white/40 mb-3 block">Message Content</Label>
               <textarea
                 id="announcement"
-                placeholder="Type your announcement here..."
+                placeholder="Enter your message to the team..."
                 value={announcementText}
                 onChange={(e) => setAnnouncementText(e.target.value)}
-                className="w-full h-32 p-3 bg-gray-800 border border-gray-600 rounded-lg text-white resize-none"
+                className="w-full h-40 p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white resize-none focus:outline-none focus:border-indigo-500/50 transition-all font-light placeholder:text-white/10 scrollbar-hide"
               />
             </div>
-            
-            <div className="flex justify-end space-x-2">
+
+            <div className="flex gap-3">
               <Button
                 onClick={() => setShowTeamAnnouncement(false)}
                 variant="outline"
-                className="border-gray-600 text-gray-300"
+                className="flex-1 border-white/10 text-white/60 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-xs"
               >
-                Cancel
+                DISCARD
               </Button>
               <Button
                 onClick={handleSendAnnouncement}
                 disabled={!announcementText.trim()}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white h-12 rounded-xl font-heading font-bold tracking-widest text-xs shadow-xl transition-all hover:scale-[1.02] disabled:opacity-30"
               >
-                Send Announcement
+                SEND ANNOUNCEMENT
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Team Edit Modal */}
       <Dialog open={showEditTeam} onOpenChange={setShowEditTeam}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-esports-dark border border-gray-600/30">
-          <DialogHeader>
-            <DialogTitle className="text-3xl font-bold text-esports-primary">
-              Edit Team
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-black/95 backdrop-blur-3xl border border-white/10 text-white rounded-3xl p-0 scrollbar-hide relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
+
+          <DialogHeader className="p-8 pb-4 relative z-10">
+            <DialogTitle className="text-3xl font-heading font-light uppercase tracking-[0.2em] text-white">
+              Identity & Ops
             </DialogTitle>
-            <DialogDescription className="text-esports-secondary">
-              Update your team's information, logo, and competitive games.
+            <DialogDescription className="text-white/40 text-[10px] uppercase tracking-widest mt-1">
+              Configure team foundations and branding
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-6">
+
+          <div className="p-8 pt-4 space-y-10 relative z-10">
             {/* Team Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className="space-y-6">
                 <div>
-                  <Label htmlFor="editTeamName" className="text-esports-primary">Team Name *</Label>
+                  <Label htmlFor="editTeamName" className="text-[10px] uppercase tracking-widest text-white/40 mb-3 block">Team Name</Label>
                   <Input
                     id="editTeamName"
                     value={editTeamName}
                     onChange={(e) => setEditTeamName(e.target.value)}
                     placeholder="Enter team name"
-                    className="bg-esports-dark border border-gray-600/30 text-esports-primary placeholder-gray-400"
+                    className="bg-white/[0.03] border-white/10 text-white focus:border-indigo-500/50 h-12 rounded-xl px-4 font-heading tracking-wide"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="editTeamTag" className="text-esports-primary">Team Tag *</Label>
+                  <Label htmlFor="editTeamTag" className="text-[10px] uppercase tracking-widest text-white/40 mb-3 block">Official Tag</Label>
                   <Input
                     id="editTeamTag"
                     value={editTeamTag}
                     onChange={(e) => setEditTeamTag(e.target.value.toUpperCase())}
                     placeholder="3-6 characters"
                     maxLength={6}
-                    className="bg-esports-dark border border-gray-600/30 text-esports-primary placeholder-gray-400"
+                    className="bg-white/[0.03] border-white/10 text-white focus:border-indigo-500/50 h-12 rounded-xl px-4 font-mono tracking-[0.3em] uppercase"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="editTeamLogo" className="text-esports-primary">Team Logo</Label>
-                  <div className="space-y-3">
-                    <Input
-                      id="editTeamLogo"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleEditLogoChange}
-                      className="bg-esports-dark border border-gray-600/30 text-esports-primary"
-                    />
-                          {editTeamLogoUrl && (
-                            <div className="flex items-center gap-3">
-                              <div className="w-16 h-16 bg-esports-card border border-gray-600/30 rounded-xl flex items-center justify-center overflow-hidden">
-                                <img
-                                  src={editTeamLogoUrl}
-                                  alt="Team Logo Preview"
-                                  className="w-full h-full object-contain p-1"
-                                />
-                              </div>
-                              <div className="text-sm text-esports-secondary">
-                                Logo preview
-                              </div>
-                            </div>
-                          )}
+                  <Label htmlFor="editTeamLogo" className="text-[10px] uppercase tracking-widest text-white/40 mb-3 block">Branding Assets</Label>
+                  <div className="space-y-4">
+                    <div className="relative group cursor-pointer">
+                      <Input
+                        id="editTeamLogo"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleEditLogoChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="h-12 border border-dashed border-white/20 rounded-xl flex items-center justify-center gap-3 bg-white/[0.02] group-hover:bg-white/[0.05] transition-all">
+                        <Upload className="w-4 h-4 text-white/30" />
+                        <span className="text-xs text-white/40">Upload New Mark</span>
+                      </div>
+                    </div>
+                    {editTeamLogoUrl && (
+                      <div className="flex items-center gap-4 bg-white/[0.02] p-3 rounded-2xl border border-white/[0.05]">
+                        <div className="w-16 h-16 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center overflow-hidden">
+                          <img
+                            src={editTeamLogoUrl}
+                            alt="Logo Preview"
+                            className="w-full h-full object-contain p-1"
+                          />
+                        </div>
+                        <div className="text-[10px] uppercase tracking-widest text-white/20">
+                          Primary Shield
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
+              {/* Game Selection can go here or in another section */}
+              <div className="bg-white/[0.02] rounded-3xl border border-white/[0.05] p-6 flex flex-col items-center justify-center gap-3">
+                <Settings className="w-10 h-10 text-white/10" />
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/20 text-center">Operational Settings<br /><span className="text-[8px] opacity-50 italic">More options coming soon</span></p>
+              </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-6 border-t border-gray-600/30">
+            <div className="flex gap-4 border-t border-white/5 pt-8">
               <Button
                 variant="outline"
                 onClick={() => setShowEditTeam(false)}
-                className="border-gray-600/30 text-esports-secondary hover:bg-gray-800/50"
+                className="flex-1 border-white/10 text-white/60 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-xs"
               >
-                Cancel
+                DISCARD
               </Button>
               <Button
                 onClick={handleEditTeam}
                 disabled={editSubmitting || !editTeamName || !editTeamTag}
-                className="btn-esports-blue px-8 py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 bg-white text-black hover:bg-white/90 h-12 rounded-xl font-heading font-bold tracking-widest text-xs shadow-2xl transition-all hover:scale-[1.02] disabled:opacity-20 flex items-center justify-center gap-2"
               >
                 {editSubmitting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Updating...
+                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                    UPDATING...
                   </>
                 ) : (
                   <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Update Team
+                    <Save className="w-4 h-4" />
+                    COMMIT CHANGES
                   </>
                 )}
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Tournament Details Modal */}
+      <Dialog open={isTournamentModalOpen} onOpenChange={setIsTournamentModalOpen}>
+        <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-3xl border border-white/10 text-white max-w-2xl shadow-[0_0_80px_rgba(0,0,0,0.8)] rounded-3xl p-0 overflow-hidden z-[1100]">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.05] overflow-hidden"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent pointer-events-none" />
+
+          {selectedTournament && (
+            <div className="relative z-10">
+              <div className="h-48 bg-gradient-to-b from-indigo-900/20 to-transparent flex items-end p-8">
+                <div className="w-20 h-20 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center justify-center mb-[-40px] shadow-2xl relative z-20">
+                  <Trophy className="w-10 h-10 text-indigo-400" />
+                </div>
+              </div>
+
+              <div className="p-8 pt-16">
+                <div className="flex justify-between items-start mb-8">
+                  <div>
+                    <h2 className="text-3xl font-heading font-light uppercase tracking-widest text-white mb-2">{selectedTournament.name}</h2>
+                    <div className="flex items-center gap-4">
+                      <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-300 border-indigo-500/20">
+                        {new Date(selectedTournament.start_date).toLocaleDateString()}
+                      </Badge>
+                      <Badge variant="outline" className="border-white/10 text-white/40">
+                        PRIZE: ${selectedTournament.prize_pool}
+                      </Badge>
+                    </div>
+                  </div>
+                  <Link
+                    to={selectedTournament.slug ? `/tournaments/${selectedTournament.slug}` : '#'}
+                    className="bg-white text-black hover:bg-white/90 px-6 py-3 rounded-xl font-heading font-bold tracking-widest text-xs transition-all hover:scale-105 shadow-xl"
+                  >
+                    GO TO TOURNAMENT
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                  <div className="p-6 bg-white/[0.02] border border-white/[0.05] rounded-2xl group hover:border-indigo-500/30 transition-colors">
+                    <div className="text-[10px] uppercase tracking-widest text-white/20 mb-2">Tournament Status</div>
+                    <div className="text-lg text-white font-medium flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Active Entry
+                    </div>
+                  </div>
+                  <div className="p-6 bg-white/[0.02] border border-white/[0.05] rounded-2xl group hover:border-indigo-500/30 transition-colors">
+                    <div className="text-[10px] uppercase tracking-widest text-white/20 mb-2">Team Allocation</div>
+                    <div className="text-lg text-white font-medium">Main Roster</div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-white/5">
+                  <p className="text-white/40 text-sm leading-relaxed">
+                    Your team is registered and confirmed for this event. Ensure all roster members are checked in 30 minutes prior to the start time.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-8 border-t border-white/5 bg-white/[0.01]">
+                <Button
+                  variant="outline"
+                  className="w-full border-white/10 text-white/40 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-xs"
+                  onClick={() => setIsTournamentModalOpen(false)}
+                >
+                  DISMISS
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -37,10 +37,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const [newStageCapacity, setNewStageCapacity] = useState<number | ''>('');
     const [newStageAdvancement, setNewStageAdvancement] = useState<number | ''>('');
     const [hasBrackets, setHasBrackets] = useState<Record<string, boolean>>({});
+    const [bracketsLoading, setBracketsLoading] = useState(true);
     const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
     const [deleteBracketDialogOpen, setDeleteBracketDialogOpen] = useState(false);
     const [stageToDelete, setStageToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [tournamentWinner, setTournamentWinner] = useState<{ id: string; name: string; logo_url?: string | null } | null>(null);
 
     // Subscribe to realtime stage updates - this will trigger onUpdate when stages change
     useStageRealtime({
@@ -55,6 +57,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
     useEffect(() => {
         const checkBrackets = async () => {
+            setBracketsLoading(true);
             const status: Record<string, boolean> = {};
             for (const stage of stages) {
                 // Check brkt_versions (new graph engine) instead of tournament_matches
@@ -65,10 +68,68 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 status[stage.id] = (count || 0) > 0;
             }
             setHasBrackets(status);
+            setBracketsLoading(false);
         };
         if (stages.length > 0) {
             checkBrackets();
+        } else {
+            setBracketsLoading(false);
         }
+    }, [stages]);
+
+    // Fetch tournament winner from last stage's final match
+    useEffect(() => {
+        const fetchWinner = async () => {
+            if (stages.length === 0) return;
+
+            // Get the last stage
+            const lastStage = stages[stages.length - 1];
+            if (lastStage.status !== 'completed') {
+                setTournamentWinner(null);
+                return;
+            }
+
+            try {
+                // Get the bracket version for the last stage
+                const { data: version } = await (supabase as any)
+                    .from('brkt_versions')
+                    .select('id')
+                    .eq('stage_id', lastStage.id)
+                    .order('version_number', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (!version) return;
+
+                // Get the final match (highest round_index with a winner)
+                const { data: finalMatch } = await (supabase as any)
+                    .from('brkt_matches')
+                    .select('winner_id')
+                    .eq('version_id', version.id)
+                    .eq('status', 'completed')
+                    .not('winner_id', 'is', null)
+                    .order('round_index', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (finalMatch?.winner_id) {
+                    // Get team info
+                    const { data: team } = await (supabase as any)
+                        .from('teams')
+                        .select('id, name, logo_url')
+                        .eq('id', finalMatch.winner_id)
+                        .single();
+
+                    if (team) {
+                        setTournamentWinner(team);
+                    }
+                }
+            } catch (error) {
+                console.error('[StageManagement] Error fetching winner:', error);
+            }
+        };
+
+        fetchWinner();
     }, [stages]);
 
     const handleAddStage = async () => {
@@ -399,6 +460,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             const { isComplete } = await completionService.checkStageCompletion(stageId);
 
             if (isComplete) {
+                // If all matches complete (rare case with all Byes), mark as completed
                 const { error: updateError } = await supabase
                     .from('tournament_stages')
                     .update({ status: 'completed' })
@@ -407,6 +469,16 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 if (!updateError) {
                     toast({ title: 'Stage Completed', description: 'Stage automatically completed due to Byes.' });
                     onUpdate();
+                }
+            } else {
+                // Otherwise, set stage to 'live' since brackets are now generated
+                const { error: updateError } = await supabase
+                    .from('tournament_stages')
+                    .update({ status: 'live' })
+                    .eq('id', stageId);
+
+                if (updateError) {
+                    console.error('[StageManagement] Failed to update stage status to live:', updateError);
                 }
             }
 
@@ -631,38 +703,36 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 p-4 bg-black/20 rounded-lg border border-white/5">
-                                        <div>
-                                            <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Capacity</label>
-                                            <div className="flex items-center gap-2">
-                                                <Users className="w-4 h-4 text-emerald-500" />
-                                                <span className="text-white font-medium">{stage.capacity || 'Unlimited'}</span>
+                                    {index < stages.length - 1 && (
+                                        <div className="mb-4 p-4 bg-black/20 rounded-lg border border-white/5">
+                                            <div>
+                                                <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Advancement</label>
+                                                <div className="flex items-center gap-2">
+                                                    <Trophy className="w-4 h-4 text-amber-500" />
+                                                    <span className="text-white font-medium">{stage.advancement_count ? `Top ${stage.advancement_count} advance` : 'N/A'}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Advancement</label>
-                                            <div className="flex items-center gap-2">
-                                                <Trophy className="w-4 h-4 text-amber-500" />
-                                                <span className="text-white font-medium">{stage.advancement_count ? `Top ${stage.advancement_count} advance` : 'N/A'}</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Status Control</label>
-                                            <select
-                                                className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white outline-none"
-                                                value={stage.status || 'upcoming'}
-                                                onChange={(e) => handleUpdateStage(stage.id, { status: e.target.value })}
-                                            >
-                                                <option value="upcoming">Upcoming</option>
-                                                <option value="live">Live</option>
-                                                <option value="completed">Completed</option>
-                                            </select>
-                                        </div>
-                                    </div>
+                                    )}
 
                                     <div className="flex flex-wrap gap-3">
                                         {/* Bracket Generation/Management Button */}
                                         {(() => {
+                                            // Show loading state while checking brackets
+                                            if (bracketsLoading) {
+                                                return (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-xs border-gray-600 text-gray-400"
+                                                        disabled
+                                                    >
+                                                        <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
+                                                        Loading...
+                                                    </Button>
+                                                );
+                                            }
+
                                             const stageBracketExists = hasBrackets[stage.id];
                                             const isFirstStage = index === 0;
                                             const previousStage = index > 0 ? stages[index - 1] : null;
@@ -713,33 +783,30 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                             Delete Bracket
                                                         </Button>
                                                     )}
-                                                    {isBlocked && (
-                                                        <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 border border-white/10 rounded-lg text-xs text-gray-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                                            Complete "{previousStage?.name}" stage first
-                                                        </div>
-                                                    )}
                                                 </div>
                                             );
                                         })()}
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
-                                            onClick={() => handleAdvanceTeams(stage.id)}
-                                            disabled={stage.status !== 'completed'}
-                                        >
-                                            <ArrowRight className="w-3.5 h-3.5 mr-2" />
-                                            Advance Teams
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className={`text-xs ${stage.is_locked ? "text-amber-400 hover:text-amber-300" : "text-gray-400 hover:text-white"}`}
-                                            onClick={() => handleUpdateStage(stage.id, { is_locked: !stage.is_locked })}
-                                        >
-                                            {stage.is_locked ? <Unlock className="w-3.5 h-3.5 mr-2" /> : <Lock className="w-3.5 h-3.5 mr-2" />}
-                                            {stage.is_locked ? 'Unlock Stage' : 'Lock Stage'}
-                                        </Button>
+                                        {/* Winner Display - only on last completed stage */}
+                                        {index === stages.length - 1 && stage.status === 'completed' && tournamentWinner && (
+                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                                                <Trophy className="w-4 h-4 text-amber-400" />
+                                                <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">Winner:</span>
+                                                <span className="text-white font-bold">{tournamentWinner.name}</span>
+                                            </div>
+                                        )}
+                                        {index < stages.length - 1 && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
+                                                onClick={() => handleAdvanceTeams(stage.id)}
+                                                disabled={stage.status !== 'completed'}
+                                            >
+                                                <ArrowRight className="w-3.5 h-3.5 mr-2" />
+                                                Advance Teams
+                                            </Button>
+                                        )}
+
                                     </div>
                                 </div>
                             ))}

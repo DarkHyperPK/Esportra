@@ -217,7 +217,7 @@ export function FramerDropdownItem({
                 borderRadius: Math.max(0, config.borderRadius - 2),
                 backgroundColor: isSelected
                     ? `${accentColor}15`
-                    : "transparent",
+                    : `${accentColor}00`,
                 color: isSelected ? accentColor : textColor,
                 borderLeft: `2px solid ${isHovered && !isSelected
                     ? `${accentColor}60`
