@@ -28,10 +28,14 @@ Esportra provides a complete ecosystem for esports competitions, featuring:
 
 ## Roadmap
 
+## Roadmap
+
 **Coming in v0.4.0:**
 - Round Robin format support
 - Match scheduling with calendar integration
 - Enhanced team statistics dashboard
+- Team matches history, scores, and standings
+- Unified tournament leaderboard
 
 ## Changelog
 
