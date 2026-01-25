@@ -1,12 +1,22 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import slugify from 'slugify';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import Footer from '@/components/Footer';
+import {
+  TournamentHeader
+} from '@/components/tournament/details/TournamentHeader';
+import { OverviewTab } from '@/components/tournament/details/OverviewTab';
+import { TeamsTab } from '@/components/tournament/details/TeamsTab';
+import { BracketsTab } from '@/components/tournament/details/BracketsTab';
+import { RulesTab } from '@/components/tournament/details/RulesTab';
+import ImageUploader from '@/components/tournament/wizard/ImageUploader';
+import { usePublicBracketData } from '@/hooks/usePublicBracketData';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle, Clock, AlertTriangle, Ban as BanIcon, Swords } from 'lucide-react';
+import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle, Clock, AlertTriangle, Ban as BanIcon, Swords, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
@@ -31,6 +41,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PremiumBackground from "@/components/ui/PremiumBackground";
+import { AnimatePresence, motion } from "framer-motion";
 import esportsGamesData from '@/data/esportsGames.json';
 
 interface EsportsGame {
@@ -63,6 +76,8 @@ interface DatabaseTournament {
   entry_fee: string | null;
   description: string;
   user_id: string;
+  organizer_id: string;
+  rewards?: string | null;
   created_at: string;
   image_url?: string | null;
   slug: string;
@@ -113,8 +128,9 @@ const TournamentDetails = () => {
   const [registrationsLoading, setRegistrationsLoading] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState<string | null>(null);
+  const [showBannerDialog, setShowBannerDialog] = useState(false);
 
-  const isOrganizer = currentRole === 'organizer' && !!(user?.id && tournament?.user_id && user.id === tournament.user_id);
+  const isOrganizer = currentRole === 'organizer' && !!(user?.id && tournament?.organizer_id && user.id === tournament.organizer_id);
   const requiresCheckIn = Boolean(tournament?.check_in_required);
   const checkInDeadlineDate = tournament?.check_in_deadline ? new Date(tournament.check_in_deadline) : null;
   const registrationStatus = (registrationDetails?.status || '').toLowerCase();
@@ -139,6 +155,115 @@ const TournamentDetails = () => {
     now <= checkInDeadlineDate;
   // Live Check-in Countdown
   const [timeLeft, setTimeLeft] = useState<string>('');
+
+  // Global handler for banner edit
+  useEffect(() => {
+    (window as any).dispatchBannerEdit = () => setShowBannerDialog(true);
+    return () => { delete (window as any).dispatchBannerEdit; };
+  }, []);
+
+  // Public Bracket View State - Refactored to Hook
+  const { stages, activeVersionsMap, loading: bracketLoading } = usePublicBracketData(tournament?.id);
+  const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+
+  // Auto-select first stage when stages load
+  useEffect(() => {
+    if (stages.length > 0 && !selectedStageId) {
+      setSelectedStageId(stages[0].id);
+    }
+  }, [stages, selectedStageId]);
+
+  const [enrichedParticipants, setEnrichedParticipants] = useState<any[]>([]); // For public teams display
+
+  // Fetch robust participant data (Logos, Rosers, etc.) similar to Organizer Dashboard
+  const fetchPublicParticipants = useCallback(async () => {
+    if (!tournament?.id) return;
+    try {
+      const { data: participantsData, error } = await supabase
+        .from('tournament_participants')
+        .select('*')
+        .eq('tournament_id', tournament.id);
+
+      if (error) throw error;
+      if (!participantsData) return;
+
+      const participants = participantsData as any[];
+      const allUserIds = new Set<string>();
+      participants.forEach(p => {
+        if (p.user_id) allUserIds.add(p.user_id);
+      });
+
+      // 1. Resolve Team Logos by ID
+      const teamIds = Array.from(new Set(participants.filter(p => p.team_id).map(p => p.team_id)));
+      let teamMap: Record<string, { logo_url: string | null, name: string }> = {};
+
+      if (teamIds.length > 0) {
+        const { data: teams } = await supabase
+          .from('teams')
+          .select('id, name, logo_url')
+          .in('id', teamIds);
+        (teams || []).forEach((t: any) => {
+          teamMap[t.id] = { logo_url: t.logo_url, name: t.name };
+        });
+      }
+
+      // 2. Resolve Team Logos by Name (Fallback)
+      const participantsWithTeamNameNoId = participants.filter(p => !p.team_id && p.team_name);
+      const teamNamesToCheck = Array.from(new Set(participantsWithTeamNameNoId.map(p => p.team_name)));
+
+      if (teamNamesToCheck.length > 0) {
+        const { data: teamsByName } = await supabase
+          .from('teams')
+          .select('id, name, logo_url')
+          .in('name', teamNamesToCheck);
+
+        (teamsByName || []).forEach((t: any) => {
+          // Create a fake ID or just map by name for now? Logic in Manager was complex.
+          // We will just patch the participants directly.
+          participants.forEach(p => {
+            if (!p.team_id && p.team_name === t.name) {
+              p.team_logo = p.team_logo || t.logo_url;
+            }
+          });
+        });
+      }
+
+      // 3. Resolve Profiles
+      if (allUserIds.size > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', Array.from(allUserIds));
+
+        const profileMap: Record<string, any> = {};
+        (profiles || []).forEach((p: any) => profileMap[p.id] = p);
+
+        participants.forEach(p => {
+          if (p.user_id && profileMap[p.user_id]) {
+            p.user = profileMap[p.user_id];
+          }
+        });
+      }
+
+      // 4. Attach resolved team info
+      participants.forEach(p => {
+        if (p.team_id && teamMap[p.team_id]) {
+          p.team_logo = p.team_logo || teamMap[p.team_id].logo_url;
+          p.team_name = p.team_name || teamMap[p.team_id].name;
+        }
+      });
+
+      setEnrichedParticipants(participants);
+    } catch (err) {
+      console.error('Error fetching public participants:', err);
+    }
+  }, [tournament?.id]);
+
+  useEffect(() => {
+    if (tournament?.id) {
+      fetchPublicParticipants();
+    }
+  }, [tournament?.id, fetchPublicParticipants]);
 
   useEffect(() => {
     if (!checkInDeadlineDate || !(checkInDeadlineDate instanceof Date)) return;
@@ -196,14 +321,21 @@ const TournamentDetails = () => {
           status,
           organizer_id,
           venue_id,
+          organizer_id,
+          venue_id,
           is_public,
           banner_url,
           logo_url,
+          rewards,
           created_at,
-          updated_at,
           check_in_required,
           check_in_deadline,
-          auto_remove_unchecked
+          auto_remove_unchecked,
+          organizer:organizer_id (
+            username,
+            avatar_url,
+            full_name
+          )
         `)
         .eq('slug', slug)
         .single();
@@ -232,11 +364,17 @@ const TournamentDetails = () => {
             is_public,
             banner_url,
             logo_url,
+            rewards,
             created_at,
             updated_at,
             check_in_required,
             check_in_deadline,
-            auto_remove_unchecked
+            auto_remove_unchecked,
+            organizer:organizer_id (
+              username,
+              avatar_url,
+              full_name
+            )
           `)
           .eq('id', slug)
           .single();
@@ -275,11 +413,15 @@ const TournamentDetails = () => {
         entry_fee: tournamentData.entry_fee?.toString() || '0',
         description: tournamentData.description || '',
         user_id: tournamentData.organizer_id,
+        organizer_id: tournamentData.organizer_id,
+        rewards: tournamentData.rewards,
         created_at: tournamentData.created_at,
         image_url: tournamentData.banner_url || tournamentData.logo_url || null,
         check_in_required: !!tournamentData.check_in_required,
         check_in_deadline: tournamentData.check_in_deadline,
-        auto_remove_unchecked: tournamentData.auto_remove_unchecked ?? true
+        auto_remove_unchecked: tournamentData.auto_remove_unchecked ?? true,
+        end_date: tournamentData.end_date ? new Date(tournamentData.end_date).toISOString().split('T')[0] : undefined,
+        organizer: tournamentData.organizer,
       };
 
       const { count, error: countError } = await sb
@@ -842,6 +984,32 @@ const TournamentDetails = () => {
     }
   };
 
+  const handleBannerUpdate = async (url: string | null) => {
+    if (!tournament?.id) return;
+
+    try {
+      const { error } = await sb
+        .from('tournaments')
+        .update({ banner_url: url })
+        .eq('id', tournament.id);
+
+      if (error) throw error;
+
+      setTournament(prev => prev ? { ...prev, image_url: url } : null);
+      setShowBannerDialog(false);
+      toast({
+        title: 'Banner updated',
+        description: 'The tournament banner has been updated successfully.'
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Update failed',
+        description: error.message || 'Failed to update banner',
+        variant: 'destructive'
+      });
+    }
+  };
+
   useEffect(() => {
     console.log('Dialog state changed:', { showEditDialog, slug, userId: user?.id });
     if (!showEditDialog && slug && user?.id) {
@@ -1019,11 +1187,8 @@ const TournamentDetails = () => {
     }
   }, [isOrganizer, tournament?.id]);
 
-  useEffect(() => {
-    if (!loading && tournament && isOrganizer) {
-      navigate(`/organizer/tournament/${slug}`);
-    }
-  }, [loading, tournament, isOrganizer, navigate]);
+
+
 
   if (loading) {
     return (
@@ -1059,368 +1224,86 @@ const TournamentDetails = () => {
     );
   }
 
-  const isFull = tournament.current_participants >= tournament.max_participants;
-  const registrationDeadline = new Date(tournament.date);
-  registrationDeadline.setHours(registrationDeadline.getHours() - 24);
-  const isRegistrationOpen = new Date() < registrationDeadline;
-
   return (
-    <div className="min-h-screen bg-esports-dark text-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-2">{tournament.name}</h1>
-                {selectedGame && (
-                  <div className="flex items-center gap-4">
-                    <div className="text-lg font-medium text-gray-300">{selectedGame.name}</div>
-                    <div className="bg-blue-600 text-white px-3 py-1 rounded text-sm">
-                      {selectedGame.formats.find(
-                        f => f.teamSize === tournament.team_size
-                      )?.name || selectedGame.defaultFormat}
-                    </div>
-                  </div>
-                )}
-              </div>
-              {isOrganizer && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/tournaments/edit/${slug}`)}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Tournament
-                </Button>
-              )}
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-esports-primary/30 font-sans overflow-x-hidden">
 
-          {requiresCheckIn && (
-            <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-white">Tournament Check-In</h3>
-                <span
-                  className={`text-xs px-3 py-1 rounded-full ${hasCheckedIn
-                    ? 'bg-green-600/20 text-green-300'
-                    : hasMissedCheckIn
-                      ? 'bg-red-600/20 text-red-300'
-                      : 'bg-blue-600/20 text-blue-300'
-                    }`}
-                >
-                  {hasCheckedIn
-                    ? 'Checked In'
-                    : hasMissedCheckIn
-                      ? 'Closed'
-                      : 'Open'}
-                </span>
-              </div>
-              <p className="text-gray-400 text-sm mb-4">
-                Captains must check in to confirm participation. Deadline:{' '}
-                {checkInDeadlineDate
-                  ? checkInDeadlineDate.toLocaleString()
-                  : 'Not set by organizer yet'}
-                {checkInCountdown && !hasCheckedIn && !hasMissedCheckIn && (
-                  <span className="ml-2 text-blue-300">({checkInCountdown})</span>
-                )}
-              </p>
-              <div className="space-y-3">
-                {!isRegistered ? (
-                  <p className="text-gray-300 text-sm">
-                    Register for the tournament to unlock check-in.
-                  </p>
-                ) : registrationDetails?.registration_type === 'team' && !isCaptain ? (
-                  <p className="text-gray-300 text-sm">
-                    Only the team captain can complete check-in. Please ask your captain to confirm.
-                  </p>
-                ) : awaitingApproval ? (
-                  <p className="text-gray-300 text-sm">
-                    Your registration is pending organizer approval. Check-in will be available once you are approved.
-                  </p>
-                ) : hasCheckedIn ? (
-                  <div className="bg-green-900/20 border border-green-700/40 rounded-lg p-3 text-green-200 text-sm flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    Checked in at{' '}
-                    {registrationDetails?.checked_in_at
-                      ? new Date(registrationDetails.checked_in_at).toLocaleString()
-                      : 'just now'}
-                  </div>
-                ) : !checkInDeadlineDate ? (
-                  <p className="text-gray-300 text-sm">
-                    Waiting for the organizer to publish the official check-in window.
-                  </p>
-                ) : hasMissedCheckIn ? (
-                  <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-3 text-red-200 text-sm flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 mt-0.5" />
-                    Check-in window has closed. Contact the organizer immediately to see if you can still participate.
-                  </div>
-                ) : (
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="text-sm text-gray-300">
-                      <p>Your spot is reserved but not confirmed until you check in.</p>
-                      <p className="text-xs text-gray-400">
-                        Once checked in, you will be included in brackets automatically.
-                      </p>
-                    </div>
-                    <Button
-                      onClick={handleSelfCheckIn}
-                      disabled={checkInSubmitting || !canSelfCheckIn}
-                      className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-                    >
-                      {checkInSubmitting ? 'Checking in...' : 'Check In Now'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {tournament?.auto_remove_unchecked && (
-                <p className="text-xs text-red-300 mt-4 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Teams that do not check in by the deadline may be removed without a refund.
-                </p>
-              )}
-            </div>
-          )}
+      <TournamentHeader
+        tournament={tournament}
+        isOrganizer={isOrganizer}
+        isRegistered={isRegistered}
+        hasMissedCheckIn={hasMissedCheckIn || false}
+        canSelfCheckIn={canSelfCheckIn || false}
+        checkInSubmitting={checkInSubmitting}
+        isCaptain={isCaptain}
+        onRegister={() => setShowEditDialog(true)}
+        onWithdraw={() => setShowWithdrawDialog(true)}
+        onCheckIn={() => { /* Implement check-in logic call if needed here, currently localized */ }}
+      />
 
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Tournament Details</h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">{new Date(tournament.date).toLocaleDateString()} at {tournament.time}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">{tournament.is_online ? 'Online' : tournament.venue}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Users className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">
-                    Registered Participants: {tournament.current_participants}
-                    {requiresCheckIn && <span className="text-emerald-400 ml-2">({checkInCount} Checked In)</span>}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Trophy className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-300">Prize Pool: {tournament.prize_pool}</span>
-                </div>
-                {tournament.entry_fee && (
-                  <div className="flex items-center gap-3">
-                    <DollarSign className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-300">Entry Fee: {tournament.entry_fee}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Registration</h3>
-              {loading || registrationLoading ? (
-                <div className="text-center py-4">
-                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-gray-600 border-t-white"></div>
-                  <p className="text-gray-400 mt-2">Loading...</p>
-                </div>
-              ) : !user ? (
-                <div className="text-center py-4">
-                  <p className="text-gray-400 mb-4">Please log in to register for this tournament</p>
-                  <Button
-                    onClick={() => navigate('/auth/signin')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+      {/* --- TABS NAVIGATION (Sticky) --- */}
+      {/* --- TABS NAVIGATION (Sticky) --- */}
+      <div className="relative z-30 -mt-20">
+        <Tabs defaultValue="overview" className="w-full">
+          <div className="container mx-auto px-4">
+            <div className="sticky top-4 z-40 bg-[#050505]/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl mb-12 shadow-2xl shadow-black/50 mx-auto max-w-3xl">
+              <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">
+                {['Overview', 'Teams', 'Brackets', 'Rules'].map((tab) => (
+                  <TabsTrigger
+                    key={tab}
+                    value={tab.toLowerCase()}
+                    className="data-[state=active]:bg-white/10 data-[state=active]:text-white flex-1 rounded-xl py-4 text-gray-500 font-mono tracking-widest text-xs md:text-sm uppercase transition-all duration-300 hover:text-white"
                   >
-                    Login to Register
-                  </Button>
-                </div>
-              ) : isOrganizer ? (
-                <div className="text-center py-4">
-                  <p className="text-gray-400">You are the organizer of this tournament</p>
-                </div>
-              ) : isBanned ? (
-                <div className="bg-red-500/10 border border-red-500/40 rounded-lg p-6 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <BanIcon className="w-12 h-12 text-red-400" />
-                    <h4 className="text-xl font-bold text-red-300">You are banned from this tournament</h4>
-                    {banReason && (
-                      <p className="text-red-200 text-sm mt-2">Reason: {banReason}</p>
-                    )}
-                    <p className="text-gray-400 text-sm mt-2">You cannot register or participate in this tournament.</p>
-                  </div>
-                </div>
-              ) : (currentRole && currentRole !== 'casual') ? (
-                <div className="text-center py-4">
-                  <p className="text-gray-400 mb-3">Switch to Player role to register for tournaments.</p>
-                  <Button
-                    onClick={() => navigate('/user/dashboard')}
-                    variant="outline"
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
-                  >
-                    Go to Dashboard
-                  </Button>
-                </div>
-              ) : isRegistered ? (
-                <div className="space-y-4">
-                  <div className="bg-gray-700/50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-white mb-2">Your Registration</h4>
-                    {registrationDetails?.registration_type === 'team' ? (
-                      <>
-                        <div className="mb-2">
-                          <span className="block text-sm text-gray-400">Team Name</span>
-                          <span className="block text-lg font-bold text-white">{registrationDetails.team_name}</span>
-                        </div>
-                        <div>
-                          <span className="block text-sm text-gray-400 mb-1">Team Members</span>
-                          <ul className="flex flex-wrap gap-2">
-                            {(resolvedMembers || getMembers(registrationDetails.team_members)).map((member, idx) => (
-                              <li key={idx} className="bg-gray-600/50 px-3 py-1 rounded-full flex items-center gap-2">
-                                <span className="inline-block w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">
-                                  {member.trim().charAt(0).toUpperCase()}
-                                </span>
-                                <span className="text-sm text-white">{member.trim()}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-white">Gamer Tag: {registrationDetails?.gamer_tag}</p>
-                    )}
-                  </div>
-                  {/* Debug Info for Captain Button */}
-                  {isRegistered && (
-                    <div className="text-xs text-red-500 block mb-2 p-2 bg-black/50 rounded border border-red-500/20">
-                      Debug: Captain={isCaptain ? 'Yes' : 'No'},
-                      Status={tournament?.status},
-                      Registered=Yes
-                    </div>
-                  )}
-                  {isCaptain && isRegistered && (tournament?.status === 'ongoing' || (tournament?.status as any) === 'open') && (
-                    <Button
-                      onClick={() => navigate(`/tournaments/${slug}/captain-match`)}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white w-full mb-3"
-                    >
-                      <Swords className="w-4 h-4 mr-2" />
-                      Your Active Match
-                    </Button>
-                  )}
-                  <Button
-                    onClick={() => setShowWithdrawDialog(true)}
-                    className="bg-red-600 hover:bg-red-700 text-white w-full"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Withdraw Registration
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {isFull ? (
-                    <p className="text-center text-gray-400">Tournament is full</p>
-                  ) : !isRegistrationOpen ? (
-                    <p className="text-center text-gray-400">Registration is closed</p>
-                  ) : (
-                    <Button
-                      onClick={() => setShowEditDialog(true)}
-                      className="bg-green-600 hover:bg-green-700 text-white w-full"
-                    >
-                      Register Now
-                    </Button>
-                  )}
-                </div>
-              )}
+                    {tab}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
             </div>
           </div>
 
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 mb-8">
-            <h3 className="text-lg font-semibold text-white mb-4">Description</h3>
-            <p className="text-gray-300 whitespace-pre-wrap">{tournament.description}</p>
-          </div>
-
-          {/* Tournament Bracket */}
-          <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Tournament Bracket</h3>
-              <Button
-                onClick={() => navigate(`/tournaments/${tournament.id}/brackets`)}
-                className="bg-gaming-purple hover:bg-gaming-purple/80 text-white"
-              >
-                View Full Bracket
-              </Button>
+          <TabsContent value="overview">
+            <div className="container mx-auto px-4">
+              <OverviewTab tournament={tournament} />
             </div>
-            <p className="text-gray-400">View the complete tournament bracket with match details and team progression.</p>
-          </div>
+          </TabsContent>
 
-          {/* Organizer: Show all registrations */}
-          {isOrganizer && (
-            <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-6 mb-8">
-              <div className="flex items-center gap-4 mb-4">
-                <h3 className="text-lg font-semibold text-white">Participants & Teams</h3>
-                {requiresCheckIn && (
-                  <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-sm border border-emerald-500/20">
-                    {checkInCount} Checked In
-                  </span>
-                )}
-              </div>
-              {registrationsLoading ? (
-                <div className="text-gray-400">Loading registrations...</div>
-              ) : allRegistrations.length === 0 ? (
-                <div className="text-gray-400">No participants registered yet.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-gray-700/50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-gray-300">Type</th>
-                        <th className="px-4 py-2 text-left text-gray-300">Team Name / Gamer Tag</th>
-                        <th className="px-4 py-2 text-left text-gray-300">Roster</th>
-                        <th className="px-4 py-2 text-left text-gray-300">Members</th>
-                        <th className="px-4 py-2 text-left text-gray-300">Registered At</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allRegistrations.map((reg) => (
-                        <tr key={reg.id} className="border-t border-gray-700">
-                          <td className="px-4 py-2 text-white">
-                            {reg.participant_type === 'team' ? 'Team' : 'Solo'}
-                          </td>
-                          <td className="px-4 py-2 font-semibold text-white">
-                            {reg.participant_type === 'team' ? reg.team_name : reg.gamer_tag || 'N/A'}
-                          </td>
-                          <td className="px-4 py-2 text-gray-300">
-                            {(reg as any).roster_name || '-'}
-                          </td>
-                          <td className="px-4 py-2 text-gray-300">
-                            {reg.participant_type === 'team' && reg.team_members ? (
-                              <ul className="list-disc list-inside">
-                                {getMembers(reg.team_members).map((member, idx) => (
-                                  <li key={idx}>{member.trim()}</li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <span>-</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-2 text-gray-300">
-                            {reg.created_at ? new Date(reg.created_at).toLocaleString() : '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+          <TabsContent value="teams">
+            <div className="container mx-auto px-4">
+              <TeamsTab participants={enrichedParticipants} />
             </div>
-          )}
-        </div>
+          </TabsContent>
+
+          <TabsContent value="brackets">
+            {/* Full width container for brackets */}
+            <div className="w-full px-4 md:px-8">
+              <BracketsTab
+                tournamentId={tournament.id}
+                stages={stages}
+                selectedStageId={selectedStageId}
+                activeVersionsMap={activeVersionsMap}
+                onStageSelect={setSelectedStageId}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="rules">
+            <div className="container mx-auto px-4">
+              <RulesTab />
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
+      <Footer />
+
+      {/* Registration Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[600px] bg-gray-900 border border-gray-700 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0a0a0c] border border-white/10">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-white">Register for Tournament</DialogTitle>
-            <DialogDescription className="text-white/60">
-              Fill in your registration details below.
-            </DialogDescription>
+            <DialogTitle className="text-white font-heading text-2xl tracking-wide">
+              {isRegistered ? 'MODIFY_REGISTRATION' : 'INITIATE_REGISTRATION'}
+            </DialogTitle>
           </DialogHeader>
+
           <TournamentRegistrationForm
             tournamentId={tournament.id}
             tournamentName={tournament.name}
@@ -1435,30 +1318,62 @@ const TournamentDetails = () => {
         </DialogContent>
       </Dialog>
 
-
+      {/* Withdraw Dialog */}
       <AlertDialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
-        <AlertDialogContent className="bg-gray-900 border border-gray-700">
+        <AlertDialogContent className="bg-[#0a0a0c] border border-white/10">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">Withdraw Registration</AlertDialogTitle>
+            <AlertDialogTitle className="text-white font-heading tracking-wide">CONFIRM WITHDRAWAL</AlertDialogTitle>
             <AlertDialogDescription className="text-gray-400">
-              Are you sure you want to withdraw your registration? This action cannot be undone.
+              Are you sure you want to abort your registration? This action is irreversible.
+              {registrationDetails?.registration_type === 'team' && isCaptain && (
+                <p className="mt-4 font-bold text-red-500 border border-red-500/30 bg-red-500/10 p-2 text-center rounded">
+                  WARNING: TEAM DISBANDMENT IMMINENT
+                </p>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-600 text-gray-300 hover:bg-gray-800">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-gray-600 text-gray-300 hover:bg-white/5">CANCEL</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleWithdraw}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-white font-mono tracking-widest"
             >
-              Withdraw
+              CONFIRM_ABORT
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <Footer />
-    </div>
+      {/* Banner Edit Dialog */}
+      <Dialog open={showBannerDialog} onOpenChange={setShowBannerDialog}>
+        <DialogContent className="max-w-xl bg-[#0a0a0c] border border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-white font-heading text-2xl tracking-wide">
+              EDIT_BANNER
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-6">
+            <ImageUploader
+              value={tournament?.image_url || null}
+              onChange={handleBannerUpdate}
+              aspectRatio="banner"
+              label="Tournament Banner"
+              helperText="Upload a high-quality banner for your tournament (16:9 recommended)"
+              bucket="system.assets.website"
+              folder={`Tournament card banners/${(tournament as any)?.organizer?.username || 'unknown'}`}
+              customFileName={slugify(tournament?.name || 'banner', { lower: true, strict: true })}
+              useTimestamp={true}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBannerDialog(false)} className="border-white/10 text-white hover:bg-white/5">
+              CANCEL
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div >
   );
 };
 
-export default TournamentDetails; 
+export default TournamentDetails;

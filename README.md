@@ -15,11 +15,20 @@ Esportra provides a complete ecosystem for esports competitions, featuring:
 - **Venue Integration**: Connect with gaming venues and organize LAN events
 - **Role-Based Access**: Support for players, organizers, venue owners, and administrators
 
-### New in v0.3.2 - Enhanced Bracket Experience
+### New in v0.3.5 - Organizer UX & Polish
+- **Banner Crop & Resize**: Crop and zoom tournament banners with a visual editor (16:9 enforced)
+- **Prize Distribution**: Dedicated Winner/Runner-up percentage inputs with validation (≤100%)
+- **Swiss Standings**: Live "Qualified" and "Eliminated" status badges in Swiss standings
+- **Public Page Preview**: Organizers can now preview public tournament pages directly
+
+### v0.3.4 - Team Dashboard Enhancements
+- **Premium Loading Screen**: Animated loading state for Teams page
+- **Tournament Wins Stat**: "Trophies" card in Team Dashboard
+
+### v0.3.2 - Enhanced Bracket Experience
 - **Stage Filtering**: Switch between tournament stages (Groups vs Playoffs) directly in the bracket view
 - **Fullscreen Mode**: Immersive full-screen bracket visualization
 - **UI Improvements**: Premium esports styling, refined layout, and better navigation
-- **Role Switching**: Improved UX for organizers testing participant views
 
 ### v0.3.1 - Swiss Bracket Engine
 - **Swiss Format**: Full Swiss tournament support with group-based pairing
@@ -40,6 +49,7 @@ Esportra provides a complete ecosystem for esports competitions, featuring:
 For detailed version history and updates, see [CHANGELOG.md](./CHANGELOG.md).
 
 Recent versions:
+- **v0.3.5** - Banner Crop/Resize, Prize Distribution UI, Swiss Standings Status, Public Page Preview
 - **v0.3.4** - Premium Loading Screen, Tournament Wins Stat, UI/UX polish
 - **v0.3.2** - Stage filters, Fullscreen mode, UI polish, Layout fixes
 - **v0.3.1** - Swiss bracket engine, undo round, max round limits, pairing fixes

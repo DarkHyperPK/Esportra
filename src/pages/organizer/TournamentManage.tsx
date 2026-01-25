@@ -57,23 +57,23 @@ const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').rep
 
 interface DatabaseTournament {
   id: string;
-  name: string;
-  game: string;
-  date: string;
-  time: string;
-  venue: string;
-  max_participants: number;
-  prize_pool: string;
-  description: string;
-  organizer_id: string;
-  entry_fee: string | null;
-  is_online: boolean;
-  created_at: string;
-  updated_at: string;
-  status: string;
-  image_url: string | null;
-  team_size: number;
-  slug: string;
+  name?: string;
+  game?: string;
+  date?: string;
+  time?: string;
+  venue?: string;
+  max_participants?: number;
+  prize_pool?: string;
+  description?: string;
+  organizer_id?: string;
+  entry_fee?: string | null;
+  is_online?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  status?: string;
+  image_url?: string | null;
+  team_size?: number;
+  slug?: string;
   check_in_required?: boolean;
   check_in_deadline?: string | null;
   auto_remove_unchecked?: boolean;
@@ -86,6 +86,8 @@ interface DatabaseTournament {
   max_teams?: number | null;
   min_teams?: number | null;
   is_public?: boolean;
+  format?: string;
+  registration_open?: boolean;
 }
 
 interface LocalTournament extends DatabaseTournament {
@@ -481,7 +483,8 @@ const TournamentDashboard = () => {
           check_in_required,
           check_in_deadline,
           auto_remove_unchecked,
-          team_size
+          team_size,
+          format
         `)
         .eq('slug', slug)
         .single();
@@ -516,7 +519,8 @@ const TournamentDashboard = () => {
             check_in_required,
             check_in_deadline,
             auto_remove_unchecked,
-            team_size
+            team_size,
+            format
           `)
           .eq('id', slug)
           .single();
@@ -1003,13 +1007,7 @@ const TournamentDashboard = () => {
         venueName = `Venue ${typedTournamentData.venue_id}`;
       }
 
-      // Only allow the three statuses
-      let computedStatus: 'upcoming' | 'ongoing' | 'completed' = 'upcoming';
-      if (typedTournamentData.status === 'completed') {
-        computedStatus = 'completed';
-      } else if (now >= start) {
-        computedStatus = 'ongoing';
-      }
+      const tournamentStatus = (typedTournamentData.status || 'open') as 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled';
 
       const transformedTournament: LocalTournament = {
         id: typedTournamentData.id,
@@ -1026,7 +1024,7 @@ const TournamentDashboard = () => {
         is_online: !typedTournamentData.venue_id,
         created_at: typedTournamentData.created_at,
         updated_at: typedTournamentData.updated_at,
-        status: computedStatus,
+        status: tournamentStatus,
         image_url: typedTournamentData.banner_url || typedTournamentData.logo_url,
         team_size: typedTournamentData.team_size || 1,
         current_participants: filteredRegistrations.length,
@@ -1034,6 +1032,10 @@ const TournamentDashboard = () => {
         check_in_deadline: typedTournamentData.check_in_deadline,
         auto_remove_unchecked: typedTournamentData.auto_remove_unchecked ?? true,
         slug: typedTournamentData.slug,
+        format: typedTournamentData.format || 'elimination',
+        registration_open: typedTournamentData.registration_deadline
+          ? new Date(typedTournamentData.registration_deadline) > new Date()
+          : true,
       };
 
 
@@ -1224,7 +1226,7 @@ const TournamentDashboard = () => {
           filter: `tournament_id=eq.${tournament.id}`
         },
         (payload) => {
-          const status = payload.new?.status || payload.old?.status;
+          const status = (payload.new as any)?.status || (payload.old as any)?.status;
           if (payload.eventType === 'INSERT') {
             toast({
               title: 'New dispute received',
@@ -2071,6 +2073,40 @@ const TournamentDashboard = () => {
 
 
 
+  const handleCompleteTournament = async () => {
+    if (!tournament) return;
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('tournaments')
+        .update({ status: 'completed' })
+        .eq('id', tournament.id);
+
+      if (error) throw error;
+
+      setTournament(prev => prev ? { ...prev, status: 'completed' } : null);
+      toast({
+        title: 'Tournament Completed',
+        description: 'The tournament has been marked as finished.',
+      });
+    } catch (error) {
+      console.error('Error completing tournament:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete tournament.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditTournament = () => {
+    if (!slug) return;
+    navigate(`/tournaments/edit/${slug}`);
+  };
+
   return (
     <div className="min-h-screen bg-transparent text-white relative overflow-hidden font-sans">
 
@@ -2142,7 +2178,36 @@ const TournamentDashboard = () => {
             </div>
 
             {/* Right: Actions & Status */}
-            <div className="flex flex-col items-end gap-4">
+            <div className="flex flex-col items-end gap-3 self-end sm:self-auto">
+              <div className="flex flex-wrap items-center justify-end gap-3 mt-auto">
+                {isOrganizer && tournament.status !== 'completed' && (
+                  <Button
+                    onClick={handleCompleteTournament}
+                    className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.1)] group"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
+                    Mark as Finished
+                  </Button>
+                )}
+
+                {isOrganizer && (
+                  <Button
+                    onClick={handleEditTournament}
+                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(245,158,11,0.1)] group"
+                  >
+                    <Edit2 className="w-4 h-4 mr-2 transition-transform group-hover:-rotate-12" />
+                    Edit Tournament
+                  </Button>
+                )}
+
+                <Button
+                  onClick={() => navigate(`/tournaments/${slug}`)}
+                  className="bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 group"
+                >
+                  <Eye className="w-4 h-4 mr-2 transition-transform group-hover:scale-110" />
+                  View Public Page
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -2268,7 +2333,7 @@ const TournamentDashboard = () => {
 
 
           <TabsContent value="overview">
-            <Card whileHover={{ y: 0 }} className="bg-none bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden mb-6">
+            <Card className="bg-none bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden mb-6">
               <CardHeader className="pb-4 border-b border-white/5">
                 <CardTitle className="text-lg font-bold text-white tracking-wide">Overview</CardTitle>
               </CardHeader>
@@ -2306,21 +2371,13 @@ const TournamentDashboard = () => {
                 <div className="w-full h-px bg-white/5 my-6" />
 
                 {/* Info Grid - Row 2 - STRIP STYLE */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-0">
-                  <div className="flex flex-col sm:border-r border-white/10 px-4 gap-1">
+                <div className="grid grid-cols-1 gap-6 sm:gap-0">
+                  <div className="flex flex-col px-4 gap-1">
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Teams Registered</span>
                     <span className="text-3xl font-black text-white tracking-tight">
                       {participants.filter(p => p.participant_type === 'team').length}
                     </span>
                   </div>
-                  {!tournament.format?.includes('team') && (
-                    <div className="flex flex-col px-4 gap-1">
-                      <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Solo Players</span>
-                      <span className="text-3xl font-black text-white tracking-tight">
-                        {participants.filter(p => p.participant_type === 'solo').length}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>

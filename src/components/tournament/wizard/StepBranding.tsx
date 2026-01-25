@@ -6,8 +6,17 @@ import { Image, DollarSign, FileText, Link as LinkIcon, MessageCircle, Twitter }
 import { WizardStepProps } from '@/types/tournamentWizard';
 import ImageUploader from './ImageUploader';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
+    const { profile } = useAuth();
+
+    // Sanitize names for storage path
+    const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+    const organizerName = sanitize(profile?.username || profile?.full_name || 'unknown-organizer');
+    const tournamentName = sanitize(data.name || 'unnamed-tournament');
+
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -22,25 +31,18 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
 
             {/* Image Uploads */}
             <div className="w-full h-px bg-white/5 my-6" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:border-r border-white/10 pr-6">
-                    <ImageUploader
-                        value={data.bannerUrl}
-                        onChange={(url) => updateData({ bannerUrl: url })}
-                        aspectRatio="banner"
-                        label="Tournament Banner"
-                        helperText="Displayed on the tournament page header"
-                    />
-                </div>
-                <div>
-                    <ImageUploader
-                        value={data.logoUrl}
-                        onChange={(url) => updateData({ logoUrl: url })}
-                        aspectRatio="logo"
-                        label="Tournament Logo"
-                        helperText="Displayed on cards and brackets"
-                    />
-                </div>
+            <div className="max-w-2xl">
+                <ImageUploader
+                    value={data.bannerUrl}
+                    onChange={(url) => updateData({ bannerUrl: url })}
+                    aspectRatio="banner"
+                    label="Tournament Card Banner"
+                    helperText="This image will be displayed as the background of your tournament card and page header."
+                    bucket="system.assets.website"
+                    folder={`Tournament card banners/${organizerName}`}
+                    customFileName={tournamentName}
+                    useTimestamp={false}
+                />
             </div>
 
             {/* Prize Pool & Entry Fee */}
@@ -59,6 +61,58 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                         className={cn("font-bold tracking-tight", errors.prizePool && 'border-red-500')}
                     />
                     {errors.prizePool && <p className="text-sm text-red-500">{errors.prizePool}</p>}
+                </div>
+                <div className="space-y-4">
+                    <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                        🏆 Prize Distribution
+                    </Label>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="winnerPrize" className="text-xs text-gray-400">Winner %</Label>
+                            <Input
+                                id="winnerPrize"
+                                placeholder="60%"
+                                value={(() => {
+                                    // Parse: "1st: 60% | 2nd: 30%" or "1st: 60%, 2nd: 30%"
+                                    const match = (data.rewards || '').match(/1st:\s*(\d+)%/i);
+                                    return match ? match[1] : '';
+                                })()}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    const currentRunnerUpMatch = (data.rewards || '').match(/2nd:\s*(\d+)%/i);
+                                    const runnerUpVal = currentRunnerUpMatch ? currentRunnerUpMatch[1] : '';
+
+                                    const newRewards = val || runnerUpVal
+                                        ? `1st: ${val || 0}% | 2nd: ${runnerUpVal || 0}%`
+                                        : '';
+                                    updateData({ rewards: newRewards });
+                                }}
+                                className="font-bold tracking-tight bg-black/20 border-gold-500/30 focus:border-gold-500"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="runnerUpPrize" className="text-xs text-gray-400">Runner-up %</Label>
+                            <Input
+                                id="runnerUpPrize"
+                                placeholder="30%"
+                                value={(() => {
+                                    const match = (data.rewards || '').match(/2nd:\s*(\d+)%/i);
+                                    return match ? match[1] : '';
+                                })()}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    const currentWinnerMatch = (data.rewards || '').match(/1st:\s*(\d+)%/i);
+                                    const winnerVal = currentWinnerMatch ? currentWinnerMatch[1] : '';
+
+                                    const newRewards = winnerVal || val
+                                        ? `1st: ${winnerVal || 0}% | 2nd: ${val || 0}%`
+                                        : '';
+                                    updateData({ rewards: newRewards });
+                                }}
+                                className="font-bold tracking-tight bg-black/20 border-silver-500/30 focus:border-silver-500"
+                            />
+                        </div>
+                    </div>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="entryFee" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">

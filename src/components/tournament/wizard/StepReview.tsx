@@ -46,7 +46,6 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
         switch (data.visibility) {
             case 'public': return <Eye className="w-4 h-4" />;
             case 'unlisted': return <EyeOff className="w-4 h-4" />;
-            case 'private': return <Lock className="w-4 h-4" />;
         }
     };
 
@@ -91,7 +90,6 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Prize Pool', value: data.prizePool ? `PKR ${data.prizePool}` : 'Not set' },
                 { label: 'Entry Fee', value: data.entryFee || 'Free' },
                 { label: 'Banner', value: data.bannerUrl ? '✓ Uploaded' : '✗ Not uploaded' },
-                { label: 'Logo', value: data.logoUrl ? '✓ Uploaded' : '✗ Not uploaded' },
                 { label: 'Description', value: data.description ? `${data.description.substring(0, 50)}...` : 'Not set' },
             ]
         },
@@ -100,10 +98,9 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
             title: 'Registration',
             icon: <UserCheck className="w-5 h-5" />,
             items: [
-                { label: 'Registration Opens', value: data.registrationOpens ? new Date(data.registrationOpens).toLocaleString() : 'Not set' },
                 { label: 'Registration Closes', value: data.registrationCloses ? new Date(data.registrationCloses).toLocaleString() : 'Not set' },
-                { label: 'Check-in Required', value: data.checkInRequired ? `Yes (${data.checkInWindowMinutes} min window)` : 'No' },
-                ...(data.checkInRequired ? [{ label: 'Auto-remove Unchecked', value: data.autoRemoveUnchecked ? 'Yes' : 'No' }] : []),
+                { label: 'Check-in', value: `${data.checkInWindowMinutes} min before start` },
+                { label: 'Auto-remove no-shows', value: 'Enabled' },
                 { label: 'Waitlist', value: data.waitlistEnabled ? `Yes (max ${data.waitlistMax})` : 'Disabled' },
             ]
         },
@@ -141,14 +138,7 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                         className="w-full h-40 object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    <div className="absolute bottom-4 left-4 flex items-center gap-3">
-                        {data.logoUrl && (
-                            <img
-                                src={data.logoUrl}
-                                alt="Tournament logo"
-                                className="w-12 h-12 rounded-lg object-cover border-2 border-white/20"
-                            />
-                        )}
+                    <div className="absolute bottom-4 left-4">
                         <div>
                             <h3 className="text-xl font-bold text-white">{data.name || 'Tournament Name'}</h3>
                             <p className="text-sm text-gray-300">{data.game}</p>

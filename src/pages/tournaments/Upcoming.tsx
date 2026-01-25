@@ -6,6 +6,8 @@ import { Tournament } from '@/hooks/useTournaments';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { RegistrationDetails } from '@/types/tournament';
+import PremiumBackground from '@/components/ui/PremiumBackground';
+import { motion } from 'framer-motion';
 
 const UpcomingTournaments = () => {
   const { user } = useAuth();
@@ -52,7 +54,13 @@ const UpcomingTournaments = () => {
       // Now fetch with ordering
       const { data, error } = await supabase
         .from('tournaments')
-        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at')
+        .select(`
+          id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at,
+          profiles:organizer_id (
+            username,
+            full_name
+          )
+        `)
 
         .eq('is_public', true)
         .order('start_date', { ascending: true });
@@ -101,13 +109,20 @@ const UpcomingTournaments = () => {
             entry_fee: tournament.entry_fee?.toString() || 'Free',
             description: tournament.description || '',
             user_id: tournament.organizer_id,
+            organizer_name: (() => {
+              const profiles = tournament.profiles as any;
+              if (Array.isArray(profiles)) {
+                return profiles[0]?.full_name || profiles[0]?.username || 'Unknown Organizer';
+              }
+              return profiles?.full_name || profiles?.username || 'Unknown Organizer';
+            })(),
             is_online: !tournament.venue_id,
             created_at: tournament.created_at,
             updated_at: tournament.updated_at,
             image_url: tournament.banner_url || tournament.logo_url,
             team_size: 1,
             slug: tournament.slug,
-            status: tournament.status || 'upcoming',
+            status: tournament.status || 'open',
             registrationData,
           };
         })
@@ -123,7 +138,7 @@ const UpcomingTournaments = () => {
 
           const start = new Date(originalTournament.start_date);
           const isFuture = start > now;
-          const isActive = t.status === 'open' || t.status === 'ongoing' || t.status === 'upcoming';
+          const isActive = t.status === 'open' || t.status === 'ongoing';
           const isCompleted = t.status === 'completed' || t.status === 'cancelled';
 
           // Show if it's in the future OR if it's currently active (open/ongoing)
@@ -156,84 +171,143 @@ const UpcomingTournaments = () => {
     fetchTournaments();
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] }
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-transparent text-white flex flex-col">
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8 text-esports-primary">Upcoming Tournaments</h1>
+    <PremiumBackground animated intensity={0.15}>
+      <div className="min-h-screen text-white flex flex-col pt-24 pb-12">
+        <main className="flex-grow container mx-auto px-4 z-10 relative">
 
-        {/* Game Filter */}
-        {availableGames.length > 0 && (
-          <GameFilter
-            selectedGames={selectedGames}
-            onGameToggle={handleGameToggle}
-            onClearAll={handleClearAllFilters}
-            availableGames={availableGames}
-          />
-        )}
-
-        {/* Results Counter */}
-        {!isLoading && tournaments.length > 0 && (
-          <div className="mb-4">
-            <p className="text-gray-400">
-              Showing {filteredTournaments.length} of {tournaments.length} tournaments
-              {selectedGames.length > 0 && (
-                <span className="text-blue-400"> (filtered by {selectedGames.join(', ')})</span>
-              )}
-            </p>
+          <div className="flex flex-col gap-2 mb-10">
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-4xl md:text-5xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-gray-400 drop-shadow-lg"
+            >
+              Upcoming Tournaments
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-gray-400 font-light tracking-wide max-w-2xl"
+            >
+              Compete for glory and prizes. Join the next big event in the Esports ecosystem.
+            </motion.p>
           </div>
-        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
-          {isLoading ? (
-            Array(6).fill(0).map((_, i) => (
-              <div key={i} className="animate-pulse bg-gaming-gray/20 rounded-lg h-72"></div>
-            ))
-          ) : filteredTournaments.length > 0 ? (
-            filteredTournaments.map((tournament) => (
-              <TournamentCard
-                key={tournament.id}
-                id={tournament.id}
-                name={tournament.name}
-                game={tournament.game}
-                date={tournament.date}
-                time={tournament.time}
-                venue={tournament.venue}
-                max_participants={tournament.max_participants}
-                current_participants={tournament.current_participants}
-                status={tournament.status}
-                team_size={tournament.team_size}
-                prize_pool={tournament.prize_pool}
-                user_id={tournament.user_id}
-                organizer_id={tournament.user_id}
-                entry_fee={tournament.entry_fee}
-                is_online={tournament.is_online}
-                image_url={tournament.image_url}
-                registrationData={tournament.registrationData}
-                currentUserId={user?.id}
-                slug={tournament.slug}
+          {/* Game Filter */}
+          {availableGames.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <GameFilter
+                selectedGames={selectedGames}
+                onGameToggle={handleGameToggle}
+                onClearAll={handleClearAllFilters}
+                availableGames={availableGames}
               />
-            ))
-          ) : tournaments.length > 0 ? (
-            <div className="col-span-full text-center py-12">
-              <h3 className="text-xl font-semibold text-gray-400 mb-2">No tournaments match your filters</h3>
-              <p className="text-gray-500 mb-4">Try adjusting your game filters to see more tournaments.</p>
-              <button
-                onClick={handleClearAllFilters}
-                className="text-blue-400 hover:text-blue-300 underline"
-              >
-                Clear all filters
-              </button>
-            </div>
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <h3 className="text-xl font-semibold text-gray-400 mb-2">No upcoming tournaments</h3>
-              <p className="text-gray-500">Check back later for new tournaments!</p>
-            </div>
+            </motion.div>
           )}
+
+          {/* Results Counter */}
+          {!isLoading && tournaments.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="mb-6 flex items-center justify-between"
+            >
+              <p className="text-sm font-medium text-gray-400 bg-white/5 px-3 py-1.5 rounded-full border border-white/5 inline-block">
+                Showing <span className="text-white">{filteredTournaments.length}</span> active tournaments
+                {selectedGames.length > 0 && (
+                  <span className="text-esports-blue ml-1"> (filtered)</span>
+                )}
+              </p>
+            </motion.div>
+          )}
+
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6"
+          >
+            {isLoading ? (
+              Array(6).fill(0).map((_, i) => (
+                <div key={i} className="animate-pulse bg-white/5 rounded-3xl h-[320px] border border-white/5"></div>
+              ))
+            ) : filteredTournaments.length > 0 ? (
+              filteredTournaments.map((tournament) => (
+                <motion.div key={tournament.id} variants={itemVariants}>
+                  <TournamentCard
+                    id={tournament.id}
+                    name={tournament.name}
+                    game={tournament.game}
+                    date={tournament.date}
+                    time={tournament.time}
+                    venue={tournament.venue}
+                    max_participants={tournament.max_participants}
+                    current_participants={tournament.current_participants}
+                    status={tournament.status}
+                    team_size={tournament.team_size}
+                    prize_pool={tournament.prize_pool}
+                    user_id={tournament.user_id}
+                    organizer_id={tournament.user_id}
+                    organizer_name={tournament.organizer_name}
+                    entry_fee={tournament.entry_fee}
+                    is_online={tournament.is_online}
+                    image_url={tournament.image_url}
+                    registrationData={tournament.registrationData}
+                    currentUserId={user?.id}
+                    slug={tournament.slug}
+                  />
+                </motion.div>
+              ))
+            ) : tournaments.length > 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-20 text-center bg-white/5 rounded-3xl border border-white/5 backdrop-blur-sm">
+                <h3 className="text-2xl font-bold text-white mb-2">No matches found</h3>
+                <p className="text-gray-400 mb-6">No tournaments match your current filters.</p>
+                <button
+                  onClick={handleClearAllFilters}
+                  className="px-6 py-2 rounded-xl bg-esports-blue text-white font-semibold hover:bg-blue-600 transition-colors"
+                >
+                  Clear all filters
+                </button>
+              </div>
+            ) : (
+              <div className="col-span-full flex flex-col items-center justify-center py-20 text-center bg-white/5 rounded-3xl border border-white/5 backdrop-blur-sm">
+                <h3 className="text-2xl font-bold text-white mb-2">No Upcoming Tournaments</h3>
+                <p className="text-gray-400">Be the first to create one or check back later!</p>
+              </div>
+            )}
+          </motion.div>
+        </main>
+        <div className="relative z-10 mt-20">
+          <Footer />
         </div>
-      </main>
-      <Footer />
-    </div>
+      </div>
+    </PremiumBackground>
   );
 };
 

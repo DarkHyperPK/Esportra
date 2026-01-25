@@ -10,10 +10,7 @@ export default defineConfig(({ mode }) => ({
     open: true,
   },
   plugins: [
-    react({
-      // Explicitly enable Fast Refresh for better HMR experience
-      fastRefresh: true,
-    }),
+    react(),
   ],
   resolve: {
     alias: {
@@ -30,26 +27,19 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // CRITICAL: React and React-DOM must be in the same chunk and load first
           if (id.includes('node_modules')) {
-            // Supabase (doesn't depend on React) - ONLY truly standalone packages
-            // Check this FIRST before anything else
-            if (id.includes('@supabase')) {
-              return 'supabase-vendor';
-            }
-            // EVERYTHING ELSE goes to react-vendor to ensure React loads first
-            // This is the safest approach - if it's not Supabase, it goes with React
-            return 'react-vendor';
+            // Split out truly independent massive libraries
+            if (id.includes('recharts')) return 'vendor-charts';
+            if (id.includes('framer-motion')) return 'vendor-framer';
+            if (id.includes('lucide-react')) return 'vendor-lucide';
+            if (id.includes('@supabase')) return 'vendor-supabase';
+
+            // Keep React and all its related component libraries together
+            return 'vendor-main';
           }
         },
-        // Ensure proper chunk ordering - react-vendor must load first
-        chunkFileNames: (chunkInfo) => {
-          // React vendor should load first - prefix with 0 to ensure it's first alphabetically
-          if (chunkInfo.name === 'react-vendor') {
-            return 'assets/0-react-vendor-[hash].js';
-          }
-          return 'assets/[name]-[hash].js';
-        },
+        // Standard chunk naming
+        chunkFileNames: 'assets/[name]-[hash].js',
       },
     },
     // Optimize chunk size

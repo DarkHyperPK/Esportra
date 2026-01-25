@@ -2,26 +2,38 @@ import React from 'react';
 
 interface ReadOnlyMatchCardProps {
     match: any;
-    x: number;
-    y: number;
+    x?: number;
+    y?: number;
+    className?: string;
 }
 
 export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
     match,
     x,
     y,
+    className
 }) => {
     const team1Won = match.winner?.id && match.winner.id === match.team1?.id;
     const team2Won = match.winner?.id && match.winner.id === match.team2?.id;
     const isCompleted = match.status === 'completed';
     const isLive = match.status === 'live';
 
-
+    const style: React.CSSProperties = x !== undefined && y !== undefined ? {
+        position: 'absolute',
+        left: x,
+        top: y,
+        width: 260,
+        height: 70
+    } : {
+        position: 'relative',
+        minWidth: 260,
+        height: 70
+    };
 
     return (
         <div
-            className="absolute transition-all duration-300"
-            style={{ left: x, top: y, width: 260, height: 70 }}
+            className={`transition-all duration-300 ${className || ''}`}
+            style={style}
         >
             <div className={`
                 relative w-full h-full rounded overflow-hidden

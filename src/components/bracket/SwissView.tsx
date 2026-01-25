@@ -4,16 +4,17 @@ import { StandingsTable } from './StandingsTable';
 import { standingsService, TeamStanding } from '@/services/bracket/StandingsService';
 import { BracketMatch } from '@/types/bracketTypes';
 import { MatchCard } from '@/pages/tournaments/brackets/MatchCard';
+import { ReadOnlyMatchCard } from '@/components/bracket/ReadOnlyMatchCard';
 import { Button } from '@/components/ui/button';
 import { SwissGenerator } from '@/services/bracket/SwissGenerator';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { RefreshCw, Undo2, Check, Copy, Gamepad2, Swords, Filter } from 'lucide-react';
+import { RefreshCw, Undo2, Check, Copy, Gamepad2, Swords } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { FilterState } from '@/components/bracket/BracketSidebarFilter';
 
 interface SwissViewProps {
     stageId: string;
@@ -24,6 +25,7 @@ interface SwissViewProps {
     tournamentId?: string;
     onByeAdvance?: (matchId: string) => void;
     stage?: any;
+    activeFilter?: FilterState;
 }
 
 // Extracted Component to prevent re-renders
@@ -41,7 +43,10 @@ const SwissGroupPanel = React.memo(({
     saveScore,
     scoreDraftRef,
     onByeAdvance,
-    advancementCount
+    advancementCount,
+    activeFilter,
+    eliminationCount,
+    qualificationWins
 }: {
     groupMatches: BracketMatch[],
     groupStandings: TeamStanding[],
@@ -56,10 +61,11 @@ const SwissGroupPanel = React.memo(({
     saveScore: (m: BracketMatch) => void,
     scoreDraftRef: React.MutableRefObject<Record<string, { t1: string; t2: string }>>,
     onByeAdvance?: (matchId: string) => void,
-    advancementCount?: number
+    advancementCount?: number,
+    activeFilter?: FilterState,
+    eliminationCount?: number,
+    qualificationWins?: number
 }) => {
-    const [selectedRound, setSelectedRound] = useState<string>('all');
-
     const matchesByRound = useMemo(() => groupMatches.reduce((acc, match) => {
         const round = match.round || (match as any).round_number || 1;
         if (!acc[round]) acc[round] = [];
@@ -70,30 +76,19 @@ const SwissGroupPanel = React.memo(({
     const rounds = useMemo(() => Object.keys(matchesByRound).map(Number).sort((a, b) => b - a), [matchesByRound]);
 
     const filteredRounds = useMemo(() => {
-        if (selectedRound === 'all') return rounds;
-        return rounds.filter(r => r === parseInt(selectedRound));
-    }, [rounds, selectedRound]);
+        if (!activeFilter || activeFilter.type === 'all') return rounds;
+        if (activeFilter.type === 'winners') {
+            return rounds.filter(r => r === activeFilter.round);
+        }
+        return [];
+    }, [rounds, activeFilter]);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Column: Matches */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-7 space-y-6">
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium text-white">Matches</h3>
-                    <div className="flex items-center gap-2">
-                        <Filter className="w-4 h-4 text-zinc-500" />
-                        <Select value={selectedRound} onValueChange={setSelectedRound}>
-                            <SelectTrigger className="w-[140px] bg-zinc-900/50 border-white/10 h-8 text-xs">
-                                <SelectValue placeholder="Filter Round" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Rounds</SelectItem>
-                                {rounds.map(r => (
-                                    <SelectItem key={r} value={r.toString()}>Round {r}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
                 </div>
 
                 {filteredRounds.map(round => (
@@ -102,23 +97,30 @@ const SwissGroupPanel = React.memo(({
                             <CardTitle className="text-base font-medium text-white">Round {round}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
+                            <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
                                 {matchesByRound[round]?.sort((a, b) => (a.matchNumber - b.matchNumber) || a.id.localeCompare(b.id)).map(match => (
                                     <div key={match.id} className="relative">
-                                        <MatchCard
-                                            match={match}
-                                            isOrganizer={isOrganizer}
-                                            isProcessing={isProcessing}
-                                            expandedMatchId={expandedMatch}
-                                            onToggleExpand={toggleExpand}
-                                            onScoreChange={handleScoreChange}
-                                            onGoLive={openGoLive}
-                                            onMapVeto={openMapVeto}
-                                            onPartyCode={openPartyCode}
-                                            onSaveScore={saveScore}
-                                            scoreDraftRef={scoreDraftRef}
-                                            onByeAdvance={onByeAdvance}
-                                        />
+                                        {isOrganizer ? (
+                                            <MatchCard
+                                                match={match}
+                                                isOrganizer={isOrganizer}
+                                                isProcessing={isProcessing}
+                                                expandedMatchId={expandedMatch}
+                                                onToggleExpand={toggleExpand}
+                                                onScoreChange={handleScoreChange}
+                                                onGoLive={openGoLive}
+                                                onMapVeto={openMapVeto}
+                                                onPartyCode={openPartyCode}
+                                                onSaveScore={saveScore}
+                                                scoreDraftRef={scoreDraftRef}
+                                                onByeAdvance={onByeAdvance}
+                                            />
+                                        ) : (
+                                            <ReadOnlyMatchCard
+                                                match={match}
+                                                className="w-[260px]"
+                                            />
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -133,12 +135,14 @@ const SwissGroupPanel = React.memo(({
             </div>
 
             {/* Right Column: Standings */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-5">
                 <div className="sticky top-6">
                     <StandingsTable
                         standings={groupStandings}
                         title="Live Standings"
                         advancementCount={advancementCount}
+                        eliminationCount={eliminationCount}
+                        qualificationWins={qualificationWins}
                     />
                 </div>
             </div>
@@ -154,7 +158,8 @@ export const SwissView: React.FC<SwissViewProps> = ({
     onMatchUpdate,
     tournamentId,
     onByeAdvance,
-    stage
+    stage,
+    activeFilter
 }) => {
     const { toast } = useToast();
     const [standings, setStandings] = useState<TeamStanding[]>([]);
@@ -221,6 +226,16 @@ export const SwissView: React.FC<SwissViewProps> = ({
     });
 
     const isMaxRoundsReached = currentRound >= maxRounds;
+
+    // Swiss Standard Thresholds
+    // Typically: For N rounds, win threshold is ceil(N/2) + 1?
+    // Actually, "3 lives" means Elimination at 3 losses.
+    // Qualification usually matches Elimination count (3 wins to qualify, 3 losses to eliminate).
+    // Let's deduce from maxRounds.
+    // 3 Rounds -> 2 wins qualify, 2 losses elim.
+    // 5 Rounds -> 3 wins qualify, 3 losses elim.
+    // Formula: ceil((maxRounds + 1) / 2)
+    const threshold = Math.ceil((maxRounds + 1) / 2);
 
 
     // Handlers
@@ -490,6 +505,9 @@ export const SwissView: React.FC<SwissViewProps> = ({
                             .filter(s => groupTeamIds.has(s.teamId))
                             .map((s, i) => ({ ...s, rank: i + 1 })); // Re-rank for display
 
+                        const groupCount = groups.length || 1;
+                        const perGroupAdvancement = stage?.advancement_count ? Math.floor(stage.advancement_count / groupCount) : undefined;
+
                         return (
                             <TabsContent key={group as string} value={group as string}>
                                 <SwissGroupPanel
@@ -505,8 +523,12 @@ export const SwissView: React.FC<SwissViewProps> = ({
                                     openPartyCode={openPartyCode}
                                     saveScore={saveScore}
                                     scoreDraftRef={scoreDraftRef}
+                                    scoreDraftRef={scoreDraftRef}
                                     onByeAdvance={onByeAdvance}
-                                    advancementCount={stage?.advancement_count}
+                                    advancementCount={perGroupAdvancement}
+                                    activeFilter={activeFilter}
+                                    eliminationCount={threshold}
+                                    qualificationWins={threshold}
                                 />
                             </TabsContent>
                         );
@@ -528,6 +550,9 @@ export const SwissView: React.FC<SwissViewProps> = ({
                     scoreDraftRef={scoreDraftRef}
                     onByeAdvance={onByeAdvance}
                     advancementCount={stage?.advancement_count}
+                    activeFilter={activeFilter}
+                    eliminationCount={threshold}
+                    qualificationWins={threshold}
                 />
             )}
 

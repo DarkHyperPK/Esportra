@@ -17,13 +17,15 @@ interface StandingsTableProps {
     title?: string;
     advancementCount?: number;
     eliminationCount?: number;
+    qualificationWins?: number;
 }
 
 export const StandingsTable: React.FC<StandingsTableProps> = ({
     standings,
     title = "Standings",
     advancementCount,
-    eliminationCount
+    eliminationCount,
+    qualificationWins
 }) => {
     return (
         <Card className="overflow-hidden bg-zinc-950 border-white/10">
@@ -60,8 +62,9 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                     <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
                         <AnimatePresence mode='popLayout'>
                             {standings.map((team, index) => {
-                                const isAdvancing = advancementCount && index < advancementCount;
-                                const isEliminated = eliminationCount && team.losses >= eliminationCount;
+                                const count = Number(advancementCount);
+                                const isAdvancing = (count > 0 && index < count && count < standings.length) || (qualificationWins !== undefined && team.wins >= qualificationWins);
+                                const isEliminated = eliminationCount !== undefined && team.losses >= eliminationCount;
 
                                 return (
                                     <motion.div

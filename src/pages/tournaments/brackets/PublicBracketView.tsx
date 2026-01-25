@@ -3,9 +3,14 @@ import { useGraphBracket } from '@/hooks/useGraphBracket';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { BracketSidebarFilter, type FilterState } from '@/components/bracket/BracketSidebarFilter';
+import { BracketRenderer } from '@/components/bracket/BracketRenderer';
+import { BracketExporter } from '@/components/bracket/BracketExporter';
+import { Button } from '@/components/ui/button';
+import { Download, AlertCircle, Maximize2 } from 'lucide-react';
+import { SwissView } from '@/components/bracket/SwissView';
+import { GroupStageView } from '@/components/bracket/GroupStageView';
 
 interface PublicBracketViewProps {
     versionId: string | null; // Allow null to show sidebar even if no bracket
@@ -18,11 +23,6 @@ interface PublicBracketViewProps {
     versionsMap?: Record<string, string>;
     onFullscreen?: () => void;
 }
-
-import { BracketRenderer } from '@/components/bracket/BracketRenderer';
-import { BracketExporter } from '@/components/bracket/BracketExporter';
-import { Button } from '@/components/ui/button';
-import { Download, AlertCircle, Maximize2 } from 'lucide-react';
 
 export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     versionId,
@@ -57,7 +57,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     }, [graphData, teamsData]);
 
     // Categorize matches by round (needed for rendering headers and loops)
-    const { winnersRounds, losersRounds, finalsMatches, maxWinnersRound } = useMemo(() => {
+    const { winnersRounds, losersRounds, finalsMatches } = useMemo(() => {
         const winners: Record<number, any[]> = {};
         const losers: Record<number, any[]> = {};
         const finals: any[] = [];
@@ -84,6 +84,18 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         };
     }, [matches]);
 
+    // Detect Format
+    const format = useMemo(() => {
+        if (matches.some(m => m.bracketType === 'group')) return 'round_robin';
+        if (matches.some(m => m.bracketType === 'swiss_round')) return 'swiss';
+        return 'elimination';
+    }, [matches]);
+
+    // Derived stage object needed for config (e.g. max swiss rounds)
+    const currentStage = useMemo(() => {
+        return stages?.find(s => s.id === selectedStageId);
+    }, [stages, selectedStageId]);
+
     // Render loading or empty state ONLY for the content area, preserving the sidebar
     const renderContent = () => {
         if (!versionId) {
@@ -103,6 +115,71 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
             );
         }
 
+        if (format === 'swiss') {
+            return (
+                <div className="p-2 overflow-auto h-full">
+                    <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+                        {onFullscreen && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onFullscreen}
+                                className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100"
+                            >
+                                <Maximize2 className="w-4 h-4 mr-2" />
+                                Fullscreen
+                            </Button>
+                        )}
+                    </div>
+                    <SwissView
+                        stageId={selectedStageId || ''}
+                        versionId={versionId}
+                        matches={matches}
+                        isOrganizer={false}
+                        tournamentId={tournamentId}
+                        stage={currentStage}
+                        activeFilter={activeFilter}
+                    />
+                </div>
+            );
+        }
+
+        // --- GROUP STAGE VIEW ---
+        if (format === 'round_robin') {
+            const uniqueGroups = Array.from(new Set(matches.map(m => m.groupId || (m as any).group_id).filter(Boolean)));
+            const groupCount = uniqueGroups.length || 1;
+            const perGroupAdvancement = currentStage?.advancement_count
+                ? Math.floor(currentStage.advancement_count / groupCount)
+                : undefined;
+
+            return (
+                <div className="p-2 overflow-auto h-full">
+                    <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+                        {onFullscreen && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onFullscreen}
+                                className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100"
+                            >
+                                <Maximize2 className="w-4 h-4 mr-2" />
+                                Fullscreen
+                            </Button>
+                        )}
+                    </div>
+                    <GroupStageView
+                        format="round_robin"
+                        stageId={selectedStageId || ''}
+                        versionId={versionId}
+                        matches={matches}
+                        isOrganizer={false}
+                        advancementCount={perGroupAdvancement}
+                    />
+                </div>
+            );
+        }
+
+        // --- ELIMINATION VIEW (Default) ---
         return (
             <>
                 <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
@@ -139,6 +216,12 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
 
     return (
         <div className="flex h-[calc(100vh-140px)]">
+            {/* 
+               Only show Side Filter primarily for Elimination (Round Highlighting).
+               Swiss/Group views manage their own internal filtering/tabs.
+               However, we keep the structure to allow stage switching if stages>1 
+               (The sidebar handles stage switching props).
+            */}
             <BracketSidebarFilter
                 winnersRounds={Object.keys(winnersRounds).map(Number).sort((a, b) => a - b)}
                 losersRounds={Object.keys(losersRounds).map(Number).sort((a, b) => a - b)}
