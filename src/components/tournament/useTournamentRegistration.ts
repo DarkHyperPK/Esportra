@@ -220,7 +220,7 @@ export const useTournamentRegistration = ({
       // Verify the user has permission to withdraw (must be the registered user or team captain)
       const isSoloRegistration = existingRegistration.participant_type === 'solo' && existingRegistration.user_id === user.id;
       const isTeamCaptain = existingRegistration.participant_type === 'team' && (existingRegistration as any).team_captain_id === user.id;
-      
+
       if (!isSoloRegistration && !isTeamCaptain) {
         console.error('[useTournamentRegistration] User does not have permission to withdraw this registration');
         throw new Error('You do not have permission to withdraw this registration.');
@@ -294,16 +294,16 @@ export const useTournamentRegistration = ({
     isSubmitting,
     error,
     registrationType: registrationState.type,
-    setRegistrationType: (type: RegistrationType) => 
+    setRegistrationType: (type: RegistrationType) =>
       setRegistrationState(prev => ({ ...prev, type })),
     gamertag: registrationState.gamertag,
-    setGamertag: (gamertag: string) => 
+    setGamertag: (gamertag: string) =>
       setRegistrationState(prev => ({ ...prev, gamertag })),
     teamName: registrationState.teamName,
-    setTeamName: (teamName: string) => 
+    setTeamName: (teamName: string) =>
       setRegistrationState(prev => ({ ...prev, teamName })),
     teamMembers: registrationState.teamMembers,
-    setTeamMembers: (teamMembers: string[]) => 
+    setTeamMembers: (teamMembers: string[]) =>
       setRegistrationState(prev => ({ ...prev, teamMembers })),
     handleRegistration,
     handleWithdraw,

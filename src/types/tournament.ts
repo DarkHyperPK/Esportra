@@ -1,4 +1,4 @@
-export type TournamentStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+export type TournamentStatus = 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled';
 export type RegistrationStatus =
     | 'pending'
     | 'approved'
@@ -23,13 +23,20 @@ export interface BaseTournament {
     team_size: number;
     prize_pool: string;
     entry_fee: string | null;
+    end_date?: string; // Added to support timeline display
     description: string;
-    user_id: string;
+    user_id: string; // Keep for legacy
+    organizer_id: string;
+    rewards?: string | null;
     created_at: string;
     image_url?: string | null;
     check_in_required?: boolean;
     check_in_deadline?: string | null;
     auto_remove_unchecked?: boolean;
+    organizer?: {
+        username: string;
+        avatar_url?: string | null;
+    };
 }
 
 export interface Tournament extends BaseTournament {

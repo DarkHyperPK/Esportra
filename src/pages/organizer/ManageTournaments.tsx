@@ -75,19 +75,7 @@ const TournamentList = () => {
             .select('*', { count: 'exact', head: true })
             .eq('tournament_id', tournament.id);
 
-          // Compute status dynamically
-          const now = new Date();
-          const start = new Date(tournament.start_date);
-          const end = tournament.end_date ? new Date(tournament.end_date) : null;
-
-          let computedStatus: 'upcoming' | 'ongoing' | 'completed' = 'upcoming';
-          if (now >= start) {
-            if (end && now > end) {
-              computedStatus = 'completed';
-            } else {
-              computedStatus = 'ongoing';
-            }
-          }
+          const computedStatus = (tournament.status || 'open') as 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled';
 
           return {
             id: tournament.id,
@@ -110,7 +98,7 @@ const TournamentList = () => {
         })
       );
 
-      return tournamentsWithCounts as (Tournament & { status: 'upcoming' | 'ongoing' | 'completed', team_size: number })[];
+      return tournamentsWithCounts as (Tournament & { status: 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled', team_size: number })[];
     },
     enabled: !!user?.id,
     staleTime: 1000 * 60, // 1 minute

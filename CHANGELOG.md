@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.5] - 2026-01-25
+
+### Added
+- **Banner Crop & Resize**: Organizers can now crop and zoom tournament banners with a dedicated image editor dialog using `react-easy-crop`. Ensures proper 16:9 aspect ratio for all banners.
+- **Prize Distribution UI**: Replaced single text input with dedicated "Winner %" and "Runner-up %" fields in the wizard. Includes validation to ensure total cannot exceed 100%.
+- **Swiss Standings Status**: Live standings in Swiss view now dynamically display "Q" (Qualified) and "ELIM" (Eliminated) badges based on configured win/loss thresholds.
+- **Organizer Public Access**: Added "View Public Page" button to tournament management hero and "View Public" option to tournament cards, allowing organizers to preview the public view.
+
+### Fixed
+- **Banner Removal**: Fixed issue where removing a tournament banner didn't persist to the database.
+- **Rewards Display**: Fixed rewards not updating on public page after editing in wizard by adding missing `rewards` field to tournament fetch queries.
+- **Auto-Redirect Removed**: Organizers can now access the public tournament page without being auto-redirected to management dashboard.
+
+### Changed
+- **Banner Styling**: Tournament header banner now displays in full color (removed grayscale) with low opacity for better visual appeal.
+- **Waitlist UI Removed**: Removed "Enable Waitlist" toggle from the tournament wizard (feature placeholder removed pending full implementation).
+- **Swiss Round Container**: Increased max-height of Swiss view round containers from 400px to 700px for better visibility.
+
 ## [0.3.4] - 2026-01-25
 
 ### Added
@@ -30,11 +48,8 @@
 - **Header Cleanup**: Removed redundant "Valorant Split 3" header card from the bracket view to maximize screen real estate for the bracket itself.
 
 ### Added
-- **Stage Filtering**: Added a new Stage Selector in the bracket sidebar (e.g., Groups vs- **Workaround**: Use the "Refresh" button or switch tabs if matches don't appear instantly.
-
-## Team Stats (v0.3.4)
-- **Tournament Wins**: The "Trophies" stat is currently a placeholder (0) or requires manual calculation until the `tournaments` table schema includes a dedicated `winner_id` or `standings` link.ges seamlessly without leaving the view.
-- **Fullscreen Mode**: Added a dedicated "Fullscreen" button directly within the bracket toolbar, replacing the previous header button.
+- **Stage Filtering**: Added a new Stage Selector in the bracket sidebar (e.g., Groups vs Playoffs).
+- **Fullscreen Mode**: Added a dedicated "Fullscreen" button directly within the bracket toolbar.
 - **UI Polish**: Updated sidebar buttons to use "Poppins" font, added premium "Esports" styling (gradients, glows) to stage selectors, and improved active state visibility.
 
 ## [0.3.1] - 2026-01-23

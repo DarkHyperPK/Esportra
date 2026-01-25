@@ -47,7 +47,7 @@ export const formatRulesSchema = formatRulesBase.refine(
 );
 
 // Step 3: Branding Schema
-export const brandingSchema = z.object({
+const brandingSchemaBase = z.object({
     bannerUrl: z.string().nullable().optional(),
     logoUrl: z.string().nullable().optional(),
     prizePool: z.string().min(1, 'Prize pool is required'),
@@ -58,6 +58,24 @@ export const brandingSchema = z.object({
     discordUrl: z.string().url().optional().or(z.literal('')),
     twitterUrl: z.string().url().optional().or(z.literal('')),
     streamUrl: z.string().url().optional().or(z.literal('')),
+    rewards: z.string().optional().nullable(),
+});
+
+export const brandingSchema = brandingSchemaBase.refine((data) => {
+    if (!data.rewards) return true;
+
+    // Parse percentages
+    const firstMatch = data.rewards.match(/1st:\s*(\d+)%/i);
+    const secondMatch = data.rewards.match(/2nd:\s*(\d+)%/i);
+
+    const first = firstMatch ? parseInt(firstMatch[1], 10) : 0;
+    const second = secondMatch ? parseInt(secondMatch[1], 10) : 0;
+
+    const total = first + second;
+    return total <= 100;
+}, {
+    message: "Total prize distribution cannot exceed 100%",
+    path: ["rewards"]
 });
 
 // Step 4: Registration Schema (base for merging)
@@ -86,7 +104,7 @@ export const registrationSchema = registrationSchemaBase.refine(
 // Full tournament schema
 export const fullTournamentSchema = basicInfoBase
     .merge(formatRulesBase)
-    .merge(brandingSchema)
+    .merge(brandingSchemaBase)
     .merge(registrationSchemaBase)
     .refine(
         (data) => data.isOnline || (data.venue && data.venue.length > 0),
@@ -101,7 +119,21 @@ export const fullTournamentSchema = basicInfoBase
             return true;
         },
         { message: 'Check-in window must be between 5 and 120 minutes', path: ['checkInWindowMinutes'] }
-    );
+    ).refine((data) => {
+        if (!data.rewards) return true;
+        // Parse percentages
+        const firstMatch = data.rewards.match(/1st:\s*(\d+)%/i);
+        const secondMatch = data.rewards.match(/2nd:\s*(\d+)%/i);
+
+        const first = firstMatch ? parseInt(firstMatch[1], 10) : 0;
+        const second = secondMatch ? parseInt(secondMatch[1], 10) : 0;
+
+        const total = first + second;
+        return total <= 100;
+    }, {
+        message: "Total prize distribution cannot exceed 100%",
+        path: ["rewards"]
+    });
 
 // Helper function to validate a specific step
 export const validateStep = (step: number, data: any): { valid: boolean; errors: Record<string, string> } => {

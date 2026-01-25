@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, Trophy, CheckCircle } from 'lucide-react';
+import { Calendar, Users, Trophy, CheckCircle, Clock, MapPin, Eye } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
+import { cn } from '@/lib/utils';
 
 interface TournamentCardProps {
   id: string;
@@ -16,7 +17,7 @@ interface TournamentCardProps {
   venue: string;
   max_participants: number;
   current_participants: number;
-  status: 'upcoming' | 'ongoing' | 'completed';
+  status: 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled';
   team_size: number;
   prize_pool: string;
   user_id?: string;
@@ -28,6 +29,7 @@ interface TournamentCardProps {
   currentUserId?: string;
   slug: string;
   onDelete?: () => void;
+  organizer_name?: string;
 }
 
 export const TournamentCard: React.FC<TournamentCardProps> = ({
@@ -50,199 +52,253 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
   slug,
   status,
   onDelete,
+  organizer_name,
 }) => {
   const navigate = useNavigate();
   const { currentRole } = useRole();
   const ownerId = organizer_id || user_id;
   const isOrganizer = currentRole === 'organizer' && currentUserId && ownerId && currentUserId === ownerId;
+  const [isHovered, setIsHovered] = useState(false);
 
   // Use the custom hook for game images and carousel
   const { gameLogo, gameBanner, screenshots, carouselIndex } = useRawgGame(game);
+
+  // Cross-validate status with date
+  const tournamentDate = new Date(`${date}T${time}`);
+  const now = new Date();
+  const isStarted = now >= tournamentDate;
+  const isTrulyOngoing = status === 'ongoing' && isStarted;
+
+  // Status Badge Logic
+  const getStatusBadge = () => {
+    if (isTrulyOngoing) {
+      return (
+        <Badge className="bg-red-600 text-white animate-pulse border-none shadow-[0_0_10px_rgba(220,38,38,0.5)]">
+          <span className="w-2 h-2 rounded-full bg-white mr-2 animate-ping" />
+          LIVE NOW
+        </Badge>
+      );
+    }
+
+    if (status === 'ongoing' && !isStarted) {
+      return (
+        <Badge className="bg-amber-500 text-white border-none shadow-[0_0_10px_rgba(245,158,11,0.4)]">
+          BATTLE STARTING
+        </Badge>
+      );
+    }
+
+    if (status === 'completed') {
+      return (
+        <Badge className="bg-emerald-600 text-white border-none shadow-[0_0_10px_rgba(16,185,129,0.4)]">
+          COMPLETED
+        </Badge>
+      );
+    }
+
+    if (status === 'check_in') {
+      return (
+        <Badge className="bg-yellow-500 text-black border-none shadow-[0_0_10px_rgba(234,179,8,0.4)]">
+          CHECK-IN OPEN
+        </Badge>
+      );
+    }
+
+    // Handle 'open' as blue/active
+    const isRegistrationOpen = status === 'open';
+    return (
+      <Badge className={cn(
+        "backdrop-blur-md border border-white/10 shadow-sm transition-all",
+        isRegistrationOpen ? "bg-blue-600/80 text-white" : "bg-gray-600/80 text-gray-300"
+      )}>
+        {status === 'open' ? 'UPCOMING' : status.toUpperCase()}
+      </Badge>
+    );
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className="card-esports hover-lift rounded-lg flex flex-col relative overflow-hidden min-h-[280px] w-full"
+      whileHover={{ y: -8, scale: 1.01 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      transition={{ duration: 0.3 }}
+      className="group relative h-[380px] w-full rounded-3xl overflow-hidden bg-[#0a0a0c] border border-white/5 shadow-2xl cursor-pointer"
+      onClick={() => navigate(`/tournaments/${slug || id}`)}
     >
-      {/* Carousel background images with smooth fade using framer-motion */}
-      <div className="absolute inset-0 w-full h-full z-0 overflow-hidden bg-gray-900">
-        {screenshots.length > 0 ? (
-          screenshots.map((img, idx) => {
-            const isActive = carouselIndex === idx;
-            return (
-              <motion.div
-                key={`carousel-bg-${idx}`}
-                className="absolute inset-0 w-full h-full"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: isActive ? 0.25 : 0 }}
-                transition={{
-                  duration: 1.5,
-                  ease: [0.4, 0, 0.2, 1],
-                  type: 'tween'
-                }}
-                style={{
-                  pointerEvents: 'none',
-                  zIndex: isActive ? 1 : 0,
-                  willChange: 'opacity'
-                }}
-              >
-                <img
-                  src={img}
-                  alt={game + ' screenshot ' + (idx + 1)}
-                  className="w-full h-full object-cover select-none"
-                  style={{
-                    filter: 'blur(3px)',
-                    display: 'block'
-                  }}
-                  onLoad={() => {
-                    console.log(`[TournamentCard] Carousel image ${idx + 1} loaded:`, img);
-                  }}
-                  onError={(e) => {
-                    console.error(`[TournamentCard] Failed to load carousel image ${idx + 1}:`, img, e);
-                  }}
-                  loading="lazy"
-                />
-              </motion.div>
-            );
-          })
-        ) : gameBanner ? (
-          // Fallback: Show single banner if no screenshots
-          <div
-            className="absolute inset-0 w-full h-full opacity-25"
-            style={{
-              backgroundImage: `url(${gameBanner})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              filter: 'blur(3px)'
-            }}
-          />
-        ) : null}
-      </div>
-      {/* Card content */}
-      <div className="flex items-center gap-4 p-4 pb-2 relative z-10">
-        <div className="h-12 w-12 rounded-md bg-esports-dark flex items-center justify-center overflow-hidden border border-gaming-gray/40">
-          {gameLogo ? (
-            <img
-              src={gameLogo}
-              alt={game + ' logo'}
-              className="h-full w-full object-cover"
-              onError={(e) => {
-                console.error(`[TournamentCard] Failed to load game logo:`, gameLogo);
-                // Fallback to tournament image
-                const target = e.target as HTMLImageElement;
-                if (image_url) {
-                  target.src = image_url;
-                }
-              }}
-            />
-          ) : image_url ? (
+      {/* 1. Background Image Layer */}
+      <div className="absolute inset-0 z-0 bg-black">
+        <motion.div
+          animate={{ scale: isHovered ? 1.05 : 1 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="w-full h-full relative"
+        >
+          {/* 1. Custom Banner (if uploaded) - Highest Priority */}
+          {image_url ? (
             <img
               src={image_url}
+              className="w-full h-full object-cover object-center opacity-40 group-hover:opacity-50 transition-opacity"
               alt={name}
-              className="h-full w-full object-cover"
-              onError={(e) => {
-                console.error(`[TournamentCard] Failed to load tournament image:`, image_url);
-              }}
             />
           ) : (
-            <div className="h-full w-full bg-gray-700 flex items-center justify-center">
-              <span className="text-gray-400 text-xs">{game?.charAt(0) || '?'}</span>
-            </div>
+            /* 2. RAWG Content (Carousel or Static) - Fallback */
+            <AnimatePresence mode="popLayout">
+              {screenshots.length > 0 ? (
+                <motion.img
+                  key={screenshots[carouselIndex]}
+                  src={screenshots[carouselIndex]}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 1.5, ease: "easeInOut" }}
+                  className="absolute inset-0 w-full h-full object-cover object-center opacity-30"
+                  alt={`${game} screenshot`}
+                />
+              ) : (
+                <img
+                  src={gameBanner || '/placeholder.jpg'}
+                  className="w-full h-full object-cover object-center opacity-30"
+                  alt={game}
+                />
+              )}
+            </AnimatePresence>
+          )}
+        </motion.div>
+
+        {/* Gradient Overlay for Text Readability - Intensified */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-[#050507]/80 to-[#050507]/30 opacity-100" />
+      </div>
+
+      {/* 2. Top Bar (Floating) */}
+      <div className="absolute top-0 inset-x-0 p-4 flex justify-between items-start z-10 transition-transform duration-300 group-hover:translate-y-0">
+        <div className="flex gap-2">
+          {getStatusBadge()}
+          {!is_online && (
+            <Badge variant="outline" className="bg-black/60 border-white/10 backdrop-blur-md text-purple-400">
+              LAN
+            </Badge>
           )}
         </div>
-        <div>
-          <div className="font-bold text-lg leading-tight mb-0.5 text-white drop-shadow-md">{name}</div>
-          <div className="text-sm text-gray-300 flex items-center gap-2">
-            <span>{game}</span>
+
+        <div className="flex text-xs font-medium text-gray-300 gap-2">
+          {organizer_name && (
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
+              <span className="text-gray-400">by</span>
+              <span className="text-white truncate max-w-[100px]">{organizer_name}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
+            <Users className="w-3.5 h-3.5" />
+            <span>{current_participants}/{max_participants}</span>
           </div>
         </div>
       </div>
-      <div className="px-4 pt-2 pb-1 flex flex-col gap-1 relative z-10">
-        <div className="flex items-center gap-2 text-sm text-gray-400">
-          <Calendar className="h-4 w-4" />
-          <span>{date}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-gray-400">
-          <Users className="h-4 w-4" />
-          <span>Registered Participants: {current_participants}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Trophy className="h-4 w-4 text-green-400" />
-          <span className="text-green-400 font-medium">Prize: {prize_pool}</span>
-        </div>
-      </div>
-      <div className="flex items-center justify-between px-4 pt-2 pb-1 relative z-10">
-        <Badge className={is_online ? 'bg-blue-600' : 'bg-purple-700'}>
-          {is_online ? 'Online' : 'LAN'}
-        </Badge>
-        <span className="text-sm text-gray-300">
-          Entry: <span className={entry_fee === 'Free' ? 'text-green-400' : ''}>{entry_fee || 'Free'}</span>
-        </span>
-      </div>
-      <div className="px-4 pb-4 pt-2 mt-auto relative z-10">
-        {isOrganizer ? (
-          <>
-            <div className="w-full mb-2 flex items-center justify-center gap-2 rounded-lg font-bold text-base py-2 bg-gaming-purple/80 text-white border-0 shadow-md cursor-default select-none">
-              <svg className="w-5 h-5 text-white opacity-90" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 11c0-1.104-.896-2-2-2s-2 .896-2 2 .896 2 2 2 2-.896 2-2zm0 0c0-1.104.896-2 2-2s2 .896 2 2-.896 2-2 2-2-.896-2-2zm0 0v2m0 4h.01" /></svg>
-              You are the organizer
+
+      {/* 3. Bottom Glass Pane content */}
+      <div className="absolute bottom-0 inset-x-0 p-5 z-20 flex flex-col gap-4">
+
+        {/* Main Info */}
+        <div className="transform transition-transform duration-300 group-hover:-translate-y-2">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-bold tracking-widest text-cyan-400 uppercase font-heading">
+              {game}
+            </span>
+            <div className="h-[1px] flex-grow bg-gradient-to-r from-cyan-400/50 to-transparent" />
+          </div>
+
+          <h3 className="text-2xl font-bold text-white font-heading leading-tight mb-3 line-clamp-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-300 transition-all">
+            {name}
+          </h3>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-400 mb-4">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span>{date}</span>
             </div>
-            <div className="flex gap-2 mb-2">
+            {venue && !is_online && (
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-gray-500" />
+                <span className="line-clamp-1 max-w-[120px]">{venue.replace('Venue ', '')}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 text-esports-green font-medium">
+              <Trophy className="w-4 h-4" />
+              <span>{prize_pool}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Button Area - Slide Up on Hover */}
+        <div className="h-0 opacity-0 group-hover:h-auto group-hover:opacity-100 transition-all duration-300 overflow-hidden">
+          {isOrganizer ? (
+            <div className="flex gap-2 w-full pt-2">
               <Button
-                className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-semibold text-base py-2"
-                onClick={() => navigate(`/organizer/tournament/${slug || id}`)}
+                onClick={(e) => { e.stopPropagation(); navigate(`/organizer/tournament/${slug || id}`); }}
+                className="flex-1 bg-white text-black hover:bg-gray-200 font-bold"
               >
                 Manage
               </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="bg-white/5 border-white/10 hover:bg-white/10 text-white"
+                onClick={(e) => { e.stopPropagation(); navigate(`/tournaments/${slug || id}`); }}
+                title="View Public Page"
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
               {onDelete && (
-                <Button
-                  variant="destructive"
-                  className="bg-red-600 hover:bg-red-700 text-white font-semibold text-base py-2 px-4"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                  }}
-                >
-                  Delete
+                <Button variant="destructive" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+                  <span className="sr-only">Delete</span>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
                 </Button>
               )}
             </div>
-          </>
-        ) : registrationData ? (
-          <button
-            type="button"
-            onClick={() => navigate(`/tournaments/${slug || id}`)}
-            className="w-full mb-2 flex items-center justify-center gap-2 rounded-lg font-bold text-base py-2 bg-green-500 hover:bg-green-400 text-white border-0 shadow-md"
-          >
-            <CheckCircle className="w-5 h-5 text-white" />
-            <span>Registered</span>
-          </button>
-        ) : status === 'ongoing' ? (
-          <Button
-            className="w-full bg-red-600 animate-pulse text-white font-semibold text-base py-2 mb-2"
-            onClick={() => navigate(`/tournaments/${slug || id}`)}
-          >
-            LIVE NOW
-          </Button>
-        ) : status === 'upcoming' ? (
-          <Button
-            className="w-full btn-esports-blue font-semibold text-base py-2 mb-2"
-            onClick={() => navigate(`/tournaments/${slug || id}`)}
-          >
-            View Details
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            className="w-full border-gray-600 text-esports-secondary hover:bg-gray-800 hover:text-white font-semibold text-base py-2"
-            onClick={() => navigate(`/tournaments/${slug || id}`)}
-          >
-            View Details
-          </Button>
-        )}
+          ) : registrationData ? (
+            <Button
+              className="w-full font-bold tracking-wide bg-green-500 hover:bg-green-400 text-white shadow-lg shadow-green-900/20"
+              onClick={() => navigate(`/tournaments/${slug || id}`)}
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Registered
+            </Button>
+          ) : isTrulyOngoing ? (
+            <Button
+              className="w-full font-bold tracking-wide bg-red-600 hover:bg-red-500 animate-pulse text-white"
+              onClick={() => navigate(`/tournaments/${slug || id}`)}
+            >
+              LIVE NOW
+            </Button>
+          ) : (status === 'ongoing' && !isStarted) ? (
+            <Button
+              className="w-full font-bold tracking-wide bg-amber-600 hover:bg-amber-500 text-white"
+              onClick={() => navigate(`/tournaments/${slug || id}`)}
+            >
+              Starting Soon
+            </Button>
+          ) : (status === 'open') ? (
+            <Button
+              className="w-full font-bold tracking-wide bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20"
+              onClick={() => navigate(`/tournaments/${slug || id}`)}
+            >
+              View Details
+            </Button>
+          ) : (
+            <Button
+              className="w-full font-bold tracking-wide bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20"
+              onClick={() => navigate(`/tournaments/${slug || id}`)}
+            >
+              View Details
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Decorative Glow Border */}
+      <div className="absolute inset-0 rounded-3xl border border-white/5 group-hover:border-white/20 transition-colors duration-300 pointer-events-none" />
+      <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-[inset_0_0_20px_rgba(139,92,246,0.1)]" />
+
     </motion.div>
   );
 };

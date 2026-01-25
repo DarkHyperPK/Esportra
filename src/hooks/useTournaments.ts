@@ -18,14 +18,14 @@ export interface Tournament {
   updated_at?: string;
   image_url?: string | null;
   team_size?: number;
-  status?: 'upcoming' | 'ongoing' | 'completed';
+  status?: 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled';
   current_participants?: number;
   organizer_id?: string;
   slug?: string;
   is_public?: boolean;
 }
 
-type TournamentStatus = 'upcoming' | 'ongoing' | 'completed';
+type TournamentStatus = 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled';
 
 interface DbTournament {
   id: string;
@@ -63,30 +63,8 @@ export function useTournaments(status?: TournamentStatus) {
 
       // Get participant counts for each tournament
       const tournamentsWithCounts = await Promise.all((tournamentsData || []).map(async (item: any) => {
-        // Use DB status if available, otherwise fall back to date logic (for legacy data)
-        let tournamentStatus: TournamentStatus = 'upcoming';
-
-        if (item.status === 'ongoing') {
-          tournamentStatus = 'ongoing';
-        } else if (item.status === 'completed') {
-          tournamentStatus = 'completed';
-        } else {
-          // Fallback to date logic if status is 'open' (default) or unknown
-          const now = new Date();
-          const start = new Date(item.start_date);
-          const end = item.end_date ? new Date(item.end_date) : null;
-
-          if (now >= start) {
-            if (end && now > end) {
-              tournamentStatus = 'completed';
-            } else {
-              tournamentStatus = 'ongoing';
-            }
-          } else {
-            // If not started yet, it's upcoming
-            tournamentStatus = 'upcoming';
-          }
-        }
+        // Simply use database status. Treat 'open' as the standard registration/upcoming state.
+        const tournamentStatus = (item.status as TournamentStatus) || 'draft';
 
         // Get participant count
         const { count, error: countError } = await supabase

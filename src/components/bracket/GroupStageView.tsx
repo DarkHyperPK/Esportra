@@ -5,6 +5,7 @@ import { StandingsTable } from './StandingsTable';
 import { standingsService, TeamStanding } from '@/services/bracket/StandingsService';
 import { BracketNode } from '@/types/bracket-graph';
 import { MatchCard } from '@/pages/tournaments/brackets/MatchCard';
+import { ReadOnlyMatchCard } from './ReadOnlyMatchCard';
 
 interface GroupStageViewProps {
     stageId: string;
@@ -89,16 +90,25 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                                 <CardTitle>Matches</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {matchesByGroup[group]?.map(match => (
-                                        <div key={match.id} className="transform scale-90 origin-top-left">
-                                            <MatchCard
-                                                match={match}
-                                                isOrganizer={isOrganizer}
-                                                onMatchClick={() => { }} // Handle click if needed
-                                            />
-                                        </div>
-                                    ))}
+                                <div className="max-h-[450px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {matchesByGroup[group]?.map(match => (
+                                            <div key={match.id} className="transform scale-90 origin-top-left">
+                                                {isOrganizer ? (
+                                                    <MatchCard
+                                                        match={match}
+                                                        isOrganizer={isOrganizer}
+                                                        onMatchClick={() => { }} // Handle click if needed
+                                                    />
+                                                ) : (
+                                                    <ReadOnlyMatchCard
+                                                        match={match}
+                                                        className="w-[260px]"
+                                                    />
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

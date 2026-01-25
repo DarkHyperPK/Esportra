@@ -91,17 +91,12 @@ const AdminPortal = () => {
         console.error('Supabase tournaments error:', tournamentsError);
         throw tournamentsError;
       }
-      const now = new Date();
       const updatedTournaments = Array.isArray(tournamentsData)
         ? tournamentsData
-            .filter(t => t && typeof t === 'object' && t !== null && 'date' in t && 'time' in t)
-            .map((t) => {
-              const start = new Date(`${(t as any).date}T${(t as any).time}`);
-              let computedStatus = 'upcoming';
-              if ((t as any).finished) computedStatus = 'completed';
-              else if (now >= start) computedStatus = 'live';
-              return { ...(t as any), status: computedStatus } as Database['public']['Tables']['tournaments']['Row'] & { status: string };
-            })
+          .filter(t => t && typeof t === 'object' && t !== null)
+          .map((t) => {
+            return { ...(t as any) } as Database['public']['Tables']['tournaments']['Row'];
+          })
         : [];
       setTournaments(updatedTournaments);
 
@@ -245,7 +240,7 @@ const AdminPortal = () => {
           <button onClick={() => setActiveTab('venues')} className={`px-4 py-2 rounded-t-lg font-semibold ${activeTab === 'venues' ? 'bg-green-700 text-white' : 'bg-transparent text-white/70 hover:bg-green-700/20'}`}>Venues</button>
           <button onClick={() => setActiveTab('tournaments')} className={`px-4 py-2 rounded-t-lg font-semibold ${activeTab === 'tournaments' ? 'bg-purple-700 text-white' : 'bg-transparent text-white/70 hover:bg-purple-700/20'}`}>Tournaments</button>
           <button onClick={() => setActiveTab('bookings')} className={`px-4 py-2 rounded-t-lg font-semibold ${activeTab === 'bookings' ? 'bg-yellow-700 text-white' : 'bg-transparent text-white/70 hover:bg-yellow-700/20'}`}>Bookings</button>
-          <button onClick={() => setActiveTab('audit')} className={`px-4 py-2 rounded-t-lg font-semibold flex items-center gap-2 ${activeTab === 'audit' ? 'bg-gray-800 text-white' : 'bg-transparent text-white/70 hover:bg-gray-800/20'}`}><FileText size={16}/> Audit Logs</button>
+          <button onClick={() => setActiveTab('audit')} className={`px-4 py-2 rounded-t-lg font-semibold flex items-center gap-2 ${activeTab === 'audit' ? 'bg-gray-800 text-white' : 'bg-transparent text-white/70 hover:bg-gray-800/20'}`}><FileText size={16} /> Audit Logs</button>
         </div>
 
         {/* Tab Content */}
@@ -358,7 +353,7 @@ const AdminPortal = () => {
                               className="rounded-full px-4 py-1 text-xs font-bold"
                               onClick={async () => {
                                 await supabase.from('tournaments').update({ finished: true }).eq('id', tournament.id);
-                                
+
                                 // Create audit log
                                 const { error: auditError } = await supabase
                                   .from('audit_logs')
@@ -431,7 +426,7 @@ const AdminPortal = () => {
         )}
         {activeTab === 'audit' && (
           <section className="mb-12">
-            <h2 className="text-2xl font-bold mb-4 border-b border-white/10 pb-2 flex items-center gap-2"><FileText size={20}/> Audit Logs</h2>
+            <h2 className="text-2xl font-bold mb-4 border-b border-white/10 pb-2 flex items-center gap-2"><FileText size={20} /> Audit Logs</h2>
             <div className="flex flex-wrap gap-4 mb-4">
               <input
                 type="text"

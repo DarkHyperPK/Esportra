@@ -2144,7 +2144,7 @@ const TeamsPage = () => {
       </Dialog>
       {/* Create Roster Modal */}
       <Dialog open={rosterModalOpen} onOpenChange={setRosterModalOpen}>
-        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-xl shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-3xl z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-hidden p-0">
+        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-xl shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-3xl z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar p-0">
           <div className="pointer-events-none absolute inset-0 opacity-[0.05] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2184,7 +2184,7 @@ const TeamsPage = () => {
                   <SelectTrigger className="w-full bg-white/[0.03] border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 transition-all h-12 rounded-xl focus:ring-0 px-4">
                     <SelectValue placeholder="Select competitive game" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0f1115] border-white/10 text-white rounded-xl shadow-2xl backdrop-blur-xl">
+                  <SelectContent position="popper" sideOffset={4} className="bg-[#0f1115] border-white/10 text-white rounded-xl shadow-2xl backdrop-blur-xl z-[1100]">
                     {(esportsGames as any).games.map((g: any) => (
                       <SelectItem key={g.name} value={g.name} className="hover:bg-white/5 focus:bg-white/10 transition-colors py-3 cursor-pointer">
                         <div className="flex items-center gap-3">
@@ -2222,7 +2222,7 @@ const TeamsPage = () => {
                       <SelectTrigger className="w-full bg-white/[0.03] border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20 transition-all h-12 rounded-xl focus:ring-0 px-4">
                         <SelectValue placeholder="Format" />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#0f1115] border-white/10 text-white rounded-xl shadow-2xl backdrop-blur-xl">
+                      <SelectContent position="popper" sideOffset={4} className="bg-[#0f1115] border-white/10 text-white rounded-xl shadow-2xl backdrop-blur-xl z-[1100]">
                         {((esportsGames as any).games.find((g: any) => g.name === newRosterGame)?.formats || []).map((f: any) => (
                           <SelectItem key={f.value} value={f.value} className="hover:bg-white/5 py-3 cursor-pointer">{f.name}</SelectItem>
                         ))}
@@ -2264,7 +2264,7 @@ const TeamsPage = () => {
 
       {/* Manage Roster Modal */}
       <Dialog open={manageRosterModalOpen} onOpenChange={setManageRosterModalOpen}>
-        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[90vh] overflow-y-auto custom-scrollbar overflow-hidden">
+        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[90vh] overflow-y-auto custom-scrollbar">
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />

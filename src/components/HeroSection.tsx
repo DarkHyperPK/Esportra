@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 
 // LCP-optimized: Use direct URL without any SDK calls
-const HERO_VIDEO_URL = 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/hero%20section%20video/video.mp4';
+const HERO_VIDEO_URL = 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/hero%20section%20video/video3.mp4';
 
 const HeroSection = () => {
   const { user } = useAuth();
@@ -61,18 +61,22 @@ const HeroSection = () => {
       >
         <motion.video
           ref={videoRef}
-          src={HERO_VIDEO_URL}
           autoPlay
           loop
-          muted={true}
-          playsInline={true}
+          muted
+          playsInline
+          preload="auto"
+          poster="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/hero%20section%20video/poster.png"
           onCanPlayThrough={() => setIsVideoLoaded(true)}
+          onError={(e) => console.error("Hero video failed to load:", e)}
           initial={{ opacity: 0 }}
           animate={{ opacity: isVideoLoaded ? 1 : 0 }}
           transition={{ duration: 1.5 }}
-          className="absolute inset-0 w-full h-full object-cover scale-110"
+          className="absolute inset-0 w-full h-full object-cover scale-[1.25] md:scale-110"
           style={{ objectPosition: 'center' }}
-        />
+        >
+          <source src={HERO_VIDEO_URL} type="video/mp4" />
+        </motion.video>
       </motion.div>
 
       {/* Darker overlay for stronger text contrast */}
@@ -126,7 +130,7 @@ const HeroSection = () => {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{
             opacity: 1,
-            scale: isLogoMoved ? 0.7 : 1,
+            scale: isLogoMoved ? (typeof window !== 'undefined' && window.innerWidth < 768 ? 0.85 : 0.7) : 1,
             y: isLogoMoved ? (typeof window !== 'undefined' && window.innerWidth < 768 ? -280 : -350) : 0 // Responsive vertical move
           }}
           transition={{

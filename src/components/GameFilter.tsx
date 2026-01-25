@@ -33,7 +33,7 @@ const GameFilter: React.FC<GameFilterProps> = ({
         <FramerDropdownTrigger asChild>
           <Button
             variant="outline"
-            className="border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white"
+            className="bg-black/40 backdrop-blur-md border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-300 shadow-lg"
           >
             <Filter className="w-4 h-4 mr-2" />
             Filter by Game

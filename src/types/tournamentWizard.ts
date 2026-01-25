@@ -43,6 +43,7 @@ export interface TournamentWizardData {
     discordUrl: string;
     twitterUrl: string;
     streamUrl: string;
+    rewards: string;
 
     // Step 4: Registration
     registrationOpens: string;
@@ -112,6 +113,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     discordUrl: '',
     twitterUrl: '',
     streamUrl: '',
+    rewards: '',
 
     // Step 4
     registrationOpens: '',

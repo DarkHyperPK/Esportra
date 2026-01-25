@@ -191,6 +191,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         check_in_deadline: checkInDeadline?.toISOString() || null,
                         auto_remove_unchecked: data.autoRemoveUnchecked,
                         status: data.status,
+                        rewards: data.rewards,
                     })
                     .eq('id', tournamentId);
 
@@ -302,7 +303,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         start_date: startDateTime.toISOString(),
                         end_date: endDateTime.toISOString(),
                         registration_deadline: registrationCloses.toISOString(),
-                        status: 'upcoming',
+                        status: 'open',
                         banner_url: data.bannerUrl,
                         logo_url: data.logoUrl,
                         organizer_id: user.id,
@@ -311,6 +312,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         check_in_required: data.checkInRequired,
                         check_in_deadline: checkInDeadline?.toISOString() || null,
                         auto_remove_unchecked: data.autoRemoveUnchecked,
+                        rewards: data.rewards,
 
                     } as any)
                     .select()

@@ -20,13 +20,27 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
         return startDate.toISOString().slice(0, 16);
     };
 
-    // Auto-set defaults on mount
+    // Auto-set defaults and mandatory fields on mount
     React.useEffect(() => {
+        const updates: Partial<any> = {};
+
         if (!data.registrationOpens) {
-            updateData({ registrationOpens: getDefaultRegistrationOpen() });
+            updates.registrationOpens = getDefaultRegistrationOpen();
         }
         if (!data.registrationCloses && data.startDate) {
-            updateData({ registrationCloses: getDefaultRegistrationClose() });
+            updates.registrationCloses = getDefaultRegistrationClose();
+        }
+
+        // Enforce mandatory check-in fields
+        if (!data.checkInRequired) {
+            updates.checkInRequired = true;
+        }
+        if (!data.autoRemoveUnchecked) {
+            updates.autoRemoveUnchecked = true;
+        }
+
+        if (Object.keys(updates).length > 0) {
+            updateData(updates);
         }
     }, [data.startDate]);
 
@@ -50,25 +64,10 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
                     Registration Period
                 </Label>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2 md:border-r border-white/10 pr-4">
-                        <Label htmlFor="registrationOpens" className="text-sm text-gray-400">
-                            Opens at *
-                        </Label>
-                        <Input
-                            id="registrationOpens"
-                            type="datetime-local"
-                            value={data.registrationOpens}
-                            onChange={(e) => updateData({ registrationOpens: e.target.value })}
-                            className={cn(errors.registrationOpens && 'border-red-500', "font-bold tracking-tight")}
-                        />
-                        {errors.registrationOpens && (
-                            <p className="text-sm text-red-500">{errors.registrationOpens}</p>
-                        )}
-                    </div>
+                <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="registrationCloses" className="text-sm text-gray-400">
-                            Closes at *
+                            Registration Closes at *
                         </Label>
                         <Input
                             id="registrationCloses"
@@ -139,48 +138,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
                 </div>
             </div>
 
-            {/* Waitlist Settings */}
-            <div className="w-full h-px bg-white/5 my-6" />
-            <div className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Users className="w-5 h-5 text-emerald-400" />
-                        <div>
-                            <div className="font-medium text-white">Enable Waitlist</div>
-                            <div className="text-sm text-gray-400">
-                                Allow players to join a waitlist when tournament is full
-                            </div>
-                        </div>
-                    </div>
-                    <Switch
-                        checked={data.waitlistEnabled}
-                        onCheckedChange={(checked) => updateData({ waitlistEnabled: checked })}
-                    />
-                </div>
 
-                {data.waitlistEnabled && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="space-y-2 pt-4 border-t border-white/10"
-                    >
-                        <Label htmlFor="waitlistMax" className="text-sm text-xs font-bold text-gray-500 uppercase tracking-widest">Maximum waitlist size</Label>
-                        <div className="flex items-center gap-3">
-                            <Input
-                                id="waitlistMax"
-                                type="number"
-                                min={1}
-                                max={100}
-                                value={data.waitlistMax}
-                                onChange={(e) => updateData({ waitlistMax: parseInt(e.target.value) || 10 })}
-                                className="w-24 font-bold tracking-tight"
-                            />
-                            <span className="text-sm text-gray-400">teams</span>
-                        </div>
-                    </motion.div>
-                )}
-            </div>
 
             {/* Summary Info */}
             {data.startDate && data.startTime && (
@@ -190,7 +148,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
                         <div className="text-sm">
                             <p className="text-white font-medium">Timeline Summary</p>
                             <ul className="mt-2 space-y-1 text-gray-400">
-                                <li>• Registration opens: {data.registrationOpens ? new Date(data.registrationOpens).toLocaleString() : 'Not set'}</li>
+                                <li>• Registration opens: Immediately</li>
                                 <li>• Registration closes: {data.registrationCloses ? new Date(data.registrationCloses).toLocaleString() : 'Not set'}</li>
                                 {data.checkInRequired && (
                                     <li>• Check-in starts: {data.checkInWindowMinutes} min before tournament</li>

@@ -73,6 +73,7 @@ const TournamentDetails = React.lazy(() => import("./pages/admin/TournamentDetai
 const CaptainMatchPage = React.lazy(() => import("./pages/tournaments/CaptainMatchPage"));
 const ManageBracketPage = React.lazy(() => import("./pages/organizer/ManageBracketPage"));
 const FullscreenBracketPage = React.lazy(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
+const OrganizerPublicProfile = React.lazy(() => import("./pages/organizer/PublicProfile"));
 
 const ADMIN_ROLE_SETS = {
   anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
@@ -428,6 +429,7 @@ const AppContent = React.memo(() => {
                 </ProtectedRoute>
               } />
               <Route path="/tournaments" element={<TournamentList />} />
+              <Route path="/organizer/profile/:userId" element={<OrganizerPublicProfile />} />
               <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
 
               {/* Venues Routes */}
