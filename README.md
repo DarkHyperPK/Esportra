@@ -1,73 +1,58 @@
 # Esportra
+> **Tournaments, Teams, Victory.**
 
-**Tournaments, Teams, Victory.**
+Esportra is a state-of-the-art esports tournament management ecosystem designed for players, organizers, and venue owners. It features a high-performance tournament engine, real-time match operations, and a global identity system.
 
-Esportra is a comprehensive esports tournament management platform that enables players, teams, organizers, and venue owners to create, manage, and participate in competitive gaming tournaments.
+## 🏆 Key Modules
 
-## About
+### **1. Advanced Tournament Engine**
+Esportra supports flexible, high-tier competition formats out-of-the-box:
+- **Single & Double Elimination**: Classic tournament structures with semi-finals reset logic.
+- **Swiss Format**: Professional group-stage pairing with automatic round calculation (log2).
+- **Round Robin**: Full league-style support with automated standings calculation.
+- **Dynamic Brackets**: Moveable, zoomable, graph-based visualization with immersive fullscreen mode.
 
-Esportra provides a complete ecosystem for esports competitions, featuring:
+### **2. Real-time Match Operations**
+Everything you need to run professional matches smoothly:
+- **Integrated Map Veto**: Visual map selection system with CS2/Valorant support.
+- **Auto-Reporting**: Matches can be configured for automatic result reporting via Edge Functions.
+- **Scheduling & Proposals**: Robust match scheduling with time proposal cards and captain check-ins.
+- **Real-time Match Hub**: Integrated match chat, live scoreboards, and evidence upload for disputes.
 
-- **Tournament Management**: Create and manage tournaments with brackets, match scheduling, and real-time updates
-- **Team Management**: Build and manage teams with roster systems and team-based registrations
-- **Map Veto System**: Integrated map selection and veto system for competitive matches
-- **Dispute Resolution**: Comprehensive dispute management system with evidence upload and conversation threads
-- **Venue Integration**: Connect with gaming venues and organize LAN events
-- **Role-Based Access**: Support for players, organizers, venue owners, and administrators
+### **3. Global Identity & Social**
+Building a cross-border competitive community:
+- **Global Country Detection**: Automated IP-based geolocation (api.country.is) and Team-inherited identity.
+- **Premium Flags**: High-resolution FlagCDN integration across the entire UI.
+- **Unified Leaderboards**: Global and National rankings for players and teams based on RP (Rank Points).
+- **Team Statistics**: Comprehensive dashboard featuring tournament wins, match history, and member management.
 
-### New in v0.3.5 - Organizer UX & Polish
-- **Banner Crop & Resize**: Crop and zoom tournament banners with a visual editor (16:9 enforced)
-- **Prize Distribution**: Dedicated Winner/Runner-up percentage inputs with validation (≤100%)
-- **Swiss Standings**: Live "Qualified" and "Eliminated" status badges in Swiss standings
-- **Public Page Preview**: Organizers can now preview public tournament pages directly
+### **4. Venue Integration**
+Connecting the digital and physical gaming worlds:
+- **Venue Management**: Tools for venue owners to list, manage, and verify their gaming centers.
+- **LAN Event Ready**: Features specifically designed for organizers running on-site competitions.
 
-### v0.3.4 - Team Dashboard Enhancements
-- **Premium Loading Screen**: Animated loading state for Teams page
-- **Tournament Wins Stat**: "Trophies" card in Team Dashboard
-### v0.3.2 - Enhanced Bracket Experience
-- **Stage Filtering**: Switch between tournament stages (Groups vs Playoffs) directly in the bracket view
-- **Fullscreen Mode**: Immersive full-screen bracket visualization
-- **UI Improvements**: Premium esports styling, refined layout, and better navigation
+---
 
-### New in v0.4.0 - Global Identity & Polish
-- **Automatic Country Assignment**: Users and teams are now automatically assigned countries via IP-based detection.
-- **Premium Visual Flags**: High-resolution image flags (FlagCDN) integrated across Leaderboards, Profiles, and Search.
-- **Workspace-wide Stability**: Centralized type definitions and resolved critical TypeScript issues across the platform.
-- **Enhanced Team Discovery**: Improved team-to-owner country inheritance for accurate national rankings.
+## 🚀 Recent Release: v0.4.0
+**The "Global Identity" Update**
+- **Auto-Country Detection**: Background geolocation assignment for users and teams.
+- **Image Flag Integration**: Replaced emojis with crisp, high-quality image flags.
+- **Workspace Stability**: Consolidated TypeScript definitions and centralized data models.
+- **Team Discovery**: Enhanced owner-based country inheritance for accurate regional standings.
 
-### v0.3.5 - Organizer UX & Polish
-- **Banner Crop & Resize**: Crop and zoom tournament banners with a visual editor (16:9 enforced)
-- **Prize Distribution**: Dedicated Winner/Runner-up percentage inputs with validation (≤100%)
-- **Swiss Standings**: Live "Qualified" and "Eliminated" status badges in Swiss standings
-- **Public Page Preview**: Organizers can now preview public tournament pages directly
+---
 
-### v0.3.1 - Swiss Bracket Engine
-- **Swiss Format**: Full Swiss tournament support with group-based pairing
-- **Auto Round Limit**: Calculates max rounds based on team count (log2)
-- **Undo Round**: Organizers can revert misgenerated rounds
+## 🗺️ Roadmap (Upcoming Features)
 
-## Roadmap
+**v0.5.0 - Professional Broadcasting & Social**
+- [ ] **Mobile Companion App**: Native iOS/Android apps for tournament notifications and checking.
+- [ ] **Broadcasting Integration**: Live match streaming embeddings (Twitch/YouTube) directly in the bracket.
+- [ ] **Sponsorship Portal**: Specialized tools for brands to manage ad placements and partner portals.
+- [ ] **AI Match Insights**: Automated stats extraction and highlight generation from match evidence.
 
-**Coming in v0.4.1:**
-- Round Robin format support
-- Match scheduling with calendar integration
-- Enhanced team statistics dashboard
-- Team matches history, scores, and standings
-- Unified tournament leaderboard
+---
 
-## Changelog
 
-For detailed version history and updates, see [CHANGELOG.md](./CHANGELOG.md).
 
-Recent versions:
-- **v0.4.0** - Auto-Country Detection, Image Flags, TypeScript Consolidation, Team Inherited Location
-- **v0.3.5** - Banner Crop/Resize, Prize Distribution UI, Swiss Standings Status, Public Page Preview
-- **v0.3.4** - Premium Loading Screen, Tournament Wins Stat, UI/UX polish
-- **v0.3.2** - Stage filters, Fullscreen mode, UI polish, Layout fixes
-- **v0.3.1** - Swiss bracket engine, undo round, max round limits, pairing fixes
-- **v0.3.0** - Graph-based bracket engine, modern UI, Finals Reset, PNG export
-
-## License
-
+## 📜 License
 Private - All rights reserved
-
