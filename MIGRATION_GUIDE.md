@@ -77,18 +77,25 @@ pg_dump --clean --if-exists --quote-all-identifiers \
 
 Since your buckets contain photos, banners, and logos, we need to download them locally.
 
-1.  Navigate to your project directory on the server.
+> [!IMPORTANT]
+> **You MUST be inside your project folder** (likely `frag-and-book-main`) for this to work.
+
+1.  Navigate into your project directory:
+    ```bash
+    cd ~/frag-and-book-main
+    ```
+
 2.  Run these commands:
 
 ```bash
-# 1. Set the keys for the script
+# 1. Set the keys for the script (Use your Cloud Service Role key)
 export VITE_SUPABASE_URL="https://abbjywqlxnxoutllbgke.supabase.co"
 export SUPABASE_SERVICE_ROLE_KEY="PASTE_YOUR_CLOUD_SERVICE_ROLE_KEY_HERE"
 
-# 2. Install the Supabase library if not already present
+# 2. Install the Supabase library
 npm install @supabase/supabase-js
 
-# 3. Run the sync script I created
+# 3. Run the sync script
 node scripts/migration/storage_sync.js
 ```
 
