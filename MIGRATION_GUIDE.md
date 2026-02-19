@@ -78,11 +78,11 @@ pg_dump --clean --if-exists --quote-all-identifiers \
 Since your buckets contain photos, banners, and logos, we need to download them locally.
 
 > [!IMPORTANT]
-> **You MUST be inside your project folder** (likely `frag-and-book-main`) for this to work.
+> **You MUST be inside your project folder** (likely `Esportra`) for this to work.
 
 1.  Navigate into your project directory:
     ```bash
-    cd ~/frag-and-book-main
+    cd ~/Esportra
     ```
 
 2.  Run these commands:
