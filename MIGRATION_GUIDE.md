@@ -14,8 +14,11 @@ Connect to your server via SSH and run:
 # Update package list
 sudo apt-get update
 
-# Install Postgres Client (to use pg_dump and psql)
-sudo apt-get install -y postgresql-client
+# Install PostgreSQL 17 Client (to match Supabase Cloud version)
+sudo apt install -y postgresql-common
+sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+sudo apt update
+sudo apt install -y postgresql-client-17
 
 # Install Node.js & NPM (to run the storage sync script)
 sudo apt-get install -y nodejs npm
@@ -29,8 +32,10 @@ You need keys from **two** places: your old Cloud project and your new Coolify p
 
 ### From Supabase Cloud (Old):
 1.  Go to **Project Settings** -> **Database**.
-    *   **Host**: `db.abbjywqlxnxoutllbgke.supabase.co`
-    *   **Password**: Your database password (the one you set when creating the project).
+    *   **Host**: `aws-1-us-east-1.pooler.supabase.com`
+    *   **Port**: `5432`
+    *   **User**: `postgres.abbjywqlxnxoutllbgke`
+    *   **Password**: `7ci32oggEcY2VRN0`
 2.  Go to **Project Settings** -> **API**.
     *   **Project URL**: `https://abbjywqlxnxoutllbgke.supabase.co`
     *   **service_role secret**: (Click reveal) — You need this for the storage sync.
@@ -50,12 +55,18 @@ You need keys from **two** places: your old Cloud project and your new Coolify p
 Run this on your Ubuntu server to pull all your data into a single file.
 
 ```bash
-# Run the dump (You will be asked for your Cloud DB Password)
+# Variables (Using IPv4 Pooler Host for compatibility)
+HOST="aws-1-us-east-1.pooler.supabase.com"
+PORT="5432"
+USER="postgres.abbjywqlxnxoutllbgke"
+DB="postgres"
+
+# Execute Dump (You will be prompted for your Cloud DB Password)
 pg_dump --clean --if-exists --quote-all-identifiers \
-  -h db.abbjywqlxnxoutllbgke.supabase.co \
-  -U postgres \
-  -d postgres > esportra_full_dump.sql
+  -h $HOST -p $PORT -U $USER -d $DB > esportra_full_dump.sql
 ```
+
+*Note: When prompted for password, use: `7ci32oggEcY2VRN0`*
 
 > [!NOTE]
 > If you get a "command not found" error, make sure you ran the `apt-get` commands in Step 0.
