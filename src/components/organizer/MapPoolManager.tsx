@@ -38,10 +38,12 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
     const fetchMaps = async () => {
       try {
         setLoading(true);
+        const isCS2Game = ['cs2', 'counter-strike 2'].includes(game?.toLowerCase() || '');
+        const dbGameName = isCS2Game ? 'Counter-Strike 2' : game;
         const { data, error } = await supabase
           .from('game_maps')
           .select('*')
-          .eq('game', game)
+          .eq('game', dbGameName)
           .eq('is_active', true)
           .order('map_name');
 
@@ -223,9 +225,16 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
           <div>
             <CardTitle className="text-white">Map Pool</CardTitle>
             <CardDescription className="text-gray-400">
-              Select maps available for veto in this tournament
+              {['cs2', 'counter-strike 2'].includes(game?.toLowerCase() || '')
+                ? 'Standard Active Duty maps (Enforced)'
+                : 'Select maps available for veto in this tournament'}
             </CardDescription>
           </div>
+          {['cs2', 'counter-strike 2'].includes(game?.toLowerCase() || '') && (
+            <Badge variant="outline" className="border-emerald-500/50 text-emerald-400">
+              Active Duty Only
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -248,7 +257,17 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
                       ? 'border-green-500 shadow-lg shadow-green-500/20'
                       : 'border-gray-700 hover:border-gray-600'
                   )}
-                  onClick={() => toggleMapInPool(map.id, isInPool)}
+                  onClick={() => {
+                    if (game === 'Counter-Strike 2' || game === 'cs2') {
+                      toast({
+                        title: "Action Restricted",
+                        description: "CS2 tournaments must use the 7 standard Active Duty maps.",
+                        variant: "default"
+                      });
+                      return;
+                    }
+                    toggleMapInPool(map.id, isInPool);
+                  }}
                   style={{
                     backgroundImage: `url(${mapImageUrl})`,
                     backgroundSize: 'cover',

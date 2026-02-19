@@ -10,8 +10,8 @@ export const useProfileManagement = () => {
     try {
       // Filter out undefined/null values and only include valid profile fields
       const validUpdates: Record<string, any> = {};
-      const allowedFields = ['username', 'full_name', 'avatar_url', 'bio', 'gamer_tag', 'phone', 'location'];
-      
+      const allowedFields = ['username', 'full_name', 'avatar_url', 'bio', 'riot_tag', 'steam_tag', 'phone', 'location', 'social_links', 'card_image_url', 'country_code'];
+
       Object.keys(updates).forEach(key => {
         if (allowedFields.includes(key) && updates[key as keyof UserProfile] !== undefined && updates[key as keyof UserProfile] !== null) {
           validUpdates[key] = updates[key as keyof UserProfile];
@@ -66,7 +66,7 @@ export const useProfileManagement = () => {
           details: error.details,
           hint: error.hint
         });
-        
+
         // Handle specific error cases
         if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
           if (error.message?.includes('username')) {
@@ -85,7 +85,7 @@ export const useProfileManagement = () => {
             throw error;
           }
         }
-        
+
         throw error;
       }
 
@@ -98,12 +98,12 @@ export const useProfileManagement = () => {
       return;
     } catch (error: any) {
       console.error("Error updating profile:", error);
-      
+
       // Don't show toast if we already showed one for username conflict
       if (error?.message === 'Username already taken') {
         throw error;
       }
-      
+
       const errorMessage = error?.message || error?.details || error?.hint || 'An unexpected error occurred';
       toast({
         title: "Error updating profile",

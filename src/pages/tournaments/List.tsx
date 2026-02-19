@@ -54,6 +54,7 @@ const TournamentList = () => {
         .eq('is_public', true)
         .neq('status', 'draft')
         .neq('status', 'cancelled')
+        .is('deleted_at', null)
         .order('start_date', { ascending: true });
 
       if (tournamentsError) {

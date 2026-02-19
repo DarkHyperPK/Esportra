@@ -7,19 +7,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
-import { 
-  Search, 
-  Filter, 
-  User, 
-  Shield, 
+import {
+  Search,
+  Filter,
+  User,
+  Shield,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -41,6 +41,7 @@ import {
   Crown
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { auditLog } from '@/lib/auditLog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useToast } from '@/hooks/use-toast';
@@ -76,10 +77,10 @@ interface User {
   assigned_admin_roles?: string[];
 }
 
-type Role = { 
-  id: string; 
-  name: string; 
-  description: string; 
+type Role = {
+  id: string;
+  name: string;
+  description: string;
   isAdmin?: boolean;
   roleKey?: string;
   roleId?: string | number;
@@ -108,7 +109,7 @@ const UserManagement: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 20;
-  
+
   const isSuperAdmin = admin.roles.includes('super_admin');
 
   // Extra data for user details modal
@@ -118,23 +119,23 @@ const UserManagement: React.FC = () => {
   // Load roles for super admin role management
   useEffect(() => {
     if (!isSuperAdmin) return;
-    
+
     const loadRoles = async () => {
       try {
         let adminRoles: any[] = [];
-        
+
         try {
           const { data: rolesWithKey, error: errorWithKey } = await supabase
             .from('admin_roles')
             .select('id, key, name, description')
             .order('name');
-          
+
           if (errorWithKey) {
             const errorMessage = errorWithKey?.message || String(errorWithKey) || '';
             const errorCode = errorWithKey?.code || '';
-            const isColumnError = errorMessage.includes('column') && errorMessage.includes('key') 
+            const isColumnError = errorMessage.includes('column') && errorMessage.includes('key')
               || errorCode === '42703';
-            
+
             if (isColumnError) {
               const { data: rolesWithoutKey } = await supabase
                 .from('admin_roles')
@@ -150,13 +151,13 @@ const UserManagement: React.FC = () => {
         } catch (err) {
           adminRoles = [];
         }
-        
+
         const regularRoles = [
           { id: 'organizer', name: 'organizer', description: 'Tournament Organizer' },
           { id: 'venue_owner', name: 'venue_owner', description: 'Venue Owner' },
           { id: 'casual', name: 'casual', description: 'Casual Player' }
         ];
-        
+
         const allRoles = [
           ...adminRoles.map((role: any) => {
             const roleKey = role.key || role.name;
@@ -171,13 +172,13 @@ const UserManagement: React.FC = () => {
           }),
           ...regularRoles.map(role => ({ ...role, isAdmin: false }))
         ];
-        
+
         setRoles(allRoles);
       } catch (err) {
         console.error('Error loading roles:', err);
       }
     };
-    
+
     loadRoles();
   }, [isSuperAdmin]);
 
@@ -191,7 +192,7 @@ const UserManagement: React.FC = () => {
         ]);
         if (!vr.error && vr.data) setUserVerifiedRoles(vr.data);
         if (!ur.error && ur.data) setUserAssignedRoles(ur.data);
-      } catch {}
+      } catch { }
     };
     loadUserDetails();
   }, [showUserDetails, selectedUser]);
@@ -249,7 +250,7 @@ const UserManagement: React.FC = () => {
       // Fetch roles for all users
       const userIds = (data || []).map(u => u.id);
       const [userRolesResult, adminUserRolesResult] = await Promise.all([
-        userIds.length > 0 
+        userIds.length > 0
           ? supabase.from('user_roles').select('user_id, role').in('user_id', userIds).eq('is_active', true)
           : { data: [], error: null },
         userIds.length > 0
@@ -284,16 +285,16 @@ const UserManagement: React.FC = () => {
       if (filterRole !== 'all') {
         const adminRoles = ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'];
         const normalizedFilterRole = filterRole.toLowerCase().replace(/\s+/g, '_');
-        
+
         usersWithRoles = usersWithRoles.filter(user => {
           // Check admin roles
           if (adminRoles.includes(normalizedFilterRole)) {
-            return user.assigned_admin_roles?.includes(normalizedFilterRole) || 
-                   (user.admin_roles as string[])?.includes(normalizedFilterRole);
+            return user.assigned_admin_roles?.includes(normalizedFilterRole) ||
+              (user.admin_roles as string[])?.includes(normalizedFilterRole);
           }
           // Check user roles
           return user.assigned_user_roles?.includes(normalizedFilterRole) ||
-                 user.role === normalizedFilterRole;
+            user.role === normalizedFilterRole;
         });
       }
 
@@ -335,7 +336,7 @@ const UserManagement: React.FC = () => {
       if (error) throw error;
 
       // Log the action
-      await logAdminAction('suspend', 'user', selectedUser.id, selectedUser.username, {
+      await auditLog.log('suspend', 'user', selectedUser.id, selectedUser.username, {
         reason: actionReason,
         duration: actionDuration,
         until: suspensionUntil.toISOString()
@@ -377,7 +378,7 @@ const UserManagement: React.FC = () => {
       if (error) throw error;
 
       // Log the action
-      await logAdminAction('ban', 'user', selectedUser.id, selectedUser.username, {
+      await auditLog.log('ban', 'user', selectedUser.id, selectedUser.username, {
         reason: actionReason
       });
 
@@ -415,7 +416,7 @@ const UserManagement: React.FC = () => {
       if (error) throw error;
 
       // Log the action
-      await logAdminAction('unsuspend', 'user', userId, username, {});
+      await auditLog.log('unsuspend', 'user', userId, username);
 
       toast({
         title: 'User Unsuspended',
@@ -448,7 +449,7 @@ const UserManagement: React.FC = () => {
       if (error) throw error;
 
       // Log the action
-      await logAdminAction('unban', 'user', userId, username, {});
+      await auditLog.log('unban', 'user', userId, username);
 
       toast({
         title: 'User Unbanned',
@@ -468,61 +469,42 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const logAdminAction = async (action: string, targetType: string, targetId: string, targetName: string, details: any) => {
-    try {
-      await supabase
-        .from('audit_logs')
-        .insert({
-          admin_id: currentUser?.id,
-          admin_name: currentUser?.email,
-          action_type: action,
-          target_type: targetType,
-          target_id: targetId,
-          target_name: targetName,
-          details: details,
-          ip_address: '127.0.0.1', // In production, get real IP
-          user_agent: navigator.userAgent,
-          severity: action === 'ban' ? 'critical' : action === 'suspend' ? 'high' : 'medium'
-        });
-    } catch (error) {
-      console.error('Error logging admin action:', error);
-    }
-  };
+  // Audit logging now handled by centralized auditLog utility
 
   // Role management functions (for super admin)
   const handleAssignRole = async () => {
     if (!selectedUser || !selectedRoleForAction) return;
-    
+
     try {
       setRoleActionLoading(true);
-      const user = { 
-        id: selectedUser.id, 
-        email: selectedUser.email, 
-        is_admin: selectedUser.is_admin, 
-        admin_roles: selectedUser.admin_roles || selectedUser.assigned_admin_roles 
+      const user = {
+        id: selectedUser.id,
+        email: selectedUser.email,
+        is_admin: selectedUser.is_admin,
+        admin_roles: selectedUser.admin_roles || selectedUser.assigned_admin_roles
       };
       const targetUserIsSuperAdmin = user.is_admin && (user.admin_roles as string[])?.includes('super_admin');
       const selectedRoleData = roles.find(r => r.id === selectedRoleForAction);
       const roleDisplayName = selectedRoleData?.name || selectedRoleForAction.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase());
       const isAdminRole = selectedRoleData?.isAdmin || false;
-      
+
       if (targetUserIsSuperAdmin) {
         toast({ title: 'Cannot Assign Role', description: 'Super admins cannot have roles assigned.', variant: 'destructive' });
         setRoleActionLoading(false);
         return;
       }
-      
+
       if (selectedRoleForAction === 'super_admin' || selectedRoleData?.roleKey === 'super_admin') {
         toast({ title: 'Cannot Assign Role', description: 'Super admin role cannot be assigned through this interface.', variant: 'destructive' });
         setRoleActionLoading(false);
         return;
       }
-      
+
       if (isAdminRole) {
         const roleData = selectedRoleData as (Role & { roleKey?: string; roleId?: string | number });
         let roleId: string | number;
         let roleKey: string;
-        
+
         if (roleData?.roleId) {
           roleId = roleData.roleId;
           const rawKey = roleData.roleKey || roleData.name || selectedRoleForAction;
@@ -533,36 +515,36 @@ const UserManagement: React.FC = () => {
             .select('id, key, name')
             .or(`id.eq.${selectedRoleForAction},key.eq.${selectedRoleForAction},name.eq.${selectedRoleForAction}`)
             .maybeSingle();
-          
+
           if (roleLookupError || !adminRoleRecord) {
             throw new Error(`Admin role '${selectedRoleForAction}' not found`);
           }
-          
+
           const rawKey = adminRoleRecord.key || adminRoleRecord.name || selectedRoleForAction;
           roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
           roleId = adminRoleRecord.id;
         }
-        
+
         const { data: existingRole } = await supabase
           .from('admin_user_roles')
           .select('id')
           .eq('user_id', user.id)
           .eq('role_id', roleId)
           .maybeSingle();
-        
+
         const { data: currentProfile } = await supabase
           .from('profiles')
           .select('admin_roles')
           .eq('id', user.id)
           .maybeSingle();
-        
+
         const currentAdminRoles = (currentProfile?.admin_roles as string[]) || [];
         if (existingRole || currentAdminRoles.includes(roleKey)) {
           toast({ title: 'Role Already Assigned', description: `${roleDisplayName} is already assigned`, variant: 'default' });
           setRoleActionLoading(false);
           return;
         }
-        
+
         const { error: adminError } = await supabase
           .from('admin_user_roles')
           .insert({
@@ -571,7 +553,7 @@ const UserManagement: React.FC = () => {
             assigned_by: profile?.id,
             assigned_at: new Date().toISOString()
           });
-        
+
         if (adminError) {
           if (adminError.code === '23505') {
             toast({ title: 'Role Already Assigned', description: `${roleDisplayName} is already assigned`, variant: 'default' });
@@ -580,13 +562,13 @@ const UserManagement: React.FC = () => {
           }
           throw adminError;
         }
-        
+
         const updatedAdminRoles = [...currentAdminRoles, roleKey];
         const { error: profileError } = await supabase
           .from('profiles')
           .update({ is_admin: true, admin_roles: updatedAdminRoles })
           .eq('id', user.id);
-        
+
         if (profileError) throw profileError;
       } else {
         const { error: userRoleError } = await supabase
@@ -598,7 +580,7 @@ const UserManagement: React.FC = () => {
             assigned_by: profile?.id,
             assigned_at: new Date().toISOString()
           });
-        
+
         if (userRoleError) {
           const { error: updateError } = await supabase
             .from('user_roles')
@@ -608,11 +590,11 @@ const UserManagement: React.FC = () => {
           if (updateError) throw updateError;
         }
       }
-      
+
       toast({ title: 'Role Assigned', description: `${roleDisplayName} assigned to ${user.email}` });
       window.dispatchEvent(new CustomEvent('adminRolesUpdated'));
       localStorage.setItem('admin_roles_updated', Date.now().toString());
-      
+
       setShowAssignRoleDialog(false);
       setSelectedRoleForAction('');
       fetchUsers();
@@ -625,38 +607,38 @@ const UserManagement: React.FC = () => {
 
   const handleRevokeRole = async () => {
     if (!selectedUser || !selectedRoleForAction) return;
-    
+
     try {
       setRoleActionLoading(true);
-      const user = { 
-        id: selectedUser.id, 
-        email: selectedUser.email, 
-        is_admin: selectedUser.is_admin, 
-        admin_roles: selectedUser.admin_roles || selectedUser.assigned_admin_roles 
+      const user = {
+        id: selectedUser.id,
+        email: selectedUser.email,
+        is_admin: selectedUser.is_admin,
+        admin_roles: selectedUser.admin_roles || selectedUser.assigned_admin_roles
       };
       const targetUserIsSuperAdmin = user.is_admin && (user.admin_roles as string[])?.includes('super_admin');
-      
+
       if (targetUserIsSuperAdmin) {
         toast({ title: 'Cannot Revoke Role', description: 'Super admins do not have roles assigned.', variant: 'destructive' });
         setRoleActionLoading(false);
         return;
       }
-      
+
       const selectedRoleData = roles.find(r => r.id === selectedRoleForAction);
       const roleDisplayName = selectedRoleData?.name || selectedRoleForAction.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase());
       const isAdminRole = selectedRoleData?.isAdmin || false;
-      
+
       if (selectedRoleForAction === 'super_admin' || selectedRoleData?.roleKey === 'super_admin') {
         toast({ title: 'Cannot Revoke Role', description: 'Super admin role cannot be revoked.', variant: 'destructive' });
         setRoleActionLoading(false);
         return;
       }
-      
+
       if (isAdminRole) {
         const roleData = selectedRoleData as (Role & { roleKey?: string; roleId?: string | number });
         let roleId: string | number;
         let roleKey: string;
-        
+
         if (roleData?.roleId) {
           roleId = roleData.roleId;
           const rawKey = roleData.roleKey || roleData.name || selectedRoleForAction;
@@ -667,59 +649,59 @@ const UserManagement: React.FC = () => {
             .select('id, key, name')
             .or(`id.eq.${selectedRoleForAction},key.eq.${selectedRoleForAction},name.eq.${selectedRoleForAction}`)
             .maybeSingle();
-          
+
           if (roleLookupError || !adminRoleRecord) {
             throw new Error(`Admin role '${selectedRoleForAction}' not found`);
           }
-          
+
           const rawKey = adminRoleRecord.key || adminRoleRecord.name || selectedRoleForAction;
           roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
           roleId = adminRoleRecord.id;
         }
-        
+
         const { data: existingAdminRole } = await supabase
           .from('admin_user_roles')
           .select('id')
           .eq('user_id', user.id)
           .eq('role_id', roleId)
           .maybeSingle();
-        
+
         if (!existingAdminRole) {
           toast({ title: 'Role Not Found', description: `${roleDisplayName} is not assigned to ${user.email}`, variant: 'destructive' });
           setRoleActionLoading(false);
           return;
         }
-        
+
         const { error: adminError } = await supabase
           .from('admin_user_roles')
           .delete()
           .eq('user_id', user.id)
           .eq('role_id', roleId);
-        
+
         if (adminError) throw adminError;
-        
+
         const { data: currentProfile } = await supabase
           .from('profiles')
           .select('admin_roles')
           .eq('id', user.id)
           .maybeSingle();
-        
+
         const currentAdminRoles = (currentProfile?.admin_roles as string[]) || [];
         const updatedAdminRoles = currentAdminRoles.filter(r => r !== roleKey);
-        
+
         const { data: remainingAdminRoles } = await supabase
           .from('admin_user_roles')
           .select('id')
           .eq('user_id', user.id);
-        
+
         const { error: profileError } = await supabase
           .from('profiles')
-          .update({ 
+          .update({
             is_admin: remainingAdminRoles && remainingAdminRoles.length > 0,
             admin_roles: updatedAdminRoles
           })
           .eq('id', user.id);
-        
+
         if (profileError) throw profileError;
       } else {
         const { data: existingUserRole } = await supabase
@@ -729,26 +711,26 @@ const UserManagement: React.FC = () => {
           .eq('role', selectedRoleForAction)
           .eq('is_active', true)
           .maybeSingle();
-        
+
         if (!existingUserRole) {
           toast({ title: 'Role Not Found', description: `${roleDisplayName} is not active for ${user.email}`, variant: 'destructive' });
           setRoleActionLoading(false);
           return;
         }
-        
+
         const { error: userRoleError } = await supabase
           .from('user_roles')
           .update({ is_active: false })
           .eq('user_id', user.id)
           .eq('role', selectedRoleForAction);
-        
+
         if (userRoleError) throw userRoleError;
       }
-      
+
       toast({ title: 'Role Revoked', description: `${roleDisplayName} revoked from ${user.email}` });
       window.dispatchEvent(new CustomEvent('adminRolesUpdated'));
       localStorage.setItem('admin_roles_updated', Date.now().toString());
-      
+
       setShowRevokeRoleDialog(false);
       setSelectedRoleForAction('');
       fetchUsers();
@@ -791,14 +773,14 @@ const UserManagement: React.FC = () => {
 
   const getAllUserRoles = (user: User): string[] => {
     const allRoles: string[] = [];
-    
+
     // Add admin roles
     if (user.assigned_admin_roles && user.assigned_admin_roles.length > 0) {
       allRoles.push(...user.assigned_admin_roles);
     } else if (user.admin_roles && user.admin_roles.length > 0) {
       allRoles.push(...(user.admin_roles as string[]));
     }
-    
+
     // Add user roles
     if (user.assigned_user_roles && user.assigned_user_roles.length > 0) {
       allRoles.push(...user.assigned_user_roles);
@@ -806,12 +788,12 @@ const UserManagement: React.FC = () => {
       // Only add legacy role if it's not casual (to avoid duplicates)
       allRoles.push(user.role);
     }
-    
+
     // If no roles found, default to casual
     if (allRoles.length === 0) {
       allRoles.push('casual');
     }
-    
+
     return [...new Set(allRoles)]; // Remove duplicates
   };
 
@@ -840,7 +822,7 @@ const UserManagement: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             <Select value={filterRole} onValueChange={setFilterRole}>
               <SelectTrigger className="w-full md:w-48 bg-gray-700 border-gray-600 text-white">
                 <SelectValue placeholder="Filter by role" />
@@ -966,7 +948,7 @@ const UserManagement: React.FC = () => {
                           </TooltipTrigger>
                           <TooltipContent>View details</TooltipContent>
                         </Tooltip>
-                        
+
                         {/* Super Admin Role Management Actions */}
                         {isSuperAdmin && (user.is_admin || user.assigned_admin_roles?.length || 0 > 0) && (
                           <>
@@ -1006,7 +988,7 @@ const UserManagement: React.FC = () => {
                             </Tooltip>
                           </>
                         )}
-                        
+
                         {!user.is_banned && !user.is_suspended && (
                           <>
                             <Tooltip>
@@ -1045,7 +1027,7 @@ const UserManagement: React.FC = () => {
                             </Tooltip>
                           </>
                         )}
-                        
+
                         {user.is_suspended && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -1062,7 +1044,7 @@ const UserManagement: React.FC = () => {
                             <TooltipContent>Unsuspend</TooltipContent>
                           </Tooltip>
                         )}
-                        
+
                         {user.is_banned && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -1101,11 +1083,11 @@ const UserManagement: React.FC = () => {
           >
             Previous
           </Button>
-          
+
           <span className="text-gray-400">
             Page {currentPage} of {totalPages}
           </span>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -1127,7 +1109,7 @@ const UserManagement: React.FC = () => {
               Suspend {selectedUser?.username} for violating platform policies
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="duration" className="text-white">Duration (days)</Label>
@@ -1144,7 +1126,7 @@ const UserManagement: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label htmlFor="reason" className="text-white">Reason for suspension</Label>
               <Textarea
@@ -1156,7 +1138,7 @@ const UserManagement: React.FC = () => {
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button
               variant="outline"
@@ -1185,7 +1167,7 @@ const UserManagement: React.FC = () => {
               Permanently ban {selectedUser?.username} from the platform
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="ban-reason" className="text-white">Reason for ban</Label>
@@ -1198,7 +1180,7 @@ const UserManagement: React.FC = () => {
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button
               variant="outline"

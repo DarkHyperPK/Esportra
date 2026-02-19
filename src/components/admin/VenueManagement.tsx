@@ -5,24 +5,10 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash, Plus } from 'lucide-react';
-import { VenueCard } from '@/components/venue/VenueCard';
+import { VenueCard } from '@/components/venues/VenueCard';
 import { VenueEditModal } from '@/components/admin/VenueEditModal';
 
-interface Venue {
-  id: string;
-  name: string;
-  city: string;
-  address: string;
-  description: string;
-  stations: number;
-  hours: string;
-  games: string;
-  contact_email: string;
-  contact_phone: string;
-  image_url: string | null;
-  price_range: string;
-  rating: number;
-}
+import { Venue } from '@/types/venue';
 
 interface VenueManagementProps {
   userId: string;
@@ -42,7 +28,7 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
       const { data, error } = await supabase
         .from('venues')
         .select('*')
-        .eq('user_id', userId);
+        .eq('owner_id', userId);
 
       if (error) {
         throw error;
@@ -84,7 +70,7 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
           title: 'Venue deleted',
           description: 'The venue has been deleted successfully',
         });
-        
+
         // Refresh venues list
         fetchVenues();
       } catch (error: any) {
@@ -112,7 +98,7 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">My Venues</h2>
-        <Button 
+        <Button
           className="bg-gaming-purple hover:bg-gaming-purple/80"
           onClick={handleCreateVenue}
         >
@@ -132,7 +118,7 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
       ) : venues.length === 0 ? (
         <div className="bg-gaming-dark border border-gaming-gray/30 rounded-lg p-8 text-center">
           <p className="text-gray-400 mb-4">You haven't listed any venues yet</p>
-          <Button 
+          <Button
             className="bg-gaming-purple hover:bg-gaming-purple/80"
             onClick={handleCreateVenue}
           >
@@ -145,18 +131,18 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
           {venues.map((venue) => (
             <div key={venue.id} className="relative group">
               <VenueCard venue={venue} />
-              <div className="absolute inset-0 bg-black bg-opacity-70 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity duration-200 rounded-lg">
-                <Button 
-                  size="sm" 
+              <div className="absolute inset-0 bg-black bg-opacity-70 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity duration-200 rounded-3xl z-30">
+                <Button
+                  size="sm"
                   onClick={() => handleEditVenue(venue)}
                   className="bg-gaming-blue hover:bg-gaming-blue/80"
                 >
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="destructive" 
+                <Button
+                  size="sm"
+                  variant="destructive"
                   onClick={() => handleDeleteVenue(venue.id)}
                 >
                   <Trash className="h-4 w-4 mr-2" />

@@ -148,61 +148,76 @@ export const RoleSwitcherDialog: React.FC<{
             </div>
 
             <div className="space-y-2">
-              {['casual', 'organizer', 'venue_owner'].map((roleKey) => {
-                const role = roleKey as 'casual' | 'organizer' | 'venue_owner';
-                const isCurrent = currentRole === role;
-                let isVerified = true;
-                if (role === 'organizer') isVerified = verificationStatus.organizer;
-                if (role === 'venue_owner') isVerified = verificationStatus.venue_owner;
+              {/* Always show Player option */}
+              <button
+                key="casual"
+                className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-all ${currentRole === 'casual'
+                    ? 'border-cyan-400/60 bg-cyan-500/10'
+                    : 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5'
+                  }`}
+                onClick={() => currentRole !== 'casual' && handleRoleSwitch('casual')}
+                disabled={switching || currentRole === 'casual'}
+              >
+                <div className="flex items-center gap-2">
+                  <Gamepad2 className="h-4 w-4 flex-shrink-0 text-cyan-300" />
+                  <span className="text-sm font-medium text-white">Player</span>
+                  <div className="ml-auto flex items-center gap-1">
+                    {currentRole === 'casual' && (
+                      <Badge className="bg-emerald-500/80 text-xs text-white">Active</Badge>
+                    )}
+                  </div>
+                </div>
+              </button>
 
-                let disabled = switching || isCurrent;
-                let opacityClass = '';
-                if (role !== 'casual' && !isVerified) {
-                  // Allow clicking to verify?
-                  // Logic says: if not verified, clicking triggers verification flow.
-                  // So don't disable if unverified.
-                  disabled = switching || isCurrent;
-                  if (!isVerified) opacityClass = 'opacity-75';
-                }
-
-                // Border classes
-                let borderClass = 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5';
-                if (isCurrent) {
-                  if (role === 'casual') borderClass = 'border-cyan-400/60 bg-cyan-500/10';
-                  if (role === 'organizer') borderClass = 'border-rose-400/70 bg-rose-500/10';
-                  if (role === 'venue_owner') borderClass = 'border-emerald-400/70 bg-emerald-500/10';
-                }
-
-                return (
-                  <button
-                    key={role}
-                    className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-all ${borderClass} ${opacityClass}`}
-                    onClick={() => !isCurrent && handleRoleSwitch(role)}
-                    disabled={disabled}
-                  >
-                    <div className="flex items-center gap-2">
-                      {role === 'casual' && <Gamepad2 className="h-4 w-4 flex-shrink-0 text-cyan-300" />}
-                      {role === 'organizer' && <Trophy className="h-4 w-4 flex-shrink-0 text-rose-300" />}
-                      {role === 'venue_owner' && <Building2 className="h-4 w-4 flex-shrink-0 text-emerald-300" />}
-
-                      <span className="text-sm font-medium text-white">{getRoleLabel(role)}</span>
-
-                      <div className="ml-auto flex items-center gap-1">
-                        {isCurrent ? (
-                          <Badge className="bg-emerald-500/80 text-xs text-white">Active</Badge>
-                        ) : (role !== 'casual' && !isVerified) ? (
-                          <Badge variant="outline" className="border-amber-400 text-xs text-amber-300">
-                            <AlertCircle className="mr-0.5 h-3 w-3" />
-                            Verify
-                          </Badge>
-                        ) : (role !== 'casual') ? (
-                          <Badge className="bg-emerald-500/80 text-xs text-white">Verified</Badge>
-                        ) : null}
-                      </div>
+              {/* Show Organizer only if licensed */}
+              {verificationStatus.organizer && (
+                <button
+                  key="organizer"
+                  className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-all ${currentRole === 'organizer'
+                      ? 'border-rose-400/70 bg-rose-500/10'
+                      : 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5'
+                    }`}
+                  onClick={() => currentRole !== 'organizer' && handleRoleSwitch('organizer')}
+                  disabled={switching || currentRole === 'organizer'}
+                >
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4 flex-shrink-0 text-rose-300" />
+                    <span className="text-sm font-medium text-white">Organizer</span>
+                    <div className="ml-auto flex items-center gap-1">
+                      {currentRole === 'organizer' ? (
+                        <Badge className="bg-emerald-500/80 text-xs text-white">Active</Badge>
+                      ) : (
+                        <Badge className="bg-emerald-500/80 text-xs text-white">Licensed</Badge>
+                      )}
                     </div>
-                  </button>
-                );
-              })}
+                  </div>
+                </button>
+              )}
+
+              {/* Show Venue Owner only if licensed */}
+              {verificationStatus.venue_owner && (
+                <button
+                  key="venue_owner"
+                  className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-all ${currentRole === 'venue_owner'
+                      ? 'border-emerald-400/70 bg-emerald-500/10'
+                      : 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5'
+                    }`}
+                  onClick={() => currentRole !== 'venue_owner' && handleRoleSwitch('venue_owner')}
+                  disabled={switching || currentRole === 'venue_owner'}
+                >
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 flex-shrink-0 text-emerald-300" />
+                    <span className="text-sm font-medium text-white">Venue Owner</span>
+                    <div className="ml-auto flex items-center gap-1">
+                      {currentRole === 'venue_owner' ? (
+                        <Badge className="bg-emerald-500/80 text-xs text-white">Active</Badge>
+                      ) : (
+                        <Badge className="bg-emerald-500/80 text-xs text-white">Licensed</Badge>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 
@@ -262,7 +277,7 @@ const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ onOpen }) => {
           className={`${getRoleBadgeClasses(currentRole)} text-white flex items-center gap-2`}
         >
           {getRoleIcon(currentRole)}
-          {currentRole === 'casual' ? 'Player' : 'Organizer'}
+          {getRoleLabel(currentRole)}
         </Badge>
 
         <Button

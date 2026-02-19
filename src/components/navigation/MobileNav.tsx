@@ -51,10 +51,11 @@ const MobileNav = ({
               }}
             >
               {[
-                { to: "/", label: "Home" },
                 { to: "/venues/search", label: "Venues" },
                 { to: "/tournaments/upcoming", label: "Tournaments" },
-                { to: "/about/company", label: "About" }
+                { to: "/leaderboards", label: "Leaderboards" },
+                { to: "/about/company", label: "About" },
+                { to: "/partners", label: "Partners" }
               ].map((item, index) => (
                 <motion.div
                   key={item.to}
@@ -91,8 +92,8 @@ const MobileNav = ({
 
                 {/* User Navigation */}
                 <div className="mb-3 space-y-1">
-                  <Link to="/user/dashboard" className="block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
-                    My Dashboard
+                  <Link to="/user/profile" className="block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
+                    My Profile
                   </Link>
                   <Link to="/notifications" className="block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
                     <div className="flex items-center justify-between">
@@ -110,9 +111,7 @@ const MobileNav = ({
                   <Link to="/player/teams" className="block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
                     Create Your Team
                   </Link>
-                  <Link to="/auth/profile" className="block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
-                    My Profile
-                  </Link>
+
                 </div>
 
                 {/* Role-Specific Navigation */}
@@ -125,8 +124,11 @@ const MobileNav = ({
                 )}
                 {userRole === 'venue_owner' && (
                   <div className="mb-3 space-y-1">
-                    <Link to="/venues/list-venue" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
+                    <Link to="/venues/manage" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-cyan-300 transition-all duration-200 hover:border-cyan-500/40 hover:bg-cyan-500/10" onClick={onClose}>
                       My Venues
+                    </Link>
+                    <Link to="/venues/list-venue" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
+                      List New Venue
                     </Link>
                   </div>
                 )}

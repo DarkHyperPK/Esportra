@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, ArrowLeft, Trophy, AlertCircle, Swords, Copy, Calendar, MessageCircle } from 'lucide-react';
@@ -22,6 +22,7 @@ import TimeProposalCard from '@/components/tournament/TimeProposalCard';
 import DisputeCard from '@/components/tournament/DisputeCard';
 import MatchChat from '@/components/tournament/MatchChat';
 import { format } from 'date-fns';
+import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 
 const repo = new MatchRepository();
@@ -37,6 +38,7 @@ const CaptainMatchPage = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     const [tournament, setTournament] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -317,6 +319,46 @@ const CaptainMatchPage = () => {
         return teamMatches.sort((a, b) => (b.matchNumber || 0) - (a.matchNumber || 0))[0];
     }, [userTeamId, matches]);
 
+    const isDE = useMemo(() =>
+        matches.some(m => m.bracketSide === 'losers') || stageFormat === 'double_elimination'
+        , [matches, stageFormat]);
+
+    // Check if the user is the tournament champion
+    const isTournamentWinner = useMemo(() => {
+        if (activeMatch) return false;
+        if (!lastCompletedMatch) return false;
+
+        const userWon = lastCompletedMatch.winner?.id === userTeamId;
+        if (!userWon) return false;
+
+        const side = lastCompletedMatch.bracketSide;
+        const round = lastCompletedMatch.round;
+        const totalUpperRounds = Math.ceil(Math.log2(participants.length || 8));
+
+        return (
+            side === 'final' ||
+            side === 'reset' ||
+            (!isDE && side === 'winners' && round === totalUpperRounds)
+        );
+    }, [activeMatch, lastCompletedMatch, userTeamId, participants.length, isDE]);
+
+    // Check if the user is the tournament runner-up
+    const isTournamentRunnerUp = useMemo(() => {
+        if (activeMatch) return false;
+        if (!lastCompletedMatch || isTournamentWinner) return false;
+
+        const side = lastCompletedMatch.bracketSide;
+        const round = lastCompletedMatch.round;
+        const totalUpperRounds = Math.ceil(Math.log2(participants.length || 8));
+
+        const isFinalMatch =
+            side === 'final' ||
+            side === 'reset' ||
+            (!isDE && side === 'winners' && round === totalUpperRounds);
+
+        return isFinalMatch && lastCompletedMatch.winner?.id !== userTeamId;
+    }, [activeMatch, lastCompletedMatch, userTeamId, participants.length, isTournamentWinner, isDE]);
+
     // Derive scheduling config for the current active match
     const activeMatchVersion = useMemo(() =>
         bracketVersions?.find((v: any) => v.id === activeMatch?.stageId),
@@ -358,70 +400,75 @@ const CaptainMatchPage = () => {
     const determineMap = useCallback(async () => {
         if (!activeMatch) return;
         const realMatchId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
+        const bestOfCount = activeMatch.bestOf || 1;
 
-        console.log('[CaptainMatchPage] Determining map for match:', realMatchId, 'Game:', nextGameNumber);
+        console.log('[CaptainMatchPage] Determining map for match:', realMatchId, 'Game:', nextGameNumber, 'BestOf:', bestOfCount);
 
         // Fetch Veto Info
         const { data: veto } = await supabase
             .from('match_map_vetos')
-            .select('*, game_maps!selected_map_id(*)') // For BO1
+            .select(`
+                *,
+                game_maps!selected_map_id (map_name)
+            `)
             .eq('match_id', realMatchId)
             .maybeSingle();
 
         if (!veto) {
-            console.log('[CaptainMatchPage] No veto found yet for match:', realMatchId);
+            console.log('[CaptainMatchPage] No veto data found for match:', realMatchId);
             setNextGameMap(null);
             return;
         }
 
-        // Logic for BO1
-        const bestOf = activeMatch.bestOf || 1;
-        if (bestOf === 1 && veto.selected_map_id && veto.game_maps) {
-            setNextGameMap({
-                id: veto.selected_map_id,
-                name: veto.game_maps.map_name
-            });
+        // --- Sequence Reconstruction Logic (Sync with VetoSelectedMaps.tsx) ---
+        const team1Picked = Array.isArray(veto.team1_picked_maps) ? veto.team1_picked_maps : [];
+        const team2Picked = Array.isArray(veto.team2_picked_maps) ? veto.team2_picked_maps : [];
+
+        // Reconstruct picks based on standard BO3/BO5 order
+        // Note: This logic assumes T1 picks first, then T2 (Standard)
+        const allPicks: { map_id: string }[] = [];
+
+        if (bestOfCount >= 3) {
+            // T1 Pick (Map 1)
+            if (team1Picked[0]?.map_id) allPicks.push({ map_id: team1Picked[0].map_id });
+            // T2 Pick (Map 2)
+            if (team2Picked[0]?.map_id) allPicks.push({ map_id: team2Picked[0].map_id });
+
+            // For BO5:
+            if (bestOfCount === 5) {
+                if (team1Picked[1]?.map_id) allPicks.push({ map_id: team1Picked[1].map_id });
+                if (team2Picked[1]?.map_id) allPicks.push({ map_id: team2Picked[1].map_id });
+            }
+        }
+
+        // Add Decider Map if present (usually Map 3 in BO3, Map 5 in BO5)
+        if (veto.selected_map_id) {
+            allPicks.push({ map_id: veto.selected_map_id });
+        }
+
+        console.log('[CaptainMatchPage] Reconstructed map sequence:', allPicks);
+
+        // Select targeted game
+        const targetMapEntry = allPicks[nextGameNumber - 1];
+        if (!targetMapEntry) {
+            console.log('[CaptainMatchPage] No map entry found for game:', nextGameNumber);
+            setNextGameMap(null);
             return;
         }
 
-        // Logic for BO3 / BO5 (and BO1 fallback)
-        // We need to fetch actions to see the pick order
-        const { data: actions } = await supabase
-            .from('match_map_veto_actions')
-            .select('*, game_maps(*)')
-            .eq('match_id', realMatchId)
-            .eq('action_type', 'pick')
-            .order('action_number');
+        // Fetch Map Details
+        const { data: mapData } = await supabase
+            .from('game_maps')
+            .select('map_name')
+            .eq('id', targetMapEntry.map_id)
+            .single();
 
-        if (actions && actions.length > 0) {
-            const targetPick = actions[nextGameNumber - 1];
-            if (targetPick && targetPick.game_maps) {
-                setNextGameMap({
-                    id: targetPick.map_id,
-                    name: targetPick.game_maps.map_name
-                });
-                return;
-            }
+        if (mapData) {
+            setNextGameMap({
+                id: targetMapEntry.map_id,
+                name: mapData.map_name
+            });
         }
-
-        // Final fallback: check for decider map in BO3/BO5
-        if (veto.status === 'completed' && veto.selected_map_id) {
-            const { data: deciderMap } = await supabase
-                .from('game_maps')
-                .select('map_name')
-                .eq('id', veto.selected_map_id)
-                .single();
-
-            if (deciderMap) {
-                setNextGameMap({
-                    id: veto.selected_map_id,
-                    name: deciderMap.map_name
-                });
-                return;
-            }
-        }
-
-        setNextGameMap(null);
     }, [activeMatch?.id, nextGameNumber, activeMatch?.bestOf]);
 
     useEffect(() => {
@@ -449,7 +496,7 @@ const CaptainMatchPage = () => {
                 },
                 (payload) => {
                     console.log('[CaptainMatchPage] Match updated via realtime:', payload);
-                    refetchBracket();
+                    queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
                 }
             )
             .on(
@@ -463,6 +510,22 @@ const CaptainMatchPage = () => {
                 (payload) => {
                     console.log('[CaptainMatchPage] Veto updated via realtime:', payload);
                     determineMap();
+                    queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'brkt_match_games',
+                    filter: `match_id=eq.${rawMatchId}`
+                },
+                (payload) => {
+                    console.log('[CaptainMatchPage] Game update via realtime:', payload);
+                    fetchMatchGames();
+                    determineMap();
+                    queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
                 }
             )
             .on(
@@ -788,7 +851,7 @@ const CaptainMatchPage = () => {
                                                 <Calendar className="w-4 h-4 text-esports-accent" />
                                                 <span className="text-gray-300 font-medium">
                                                     <span className="text-gray-500 mr-2 uppercase text-xs tracking-wider">Scheduled:</span>
-                                                    {format(new Date(activeMatch.scheduledTime), 'EEEE, MMM d @ h:mm a')}
+                                                    {format(new Date(activeMatch.scheduledTime), 'EEEE, MMM d @ h:mm a')} {getTimezoneAbbr()}
                                                 </span>
                                             </div>
                                         )}
@@ -934,7 +997,39 @@ const CaptainMatchPage = () => {
                                     </div>
                                 ) : (
                                     <div className="text-center py-12">
-                                        {lastCompletedMatch ? (
+                                        {isTournamentWinner ? (
+                                            <div className="text-center py-8">
+                                                <div className="relative inline-block mb-6">
+                                                    <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
+                                                    <div className="relative w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center transform rotate-12 shadow-2xl border border-emerald-400/50">
+                                                        <Trophy className="w-12 h-12 text-white transform -rotate-12" />
+                                                    </div>
+                                                </div>
+                                                <h2 className="text-3xl font-black text-white mb-2 tracking-tight uppercase">Tournament Champions!</h2>
+                                                <p className="text-emerald-400 font-medium mb-6 uppercase tracking-[0.2em] text-sm">You have claimed the victory</p>
+                                                <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl max-w-sm mx-auto backdrop-blur-md">
+                                                    <p className="text-emerald-100 text-sm leading-relaxed">
+                                                        Congratulations on reaching the pinnacle! Your team has emerged victorious across the entire bracket.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : isTournamentRunnerUp ? (
+                                            <div className="text-center py-8">
+                                                <div className="relative inline-block mb-6">
+                                                    <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
+                                                    <div className="relative w-24 h-24 bg-gradient-to-br from-slate-400 to-slate-600 rounded-2xl flex items-center justify-center transform rotate-12 shadow-2xl border border-slate-400/50">
+                                                        <Trophy className="w-12 h-12 text-slate-100 transform -rotate-12" />
+                                                    </div>
+                                                </div>
+                                                <h2 className="text-3xl font-black text-white mb-2 tracking-tight uppercase">Tournament Runners-Up</h2>
+                                                <p className="text-slate-400 font-medium mb-6 uppercase tracking-[0.2em] text-sm">A hard-fought journey</p>
+                                                <div className="bg-slate-500/10 border border-slate-500/20 p-6 rounded-2xl max-w-sm mx-auto backdrop-blur-md">
+                                                    <p className="text-slate-200 text-sm leading-relaxed">
+                                                        Incredible performance! You've navigated through the bracket to the very end. While the final didn't go your way, your journey was one of champions.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : lastCompletedMatch ? (
                                             <>
                                                 <div className="w-16 h-16 bg-emerald-900/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30">
                                                     <Calendar className="w-8 h-8 text-emerald-500" />

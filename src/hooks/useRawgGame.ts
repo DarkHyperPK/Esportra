@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-
-const RAWG_API_KEY = '55e8210bf73448108b7f3c6707739206';
-const RAWG_API_URL = 'https://api.rawg.io/api/games';
+import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
 
 interface RawgGameData {
     gameLogo: string | null;
@@ -38,19 +36,14 @@ export const useRawgGame = (gameName: string) => {
             try {
                 setData(prev => ({ ...prev, isLoading: true, error: null }));
                 const searchName = getRawgGameName(gameName);
-                const response = await fetch(`${RAWG_API_URL}?key=${RAWG_API_KEY}&search=${encodeURIComponent(searchName)}`);
-
-                if (!response.ok) throw new Error(`RAWG API error: ${response.status}`);
-
-                const result = await response.json();
+                const result = await rawgSearchGames(searchName);
 
                 if (result && result.results && result.results.length > 0) {
                     const gameData = result.results[0];
                     const logo = gameData.background_image || null;
 
                     try {
-                        const screenshotsRes = await fetch(`${RAWG_API_URL}/${gameData.id}/screenshots?key=${RAWG_API_KEY}`);
-                        const screenshotsData = await screenshotsRes.json();
+                        const screenshotsData = await rawgGetScreenshots(gameData.id);
 
                         if (isMounted) {
                             const screenshotUrls = (screenshotsData.results || []).map((s: any) => s.image);

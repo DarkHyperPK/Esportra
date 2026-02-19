@@ -155,13 +155,22 @@ export class AdvancementService {
             if ((hasTeam1 && !hasTeam2) || (!hasTeam1 && hasTeam2)) {
                 const winnerId = hasTeam1 ? match.team1_id : match.team2_id;
 
-                // Update match as completed with winner
+                // Calculate score based on Best Of
+                const bestOf = match.best_of || 1;
+                const winnerScore = bestOf === 1 ? 13 : Math.ceil(bestOf / 2);
+
+                const t1Score = hasTeam1 ? winnerScore : 0;
+                const t2Score = hasTeam2 ? winnerScore : 0;
+
+                // Update match as completed with winner and scores
                 await (supabase as any)
                     .from('brkt_matches')
                     .update({
                         status: 'completed',
                         winner_id: winnerId,
-                        loser_id: null
+                        loser_id: null,
+                        team1_score: t1Score,
+                        team2_score: t2Score
                     })
                     .eq('id', match.id);
 

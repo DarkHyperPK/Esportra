@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Layers, Plus, Users, Trophy, Lock, Unlock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, Eye, RefreshCw } from 'lucide-react';
+import { Layers, Plus, Users, Trophy, Lock, Unlock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, Eye, RefreshCw, Play, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
@@ -15,7 +15,7 @@ import { RoundRobinGenerator } from '@/services/bracket/RoundRobinGenerator';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { GraphValidator } from '@/services/bracket/BracketGenerator';
 import { StageCompletionService } from '@/services/bracket/StageCompletionService';
-import { useStageRealtime } from '@/hooks/useStageRealtime';
+// import { useStageRealtime } from '@/hooks/useStageRealtime';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
@@ -44,6 +44,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const [isDeleting, setIsDeleting] = useState(false);
     const [tournamentWinner, setTournamentWinner] = useState<{ id: string; name: string; logo_url?: string | null } | null>(null);
 
+    /* 
     // Subscribe to realtime stage updates - this will trigger onUpdate when stages change
     useStageRealtime({
         tournamentId,
@@ -54,21 +55,36 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             onUpdate();
         }
     });
+    */
 
     useEffect(() => {
         const checkBrackets = async () => {
             setBracketsLoading(true);
-            const status: Record<string, boolean> = {};
-            for (const stage of stages) {
-                // Check brkt_versions (new graph engine) instead of tournament_matches
-                const { count } = await (supabase as any)
+            try {
+                const stageIds = stages.map(s => s.id);
+                // Optimized: Check all stages in a single query instead of a loop
+                const { data: versions, error } = await (supabase as any)
                     .from('brkt_versions')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('stage_id', stage.id);
-                status[stage.id] = (count || 0) > 0;
+                    .select('stage_id')
+                    .in('stage_id', stageIds);
+
+                if (error) throw error;
+
+                const status: Record<string, boolean> = {};
+                // Initialize all to false
+                stages.forEach(s => status[s.id] = false);
+                // Mark stages that have versions as true
+                versions?.forEach((v: any) => {
+                    status[v.stage_id] = true;
+                });
+
+                setHasBrackets(status);
+
+            } catch (err) {
+                console.error('[StageManagementTab] Error checking brackets:', err);
+            } finally {
+                setBracketsLoading(false);
             }
-            setHasBrackets(status);
-            setBracketsLoading(false);
         };
         if (stages.length > 0) {
             checkBrackets();
@@ -347,56 +363,103 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             let teams: Array<{ id: string; name: string; logo_url?: string | null }> = [];
 
             if (stage.stage_order === 1) {
-                // First stage: Get all registered teams from tournament_participants
-                let query = supabase
+                // First stage: Get all registered participants from tournament_participants
+                console.log('[StageManagement] Fetching teams for stage 1, tournamentId:', tournamentId);
+
+                // Use a simpler join syntax that is more likely to work
+                const { data: participants, error: partError } = await supabase
                     .from('tournament_participants')
-                    .select('team_id, teams(id, name, logo_url)')
+                    .select('*, teams(id, name, logo_url)')
                     .eq('tournament_id', tournamentId)
-                    .not('team_id', 'is', null);
+                    .eq('status', 'checked_in');
 
-                // Mandatory: Filter for checked-in teams only
-                console.log('[StageManagement] Filtering for checked-in teams only (Mandatory)');
-                query = query.eq('status', 'checked_in');
+                if (partError) {
+                    console.error('[StageManagement] Error fetching participants:', partError);
+                    toast({
+                        title: 'Fetch Error',
+                        description: `Failed to fetch participants: ${partError.message}`,
+                        variant: 'destructive'
+                    });
+                    return;
+                }
 
-                const { data: participants, error: partError } = await query;
+                console.log('[StageManagement] Found participants raw count:', participants?.length || 0);
 
-                if (partError) throw partError;
+                teams = (participants || []).map((p: any) => {
+                    // Try to find team ID from various common column names
+                    const tid = p.team_id || p.id;
+                    const isTeam = p.participant_type === 'team' || p.registration_type === 'team' || !!p.team_id;
 
-                teams = participants?.map((p: any) => ({
-                    id: p.team_id,
-                    name: p.teams?.name || 'Unknown',
-                    logo_url: p.teams?.logo_url
-                })) || [];
+                    if (isTeam) {
+                        return {
+                            id: p.team_id,
+                            name: p.teams?.name || p.team_name || 'Unknown Team',
+                            logo_url: p.teams?.logo_url || p.team_logo_url
+                        };
+                    } else {
+                        // Solo participant
+                        return {
+                            id: p.id,
+                            name: p.gamer_tag || 'Unknown Player',
+                            logo_url: null
+                        };
+                    }
+                }).filter(t => t.id);
             } else {
                 // Subsequent stages: Get teams from stage_participants (advanced from previous stage)
+                console.log('[StageManagement] Fetching teams for stage >1, stageId:', stageId);
                 const { data: stageParticipants, error: spError } = await (supabase as any)
                     .from('stage_participants')
-                    .select('team_id, teams:team_id(id, name, logo_url)')
+                    .select('*, teams(id, name, logo_url)')
                     .eq('stage_id', stageId);
 
                 if (spError) throw spError;
 
-                teams = stageParticipants?.map((sp: any) => ({
+                teams = (stageParticipants || []).map((sp: any) => ({
                     id: sp.team_id,
                     name: sp.teams?.name || 'Unknown',
                     logo_url: sp.teams?.logo_url
-                })) || [];
+                })).filter(t => t.id);
             }
 
             if (teams.length < 2) {
-                toast({ title: 'Error', description: 'Need at least 2 teams to generate a bracket.', variant: 'destructive' });
+                toast({
+                    title: 'Check-in Required',
+                    description: 'Need at least 2 checked-in teams/participants to generate matches for this stage. Please ensure participants have checked in.',
+                    variant: 'destructive'
+                });
                 return;
             }
 
-            // Get next version_number
-            const { data: maxVersionData } = await (supabase as any)
+            // Clean up any existing bracket for this stage before re-generating
+            const { data: deletedRows, error: deleteError } = await (supabase as any)
+                .from('brkt_versions')
+                .delete()
+                .eq('stage_id', stageId)
+                .eq('tournament_id', tournamentId)
+                .select();
+
+            if (deleteError) {
+                console.error('[StageManagement] Cleanup error:', deleteError);
+                throw new Error(`Failed to clean up existing bracket: ${deleteError.message}`);
+            }
+
+            console.log(`[StageManagement] Deleted ${deletedRows?.length || 0} existing versions for stage ${stageId}`);
+
+            // Get next version_number across the whole tournament
+            const { data: versions, error: maxError } = await (supabase as any)
                 .from('brkt_versions')
                 .select('version_number')
                 .eq('tournament_id', tournamentId)
-                .order('version_number', { ascending: false })
-                .limit(1)
-                .single();
-            const nextVersionNumber = (maxVersionData?.version_number || 0) + 1;
+                .order('version_number', { ascending: false });
+
+            if (maxError) {
+                console.error('[StageManagement] Error fetching versions:', maxError);
+            }
+
+            const maxV = versions && versions.length > 0 ? versions[0].version_number : 0;
+            const nextVersionNumber = maxV + 1;
+            console.log(`[StageManagement] Max version in tournament: ${maxV}, Assigning: ${nextVersionNumber}`);
 
             // Generate based on stage format
             const format = stage.format || 'single_elimination';
@@ -421,10 +484,19 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             } else if (format === 'round_robin') {
                 generator = new RoundRobinGenerator();
                 // For Round Robin, bracketSize is number of groups.
-                // Check stage.config for group_count
+                // Check stage.config for group_count, else calculate from capacity (fixed 4 teams per group)
                 const rrConfig = stage.config as any;
                 if (rrConfig && rrConfig.group_count) {
                     bracketSize = Number(rrConfig.group_count);
+                } else if (stage.capacity) {
+                    // Auto-calculate groups based on fixed 4-team groups
+                    const groupSize = 4;
+                    bracketSize = Math.ceil(Number(stage.capacity) / groupSize);
+                    console.log('[StageManagement] Auto-calculated RR group_count:', bracketSize, 'from capacity:', stage.capacity);
+                } else {
+                    // Fallback based on team count
+                    bracketSize = Math.ceil(teams.length / 4);
+                    console.log('[StageManagement] Fallback RR group_count:', bracketSize, 'from teams:', teams.length);
                 }
             } else {
                 toast({ title: 'Error', description: `Unsupported format: ${format}`, variant: 'destructive' });
@@ -433,15 +505,43 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             const bestOf = (stage.config as any)?.best_of || 3;
             const advancementCount = stage.advancement_count || undefined;
+
+            // Fetch tournament start date and scheduling config for auto-scheduling (Swiss/RR)
+            let enrichedConfig = { ...(stage.config as any) };
+            if (format === 'swiss' || format === 'round_robin') {
+                try {
+                    const { data: tournamentData } = await (supabase as any)
+                        .from('tournaments')
+                        .select('start_date')
+                        .eq('id', tournamentId)
+                        .single();
+
+                    const { data: stageScheduling } = await (supabase as any)
+                        .from('tournament_stages')
+                        .select('scheduling_config')
+                        .eq('id', stageId)
+                        .single();
+
+                    if (tournamentData?.start_date) {
+                        enrichedConfig.tournament_start_date = tournamentData.start_date;
+                    }
+                    if (stageScheduling?.scheduling_config?.daily_start_time) {
+                        enrichedConfig.daily_start_time = stageScheduling.scheduling_config.daily_start_time;
+                    }
+                } catch (err) {
+                    console.warn('[StageManagement] Could not fetch scheduling config:', err);
+                }
+            }
+
             console.log('[StageManagement] Calling generator with:', {
                 format,
                 teams: teams.length,
                 bestOf,
                 bracketSize,
                 advancementCount,
-                config: stage.config
+                config: enrichedConfig
             });
-            const graph = generator.generate(teams, tournamentId, stageId, bestOf, bracketSize, advancementCount, stage.config);
+            const graph = generator.generate(teams, tournamentId, stageId, bestOf, bracketSize, advancementCount, enrichedConfig);
             graph.version.version_number = nextVersionNumber;
 
             // Validate
@@ -544,7 +644,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         navigate(`/organizer/tournament/${slug}/manage-bracket/${stageId}`);
     };
 
+    const [advancedStages, setAdvancedStages] = useState<Record<string, boolean>>({});
+
+    const [advancingStages, setAdvancingStages] = useState<Record<string, boolean>>({});
+
     const handleAdvanceTeams = async (stageId: string) => {
+        setAdvancingStages(prev => ({ ...prev, [stageId]: true }));
         try {
             const service = new StageCompletionService();
             const result = await service.advanceTeamsToNextStage(stageId);
@@ -554,14 +659,18 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             }
 
             toast({ title: 'Teams Advanced', description: `${result.advancedCount} teams have been advanced to the next stage.` });
+            setAdvancedStages(prev => ({ ...prev, [stageId]: true }));
             onUpdate();
         } catch (error: any) {
             console.error('Error advancing teams:', error);
             toast({ title: 'Error', description: error.message || 'Failed to advance teams', variant: 'destructive' });
+        } finally {
+            setAdvancingStages(prev => ({ ...prev, [stageId]: false }));
         }
     };
 
     const handleReorderStage = async (stageId: string, direction: 'up' | 'down') => {
+        // ... (existing reorder logic)
         const currentIndex = stages.findIndex(s => s.id === stageId);
         if (currentIndex === -1) return;
         if (direction === 'up' && currentIndex === 0) return;
@@ -572,7 +681,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         const targetStage = stages[targetIndex];
 
         try {
-            // Swap orders
             const { error: error1 } = await supabase
                 .from('tournament_stages')
                 .update({ stage_order: targetStage.stage_order })
@@ -771,6 +879,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                             </>
                                                         )}
                                                     </Button>
+
                                                     {/* Delete Bracket Button - only show when bracket exists */}
                                                     {stageBracketExists && (
                                                         <Button
@@ -780,7 +889,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                             onClick={() => handleDeleteStageBracket(stage.id)}
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5 mr-2" />
-                                                            Delete Bracket
+                                                            Delete Matches
                                                         </Button>
                                                     )}
                                                 </div>
@@ -794,16 +903,25 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                 <span className="text-white font-bold">{tournamentWinner.name}</span>
                                             </div>
                                         )}
-                                        {index < stages.length - 1 && (
+                                        {index < stages.length - 1 && !advancedStages[stage.id] && (
                                             <Button
                                                 size="sm"
                                                 variant="outline"
                                                 className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
                                                 onClick={() => handleAdvanceTeams(stage.id)}
-                                                disabled={stage.status !== 'completed'}
+                                                disabled={stage.status !== 'completed' || advancingStages[stage.id]}
                                             >
-                                                <ArrowRight className="w-3.5 h-3.5 mr-2" />
-                                                Advance Teams
+                                                {advancingStages[stage.id] ? (
+                                                    <>
+                                                        <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
+                                                        Advancing...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ArrowRight className="w-3.5 h-3.5 mr-2" />
+                                                        Advance Teams
+                                                    </>
+                                                )}
                                             </Button>
                                         )}
 

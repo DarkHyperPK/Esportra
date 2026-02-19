@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { sendEmail } from '@/hooks/useEmail';
 import {
   RegistrationDetails,
   RegistrationType,
@@ -23,7 +24,8 @@ interface UseTournamentRegistrationProps {
 
 interface RegistrationState {
   type: RegistrationType;
-  gamertag: string;
+  riot_tag: string;
+  steam_tag: string;
   teamName: string;
   teamMembers: string[];
   status: RegistrationStatus;
@@ -45,7 +47,8 @@ export const useTournamentRegistration = ({
   // Consolidated state using a single state object
   const [registrationState, setRegistrationState] = useState<RegistrationState>(() => ({
     type: initialData?.team_name ? 'team' : 'solo',
-    gamertag: initialData?.gamer_tag || '',
+    riot_tag: (initialData as any)?.riot_tag || initialData?.gamer_tag || '',
+    steam_tag: (initialData as any)?.steam_tag || '',
     teamName: initialData?.team_name || '',
     teamMembers: initialData?.team_members ? initialData.team_members.split(',') : Array(teamSize).fill(''),
     status: initialData?.status || 'registered'
@@ -56,7 +59,8 @@ export const useTournamentRegistration = ({
     if (initialData) {
       setRegistrationState({
         type: initialData.team_name ? 'team' : 'solo',
-        gamertag: initialData.gamer_tag || '',
+        riot_tag: (initialData as any)?.riot_tag || initialData.gamer_tag || '',
+        steam_tag: (initialData as any)?.steam_tag || '',
         teamName: initialData.team_name || '',
         teamMembers: initialData.team_members ? initialData.team_members.split(',') : Array(teamSize).fill(''),
         status: initialData.status
@@ -70,8 +74,8 @@ export const useTournamentRegistration = ({
       return "You need to be logged in to register for tournaments";
     }
 
-    if (registrationState.type === 'solo' && !registrationState.gamertag) {
-      return "Please enter your gamertag";
+    if (registrationState.type === 'solo' && !registrationState.riot_tag && !registrationState.steam_tag) {
+      return "Please enter your game ID (Riot ID or Steam ID)";
     }
 
     if (registrationState.type === 'team') {
@@ -88,7 +92,12 @@ export const useTournamentRegistration = ({
     return null;
   }, [user?.id, registrationState, teamSize]);
 
-  const handleRegistration = async (override?: Partial<RegistrationState> & { coach?: string; substitute?: string }) => {
+  const handleRegistration = async (override?: Partial<RegistrationState> & {
+    coach?: string;
+    substitute?: string;
+    teamCaptain?: string;
+    teamLogo?: string;
+  }) => {
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -126,11 +135,12 @@ export const useTournamentRegistration = ({
         tournament_id: tournamentId,
         user_id: user.id,
         participant_type: state.type,
-        gamer_tag: state.type === 'solo' ? state.gamertag : null,
+        riot_tag: state.type === 'solo' ? state.riot_tag : null,
+        steam_tag: state.type === 'solo' ? state.steam_tag : null,
         team_name: state.type === 'team' ? state.teamName : null,
         team_captain: state.type === 'team' ? (override?.teamCaptain || null) : null,
         team_members: state.type === 'team' ? teamMembersArr.join(',') : null,
-        team_logo: state.type === 'team' ? (override?.teamLogo || null) : null,
+        team_logo_url: state.type === 'team' ? (override?.teamLogo || null) : null,
         user_email: user.email || null,
         status: 'registered',
         created_at: new Date().toISOString()
@@ -158,14 +168,33 @@ export const useTournamentRegistration = ({
         description: `You have successfully registered for ${tournamentName}!`,
       });
 
+      // Send confirmation email (fire-and-forget, don't block registration)
+      if (user.email) {
+        sendEmail({
+          type: 'TOURNAMENT_REGISTRATION',
+          email: user.email,
+          data: {
+            tournamentName,
+            riot_tag: state.type === 'solo' ? state.riot_tag : undefined,
+            steam_tag: state.type === 'solo' ? state.steam_tag : undefined,
+            teamName: state.type === 'team' ? state.teamName : undefined,
+            registrationType: state.type,
+            tournamentUrl: `https://esportra.com/tournaments/${tournamentId}`,
+          },
+        }).catch((err) => console.warn('[Registration] Email send failed (non-critical):', err));
+      }
+
       if (onSuccess) {
         const registrationDetails: RegistrationDetails = {
           id: data?.id || '',
           tournament_id: tournamentId,
           user_id: user.id,
-          gamer_tag: state.type === 'solo' ? state.gamertag : state.teamName || '',
+          riot_tag: state.type === 'solo' ? state.riot_tag : '',
+          steam_tag: state.type === 'solo' ? state.steam_tag : '',
+          gamer_tag: state.type === 'solo' ? (state.riot_tag || state.steam_tag) : state.teamName || '',
           team_name: state.type === 'team' ? state.teamName : null,
           team_members: state.type === 'team' ? teamMembersArr.join(',') : null,
+          team_logo: state.type === 'team' ? (override?.teamLogo || null) : null,
           status: 'registered',
           registered_at: new Date().toISOString(),
           created_at: data?.created_at || new Date().toISOString(),
@@ -296,9 +325,12 @@ export const useTournamentRegistration = ({
     registrationType: registrationState.type,
     setRegistrationType: (type: RegistrationType) =>
       setRegistrationState(prev => ({ ...prev, type })),
-    gamertag: registrationState.gamertag,
-    setGamertag: (gamertag: string) =>
-      setRegistrationState(prev => ({ ...prev, gamertag })),
+    riot_tag: registrationState.riot_tag,
+    setRiotTag: (riot_tag: string) =>
+      setRegistrationState(prev => ({ ...prev, riot_tag })),
+    steam_tag: registrationState.steam_tag,
+    setSteamTag: (steam_tag: string) =>
+      setRegistrationState(prev => ({ ...prev, steam_tag })),
     teamName: registrationState.teamName,
     setTeamName: (teamName: string) =>
       setRegistrationState(prev => ({ ...prev, teamName })),

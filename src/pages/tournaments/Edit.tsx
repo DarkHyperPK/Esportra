@@ -53,6 +53,7 @@ const EditTournament = () => {
       setTournamentId(tournamentData.id);
 
       // 2. Fetch Stages
+      // 2. Fetch Stages
       const { data: stages, error: stagesError } = await supabase
         .from('tournament_stages')
         .select('*')
@@ -60,6 +61,15 @@ const EditTournament = () => {
         .order('stage_order', { ascending: true });
 
       if (stagesError) throw stagesError;
+
+      // 2.2 Fetch Map Pool
+      const { data: mapPoolData, error: mapPoolError } = await supabase
+        .from('tournament_map_pools')
+        .select('map_id')
+        .eq('tournament_id', tournamentData.id);
+
+      if (mapPoolError) console.error('Error fetching map pool:', mapPoolError);
+      const mapPoolIds = mapPoolData?.map(m => m.map_id) || [];
 
       // 2.5 Fetch Participant Count
       const { count: participantCount, error: countError } = await supabase
@@ -86,7 +96,7 @@ const EditTournament = () => {
         name: tournamentData.name,
         game: tournamentData.game,
         isOnline: tournamentData.is_online ?? true, // Default to true if null
-        visibility: tournamentData.is_public ? 'public' : 'private', // Assuming is_public maps to visibility
+        visibility: tournamentData.is_public ? 'public' : 'unlisted',
         startDate: startDate.toISOString().split('T')[0],
         startTime: startDate.toTimeString().slice(0, 5),
         endDate: endDate.toISOString().split('T')[0],
@@ -103,11 +113,11 @@ const EditTournament = () => {
           stage_order: s.stage_order,
           best_of: (s as any).best_of || 1
         })),
-        matchCount: tournamentData.match_count || 1,
         maxTeams: tournamentData.max_teams ?? DEFAULT_WIZARD_DATA.maxTeams,
         teamSize: tournamentData.team_size ?? DEFAULT_WIZARD_DATA.teamSize,
         seedingType: 'random', // Default, as it's not strictly stored in tournament row usually
         thirdPlaceMatch: false, // Default
+        mapPoolIds: mapPoolIds,
 
         // Step 3: Branding
         bannerUrl: tournamentData.banner_url,
@@ -117,15 +127,17 @@ const EditTournament = () => {
         description: tournamentData.description || 'Tournament description goes here.',
         discordUrl: '', // Not in DB schema shown
         twitterUrl: '', // Not in DB schema shown
-        streamUrl: '', // Not in DB schema shown
+        streamUrl: tournamentData.stream_url || '',
+        rewards: tournamentData.rewards || '',
 
         // Step 4: Registration
         registrationOpens: regOpensDate.toISOString().split('T')[0],
         registrationCloses: regDeadline.toISOString().split('T')[0],
         checkInRequired: tournamentData.check_in_required ?? false,
-        checkInWindowMinutes: checkInDeadline
-          ? Math.round((startDate.getTime() - checkInDeadline.getTime()) / 60000)
-          : 30,
+        checkInWindowMinutes: (tournamentData.settings as any)?.checkInWindowMinutes ||
+          (checkInDeadline
+            ? Math.round((startDate.getTime() - checkInDeadline.getTime()) / 60000)
+            : 30),
         autoRemoveUnchecked: tournamentData.auto_remove_unchecked ?? false,
         waitlistEnabled: false, // Default
         waitlistMax: 10, // Default

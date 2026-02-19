@@ -19,11 +19,27 @@ export function useTournamentRegistrationStatus(tournamentIds: string[]) {
     }
     setLoading(true);
     const fetchStatus = async () => {
-      const { data, error } = await supabase
+      // Get teams user is member of
+      const { data: userTeams } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      const teamIds = (userTeams || []).map(t => t.team_id);
+
+      let query = supabase
         .from('tournament_participants')
         .select('tournament_id')
-        .in('tournament_id', tournamentIds)
-        .eq('user_id', user.id);
+        .in('tournament_id', tournamentIds);
+
+      if (teamIds.length > 0) {
+        query = query.or(`user_id.eq.${user.id},team_id.in.(${teamIds.join(',')})`);
+      } else {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         setStatusMap({});

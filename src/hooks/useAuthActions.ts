@@ -12,7 +12,7 @@ export const useAuthActions = () => {
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    
+
     try {
       console.log("Attempting sign in for:", email);
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -31,7 +31,7 @@ export const useAuthActions = () => {
         description: 'You have successfully signed in.',
       });
 
-      navigate('/user/dashboard');
+      navigate('/');
     } catch (error: any) {
       console.error('Error signing in:', error);
       throw error;
@@ -41,15 +41,16 @@ export const useAuthActions = () => {
   };
 
   const signUp = async (
-    email: string, 
-    password: string, 
-    username: string, 
+    email: string,
+    password: string,
+    username: string,
     fullName?: string,
-    role: UserRole = 'casual'
+    role: UserRole = 'casual',
+    dateOfBirth?: string
   ) => {
     setLoading(true);
     console.log("Signing up with role:", role);
-    
+
     try {
       // Step 1: Create the auth user with minimal metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -68,13 +69,13 @@ export const useAuthActions = () => {
         console.error("Auth error during signup:", authError);
         throw authError;
       }
-      
+
       if (!authData?.user) {
         throw new Error("User creation failed");
       }
-      
+
       console.log(`User created with ID: ${authData.user.id} and role: ${role}`);
-      
+
       // Step 2: Create user profile (with upsert to handle duplicates)
       const { error: profileError } = await supabase
         .from('profiles')
@@ -85,6 +86,7 @@ export const useAuthActions = () => {
           email: email,
           avatar_url: null,
           role: role,
+          date_of_birth: dateOfBirth || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }, {
@@ -99,7 +101,7 @@ export const useAuthActions = () => {
       }
 
       console.log("Successfully created user profile");
-      
+
       // Step 3: Role is already set in the profile table, no need for separate role assignment
       console.log(`User created with role: ${role}`);
 
@@ -108,9 +110,19 @@ export const useAuthActions = () => {
         description: 'Your account has been created successfully.',
         duration: 6000,
       });
-      
+
+      // Step 4: Send welcome email (fire-and-forget)
+      const { sendEmail } = await import('@/hooks/useEmail');
+      sendEmail({
+        type: 'WELCOME',
+        email: email,
+        data: {
+          username: username,
+        },
+      }).catch((err) => console.warn('[SignUp] Welcome email failed:', err));
+
       // Navigate to user dashboard
-      navigate('/user/dashboard');
+      navigate('/');
 
     } catch (error: any) {
       console.error('Error signing up:', error);
@@ -133,9 +145,9 @@ export const useAuthActions = () => {
           redirectTo: `${window.location.origin}/auth/callback`
         }
       });
-      
+
       if (error) throw error;
-      
+
     } catch (error: any) {
       console.error('Error signing in with Google:', error);
       toast({
@@ -147,28 +159,54 @@ export const useAuthActions = () => {
     }
   };
 
-  const signOut = async () => {
-    setLoading(true);
-    
+  const signInWithDiscord = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) throw error;
-      
-      toast({
-        title: 'Signed out',
-        description: 'You have been successfully signed out.',
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'discord',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: 'identify connections guilds.join guilds.members.read email guilds'
+        }
       });
-      
-      navigate('/');
+
+      if (error) throw error;
+
     } catch (error: any) {
-      console.error('Error signing out:', error);
+      console.error('Error signing in with Discord:', error);
       toast({
-        title: 'Error signing out',
+        title: 'Error signing in with Discord',
         description: error.message,
         variant: 'destructive',
       });
       throw error;
+    }
+  };
+
+  const signOut = async () => {
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+
+      // If the session was already missing, that's fine — we still sign out locally
+      if (error && error.name !== 'AuthSessionMissingError') {
+        throw error;
+      }
+
+      toast({
+        title: 'Signed out',
+        description: 'You have been successfully signed out.',
+      });
+
+      navigate('/');
+    } catch (error: any) {
+      console.error('Error signing out:', error);
+      // Even on error, navigate home to clear the UI state
+      navigate('/');
+      toast({
+        title: 'Signed out',
+        description: 'Your session has ended.',
+      });
     } finally {
       setLoading(false);
     }
@@ -179,6 +217,7 @@ export const useAuthActions = () => {
     signIn,
     signUp,
     signInWithGoogle,
+    signInWithDiscord,
     signOut
   };
 };

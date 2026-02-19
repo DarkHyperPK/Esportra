@@ -2,22 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { 
-  User, 
-  Gamepad2, 
-  Calendar, 
-  Trophy, 
+import {
+  User,
+  Gamepad2,
+  Calendar,
+  Trophy,
   DollarSign,
   CheckCircle,
   AlertCircle,
   Loader2,
   UserCheck,
-  Shield
+  Shield,
+  ShieldCheck
 } from 'lucide-react';
 
 interface SoloTournamentRegistrationProps {
@@ -37,7 +39,9 @@ interface SoloTournamentRegistrationProps {
 }
 
 interface RegistrationData {
-  gamer_tag: string;
+  riot_tag: string;
+  steam_tag: string;
+  gamer_tag: string; // Keep for legacy form submission if needed by DB
 }
 
 const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
@@ -47,11 +51,14 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { riotAccount } = useRiotAccount();
   const [loading, setLoading] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [existingRegistration, setExistingRegistration] = useState<any>(null);
   const [registrationData, setRegistrationData] = useState<RegistrationData>({
-    gamer_tag: profile?.username || ''
+    riot_tag: profile?.riot_tag || '',
+    steam_tag: profile?.steam_tag || '',
+    gamer_tag: profile?.riot_tag || profile?.username || ''
   });
 
   // Check if user is already registered
@@ -59,15 +66,21 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     checkExistingRegistration();
   }, [user, tournament.id]);
 
-  // Update gamer tag when profile loads
+  // Auto-fill gamer tag from linked Riot account, or fallback to profile username
   useEffect(() => {
-    if (profile?.username && !registrationData.gamer_tag) {
+    if (riotAccount) {
+      setRegistrationData(prev => ({
+        ...prev,
+        riot_tag: `${riotAccount.game_name}#${riotAccount.tag_line}`,
+        gamer_tag: `${riotAccount.game_name}#${riotAccount.tag_line}`
+      }));
+    } else if (profile?.username && !registrationData.gamer_tag) {
       setRegistrationData(prev => ({
         ...prev,
         gamer_tag: profile.username
       }));
     }
-  }, [profile?.username]);
+  }, [profile?.username, riotAccount]);
 
   const checkExistingRegistration = async () => {
     if (!user) return;
@@ -84,8 +97,11 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       if (data && !error) {
         setIsRegistered(true);
         setExistingRegistration(data);
+        const gamer_tag = data.gamer_tag || profile?.riot_tag || profile?.username || '';
         setRegistrationData({
-          gamer_tag: data.gamer_tag || profile?.username || ''
+          riot_tag: profile?.riot_tag || '',
+          steam_tag: profile?.steam_tag || '',
+          gamer_tag
         });
       }
     } catch (error) {
@@ -104,12 +120,13 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     if (!registrationData.gamer_tag.trim()) {
       return 'Gamer tag is required';
     }
+
     return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user) {
       toast({
         title: 'Authentication Required',
@@ -201,7 +218,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
       toast({
         title: 'Registration Successful!',
-        description: tournament.entry_fee && tournament.entry_fee > 0 
+        description: tournament.entry_fee && tournament.entry_fee > 0
           ? 'Your registration is pending approval. You will be notified once approved.'
           : 'You have been successfully registered for the tournament.',
         variant: 'default',
@@ -209,6 +226,22 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
       setIsRegistered(true);
       setExistingRegistration(data);
+
+      // Send confirmation email
+      if (user.email) {
+        const { sendEmail } = await import('@/hooks/useEmail');
+        sendEmail({
+          type: 'TOURNAMENT_REGISTRATION',
+          email: user.email,
+          data: {
+            tournamentName: tournament.name,
+            gamertag: registrationData.gamer_tag.trim(),
+            registrationType: 'solo',
+            tournamentUrl: `${window.location.origin}/tournaments/${tournament.id}`,
+          },
+        }).catch((err) => console.warn('[SoloRegistration] Email send failed:', err));
+      }
+
       onRegistrationComplete?.();
 
     } catch (error: any) {
@@ -304,7 +337,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
             <span className="text-white/70">Status:</span>
             {getStatusBadge(existingRegistration.status)}
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-white/60 text-sm">Gamer Tag</Label>
@@ -426,6 +459,11 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
           <Label htmlFor="gamer_tag" className="text-white flex items-center gap-2 text-sm font-medium">
             <Gamepad2 className="w-4 h-4 text-blue-400" />
             Gamer Tag <span className="text-red-400">*</span>
+            {riotAccount && (
+              <span className="ml-auto flex items-center gap-1 text-[10px] text-red-400 font-mono">
+                <ShieldCheck className="w-3 h-3" /> VERIFIED
+              </span>
+            )}
           </Label>
           <Input
             id="gamer_tag"
@@ -433,10 +471,15 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
             value={registrationData.gamer_tag}
             onChange={(e) => handleInputChange('gamer_tag', e.target.value)}
             placeholder="Enter your gamer tag"
-            className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-10"
+            className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-10 disabled:opacity-60"
             required
+            disabled={!!riotAccount}
           />
-          <p className="text-xs text-white/50">This will be displayed as your in-game name</p>
+          {riotAccount ? (
+            <p className="text-xs text-red-400/70">Verified via Riot Sign-On — cannot be changed manually</p>
+          ) : (
+            <p className="text-xs text-white/50">This will be displayed as your in-game name</p>
+          )}
         </div>
 
         {/* Agreement */}
@@ -444,7 +487,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
           <div className="flex items-start gap-3">
             <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-blue-200 leading-relaxed">
-              By registering, you agree to participate in the tournament and follow all rules and regulations. 
+              By registering, you agree to participate in the tournament and follow all rules and regulations.
               Your contact information will be used for tournament communication only.
             </p>
           </div>

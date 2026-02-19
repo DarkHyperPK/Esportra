@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { User, Users, MessageSquare, ArrowRightLeft } from "lucide-react";
+import { User, Users, MessageSquare, ArrowRightLeft, Building2, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,13 +22,21 @@ const RoleSwitcherMenuButton: React.FC<{ onClick: () => void }> = ({ onClick }) 
   const { currentRole } = useRole();
   const { close } = useFramerDropdown();
 
+  const getRoleLabel = (role: string) => {
+    if (role === 'casual') return 'Player';
+    if (role === 'organizer') return 'Organizer';
+    if (role === 'venue_owner') return 'Venue Owner';
+    if (role === 'admin') return 'Admin';
+    return String(role);
+  };
+
   return (
     <div className="flex items-center gap-3">
       <Badge
         variant="secondary"
         className={`bg-gradient-to-r from-cyan-500/70 to-sky-500/70 border border-cyan-400/30 text-white flex items-center gap-2`}
       >
-        {currentRole === 'casual' ? <React.Fragment>Player</React.Fragment> : <React.Fragment>Organizer</React.Fragment>}
+        {getRoleLabel(currentRole)}
       </Badge>
 
       <Button
@@ -60,9 +68,76 @@ const UserMenu = ({
   const [hasPendingInvite, setHasPendingInvite] = useState(false);
   const [hasStaffInvites, setHasStaffInvites] = useState(false);
   const [hasStaffAssignments, setHasStaffAssignments] = useState(false);
+  const [hasOrganization, setHasOrganization] = useState(false);
+
+  // Track if user has any approved license (for role switcher visibility)
+  const [hasApprovedLicense, setHasApprovedLicense] = useState(false);
 
   // State for Role Switcher Dialog (Lifted up so it persists after menu close)
   const [isRoleSwitcherOpen, setIsRoleSwitcherOpen] = useState(false);
+
+  // Check if organizer has an organization
+  const checkOrganization = useCallback(async () => {
+    if (!user?.id || userRole !== 'organizer') {
+      setHasOrganization(false);
+      return;
+    }
+    try {
+      const { data } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+      setHasOrganization(!!data?.id);
+    } catch {
+      setHasOrganization(false);
+    }
+  }, [user?.id, userRole]);
+
+  useEffect(() => {
+    checkOrganization();
+    // Listen for organization created event
+    const handleOrgCreated = () => checkOrganization();
+    window.addEventListener('organizationCreated', handleOrgCreated);
+    return () => window.removeEventListener('organizationCreated', handleOrgCreated);
+  }, [checkOrganization]);
+
+  // Check if user has any approved licenses (organizer or venue_owner)
+  useEffect(() => {
+    const checkApprovedLicenses = async () => {
+      if (!user?.id) {
+        setHasApprovedLicense(false);
+        return;
+      }
+      try {
+        // Check for approved & active verified roles
+        const { data: verifiedRoles } = await supabase
+          .from('verified_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('status', 'approved')
+          .eq('is_active', true)
+          .in('role', ['organizer', 'venue_owner']);
+
+        // Check for active user roles
+        const { data: userRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .in('role', ['organizer', 'venue_owner']);
+
+        // User has approved license if they have BOTH verified_role AND user_role for any role
+        const verifiedRoleSet = new Set(verifiedRoles?.map(r => r.role) || []);
+        const hasLicense = userRoles?.some(ur => verifiedRoleSet.has(ur.role)) || false;
+        setHasApprovedLicense(hasLicense);
+      } catch {
+        setHasApprovedLicense(false);
+      }
+    };
+    checkApprovedLicenses();
+  }, [user?.id]);
+
 
   const checkTeamStatus = useCallback(async () => {
     if (!user) { setHasTeam(false); return; }
@@ -191,7 +266,7 @@ const UserMenu = ({
             <p className="text-xs uppercase tracking-[0.2em] text-white/50 mt-1">{roleLabel}</p>
           </div>
 
-          {!admin.isAdmin && (
+          {!admin.isAdmin && hasApprovedLicense && (
             <div className="space-y-2 border-b border-white/10 px-4 py-3">
               <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
                 <RoleSwitcherMenuButton onClick={() => setIsRoleSwitcherOpen(true)} />
@@ -200,10 +275,15 @@ const UserMenu = ({
           )}
 
           <div className="px-1 py-1 space-y-0.5">
-            <FramerDropdownItem to="/user/dashboard">Dashboard</FramerDropdownItem>
-            <FramerDropdownItem to="/auth/profile">Profile</FramerDropdownItem>
+            <FramerDropdownItem to="/user/profile">My Profile</FramerDropdownItem>
+            {/* Removed redundant Profile link if it pointed to same page, or keep strictly unique */}
+            {/* Previous code had /auth/profile. I will assume /user/profile is the NEW main profile. */}
+            {/* If /auth/profile is legacy/dead, I should remove it. The user said "/auth/profile is removed". */}
+            {/* So I will remove the second link to /auth/profile completely. */}
             {!admin.isAdmin && (
-              <FramerDropdownItem to="/verification">Verification Status</FramerDropdownItem>
+              <FramerDropdownItem to="/verification" icon={<Award className="h-4 w-4" />}>
+                Apply for License
+              </FramerDropdownItem>
             )}
             {hasTeam ? (
               <FramerDropdownItem to="/player/teams" icon={<Users className="h-4 w-4" />}>
@@ -256,34 +336,32 @@ const UserMenu = ({
             )}
 
             {!admin.isAdmin && userRole === 'venue_owner' && (
-              <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
+              <>
+                <FramerDropdownItem to="/venues/manage">Manage Venues</FramerDropdownItem>
+                <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
+              </>
             )}
             {!admin.isAdmin && userRole === 'organizer' && (
               <>
-                <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
-                <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
+                {hasOrganization ? (
+                  <>
+                    <FramerDropdownItem to="/organizer/dashboard?tab=organization" icon={<Building2 className="h-4 w-4" />}>My Organization</FramerDropdownItem>
+                    <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
+                    <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
+                  </>
+                ) : (
+                  <FramerDropdownItem to="/organizer/setup-organization" icon={<Building2 className="h-4 w-4" />}>
+                    <div className="flex w-full items-center justify-between">
+                      <span>Setup Organization</span>
+                      <span className="h-2 w-2 rounded-full bg-amber-400 flex-shrink-0" />
+                    </div>
+                  </FramerDropdownItem>
+                )}
               </>
             )}
 
             {admin.isAdmin && (
-              <>
-                <FramerDropdownItem to="/admin/dashboard">Admin Dashboard</FramerDropdownItem>
-                {admin.hasPermission('admin:assign_roles') && (
-                  <FramerDropdownItem to="/admin/access">Admin Access</FramerDropdownItem>
-                )}
-                {admin.hasPermission('verification:review') && (
-                  <FramerDropdownItem to="/admin/verification">Verification Queue</FramerDropdownItem>
-                )}
-                {admin.hasPermission('dispute:resolve') && (
-                  <FramerDropdownItem to="/admin/disputes">Dispute Center</FramerDropdownItem>
-                )}
-                {admin.hasPermission('settings:update') && (
-                  <FramerDropdownItem to="/admin/settings">System Settings</FramerDropdownItem>
-                )}
-                {admin.hasPermission('audit:view') && (
-                  <FramerDropdownItem to="/admin/audit">Activity Logs</FramerDropdownItem>
-                )}
-              </>
+              <FramerDropdownItem to="/admin/dashboard">Admin Dashboard</FramerDropdownItem>
             )}
           </div>
 

@@ -9,6 +9,7 @@ import {
 import { OverviewTab } from '@/components/tournament/details/OverviewTab';
 import { TeamsTab } from '@/components/tournament/details/TeamsTab';
 import { BracketsTab } from '@/components/tournament/details/BracketsTab';
+import { StagesTab } from '@/components/tournament/details/StagesTab';
 import { RulesTab } from '@/components/tournament/details/RulesTab';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import { usePublicBracketData } from '@/hooks/usePublicBracketData';
@@ -16,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle, Clock, AlertTriangle, Ban as BanIcon, Swords, ChevronRight } from 'lucide-react';
+import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle, Clock, AlertTriangle, Ban as BanIcon, Swords, ChevronRight, Layers } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
@@ -45,6 +46,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PremiumBackground from "@/components/ui/PremiumBackground";
 import { AnimatePresence, motion } from "framer-motion";
 import esportsGamesData from '@/data/esportsGames.json';
+import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 
 interface EsportsGame {
   name: string;
@@ -84,6 +86,7 @@ interface DatabaseTournament {
   check_in_required?: boolean;
   check_in_deadline?: string | null;
   auto_remove_unchecked?: boolean;
+  settings?: any;
 }
 
 interface DatabaseRegistration {
@@ -144,6 +147,9 @@ const TournamentDetails = () => {
     now instanceof Date &&
     now > checkInDeadlineDate &&
     !hasCheckedIn;
+  const checkInWindowMinutes = (tournament?.settings as any)?.checkInWindowMinutes || 60; // Default to 60 if not set
+  const checkInStartTime = checkInDeadlineDate ? new Date(checkInDeadlineDate.getTime() - (checkInWindowMinutes * 60 * 1000)) : null;
+
   const canSelfCheckIn =
     requiresCheckIn &&
     !!registrationDetails &&
@@ -152,7 +158,9 @@ const TournamentDetails = () => {
     !awaitingApproval &&
     checkInDeadlineDate instanceof Date &&
     now instanceof Date &&
-    now <= checkInDeadlineDate;
+    checkInStartTime instanceof Date &&
+    now >= checkInStartTime && // Must be AFTER check-in opens
+    now <= checkInDeadlineDate; // Must be BEFORE check-in closes
   // Live Check-in Countdown
   const [timeLeft, setTimeLeft] = useState<string>('');
 
@@ -232,7 +240,7 @@ const TournamentDetails = () => {
       if (allUserIds.size > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, username, full_name, avatar_url')
+          .select('id, username, full_name, avatar_url, riot_tag, steam_tag')
           .in('id', Array.from(allUserIds));
 
         const profileMap: Record<string, any> = {};
@@ -240,7 +248,16 @@ const TournamentDetails = () => {
 
         participants.forEach(p => {
           if (p.user_id && profileMap[p.user_id]) {
-            p.user = profileMap[p.user_id];
+            const profile = profileMap[p.user_id];
+            p.user = profile;
+
+            // If Valorant, prioritize Riot ID (riot_tag)
+            const isValorant = tournament?.game?.toLowerCase() === 'valorant';
+            if (isValorant && profile.riot_tag) {
+              p.display_name = profile.riot_tag;
+            } else {
+              p.display_name = profile.username || profile.full_name || 'Anonymous';
+            }
           }
         });
       }
@@ -249,7 +266,8 @@ const TournamentDetails = () => {
       participants.forEach(p => {
         if (p.team_id && teamMap[p.team_id]) {
           p.team_logo = p.team_logo || teamMap[p.team_id].logo_url;
-          p.team_name = p.team_name || teamMap[p.team_id].name;
+          // Prioritize official team name
+          p.team_name = teamMap[p.team_id].name || p.team_name;
         }
       });
 
@@ -321,8 +339,6 @@ const TournamentDetails = () => {
           status,
           organizer_id,
           venue_id,
-          organizer_id,
-          venue_id,
           is_public,
           banner_url,
           logo_url,
@@ -331,6 +347,7 @@ const TournamentDetails = () => {
           check_in_required,
           check_in_deadline,
           auto_remove_unchecked,
+          settings,
           organizer:organizer_id (
             username,
             avatar_url,
@@ -338,7 +355,8 @@ const TournamentDetails = () => {
           )
         `)
         .eq('slug', slug)
-        .single();
+        .is('deleted_at', null)
+        .maybeSingle();
 
       if (!bySlug.error && bySlug.data) {
         tournamentData = bySlug.data;
@@ -370,6 +388,7 @@ const TournamentDetails = () => {
             check_in_required,
             check_in_deadline,
             auto_remove_unchecked,
+            settings,
             organizer:organizer_id (
               username,
               avatar_url,
@@ -377,6 +396,7 @@ const TournamentDetails = () => {
             )
           `)
           .eq('id', slug)
+          .is('deleted_at', null)
           .single();
         if (!byId.error && byId.data) {
           tournamentData = byId.data;
@@ -403,8 +423,8 @@ const TournamentDetails = () => {
         id: tournamentData.id,
         name: tournamentData.name,
         game: tournamentData.game,
-        date: tournamentData.start_date ? new Date(tournamentData.start_date).toISOString().split('T')[0] : '',
-        time: tournamentData.start_date ? new Date(tournamentData.start_date).toTimeString().split(' ')[0] : '',
+        date: tournamentData.start_date ? new Date(tournamentData.start_date).toLocaleDateString('en-CA') : '',
+        time: tournamentData.start_date ? new Date(tournamentData.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
         venue: venueName || '',
         is_online: !tournamentData.venue_id,
         max_participants: tournamentData.max_teams,
@@ -420,8 +440,9 @@ const TournamentDetails = () => {
         check_in_required: !!tournamentData.check_in_required,
         check_in_deadline: tournamentData.check_in_deadline,
         auto_remove_unchecked: tournamentData.auto_remove_unchecked ?? true,
-        end_date: tournamentData.end_date ? new Date(tournamentData.end_date).toISOString().split('T')[0] : undefined,
+        end_date: tournamentData.end_date ? new Date(tournamentData.end_date).toLocaleDateString('en-CA') : undefined,
         organizer: tournamentData.organizer,
+        settings: tournamentData.settings,
       };
 
       const { count, error: countError } = await sb
@@ -520,7 +541,7 @@ const TournamentDetails = () => {
         .select('team_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .or('role.eq.captain,role.eq.Captain');
+        .eq('role', 'captain');
 
       const allTeamIds = [
         ...(ownedTeams || []).map(t => t.id),
@@ -554,11 +575,17 @@ const TournamentDetails = () => {
       setBanReason(null);
 
       // Check for registration
+      let registrationFilter = `user_id.eq.${user.id},team_captain_id.eq.${user.id}`;
+      const uniqueTeamIds = Array.from(new Set(allTeamIds)).filter(Boolean);
+      if (uniqueTeamIds.length > 0) {
+        registrationFilter += `,team_id.in.(${uniqueTeamIds.join(',')})`;
+      }
+
       const { data: regData, error } = await sb
         .from('tournament_participants')
         .select('*')
         .eq('tournament_id', tournament.id)
-        .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`)
+        .or(registrationFilter)
         .maybeSingle();
       if (error) throw error;
       if (regData) {
@@ -616,7 +643,7 @@ const TournamentDetails = () => {
           try {
             const { data: teamData } = await sb
               .from('teams')
-              .select('name')
+              .select('name, logo_url')
               .eq('id', teamId)
               .maybeSingle();
 
@@ -624,6 +651,9 @@ const TournamentDetails = () => {
               // Use actual team name from teams table as priority
               resolvedTeamName = teamData.name;
               console.log('[TournamentDetails] Resolved team name from teams table:', resolvedTeamName);
+            }
+            if (teamData?.logo_url) {
+              (dbRegistration as any).team_logo_url = teamData.logo_url;
             }
           } catch (teamNameError) {
             console.error('[TournamentDetails] Error fetching team name:', teamNameError);
@@ -638,10 +668,11 @@ const TournamentDetails = () => {
           registration_type: (dbRegistration as any).participant_type === 'solo' ? 'solo' : 'team',
           gamer_tag: (dbRegistration as any).gamer_tag || null,
           team_name: resolvedTeamName, // Use resolved team name (from teams table) as priority
+          team_logo: (dbRegistration as any).team_logo_url || null,
           team_members: (dbRegistration as any).team_members || null,
           status: (dbRegistration as any).status || 'registered',
           checked_in_at: (dbRegistration as any).checked_in_at || null,
-          registered_at: (dbRegistration as any).registered_at || (dbRegistration as any).created_at,
+          registered_at: (dbRegistration as any).registration_date || (dbRegistration as any).created_at,
           created_at: (dbRegistration as any).created_at,
           updated_at: (dbRegistration as any).updated_at || (dbRegistration as any).created_at,
           team_id: (dbRegistration as any).team_id || undefined,
@@ -827,7 +858,7 @@ const TournamentDetails = () => {
     try {
       const { data: existingRegistration, error: checkError } = await sb
         .from('tournament_participants')
-        .select('*')
+        .select('*, teams:team_id(name, logo_url)')
         .eq('tournament_id', tournament.id)
         .eq('user_id', user.id)
         .maybeSingle();
@@ -843,11 +874,12 @@ const TournamentDetails = () => {
           user_id: dbData.user_id,
           registration_type: dbData.participant_type === 'solo' ? 'solo' : 'team',
           gamer_tag: dbData.gamer_tag || null,
-          team_name: dbData.team_name || null,
+          team_name: (dbData.teams as any)?.name || dbData.team_name || null,
+          team_logo: dbData.team_logo_url || (dbData.teams as any)?.logo_url || null,
           team_members: dbData.team_members || null,
           status: dbData.status as RegistrationStatus || 'registered',
           checked_in_at: dbData.checked_in_at || null,
-          registered_at: dbData.registered_at || dbData.created_at,
+          registered_at: dbData.registration_date || dbData.registered_at || dbData.created_at,
           created_at: dbData.created_at,
           updated_at: dbData.updated_at || dbData.created_at
         };
@@ -1078,7 +1110,10 @@ const TournamentDetails = () => {
           .from('profiles')
           .select('*')
           .in('id', memberIds);
-        const names = (profiles || []).map(p => (p as any).gamer_tag || (p as any).username || (p as any).full_name || (p as any).id).filter(Boolean) as string[];
+        const names = (profiles || []).map(p => {
+          const isValorant = tournament?.game?.toLowerCase() === 'valorant';
+          return (isValorant && (p as any).riot_tag) || (p as any).username || (p as any).full_name || (p as any).id;
+        }).filter(Boolean) as string[];
         setResolvedMembers(names);
       } catch {
         setResolvedMembers(null);
@@ -1110,7 +1145,8 @@ const TournamentDetails = () => {
             // Step 1: roster_id
             if (rosterId) {
               const { data: roster } = await sb.rpc('get_roster_members', { r_id: rosterId });
-              names = (roster || []).map((row: any) => row.username || row.full_name || `player_${String(row.user_id).substring(0, 8)}`);
+              const isValorant = tournament?.game?.toLowerCase() === 'valorant';
+              names = (roster || []).map((row: any) => (isValorant && row.riot_tag) || row.username || row.full_name || `player_${String(row.user_id).substring(0, 8)}`);
             }
             // Step 2: derive by team_id + game if still empty
             if ((!names || names.length === 0) && game) {
@@ -1191,16 +1227,7 @@ const TournamentDetails = () => {
 
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-[60vh]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
+    return <PremiumLoadingScreen text="LOADING TOURNAMENT DATA" />;
   }
 
   if (error || !tournament) {
@@ -1237,7 +1264,9 @@ const TournamentDetails = () => {
         isCaptain={isCaptain}
         onRegister={() => setShowEditDialog(true)}
         onWithdraw={() => setShowWithdrawDialog(true)}
-        onCheckIn={() => { /* Implement check-in logic call if needed here, currently localized */ }}
+        onCheckIn={handleSelfCheckIn}
+        isLoading={registrationLoading}
+        checkInStartTime={checkInStartTime}
       />
 
       {/* --- TABS NAVIGATION (Sticky) --- */}
@@ -1247,7 +1276,7 @@ const TournamentDetails = () => {
           <div className="container mx-auto px-4">
             <div className="sticky top-4 z-40 bg-[#050505]/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl mb-12 shadow-2xl shadow-black/50 mx-auto max-w-3xl">
               <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">
-                {['Overview', 'Teams', 'Brackets', 'Rules'].map((tab) => (
+                {['Overview', 'Teams', 'Brackets', 'Stages', 'Rules'].map((tab) => (
                   <TabsTrigger
                     key={tab}
                     value={tab.toLowerCase()}
@@ -1262,7 +1291,7 @@ const TournamentDetails = () => {
 
           <TabsContent value="overview">
             <div className="container mx-auto px-4">
-              <OverviewTab tournament={tournament} />
+              <OverviewTab tournament={tournament} stages={stages} />
             </div>
           </TabsContent>
 
@@ -1282,6 +1311,12 @@ const TournamentDetails = () => {
                 activeVersionsMap={activeVersionsMap}
                 onStageSelect={setSelectedStageId}
               />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="stages">
+            <div className="container mx-auto px-4">
+              <StagesTab tournamentId={tournament.id} />
             </div>
           </TabsContent>
 

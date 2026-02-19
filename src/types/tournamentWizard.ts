@@ -1,6 +1,6 @@
 // Tournament wizard types
 
-export type BracketType = 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin' | 'battle_royale';
+export type BracketType = 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin';
 export type SeedingType = 'random' | 'manual' | 'skill_based';
 export type Visibility = 'public' | 'unlisted';
 
@@ -28,11 +28,11 @@ export interface TournamentWizardData {
     // Step 2: Format & Rules
     bracketType: BracketType; // Main format (legacy/fallback)
     stages: TournamentStage[];
-    matchCount: number; // For Battle Royale
     maxTeams: number;
     teamSize: number;
     seedingType: SeedingType;
     thirdPlaceMatch: boolean;
+    mapPoolIds: string[]; // Selected map IDs for tournament map pool
 
     // Step 3: Branding
     bannerUrl: string | null;
@@ -85,7 +85,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     name: '',
     game: '',
     isOnline: true,
-    visibility: 'public',
+    visibility: 'unlisted',
     startDate: '',
     startTime: '',
     endDate: '',
@@ -95,14 +95,12 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
 
     // Step 2
     bracketType: 'single_elimination',
-    stages: [
-        { name: 'Main Stage', format: 'single_elimination', stage_order: 1 }
-    ],
-    matchCount: 1,
+    stages: [], // No default stage - configure via Stage Setup Wizard
     maxTeams: 0,
     teamSize: 7,
     seedingType: 'random',
     thirdPlaceMatch: false,
+    mapPoolIds: [],
 
     // Step 3
     bannerUrl: null,

@@ -24,11 +24,22 @@ Esportra provides a complete ecosystem for esports competitions, featuring:
 ### v0.3.4 - Team Dashboard Enhancements
 - **Premium Loading Screen**: Animated loading state for Teams page
 - **Tournament Wins Stat**: "Trophies" card in Team Dashboard
-
 ### v0.3.2 - Enhanced Bracket Experience
 - **Stage Filtering**: Switch between tournament stages (Groups vs Playoffs) directly in the bracket view
 - **Fullscreen Mode**: Immersive full-screen bracket visualization
 - **UI Improvements**: Premium esports styling, refined layout, and better navigation
+
+### New in v0.4.0 - Global Identity & Polish
+- **Automatic Country Assignment**: Users and teams are now automatically assigned countries via IP-based detection.
+- **Premium Visual Flags**: High-resolution image flags (FlagCDN) integrated across Leaderboards, Profiles, and Search.
+- **Workspace-wide Stability**: Centralized type definitions and resolved critical TypeScript issues across the platform.
+- **Enhanced Team Discovery**: Improved team-to-owner country inheritance for accurate national rankings.
+
+### v0.3.5 - Organizer UX & Polish
+- **Banner Crop & Resize**: Crop and zoom tournament banners with a visual editor (16:9 enforced)
+- **Prize Distribution**: Dedicated Winner/Runner-up percentage inputs with validation (≤100%)
+- **Swiss Standings**: Live "Qualified" and "Eliminated" status badges in Swiss standings
+- **Public Page Preview**: Organizers can now preview public tournament pages directly
 
 ### v0.3.1 - Swiss Bracket Engine
 - **Swiss Format**: Full Swiss tournament support with group-based pairing
@@ -37,7 +48,7 @@ Esportra provides a complete ecosystem for esports competitions, featuring:
 
 ## Roadmap
 
-**Coming in v0.4.0:**
+**Coming in v0.4.1:**
 - Round Robin format support
 - Match scheduling with calendar integration
 - Enhanced team statistics dashboard
@@ -49,6 +60,7 @@ Esportra provides a complete ecosystem for esports competitions, featuring:
 For detailed version history and updates, see [CHANGELOG.md](./CHANGELOG.md).
 
 Recent versions:
+- **v0.4.0** - Auto-Country Detection, Image Flags, TypeScript Consolidation, Team Inherited Location
 - **v0.3.5** - Banner Crop/Resize, Prize Distribution UI, Swiss Standings Status, Public Page Preview
 - **v0.3.4** - Premium Loading Screen, Tournament Wins Stat, UI/UX polish
 - **v0.3.2** - Stage filters, Fullscreen mode, UI polish, Layout fixes

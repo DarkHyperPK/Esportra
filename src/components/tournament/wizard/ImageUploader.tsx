@@ -14,7 +14,7 @@ interface ImageUploaderProps {
     onChange: (url: string | null) => void;
     bucket?: string;
     folder?: string;
-    aspectRatio?: 'banner' | 'logo';
+    aspectRatio?: 'banner' | 'logo' | 'video';
     label?: string;
     helperText?: string;
     customFileName?: string;
@@ -44,10 +44,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
     const [originalFile, setOriginalFile] = useState<File | null>(null);
 
-    const aspect = aspectRatio === 'banner' ? 16 / 9 : 1;
-    const dimensions = aspectRatio === 'banner'
-        ? { width: 1920, height: 1080, display: '16:9' }
-        : { width: 512, height: 512, display: '1:1' };
+    const aspect = aspectRatio === 'logo' ? 1 : 16 / 9;
+    const dimensions = aspectRatio === 'logo'
+        ? { width: 512, height: 512, display: '1:1' }
+        : { width: 1920, height: 1080, display: '16:9' };
 
     const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
         setCroppedAreaPixels(croppedAreaPixels);

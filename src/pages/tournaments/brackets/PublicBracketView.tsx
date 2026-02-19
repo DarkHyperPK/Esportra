@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Download, AlertCircle, Maximize2 } from 'lucide-react';
 import { SwissView } from '@/components/bracket/SwissView';
 import { GroupStageView } from '@/components/bracket/GroupStageView';
+import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
+import type { BracketMatch } from '@/types/bracketTypes';
 
 interface PublicBracketViewProps {
     versionId: string | null; // Allow null to show sidebar even if no bracket
@@ -34,7 +36,70 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     onFullscreen
 }) => {
     const [activeFilter, setActiveFilter] = useState<FilterState>({ type: 'all' });
+    const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
+    const [resultsDialogMatch, setResultsDialogMatch] = useState<BracketMatch | null>(null);
+
     const { data: graphData } = useGraphBracket(versionId || '');
+
+    // Fetch match proofs (manual submissions)
+    const { data: proofs } = useQuery({
+        queryKey: ['match-proofs', tournamentId],
+        queryFn: async () => {
+            if (!tournamentId) return {};
+            const { data } = await supabase
+                .from('tournament_match_results')
+                .select('match_id, image_url')
+                .eq('tournament_id', tournamentId)
+                .not('image_url', 'is', null);
+
+            const map: Record<string, string[]> = {};
+            data?.forEach((r: any) => {
+                const id = r.match_id;
+                if (!map[id]) map[id] = [];
+                if (r.image_url) map[id].push(r.image_url);
+            });
+            return map;
+        },
+        enabled: !!tournamentId,
+        staleTime: 1000 * 60, // 1 minute
+    });
+
+    // Fetch detailed game results (automated reports)
+    const { data: automatedGames } = useQuery({
+        queryKey: ['bracket-match-games', tournamentId],
+        queryFn: async () => {
+            if (!tournamentId) return {};
+            const { data, error } = await supabase
+                .from('brkt_match_games')
+                .select(`
+                    *,
+                    game_maps (
+                        map_name
+                    )
+                `)
+                .eq('status', 'completed');
+
+            if (error) throw error;
+
+            const map: Record<string, any[]> = {};
+            data?.forEach((game: any) => {
+                const prefixedId = game.match_id;
+                if (!map[prefixedId]) map[prefixedId] = [];
+
+                const joinedMapName = Array.isArray(game.game_maps)
+                    ? game.game_maps[0]?.map_name
+                    : game.game_maps?.map_name;
+
+                map[prefixedId].push({
+                    ...game,
+                    map_name: joinedMapName || game.map_name
+                });
+            });
+            return map;
+        },
+        enabled: !!tournamentId,
+        staleTime: 1000 * 60,
+    });
 
     // Fetch teams
     const teamIds = useMemo(() => extractTeamIds(graphData?.nodes || []), [graphData?.nodes]);
@@ -133,12 +198,18 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                     </div>
                     <SwissView
                         stageId={selectedStageId || ''}
-                        versionId={versionId}
+                        versionId={versionId || ''}
                         matches={matches}
                         isOrganizer={false}
                         tournamentId={tournamentId}
                         stage={currentStage}
                         activeFilter={activeFilter}
+                        onMatchClick={(m) => {
+                            setResultsDialogMatch(m);
+                            setResultsDialogOpen(true);
+                        }}
+                        hasResultsMap={automatedGames}
+                        hasProofsMap={proofs}
                     />
                 </div>
             );
@@ -168,12 +239,17 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                         )}
                     </div>
                     <GroupStageView
-                        format="round_robin"
                         stageId={selectedStageId || ''}
-                        versionId={versionId}
+                        versionId={versionId || ''}
                         matches={matches}
                         isOrganizer={false}
                         advancementCount={perGroupAdvancement}
+                        onMatchClick={(m) => {
+                            setResultsDialogMatch(m);
+                            setResultsDialogOpen(true);
+                        }}
+                        hasResultsMap={automatedGames}
+                        hasProofsMap={proofs}
                     />
                 </div>
             );
@@ -209,6 +285,12 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                 <BracketRenderer
                     matches={matches}
                     activeFilter={activeFilter}
+                    onMatchClick={(m) => {
+                        setResultsDialogMatch(m);
+                        setResultsDialogOpen(true);
+                    }}
+                    hasResultsMap={automatedGames}
+                    hasProofsMap={proofs}
                 />
             </>
         );
@@ -238,6 +320,21 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
             <div className="relative flex-1 overflow-auto bg-zinc-950/30">
                 {renderContent()}
             </div>
+
+            <MatchResultsDialog
+                open={resultsDialogOpen}
+                onOpenChange={setResultsDialogOpen}
+                results={resultsDialogMatch ? (proofs?.[resultsDialogMatch.id.replace(/^(db-|wb-|lb-)/, '')] || []).map((url: string) => ({
+                    image_url: url,
+                    comment: null,
+                    created_at: new Date().toISOString(),
+                    reporter_user_id: ''
+                })) : []}
+                automatedResults={resultsDialogMatch ? (automatedGames?.[resultsDialogMatch.id.replace(/^(db-|wb-|lb-)/, '')] || []) : []}
+                team1Name={resultsDialogMatch?.team1?.name}
+                team2Name={resultsDialogMatch?.team2?.name}
+                team1Id={resultsDialogMatch?.team1?.id}
+            />
         </div>
     );
 };

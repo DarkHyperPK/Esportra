@@ -123,7 +123,9 @@ export class MatchRepository {
             .from('brkt_matches')
             .select(`
             *,
-            layout:brkt_layout(x, y)
+            layout:brkt_layout(x, y),
+            team1:teams!team1_id(name, logo_url),
+            team2:teams!team2_id(name, logo_url)
         `)
             .eq('version_id', versionId);
 
@@ -152,6 +154,11 @@ export class MatchRepository {
             status: m.status,
             team1_id: m.team1_id,
             team2_id: m.team2_id,
+            // Map eager loaded names/logos to node properties for immediate display
+            team1_name: m.team1?.name,
+            team1_logo: m.team1?.logo_url,
+            team2_name: m.team2?.name,
+            team2_logo: m.team2?.logo_url,
             team1_score: m.team1_score,
             team2_score: m.team2_score,
             winner_id: m.winner_id,
@@ -159,8 +166,10 @@ export class MatchRepository {
             party_code: m.party_code,
             group_id: m.group_id, // Added for RR
             round_number: m.round_number, // Added for Swiss
-            x: m.layout?.[0]?.x,
-            y: m.layout?.[0]?.y
+            y: m.layout?.[0]?.y,
+            scheduled_time: m.scheduled_time,
+            best_of: m.best_of,
+            automated_report_status: m.automated_report_status
         }));
 
         // Handle null edges

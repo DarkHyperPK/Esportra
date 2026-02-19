@@ -31,6 +31,7 @@ export interface Team {
   updated_at: string;
   is_active: boolean;
   members: TeamMember[];
+  country_code?: string;
   tournament_wins: number;
   total_matches: number;
 }
@@ -69,7 +70,7 @@ export interface TeamInvite {
 }
 
 export const useTeamManagement = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   const [userTeams, setUserTeams] = useState<Team[]>([]);
@@ -158,32 +159,23 @@ export const useTeamManagement = () => {
           // Optimization: Removed blocking fixTeamCaptain call from read path
           // await fixTeamCaptain(teamId, teamCreatedBy);
 
-          // Safe RPC call with fallback
-          let members = [];
-          try {
-            const { data: memberData, error: memberError } = await supabase
-              .rpc('get_team_members', { t_id: teamId });
+          // Safe RPC call and stats count in parallel
+          const [memberRes, attendanceRes] = await Promise.all([
+            supabase.rpc('get_team_members', { t_id: teamId }),
+            supabase
+              .from('tournament_participants')
+              .select('*', { count: 'exact', head: true })
+              .eq('team_id', teamId)
+          ]);
 
-            if (memberError) {
-              console.error('Error fetching team members:', memberError);
-            } else {
-              members = memberData || [];
-            }
-          } catch (err) {
-            console.error('Exception fetching team members:', err);
-            // Fallback to empty members is better than crashing or infinite loading
-            members = [];
+          let members = memberRes.data || [];
+          if (memberRes.error) {
+            console.error('Error fetching team members:', memberRes.error);
           }
 
+          const totalMatches = attendanceRes.count || 0;
 
-
-          // Calculate tournament stats (fallback to participants table; simple counts)
-          const { count: totalMatches } = await supabase
-            .from('tournament_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('team_id', teamId);
-
-          return {
+          const teamWithMembers: Team = {
             id: teamId,
             name: team.name,
             tag: team.tag,
@@ -199,25 +191,26 @@ export const useTeamManagement = () => {
             created_at: team.created_at,
             updated_at: team.updated_at,
             is_active: team.is_active,
-            members: (members || []).map((m: any) => {
-
-              const mappedMember = {
-                id: m.user_id,
-                user_id: m.user_id,
-                username: m.username || 'Unknown',
-                full_name: undefined,
-                avatar_url: m.avatar_url,
-                role: m.role,
-                verified: false,
-                joined_at: m.joined_at,
-                is_active: m.is_active,
-              };
-
-              return mappedMember;
-            }),
+            members: (members || []).map((m: any) => ({
+              id: m.user_id,
+              username: m.username || 'Unknown',
+              role: m.role,
+              verified: false,
+              joined_at: m.joined_at,
+              is_active: m.is_active,
+            })),
             tournament_wins: 0,
             total_matches: totalMatches || 0,
+            country_code: team.country_code,
           };
+
+          // If team has no country but user is owner and has a country, auto-assign it
+          if (!teamWithMembers.country_code && teamWithMembers.owner_id === user?.id && profile?.country_code) {
+            autoAssignTeamCountry(teamId, profile.country_code);
+            teamWithMembers.country_code = profile.country_code;
+          }
+
+          return teamWithMembers;
         })
       );
 
@@ -232,7 +225,19 @@ export const useTeamManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, toast]);
+  }, [user?.id, profile?.country_code, toast]);
+
+  // Help existing teams get assigned a country if missing
+  const autoAssignTeamCountry = useCallback(async (teamId: string, countryCode: string) => {
+    try {
+      await supabase
+        .from('teams')
+        .update({ country_code: countryCode })
+        .eq('id', teamId);
+    } catch (error) {
+      console.error('[AutoTeamCountry] Failed to assign:', error);
+    }
+  }, []);
 
   // Fetch team invites
   const fetchTeamInvites = useCallback(async () => {
@@ -469,7 +474,7 @@ export const useTeamManagement = () => {
   };
 
   // Invite user to team (enforce: user cannot be member of another team for overlapping games)
-  const inviteUserToTeam = async (teamId: string, userId: string, message?: string): Promise<boolean> => {
+  const inviteUserToTeam = async (teamId: string, userId: string, message?: string, rosterId?: string): Promise<boolean> => {
     if (!user) return false;
 
     try {
@@ -478,10 +483,48 @@ export const useTeamManagement = () => {
         toast({ title: 'Invalid Invite', description: 'You cannot invite yourself.', variant: 'destructive' });
         return false;
       }
-      // Load games for this team
+
+      // 1. Check if user is already a member of this specific roster (if rosterId is provided)
+      if (rosterId) {
+        const { data: rosterMember } = await supabase
+          .from('team_roster_members' as any)
+          .select('id')
+          .eq('roster_id', rosterId)
+          .eq('user_id', userId)
+          .single();
+
+        if (rosterMember) {
+          toast({
+            title: 'Already in Roster',
+            description: 'This user is already a member of this roster.',
+            variant: 'destructive',
+          });
+          return false;
+        }
+      } else {
+        // 2. Check if user is already a member of the team (only if No rosterId specified)
+        // If rosterId IS specified, it's okay if they are already in the team (they can be in multiple rosters)
+        const { data: existingMember } = await supabase
+          .from('team_members')
+          .select('id')
+          .eq('team_id', teamId)
+          .eq('user_id', userId)
+          .single();
+
+        if (existingMember) {
+          toast({
+            title: 'Already a Member',
+            description: 'This user is already a team member',
+            variant: 'destructive',
+          });
+          return false;
+        }
+      }
+
+      // 3. Load games for this team to check for conflicts with other teams
       const { data: teamRow, error: teamLoadError } = await supabase
         .from('teams')
-        .select('id, games')
+        .select('id, name, games, logo_url')
         .eq('id', teamId)
         .single();
       if (teamLoadError) throw teamLoadError;
@@ -489,7 +532,7 @@ export const useTeamManagement = () => {
       const teamGames: string[] = Array.isArray(teamRow?.games) ? teamRow.games : [];
 
       if (teamGames.length > 0) {
-        // Find teams this user already belongs to and check overlap client-side (works whether games is jsonb[] or text[])
+        // Find teams this user already belongs to and check overlap client-side
         const { data: candidateTeams, error: conflictError } = await supabase
           .from('teams')
           .select('id, name, games, team_members!inner(user_id, is_active)')
@@ -499,6 +542,7 @@ export const useTeamManagement = () => {
         if (conflictError) throw conflictError;
 
         const hasConflict = (candidateTeams || []).some((t: any) =>
+          t.id !== teamId && // Ignore membership in the CURRENT team
           Array.isArray(t?.games) && t.games.some((g: string) => teamGames.includes(g))
         );
 
@@ -508,35 +552,81 @@ export const useTeamManagement = () => {
             description: 'User is already a member of another team for one or more selected games.',
             variant: 'destructive',
           });
+
           return false;
         }
       }
 
-      // Check if user is already a member
-      const { data: existingMember } = await supabase
-        .from('team_members')
-        .select('id')
-        .eq('team_id', teamId)
-        .eq('user_id', userId)
+      // Fetch invited user details early for email
+      const { data: invitedUser } = await supabase
+        .from('profiles')
+        .select('email, username')
+        .eq('id', userId)
         .single();
 
-      if (existingMember) {
-        toast({
-          title: 'Already a Member',
-          description: 'This user is already a team member',
-          variant: 'destructive',
-        });
-        return false;
-      }
+      // Fetch inviter details for email
+      const { data: inviterProfile } = await supabase
+        .from('profiles')
+        .select('username, full_name')
+        .eq('id', user.id)
+        .single();
 
-      // Handle existing invites (pending/declined/accepted)
-      const { data: existingInvite } = await supabase
+      // Helper to send email
+      const dispatchEmail = async () => {
+        if (invitedUser?.email) {
+          console.log('[Invite] Dispatching email to:', invitedUser.email);
+          const { sendEmail } = await import('@/hooks/useEmail');
+
+          try {
+            console.log('[Invite] Prepared Data for Email:', {
+              teamName: teamRow?.name,
+              invitedBy: inviterProfile?.username,
+              teamLogo: teamRow?.logo_url,
+              fullTeamRow: teamRow
+            });
+
+            const result = await sendEmail({
+              type: 'TEAM_INVITE',
+              email: invitedUser.email,
+              data: {
+                teamName: teamRow?.name || 'a team',
+                invitedBy: inviterProfile?.username || inviterProfile?.full_name || 'A player',
+                teamLogo: teamRow?.logo_url,
+              },
+            });
+
+            if (!result.success) {
+              console.error('[Invite] Email dispatch failed:', result.error);
+              toast({
+                title: 'Email Failed',
+                description: 'Invite sent, but email could not be delivered.',
+                variant: 'destructive',
+              });
+            } else {
+              console.log('[Invite] Email dispatch success');
+            }
+          } catch (err) {
+            console.error('[Invite] Email dispatch exception:', err);
+          }
+        } else {
+          console.warn('[Invite] User has no email, skipping.');
+        }
+      };
+
+      // 4. Handle existing invites (pending/declined/accepted) - now roster-aware
+      let inviteQuery = supabase
         .from('team_invitations')
         .select('id, status')
         .eq('team_id', teamId)
-        .eq('invited_user_id', userId)
-        .limit(1)
-        .maybeSingle();
+        .eq('invited_user_id', userId);
+
+      if (rosterId) {
+        inviteQuery = inviteQuery.eq('roster_id', rosterId);
+      } else {
+        inviteQuery = inviteQuery.is('roster_id', null);
+      }
+
+      const { data: existingInvite } = await inviteQuery.limit(1).maybeSingle();
 
       if (existingInvite) {
         if (existingInvite.status === 'accepted') {
@@ -545,6 +635,7 @@ export const useTeamManagement = () => {
             .from('team_invitations')
             .update({ status: 'pending', responded_at: null, created_at: new Date().toISOString() })
             .eq('id', existingInvite.id);
+
           await supabase.from('notifications').insert({
             user_id: userId,
             type: 'team_invite',
@@ -554,6 +645,7 @@ export const useTeamManagement = () => {
             is_read: false,
             created_at: new Date().toISOString(),
           });
+          await dispatchEmail();
           toast({ title: 'Invite re-sent', description: 'User can re-join the team.' });
           return true;
         }
@@ -565,9 +657,11 @@ export const useTeamManagement = () => {
             title: 'Team Invitation Reminder',
             message: `You still have a pending team invite`,
             team_id: teamId,
+            link: '/player/teams',
             is_read: false,
             created_at: new Date().toISOString(),
           });
+          await dispatchEmail();
           toast({ title: 'Reminder sent', description: 'User already had a pending invite. Reminder sent.' });
           return true;
         }
@@ -577,44 +671,57 @@ export const useTeamManagement = () => {
             .from('team_invitations')
             .update({ status: 'pending', responded_at: null, created_at: new Date().toISOString() })
             .eq('id', existingInvite.id);
+
           await supabase.from('notifications').insert({
             user_id: userId,
             type: 'team_invite',
             title: 'Team Invitation',
             message: message || `You have been invited to join a team`,
             team_id: teamId,
+            link: '/player/teams',
             is_read: false,
             created_at: new Date().toISOString(),
           });
+          await dispatchEmail();
           toast({ title: 'Invite re-sent', description: 'Declined invite reopened and sent again.' });
           return true;
         }
       }
 
-      // Create invite
+      // 5. Create invite
       const { error: inviteError } = await supabase
         .from('team_invitations')
         .insert({
           team_id: teamId,
+          roster_id: rosterId || null,
           invited_user_id: userId,
-          invited_by: user.id,
+          invited_email: invitedUser?.email || null,
+          invited_by: user.id, // Legacy column?
+          invited_by_user_id: user.id, // RLS Policy uses this column
           status: 'pending',
           message,
         });
 
-      if (inviteError) throw inviteError;
+      if (inviteError) {
+        console.error('[Invite] DB Insert Error:', inviteError);
+        throw inviteError;
+      }
 
-      // Send notification
+      // 6. Send notification
       const { error: notifError } = await supabase.from('notifications').insert({
         user_id: userId,
         type: 'team_invite',
         title: 'Team Invitation',
         message: message || `You have been invited to join a team`,
         team_id: teamId,
+        link: '/player/teams',
         is_read: false,
         created_at: new Date().toISOString(),
       });
       if (notifError) console.error('Notification insert error', notifError);
+
+      // 7. Send invitation email
+      await dispatchEmail();
 
       toast({
         title: 'Invite Sent',
@@ -624,15 +731,16 @@ export const useTeamManagement = () => {
 
       return true;
     } catch (error) {
-      console.error('Error inviting user:', error);
+      console.error('Invite error:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to send invitation',
+        title: 'Invite failed',
+        description: (error as any)?.message || 'Could not send invitation',
         variant: 'destructive',
       });
       return false;
     }
   };
+
 
   // Accept team invite
   const acceptTeamInvite = async (inviteId: string): Promise<boolean> => {
@@ -756,6 +864,57 @@ export const useTeamManagement = () => {
     }
   };
 
+  // Revoke team invite (for captains)
+  const revokeTeamInvite = async (inviteId: string): Promise<boolean> => {
+    try {
+      // Get invite details first to clean up notifications
+      // We use maybeSingle because if it's already gone, we can't do much
+      const { data: invite } = await supabase
+        .from('team_invitations')
+        .select('team_id, invited_user_id')
+        .eq('id', inviteId)
+        .maybeSingle();
+
+      const { error } = await supabase
+        .from('team_invitations')
+        .delete()
+        .eq('id', inviteId);
+
+      if (error) throw error;
+
+      // Clean up notifications (best effort, non-blocking)
+      if (invite && invite.team_id && invite.invited_user_id) {
+        supabase
+          .from('notifications')
+          .delete()
+          .eq('user_id', invite.invited_user_id)
+          .eq('type', 'team_invite')
+          .contains('data', { team_id: invite.team_id }) // Use JSON filter
+          .then(({ error }) => {
+            if (error) console.warn('Notification cleanup warning (likely RLS):', error);
+          });
+      }
+
+      toast({
+        title: 'Invite Revoked',
+        description: 'Team invitation has been revoked',
+        variant: 'default',
+      });
+
+      // Refresh both lists
+      await Promise.all([fetchTeamInvites(), fetchUserTeams()]);
+      return true;
+    } catch (error) {
+      console.error('Error revoking invite:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to revoke invite',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   // Remove team member
   const removeTeamMember = async (teamId: string, userId: string): Promise<boolean> => {
     try {
@@ -801,6 +960,32 @@ export const useTeamManagement = () => {
     }
   };
 
+  // Real-time membership listener
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`membership-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_members',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchUserTeams();
+          fetchTeamInvites();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, fetchUserTeams, fetchTeamInvites]);
+
   // Initialize data
   useEffect(() => {
     fetchUserTeams();
@@ -816,6 +1001,9 @@ export const useTeamManagement = () => {
   }, [fetchUserTeams, fetchTeamInvites]);
 
   // Transfer captaincy
+  // IMPORTANT: Order matters due to RLS policies.
+  // team_members RLS checks teams.owner_id = auth.uid(), so we must
+  // update member roles BEFORE changing teams.owner_id.
   const transferCaptaincy = async (teamId: string, newCaptainId: string): Promise<boolean> => {
     try {
       console.log('=== TRANSFER CAPTAINCY DEBUG ===');
@@ -823,7 +1011,56 @@ export const useTeamManagement = () => {
       console.log('New Captain ID:', newCaptainId);
       console.log('Current User ID:', user?.id);
 
-      // Update the team's owner_id field to the new captain
+      // STEP 1: Demote old captain(s) to member FIRST (while we still pass RLS as owner)
+      const { error: oldCaptainError } = await supabase
+        .from('team_members')
+        .update({ role: 'member' })
+        .eq('team_id', teamId)
+        .in('role', ['captain', 'owner']);
+
+      if (oldCaptainError) {
+        console.error('Old captain role update error:', oldCaptainError);
+        throw oldCaptainError;
+      }
+
+      // STEP 1.5: Ensure the old captain stays in the rosters explicitly
+      // Since they will lose their "implicit owner" status in the roster views,
+      // we add them to the team_roster_members table if they aren't already there.
+      try {
+        const { data: rosters } = await supabase
+          .from('team_rosters')
+          .select('id')
+          .eq('team_id', teamId);
+
+        if (rosters && rosters.length > 0 && user?.id) {
+          const rosterMemberships = rosters.map(r => ({
+            roster_id: r.id,
+            user_id: user.id,
+            is_starter: true
+          }));
+
+          // Upsert memberships (don't overwrite if already exists)
+          await supabase
+            .from('team_roster_members' as any)
+            .upsert(rosterMemberships, { onConflict: 'roster_id,user_id', ignoreDuplicates: true });
+        }
+      } catch (err) {
+        console.warn('Non-critical: Failed to preserve old captain roster participation:', err);
+      }
+
+      // STEP 2: Promote new captain (still passes RLS as current owner)
+      const { error: newCaptainError } = await supabase
+        .from('team_members')
+        .update({ role: 'captain' })
+        .eq('team_id', teamId)
+        .eq('user_id', newCaptainId);
+
+      if (newCaptainError) {
+        console.error('New captain role update error:', newCaptainError);
+        throw newCaptainError;
+      }
+
+      // STEP 3: Transfer team ownership LAST (after roles and roster participations are updated)
       const { error: teamError } = await supabase
         .from('teams')
         .update({ owner_id: newCaptainId })
@@ -834,27 +1071,15 @@ export const useTeamManagement = () => {
         throw teamError;
       }
 
-      // Update member roles - handle both 'captain' and 'Captain' cases
-      const { error: oldCaptainError } = await supabase
-        .from('team_members')
-        .update({ role: 'member' })
-        .eq('team_id', teamId)
-        .in('role', ['captain', 'Captain']);
+      // STEP 4: Transfer tournament registrations (Update team_captain_id)
+      const { error: regError } = await supabase
+        .from('tournament_participants')
+        .update({ team_captain_id: newCaptainId })
+        .eq('team_id', teamId);
 
-      if (oldCaptainError) {
-        console.error('Old captain role update error:', oldCaptainError);
-        throw oldCaptainError;
-      }
-
-      const { error: newCaptainError } = await supabase
-        .from('team_members')
-        .update({ role: 'captain' })
-        .eq('team_id', teamId)
-        .eq('user_id', newCaptainId);
-
-      if (newCaptainError) {
-        console.error('New captain role update error:', newCaptainError);
-        throw newCaptainError;
+      if (regError) {
+        console.warn('Non-critical: Failed to update tournament registrations:', regError);
+        // We don't throw here to avoid rolling back the whole transfer if a registration update fails
       }
 
       console.log('Captaincy transfer completed successfully');
@@ -999,6 +1224,7 @@ export const useTeamManagement = () => {
     inviteUserToTeam,
     acceptTeamInvite,
     declineTeamInvite,
+    revokeTeamInvite,
     removeTeamMember,
     removeMemberFromTeam,
     transferCaptaincy,

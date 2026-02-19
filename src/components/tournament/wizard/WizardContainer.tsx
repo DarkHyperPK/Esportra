@@ -75,6 +75,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
                     currentStep={currentStep}
                     stepValidation={stepValidation}
                     onStepClick={goToStep}
+                    steps={WIZARD_STEPS}
                 />
 
                 {/* Form Container - GLASS STYLE */}

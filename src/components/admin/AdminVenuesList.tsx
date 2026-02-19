@@ -1,20 +1,11 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { motion } from 'framer-motion';
 import {
   Dialog,
   DialogContent,
@@ -22,8 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Search, Eye, Edit, Trash2, MapPin, Plus } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
+import { Search, Eye, Edit, Trash2, MapPin, Plus, Building2 } from "lucide-react";
 
 interface Venue {
   id: string;
@@ -98,7 +88,7 @@ const AdminVenuesList = () => {
   const handleUpdateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingVenue) return;
-    
+
     try {
       const { error } = await supabase
         .from('venues')
@@ -166,7 +156,7 @@ const AdminVenuesList = () => {
     navigate('/venues/list-venue');
   };
 
-  const filteredVenues = venues.filter(venue => 
+  const filteredVenues = venues.filter(venue =>
     venue.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     venue.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     venue.address?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -175,244 +165,266 @@ const AdminVenuesList = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <MapPin className="w-6 h-6 text-green-400" />
-            Venues Management
-          </h2>
-          <p className="text-gray-400">Manage all gaming venues and their details</p>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+            <MapPin className="w-5 h-5 text-emerald-500" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Venues Management</h2>
+            <p className="text-zinc-500 text-sm">Manage all gaming venues and their details</p>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-            <Input 
-              className="pl-10 bg-gray-700 border-gray-600 text-white"
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Input
+              className="pl-9 bg-zinc-900/50 border-zinc-800 focus:border-rose-500 w-64"
               placeholder="Search venues..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button 
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+          <Button
+            className="bg-rose-500 hover:bg-rose-600 text-white"
             onClick={handleCreateVenue}
           >
-            <Plus size={18} className="mr-2" />
+            <Plus className="w-4 h-4 mr-2" />
             Add Venue
           </Button>
         </div>
       </div>
-      
+
       {/* Venues Table */}
-      <Card className="bg-gray-800/50 border-gray-700">
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-t-blue-500 border-r-blue-500 border-b-transparent border-l-transparent"></div>
-            </div>
-          ) : error ? (
-            <div className="text-red-500 p-4 text-center">
-              {error}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-700">
-                    <TableHead className="text-gray-300">Name</TableHead>
-                    <TableHead className="text-gray-300">Location</TableHead>
-                    <TableHead className="text-gray-300">Stations</TableHead>
-                    <TableHead className="text-gray-300">Price Range</TableHead>
-                    <TableHead className="text-right text-gray-300">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredVenues.length > 0 ? (
-                    filteredVenues.map(venue => (
-                      <TableRow key={venue.id} className="border-gray-700 hover:bg-gray-700/30">
-                        <TableCell className="font-medium text-white">{venue.name}</TableCell>
-                        <TableCell className="text-gray-300">{`${venue.city}, ${venue.address}`}</TableCell>
-                        <TableCell className="text-white">{venue.stations}</TableCell>
-                        <TableCell className="text-gray-300">{venue.price_range || '$10-20/hr'}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white">
-                              <Eye size={16} />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-gray-400 hover:text-blue-400"
-                              onClick={() => handleEditVenue(venue)}
-                            >
-                              <Edit size={16} />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-gray-400 hover:text-red-500"
-                              onClick={() => handleDeleteVenue(venue.id)}
-                            >
-                              <Trash2 size={16} />
-                            </Button>
+      <div className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center items-center h-40">
+            <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="text-red-400 p-8 text-center">{error}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-zinc-900/50">
+                  <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Venue</th>
+                  <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Stations</th>
+                  <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Price Range</th>
+                  <th className="px-6 py-3 text-right text-xs font-mono text-zinc-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/50">
+                {filteredVenues.length > 0 ? (
+                  filteredVenues.map((venue, idx) => (
+                    <motion.tr
+                      key={venue.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: idx * 0.02 }}
+                      className="hover:bg-zinc-900/30 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                            <Building2 className="w-4 h-4 text-emerald-500" />
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-400">
-                        No venues found matching your search.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                          <div>
+                            <p className="text-sm font-medium text-white">{venue.name}</p>
+                            <p className="text-xs text-zinc-500 font-mono">{venue.id.slice(0, 8)}...</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-zinc-400">{`${venue.city}, ${venue.address}`}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 rounded-lg bg-zinc-800 text-zinc-300 text-xs">
+                          {venue.stations} stations
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-emerald-400">{venue.price_range || '$10-20/hr'}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-rose-500">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-zinc-400 hover:text-blue-400"
+                            onClick={() => handleEditVenue(venue)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-zinc-400 hover:text-red-500"
+                            onClick={() => handleDeleteVenue(venue.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="text-center py-12 text-zinc-500">
+                      No venues found matching your search.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-3xl">
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 text-white max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="text-white">Edit Venue</DialogTitle>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-emerald-500" />
+              Edit Venue
+            </DialogTitle>
           </DialogHeader>
-            <form onSubmit={handleUpdateVenue}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Name</label>
-                  <Input
-                    name="name"
-                    value={formData.name || ''}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Price Range</label>
-                  <Input
-                    name="price_range"
-                    value={formData.price_range || ''}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    placeholder="e.g. $10-20/hr"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">City</label>
-                  <Input
-                    name="city"
-                    value={formData.city || ''}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Address</label>
-                  <Input
-                    name="address"
-                    value={formData.address || ''}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Description</label>
-                <Textarea
-                  name="description"
-                  value={formData.description || ''}
+          <form onSubmit={handleUpdateVenue}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-400">Name</label>
+                <Input
+                  name="name"
+                  value={formData.name || ''}
                   onChange={handleInputChange}
-                  className="bg-esports-dark"
-                  rows={3}
+                  className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
                   required
                 />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Gaming Stations</label>
-                  <Input
-                    name="stations"
-                    type="number"
-                    value={formData.stations || ''}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Hours</label>
-                  <Input
-                    name="hours"
-                    value={formData.hours || ''}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Games</label>
-                  <Input
-                    name="games"
-                    value={formData.games || ''}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    required
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-400">Price Range</label>
+                <Input
+                  name="price_range"
+                  value={formData.price_range || ''}
+                  onChange={handleInputChange}
+                  className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+                  placeholder="e.g. $10-20/hr"
+                />
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Contact Email</label>
-                  <Input
-                    name="contact_email"
-                    type="email"
-                    value={formData.contact_email || ''}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Contact Phone</label>
-                  <Input
-                    name="contact_phone"
-                    value={formData.contact_phone || ''}
-                    onChange={handleInputChange}
-                    className="bg-gray-700 border-gray-600 text-white"
-                    required
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-400">City</label>
+                <Input
+                  name="city"
+                  value={formData.city || ''}
+                  onChange={handleInputChange}
+                  className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+                  required
+                />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-400">Address</label>
+                <Input
+                  name="address"
+                  value={formData.address || ''}
+                  onChange={handleInputChange}
+                  className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+                  required
+                />
+              </div>
+            </div>
 
-              <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsEditModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Update Venue
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1 text-zinc-400">Description</label>
+              <Textarea
+                name="description"
+                value={formData.description || ''}
+                onChange={handleInputChange}
+                className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+                rows={3}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-400">Gaming Stations</label>
+                <Input
+                  name="stations"
+                  type="number"
+                  value={formData.stations || ''}
+                  onChange={handleInputChange}
+                  className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-400">Hours</label>
+                <Input
+                  name="hours"
+                  value={formData.hours || ''}
+                  onChange={handleInputChange}
+                  className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-400">Games</label>
+                <Input
+                  name="games"
+                  value={formData.games || ''}
+                  onChange={handleInputChange}
+                  className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-400">Contact Email</label>
+                <Input
+                  name="contact_email"
+                  type="email"
+                  value={formData.contact_email || ''}
+                  onChange={handleInputChange}
+                  className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-zinc-400">Contact Phone</label>
+                <Input
+                  name="contact_phone"
+                  value={formData.contact_phone || ''}
+                  onChange={handleInputChange}
+                  className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditModalOpen(false)}
+                className="border-zinc-800 hover:bg-zinc-800"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-rose-500 hover:bg-rose-600 text-white"
+              >
+                Update Venue
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

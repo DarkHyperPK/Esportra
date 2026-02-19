@@ -76,10 +76,8 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 })),
                 { label: 'Max Teams', value: 'Configured in Manage Stages' },
                 { label: 'Team Size', value: 'Configured in Manage Stages' },
-                ...(data.bracketType !== 'battle_royale' ? [
-                    { label: 'Seeding', value: SEEDING_TYPE_LABELS[data.seedingType] },
-                    ...(data.thirdPlaceMatch ? [{ label: 'Third Place Match', value: 'Yes' }] : [])
-                ] : [])
+                { label: 'Seeding', value: SEEDING_TYPE_LABELS[data.seedingType] },
+                ...(data.thirdPlaceMatch ? [{ label: 'Third Place Match', value: 'Yes' }] : [])
             ]
         },
         {

@@ -4,6 +4,7 @@ import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Upload } from 'luc
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { Countdown } from '@/components/ui/Countdown';
 
 interface TournamentHeaderProps {
     tournament: any;
@@ -15,7 +16,10 @@ interface TournamentHeaderProps {
     isCaptain: boolean;
     onRegister: () => void;
     onWithdraw: () => void;
-    onCheckIn: () => void; // Added this although it was empty in original code
+    onCheckIn: () => void;
+
+    isLoading?: boolean; // New prop
+    checkInStartTime?: Date | null;
 }
 
 export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
@@ -28,7 +32,9 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     isCaptain,
     onRegister,
     onWithdraw,
-    onCheckIn
+    onCheckIn,
+    isLoading = false, // Default to false
+    checkInStartTime
 }) => {
     const navigate = useNavigate();
 
@@ -135,8 +141,10 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                             </div>
 
                             {/* Primary Action Button */}
-                            <div className="mt-12 md:mt-16 mb-24 flex justify-center relative z-50">
-                                {isOrganizer ? (
+                            <div className="mt-12 md:mt-16 mb-24 flex justify-center relative z-50 h-[64px]">
+                                {isLoading ? (
+                                    <div className="h-14 md:h-16 w-64 bg-white/5 animate-pulse rounded-none border border-white/10" />
+                                ) : isOrganizer ? (
                                     <Button onClick={() => navigate(`/organizer/tournament/${tournament.slug || tournament.id}`)} className="h-14 md:h-16 px-8 md:px-12 bg-white text-black hover:bg-gray-200 text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden">
                                         <span className="relative z-10 flex items-center gap-2">MANAGE EVENT</span>
                                     </Button>
@@ -170,6 +178,15 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                             <Button onClick={onCheckIn} disabled={checkInSubmitting} className="ml-4 h-14 md:h-16 px-8 md:px-12 bg-green-600 hover:bg-green-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none animate-pulse">
                                                 CONFIRM PRESENCE
                                             </Button>
+                                        )}
+                                        {/* Countdown for Check-in */}
+                                        {!canSelfCheckIn && isRegistered && isCaptain && !hasMissedCheckIn && checkInStartTime && new Date() < checkInStartTime && (
+                                            <div className="ml-4 h-14 md:h-16 px-8 flex flex-col justify-center items-center bg-gray-900/80 border border-white/10 text-white rounded-none backdrop-blur-md">
+                                                <span className="text-[10px] text-gray-400 uppercase tracking-widest leading-none mb-1">Check-in Opens In</span>
+                                                <div className="text-xl font-mono text-emerald-400 leading-none">
+                                                    <Countdown targetDate={checkInStartTime} />
+                                                </div>
+                                            </div>
                                         )}
                                     </>
                                 )}

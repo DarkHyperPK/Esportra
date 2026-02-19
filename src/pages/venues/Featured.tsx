@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
-import VenueCard from '@/components/VenueCard';
-import { Venue } from '@/hooks/useVenueSearch';
+import { VenueCard } from '@/components/venues/VenueCard';
+import { Venue } from '@/types/venue';
 import { supabase } from '@/lib/supabase';
 
 const FeaturedVenues = () => {
@@ -15,7 +15,7 @@ const FeaturedVenues = () => {
           .from('venues')
           .select('*')
           .order('created_at', { ascending: false });
-        
+
         if (error) throw error;
         setVenues(data || []);
       } catch (error) {

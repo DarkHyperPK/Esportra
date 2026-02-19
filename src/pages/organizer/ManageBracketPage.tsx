@@ -4,15 +4,18 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, CheckCircle, ArrowRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, CheckCircle, ArrowRight, Calendar, Settings, GitBranch, Globe, Eye, EyeOff, Loader2 } from 'lucide-react';
 import BracketVisualization from '@/pages/tournaments/brackets/BracketVisualization';
 import Footer from '@/components/Footer';
-import { useBracketRealtime } from '@/hooks/useBracketRealtime';
 import { stageCompletionService } from '@/services/bracket/StageCompletionService';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
+import RoundSchedulingPanel from '@/components/tournament/RoundSchedulingPanel';
+import StageSchedulingConfig from '@/components/tournament/StageSchedulingConfig';
+import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 
 interface AdvancingTeam {
     team_id: string;
@@ -29,7 +32,9 @@ const ManageBracketPage = () => {
     const [tournament, setTournament] = useState<any>(null);
     const [stage, setStage] = useState<any>(null);
     const [versionId, setVersionId] = useState<string | null>(null);
+    const [versionStatus, setVersionStatus] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isOrganizer, setIsOrganizer] = useState(false);
 
     // Stage completion state
@@ -55,26 +60,8 @@ const ManageBracketPage = () => {
         }
     }, [stageId, versionId]);
 
-    // Memoized update handler to prevent subscription churn
-    const handleRealtimeUpdate = useCallback(() => {
-        console.log('[ManageBracketPage] Realtime update received');
-        // Debounce stage completion check to prevent race conditions
-        if (completionCheckTimeoutRef.current) {
-            clearTimeout(completionCheckTimeoutRef.current);
-        }
-        completionCheckTimeoutRef.current = setTimeout(() => {
-            checkStageCompletion();
-        }, 500);
-    }, [checkStageCompletion]);
-
-    // Subscribe to realtime bracket updates - automatically invalidates cache when matches change
-    useBracketRealtime({
-        tournamentId: tournament?.id || '',
-        versionId: versionId || undefined,
-        enabled: !!versionId,
-        slug: slug,
-        onUpdate: handleRealtimeUpdate
-    });
+    // No longer using realtime updates for organizers to prevent data shifts 
+    // during management actions. Relying on explicit fetchData(true) calls.
 
 
     const fetchData = useCallback(async (silent = false) => {
@@ -125,7 +112,7 @@ const ManageBracketPage = () => {
             // Fetch bracket version for this stage
             const { data: versionData } = await (supabase as any)
                 .from('brkt_versions')
-                .select('id')
+                .select('id, status')
                 .eq('stage_id', stageId)
                 .in('status', ['active', 'draft'])
                 .order('created_at', { ascending: false })
@@ -134,6 +121,7 @@ const ManageBracketPage = () => {
 
             if (versionData) {
                 setVersionId(versionData.id);
+                setVersionStatus(versionData.status);
 
                 // Check stage completion status
                 const completionResult = await stageCompletionService.checkStageCompletion(stageId);
@@ -314,6 +302,31 @@ const ManageBracketPage = () => {
 
 
 
+    // Handle publishing bracket
+    const handlePublishBracket = async () => {
+        if (!versionId) return;
+        setIsSubmitting(true);
+        try {
+            const { error } = await supabase
+                .from('brkt_versions')
+                .update({ status: 'active', activated_at: new Date().toISOString() })
+                .eq('id', versionId);
+
+            if (error) throw error;
+
+            setVersionStatus('active');
+            toast({
+                title: 'Bracket Published!',
+                description: 'The bracket is now visible to participants.'
+            });
+            fetchData(true);
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     useEffect(() => {
         if (!authLoading) {
             fetchData();
@@ -344,21 +357,129 @@ const ManageBracketPage = () => {
     return (
         <div className="min-h-screen text-white">
             <main className="relative w-full px-4 py-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div className="flex items-center gap-4">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/organizer/tournament/${slug}`)}
+                            className="text-gray-400 hover:text-white hover:bg-white/5"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Tournament
+                        </Button>
+                        <div className="h-4 w-px bg-white/10 hidden md:block" />
+                        <div>
+                            <h1 className="text-xl font-bold text-white leading-none mb-1">
+                                {stage?.name || 'Loading stage...'}
+                            </h1>
+                            <p className="text-xs text-gray-500 font-medium">Stage Management</p>
+                        </div>
+                    </div>
 
-                {/* Bracket Visualization with Management Controls */}
-                <div className="w-full">
-                    <BracketVisualization
-                        versionId={versionId}
-                        tournamentId={tournament.id}
-                        isOrganizer={isOrganizer}
-                        onRefresh={() => fetchData(true)}
-                        onByeAdvance={handleByeAdvance}
-                        stage={stage}
-                    />
+                    <div className="flex items-center gap-3">
+                        {isOrganizer && versionId && (
+                            <div className="flex items-center gap-2">
+                                {versionStatus === 'draft' ? (
+                                    <Button
+                                        onClick={handlePublishBracket}
+                                        disabled={isSubmitting}
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-10 px-6 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                                    >
+                                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Globe className="w-4 h-4 mr-2" />}
+                                        Publish Bracket
+                                    </Button>
+                                ) : (
+                                    <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 py-1.5 px-3 rounded-lg flex items-center gap-2 h-10">
+                                        <CheckCircle className="w-4 h-4" />
+                                        <span className="font-bold uppercase tracking-wider text-[10px]">Published</span>
+                                    </Badge>
+                                )}
+                            </div>
+                        )}
+                        <Button
+                            variant="outline"
+                            onClick={() => navigate(`/tournaments/${slug}/brackets`)}
+                            className="border-white/10 bg-white/5 hover:bg-white/10 text-white h-10 px-4 rounded-xl"
+                        >
+                            <Eye className="w-4 h-4 mr-2" />
+                            Public View
+                        </Button>
+                    </div>
                 </div>
-            </main >
+
+                {/* Tabs for Bracket vs Scheduling */}
+                {isOrganizer && (
+                    <Tabs defaultValue="bracket" className="w-full">
+                        <div className="flex items-center justify-between mb-6">
+                            <TabsList className="bg-black/40 backdrop-blur-md border border-white/10 p-1 h-auto rounded-xl">
+                                <TabsTrigger value="bracket" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
+                                    <GitBranch className="w-4 h-4 mr-2" />
+                                    Visualizer
+                                </TabsTrigger>
+                                <TabsTrigger value="scheduling" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
+                                    <Calendar className="w-4 h-4 mr-2" />
+                                    Round Scheduling
+                                </TabsTrigger>
+                                <TabsTrigger value="settings" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
+                                    <Settings className="w-4 h-4 mr-2" />
+                                    Settings
+                                </TabsTrigger>
+                            </TabsList>
+                        </div>
+
+                        <TabsContent value="bracket" className="mt-4">
+                            <BracketVisualization
+                                versionId={versionId}
+                                tournamentId={tournament.id}
+                                isOrganizer={isOrganizer}
+                                onRefresh={() => fetchData(true)}
+                                onByeAdvance={handleByeAdvance}
+                                stage={stage}
+                            />
+                        </TabsContent>
+
+                        <TabsContent value="scheduling" className="mt-4">
+                            <div className="max-w-xl mx-auto">
+                                <RoundSchedulingPanel
+                                    stageId={stageId!}
+                                    stageFormat={stage?.format || 'single_elimination'}
+                                    tournamentStartDate={tournament?.start_date || null}
+                                    tournamentEndDate={tournament?.end_date || null}
+                                    selfPlayEnabled={stage?.scheduling_config?.self_play_enabled || false}
+                                    onScheduleApplied={() => fetchData(true)}
+                                />
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="settings" className="mt-4">
+                            <div className="max-w-xl mx-auto">
+                                <StageSchedulingConfig
+                                    stageId={stageId!}
+                                    stageFormat={stage?.format || 'single_elimination'}
+                                    onConfigChange={() => fetchData(true)}
+                                />
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                )}
+
+                {/* Non-organizer view - just the bracket */}
+                {!isOrganizer && (
+                    <div className="w-full">
+                        <BracketVisualization
+                            versionId={versionId}
+                            tournamentId={tournament.id}
+                            isOrganizer={isOrganizer}
+                            onRefresh={() => fetchData(true)}
+                            onByeAdvance={handleByeAdvance}
+                            stage={stage}
+                        />
+                    </div>
+                )}
+            </main>
             <Footer />
-        </div >
+        </div>
     );
 };
 

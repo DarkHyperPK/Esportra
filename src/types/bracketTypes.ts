@@ -226,7 +226,7 @@ export interface Participant {
 export type BracketSize = 8 | 16 | 24 | 32 | 64 | 128 | 256 | 512;
 
 /** Bracket format options */
-export type BracketFormat = 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss' | 'battle_royale';
+export type BracketFormat = 'single_elimination' | 'double_elimination' | 'round_robin' | 'swiss';
 
 /** Schedule configuration for auto-scheduling */
 export interface ScheduleConfig {

@@ -40,6 +40,15 @@ export interface BracketNode {
     // Visuals (joined from layout)
     x?: number;
     y?: number;
+
+    scheduled_time?: string | null;
+    automated_report_status?: 'idle' | 'processing' | 'verified' | 'failed' | 'partial' | null;
+
+    // Eager Loaded Data (Joined from teams table)
+    team1_name?: string | null;
+    team1_logo?: string | null;
+    team2_name?: string | null;
+    team2_logo?: string | null;
 }
 
 export interface BracketEdge {

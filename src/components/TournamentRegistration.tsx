@@ -41,7 +41,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   const [banReason, setBanReason] = useState<string | null>(null);
 
   // Check if this is a team tournament
-  const isTeamTournament = (teamSize || 1) > 1;
+  const isTeamTournament = (teamSize || 1) > 1 || game?.toLowerCase() === 'valorant';
 
   // Check for ban on mount
   useEffect(() => {
@@ -54,7 +54,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           .eq('tournament_id', tournamentId)
           .eq('user_id', user.id)
           .maybeSingle();
-        
+
         if (data && !error) {
           setBanned(true);
           setBanReason(data.ban_reason || null);
@@ -110,11 +110,13 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           entry_fee: undefined,
           prize_pool: undefined,
           max_teams: 100,
+          team_size: teamSize, // Pass team_size to registration component
         }}
         onRegistrationComplete={onRegisterSuccess}
         onCancel={onCancel || onRegisterSuccess} // Close dialog on cancel
       />
     );
+
   }
 
   // For solo tournaments, use the solo registration component

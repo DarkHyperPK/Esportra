@@ -61,7 +61,9 @@ export const StageGuidelineModal: React.FC<StageGuidelineModalProps> = ({ open, 
                                         <li>Takes ~2x longer than Single Elim</li>
                                         <li>Grand Finals can be complex (bracket reset)</li>
                                     </ul>
+
                                 </div>
+
 
                                 <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                                     <h3 className="text-lg font-semibold text-purple-400 flex items-center gap-2">
@@ -154,6 +156,6 @@ export const StageGuidelineModal: React.FC<StageGuidelineModalProps> = ({ open, 
                     </Tabs>
                 </ScrollArea>
             </DialogContent>
-        </Dialog>
+        </Dialog >
     );
 };

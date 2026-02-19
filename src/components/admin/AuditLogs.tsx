@@ -4,21 +4,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  Eye, 
-  User, 
-  Shield, 
+import {
+  Search,
+  Filter,
+  Download,
+  Eye,
+  User,
+  Shield,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -61,7 +61,7 @@ const AuditLogs: React.FC = () => {
   const fetchAuditLogs = async () => {
     try {
       setLoading(true);
-      
+
       let query = supabase
         .from('audit_logs')
         .select('*', { count: 'exact' })
@@ -72,7 +72,7 @@ const AuditLogs: React.FC = () => {
       if (filterType !== 'all') {
         query = query.eq('target_type', filterType);
       }
-      
+
       if (filterSeverity !== 'all') {
         query = query.eq('severity', filterSeverity);
       }
@@ -204,7 +204,7 @@ const AuditLogs: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-full md:w-48 bg-gray-700 border-gray-600 text-white">
                 <SelectValue placeholder="Filter by type" />
@@ -331,11 +331,11 @@ const AuditLogs: React.FC = () => {
           >
             Previous
           </Button>
-          
+
           <span className="text-gray-400">
             Page {currentPage} of {totalPages}
           </span>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -348,34 +348,34 @@ const AuditLogs: React.FC = () => {
         </div>
       )}
       {/* Details Dialog */}
-    <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-      <DialogContent className="bg-gray-800 border-gray-700 max-w-3xl text-white">
-        <DialogHeader>
-          <DialogTitle>Log Details</DialogTitle>
-          <DialogDescription className="text-gray-400">
-            Full payload for auditing and debugging
-          </DialogDescription>
-        </DialogHeader>
-        {selectedLog && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><span className="text-gray-400">Date:</span> {new Date(selectedLog.created_at).toLocaleString()}</div>
-              <div><span className="text-gray-400">Admin:</span> {selectedLog.admin_name}</div>
-              <div className="capitalize"><span className="text-gray-400">Action:</span> {selectedLog.action_type}</div>
-              <div className="capitalize"><span className="text-gray-400">Target:</span> {selectedLog.target_type} • {selectedLog.target_name}</div>
-              <div><span className="text-gray-400">Severity:</span> {selectedLog.severity}</div>
-              <div><span className="text-gray-400">IP:</span> {selectedLog.ip_address}</div>
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="bg-gray-800 border-gray-700 max-w-3xl text-white">
+          <DialogHeader>
+            <DialogTitle>Log Details</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Full payload for auditing and debugging
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLog && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><span className="text-gray-400">Date:</span> {new Date(selectedLog.created_at).toLocaleString()}</div>
+                <div><span className="text-gray-400">Admin:</span> {selectedLog.admin_name}</div>
+                <div className="capitalize"><span className="text-gray-400">Action:</span> {selectedLog.action_type}</div>
+                <div className="capitalize"><span className="text-gray-400">Target:</span> {selectedLog.target_type} • {selectedLog.target_name}</div>
+                <div><span className="text-gray-400">Severity:</span> {selectedLog.severity}</div>
+                <div><span className="text-gray-400">IP:</span> {selectedLog.ip_address}</div>
+              </div>
+              <div className="bg-gray-900 rounded border border-gray-700 p-3 text-xs overflow-auto max-h-80">
+                <pre className="whitespace-pre-wrap break-words">{JSON.stringify(selectedLog.details, null, 2)}</pre>
+              </div>
             </div>
-            <div className="bg-gray-900 rounded border border-gray-700 p-3 text-xs overflow-auto max-h-80">
-              <pre className="whitespace-pre-wrap break-words">{JSON.stringify(selectedLog.details, null, 2)}</pre>
-            </div>
-          </div>
-        )}
-        <DialogFooter>
-          <Button variant="outline" className="border-gray-600 text-gray-300" onClick={() => setDetailsOpen(false)}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          )}
+          <DialogFooter>
+            <Button variant="outline" className="border-gray-600 text-gray-300" onClick={() => setDetailsOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

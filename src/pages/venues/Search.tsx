@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Footer from '@/components/Footer';
 import LocationFilter from '@/components/LocationFilter';
-import VenueCard from '@/components/VenueCard';
+import { VenueCard } from '@/components/venues/VenueCard';
 import { Button } from '@/components/ui/button';
 import { Filter } from 'lucide-react';
 import { useVenueSearch, VenueSearchParams } from '@/hooks/useVenueSearch';
@@ -19,9 +19,9 @@ const VenueSearch = () => {
   };
 
   const handleLocationChange = (location: { latitude: number | null, longitude: number | null }) => {
-    searchVenues({ 
-      latitude: location.latitude, 
-      longitude: location.longitude 
+    searchVenues({
+      latitude: location.latitude,
+      longitude: location.longitude
     });
   };
 
@@ -33,10 +33,10 @@ const VenueSearch = () => {
     <div className="min-h-screen bg-esports-dark text-white flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Find Gaming Venues</h1>
-        
+
         <div className="mb-8">
-          <LocationFilter 
-            onSearch={handleSearch} 
+          <LocationFilter
+            onSearch={handleSearch}
             onLocationChange={handleLocationChange}
             onDistanceChange={handleDistanceChange}
           />
@@ -55,7 +55,7 @@ const VenueSearch = () => {
         </div>
 
         {loading ? (
-          <motion.div 
+          <motion.div
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             initial="hidden"
             animate="show"
@@ -92,7 +92,7 @@ const VenueSearch = () => {
             ))}
           </motion.div>
         ) : venues.length > 0 ? (
-          <motion.div 
+          <motion.div
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             initial="hidden"
             animate="show"

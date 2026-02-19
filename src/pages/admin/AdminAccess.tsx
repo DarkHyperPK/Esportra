@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Shield, UserPlus, UserMinus } from 'lucide-react';
+import { Shield, UserPlus, UserMinus, Crown, Users, ChevronRight, ArrowLeft } from 'lucide-react';
 import { ROLE_PERMISSIONS } from '@/hooks/useAdminPermissions';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
-type Role = { 
-  id: string; 
-  name: string; 
-  description: string; 
+type Role = {
+  id: string;
+  name: string;
+  description: string;
   isAdmin?: boolean;
   roleKey?: string;
   roleId?: string | number;
@@ -31,42 +32,36 @@ const AdminAccess: React.FC = () => {
     const load = async () => {
       try {
         console.log('Loading roles...');
-        
+
         // Load admin roles from database
-        // Try to select with 'key' first, fallback to without 'key' if it doesn't exist
         let adminRoles: any[] = [];
-        
+
         try {
-          // First try with 'key' column (newer schema)
           const { data: rolesWithKey, error: errorWithKey } = await supabase
             .from('admin_roles')
             .select('id, key, name, description')
             .order('name');
-          
+
           if (errorWithKey) {
-            // Check if error is due to missing 'key' column
             const errorMessage = errorWithKey?.message || String(errorWithKey) || '';
             const errorCode = errorWithKey?.code || '';
-            const isColumnError = errorMessage.includes('column') && errorMessage.includes('key') 
-              || errorCode === '42703'; // PostgreSQL error code for undefined column
-            
+            const isColumnError = errorMessage.includes('column') && errorMessage.includes('key')
+              || errorCode === '42703';
+
             if (isColumnError) {
-              // If error is about missing 'key' column, try without it (older schema)
               console.warn('Key column not found, trying without key column:', errorWithKey);
               const { data: rolesWithoutKey, error: errorWithoutKey } = await supabase
                 .from('admin_roles')
                 .select('id, name, description')
                 .order('name');
-              
+
               if (errorWithoutKey) {
                 console.error('Error loading admin roles (without key):', errorWithoutKey);
-                // Continue with empty array - regular roles will still work
                 adminRoles = [];
               } else {
                 adminRoles = rolesWithoutKey || [];
               }
             } else {
-              // Other error (permissions, table doesn't exist, etc.)
               console.error('Error loading admin roles:', {
                 message: errorWithKey?.message,
                 code: errorWithKey?.code,
@@ -83,31 +78,28 @@ const AdminAccess: React.FC = () => {
           console.error('Exception loading admin roles:', err);
           adminRoles = [];
         }
-        
+
         console.log('Loaded admin roles from DB:', adminRoles);
-        
-        // Regular user roles
+
         const regularRoles = [
           { id: 'organizer', name: 'organizer', description: 'Tournament Organizer - Can create and manage tournaments' },
           { id: 'venue_owner', name: 'venue_owner', description: 'Venue Owner - Can list and manage venues' },
           { id: 'casual', name: 'casual', description: 'Casual Player - Can join tournaments and create teams' }
         ];
-        
-        // Combine admin roles and regular roles
+
         const allRoles = [
           ...(adminRoles || []).map((role: any) => {
-            // Determine the identifier to use (key, name, or id)
             const roleKey = role.key || role.name;
             const roleId = role.id;
             const roleIdentifier = role.key || role.id || role.name;
-            
+
             return {
-              id: roleIdentifier, // Use as the selectable ID
+              id: roleIdentifier,
               name: role.name,
               description: role.description || '',
               isAdmin: true,
-              roleKey: roleKey, // Store the key/name for profiles.admin_roles array
-              roleId: roleId // Store the actual ID for admin_user_roles.role_id
+              roleKey: roleKey,
+              roleId: roleId
             };
           }),
           ...regularRoles.map(role => ({
@@ -115,7 +107,7 @@ const AdminAccess: React.FC = () => {
             isAdmin: false
           }))
         ];
-        
+
         console.log('Loaded roles:', allRoles);
         setRoles(allRoles);
       } catch (err) {
@@ -131,71 +123,61 @@ const AdminAccess: React.FC = () => {
       setLoading(true);
       const { data: user } = await supabase.from('profiles').select('id, email, is_admin, admin_roles').eq('email', email).maybeSingle();
       if (!user?.id) throw new Error('User not found');
-      
-      // Check if target user is a super admin
+
       const targetUserIsSuperAdmin = user.is_admin && (user.admin_roles as string[])?.includes('super_admin');
-      
+
       const selectedRoleData = roles.find(r => r.id === selectedRole);
       const roleDisplayName =
         selectedRoleData?.name ||
         selectedRole.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase());
       const isAdminRole = selectedRoleData?.isAdmin || false;
-      
-      // HIERARCHICAL RESTRICTIONS:
-      // 1. Block assigning ANY role (admin or regular) to super admins
+
       if (targetUserIsSuperAdmin) {
-        toast({ 
-          title: 'Cannot Assign Role', 
-          description: 'Super admins cannot have roles assigned to them. They have all permissions by default and do not need additional roles.', 
-          variant: 'destructive' 
+        toast({
+          title: 'Cannot Assign Role',
+          description: 'Super admins cannot have roles assigned to them. They have all permissions by default and do not need additional roles.',
+          variant: 'destructive'
         });
         setLoading(false);
         return;
       }
-      
-      // 2. Block assigning super_admin role (only system can create super admins)
+
       if (selectedRole === 'super_admin' || selectedRoleData?.roleKey === 'super_admin') {
-        toast({ 
-          title: 'Cannot Assign Role', 
-          description: 'Super admin role cannot be assigned through this interface. It must be assigned directly in the database.', 
-          variant: 'destructive' 
+        toast({
+          title: 'Cannot Assign Role',
+          description: 'Super admin role cannot be assigned through this interface. It must be assigned directly in the database.',
+          variant: 'destructive'
         });
         setLoading(false);
         return;
       }
-      
+
       if (isAdminRole) {
-        // Handle admin role assignment
-        // Get the role data from the loaded roles (which has roleId stored)
         const roleData = selectedRoleData as (Role & { roleKey?: string; roleId?: string | number });
-        
-        // If we have roleId stored, use it; otherwise look it up
+
         let roleId: string | number;
         let roleKey: string;
-        
+
         if (roleData?.roleId) {
           roleId = roleData.roleId;
-          // Normalize role key: use key if available, otherwise convert name to lowercase with underscores
           const rawKey = roleData.roleKey || roleData.name || selectedRole;
           roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
         } else {
-          // Fallback: look up the role
           const { data: adminRoleRecord, error: roleLookupError } = await supabase
             .from('admin_roles')
             .select('id, key, name')
             .or(`id.eq.${selectedRole},key.eq.${selectedRole},name.eq.${selectedRole}`)
             .maybeSingle();
-          
+
           if (roleLookupError || !adminRoleRecord) {
             throw new Error(`Admin role '${selectedRole}' not found in database`);
           }
-          
-          // Normalize role key: prefer key field, fallback to normalized name
+
           const rawKey = adminRoleRecord.key || adminRoleRecord.name || selectedRole;
           roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
           roleId = adminRoleRecord.id;
         }
-        
+
         console.log('Role assignment details:', {
           selectedRole,
           roleKey,
@@ -203,8 +185,7 @@ const AdminAccess: React.FC = () => {
           expectedPermissions: ROLE_PERMISSIONS[roleKey] || [],
           availableRoleKeys: Object.keys(ROLE_PERMISSIONS)
         });
-        
-        // Check if role already exists (multiple schema fallbacks)
+
         const { data: existingRoleExact } = await supabase
           .from('admin_user_roles')
           .select('role_id')
@@ -228,29 +209,27 @@ const AdminAccess: React.FC = () => {
 
           if (hasMatchingName) roleAlreadyAssigned = true;
         }
-        
-        // Check if role key already in admin_roles array
+
         const { data: currentProfile } = await supabase
           .from('profiles')
           .select('admin_roles')
           .eq('id', user.id)
           .maybeSingle();
-        
+
         const currentAdminRoles = (currentProfile?.admin_roles as string[]) || [];
         if (currentAdminRoles.includes(roleKey)) {
           roleAlreadyAssigned = true;
         }
         if (roleAlreadyAssigned) {
-          toast({ 
-            title: 'Role Already Assigned', 
+          toast({
+            title: 'Role Already Assigned',
             description: `${roleDisplayName} is already assigned to ${email}`,
             variant: 'default'
           });
           setLoading(false);
           return;
         }
-        
-        // Insert into admin_user_roles table
+
         const { error: adminError } = await supabase
           .from('admin_user_roles')
           .insert({
@@ -259,12 +238,11 @@ const AdminAccess: React.FC = () => {
             assigned_by: profile?.id,
             assigned_at: new Date().toISOString()
           });
-        
+
         if (adminError) {
-          // If role already exists (shouldn't happen due to check above, but handle gracefully)
           if (adminError.code === '23505') {
-            toast({ 
-              title: 'Role Already Assigned', 
+            toast({
+              title: 'Role Already Assigned',
               description: `${roleDisplayName} is already assigned to ${email}`,
               variant: 'default'
             });
@@ -273,20 +251,18 @@ const AdminAccess: React.FC = () => {
           }
           throw adminError;
         }
-        
-        // Update profiles.admin_roles array to include the role key
+
         const updatedAdminRoles = [...currentAdminRoles, roleKey];
-        
-        // Update profile with is_admin and admin_roles
+
         const { error: profileError, data: profileUpdateData } = await supabase
           .from('profiles')
-          .update({ 
+          .update({
             is_admin: true,
             admin_roles: updatedAdminRoles
           })
           .eq('id', user.id)
           .select('id, is_admin, admin_roles');
-        
+
         if (profileError) {
           console.error('❌ Profile update failed:', {
             error: profileError,
@@ -303,7 +279,7 @@ const AdminAccess: React.FC = () => {
           });
           throw profileError;
         }
-        
+
         console.log('✅ Profile update succeeded:', {
           userId: user.id,
           email,
@@ -311,22 +287,21 @@ const AdminAccess: React.FC = () => {
           updatedData: profileUpdateData,
           updatedAdminRoles
         });
-        
-        // Verify the role was actually stored - wait a bit for DB to sync
+
         await new Promise(resolve => setTimeout(resolve, 200));
-        
+
         const { data: verifyProfile, error: verifyError } = await supabase
           .from('profiles')
           .select('is_admin, admin_roles, admin_permissions')
           .eq('id', user.id)
           .maybeSingle();
-        
+
         if (verifyError) {
           console.error('❌ Error verifying role assignment:', verifyError);
         } else {
           const storedRoles = (verifyProfile?.admin_roles as string[]) || [];
           const roleInArray = storedRoles.includes(roleKey);
-          
+
           console.log('✅ Role assignment verification:', {
             userId: user.id,
             email,
@@ -338,14 +313,13 @@ const AdminAccess: React.FC = () => {
             roleInArray,
             adminUserRolesCheck: 'Will check below'
           });
-          
-          // Also verify admin_user_roles table
+
           const { data: adminUserRoles, error: aurError } = await supabase
             .from('admin_user_roles')
             .select('role_id')
             .eq('user_id', user.id)
             .eq('role_id', roleId);
-          
+
           if (aurError) {
             console.error('❌ Error checking admin_user_roles:', aurError);
           } else {
@@ -355,7 +329,7 @@ const AdminAccess: React.FC = () => {
               expectedRoleId: roleId
             });
           }
-          
+
           if (!roleInArray || !verifyProfile?.is_admin) {
             console.error('❌ ROLE NOT PROPERLY SAVED!', {
               expectedRoleKey: roleKey,
@@ -363,21 +337,19 @@ const AdminAccess: React.FC = () => {
               isAdmin: verifyProfile?.is_admin,
               profileUpdateSuccess: 'Check above for profileError'
             });
-            toast({ 
-              title: 'Warning', 
+            toast({
+              title: 'Warning',
               description: 'Role assigned but verification failed. Please refresh the page.',
               variant: 'destructive'
             });
           }
         }
-        
-        // Get role display name for toast message
+
         toast({ title: 'Role Assigned', description: `${roleDisplayName} assigned to ${email}` });
-        
-        // Trigger refresh events for the assigned user (if they're logged in)
+
         window.dispatchEvent(new CustomEvent('adminRolesUpdated'));
         localStorage.setItem('admin_roles_updated', Date.now().toString());
-        
+
         console.log('📢 Role assignment complete - events dispatched:', {
           roleKey,
           roleDisplayName,
@@ -385,10 +357,8 @@ const AdminAccess: React.FC = () => {
           userId: user.id,
           eventsDispatched: ['adminRolesUpdated', 'localStorage update']
         });
-        
+
       } else {
-        // Handle regular user role assignment using multi-role system
-        // First, add the role to user_roles table
         const { error: userRoleError } = await supabase
           .from('user_roles')
           .insert({
@@ -398,23 +368,20 @@ const AdminAccess: React.FC = () => {
             assigned_by: profile?.id,
             assigned_at: new Date().toISOString()
           });
-        
+
         if (userRoleError) {
-          // If role already exists, just update it to active
           const { error: updateError } = await supabase
             .from('user_roles')
             .update({ is_active: true, assigned_by: profile?.id, assigned_at: new Date().toISOString() })
             .eq('user_id', user.id)
             .eq('role', selectedRole);
-          
+
           if (updateError) throw updateError;
         }
 
-        // Create verification record for organizer/venue_owner roles
         if (selectedRole === 'organizer' || selectedRole === 'venue_owner') {
           try {
-            // Create verification request record with approved status
-            // @ts-ignore - verification_requests table may not be in types
+            // @ts-ignore
             const { error: verificationError } = await supabase
               .from('verification_requests')
               .insert({
@@ -432,10 +399,8 @@ const AdminAccess: React.FC = () => {
 
             if (verificationError) {
               console.warn('Could not create verification record:', verificationError);
-              // Don't throw error, just log it
             }
 
-            // Also add to verified_roles table
             const { error: verifiedRoleError } = await supabase
               .from('verified_roles')
               .insert({
@@ -454,7 +419,6 @@ const AdminAccess: React.FC = () => {
           }
         }
 
-        // Update the user's base role if this is their first role assignment
         const { data: existingRoles } = await supabase
           .from('user_roles')
           .select('role')
@@ -462,39 +426,32 @@ const AdminAccess: React.FC = () => {
           .eq('is_active', true);
 
         if (existingRoles && existingRoles.length === 1) {
-          // This is their first role, set it as base role
           const { error: baseRoleError } = await supabase
             .from('profiles')
             .update({ base_role: selectedRole })
             .eq('id', user.id);
-          
+
           if (baseRoleError) {
             console.warn('Could not update base role:', baseRoleError);
           }
         }
       }
-      
+
       toast({ title: 'Role Assigned', description: `${roleDisplayName} assigned to ${email}` });
-      
-      // Trigger admin context refresh for the assigned user
-      // Dispatch event to refresh admin context in all tabs
+
       window.dispatchEvent(new CustomEvent('adminRolesUpdated'));
-      
-      // Also trigger via localStorage for cross-tab updates
+
       window.localStorage.setItem('admin_roles_updated', Date.now().toString());
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'admin_roles_updated',
         newValue: Date.now().toString()
       }));
-      
-      // If assigning to current user, also refresh immediately
+
       if (user.id === profile?.id) {
-        // Small delay to ensure database update is complete
         setTimeout(() => {
           window.location.reload();
         }, 500);
       } else {
-        // For other users, show message that they need to refresh
         toast({
           title: 'Role Assigned',
           description: 'The user will need to refresh their browser to see the new role.',
@@ -514,72 +471,61 @@ const AdminAccess: React.FC = () => {
       setLoading(true);
       const { data: user } = await supabase.from('profiles').select('id, email, is_admin, admin_roles').eq('email', email).maybeSingle();
       if (!user?.id) throw new Error('User not found');
-      
-      // Check if target user is a super admin
+
       const targetUserIsSuperAdmin = user.is_admin && (user.admin_roles as string[])?.includes('super_admin');
-      
-      // HIERARCHICAL RESTRICTIONS:
-      // Block revoking roles from super admins (they don't have roles assigned)
+
       if (targetUserIsSuperAdmin) {
-        toast({ 
-          title: 'Cannot Revoke Role', 
-          description: 'Super admins do not have roles assigned. They have all permissions by default.', 
-          variant: 'destructive' 
+        toast({
+          title: 'Cannot Revoke Role',
+          description: 'Super admins do not have roles assigned. They have all permissions by default.',
+          variant: 'destructive'
         });
         setLoading(false);
         return;
       }
-      
+
       const selectedRoleData = roles.find(r => r.id === selectedRole);
       const roleDisplayName =
         selectedRoleData?.name ||
         selectedRole.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase());
       const isAdminRole = selectedRoleData?.isAdmin || false;
-      
-      // Block revoking super_admin role (only system can manage it)
+
       if (selectedRole === 'super_admin' || selectedRoleData?.roleKey === 'super_admin') {
-        toast({ 
-          title: 'Cannot Revoke Role', 
-          description: 'Super admin role cannot be revoked through this interface.', 
-          variant: 'destructive' 
+        toast({
+          title: 'Cannot Revoke Role',
+          description: 'Super admin role cannot be revoked through this interface.',
+          variant: 'destructive'
         });
         setLoading(false);
         return;
       }
-      
+
       if (isAdminRole) {
-        // Handle admin role revocation
-        // Get the role data from the loaded roles (which has roleId stored)
         const roleData = selectedRoleData as (Role & { roleKey?: string; roleId?: string | number });
-        
-        // If we have roleId stored, use it; otherwise look it up
+
         let roleId: string | number;
         let roleKey: string;
-        
+
         if (roleData?.roleId) {
           roleId = roleData.roleId;
-          // Normalize role key: use key if available, otherwise convert name to lowercase with underscores
           const rawKey = roleData.roleKey || roleData.name || selectedRole;
           roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
         } else {
-          // Fallback: look up the role
           const { data: adminRoleRecord, error: roleLookupError } = await supabase
             .from('admin_roles')
             .select('id, key, name')
             .or(`id.eq.${selectedRole},key.eq.${selectedRole},name.eq.${selectedRole}`)
             .maybeSingle();
-          
+
           if (roleLookupError || !adminRoleRecord) {
             throw new Error(`Admin role '${selectedRole}' not found in database`);
           }
-          
-          // Normalize role key: prefer key field, fallback to normalized name
+
           const rawKey = adminRoleRecord.key || adminRoleRecord.name || selectedRole;
           roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
           roleId = adminRoleRecord.id;
         }
-        
-        // Check if the user actually has this admin role
+
         const { data: existingAdminRole } = await supabase
           .from('admin_user_roles')
           .select('id')
@@ -597,45 +543,39 @@ const AdminAccess: React.FC = () => {
           return;
         }
 
-        // Delete from admin_user_roles table
         const { error: adminError } = await supabase
           .from('admin_user_roles')
           .delete()
           .eq('user_id', user.id)
           .eq('role_id', roleId);
-        
+
         if (adminError) throw adminError;
-        
-        // Update profiles.admin_roles array to remove the role key
+
         const { data: currentProfile } = await supabase
           .from('profiles')
           .select('admin_roles')
           .eq('id', user.id)
           .maybeSingle();
-        
+
         const currentAdminRoles = (currentProfile?.admin_roles as string[]) || [];
         const updatedAdminRoles = currentAdminRoles.filter(r => r !== roleKey);
-        
-        // Check if user has any other admin roles
+
         const { data: remainingAdminRoles } = await supabase
           .from('admin_user_roles')
           .select('id')
           .eq('user_id', user.id);
-        
-        // Update profile - set is_admin to false if no roles left
+
         const { error: profileError } = await supabase
           .from('profiles')
-          .update({ 
+          .update({
             is_admin: remainingAdminRoles && remainingAdminRoles.length > 0,
             admin_roles: updatedAdminRoles
           })
           .eq('id', user.id);
-        
+
         if (profileError) throw profileError;
-        
+
       } else {
-        // Handle regular user role revocation using multi-role system
-        // Check if role exists and is active
         const { data: existingUserRole } = await supabase
           .from('user_roles')
           .select('id')
@@ -654,16 +594,14 @@ const AdminAccess: React.FC = () => {
           return;
         }
 
-        // Deactivate the role in user_roles table
         const { error: userRoleError } = await supabase
           .from('user_roles')
           .update({ is_active: false })
           .eq('user_id', user.id)
           .eq('role', selectedRole);
-        
+
         if (userRoleError) throw userRoleError;
 
-        // Also mark verification as revoked (not deleted) to keep history
         try {
           const { error: verifiedUpdateErr } = await supabase
             .from('verified_roles')
@@ -677,26 +615,24 @@ const AdminAccess: React.FC = () => {
           console.warn('verified_roles table may not exist or update failed:', e);
         }
 
-        // Check if user has any remaining active roles
         const { data: remainingRoles } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
           .eq('is_active', true);
-        
-        // If no roles left, set base_role to casual
+
         if (!remainingRoles || remainingRoles.length === 0) {
           const { error: baseRoleError } = await supabase
             .from('profiles')
             .update({ base_role: 'casual' })
             .eq('id', user.id);
-          
+
           if (baseRoleError) {
             console.warn('Could not update base role:', baseRoleError);
           }
         }
       }
-      
+
       toast({
         title: 'Role Revoked',
         description: `${roleDisplayName} revoked from ${email}`,
@@ -710,80 +646,188 @@ const AdminAccess: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2"><Shield className="w-4 h-4 text-blue-400"/> Admin Access</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input placeholder="User email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-gray-700 border-gray-600 text-white" />
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-700 text-white max-h-[300px]">
-                {/* Regular User Roles */}
-                {roles.filter(r => !r.isAdmin).length > 0 && (
-                  <>
-                    <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase">User Roles</div>
-                    {roles.filter(r => !r.isAdmin).map(r => (
-                      <SelectItem key={r.id} value={r.id} className="flex items-center gap-2">
-                        <span className="capitalize">{r.name}</span>
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-                {/* Admin Roles (excluding super_admin) */}
-                {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').length > 0 && (
-                  <>
-                    <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 uppercase mt-2 border-t border-gray-700 pt-2">Admin Roles</div>
-                    {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').map(r => (
-                      <SelectItem key={r.id} value={r.id} className="flex items-center gap-2">
-                        <span className="capitalize">{r.name}</span>
-                        <Badge variant="secondary" className="text-xs ml-auto">Admin</Badge>
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-            <div className="flex gap-2">
-              <Button disabled={loading} onClick={assign} className="bg-blue-600 hover:bg-blue-700 text-white">
-                <UserPlus className="w-4 h-4 mr-2"/> Assign
-              </Button>
-              <Button disabled={loading} onClick={revoke} variant="outline" className="border-red-600 text-red-400 hover:bg-red-600/10">
-                <UserMinus className="w-4 h-4 mr-2"/> Revoke
-              </Button>
+    <div className="min-h-screen p-4 lg:p-8">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-4 mb-8"
+      >
+        <Link
+          to="/admin/dashboard"
+          className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 text-zinc-400" />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+              <Shield className="w-5 h-5 text-rose-500" />
             </div>
-          </div>
+            Admin Access Control
+          </h1>
+          <p className="text-zinc-500 text-sm mt-1">Assign and revoke user & admin roles</p>
+        </div>
+      </motion.div>
 
-          <div className="text-sm text-gray-400 space-y-2">
-            <div>
-              <strong className="text-gray-300">Role Hierarchy:</strong>
-              <ul className="list-disc list-inside mt-1 space-y-1 ml-2">
-                <li><strong className="text-yellow-400">Super Admin</strong> - Cannot have roles assigned. Has all permissions by default.</li>
-                <li><strong className="text-blue-400">Admin Roles</strong> - Can be assigned to regular users (not super admins).</li>
-                <li><strong className="text-green-400">User Roles</strong> - Regular user roles (organizer, venue_owner, casual).</li>
-              </ul>
-            </div>
-            <div className="pt-2 border-t border-gray-700">
-              <strong className="text-gray-300">Available Roles:</strong>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {roles.filter(r => !r.isAdmin || (r as any).roleKey !== 'super_admin').map(r => (
-                  <Badge key={r.id} className={`${r.isAdmin ? 'bg-blue-600' : 'bg-gray-700'} text-white`}>
-                    {r.name} {r.isAdmin && '(Admin)'}
-                  </Badge>
-                ))}
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Role Assignment Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
+        >
+          <div className="px-6 py-5 border-b border-zinc-800/50">
+            <h2 className="text-lg font-semibold text-white">Assign or Revoke Role</h2>
+            <p className="text-sm text-zinc-500 mt-1">Enter the user's email and select a role to assign or revoke.</p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">User Email</label>
+                <Input
+                  placeholder="user@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-zinc-900/50 border-zinc-700/50 text-white placeholder:text-zinc-600 focus:border-rose-500/50 focus:ring-rose-500/20 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Role</label>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger className="bg-zinc-900/50 border-zinc-700/50 text-white rounded-xl">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0a0a0c] border-zinc-800 text-white max-h-[300px]">
+                    {roles.filter(r => !r.isAdmin).length > 0 && (
+                      <>
+                        <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">User Roles</div>
+                        {roles.filter(r => !r.isAdmin).map(r => (
+                          <SelectItem key={r.id} value={r.id} className="text-white hover:bg-white/5 rounded-lg capitalize">
+                            {r.name.replace(/_/g, ' ')}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                    {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').length > 0 && (
+                      <>
+                        <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mt-2 border-t border-zinc-800 pt-3">Admin Roles</div>
+                        {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').map(r => (
+                          <SelectItem key={r.id} value={r.id} className="text-white hover:bg-white/5 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <span className="capitalize">{r.name.replace(/_/g, ' ')}</span>
+                              <Badge className="bg-rose-500/10 text-rose-400 border-rose-500/20 text-[10px]">Admin</Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Action</label>
+                <div className="flex gap-2">
+                  <Button
+                    disabled={loading || !email}
+                    onClick={assign}
+                    className="flex-1 bg-rose-500 hover:bg-rose-600 text-white rounded-xl shadow-lg shadow-rose-500/10 transition-all hover:-translate-y-0.5"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" /> Assign
+                  </Button>
+                  <Button
+                    disabled={loading || !email}
+                    onClick={revoke}
+                    variant="outline"
+                    className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-xl transition-all hover:-translate-y-0.5"
+                  >
+                    <UserMinus className="w-4 h-4 mr-2" /> Revoke
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </motion.div>
+
+        {/* Role Hierarchy Info */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
+        >
+          <div className="px-6 py-5 border-b border-zinc-800/50">
+            <h2 className="text-lg font-semibold text-white">Role Hierarchy</h2>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Super Admin */}
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm font-semibold text-amber-400">Super Admin</span>
+                </div>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Cannot have roles assigned. Has all permissions by default.
+                </p>
+              </div>
+              {/* Admin Roles */}
+              <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-4 h-4 text-rose-400" />
+                  <span className="text-sm font-semibold text-rose-400">Admin Roles</span>
+                </div>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Can be assigned to regular users. Grants admin panel access.
+                </p>
+              </div>
+              {/* User Roles */}
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="w-4 h-4 text-emerald-400" />
+                  <span className="text-sm font-semibold text-emerald-400">User Roles</span>
+                </div>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Regular user roles: organizer, venue owner, casual player.
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Available Roles */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
+        >
+          <div className="px-6 py-5 border-b border-zinc-800/50">
+            <h2 className="text-lg font-semibold text-white">Available Roles</h2>
+          </div>
+          <div className="p-6">
+            <div className="flex flex-wrap gap-2">
+              {roles.filter(r => !r.isAdmin || (r as any).roleKey !== 'super_admin').map(r => (
+                <Badge
+                  key={r.id}
+                  className={`${r.isAdmin
+                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                    : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                    } px-3 py-1.5 text-xs font-medium rounded-lg capitalize`}
+                >
+                  {r.name.replace(/_/g, ' ')}
+                  {r.isAdmin && (
+                    <span className="ml-1.5 text-[10px] opacity-60">admin</span>
+                  )}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 };
 
 export default AdminAccess;
-
-

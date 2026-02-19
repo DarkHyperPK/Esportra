@@ -18,7 +18,20 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
         return membersStr.split(',').map(s => s.trim()).filter(Boolean);
     };
 
-    const members = getMembers(participant.team_members);
+    const isSolo = participant.participant_type === 'solo';
+    const isValorant = participant.tournament?.game?.toLowerCase() === 'valorant';
+    const userTag = isSolo ? (
+        (isValorant && participant.user?.riot_tag) ||
+        participant.user?.riot_tag ||
+        participant.user?.steam_tag ||
+        participant.gamer_tag ||
+        participant.user?.username ||
+        'Solo Player'
+    ) : null;
+
+    const displayName = isSolo ? userTag : (participant.team_name || 'Unknown Team');
+    const displayLogo = isSolo ? participant.user?.avatar_url : participant.team_logo;
+    const members = isSolo ? [displayName] : getMembers(participant.team_members);
 
     return (
         // Layout Placeholder - Keeps the grid cell stable
@@ -68,24 +81,27 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
 
                             {/* Logo */}
                             <div className="relative w-24 h-24 flex items-center justify-center mb-2">
-                                {participant.team_logo ? (
+                                {displayLogo ? (
                                     <img
-                                        src={participant.team_logo}
-                                        alt={participant.team_name}
-                                        className="w-full h-full object-contain filter drop-shadow-md"
+                                        src={displayLogo}
+                                        alt={displayName}
+                                        className={`w-full h-full object-contain filter drop-shadow-md ${isSolo ? 'rounded-full' : ''}`}
                                     />
                                 ) : (
-                                    <Users className="w-16 h-16 text-gray-600" />
+                                    isSolo ? <Users className="w-16 h-16 text-purple-600/50" /> : <Users className="w-16 h-16 text-gray-600" />
                                 )}
                             </div>
 
                             {/* Name */}
                             <div className="text-center w-full relative z-10">
                                 <h3 className="text-xl font-bold text-white truncate px-2">
-                                    {participant.team_name || 'Unknown Team'}
+                                    {displayName}
                                 </h3>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    {new Date(participant.registered_at).toLocaleDateString()}
+                                <p className="text-sm text-gray-400 mt-1 uppercase tracking-tighter font-medium opacity-50">
+                                    {isSolo ? 'Solo Participant' : 'Team Registration'}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Joined {participant.registered_at ? new Date(participant.registered_at).toLocaleDateString() : 'Unknown Date'}
                                 </p>
                             </div>
                         </motion.div>
@@ -101,12 +117,14 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
                         >
                             <div className="flex items-center justify-center gap-2 mb-6 pt-2">
                                 <Users className="w-5 h-5 text-purple-400" />
-                                <h4 className="text-lg font-bold text-white tracking-wide uppercase">ROSTER</h4>
+                                <h4 className="text-lg font-bold text-white tracking-wide uppercase">
+                                    {isSolo ? 'Player Profile' : 'ROSTER'}
+                                </h4>
                             </div>
 
                             <div className="flex flex-col gap-3 px-2 pb-6">
                                 {members.length > 0 ? (
-                                    members.map((member, idx) => (
+                                    members.slice(0, 5).map((member, idx) => (
                                         <div key={idx} className="flex items-baseline gap-3 text-white font-medium text-lg">
                                             <span className="text-gray-500 text-sm font-normal w-4 text-right">{idx + 1}.</span>
                                             <span className="truncate">{member}</span>
@@ -114,6 +132,11 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
                                     ))
                                 ) : (
                                     <p className="text-sm text-gray-500 italic text-center py-4">No members listed</p>
+                                )}
+                                {members.length > 5 && (
+                                    <p className="text-xs text-gray-500 text-center italic mt-1">
+                                        + {members.length - 5} more
+                                    </p>
                                 )}
                             </div>
 

@@ -12,6 +12,7 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog';
+import { getTimezoneAbbr, utcToLocalInput, localInputToUTC } from '@/lib/timeUtils';
 
 export interface EditMatchDraft {
     scheduled_at: string;
@@ -43,11 +44,13 @@ export const EditMatchDialog: React.FC<EditMatchDialogProps> = ({
                 {draft && (
                     <div className="space-y-3">
                         <div>
-                            <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">Scheduled time</label>
+                            <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">
+                                Scheduled time <span className="text-gray-500 normal-case">({getTimezoneAbbr()})</span>
+                            </label>
                             <input
                                 type="datetime-local"
-                                value={draft.scheduled_at}
-                                onChange={(e) => onDraftChange({ ...draft, scheduled_at: e.target.value })}
+                                value={draft.scheduled_at ? utcToLocalInput(draft.scheduled_at) : ''}
+                                onChange={(e) => onDraftChange({ ...draft, scheduled_at: e.target.value ? localInputToUTC(e.target.value) : '' })}
                                 className="w-full bg-[#16161d] border border-[#2a2a35] rounded px-3 py-2 text-sm text-white"
                                 style={{ colorScheme: 'dark' }}
                             />

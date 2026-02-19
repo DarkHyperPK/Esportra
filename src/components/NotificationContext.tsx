@@ -57,6 +57,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       message: inv.message || `You have been invited to join a team`,
       team_id: inv.team_id,
       is_read: false,
+      link: '/player/teams',
       created_at: inv.created_at,
     }));
 
@@ -145,6 +146,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
               message: newInvite.message || `You have been invited to join a team`,
               team_id: newInvite.team_id,
               is_read: false,
+              link: '/player/teams',
               created_at: newInvite.created_at,
             };
 
@@ -176,6 +178,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
                 message: updatedInvite.message || `You have been invited to join a team`,
                 team_id: updatedInvite.team_id,
                 is_read: false,
+                link: '/player/teams',
                 created_at: updatedInvite.created_at,
               };
 

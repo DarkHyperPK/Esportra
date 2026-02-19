@@ -85,9 +85,9 @@ const AboutPage: React.FC = () => {
                   <img
                     src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/About%20us%20section%20assets/origin.jpg"
                     alt="The Fragmentation"
-                    className="w-full h-full object-cover filter grayscale contrast-125 group-hover:grayscale-0 transition-all duration-[1500ms] ease-in-out group-hover:rotate-2 group-hover:scale-105"
+                    className="w-full h-full object-cover filter grayscale contrast-125 group-hover:grayscale-0 transition-all [transition-duration:1500ms] ease-in-out group-hover:rotate-2 group-hover:scale-105"
                   />
-                  <div className={`absolute inset-0 bg-rose-500/20 mix-blend-multiply opacity-0 group-hover:opacity-100 transition-opacity duration-[1500ms] ease-in-out pointer-events-none`} />
+                  <div className={`absolute inset-0 bg-rose-500/20 mix-blend-multiply opacity-0 group-hover:opacity-100 transition-opacity [transition-duration:1500ms] ease-in-out pointer-events-none`} />
                 </div>
               </div>
 

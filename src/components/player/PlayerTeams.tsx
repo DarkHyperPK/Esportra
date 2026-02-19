@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Users, Trophy } from "lucide-react";
 import { useState, useEffect } from 'react';
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog as InviteDialog, DialogContent as InviteDialogContent, DialogHeader as InviteDialogHeader, DialogTitle as InviteDialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { Dialog as ConfirmDialog, DialogContent as ConfirmDialogContent, DialogHeader as ConfirmDialogHeader, DialogTitle as ConfirmDialogTitle } from '@/components/ui/dialog';
 
 interface TeamMember {
@@ -109,10 +110,13 @@ const PlayerTeams = () => {
     return results.every(Boolean);
   };
 
+  const { createTeam, inviteUserToTeam } = useTeamManagement();
+
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setErrorMsg('');
+
     // Validate members
     const valid = await validateMembers();
     if (!valid) {
@@ -125,81 +129,48 @@ const PlayerTeams = () => {
       });
       return;
     }
+
     let logoUrl = null;
     if (teamLogoFile) {
       logoUrl = await uploadTeamLogo(teamLogoFile);
       setTeamLogoUrl(logoUrl);
     }
-    // Get current user id (Supabase v2)
-    const { data: { user } } = await supabase.auth.getUser();
-    // Create team
-    const { data: team, error: teamError } = await supabase
-      .from('teams')
-      .insert({
-        name: teamName,
-        tag: teamTag,
-        logo_url: logoUrl,
-        game: game || 'Unknown', // Ensure game field is not null
-        games: [game || 'Unknown'], // Also set games array
-        owner_id: user?.id
+
+    const membersList = memberUsernames
+      .filter(username => !!username)
+      .map(username => {
+        const u = verifiedUsers.find(v => v.username === username);
+        return u ? { user_id: u.id, role: 'member' as const } : null;
       })
-      .select()
-      .single();
-    if (teamError) {
-      setErrorMsg('Failed to create team. Please try again.');
-      setSubmitting(false);
-      toast({
-        title: 'Team Creation Failed',
-        description: teamError.message,
-        variant: 'destructive',
-      });
-      return;
-    }
-    // Add creator as captain and other members
-    const memberRows = [
-      { team_id: team.id, user_id: user.id, role: 'captain' },
-      ...memberUsernames
-        .filter(username => verifiedUsers.find(u => u.username === username)?.id !== user.id)
-        .map((username) => ({
-          team_id: team.id,
-          user_id: verifiedUsers.find(u => u.username === username)?.id,
-          role: 'member',
-        })),
-    ];
-    const { error: memberError } = await supabase.from('team_members').insert(memberRows);
-    if (memberError) {
-      setErrorMsg('Failed to add team members.');
-      setSubmitting(false);
-      toast({
-        title: 'Member Add Failed',
-        description: memberError.message,
-        variant: 'destructive',
-      });
-      return;
-    }
-    toast({
-      title: 'Team Created',
-      description: 'Your team has been created and invites sent to members.',
-      variant: 'success',
+      .filter((m): m is { user_id: string; role: 'member' } => m !== null);
+
+    const newTeam = await createTeam({
+      name: teamName,
+      tag: teamTag,
+      game: game || 'Unknown',
+      game_format: 'squad', // Default
+      logo_url: logoUrl || undefined,
+      description: '',
+      members: membersList
     });
-    setShowModal(false);
-    setTeamName('');
-    setTeamTag('');
-    setGame('');
-    setTeamLogoFile(null);
-    setTeamLogoUrl(null);
-    setMemberUsernames(['']);
+
+    if (newTeam) {
+      setShowModal(false);
+      setTeamName('');
+      setTeamTag('');
+      setGame('');
+      setTeamLogoFile(null);
+      setTeamLogoUrl(null);
+      setMemberUsernames(['']);
+    }
     setSubmitting(false);
-    // Refetch teams
-    // (fetchTeams will run due to showModal change)
   };
 
   // Listen for team invite acceptance events
   useEffect(() => {
     const handleTeamInviteAccepted = () => {
       console.log('Team invite accepted, refreshing teams...');
-      // Trigger a re-fetch by updating a dependency
-      setShowModal(prev => prev);
+      setShowModal(prev => prev); // Trigger refresh
     };
 
     window.addEventListener('teamInviteAccepted', handleTeamInviteAccepted);
@@ -212,7 +183,6 @@ const PlayerTeams = () => {
   useEffect(() => {
     const fetchTeams = async () => {
       setLoading(true);
-      // Get current user id (Supabase v2)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setTeams([]);
@@ -220,38 +190,44 @@ const PlayerTeams = () => {
         return;
       }
       // Get all team_ids where user is a member
-      const { data: memberRows, error: memberError } = await supabase
+      const { data: memberRows } = await supabase
         .from('team_members')
-        .select('team_id, role')
+        .select('team_id')
         .eq('user_id', user.id);
+
       const teamIds = memberRows ? memberRows.map(row => row.team_id) : [];
-      // Fetch teams where user is a member or creator
+
+      // Fetch teams where user is a member or owner
       const { data: teamRows, error: teamError } = await supabase
         .from('teams')
         .select('id, name, logo_url, owner_id, game, tag')
-        .or([
-          teamIds.length > 0 ? `id.in.(${teamIds.join(',')})` : null,
-          `owner_id.eq.${user.id}`
-        ].filter(Boolean).join(','));
+        .or(`owner_id.eq.${user.id}${teamIds.length > 0 ? `,id.in.(${teamIds.join(',')})` : ''}`);
+
       if (teamError || !teamRows) {
         setTeams([]);
         setLoading(false);
         return;
       }
-      // Remove duplicates (if any)
+
+      // Remove duplicates
       const uniqueTeams = Array.from(new Map(teamRows.map(t => [t.id, t])).values());
-      // For each team, fetch members
+
       const teamsWithMembers = await Promise.all(uniqueTeams.map(async (team) => {
         const { data: memberList } = await supabase
           .from('team_members')
           .select('user_id, role, profiles(username, avatar_url)')
           .eq('team_id', team.id);
-        const members = (memberList || []).map(m => ({
-          id: m.user_id,
-          username: m.profiles?.username || '',
-          avatar: m.profiles?.avatar_url || '',
-          role: m.role === 'captain' ? 'Captain' : 'Member',
-        }));
+
+        const members = (memberList || []).map((m: any) => {
+          const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+          return {
+            id: m.user_id,
+            username: profile?.username || 'Unknown',
+            avatar: profile?.avatar_url || '',
+            role: m.role === 'captain' ? 'Captain' : 'Member',
+          };
+        });
+
         return {
           id: team.id,
           name: team.name,
@@ -262,79 +238,45 @@ const PlayerTeams = () => {
           totalMatches: 0,
         };
       }));
+
       setTeams(teamsWithMembers);
       setLoading(false);
     };
+
     fetchTeams();
   }, [showModal]);
 
   const gameOptions = games.map(g => ({ value: g.value, label: g.label }));
 
-  // Invite member logic
+  // Invite member logic using hook
   const handleInviteMember = async () => {
     setInviteError('');
     setInviteLoading(true);
-    // Validate username
-    const { data: user, error } = await supabase.from('profiles').select('id, is_verified, is_admin').eq('username', inviteUsername).single();
+
+    if (!inviteModal.teamId) return;
+
+    // Resolve username to ID first (since hook expects ID)
+    const { data: user, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', inviteUsername)
+      .single();
+
     if (error || !user) {
       setInviteError('User not found.');
       setInviteLoading(false);
       return;
     }
-    if (!user.is_verified) {
-      setInviteError('User is not verified.');
-      setInviteLoading(false);
-      return;
-    }
-    if (user.is_admin) {
-      setInviteError('Cannot invite admins to teams. Admins can only create and manage teams.');
-      setInviteLoading(false);
-      return;
-    }
-    // Check if already a member or invited
-    const { data: existingMember } = await supabase.from('team_members').select('id').eq('team_id', inviteModal.teamId).eq('user_id', user.id).single();
-    if (existingMember) {
-      setInviteError('User is already a team member.');
-      setInviteLoading(false);
-      return;
-    }
-    const { data: existingInvite } = await supabase.from('team_invitations').select('id, status').eq('team_id', inviteModal.teamId).eq('invited_user_id', user.id).single();
-    if (existingInvite && existingInvite.status === 'pending') {
-      setInviteError('User already has a pending invite.');
-      setInviteLoading(false);
-      return;
-    }
-    // Get current user (inviter)
-    const { data: { user: inviter } } = await supabase.auth.getUser();
-    // Insert invite
-    const { error: inviteError } = await supabase.from('team_invitations').insert({
-      team_id: inviteModal.teamId,
-      invited_user_id: user.id,
-      invited_by: inviter.id,
-      status: 'pending',
-    });
-    if (inviteError) {
-      setInviteError('Failed to send invite.');
-      setInviteLoading(false);
-      return;
-    }
-    // Create notification for invited user
-    await supabase.from('notifications').insert({
-      user_id: user.id,
-      type: 'team_invite',
-      title: 'Team Invitation',
-      message: `You have been invited to join a team.`,
-      is_read: false,
-      created_at: new Date().toISOString(),
-    });
+
+    const success = await inviteUserToTeam(inviteModal.teamId, user.id);
+
     setInviteLoading(false);
-    setInviteModal({ open: false, teamId: null });
-    setInviteUsername('');
-    toast({
-      title: 'Invite Sent',
-      description: 'The user has been invited to join your team.',
-      variant: 'success',
-    });
+    if (success) {
+      setInviteModal({ open: false, teamId: null });
+      setInviteUsername('');
+    } else {
+      // useTeamManagement handles the toast for errors, but we can clear the loading state
+    }
   };
 
   return (
@@ -376,7 +318,10 @@ const PlayerTeams = () => {
                     {team.members.map((member) => (
                       <div key={member.id} className="flex items-center justify-between bg-gaming-dark rounded-lg px-3 py-2 shadow-sm">
                         <div className="flex items-center gap-3">
-                          <Avatar src={member.avatar} name={member.username} size={40} />
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={member.avatar} alt={member.username} />
+                            <AvatarFallback>{member.username?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
                           <div>
                             <div className="font-semibold text-white">{member.username}</div>
                             <div className="text-xs text-gray-400">{member.role}</div>
@@ -387,10 +332,10 @@ const PlayerTeams = () => {
                             <Badge variant="outline" className="border-yellow-500 text-yellow-400 bg-gaming-dark/80 px-2 py-1 rounded-full font-bold">Captain</Badge>
                           )}
                           {team.members.some(m => m.role === 'Captain' && m.id === userId) && member.role !== 'Captain' && (
-                            <Button variant="destructive" size="xs" onClick={async () => {
+                            <Button variant="destructive" size="sm" onClick={async () => {
                               // Remove member logic
                               await supabase.from('team_members').delete().eq('team_id', team.id).eq('user_id', member.id);
-                              toast({ title: 'Member removed', variant: 'success' });
+                              toast({ title: 'Member removed', variant: 'default' });
                               setShowModal(false);
                             }}>
                               Remove
@@ -582,7 +527,7 @@ const PlayerTeams = () => {
                   const { error } = await supabase.from('teams').delete().eq('id', deleteModal.team?.id);
                   if (error) throw error;
                   setDeleteModal({ open: false, team: null });
-                  toast({ title: 'Team deleted', variant: 'success' });
+                  toast({ title: 'Team deleted', variant: 'default' });
                   // Refetch teams
                   setShowModal(false);
                   // Optionally, trigger a global refresh (e.g., via context or notification)

@@ -52,53 +52,37 @@ const TournamentList = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [cascadeWarnings, setCascadeWarnings] = useState<Array<{ entity: string; count: number; description?: string }>>([]);
 
-  // Fetch Tournaments
+  // Fetch Tournaments - Optimized N+1 Query Fix
   const { data: tournaments = [], isLoading: loading } = useQuery({
     queryKey: ['organizer-tournaments', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
 
       const { data, error } = await supabase
-        .from('tournaments')
-        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, deleted_at')
-        .eq('organizer_id', user.id)
-        .is('deleted_at', null)
-        .order('start_date', { ascending: true });
+        .rpc('get_organizer_tournaments_with_counts', {
+          p_organizer_id: user.id
+        });
 
       if (error) throw error;
 
-      // Fetch participant count for each tournament
-      const tournamentsWithCounts = await Promise.all(
-        (data || []).map(async (tournament: any) => {
-          const { count } = await supabase
-            .from('tournament_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('tournament_id', tournament.id);
-
-          const computedStatus = (tournament.status || 'open') as 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled';
-
-          return {
-            id: tournament.id,
-            name: tournament.name,
-            game: tournament.game,
-            date: tournament.start_date ? new Date(tournament.start_date).toISOString().split('T')[0] : '',
-            time: tournament.start_date ? new Date(tournament.start_date).toTimeString().split(' ')[0] : '',
-            venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
-            max_participants: tournament.max_teams,
-            current_participants: count || 0,
-            prize_pool: tournament.prize_pool?.toString() || '0',
-            user_id: tournament.organizer_id,
-            entry_fee: tournament.entry_fee?.toString() || 'Free',
-            is_online: !tournament.venue_id,
-            image_url: tournament.banner_url || tournament.logo_url,
-            slug: tournament.slug,
-            status: computedStatus,
-            team_size: 1, // fallback default
-          };
-        })
-      );
-
-      return tournamentsWithCounts as (Tournament & { status: 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled', team_size: number })[];
+      return (data || []).map((tournament: any) => ({
+        id: tournament.id,
+        name: tournament.name,
+        game: tournament.game,
+        date: tournament.start_date ? new Date(tournament.start_date).toISOString().split('T')[0] : '',
+        time: tournament.start_date ? new Date(tournament.start_date).toTimeString().split(' ')[0] : '',
+        venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
+        max_participants: tournament.max_teams,
+        current_participants: Number(tournament.current_participants) || 0,
+        prize_pool: tournament.prize_pool?.toString() || '0',
+        user_id: tournament.organizer_id,
+        entry_fee: tournament.entry_fee?.toString() || 'Free',
+        is_online: !tournament.venue_id,
+        image_url: tournament.banner_url || tournament.logo_url,
+        slug: tournament.slug,
+        status: (tournament.status || 'open') as 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled',
+        team_size: 1, // fallback default
+      }));
     },
     enabled: !!user?.id,
     staleTime: 1000 * 60, // 1 minute
@@ -289,7 +273,7 @@ const TournamentList = () => {
             <h1 className="text-3xl font-bold mb-2">My Tournaments</h1>
             <p className="text-gray-400">Manage your tournaments</p>
           </div>
-          <Link to="/organizer/tournaments/new">
+          <Link to="/tournaments/create">
             <Button>Create Tournament</Button>
           </Link>
         </div>
@@ -309,7 +293,7 @@ const TournamentList = () => {
             {tournaments.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-400 mb-4">You haven't created any tournaments yet</p>
-                <Link to="/organizer/tournaments/new">
+                <Link to="/tournaments/create">
                   <Button>Create Your First Tournament</Button>
                 </Link>
               </div>

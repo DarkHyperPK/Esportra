@@ -30,9 +30,11 @@ export interface BaseTournament {
     rewards?: string | null;
     created_at: string;
     image_url?: string | null;
+    slug?: string;
     check_in_required?: boolean;
     check_in_deadline?: string | null;
     auto_remove_unchecked?: boolean;
+    settings?: any;
     organizer?: {
         username: string;
         avatar_url?: string | null;
@@ -55,9 +57,12 @@ export interface RegistrationDetails {
     id: string;
     tournament_id: string;
     user_id: string;
+    riot_tag: string | null;
+    steam_tag: string | null;
     gamer_tag: string | null;
     team_name: string | null;
     team_members: string | null; // Comma-separated string of member names
+    team_logo: string | null;
     status: RegistrationStatus;
     checked_in_at?: string | null;
     registered_at: string;
@@ -79,6 +84,8 @@ export interface TournamentParticipant {
     tournament_id: string;
     user_id: string;
     registration_type: RegistrationType;
+    riot_tag: string | null;
+    steam_tag: string | null;
     gamer_tag: string | null;
     team_name: string | null;
     team_members: string | null;
@@ -97,6 +104,8 @@ export type UpdateRegistration = Partial<NewRegistration>;
 
 export interface RegistrationFormData {
     registrationType: RegistrationType;
+    riot_tag?: string;
+    steam_tag?: string;
     gamertag?: string;
     teamName?: string;
     teamMembers?: TeamMember[];

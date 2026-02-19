@@ -5,7 +5,11 @@ export interface Stage {
     id: string;
     name: string;
     stage_order: number;
-    // Add other fields if necessary
+    format?: string;
+    scheduling_config?: {
+        self_play_enabled?: boolean;
+        checkin_window_minutes?: number;
+    };
 }
 
 export const usePublicBracketData = (tournamentId: string | undefined) => {

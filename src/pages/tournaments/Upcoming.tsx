@@ -8,9 +8,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { RegistrationDetails } from '@/types/tournament';
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { Trophy, History } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const UpcomingTournaments = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedGames, setSelectedGames] = useState<string[]>([]);
@@ -43,7 +47,8 @@ const UpcomingTournaments = () => {
       const { data: allTournaments, error: allError } = await supabase
         .from('tournaments')
         .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at')
-        .eq('is_public', true);
+        .eq('is_public', true)
+        .is('deleted_at', null);
 
       console.log('All tournaments in DB:', allTournaments);
 
@@ -63,6 +68,7 @@ const UpcomingTournaments = () => {
         `)
 
         .eq('is_public', true)
+        .is('deleted_at', null)
         .order('start_date', { ascending: true });
 
       if (error) {
@@ -100,8 +106,8 @@ const UpcomingTournaments = () => {
             id: tournament.id,
             name: tournament.name,
             game: tournament.game,
-            date: tournament.start_date ? new Date(tournament.start_date).toISOString().split('T')[0] : '',
-            time: tournament.start_date ? new Date(tournament.start_date).toTimeString().split(' ')[0] : '',
+            date: tournament.start_date ? new Date(tournament.start_date).toLocaleDateString('en-CA') : '',
+            time: tournament.start_date ? new Date(tournament.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
             venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
             max_participants: tournament.max_teams,
             current_participants: count || 0,
@@ -195,23 +201,39 @@ const UpcomingTournaments = () => {
       <div className="min-h-screen text-white flex flex-col pt-24 pb-12">
         <main className="flex-grow container mx-auto px-4 z-10 relative">
 
-          <div className="flex flex-col gap-2 mb-10">
-            <motion.h1
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-4xl md:text-5xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-gray-400 drop-shadow-lg"
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div className="flex flex-col gap-2">
+              <motion.h1
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-4xl md:text-5xl font-bold font-heading text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-gray-400 drop-shadow-lg"
+              >
+                Upcoming Tournaments
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="text-gray-400 font-light tracking-wide max-w-2xl"
+              >
+                Compete for glory and prizes. Join the next big event in the Esports ecosystem.
+              </motion.p>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
             >
-              Upcoming Tournaments
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-gray-400 font-light tracking-wide max-w-2xl"
-            >
-              Compete for glory and prizes. Join the next big event in the Esports ecosystem.
-            </motion.p>
+              <Button
+                onClick={() => navigate('/tournament-history')}
+                className="bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-2xl px-6 py-6 group transition-all duration-300"
+              >
+                <History className="w-5 h-5 mr-2 text-indigo-400 group-hover:rotate-[-20deg] transition-transform" />
+                <span className="font-heading uppercase tracking-widest text-xs">View Tournament History</span>
+              </Button>
+            </motion.div>
           </div>
 
           {/* Game Filter */}

@@ -6,17 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { 
-  Users, 
-  Trophy, 
-  Gamepad2, 
-  Plus, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Users,
+  Trophy,
+  Gamepad2,
+  Plus,
+  CheckCircle,
+  XCircle,
   Crown,
   Edit3,
   Trash2,
@@ -29,10 +29,11 @@ import {
   PlusCircle
 } from "lucide-react";
 import esportsGames from '@/data/esportsGames.json';
+import { rawgSearchGames } from '@/lib/rawgProxy';
+import CountrySelector from '@/components/ui/CountrySelector';
+import { detectUserCountry } from '@/utils/countries';
 
-// RAWG API configuration
-const RAWG_API_KEY = '55e8210bf73448108b7f3c6707739206';
-const RAWG_API_URL = 'https://api.rawg.io/api/games';
+
 
 interface Game {
   name: string;
@@ -62,6 +63,7 @@ interface Team {
   logo_url?: string;
   owner_id: string;
   created_at: string;
+  country_code?: string | null;
   members: TeamMember[];
   tournament_wins: number;
   total_matches: number;
@@ -74,32 +76,34 @@ interface TeamCreationWizardProps {
 const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  
+
   // Wizard state
   const [currentStep, setCurrentStep] = useState(2);
   const [showWizard, setShowWizard] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editTag, setEditTag] = useState('');
-  
+  const [editCountry, setEditCountry] = useState('');
+
   // Team creation state
   const [selectedGames, setSelectedGames] = useState<string[]>([]); // deprecated for initial creation; rosters handle games
   const [teamName, setTeamName] = useState('');
   const [teamTag, setTeamTag] = useState('');
   const [teamLogoFile, setTeamLogoFile] = useState<File | null>(null);
   const [teamLogoUrl, setTeamLogoUrl] = useState<string | null>(null);
-  
+  const [teamCountryCode, setTeamCountryCode] = useState('');
+
   // Member management
   const [verifiedUsers, setVerifiedUsers] = useState<any[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<TeamMember[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Loading states
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [fetchingTeam, setFetchingTeam] = useState(true);
-  
+
   // Game images from RAWG API
   const [gameImages, setGameImages] = useState<Record<string, string>>({});
   const [imagesLoading, setImagesLoading] = useState(true);
@@ -108,37 +112,33 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   const fetchGameImages = async () => {
     setImagesLoading(true);
     const images: Record<string, string> = {};
-    
-    // Fetch images in batches to avoid overwhelming the API
+
     const batchSize = 4;
     const games = esportsGames.games;
-    
+
     for (let i = 0; i < games.length; i += batchSize) {
       const batch = games.slice(i, i + batchSize);
       await Promise.all(
         batch.map(async (game: Game) => {
           try {
             const searchName = game.name.trim().toLowerCase() === 'cs2' ? 'Counter-Strike 2' : game.name;
-            const response = await fetch(`${RAWG_API_URL}?key=${RAWG_API_KEY}&search=${encodeURIComponent(searchName)}&page_size=1`);
-            const data = await response.json();
-            if (data && data.results && data.results.length > 0) {
+            const data = await rawgSearchGames(searchName, 1);
+            if (data?.results?.length > 0) {
               images[game.name] = data.results[0].background_image || '';
             }
-          } catch (error) {
-            console.error(`Failed to fetch image for ${game.name}:`, error);
+          } catch {
+            // ignore individual failures
           }
         })
       );
-      
-      // Update images progressively as they load
-      setGameImages({...images});
-      
-      // Small delay between batches to prevent rate limiting
+
+      setGameImages({ ...images });
+
       if (i + batchSize < games.length) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
-    
+
     setImagesLoading(false);
   };
 
@@ -147,6 +147,15 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
     fetchVerifiedUsers();
     fetchUserTeam();
     fetchGameImages();
+
+    // Autodetect country
+    const autodetect = async () => {
+      if (!teamCountryCode) {
+        const detected = await detectUserCountry();
+        if (detected) setTeamCountryCode(detected);
+      }
+    };
+    autodetect();
   }, []);
 
   const fetchVerifiedUsers = async () => {
@@ -157,7 +166,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
         .eq('is_verified', true)
         .eq('is_admin', false) // Exclude admins from team member selection
         .order('username');
-      
+
       if (error) throw error;
       setVerifiedUsers(data || []);
     } catch (error) {
@@ -172,10 +181,10 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
   const fetchUserTeam = async () => {
     if (!user) return;
-    
+
     try {
       setFetchingTeam(true);
-      
+
       // Get team where user is the creator
       const { data: createdTeam, error: createdError } = await supabase
         .from('teams')
@@ -189,7 +198,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
         // Fetch members for the team
         const { data: members } = await supabase
           .from('team_members')
-        .select(`
+          .select(`
           user_id,
           role,
           profiles (
@@ -206,11 +215,11 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
           ...createdTeam,
           members: (members || []).map(m => ({
             id: m.user_id,
-            username: m.profiles.username,
-            full_name: m.profiles.full_name,
-            avatar_url: m.profiles.avatar_url,
+            username: Array.isArray(m.profiles) ? m.profiles[0].username : (m.profiles as any).username,
+            full_name: Array.isArray(m.profiles) ? m.profiles[0].full_name : (m.profiles as any).full_name,
+            avatar_url: Array.isArray(m.profiles) ? m.profiles[0].avatar_url : (m.profiles as any).avatar_url,
             role: m.role,
-            verified: m.profiles.is_verified,
+            verified: Array.isArray(m.profiles) ? m.profiles[0].is_verified : (m.profiles as any).is_verified,
           })),
           tournament_wins: 0,
           total_matches: 0,
@@ -230,7 +239,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
     }
   };
 
-  const handleGameToggle = (_gameName: string) => {};
+  const handleGameToggle = (_gameName: string) => { };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -244,65 +253,65 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
       console.log('No file provided to uploadTeamLogo');
       return null;
     }
-    
+
     try {
       console.log('=== LOGO UPLOAD DEBUG ===');
       console.log('File:', file);
       console.log('File name:', file.name);
       console.log('File size:', file.size);
       console.log('File type:', file.type);
-      
+
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
         console.error('Invalid file type:', file.type);
         throw new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`);
       }
-      
+
       // Validate file size (5MB limit)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
         console.error('File too large:', file.size);
         throw new Error('File size must be less than 5MB');
       }
-      
+
       const fileExt = file.name.split('.').pop();
       const fileName = `team-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       // Fix: Don't include 'team-logos/' in the path since we're already uploading to the team-logos bucket
       const filePath = fileName;
-      
+
       console.log('Uploading to path:', filePath);
-      
+
       // Direct upload attempt - this will give us a clearer error if there are permission issues
       const { error } = await supabase.storage
         .from('teams.logos')
         .upload(filePath, file);
-      
+
       if (error) {
         console.error('Upload error:', error);
-        
+
         // If it's an RLS policy error, provide helpful message
         if (error.message.includes('row-level security policy')) {
           throw new Error('Storage permissions not configured. Please contact support to set up storage policies.');
         }
-        
+
         throw error;
       }
-      
+
       console.log('File uploaded successfully');
-      
+
       const { data } = supabase.storage
         .from('teams.logos')
         .getPublicUrl(filePath);
-      
+
       console.log('Public URL:', data.publicUrl);
       console.log('========================');
-      
+
       return data.publicUrl;
     } catch (error) {
       console.error('Error uploading logo:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+
       // Provide more helpful error messages
       if (errorMessage.includes('row-level security policy')) {
         toast({
@@ -317,7 +326,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
           variant: 'destructive',
         });
       }
-      
+
       return null;
     }
   };
@@ -345,7 +354,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
     // Add user as first member (captain) if no members yet
     const role = selectedMembers.length === 0 ? 'captain' : 'member';
-    
+
     setSelectedMembers(prev => [...prev, {
       id: user.id,
       username: user.username,
@@ -359,12 +368,12 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   const removeMember = (userId: string) => {
     setSelectedMembers(prev => {
       const newMembers = prev.filter(m => m.id !== userId);
-      
+
       // If captain is removed, make first remaining member captain
       if (newMembers.length > 0 && !newMembers.some(m => m.role === 'captain')) {
         newMembers[0].role = 'captain';
       }
-      
+
       return newMembers;
     });
   };
@@ -392,11 +401,11 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
         console.log('File name:', teamLogoFile.name);
         console.log('File size:', teamLogoFile.size);
         console.log('File type:', teamLogoFile.type);
-        
+
         try {
           logoUrl = await uploadTeamLogo(teamLogoFile);
           console.log('Logo URL after upload:', logoUrl);
-          
+
           if (!logoUrl) {
             console.error('Logo upload returned null/undefined');
             toast({
@@ -439,6 +448,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
           games: [],
           logo_url: logoUrl,
           owner_id: user.id,
+          country_code: teamCountryCode || null,
         })
         .select()
         .single();
@@ -472,10 +482,10 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
       // Reset form and close wizard
       resetForm();
-      
+
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('teamCreated'));
-      
+
       onClose(); // Close the modal - this will trigger fetchUserTeams() in the parent component
 
     } catch (error) {
@@ -499,6 +509,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
     setTeamLogoUrl(null);
     setSelectedMembers([]);
     setSearchQuery('');
+    setTeamCountryCode('');
   };
 
   const filteredUsers = verifiedUsers.filter(user =>
@@ -535,11 +546,12 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <Button 
+                <Button
                   onClick={() => {
                     if (userTeam) {
                       setEditName(userTeam.name);
                       setEditTag(userTeam.tag);
+                      setEditCountry(userTeam.country_code || '');
                     }
                     setShowEditModal(true);
                   }}
@@ -646,7 +658,10 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {userTeam.members.map((member) => (
                   <div key={member.id} className="flex items-center gap-4 p-4 backdrop-blur-xl bg-white/5 rounded-xl border border-white/10">
-                    <Avatar className="h-12 w-12" src={member.avatar_url} name={member.username} />
+                    <Avatar className="h-12 w-12 text-zinc-700 bg-white/5 rounded-xl border border-white/10">
+                      <AvatarImage src={member.avatar_url} />
+                      <AvatarFallback>{member.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
                     <div className="flex-1">
                       <div className="font-medium text-white">{member.username}</div>
                       <div className="flex items-center gap-2">
@@ -665,7 +680,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
             </div>
           </div>
         </div>
-      
+
         {/* Edit Team Dialog */}
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
           <DialogContent className="max-w-lg backdrop-blur-xl bg-slate-900/95 border border-cyan-400/20">
@@ -684,6 +699,14 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                 <Label className="text-white">Team Tag</Label>
                 <Input value={editTag} onChange={(e) => setEditTag(e.target.value.toUpperCase())} className="bg-white/10 border-white/20 text-white" maxLength={6} />
               </div>
+              <div>
+                <Label className="text-white">Team Country</Label>
+                <CountrySelector
+                  value={editCountry}
+                  onChange={setEditCountry}
+                  className="bg-white/10 border-white/20 text-white"
+                />
+              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowEditModal(false)} className="border-white/30 text-white hover:bg-white/10">Cancel</Button>
                 <Button onClick={async () => {
@@ -691,7 +714,12 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                   try {
                     const { error } = await supabase
                       .from('teams')
-                      .update({ name: editName, tag: editTag, updated_at: new Date().toISOString() })
+                      .update({
+                        name: editName,
+                        tag: editTag,
+                        country_code: editCountry || null,
+                        updated_at: new Date().toISOString()
+                      })
                       .eq('id', userTeam.id);
                     if (error) throw error;
                     await fetchUserTeam();

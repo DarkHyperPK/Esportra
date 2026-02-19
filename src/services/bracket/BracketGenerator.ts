@@ -42,19 +42,25 @@ export class GraphValidator {
         // Exactly one node should have NO outgoing 'winner' edge (The Grand Final).
         // Note: In Double Elim with Reset, the "Potential" final might feed into a Reset match.
         // But ultimately there is one sink node.
-        const nodesWithOutgoingWinner = new Set<string>();
-        edges.filter(e => e.type === 'winner').forEach(e => nodesWithOutgoingWinner.add(e.source_match_id));
+        // EXCEPTION: Round Robin and Swiss have NO edges (all matches are independent), so skip this check.
+        if (edges.length > 0) {
+            const nodesWithOutgoingWinner = new Set<string>();
+            edges.filter(e => e.type === 'winner').forEach(e => nodesWithOutgoingWinner.add(e.source_match_id));
 
-        const potentialChampions = nodes.filter(n => !nodesWithOutgoingWinner.has(n.id));
+            const potentialChampions = nodes.filter(n => !nodesWithOutgoingWinner.has(n.id));
 
-        if (potentialChampions.length === 0) {
-            errors.push('No champion node found (infinite loop?).');
-        } else if (potentialChampions.length > 1) {
-            // It's okay to have multiple sinks if they are different brackets (e.g. 3rd place match),
-            // but standard single/double elim usually has one main sink.
-            // We'll warn for now.
-            // errors.push(`Multiple champion nodes found: ${potentialChampions.length}`);
+            if (potentialChampions.length === 0) {
+                errors.push('No champion node found (infinite loop?).');
+            } else if (potentialChampions.length > 1) {
+                // It's okay to have multiple sinks if they are different brackets (e.g. 3rd place match),
+                // but standard single/double elim usually has one main sink.
+                // We'll warn for now.
+                // errors.push(`Multiple champion nodes found: ${potentialChampions.length}`);
+            }
         }
+        // If edges.length === 0, it's a group-stage format (RR/Swiss) where all matches are sinks,
+        // and that's valid - no need to check for a single champion.
+
 
         return errors;
     }

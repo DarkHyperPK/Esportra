@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { useNotifications } from '@/components/NotificationContext';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Check, X, MoreVertical, CheckCheck, Bell, Inbox, ShieldAlert, Users as UsersIcon, Info } from 'lucide-react';
+import { Trash2, CheckCheck, Bell, Inbox, ShieldAlert, Users, Info, ExternalLink, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MotionTiles } from '@/components/effects/MotionTiles';
+import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,24 +27,33 @@ const NotificationsPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Accept team invite
-  const handleAcceptInvite = async (notification) => {
+  // Optimistic UI state
+  const [optimisticIds, setOptimisticIds] = useState<string[]>([]);
+
+  // Helper to hide notification instantly
+  const hideOptimistically = (id: string) => {
+    setOptimisticIds(prev => [...prev, id]);
+  };
+
+  // Helper to revert if failed
+  const revertOptimistic = (id: string) => {
+    setOptimisticIds(prev => prev.filter(i => i !== id));
+  };
+
+  // Accept team invite logic
+  const handleAcceptInvite = async (notification: any) => {
+    const notifId = notification.id;
     try {
-      // Check if current user is admin
+      // 1. Optimistic Update: Hide instantly
+      hideOptimistically(notifId);
+      toast({ title: 'Joining team...', duration: 1000 }); // Feedback
+
+      // 2. Background Operations
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single();
+      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user?.id).single();
 
       if (profile?.is_admin) {
-        toast({
-          title: 'Cannot join team',
-          description: 'Admins cannot join teams as members. You can only create and manage teams.',
-          variant: 'destructive'
-        });
-        return;
+        throw new Error('Admins cannot join teams');
       }
 
       const { data: invite, error: inviteErr } = await supabase
@@ -52,91 +63,75 @@ const NotificationsPage = () => {
         .eq('team_id', notification.team_id)
         .eq('status', 'pending')
         .maybeSingle();
-      if (inviteErr) throw inviteErr;
-      if (!invite) { toast({ title: 'Invite not found', variant: 'destructive' }); return; }
 
-      // Add user as active member
-      const { error: addErr } = await supabase.from('team_members').insert({
+      if (inviteErr) throw inviteErr;
+      if (!invite) throw new Error('Invite not found or expired');
+
+      const { error: addErr } = await supabase.from('team_members').upsert({
         team_id: invite.team_id,
         user_id: invite.invited_user_id,
         role: 'member',
         is_active: true,
-        joined_at: new Date().toISOString(),
-      });
-      if (addErr && addErr.code !== '23505') throw addErr; // ignore unique violation if already a member
+        joined_at: new Date().toISOString()
+      }, { onConflict: 'team_id,user_id' });
+      if (addErr) throw addErr;
 
-      // Update invite status
-      const { error: updErr } = await supabase
-        .from('team_invitations')
-        .update({ status: 'accepted', responded_at: new Date().toISOString() })
-        .eq('id', invite.id);
-      if (updErr) throw updErr;
+      await supabase.from('team_invitations').update({ status: 'accepted', responded_at: new Date().toISOString() }).eq('id', invite.id);
 
-      // Mark read if this came from a stored notification
       if (notification.id && !String(notification.id).startsWith('invite-')) {
         await markAsRead(notification.id);
       }
 
       // Notify inviter
       await supabase.from('notifications').insert({
-        user_id: invite.invited_by,
+        user_id: invite.invited_by_user_id,
         type: 'team_invite_response',
         title: 'Team Invite Accepted',
         message: 'An invited player accepted your team invite.',
         team_id: invite.team_id,
-        is_read: false,
-        created_at: new Date().toISOString(),
+        is_read: false
       });
 
-      toast({ title: 'Invite accepted', description: 'You have joined the team!', variant: 'default' });
-      await refreshNotifications();
-
-      // Dispatch custom event to refresh team data
+      // 3. Success Feedback
+      toast({ title: 'Joined team successfully!', variant: 'default' });
+      await refreshNotifications(); // Sync real state
       window.dispatchEvent(new CustomEvent('teamInviteAccepted'));
     } catch (e: any) {
-      console.error('Accept invite error', e);
-      toast({ title: 'Could not accept invite', description: e.message || 'Please try again', variant: 'destructive' });
+      console.error(e);
+      // 4. Revert on Error
+      revertOptimistic(notifId);
+      toast({ title: 'Error accepting invite', description: e.message, variant: 'destructive' });
     }
   };
 
-  // Reject team invite
-  const handleRejectInvite = async (notification) => {
+  // Reject invite logic
+  const handleRejectInvite = async (notification: any) => {
+    const notifId = notification.id;
     try {
-      const { data: invite, error: inviteErr } = await supabase
-        .from('team_invitations')
-        .select('*')
-        .eq('invited_user_id', notification.user_id)
-        .eq('team_id', notification.team_id)
-        .eq('status', 'pending')
-        .maybeSingle();
-      if (inviteErr) throw inviteErr;
-      if (!invite) { toast({ title: 'Invite not found', variant: 'destructive' }); return; }
+      hideOptimistically(notifId);
 
-      const { error: updErr } = await supabase
-        .from('team_invitations')
-        .update({ status: 'rejected', responded_at: new Date().toISOString() })
-        .eq('id', invite.id);
-      if (updErr) throw updErr;
+      const { data: invite } = await supabase.from('team_invitations').select('*').eq('invited_user_id', notification.user_id).eq('team_id', notification.team_id).eq('status', 'pending').maybeSingle();
+      if (!invite) throw new Error('Invite not found');
 
-      if (notification.id && !String(notification.id).startsWith('invite-')) {
-        await markAsRead(notification.id);
-      }
+      await supabase.from('team_invitations').update({ status: 'rejected', responded_at: new Date().toISOString() }).eq('id', invite.id);
+
+      if (notification.id && !String(notification.id).startsWith('invite-')) await markAsRead(notification.id);
 
       await supabase.from('notifications').insert({
-        user_id: invite.invited_by,
+        user_id: invite.invited_by_user_id,
         type: 'team_invite_response',
         title: 'Team Invite Rejected',
         message: 'An invited player rejected your team invite.',
         team_id: invite.team_id,
-        is_read: false,
-        created_at: new Date().toISOString(),
+        is_read: false
       });
 
-      toast({ title: 'Invite rejected', description: 'You have rejected the team invite.', variant: 'default' });
+      toast({ title: 'Invite rejected', variant: 'default' });
       await refreshNotifications();
     } catch (e: any) {
-      console.error('Reject invite error', e);
-      toast({ title: 'Could not reject invite', description: e.message || 'Please try again', variant: 'destructive' });
+      console.error(e);
+      revertOptimistic(notifId);
+      toast({ title: 'Error rejecting invite', variant: 'destructive' });
     }
   };
 
@@ -144,201 +139,131 @@ const NotificationsPage = () => {
   const handleDeleteNotification = async (notificationId: string) => {
     try {
       setIsDeleting(true);
-
-      // Check if it's a synthetic notification (team invite)
       if (String(notificationId).startsWith('invite-')) {
-        // For team invites, we need to delete from team_invitations table
         const inviteId = notificationId.replace('invite-', '');
-        const { error } = await supabase
-          .from('team_invitations')
-          .delete()
-          .eq('id', inviteId);
-
-        if (error) throw error;
+        await supabase.from('team_invitations').delete().eq('id', inviteId);
       } else {
-        // For regular notifications, delete from notifications table
-        const { error } = await supabase
-          .from('notifications')
-          .delete()
-          .eq('id', notificationId);
-
-        if (error) throw error;
+        await supabase.from('notifications').delete().eq('id', notificationId);
       }
-
-      toast({
-        title: 'Notification deleted',
-        description: 'The notification has been removed.',
-        variant: 'default'
-      });
-
+      toast({ title: 'Deleted', variant: 'default' });
       await refreshNotifications();
     } catch (error) {
-      console.error('Delete notification error:', error);
-      toast({
-        title: 'Could not delete notification',
-        description: 'Please try again later.',
-        variant: 'destructive'
-      });
+      toast({ title: 'Error deleting', variant: 'destructive' });
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Delete multiple notifications
+  // Bulk Delete
   const handleBulkDelete = async () => {
     if (selectedNotifications.length === 0) return;
-
     try {
       setIsDeleting(true);
-
-      // Separate synthetic and regular notifications
       const syntheticIds = selectedNotifications.filter(id => String(id).startsWith('invite-'));
       const regularIds = selectedNotifications.filter(id => !String(id).startsWith('invite-'));
 
-      // Delete synthetic notifications (team invites)
       if (syntheticIds.length > 0) {
-        const inviteIds = syntheticIds.map(id => id.replace('invite-', ''));
-        const { error: inviteError } = await supabase
-          .from('team_invitations')
-          .delete()
-          .in('id', inviteIds);
-
-        if (inviteError) throw inviteError;
+        await supabase.from('team_invitations').delete().in('id', syntheticIds.map(id => id.replace('invite-', '')));
       }
-
-      // Delete regular notifications
       if (regularIds.length > 0) {
-        const { error: notificationError } = await supabase
-          .from('notifications')
-          .delete()
-          .in('id', regularIds);
-
-        if (notificationError) throw notificationError;
+        await supabase.from('notifications').delete().in('id', regularIds);
       }
 
-      toast({
-        title: 'Notifications deleted',
-        description: `${selectedNotifications.length} notification(s) have been removed.`,
-        variant: 'default'
-      });
-
+      toast({ title: 'Deleted selected', variant: 'default' });
       setSelectedNotifications([]);
       await refreshNotifications();
     } catch (error) {
-      console.error('Bulk delete error:', error);
-      toast({
-        title: 'Could not delete notifications',
-        description: 'Please try again later.',
-        variant: 'destructive'
-      });
+      toast({ title: 'Error deleting', variant: 'destructive' });
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Mark all as read
+  // Mark all read
   const handleMarkAllRead = async () => {
     try {
-      const unreadNotifications = notifications.filter(n => !n.is_read);
-      const regularIds = unreadNotifications
-        .filter(n => !String(n.id).startsWith('invite-'))
-        .map(n => n.id);
-
+      const regularIds = notifications.filter(n => !n.is_read && !String(n.id).startsWith('invite-')).map(n => n.id);
       if (regularIds.length > 0) {
-        const { error } = await supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .in('id', regularIds);
-
-        if (error) throw error;
+        await supabase.from('notifications').update({ is_read: true }).in('id', regularIds);
+        toast({ title: 'All marked as read', variant: 'default' });
+        await refreshNotifications();
       }
-
-      toast({
-        title: 'All marked as read',
-        description: 'All notifications have been marked as read.',
-        variant: 'default'
-      });
-
-      await refreshNotifications();
     } catch (error) {
-      console.error('Mark all read error:', error);
-      toast({
-        title: 'Could not mark as read',
-        description: 'Please try again later.',
-        variant: 'destructive'
-      });
+      console.error(error);
     }
   };
 
-  // Toggle notification selection
-  const toggleNotificationSelection = (notificationId: string) => {
-    setSelectedNotifications(prev =>
-      prev.includes(notificationId)
-        ? prev.filter(id => id !== notificationId)
-        : [...prev, notificationId]
-    );
-  };
-
-  // Select all notifications
-  const selectAllNotifications = () => {
-    setSelectedNotifications(notifications.map(n => n.id));
-  };
-
-  // Clear selection
-  const clearSelection = () => {
-    setSelectedNotifications([]);
+  const toggleNotificationSelection = (id: string) => {
+    setSelectedNotifications(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
   const typeMeta = (n: any) => {
     switch (n.type) {
-      case 'team_invite':
-        return { icon: <UsersIcon className="h-4 w-4" />, label: 'Invite', pill: 'bg-blue-600' };
-      case 'ban':
-        return { icon: <ShieldAlert className="h-4 w-4" />, label: 'Ban', pill: 'bg-red-600' };
-      case 'kick':
-        return { icon: <ShieldAlert className="h-4 w-4" />, label: 'Kicked', pill: 'bg-orange-600' };
-      case 'team_invite_response':
-        return { icon: <UsersIcon className="h-4 w-4" />, label: 'Invite Update', pill: 'bg-green-600' };
-      default:
-        return { icon: <Info className="h-4 w-4" />, label: 'System', pill: 'bg-gray-600' };
+      case 'team_invite': return { icon: <Users className="h-4 w-4" />, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' };
+      case 'ban': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/20' };
+      case 'kick': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' };
+      case 'team_invite_response': return { icon: <Users className="h-4 w-4" />, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' };
+      default: return { icon: <Info className="h-4 w-4" />, color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20' };
     }
   };
 
   const filtered = useMemo(() => {
-    if (filter === 'unread') return notifications.filter(n => !n.is_read);
-    if (filter === 'invites') return notifications.filter(n => n.type === 'team_invite');
-    if (filter === 'system') return notifications.filter(n => n.type !== 'team_invite');
-    return notifications;
-  }, [notifications, filter]);
+    let result = notifications.filter(n => !optimisticIds.includes(n.id));
+    if (filter === 'unread') return result.filter(n => !n.is_read);
+    if (filter === 'invites') return result.filter(n => n.type === 'team_invite');
+    if (filter === 'system') return result.filter(n => n.type !== 'team_invite');
+    return result;
+  }, [notifications, filter, optimisticIds]);
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white py-10">
-      <div className="container mx-auto max-w-2xl">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gaming-purple/20 border border-gaming-purple/40 flex items-center justify-center">
-              <Bell className="h-5 w-5 text-gaming-purple" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold leading-5">Notification Center</h1>
-              <div className="text-xs text-gray-400">Invites and system updates</div>
-            </div>
+    <div className="min-h-screen relative bg-[#050507] overflow-hidden text-white">
+      <MotionTiles />
+
+      {/* Background gradients */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-4xl">
+
+        {/* Header */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-4xl font-heading font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+              Notification Center
+            </h1>
+            <p className="text-white/40 mt-1 font-light">Stay updated with your latest activities</p>
           </div>
+
           {notifications.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {selectedNotifications.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete ({selectedNotifications.length})
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleMarkAllRead}
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                className="border-white/10 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white"
               >
                 <CheckCheck className="h-4 w-4 mr-2" />
-                Mark All Read
+                Mark all read
               </Button>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 mb-6">
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
           {[
             { id: 'all', label: 'All' },
             { id: 'unread', label: 'Unread' },
@@ -348,192 +273,165 @@ const NotificationsPage = () => {
             <button
               key={t.id}
               onClick={() => setFilter(t.id as any)}
-              className={`px-3 py-1.5 rounded-md text-sm border ${filter === t.id ? 'bg-gaming-purple/20 border-gaming-purple text-white' : 'border-gray-700 text-gray-300 hover:bg-gray-800'}`}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 border",
+                filter === t.id
+                  ? "bg-gaming-purple/20 border-gaming-purple text-white shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+                  : "bg-white/5 border-white/5 text-white/50 hover:bg-white/10 hover:text-white hover:border-white/10"
+              )}
             >
               {t.label}
             </button>
           ))}
+
           {filtered.length > 0 && (
-            <div className="ml-auto flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={selectedNotifications.length === filtered.length ? clearSelection : selectAllNotifications}
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
-              >
-                {selectedNotifications.length === filtered.length ? 'Deselect All' : 'Select All'}
-              </Button>
-              {selectedNotifications.length > 0 && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  disabled={isDeleting}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete ({selectedNotifications.length})
-                </Button>
-              )}
-            </div>
+            <button
+              onClick={() => selectedNotifications.length === filtered.length ? setSelectedNotifications([]) : setSelectedNotifications(filtered.map(n => n.id))}
+              className="ml-auto text-xs font-medium text-white/40 hover:text-white transition-colors"
+            >
+              {selectedNotifications.length === filtered.length ? 'Deselect All' : 'Select All'}
+            </button>
           )}
         </div>
-        {filtered.length === 0 ? (
-          <div className="text-center text-gray-400 py-20">
-            <Inbox className="mx-auto mb-3 h-8 w-8 text-gray-600" />
-            Nothing here yet
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filtered.map((n) => (
-              <Card
-                key={n.id}
-                className={`transition border-gaming-gray/30 ${selectedNotifications.includes(n.id)
-                    ? 'border-blue-500 shadow-lg bg-blue-500/10'
-                    : !n.is_read
-                      ? 'border-gaming-purple/60 shadow-lg bg-gaming-purple/10'
-                      : 'bg-gaming-dark'
-                  }`}
+
+        {/* Notifications List */}
+        <div className="space-y-3 min-h-[400px]">
+          <AnimatePresence mode='popLayout'>
+            {filtered.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex flex-col items-center justify-center py-20 border border-white/5 rounded-3xl bg-black/20 backdrop-blur-sm"
               >
-                <CardContent className="flex flex-col md:flex-row md:items-center gap-3 p-4">
-                  {/* Selection checkbox */}
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedNotifications.includes(n.id)}
-                      onChange={() => toggleNotificationSelection(n.id)}
-                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-                    />
-                  </div>
-
-                  {/* Main content */}
-                  <div
-                    className="flex-1 cursor-pointer"
-                    onClick={async () => {
-                      setSelected(n);
-                      if (!n.is_read) await markAsRead(n.id);
-                    }}
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                  <Inbox className="h-8 w-8 text-white/20" />
+                </div>
+                <h3 className="text-lg font-medium text-white/60">All caught up!</h3>
+                <p className="text-white/30 text-sm mt-1">No new notifications to show</p>
+              </motion.div>
+            ) : (
+              filtered.map((n, i) => {
+                const meta = typeMeta(n);
+                return (
+                  <motion.div
+                    key={n.id}
+                    layout
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                    transition={{ delay: i * 0.05 }}
+                    className={cn(
+                      "group relative overflow-hidden rounded-2xl border transition-all duration-300",
+                      selectedNotifications.includes(n.id)
+                        ? "bg-gaming-purple/10 border-gaming-purple/40"
+                        : !n.is_read
+                          ? "bg-[#0f0f12] border-white/10 shadow-lg shadow-black/50"
+                          : "bg-black/20 border-white/5 opacity-80 hover:opacity-100"
+                    )}
                   >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${n.is_read ? 'bg-gray-700' : 'bg-gaming-purple/30'}`}>
-                        {typeMeta(n).icon}
-                      </div>
-                      <span className="font-semibold text-base">{n.title}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${typeMeta(n).pill} text-white`}>{typeMeta(n).label}</span>
-                    </div>
-                    <div className="text-gray-300 text-sm mb-1 line-clamp-2">{n.message}</div>
-                    {n.type === 'team_invite' && !n.is_read && (
-                      <div className="flex gap-2 mt-2">
-                        <Button size="sm" onClick={e => { e.stopPropagation(); handleAcceptInvite(n); }} className="bg-green-600 hover:bg-green-700 text-white border-0 shadow-sm hover:shadow ring-1 ring-green-400/20">
-                          Accept Invite
-                        </Button>
-                        <Button size="sm" onClick={e => { e.stopPropagation(); handleRejectInvite(n); }} className="bg-red-600 hover:bg-red-700 text-white border-0 shadow-sm hover:shadow ring-1 ring-red-400/20">
-                          Reject
-                        </Button>
-                      </div>
-                    )}
-                    {n.reason && (
-                      <div className="text-xs text-gaming-purple/80 mt-1">Reason: {n.reason}</div>
-                    )}
-                  </div>
-
-                  {/* Right side actions */}
-                  <div className="flex items-center gap-2">
-                    <div className="text-xs text-gray-500 min-w-[120px] text-right">
-                      {new Date(n.created_at).toLocaleString()}
+                    {/* Selection Checkbox Overlay */}
+                    <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r from-black/80 to-transparent">
+                      <input
+                        type="checkbox"
+                        checked={selectedNotifications.includes(n.id)}
+                        onChange={() => toggleNotificationSelection(n.id)}
+                        className="w-4 h-4 rounded border-white/20 bg-black/50 checked:bg-gaming-purple checked:border-gaming-purple transition-all cursor-pointer"
+                      />
                     </div>
 
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-1">
-                      {n.link && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={e => { e.stopPropagation(); navigate(n.link!); }}
-                          className="border-gray-600 text-white hover:bg-gray-700"
-                        >
-                          View
-                        </Button>
+                    <div
+                      onClick={() => {
+                        if (!n.is_read) markAsRead(n.id);
+                        if (n.link) navigate(n.link);
+                        else if (n.type === 'team_invite') navigate('/player/teams');
+                      }}
+                      className={cn(
+                        "flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 pl-4 group-hover:pl-12 transition-[padding] cursor-pointer",
+                        !n.is_read && "bg-gradient-to-r from-white/5 to-transparent"
                       )}
-                      {!n.is_read && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async e => { e.stopPropagation(); await markAsRead(n.id); }}
-                          className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
-                        >
-                          Mark Read
-                        </Button>
-                      )}
+                    >
+                      {/* Icon */}
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-inner", meta.bg)}>
+                        {meta.icon}
+                      </div>
 
-                      {/* More actions dropdown */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className={cn("font-medium text-sm sm:text-base truncate", !n.is_read ? "text-white" : "text-white/60")}>
+                            {n.title}
+                          </h4>
+                          {!n.is_read && (
+                            <span className="w-2 h-2 rounded-full bg-gaming-purple animate-pulse" />
+                          )}
+                        </div>
+                        <p className="text-white/50 text-xs sm:text-sm line-clamp-2 leading-relaxed">
+                          {n.message}
+                        </p>
+
+                        {/* Helper for Invites */}
+                        {n.type === 'team_invite' && (
+                          <div className="flex items-center gap-1 mt-2 text-gaming-purple text-[10px] font-medium uppercase tracking-wider">
+                            <span>Manage in Teams</span>
+                            <ArrowRight className="h-2.5 w-2.5" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Meta & Actions */}
+                      <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-1 ml-auto">
+                        <span className="text-[10px] font-mono text-white/30 whitespace-nowrap">
+                          {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                        </span>
+
+                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Delete Button */}
                           <Button
-                            size="sm"
+                            size="icon"
                             variant="ghost"
-                            onClick={e => e.stopPropagation()}
-                            className="text-gray-400 hover:text-white hover:bg-gray-700"
+                            className="h-6 w-6 text-white/20 hover:text-red-400 hover:bg-red-500/10"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteNotification(n.id); }}
                           >
-                            <MoreVertical className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-gray-800 border-gray-600">
-                          <DropdownMenuItem
-                            onClick={e => { e.stopPropagation(); handleDeleteNotification(n.id); }}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                            disabled={isDeleting}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-      {/* Notification Details Modal */}
-      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent>
-          {selected && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{selected.title}</DialogTitle>
-                <DialogDescription>{new Date(selected.created_at).toLocaleString()}</DialogDescription>
-              </DialogHeader>
-              <div className="mt-2 text-gray-200">{selected.message}</div>
-              {selected.reason && (
-                <div className="mt-2 text-gaming-purple/80">Reason: {selected.reason}</div>
-              )}
-              {selected.link && (
-                <Button className="mt-4 w-full bg-gaming-purple hover:bg-gaming-purple/80 text-white" onClick={() => navigate(selected.link!)}>
-                  Go to Tournament
-                </Button>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
 
-      {/* Bulk Delete Confirmation Dialog */}
+                          {/* Link Button */}
+                          {n.link && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 text-white/20 hover:text-white hover:bg-white/10"
+                              onClick={(e) => { e.stopPropagation(); navigate(n.link!); }}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent className="bg-gray-800 border-gray-600">
+        <DialogContent className="bg-[#121212] border-white/10 sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Delete Notifications</DialogTitle>
-            <DialogDescription className="text-gray-300">
-              Are you sure you want to delete {selectedNotifications.length} notification(s)? This action cannot be undone.
+            <DialogTitle className="text-white">Delete Notifications?</DialogTitle>
+            <DialogDescription className="text-white/60">
+              This action cannot be undone. You are about to delete {selectedNotifications.length} notification(s).
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-3 mt-4">
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setShowDeleteConfirm(false)}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700"
+              className="text-white/60 hover:text-white hover:bg-white/5"
             >
               Cancel
             </Button>
@@ -544,9 +442,9 @@ const NotificationsPage = () => {
                 handleBulkDelete();
               }}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? 'Deleting...' : 'Delete Forever'}
             </Button>
           </div>
         </DialogContent>

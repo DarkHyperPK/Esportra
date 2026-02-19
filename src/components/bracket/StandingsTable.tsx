@@ -29,8 +29,9 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
 }) => {
     return (
         <Card className="overflow-hidden bg-zinc-950 border-white/10">
-            <CardHeader className="pb-2 bg-zinc-900/50 border-b border-white/5">
-                <CardTitle className="text-lg font-medium flex items-center gap-2 text-white">
+            <CardHeader className="pb-3 bg-[#0a0a0c] border-b border-white/5">
+                <CardTitle className="text-xl font-heading font-semibold flex items-center gap-2 text-white">
+                    <span className="w-1 h-6 bg-rose-500 rounded-full" />
                     {title}
                     <TooltipProvider>
                         <Tooltip>

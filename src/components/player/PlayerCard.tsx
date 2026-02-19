@@ -8,6 +8,7 @@ interface PlayerCardProps {
         user_id: string;
         username: string;
         avatar_url?: string;
+        card_image_url?: string; // New field for player card specific image
         role?: string; // 'captain', 'member', etc.
         verified?: boolean;
         stats?: {
@@ -16,6 +17,7 @@ interface PlayerCardProps {
             winRate?: string; // 68%
             hs?: string; // 42%
         };
+        game?: string; // For conditional stats display
     };
     isOwner?: boolean; // Is this player the team owner?
     isCurrentUser?: boolean; // Is this the logged-in user's card?
@@ -25,13 +27,15 @@ interface PlayerCardProps {
 }
 
 const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser, onEdit, onUploadImage, className }) => {
-    // Default Stats (Decorative if waiting for real data)
+    // If stats are provided, they are "Real", otherwise they are placeholders or indicative of missing data
     const stats = member.stats || {
-        rating: isOwner ? 99 : 88,
-        kd: '1.42',
-        winRate: '65%',
-        hs: '45%'
+        kd: '--',
+        winRate: '--',
+        hs: '--'
     };
+
+    const isValorant = member.game?.toLowerCase().includes('valorant');
+    const hasRealStats = !!member.stats && isValorant;
 
     return (
         <div
@@ -46,11 +50,14 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser,
 
                 {/* CARD BACKGROUND IMAGE */}
                 <div className="absolute inset-0 bg-black/40">
-                    {member.avatar_url ? (
+                    {member.card_image_url || member.avatar_url ? (
                         <img
-                            src={member.avatar_url}
+                            src={member.card_image_url || member.avatar_url}
                             alt={member.username}
-                            className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 grayscale group-hover:grayscale-0"
+                            className={cn(
+                                "w-full h-full object-cover transition-all duration-500",
+                                "opacity-60 grayscale group-hover:opacity-100 group-hover:grayscale-0 group-hover:scale-105"
+                            )}
                         />
                     ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black" />
@@ -105,21 +112,33 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser,
                         {member.username}
                     </h3>
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
-                        <div className="flex flex-col items-center">
-                            <span className="text-[9px] uppercase tracking-widest text-white/30 mb-1">K/D</span>
-                            <span className="text-sm font-mono text-white/80">{stats.kd}</span>
+                    {/* Stats Grid - Only show for Valorant or if stats are explicitly provided and relevant */}
+                    {isValorant && (
+                        <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
+                            <div className="flex flex-col items-center">
+                                <span className="text-[9px] uppercase tracking-widest text-white/30 mb-1">K/D</span>
+                                <span className={cn(
+                                    "text-sm font-mono font-bold",
+                                    hasRealStats && parseFloat(stats.kd || '0') >= 1 ? "text-indigo-400" : "text-white/80"
+                                )}>
+                                    {stats.kd}
+                                </span>
+                            </div>
+                            <div className="flex flex-col items-center border-l border-white/5">
+                                <span className="text-[9px] uppercase tracking-widest text-white/30 mb-1">WIN</span>
+                                <span className={cn(
+                                    "text-sm font-mono font-bold",
+                                    hasRealStats ? "text-emerald-400" : "text-white/80"
+                                )}>
+                                    {stats.winRate}
+                                </span>
+                            </div>
+                            <div className="flex flex-col items-center border-l border-white/5">
+                                <span className="text-[9px] uppercase tracking-widest text-white/30 mb-1">HS%</span>
+                                <span className="text-sm font-mono text-white/80 font-bold">{stats.hs}</span>
+                            </div>
                         </div>
-                        <div className="flex flex-col items-center border-l border-white/5">
-                            <span className="text-[9px] uppercase tracking-widest text-white/30 mb-1">WIN</span>
-                            <span className="text-sm font-mono text-emerald-400">{stats.winRate}</span>
-                        </div>
-                        <div className="flex flex-col items-center border-l border-white/5">
-                            <span className="text-[9px] uppercase tracking-widest text-white/30 mb-1">HS%</span>
-                            <span className="text-sm font-mono text-white/80">{stats.hs}</span>
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* HOVER BORDER GLOW */}

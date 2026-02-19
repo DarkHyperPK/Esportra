@@ -1,36 +1,294 @@
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import AdminAnalytics from "@/components/admin/AdminAnalytics";
-import { BarChart, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
+import {
+  ArrowLeft,
+  BarChart3,
+  Users,
+  Trophy,
+  MapPin,
+  TrendingUp,
+  Calendar,
+  RefreshCw,
+  DollarSign
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 
 const AnalyticsTool = () => {
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalTournaments: 0,
+    totalVenues: 0,
+    totalPrizePool: 0,
+    newUsersThisWeek: 0,
+    newTournamentsThisWeek: 0,
+    totalBookings: 0,
+    completedTournaments: 0,
+  });
+
+  const fetchAnalytics = useCallback(async () => {
+    setLoading(true);
+
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [
+      { count: userCount },
+      { count: tournamentCount },
+      { count: venueCount },
+      { data: tournaments },
+      { count: newUsersCount },
+      { count: newTournamentsCount },
+      { count: bookingCount },
+      { count: completedCount },
+    ] = await Promise.all([
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('tournaments').select('*', { count: 'exact', head: true }),
+      supabase.from('venues').select('*', { count: 'exact', head: true }),
+      supabase.from('tournaments').select('prize_pool'),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
+      supabase.from('tournaments').select('*', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
+      supabase.from('venue_bookings').select('*', { count: 'exact', head: true }),
+      supabase.from('tournaments').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+    ]);
+
+    let totalPrizePool = 0;
+    if (tournaments) {
+      totalPrizePool = tournaments.reduce((sum, t) => sum + (parseFloat(t.prize_pool) || 0), 0);
+    }
+
+    setStats({
+      totalUsers: userCount || 0,
+      totalTournaments: tournamentCount || 0,
+      totalVenues: venueCount || 0,
+      totalPrizePool,
+      newUsersThisWeek: newUsersCount || 0,
+      newTournamentsThisWeek: newTournamentsCount || 0,
+      totalBookings: bookingCount || 0,
+      completedTournaments: completedCount || 0,
+    });
+
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchAnalytics();
+  };
+
+  const metricCards = [
+    {
+      title: 'Total Users',
+      value: stats.totalUsers,
+      icon: Users,
+      color: 'rose',
+      description: 'Platform registrations'
+    },
+    {
+      title: 'Total Tournaments',
+      value: stats.totalTournaments,
+      icon: Trophy,
+      color: 'amber',
+      description: 'All-time tournaments'
+    },
+    {
+      title: 'Total Venues',
+      value: stats.totalVenues,
+      icon: MapPin,
+      color: 'emerald',
+      description: 'Gaming locations'
+    },
+    {
+      title: 'Total Prize Pool',
+      value: `$${stats.totalPrizePool.toLocaleString()}`,
+      icon: DollarSign,
+      color: 'violet',
+      description: 'Prize money distributed',
+      isString: true
+    },
+    {
+      title: 'New Users (7d)',
+      value: stats.newUsersThisWeek,
+      icon: TrendingUp,
+      color: 'cyan',
+      description: 'Last 7 days'
+    },
+    {
+      title: 'New Tournaments (7d)',
+      value: stats.newTournamentsThisWeek,
+      icon: Calendar,
+      color: 'blue',
+      description: 'Last 7 days'
+    },
+    {
+      title: 'Venue Bookings',
+      value: stats.totalBookings,
+      icon: MapPin,
+      color: 'green',
+      description: 'Total bookings'
+    },
+    {
+      title: 'Completed',
+      value: stats.completedTournaments,
+      icon: Trophy,
+      color: 'zinc',
+      description: 'Finished tournaments'
+    },
+  ];
+
+  const getColorClasses = (color: string) => {
+    const colors: Record<string, { bg: string; text: string }> = {
+      rose: { bg: 'bg-rose-500/10', text: 'text-rose-500' },
+      amber: { bg: 'bg-amber-500/10', text: 'text-amber-500' },
+      emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-500' },
+      violet: { bg: 'bg-violet-500/10', text: 'text-violet-500' },
+      cyan: { bg: 'bg-cyan-500/10', text: 'text-cyan-500' },
+      blue: { bg: 'bg-blue-500/10', text: 'text-blue-500' },
+      green: { bg: 'bg-green-500/10', text: 'text-green-500' },
+      zinc: { bg: 'bg-zinc-500/10', text: 'text-zinc-500' },
+    };
+    return colors[color] || colors.rose;
+  };
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/admin')} className="text-gray-400 hover:text-white">
+    <div className="min-h-screen p-4 lg:p-8">
+      {/* Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8"
+      >
+        <div className="flex items-center gap-4">
+          <Link to="/admin/dashboard">
+            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Admin
+              Back
             </Button>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <BarChart className="w-6 h-6 text-blue-400" />
-              Analytics Dashboard
-            </h1>
+          </Link>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-violet-500" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Analytics</h1>
+              <p className="text-zinc-500 text-sm">Platform metrics and insights</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <AdminAnalytics />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="border-zinc-800 text-zinc-400 hover:text-white"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </motion.header>
+
+      {/* Metrics Grid */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+      >
+        {metricCards.map((card, idx) => {
+          const colorClasses = getColorClasses(card.color);
+          return (
+            <motion.div
+              key={card.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 * idx }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              className="p-5 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className={`w-10 h-10 rounded-xl ${colorClasses.bg} flex items-center justify-center`}>
+                  <card.icon className={`w-5 h-5 ${colorClasses.text}`} />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-white">
+                {loading ? '...' : card.isString ? card.value : typeof card.value === 'number' ? card.value.toLocaleString() : card.value}
+              </p>
+              <p className="text-sm font-medium text-white mt-1">{card.title}</p>
+              <p className="text-xs text-zinc-500">{card.description}</p>
+            </motion.div>
+          );
+        })}
+      </motion.div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* User Growth */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-6"
+        >
+          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-rose-500" />
+            User Overview
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/50">
+              <span className="text-zinc-400">Total Registered</span>
+              <span className="text-white font-mono">{stats.totalUsers.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/50">
+              <span className="text-zinc-400">New This Week</span>
+              <span className="text-emerald-400 font-mono">+{stats.newUsersThisWeek}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/50">
+              <span className="text-zinc-400">Growth Rate</span>
+              <span className="text-cyan-400 font-mono">
+                {stats.totalUsers > 0 ? ((stats.newUsersThisWeek / stats.totalUsers) * 100).toFixed(1) : 0}%
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Tournament Overview */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-6"
+        >
+          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-amber-500" />
+            Tournament Overview
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/50">
+              <span className="text-zinc-400">Total Created</span>
+              <span className="text-white font-mono">{stats.totalTournaments.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/50">
+              <span className="text-zinc-400">Completed</span>
+              <span className="text-emerald-400 font-mono">{stats.completedTournaments}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/50">
+              <span className="text-zinc-400">Prize Pool Total</span>
+              <span className="text-violet-400 font-mono">${stats.totalPrizePool.toLocaleString()}</span>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
 };
 
 export default AnalyticsTool;
-
-
-
