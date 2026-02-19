@@ -10,8 +10,8 @@ const Callback = () => {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      const { error } = await supabase.auth.getSession();
-      
+      const { data: { session }, error } = await supabase.auth.getSession();
+
       if (error) {
         toast({
           title: "Authentication Error",
@@ -21,13 +21,28 @@ const Callback = () => {
         navigate('/auth/signin');
         return;
       }
-      
-      // Successfully authenticated
-      toast({
-        title: "Success!",
-        description: "You have successfully signed in.",
-      });
-      navigate('/');
+
+      if (session) {
+        // If we are here because of a password recovery link
+        const hash = window.location.hash;
+        if (hash && hash.includes('type=recovery')) {
+          toast({
+            title: "Security Check Passed",
+            description: "Please set your new password.",
+          });
+          navigate('/auth/reset-password');
+          return;
+        }
+
+        // Successfully authenticated
+        toast({
+          title: "Success!",
+          description: "You have successfully signed in.",
+        });
+        navigate('/');
+      } else {
+        navigate('/auth/signin');
+      }
     };
 
     handleAuthCallback();

@@ -34,6 +34,8 @@ const SignIn = React.lazy(() => import("./pages/auth/SignIn"));
 // Profile removed
 const Callback = React.lazy(() => import("./pages/auth/Callback"));
 const SetPassword = React.lazy(() => import("./pages/auth/SetPassword"));
+const ForgotPassword = React.lazy(() => import("./pages/auth/ForgotPassword"));
+const ResetPassword = React.lazy(() => import("./pages/auth/ResetPassword"));
 
 
 // User 
@@ -160,6 +162,8 @@ const AppContent = React.memo(() => {
               <Route path="/auth/signup" element={<SignUp />} />
               <Route path="/auth/signin" element={<SignIn />} />
               <Route path="/auth/callback" element={<Callback />} />
+              <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
               <Route path="/set-password" element={<SetPassword />} />
 
               {/* Admin Routes */}
