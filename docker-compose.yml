@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  esportra-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: esportra-web
+    ports:
+      - "80:80"
+    restart: always
+    environment:
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - VITE_APP_NAME=${VITE_APP_NAME}
+      - VITE_APP_VERSION=${VITE_APP_VERSION}
+    networks:
+      - coolify
+
+networks:
+  coolify:
+    external: true
