@@ -96,7 +96,7 @@ export SUPABASE_SERVICE_ROLE_KEY="PASTE_YOUR_CLOUD_SERVICE_ROLE_KEY_HERE"
 npm install @supabase/supabase-js
 
 # 3. Run the sync script
-node scripts/migration/storage_sync.js
+node scripts/migration/storage_sync.mjs
 ```
 
 This will create a folder called `supabase_storage_backup/` containing all your files structured by bucket.
