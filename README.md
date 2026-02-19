@@ -26,7 +26,13 @@ Building a cross-border competitive community:
 - **Unified Leaderboards**: Global and National rankings for players and teams based on RP (Rank Points).
 - **Team Statistics**: Comprehensive dashboard featuring tournament wins, match history, and member management.
 
-### **4. Venue Integration**
+### **4. Sponsorship & Advertising**
+Comprehensive tools for monetization and brand partnerships:
+- **Admin Sponsor CRM**: Manage partner applications, tiers, and multi-placement ad inventory.
+- **Dedicated Partner Portal**: A standalone dashboard for brands to track ROI, analytics, and manage creative assets.
+- **Live Ad Serving**: Real-time impressions and click tracking for banners and sidebar placements.
+
+### **5. Venue Integration**
 Connecting the digital and physical gaming worlds:
 - **Venue Management**: Tools for venue owners to list, manage, and verify their gaming centers.
 - **LAN Event Ready**: Features specifically designed for organizers running on-site competitions.
@@ -44,11 +50,11 @@ Connecting the digital and physical gaming worlds:
 
 ## 🗺️ Roadmap (Upcoming Features)
 
-**v0.5.0 - Professional Broadcasting & Social**
-- [ ] **Mobile Companion App**: Native iOS/Android apps for tournament notifications and checking.
-- [ ] **Broadcasting Integration**: Live match streaming embeddings (Twitch/YouTube) directly in the bracket.
-- [ ] **Sponsorship Portal**: Specialized tools for brands to manage ad placements and partner portals.
-- [ ] **AI Match Insights**: Automated stats extraction and highlight generation from match evidence.
+**v0.5.0 - Ecosystem Expansion**
+- [ ] **Mobile Companion Apps**: Native iOS/Android apps for instant match notifications and results check-in.
+- [ ] **Esportra Public API**: REST/GraphQL endpoints for developers to build third-party tools and overlays.
+- [ ] **Advanced AI Match Scouting**: Machine-learning driven player performance analysis and highlight generation.
+- [ ] **Match Streaming Integration**: Deep integration with Twitch/YouTube APIs for automated stream health monitoring.
 
 ---
 
