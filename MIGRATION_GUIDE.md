@@ -3,8 +3,13 @@
 This guide describes how to move your data from Supabase Cloud to your self-hosted instance.
 
 ## 1. Export Database
-Run this command from your local machine to export the entire Supabase Cloud database.
+Run these commands from your **Ubuntu Server (VPS)**. This ensures the fastest transfer speed between Supabase Cloud and your new instance.
 
+### Prerequisites (on Ubuntu):
+- Install Postgres client: `sudo apt-get install postgresql-client`
+- Install Node.js: `sudo apt-get install nodejs npm`
+
+### Exporting from Cloud:
 ```bash
 # Variables
 HOST="db.abbjywqlxnxoutllbgke.supabase.co"
