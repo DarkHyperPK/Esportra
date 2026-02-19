@@ -1,6 +1,6 @@
 import { User } from '@supabase/supabase-js';
 
-export type UserRole = 'casual' | 'organizer' | 'venue_owner' | 'admin';
+export type UserRole = 'casual' | 'organizer' | 'venue_owner' | 'admin' | 'player';
 
 export type UserProfile = {
   id: string;
@@ -9,6 +9,15 @@ export type UserProfile = {
   avatar_url: string | null;
   email: string | null;
   role?: UserRole;
+  bio?: string | null;
+  social_links?: any | null; // using any for flexibility with JSONB
+  card_image_url?: string | null;
+  riot_tag?: string | null;
+  steam_tag?: string | null;
+  country_code?: string | null;
+  is_admin?: boolean;
+  admin_roles?: string[];
+  base_role?: UserRole;
 };
 
 export type AuthContextType = {
@@ -17,8 +26,9 @@ export type AuthContextType = {
   loading: boolean;
   error?: string | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, username: string, fullName?: string, role?: UserRole) => Promise<void>;
+  signUp: (email: string, password: string, username: string, fullName?: string, role?: UserRole, dateOfBirth?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithDiscord: () => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   isOrganizer: () => boolean;

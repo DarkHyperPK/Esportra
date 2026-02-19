@@ -1,445 +1,633 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Users, 
-  MapPin, 
-  Trophy, 
-  CreditCard, 
-  Shield, 
-  FileText, 
-  Settings, 
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Users,
+  MapPin,
+  Trophy,
+  CreditCard,
+  Shield,
+  FileText,
+  Settings,
   BarChart3,
   UserCheck,
-  Ban,
+  Activity,
+  ChevronRight,
+  Sparkles,
+  RefreshCw,
+  Download,
+  Search,
+  Eye,
+  Clock,
+  CheckCircle,
   AlertTriangle,
   TrendingUp,
-  Activity,
-  Database,
-  Globe
+  Calendar,
+  Globe,
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight,
+  Home,
+  LogOut,
+  Megaphone,
+  Handshake
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+interface AuditLog {
+  id: string;
+  action: string;
+  user_id: string | null;
+  target_type: string;
+  target_id: string;
+  details: any;
+  created_at: string;
+}
+
+interface RecentActivity {
+  id: string;
+  type: 'user' | 'tournament' | 'venue' | 'booking' | 'verification';
+  title: string;
+  description: string;
+  time: string;
+  icon: any;
+  color: string;
+}
 
 const AdminManagement = () => {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const { roles, hasPermission } = useAdmin();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Stats state
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeVenues: 0,
     activeTournaments: 0,
     totalRevenue: 0,
     pendingVerifications: 0,
-    systemHealth: "Loading..."
+    totalBookings: 0,
+    newUsersToday: 0,
+    pendingPartners: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchRealStats();
-  }, []);
+  // Audit logs state
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditSearch, setAuditSearch] = useState('');
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
-  const fetchRealStats = async () => {
+  // Active tab state
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'tournaments' | 'venues' | 'audit' | 'analytics'>('overview');
+
+  // Real-time activity feed
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+
+  const fetchStats = useCallback(async () => {
     try {
-      setLoading(true);
-      
-      // Fetch total users
-      const { count: userCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch active venues (assuming venues table exists)
-      const { count: venueCount } = await supabase
-        .from('venues')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch active tournaments
-      const { count: tournamentCount } = await supabase
-        .from('tournaments')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch pending verification requests
-      const { count: verificationCount } = await supabase
-        .from('verification_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
-
-      // Calculate total revenue from tournaments (if prize_pool is numeric)
-      const { data: tournaments } = await supabase
-        .from('tournaments')
-        .select('prize_pool')
-        .neq('status', 'cancelled');
+      const [
+        { count: userCount },
+        { count: venueCount },
+        { count: tournamentCount },
+        { count: verificationCount },
+        { count: bookingCount },
+        { data: tournaments },
+        { count: newUsersCount },
+        { count: partnerCount },
+      ] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('venues').select('*', { count: 'exact', head: true }),
+        supabase.from('tournaments').select('*', { count: 'exact', head: true }),
+        supabase.from('verification_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('venue_bookings').select('*', { count: 'exact', head: true }),
+        supabase.from('tournaments').select('prize_pool').neq('status', 'cancelled'),
+        supabase.from('profiles').select('*', { count: 'exact', head: true })
+          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+        supabase.from('partner_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      ]);
 
       let totalRevenue = 0;
       if (tournaments) {
-        totalRevenue = tournaments.reduce((sum, tournament) => {
-          const prizePool = parseFloat(tournament.prize_pool) || 0;
-          return sum + prizePool;
-        }, 0);
+        totalRevenue = tournaments.reduce((sum, t) => sum + (parseFloat(t.prize_pool) || 0), 0);
       }
 
       setStats({
         totalUsers: userCount || 0,
         activeVenues: venueCount || 0,
         activeTournaments: tournamentCount || 0,
-        totalRevenue: totalRevenue,
+        totalRevenue,
         pendingVerifications: verificationCount || 0,
-        systemHealth: "Healthy"
+        totalBookings: bookingCount || 0,
+        newUsersToday: newUsersCount || 0,
+        pendingPartners: partnerCount || 0,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
-      setStats(prev => ({
-        ...prev,
-        systemHealth: "Error"
-      }));
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, []);
+
+  const fetchAuditLogs = useCallback(async () => {
+    setAuditLoading(true);
+    const { data } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    setAuditLogs(data || []);
+    setAuditLoading(false);
+  }, []);
+
+  const fetchRecentActivities = useCallback(async () => {
+    // Fetch recent users
+    const { data: recentUsers } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, created_at')
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    // Fetch recent tournaments
+    const { data: recentTournaments } = await supabase
+      .from('tournaments')
+      .select('id, name, created_at')
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    const activities: RecentActivity[] = [];
+
+    recentUsers?.forEach(user => {
+      activities.push({
+        id: user.id,
+        type: 'user',
+        title: 'New User Registered',
+        description: user.full_name || user.username || 'Unknown',
+        time: user.created_at,
+        icon: Users,
+        color: 'rose',
+      });
+    });
+
+    recentTournaments?.forEach(t => {
+      activities.push({
+        id: t.id,
+        type: 'tournament',
+        title: 'Tournament Created',
+        description: t.name || 'Untitled',
+        time: t.created_at,
+        icon: Trophy,
+        color: 'amber',
+      });
+    });
+
+    // Sort by time
+    activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+    setRecentActivities(activities.slice(0, 10));
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+    fetchAuditLogs();
+    fetchRecentActivities();
+
+    // Real-time subscription for audit logs
+    const subscription = supabase
+      .channel('audit_logs_realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, (payload) => {
+        setAuditLogs(prev => [payload.new as AuditLog, ...prev.slice(0, 99)]);
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [fetchStats, fetchAuditLogs, fetchRecentActivities]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchStats();
+    fetchAuditLogs();
+    fetchRecentActivities();
+    toast({ title: 'Data refreshed', description: 'All statistics updated' });
   };
 
-  const hasRoleAccess = (allowedRoles?: string[]) => {
-    if (!allowedRoles || allowedRoles.length === 0) return true;
-    if (roles.includes('super_admin')) return true;
-    return allowedRoles.some(role => roles.includes(role));
+  const exportAuditCSV = () => {
+    const csv = [
+      ['Date', 'Action', 'User', 'Target Type', 'Target ID', 'Details'],
+      ...auditLogs.map(log => [
+        new Date(log.created_at).toLocaleString(),
+        log.action,
+        log.user_id || 'system',
+        log.target_type || '',
+        log.target_id || '',
+        JSON.stringify(log.details)
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit_logs_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const TOOL_ACCESS: Record<string, { permission?: string; allowedRoles?: string[] }> = {
-    'user-management': {
-      permission: 'user:view',
-      allowedRoles: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin']
-    },
-    'tournament-management': {
-      permission: 'tournament:view',
-      allowedRoles: ['super_admin', 'ops_admin', 'moderator']
-    },
-    'venue-management': {
-      permission: 'venue:view',
-      allowedRoles: ['super_admin', 'ops_admin', 'support_admin']
-    },
-    'financial-management': {
-      permission: 'settings:view',
-      allowedRoles: ['super_admin', 'finance_admin']
-    },
-    'verification-system': {
-      permission: 'verification:view',
-      allowedRoles: ['super_admin', 'ops_admin', 'support_admin']
-    },
-    'audit-logs': {
-      permission: 'audit:view',
-      allowedRoles: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin']
-    },
-    'analytics-dashboard': {
-      permission: 'audit:view',
-      allowedRoles: ['super_admin', 'ops_admin', 'finance_admin']
-    }
+  const filteredLogs = auditLogs.filter(log =>
+    !auditSearch ||
+    log.action?.toLowerCase().includes(auditSearch.toLowerCase()) ||
+    log.target_type?.toLowerCase().includes(auditSearch.toLowerCase())
+  );
+
+  const formatTimeAgo = (date: string) => {
+    const now = new Date();
+    const then = new Date(date);
+    const diff = now.getTime() - then.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return 'Just now';
   };
 
-  const canAccessTool = (toolId: string) => {
-    const config = TOOL_ACCESS[toolId];
-    if (!config) return true;
-    if (config.allowedRoles && !hasRoleAccess(config.allowedRoles)) return false;
-    if (config.permission && !hasPermission(config.permission)) return false;
-    return true;
+  const getActionColor = (action: string) => {
+    if (action.includes('create') || action.includes('add')) return 'text-emerald-400 bg-emerald-500/10';
+    if (action.includes('delete') || action.includes('remove')) return 'text-red-400 bg-red-500/10';
+    if (action.includes('update') || action.includes('edit')) return 'text-blue-400 bg-blue-500/10';
+    return 'text-zinc-400 bg-zinc-500/10';
   };
 
-  const adminTools = [
-    {
-      id: "user-management",
-      title: "User Management",
-      description: "Manage users, suspend accounts, view user details",
-      icon: <Users className="w-8 h-8" />,
-      color: "bg-blue-600",
-      hoverColor: "hover:bg-blue-700",
-      stats: `${loading ? "..." : stats.totalUsers} users`,
-      features: ["View all users", "Suspend/ban users", "User analytics", "Account management"]
-    },
-    {
-      id: "tournament-management",
-      title: "Tournament Management",
-      description: "Oversee tournaments, approve events, manage brackets",
-      icon: <Trophy className="w-8 h-8" />,
-      color: "bg-yellow-600",
-      hoverColor: "hover:bg-yellow-700",
-      stats: `${loading ? "..." : stats.activeTournaments} active`,
-      features: ["Approve tournaments", "Manage brackets", "Tournament analytics", "Event oversight"]
-    },
-    {
-      id: "venue-management",
-      title: "Venue Management",
-      description: "Manage gaming venues, verify locations, handle bookings",
-      icon: <MapPin className="w-8 h-8" />,
-      color: "bg-green-600",
-      hoverColor: "hover:bg-green-700",
-      stats: `${loading ? "..." : stats.activeVenues} venues`,
-      features: ["Verify venues", "Manage bookings", "Venue analytics", "Location oversight"]
-    },
-    {
-      id: "financial-management",
-      title: "Financial Management",
-      description: "Track revenue, manage payments, financial analytics",
-      icon: <CreditCard className="w-8 h-8" />,
-      color: "bg-purple-600",
-      hoverColor: "hover:bg-purple-700",
-      stats: `$${loading ? "..." : stats.totalRevenue.toLocaleString()}`,
-      features: ["Revenue tracking", "Payment management", "Financial reports", "Transaction oversight"]
-    },
-    {
-      id: "verification-system",
-      title: "Verification System",
-      description: "Approve organizer and venue owner verification requests",
-      icon: <Shield className="w-8 h-8" />,
-      color: "bg-red-600",
-      hoverColor: "hover:bg-red-700",
-      stats: `${loading ? "..." : stats.pendingVerifications} pending`,
-      features: ["Review requests", "Approve organizers", "Verify venues", "Manage access"]
-    },
-    {
-      id: "audit-logs",
-      title: "Audit & Compliance",
-      description: "Monitor system activity, track admin actions, compliance",
-      icon: <FileText className="w-8 h-8" />,
-      color: "bg-indigo-600",
-      hoverColor: "hover:bg-indigo-700",
-      stats: "24/7 monitoring",
-      features: ["Action tracking", "System logs", "Compliance reports", "Security monitoring"]
-    },
-    // System monitoring temporarily removed per request
-    {
-      id: "analytics-dashboard",
-      title: "Analytics Dashboard",
-      description: "Platform analytics, user insights, growth metrics",
-      icon: <BarChart3 className="w-8 h-8" />,
-      color: "bg-orange-600",
-      hoverColor: "hover:bg-orange-700",
-      stats: "Real-time data",
-      features: ["User analytics", "Growth metrics", "Platform insights", "Performance data"]
-    }
+  const statCards = [
+    { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'rose' },
+    { label: 'Active Venues', value: stats.activeVenues, icon: MapPin, color: 'emerald' },
+    { label: 'Tournaments', value: stats.activeTournaments, icon: Trophy, color: 'amber' },
+    { label: 'Prize Pool', value: `$${stats.totalRevenue.toLocaleString()}`, icon: CreditCard, color: 'violet', isString: true },
+    { label: 'Bookings', value: stats.totalBookings, icon: Calendar, color: 'blue' },
+    { label: 'Pending', value: stats.pendingVerifications, icon: Shield, color: 'red' },
+    { label: 'New Today', value: stats.newUsersToday, icon: TrendingUp, color: 'cyan' },
+    { label: 'Partners', value: stats.pendingPartners, icon: Megaphone, color: 'violet' },
   ];
 
-  const visibleTools = adminTools.filter(tool => canAccessTool(tool.id));
+  const quickNavLinks = [
+    { label: 'User Management', href: '/admin/tools/user-management', icon: Users, color: 'rose' },
+    { label: 'Tournament Management', href: '/admin/tools/tournament-management', icon: Trophy, color: 'amber' },
+    { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, color: 'emerald' },
+    { label: 'Sponsor CRM', href: '/admin/tools/sponsor-management', icon: Megaphone, color: 'violet' },
+    { label: 'Verification System', href: '/admin/tools/verification-system', icon: Shield, color: 'red', badge: stats.pendingVerifications },
+    { label: 'Dispute Center', href: '/admin/disputes', icon: AlertTriangle, color: 'amber' },
+    { label: 'Analytics', href: '/admin/tools/analytics', icon: BarChart3, color: 'blue' },
+    { label: 'System Settings', href: '/admin/settings', icon: Settings, color: 'cyan' },
+    { label: 'Audit Logs', href: '/admin/audit', icon: FileText, color: 'zinc' },
+    { label: 'Admin Access', href: '/admin/access', icon: UserCheck, color: 'rose' },
+  ];
 
-  const handleToolClick = (toolId: string) => {
-    if (!canAccessTool(toolId)) {
-      toast({
-        title: "Access denied",
-        description: "You don't have permission to open this tool.",
-        variant: "destructive"
-      });
-      return;
-    }
-    // Map friendly ids to actual routes
-    const routeMap: Record<string, string> = {
-      'user-management': '/admin/tools/user-management',
-      'tournament-management': '/admin/tools/tournament-management',
-      'venue-management': '/admin/tools/venue-management',
-      'financial-management': '/admin/tools/payments',
-      'verification-system': '/admin/tools/verification-system',
-      'audit-logs': '/admin/tools/audit-logs',
-      // 'system-monitoring': '/admin/tools/system-status',
-      'analytics-dashboard': '/admin/tools/analytics',
+  const getColorClasses = (color: string) => {
+    const colors: Record<string, { bg: string; text: string; border: string }> = {
+      rose: { bg: 'bg-rose-500/10', text: 'text-rose-500', border: 'border-rose-500/30' },
+      amber: { bg: 'bg-amber-500/10', text: 'text-amber-500', border: 'border-amber-500/30' },
+      emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', border: 'border-emerald-500/30' },
+      violet: { bg: 'bg-violet-500/10', text: 'text-violet-500', border: 'border-violet-500/30' },
+      red: { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/30' },
+      blue: { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/30' },
+      cyan: { bg: 'bg-cyan-500/10', text: 'text-cyan-500', border: 'border-cyan-500/30' },
+      zinc: { bg: 'bg-zinc-500/10', text: 'text-zinc-400', border: 'border-zinc-500/30' },
+      green: { bg: 'bg-green-500/10', text: 'text-green-500', border: 'border-green-500/30' },
     };
-    const target = routeMap[toolId] || `/admin/tools/${toolId}`;
-    navigate(target);
+    return colors[color] || colors.rose;
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 px-6 py-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white">Admin Management System</h1>
-              <p className="text-gray-400 mt-2">Comprehensive platform administration and management tools</p>
+    <div className="min-h-screen p-4 lg:p-8">
+      {/* Top Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center">
+            <Shield className="w-6 h-6 text-rose-500" />
+          </div>
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white">
+              Admin Dashboard
+            </h1>
+            <p className="text-zinc-500 text-sm">Platform management & analytics</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+
+          <Link to="/">
+            <Button variant="outline" size="sm" className="border-zinc-800 text-zinc-400 hover:text-white">
+              <Home className="w-4 h-4 mr-2" />
+              Home
+            </Button>
+          </Link>
+
+          <div className="h-8 w-px bg-zinc-800" />
+
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden md:block">
+              <p className="text-xs text-zinc-500">Signed in as</p>
+              <p className="text-sm font-medium text-white">{profile?.full_name || profile?.username}</p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-400">Welcome back</p>
-                <p className="font-semibold text-white">{profile?.full_name || profile?.username}</p>
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
+              <Users className="w-5 h-5 text-rose-500" />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              className="text-zinc-500 hover:text-red-400"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </motion.header>
+
+      {/* Stats Grid */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8"
+      >
+        {statCards.map((stat, idx) => {
+          const colorClasses = getColorClasses(stat.color);
+          return (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 * idx }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              className="p-4 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className={`w-8 h-8 rounded-lg ${colorClasses.bg} flex items-center justify-center`}>
+                  <stat.icon className={`w-4 h-4 ${colorClasses.text}`} />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                <Shield className="w-6 h-6 text-white" />
+              <p className="text-xl font-bold text-white">
+                {loading ? '...' : stat.isString ? stat.value : typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
+              </p>
+              <p className="text-xs text-zinc-500 truncate">{stat.label}</p>
+            </motion.div>
+          );
+        })}
+      </motion.section>
+
+      {/* Quick Navigation */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="mb-8"
+      >
+        <h2 className="text-sm font-mono text-zinc-500 uppercase tracking-wider mb-3">Quick Access</h2>
+        <div className="flex flex-wrap gap-2">
+          {quickNavLinks.map((link) => {
+            const colorClasses = getColorClasses(link.color);
+            return (
+              <Link key={link.href} to={link.href}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`border-zinc-800 text-zinc-300 hover:${colorClasses.border} hover:${colorClasses.text} transition-all`}
+                >
+                  <link.icon className={`w-4 h-4 mr-2 ${colorClasses.text}`} />
+                  {link.label}
+                  {link.badge ? (
+                    <Badge className="ml-2 bg-red-500 text-white text-xs">{link.badge}</Badge>
+                  ) : null}
+                </Button>
+              </Link>
+            );
+          })}
+        </div>
+      </motion.section>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Activity Feed */}
+        <motion.section
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          className="lg:col-span-1 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-5"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-white font-semibold flex items-center gap-2">
+              <Activity className="w-4 h-4 text-rose-500" />
+              Activity Feed
+            </h3>
+            <span className="text-xs text-zinc-500">Live</span>
+          </div>
+
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            {recentActivities.length === 0 ? (
+              <p className="text-zinc-500 text-sm text-center py-8">No recent activity</p>
+            ) : (
+              recentActivities.map((activity, idx) => {
+                const colorClasses = getColorClasses(activity.color);
+                return (
+                  <motion.div
+                    key={activity.id + idx}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/50 hover:bg-zinc-900 transition-colors"
+                  >
+                    <div className={`w-8 h-8 rounded-lg ${colorClasses.bg} flex items-center justify-center shrink-0`}>
+                      <activity.icon className={`w-4 h-4 ${colorClasses.text}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-zinc-400">{activity.title}</p>
+                      <p className="text-sm text-white truncate">{activity.description}</p>
+                    </div>
+                    <span className="text-xs text-zinc-600 shrink-0">{formatTimeAgo(activity.time)}</span>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+        </motion.section>
+
+        {/* Audit Logs */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="lg:col-span-2 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
+        >
+          <div className="p-5 border-b border-zinc-800/50">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-500" />
+                Audit Logs
+                <Badge className="bg-zinc-800 text-zinc-400 text-xs">{auditLogs.length}</Badge>
+              </h3>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Input
+                    placeholder="Search logs..."
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    className="pl-9 w-48 bg-zinc-900/50 border-zinc-800 focus:border-rose-500 text-sm"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={exportAuditCSV}
+                  className="bg-rose-500 hover:bg-rose-600 text-white"
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  Export
+                </Button>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Quick Stats */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gray-800 border-gray-700">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Total Users</p>
-                  <p className="text-2xl font-bold text-white">
-                    {loading ? "..." : stats.totalUsers.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-                    <Users className="w-3 h-3" />
-                    Platform users
-                  </p>
-                </div>
-                <Users className="w-8 h-8 text-blue-400" />
+          <div className="max-h-[400px] overflow-y-auto">
+            {auditLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800 border-gray-700">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Active Venues</p>
-                  <p className="text-2xl font-bold text-white">
-                    {loading ? "..." : stats.activeVenues}
-                  </p>
-                  <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-                    <MapPin className="w-3 h-3" />
-                    Gaming venues
-                  </p>
-                </div>
-                <MapPin className="w-8 h-8 text-green-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800 border-gray-700">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Active Tournaments</p>
-                  <p className="text-2xl font-bold text-white">
-                    {loading ? "..." : stats.activeTournaments}
-                  </p>
-                  <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-                    <Trophy className="w-3 h-3" />
-                    Tournament events
-                  </p>
-                </div>
-                <Trophy className="w-8 h-8 text-yellow-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800 border-gray-700">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Total Prize Pool</p>
-                  <p className="text-2xl font-bold text-white">
-                    {loading ? "..." : `$${stats.totalRevenue.toLocaleString()}`}
-                  </p>
-                  <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-                    <CreditCard className="w-3 h-3" />
-                    Prize money
-                  </p>
-                </div>
-                <CreditCard className="w-8 h-8 text-purple-400" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Admin Tools Grid */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Administration Tools</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {visibleTools.length === 0 && (
-              <div className="col-span-full text-center text-gray-400 border border-dashed border-gray-700 rounded-lg py-12">
-                No administration tools available for your role.
+            ) : filteredLogs.length === 0 ? (
+              <p className="text-zinc-500 text-center py-12">No audit logs found</p>
+            ) : (
+              <div className="divide-y divide-zinc-800/50">
+                {filteredLogs.slice(0, 50).map((log, idx) => (
+                  <motion.div
+                    key={log.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: idx * 0.01 }}
+                    onClick={() => setSelectedLog(log)}
+                    className="px-5 py-3 hover:bg-zinc-900/50 cursor-pointer transition-colors flex items-center gap-4"
+                  >
+                    <div className="w-16 shrink-0">
+                      <p className="text-xs text-zinc-500">{new Date(log.created_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-zinc-600">{new Date(log.created_at).toLocaleTimeString()}</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded-md text-xs font-medium uppercase ${getActionColor(log.action)}`}>
+                      {log.action}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs text-zinc-500">{log.target_type}</span>
+                      <span className="text-xs text-zinc-600 ml-2 font-mono">{log.target_id?.slice(0, 8)}...</span>
+                    </div>
+                    <Eye className="w-4 h-4 text-zinc-600" />
+                  </motion.div>
+                ))}
               </div>
             )}
-            {visibleTools.map((tool) => (
-              <Card 
-                key={tool.id}
-                className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-all duration-200 cursor-pointer group"
-                onClick={() => handleToolClick(tool.id)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className={`w-12 h-12 ${tool.color} rounded-lg flex items-center justify-center text-white group-hover:scale-105 transition-transform`}>
-                      {tool.icon}
-                    </div>
-                    <Badge variant="secondary" className="bg-gray-700 text-gray-300">
-                      {tool.stats}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-white text-lg">{tool.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <p className="text-gray-400 text-sm mb-4">{tool.description}</p>
-                  <div className="space-y-2">
-                    {tool.features.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-2 text-xs text-gray-500">
-                        <div className="w-1 h-1 bg-gray-500 rounded-full"></div>
-                        {feature}
-                      </div>
-                    ))}
-                  </div>
-                  <Button 
-                    className={`w-full mt-4 ${tool.color} ${tool.hoverColor} text-white`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToolClick(tool.id);
-                    }}
-                  >
-                    Access Tool
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
           </div>
-        </div>
-
-        {/* Quick Actions */}
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Quick Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button 
-                variant="outline" 
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                onClick={() => handleToolClick("verification-system")}
-              >
-                <UserCheck className="w-4 h-4 mr-2" />
-                Review Verifications
-                {!loading && stats.pendingVerifications > 0 && (
-                  <Badge className="ml-2 bg-red-600 text-white text-xs">
-                    {stats.pendingVerifications}
-                  </Badge>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                onClick={() => handleToolClick("audit-logs")}
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                View Audit Logs
-              </Button>
-              <Button 
-                variant="outline" 
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
-                onClick={() => handleToolClick("system-monitoring")}
-              >
-                <Activity className="w-4 h-4 mr-2" />
-                System Status
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        </motion.section>
       </div>
+
+      {/* System Health */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="mt-6 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-5"
+      >
+        <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-emerald-500" />
+          System Health
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: 'API Status', status: 'Operational', color: 'emerald' },
+            { label: 'Database', status: 'Healthy', color: 'emerald' },
+            { label: 'Auth Service', status: 'Operational', color: 'emerald' },
+            { label: 'Storage', status: 'Operational', color: 'emerald' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900/50">
+              <div className={`w-2 h-2 rounded-full bg-${item.color}-500 animate-pulse`} />
+              <div>
+                <p className="text-xs text-zinc-500">{item.label}</p>
+                <p className={`text-sm text-${item.color}-400 font-medium`}>{item.status}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* Audit Log Detail Modal */}
+      <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <FileText className="w-5 h-5 text-rose-500" />
+              Audit Log Details
+            </DialogTitle>
+          </DialogHeader>
+          {selectedLog && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-xl bg-zinc-900/50">
+                  <p className="text-xs text-zinc-500 uppercase">Action</p>
+                  <p className={`text-sm font-medium mt-1 ${getActionColor(selectedLog.action).split(' ')[0]}`}>
+                    {selectedLog.action}
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-zinc-900/50">
+                  <p className="text-xs text-zinc-500 uppercase">Timestamp</p>
+                  <p className="text-white text-sm mt-1">{new Date(selectedLog.created_at).toLocaleString()}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-zinc-900/50">
+                  <p className="text-xs text-zinc-500 uppercase">User ID</p>
+                  <p className="text-white text-sm font-mono mt-1">{selectedLog.user_id || 'system'}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-zinc-900/50">
+                  <p className="text-xs text-zinc-500 uppercase">Target</p>
+                  <p className="text-white text-sm mt-1">{selectedLog.target_type} / {selectedLog.target_id?.slice(0, 12)}...</p>
+                </div>
+              </div>
+              <div className="p-3 rounded-xl bg-zinc-900/50">
+                <p className="text-xs text-zinc-500 uppercase mb-2">Details</p>
+                <pre className="text-sm text-zinc-300 overflow-x-auto font-mono bg-zinc-950 p-4 rounded-lg max-h-48">
+                  {JSON.stringify(selectedLog.details, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

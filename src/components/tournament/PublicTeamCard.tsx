@@ -84,10 +84,13 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
                                 <h3 className="text-xl font-bold text-white truncate px-2">
                                     {participant.team_name || 'Unknown Team'}
                                 </h3>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    {new Date(participant.registered_at).toLocaleDateString()}
-                                </p>
+                                {participant.registered_at && (
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        {new Date(participant.registered_at).toLocaleDateString()}
+                                    </p>
+                                )}
                             </div>
+
                         </motion.div>
                     ) : (
                         /* BACK FACE: Simple Roster List */
@@ -106,7 +109,7 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
 
                             <div className="flex flex-col gap-3 px-2 pb-6">
                                 {members.length > 0 ? (
-                                    members.map((member, idx) => (
+                                    members.slice(0, 5).map((member, idx) => (
                                         <div key={idx} className="flex items-baseline gap-3 text-white font-medium text-lg">
                                             <span className="text-gray-500 text-sm font-normal w-4 text-right">{idx + 1}.</span>
                                             <span className="truncate">{member}</span>
@@ -114,6 +117,11 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
                                     ))
                                 ) : (
                                     <p className="text-sm text-gray-500 italic text-center py-4">No members listed</p>
+                                )}
+                                {members.length > 5 && (
+                                    <p className="text-xs text-gray-500 text-center italic mt-1">
+                                        + {members.length - 5} more
+                                    </p>
                                 )}
                             </div>
 

@@ -3,7 +3,7 @@ import { UserProfile } from '@/types/auth';
 
 export const getDashboardPath = (profile: UserProfile | null): string => {
   if (!profile) {
-    return '/user/dashboard'; // Default fallback
+    return '/'; // Default fallback
   }
 
   switch (profile.role) {
@@ -17,7 +17,7 @@ export const getDashboardPath = (profile: UserProfile | null): string => {
       return '/player/dashboard';
     case 'casual':
     default:
-      return '/user/dashboard';
+      return '/';
   }
 };
 

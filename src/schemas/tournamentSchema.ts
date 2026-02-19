@@ -21,12 +21,16 @@ const basicInfoBase = z.object({
 export const basicInfoSchema = basicInfoBase.refine(
     (data) => data.isOnline || (data.venue && data.venue.length > 0),
     { message: 'Venue is required for LAN tournaments', path: ['venue'] }
-);
+).refine((data) => {
+    if (!data.startDate || !data.startTime || !data.endDate || !data.endTime) return true;
+    const start = new Date(`${data.startDate}T${data.startTime}`);
+    const end = new Date(`${data.endDate}T${data.endTime}`);
+    return end > start;
+}, { message: 'End time must be after start time', path: ['endTime'] });
 
 // Step 2: Format & Rules Schema
 const formatRulesBase = z.object({
-    bracketType: z.enum(['single_elimination', 'double_elimination', 'swiss', 'round_robin', 'battle_royale']).optional().default('single_elimination'),
-    matchCount: z.number().min(1).max(20).optional(), // Optional because it defaults to 1
+    bracketType: z.enum(['single_elimination', 'double_elimination', 'swiss', 'round_robin']).optional().default('single_elimination'),
     maxTeams: z.number()
         .min(0, 'Invalid value')
         .max(256, 'Maximum 256 teams allowed'),
@@ -176,7 +180,7 @@ export const BRACKET_TYPE_LABELS: Record<string, string> = {
     double_elimination: 'Double Elimination',
     swiss: 'Swiss',
     round_robin: 'Round Robin',
-    battle_royale: 'Battle Royale / Points',
+    // battle_royale removed
 };
 
 // Seeding type labels

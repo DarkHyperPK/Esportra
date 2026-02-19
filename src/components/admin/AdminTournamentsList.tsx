@@ -1,18 +1,8 @@
-
 import { useState, useEffect } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Search, Eye, Edit, Trash2, Trophy, Users } from "lucide-react";
+import { motion } from 'framer-motion';
+import { Search, Eye, Edit, Trash2, Trophy, Users, CheckCircle, Clock, Activity, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { ParticipantListModal } from "./ParticipantListModal";
 
@@ -41,64 +31,6 @@ interface UITournament {
   maxParticipants: number;
   prizePool: string;
 }
-
-const mockTournaments: Tournament[] = [
-  {
-    id: '1',
-    name: 'Summer Valorant Championship',
-    game: 'Valorant',
-    organizer: 'organizer1',
-    date: '2023-06-15',
-    status: 'upcoming',
-    participants: 12,
-    maxParticipants: 16,
-    prizePool: '$2,000',
-  },
-  {
-    id: '2',
-    name: 'League of Legends Weekly',
-    game: 'League of Legends',
-    organizer: 'organizer2',
-    date: '2023-05-10',
-    status: 'ongoing',
-    participants: 8,
-    maxParticipants: 8,
-    prizePool: '$1,000',
-  },
-  {
-    id: '3',
-    name: 'CS:GO Pro Circuit',
-    game: 'Counter-Strike',
-    organizer: 'organizer1',
-    date: '2023-04-25',
-    status: 'completed',
-    participants: 16,
-    maxParticipants: 16,
-    prizePool: '$3,500',
-  },
-  {
-    id: '4',
-    name: 'Fortnite Solo Showdown',
-    game: 'Fortnite',
-    organizer: 'organizer3',
-    date: '2023-07-02',
-    status: 'upcoming',
-    participants: 45,
-    maxParticipants: 100,
-    prizePool: '$5,000',
-  },
-  {
-    id: '5',
-    name: 'Rocket League 2v2',
-    game: 'Rocket League',
-    organizer: 'organizer2',
-    date: '2023-05-20',
-    status: 'upcoming',
-    participants: 16,
-    maxParticipants: 32,
-    prizePool: '$1,500',
-  },
-];
 
 const AdminTournamentsList = () => {
   const [tournaments, setTournaments] = useState<UITournament[]>([]);
@@ -144,120 +76,160 @@ const AdminTournamentsList = () => {
     fetchTournaments();
   }, []);
 
-  const filteredTournaments = tournaments.filter(tournament => 
+  const filteredTournaments = tournaments.filter(tournament =>
     tournament.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tournament.game.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { color: string; icon: React.ReactNode }> = {
+      active: { color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', icon: <CheckCircle className="w-3 h-3" /> },
+      ongoing: { color: 'bg-rose-500/10 text-rose-400 border-rose-500/30', icon: <Activity className="w-3 h-3" /> },
+      live: { color: 'bg-rose-500/10 text-rose-400 border-rose-500/30', icon: <Activity className="w-3 h-3" /> },
+      upcoming: { color: 'bg-blue-500/10 text-blue-400 border-blue-500/30', icon: <Clock className="w-3 h-3" /> },
+      completed: { color: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30', icon: <CheckCircle className="w-3 h-3" /> },
+      cancelled: { color: 'bg-red-500/10 text-red-400 border-red-500/30', icon: <AlertCircle className="w-3 h-3" /> },
+    };
+    const config = statusConfig[status] || statusConfig.upcoming;
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${config.color}`}>
+        {config.icon}
+        {status}
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-yellow-400" />
-            Tournaments Management
-          </h2>
-          <p className="text-gray-400">Monitor and manage all platform tournaments</p>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+            <Trophy className="w-5 h-5 text-amber-500" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Tournaments Management</h2>
+            <p className="text-zinc-500 text-sm">Monitor and manage all platform tournaments</p>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-            <Input 
-              className="pl-10 bg-gray-700 border-gray-600 text-white"
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Input
+              className="pl-9 bg-zinc-900/50 border-zinc-800 focus:border-rose-500 w-64"
               placeholder="Search tournaments..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button className="bg-yellow-600 hover:bg-yellow-700 text-white">
-            <Trophy size={18} className="mr-2" />
+          <Button className="bg-rose-500 hover:bg-rose-600 text-white">
+            <Trophy className="w-4 h-4 mr-2" />
             Add Tournament
           </Button>
         </div>
       </div>
-    
-      {/* Tournaments Table */}
-      <Card className="bg-gray-800/50 border-gray-700">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-gray-700">
-                  <TableHead className="text-gray-300">Name</TableHead>
-                  <TableHead className="text-gray-300">Game</TableHead>
-                  <TableHead className="text-gray-300">Organizer</TableHead>
-                  <TableHead className="text-gray-300">Date</TableHead>
-                  <TableHead className="text-gray-300">Status</TableHead>
-                  <TableHead className="text-gray-300">Participants</TableHead>
-                  <TableHead className="text-gray-300">Prize Pool</TableHead>
-                  <TableHead className="text-right text-gray-300">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-400">Loading tournaments...</TableCell>
-                  </TableRow>
-                ) : error ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-red-500">{error}</TableCell>
-                  </TableRow>
-                ) : filteredTournaments.length > 0 ? (
-                  filteredTournaments.map(tournament => (
-                    <TableRow key={tournament.id} className="border-gray-700 hover:bg-gray-700/30">
-                      <TableCell className="font-medium text-white">{tournament.name}</TableCell>
-                      <TableCell className="text-gray-300">{tournament.game}</TableCell>
-                      <TableCell className="text-gray-300">{tournament.organizer}</TableCell>
-                      <TableCell className="text-gray-300">{new Date(tournament.date).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Badge className={
-                          tournament.status === 'upcoming' ? 'bg-blue-600 text-white' : 
-                          tournament.status === 'ongoing' ? 'bg-green-600 text-white' : 
-                          tournament.status === 'completed' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-white'
-                        }>
-                          {tournament.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-white flex items-center gap-1">
-                        <Users size={14} className="text-gray-400" />
-                        {tournament.participants}/{tournament.maxParticipants}
-                      </TableCell>
-                      <TableCell className="text-white font-semibold">{tournament.prizePool}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-gray-400 hover:text-white"
-                            onClick={() => { setSelectedTournament({ id: tournament.id, name: tournament.name }); setParticipantsOpen(true); }}
-                          >
-                            <Eye size={16} />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="text-gray-400 hover:text-blue-400">
-                            <Edit size={16} />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="text-gray-400 hover:text-red-500">
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-400">
-                      No tournaments found matching your search.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
 
-      <ParticipantListModal 
+      {/* Tournaments Table */}
+      <div className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-zinc-900/50">
+                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Tournament</th>
+                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Game</th>
+                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Organizer</th>
+                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Participants</th>
+                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-wider">Prize Pool</th>
+                <th className="px-6 py-3 text-right text-xs font-mono text-zinc-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/50">
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-12">
+                    <div className="flex items-center justify-center gap-2 text-zinc-500">
+                      <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                      Loading tournaments...
+                    </div>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-12 text-red-400">{error}</td>
+                </tr>
+              ) : filteredTournaments.length > 0 ? (
+                filteredTournaments.map((tournament, idx) => (
+                  <motion.tr
+                    key={tournament.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: idx * 0.02 }}
+                    className="hover:bg-zinc-900/30 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                          <Trophy className="w-4 h-4 text-amber-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white">{tournament.name}</p>
+                          <p className="text-xs text-zinc-500 font-mono">{tournament.id.slice(0, 8)}...</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 rounded-lg bg-zinc-800 text-zinc-300 text-xs">
+                        {tournament.game}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-zinc-400">{tournament.organizer}</td>
+                    <td className="px-6 py-4 text-sm text-zinc-400">{new Date(tournament.date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">{getStatusBadge(tournament.status)}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-zinc-500" />
+                        <span className="text-sm text-white">{tournament.participants}</span>
+                        <span className="text-xs text-zinc-500">/ {tournament.maxParticipants}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-semibold text-emerald-400">{tournament.prizePool}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-zinc-400 hover:text-rose-500"
+                          onClick={() => { setSelectedTournament({ id: tournament.id, name: tournament.name }); setParticipantsOpen(true); }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-blue-400">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-red-500">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="text-center py-12 text-zinc-500">
+                    No tournaments found matching your search.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <ParticipantListModal
         tournamentId={selectedTournament?.id || ''}
         tournamentName={selectedTournament?.name || ''}
         isOpen={participantsOpen}

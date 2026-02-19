@@ -1,15 +1,18 @@
 import { BestOf, GameVetoConfig, TeamSide, VetoAction, VetoStep } from './types';
-import { VALORANT_CONFIG } from './sequences';
+import { VALORANT_CONFIG, CS2_CONFIG } from './sequences';
 
 export class VetoService {
     private config: GameVetoConfig;
 
     constructor(game: string = 'valorant') {
-        // For now, default to Valorant. Can be extended to other games.
-        if (game.toLowerCase() === 'valorant') {
+        // Map supported games to their configs
+        const gameKey = game.toLowerCase();
+        if (gameKey === 'valorant') {
             this.config = VALORANT_CONFIG;
+        } else if (gameKey === 'cs2' || gameKey === 'counter-strike 2') {
+            this.config = CS2_CONFIG;
         } else {
-            // Fallback to Valorant if game not found, or throw error
+            // Default to Valorant
             this.config = VALORANT_CONFIG;
         }
     }

@@ -8,6 +8,8 @@ interface BracketRendererProps {
     activeFilter: { type: string; round?: number };
     customFilterPredicate?: (match: BracketMatch) => boolean;
     onMatchClick?: (match: BracketMatch) => void;
+    hasResultsMap?: Record<string, any[]>;
+    hasProofsMap?: Record<string, string[]>;
     // Optional overrides for layout
     cardWidth?: number;
     cardHeight?: number;
@@ -25,6 +27,8 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     activeFilter,
     customFilterPredicate,
     onMatchClick,
+    hasResultsMap = {},
+    hasProofsMap = {},
     cardWidth = 200,
     cardHeight = 70,
     roundGap = 100,
@@ -35,8 +39,8 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     bracketSpacing = 80,
     disableAnimations = false,
 }) => {
-    // Helper to get raw ID (remove 'source-' prefix if present)
-    const getRawId = (id: string) => id.replace('source-', '');
+    // Helper to get raw ID (remove 'db-', 'wb-', 'lb-' prefixes if present)
+    const getRawId = (id: string) => id.replace(/^(db-|wb-|lb-|source-)/, '');
 
     // Calculate positions using the robust slot-based algorithm
     const { matchPositions, totalWidth, totalHeight, winnersBottomY } = useMemo(() => {
@@ -253,12 +257,14 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                             exit={disableAnimations ? undefined : { opacity: 0, scale: 0.9 }}
                             transition={disableAnimations ? { duration: 0 } : { duration: 0.2 }}
                             style={{ position: 'absolute', left: pos.x - filterXOffset, top: pos.y - filterYOffset }}
-                            onClick={() => onMatchClick?.(match)}
                         >
                             <ReadOnlyMatchCard
                                 match={match}
                                 x={0} // Position handled by motion.div
                                 y={0}
+                                onClick={() => onMatchClick?.(match)}
+                                hasAutomatedResults={hasResultsMap[getRawId(String(match.id))]?.length > 0}
+                                hasProofs={hasProofsMap[getRawId(String(match.id))]?.length > 0}
                             />
                         </motion.div>
                     );

@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 
 interface LoadingSpinnerProps {
     size?: number;
@@ -14,23 +15,28 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     text = 'Loading...',
     className = ''
 }) => {
-    const spinnerSize = size;
-    const strokeWidth = size / 10;
-
-    return (
-        <div className={`flex flex-col items-center justify-center gap-4 ${className}`}>
-            <div className="relative" style={{ width: size, height: size }}>
+    // If it's a small spinner (e.g. inside a button), keep the simple version to avoid breaking UI layout
+    if (size < 40) {
+        return (
+            <div className={`flex items-center justify-center gap-2 ${className}`}>
                 <motion.span
-                    className="block rounded-full border-4 border-white/20 border-t-white"
+                    className="block rounded-full border-2 border-white/20 border-t-white"
                     style={{ width: size, height: size }}
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                 />
             </div>
-            {text && (
-                <p className="text-sm font-medium text-gray-400 animate-pulse">{text}</p>
-            )}
-        </div>
+        );
+    }
+
+    // For larger spinners, use the premium full-screen style but contained if needed
+    // However, PremiumLoadingScreen is fixed inset-0.
+    // If this usage expects a component inside a div, we need a "Inline" version or just use the Premium one if it's meant to be a page loader.
+    // Given the "upgrade loading screen" request, users usually mean the page loader.
+    // Let's defer to PremiumLoadingScreen for page-level loaders.
+
+    return (
+        <PremiumLoadingScreen text={text === 'Loading...' ? undefined : text} className={className} />
     );
 };
 

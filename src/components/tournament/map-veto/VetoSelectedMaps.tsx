@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sword, Shield as ShieldIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MatchMapVeto, GameMap, PickedMap, VETO_SEQUENCES, getVetoFormat, getTeamForAction, getSidePickerTeam } from '@/hooks/useMapVetoMachine';
+import { MatchMapVeto, GameMap, PickedMap, VETO_SEQUENCES, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
 
 interface VetoSelectedMapsProps {
     veto: MatchMapVeto;
@@ -15,6 +15,7 @@ interface VetoSelectedMapsProps {
     imagesLoaded: Set<string>;
     setImagesLoaded: React.Dispatch<React.SetStateAction<Set<string>>>;
     bestOf: number;
+    game?: string;
 }
 
 export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
@@ -29,7 +30,9 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     imagesLoaded,
     setImagesLoaded,
     bestOf,
+    game = 'valorant',
 }) => {
+    const service = React.useMemo(() => new VetoService(game), [game]);
     const currentBestOf = bestOf || 1;
     const vetoFormat = getVetoFormat(currentBestOf);
 
@@ -84,7 +87,11 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                         pickActionNumber: number;
                     }> = [];
 
-                    const sequence = VETO_SEQUENCES[vetoFormat];
+                    // Use game-aware sequences
+                    const sequences = game?.toLowerCase() === 'cs2' || game === 'Counter-Strike 2'
+                        ? VETO_SEQUENCES
+                        : VETO_SEQUENCES; // Currently same, but logic is here
+                    const sequence = sequences[vetoFormat];
 
                     const pickActions: Array<{ actionNumber: number; action: string; teamId: string }> = [];
                     for (let actionIdx = 0; actionIdx < sequence.length; actionIdx++) {
@@ -97,7 +104,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                 vetoFormat,
                                 effectiveTeam1Id!,
                                 effectiveTeam2Id!,
-                                action
+                                service
                             );
                             pickActions.push({ actionNumber, action, teamId: mapPickerTeamId });
                         }
@@ -118,7 +125,8 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                     pickAction.actionNumber,
                                     vetoFormat,
                                     effectiveTeam1Id!,
-                                    effectiveTeam2Id!
+                                    effectiveTeam2Id!,
+                                    service
                                 );
 
                                 const map = availableMaps.find(m => m.id === mapId);
@@ -152,7 +160,8 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                 finalPickSideActionNumber,
                                 vetoFormat,
                                 effectiveTeam1Id!,
-                                effectiveTeam2Id!
+                                effectiveTeam2Id!,
+                                service
                             );
 
                             // Find the decider map: it's the leftover map that wasn't banned or picked

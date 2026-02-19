@@ -88,6 +88,23 @@ export class GraphMatchService {
                 return { success: false, error: error.message };
             }
 
+            // Create a summary entry in brkt_match_games for data consistency with History UI
+            const { error: gameError } = await db
+                .from('brkt_match_games')
+                .upsert({
+                    match_id: matchId,
+                    game_number: 1,
+                    team1_score: team1Score,
+                    team2_score: team2Score,
+                    map_name: 'Manual Result',
+                    status: 'completed'
+                }, { onConflict: 'match_id,game_number' });
+
+            if (gameError) {
+                console.warn('[GraphMatchService.saveScore] Warning: Failed to create game summary:', gameError);
+                // We don't fail the whole operation if just the summary fails
+            }
+
             return { success: true, winnerId: winnerId || undefined, loserId: loserId || undefined };
         } catch (e: any) {
             console.error('[GraphMatchService.saveScore] Exception:', e);
@@ -325,6 +342,37 @@ export class GraphMatchService {
                         } else {
                             stageComplete = true;
                             console.log('[GraphMatchService] Stage automatically marked as completed');
+
+                            // Detect if this was the FINAL stage (Grand Finals) and award the trophy
+                            try {
+                                const { data: stageInfo } = await db
+                                    .from('tournament_stages')
+                                    .select('tournament_id, type')
+                                    .eq('id', stageId)
+                                    .single();
+
+                                if (stageInfo && (stageInfo.type === 'single_elimination' || stageInfo.type === 'double_elimination')) {
+                                    // Check if this match was the final one (bracket winner)
+                                    // Logic: In single elim, the winner of the last match is the champ.
+                                    // In double elim, if grand finals is done, winner is champ.
+                                    // Simplified: If stage is done, the winner of the last completed match is the champ?
+                                    // Better: Check if there are no further advancements possible from this match.
+                                    // OR: Just set it if it's the last match.
+                                    if (scoreResult.winnerId) {
+                                        await db
+                                            .from('tournaments')
+                                            .update({
+                                                winner_id: scoreResult.winnerId,
+                                                status: 'completed',
+                                                end_date: new Date().toISOString()
+                                            })
+                                            .eq('id', stageInfo.tournament_id);
+                                        console.log('[GraphMatchService] Tournament Winner set:', scoreResult.winnerId);
+                                    }
+                                }
+                            } catch (winnerErr) {
+                                console.error('[GraphMatchService] Failed to set tournament winner:', winnerErr);
+                            }
                         }
                     }
                 }

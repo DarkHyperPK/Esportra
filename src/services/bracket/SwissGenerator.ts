@@ -314,6 +314,48 @@ export class SwissGenerator implements IBracketGenerator {
             return { success: false, message: 'No matches generated. Check if round is already complete.' };
         }
 
+        // --- Auto-Schedule: Day-Per-Round Cadence ---
+        // Fetch tournament start date and scheduling config for daily start time
+        try {
+            const { data: stageData } = await db
+                .from('tournament_stages')
+                .select('scheduling_config, tournament_id')
+                .eq('id', stageId)
+                .single();
+
+            if (stageData) {
+                const { data: tournament } = await db
+                    .from('tournaments')
+                    .select('start_date')
+                    .eq('id', stageData.tournament_id)
+                    .single();
+
+                const dailyStartTime = stageData.scheduling_config?.daily_start_time || '20:00';
+                const tournamentStart = tournament?.start_date ? new Date(tournament.start_date) : null;
+
+                if (tournamentStart) {
+                    const nextRound = currentRound + 1;
+                    const roundDate = new Date(tournamentStart);
+                    roundDate.setDate(roundDate.getDate() + (nextRound - 1)); // Day 1 = round 1, Day 2 = round 2, etc.
+
+                    // Apply daily start time (HH:mm)
+                    const [hours, minutes] = dailyStartTime.split(':').map(Number);
+                    roundDate.setHours(hours, minutes, 0, 0);
+
+                    const scheduledTime = roundDate.toISOString();
+                    console.log(`[SwissGenerator] Auto-scheduling Round ${nextRound} to: ${scheduledTime}`);
+
+                    // Apply scheduled_time to all new matches
+                    newMatches.forEach(m => {
+                        m.scheduled_time = scheduledTime;
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn('[SwissGenerator] Could not auto-schedule round times:', err);
+            // Non-fatal: matches will be created without scheduled_time
+        }
+
         const { error } = await db.from('brkt_matches').insert(newMatches);
 
         if (error) {

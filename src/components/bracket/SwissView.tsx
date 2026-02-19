@@ -26,6 +26,9 @@ interface SwissViewProps {
     onByeAdvance?: (matchId: string) => void;
     stage?: any;
     activeFilter?: FilterState;
+    onMatchClick?: (match: BracketMatch) => void;
+    hasResultsMap?: Record<string, any[]>;
+    hasProofsMap?: Record<string, string[]>;
 }
 
 // Extracted Component to prevent re-renders
@@ -46,7 +49,10 @@ const SwissGroupPanel = React.memo(({
     advancementCount,
     activeFilter,
     eliminationCount,
-    qualificationWins
+    qualificationWins,
+    onMatchClick,
+    hasResultsMap = {},
+    hasProofsMap = {}
 }: {
     groupMatches: BracketMatch[],
     groupStandings: TeamStanding[],
@@ -64,8 +70,14 @@ const SwissGroupPanel = React.memo(({
     advancementCount?: number,
     activeFilter?: FilterState,
     eliminationCount?: number,
-    qualificationWins?: number
+    qualificationWins?: number,
+    onMatchClick?: (match: BracketMatch) => void,
+    hasResultsMap?: Record<string, any[]>,
+    hasProofsMap?: Record<string, string[]>
 }) => {
+    // Helper to get raw ID (remove prefixes if present)
+    const getRawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-|source-)/, '');
+
     const matchesByRound = useMemo(() => groupMatches.reduce((acc, match) => {
         const round = match.round || (match as any).round_number || 1;
         if (!acc[round]) acc[round] = [];
@@ -119,6 +131,9 @@ const SwissGroupPanel = React.memo(({
                                             <ReadOnlyMatchCard
                                                 match={match}
                                                 className="w-[260px]"
+                                                onClick={() => onMatchClick?.(match)}
+                                                hasAutomatedResults={hasResultsMap[getRawId(match.id)]?.length > 0}
+                                                hasProofs={hasProofsMap[getRawId(match.id)]?.length > 0}
                                             />
                                         )}
                                     </div>
@@ -159,7 +174,10 @@ export const SwissView: React.FC<SwissViewProps> = ({
     tournamentId,
     onByeAdvance,
     stage,
-    activeFilter
+    activeFilter,
+    onMatchClick,
+    hasResultsMap,
+    hasProofsMap
 }) => {
     const { toast } = useToast();
     const [standings, setStandings] = useState<TeamStanding[]>([]);
@@ -323,7 +341,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
             let advancedCount = 0;
             for (const match of actualByeMatches) {
                 const isBo1 = (match.best_of || 1) === 1;
-                const winScore = isBo1 ? 13 : 1;
+                const winScore = isBo1 ? 13 : Math.ceil((match.best_of || 1) / 2);
 
                 const result = await GraphMatchService.saveScoreAndAdvance(
                     match.id,
@@ -523,12 +541,15 @@ export const SwissView: React.FC<SwissViewProps> = ({
                                     openPartyCode={openPartyCode}
                                     saveScore={saveScore}
                                     scoreDraftRef={scoreDraftRef}
-                                    scoreDraftRef={scoreDraftRef}
+
                                     onByeAdvance={onByeAdvance}
                                     advancementCount={perGroupAdvancement}
                                     activeFilter={activeFilter}
                                     eliminationCount={threshold}
                                     qualificationWins={threshold}
+                                    onMatchClick={onMatchClick}
+                                    hasResultsMap={hasResultsMap}
+                                    hasProofsMap={hasProofsMap}
                                 />
                             </TabsContent>
                         );
@@ -553,6 +574,9 @@ export const SwissView: React.FC<SwissViewProps> = ({
                     activeFilter={activeFilter}
                     eliminationCount={threshold}
                     qualificationWins={threshold}
+                    onMatchClick={onMatchClick}
+                    hasResultsMap={hasResultsMap}
+                    hasProofsMap={hasProofsMap}
                 />
             )}
 

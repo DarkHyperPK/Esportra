@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
   DialogTitle,
   DialogFooter
 } from '@/components/ui/dialog';
@@ -22,21 +22,10 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Label } from '@/components/ui/label';
+import ImageUploader from '@/components/tournament/wizard/ImageUploader';
+import { X, Plus, Info } from 'lucide-react';
 
-interface Venue {
-  id: string;
-  name: string;
-  city: string;
-  address: string;
-  description: string;
-  stations: number;
-  hours: string;
-  games: string;
-  contact_email: string;
-  contact_phone: string;
-  image_url: string | null;
-  price_range?: string;
-}
+import { Venue } from '@/types/venue';
 
 interface VenueEditModalProps {
   venue: Venue;
@@ -48,8 +37,8 @@ interface VenueEditModalProps {
 export function VenueEditModal({ venue, isOpen, onClose, onVenueUpdated }: VenueEditModalProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [imageUrl, setImageUrl] = useState(venue.image_url || '');
-  const [uploading, setUploading] = useState(false);
+  // Initialize images from venue or empty array
+  const [images, setImages] = useState<string[]>(venue.images || []);
 
   const form = useForm({
     defaultValues: {
@@ -66,48 +55,14 @@ export function VenueEditModal({ venue, isOpen, onClose, onVenueUpdated }: Venue
     }
   });
 
-  const handleUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      if (!event.target.files || event.target.files.length === 0) {
-        return;
-      }
-
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${venue.id}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `venues/${fileName}`;
-
-      setUploading(true);
-
-      // Upload the file to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from('venues.images')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      // Get the public URL
-      const { data } = supabase.storage
-        .from('venues.images')
-        .getPublicUrl(filePath);
-
-      setImageUrl(data.publicUrl);
-      toast({
-        title: 'Image uploaded',
-        description: 'Your venue image has been uploaded successfully',
-      });
-    } catch (error: any) {
-      console.error('Error uploading image:', error);
-      toast({
-        title: 'Error uploading image',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
+  const handleAddImage = (url: string | null) => {
+    if (url) {
+      setImages(prev => [...prev, url]);
     }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const onSubmit = async (data: any) => {
@@ -127,7 +82,7 @@ export function VenueEditModal({ venue, isOpen, onClose, onVenueUpdated }: Venue
           contact_email: data.contact_email,
           contact_phone: data.contact_phone,
           price_range: data.price_range,
-          image_url: imageUrl || venue.image_url
+          images: images // Save the array
         })
         .eq('id', venue.id);
 
@@ -138,6 +93,7 @@ export function VenueEditModal({ venue, isOpen, onClose, onVenueUpdated }: Venue
         description: 'Your venue has been updated successfully',
       });
       onVenueUpdated();
+      onClose(); // Close modal on success
     } catch (error: any) {
       console.error('Error updating venue:', error);
       toast({
@@ -152,221 +108,184 @@ export function VenueEditModal({ venue, isOpen, onClose, onVenueUpdated }: Venue
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl bg-esports-dark text-white overflow-y-auto max-h-[90vh]">
+      <DialogContent className="sm:max-w-4xl bg-[#0a0a0c] border border-white/10 text-white overflow-y-auto max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Edit Venue: {venue.name}</DialogTitle>
+          <DialogTitle className="text-xl font-bold">Edit Venue: {venue.name}</DialogTitle>
         </DialogHeader>
-        
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Venue Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="bg-gaming-dark border-gaming-gray/30" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="md:col-span-1">
-                <Label htmlFor="image">Venue Image</Label>
-                <div className="mt-1 flex items-center space-x-4">
-                  <div className="w-20 h-20 bg-gaming-dark border border-gaming-gray/30 rounded overflow-hidden">
-                    {imageUrl || venue.image_url ? (
-                      <img
-                        src={imageUrl || venue.image_url}
-                        alt={venue.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        No image
-                      </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 my-4">
+          {/* Left Column: Form Fields */}
+          <div className="space-y-4">
+            <Form {...form}>
+              <form id="venue-edit-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Venue Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-black/20 border-white/10" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-black/20 border-white/10" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
-                  <div>
-                    <Input
-                      id="image"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleUploadImage}
-                      disabled={uploading}
-                      className="cursor-pointer"
-                    />
-                    {uploading && <p className="text-xs text-gray-400 mt-1">Uploading...</p>}
-                  </div>
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-black/20 border-white/10" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="stations"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Stations</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" className="bg-black/20 border-white/10" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="hours"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hours</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-black/20 border-white/10" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} className="h-24 bg-black/20 border-white/10 resize-none" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="games"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Games</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-black/20 border-white/10" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </form>
+            </Form>
+          </div>
+
+          {/* Right Column: Media Gallery */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-lg font-semibold">Media Gallery</Label>
+              <span className="text-xs text-gray-400">{images.length} images</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {images.map((img, idx) => (
+                <div key={idx} className="relative aspect-video group rounded-lg overflow-hidden border border-white/10">
+                  <img src={img} alt={`Venue ${idx}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(idx)}
+                    className="absolute top-1 right-1 bg-red-500/80 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                  {idx === 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-center text-xs py-1 text-white font-medium">
+                      Cover Image
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Add New Image Button mimicking the uploader style or just the uploader itself */}
+              <div className="col-span-2 mt-2">
+                <Label className="text-sm text-gray-400 mb-2 block">Upload New Photo</Label>
+                <ImageUploader
+                  value={null}
+                  onChange={handleAddImage}
+                  folder="venue-images"
+                  label=""
+                  aspectRatio="banner"
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="city"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>City</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="bg-gaming-dark border-gaming-gray/30" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Address</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="bg-gaming-dark border-gaming-gray/30" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="bg-blue-900/20 border border-blue-500/20 p-4 rounded-xl flex gap-3 items-start">
+              <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-200">
+                The first image will be used as your <strong>Cover Image</strong>.
+                Upload high-quality landscape photos (16:9) for the best results.
+              </p>
             </div>
+          </div>
+        </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field} 
-                      className="h-32 bg-gaming-dark border-gaming-gray/30" 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="stations"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Number of Gaming Stations</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        type="number" 
-                        className="bg-gaming-dark border-gaming-gray/30" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="hours"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Operating Hours</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="bg-gaming-dark border-gaming-gray/30" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="games"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Available Games</FormLabel>
-                  <FormControl>
-                    <Input {...field} className="bg-gaming-dark border-gaming-gray/30" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="contact_email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Email</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        type="email" 
-                        className="bg-gaming-dark border-gaming-gray/30" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="contact_phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Phone</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="bg-gaming-dark border-gaming-gray/30" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="price_range"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Price Range</FormLabel>
-                  <FormControl>
-                    <Input {...field} className="bg-gaming-dark border-gaming-gray/30" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onClose}
-                className="border-gaming-gray/30"
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                className="bg-gaming-purple hover:bg-gaming-purple/80"
-                disabled={loading}
-              >
-                {loading ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+        <DialogFooter className="mt-6 border-t border-white/5 pt-4">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="venue-edit-form"
+            className="bg-purple-600 hover:bg-purple-500 text-white"
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

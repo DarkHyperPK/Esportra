@@ -1,13 +1,33 @@
-import React from 'react';
-import { Users, ChevronRight, Trophy, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, ChevronRight, Trophy, Clock, Zap, CheckCircle, MapPin, Globe, ExternalLink, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { VerticalAdPlacement } from './VerticalAdPlacement';
+
+interface Stage {
+    id: string;
+    name: string;
+    stage_order: number;
+    format?: string;
+    scheduling_config?: {
+        self_play_enabled?: boolean;
+        checkin_window_minutes?: number;
+    };
+}
 
 interface OverviewTabProps {
     tournament: any;
+    stages?: Stage[];
 }
 
-export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament }) => {
+export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [] }) => {
     const navigate = useNavigate();
+
+    // Check if any stage has self-play enabled
+    const selfPlayStage = stages.find(s => s.scheduling_config?.self_play_enabled);
+    const isSelfPlayEnabled = !!selfPlayStage;
+
+    // Check if vertical ad is enabled for this tournament
+    const showVerticalAd = tournament.settings?.showVerticalAd === true;
 
     return (
         <div className="space-y-32">
@@ -38,7 +58,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament }) => {
 
                         <div className="h-12 w-px bg-white/10 hidden md:block" />
 
-                        <div className="text-center md:text-right flex-1 cursor-pointer group" onClick={() => navigate(`/organizer/profile/${tournament.user_id}`)}>
+                        <div className="text-center md:text-right flex-1 cursor-pointer group" onClick={() => navigate(`/organizer/${tournament.organizer?.username || tournament.organizer?.slug || tournament.user_id}`)}>
                             <p className="text-[10px] font-mono tracking-[0.3em] text-gray-500 uppercase mb-2 group-hover:text-esports-primary transition-colors">Authenticated Host</p>
                             <div className="flex items-center justify-center md:justify-end gap-3 group-hover:translate-x-1 transition-transform">
                                 {tournament.organizer?.avatar_url ? (
@@ -65,24 +85,26 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament }) => {
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
 
                         {/* Left: Section Title */}
-                        <div className="lg:col-span-4">
+                        <div className="lg:col-span-3">
                             <h2 className="text-4xl font-bold text-white mb-2 tracking-tight">Mission Brief</h2>
                             <div className="h-1 w-20 bg-esports-primary mb-6" />
                             <p className="text-sm font-mono text-gray-500 leading-relaxed uppercase tracking-widest">
                                 CLASSIFIED INTEL <br />
                                 AUTHORIZED EYES ONLY
                             </p>
+                            {/* Vertical Ad Placement (On Demand) */}
+                            {showVerticalAd && <VerticalAdPlacement />}
                         </div>
 
                         {/* Right: Content */}
-                        <div className="lg:col-span-8">
+                        <div className="lg:col-span-9">
                             <div className="prose prose-invert prose-lg max-w-none">
                                 <p className="text-2xl text-gray-200 font-light leading-relaxed">
                                     {tournament.description}
                                 </p>
                             </div>
 
-                            <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12 border-t border-white/10 pt-12">
+                            <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-12 border-t border-white/10 pt-12">
                                 <div>
                                     <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-3">
                                         <Clock className="w-4 h-4 text-blue-500" /> Timeframe
@@ -124,24 +146,122 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament }) => {
                                         )}
                                     </ul>
                                 </div>
+
+                                {/* Location / Venue */}
+                                <div>
+                                    <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-3">
+                                        {tournament.settings?.isOnline === false
+                                            ? <><MapPin className="w-4 h-4 text-red-500" /> Venue</>
+                                            : <><Globe className="w-4 h-4 text-emerald-500" /> Location</>}
+                                    </h4>
+                                    <ul className="space-y-4">
+                                        <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
+                                            <span>Type</span>
+                                            <span className="text-white">
+                                                {tournament.settings?.isOnline === false ? 'LAN' : 'Online'}
+                                            </span>
+                                        </li>
+                                        {tournament.settings?.isOnline === false && tournament.settings?.venue && (
+                                            <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
+                                                <span>Address</span>
+                                                <span className="text-white text-right max-w-[200px]">
+                                                    {tournament.settings.venue}
+                                                </span>
+                                            </li>
+                                        )}
+                                    </ul>
+                                </div>
                             </div>
+
+                            {/* Social Links */}
+                            {(tournament.settings?.discordUrl || tournament.settings?.twitterUrl || tournament.stream_url) && (
+                                <div className="mt-12 border-t border-white/10 pt-8">
+                                    <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-3">
+                                        <ExternalLink className="w-4 h-4 text-purple-500" /> Connect
+                                    </h4>
+                                    <div className="flex flex-wrap gap-4">
+                                        {tournament.settings?.discordUrl && (
+                                            <a
+                                                href={tournament.settings.discordUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 px-4 py-2.5 bg-[#5865F2]/10 border border-[#5865F2]/30 rounded-lg text-sm text-[#5865F2] hover:bg-[#5865F2]/20 transition-colors font-mono"
+                                            >
+                                                <MessageCircle className="w-4 h-4" />
+                                                Discord
+                                                <ExternalLink className="w-3 h-3 opacity-50" />
+                                            </a>
+                                        )}
+                                        {tournament.settings?.twitterUrl && (
+                                            <a
+                                                href={tournament.settings.twitterUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white hover:bg-white/10 transition-colors font-mono"
+                                            >
+                                                𝕏
+                                                Twitter/X
+                                                <ExternalLink className="w-3 h-3 opacity-50" />
+                                            </a>
+                                        )}
+                                        {tournament.stream_url && (
+                                            <a
+                                                href={tournament.stream_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 border border-purple-500/30 rounded-lg text-sm text-purple-400 hover:bg-purple-500/20 transition-colors font-mono"
+                                            >
+                                                📺
+                                                Stream
+                                                <ExternalLink className="w-3 h-3 opacity-50" />
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     </div>
 
-                </div>
-            </section>
+                    {/* 3. Self-Play Mode Info (Conditionally Rendered) */}
+                    {isSelfPlayEnabled && (
+                        <div className="p-8 bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/5 border border-purple-500/20 rounded-3xl">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="p-3 bg-purple-500/20 rounded-2xl">
+                                    <Zap className="w-8 h-8 text-purple-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-bold text-white tracking-tight">Self-Play Mode</h3>
+                                    <p className="text-sm text-purple-300/80">Teams coordinate and start matches themselves</p>
+                                </div>
+                            </div>
 
-            {/* Sponsors Section - Minimalist Marquee Style */}
-            <section className="container mx-auto px-4 py-8 border-t border-white/5">
-                <div className="flex items-center justify-between opacity-30 hover:opacity-100 transition-opacity duration-500">
-                    <span className="text-[10px] font-mono tracking-[0.5em] uppercase text-gray-500">Supported By</span>
-                    <div className="flex gap-8">
-                        <span className="font-black text-xl italic tracking-tighter">TECHGEAR</span>
-                        <span className="font-black text-xl italic tracking-tighter">ENERGY-X</span>
-                        <span className="font-black text-xl italic tracking-tighter">PHANTOM</span>
-                    </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+                                {[
+                                    { step: '1', title: 'Round Deadline', desc: 'Organizer sets a deadline for each round' },
+                                    { step: '2', title: 'Coordinate', desc: 'Teams chat and propose match times within deadline' },
+                                    { step: '3', title: 'Check-In', desc: 'Both teams check in when ready to play' },
+                                    { step: '4', title: 'Start Match', desc: 'Team 1 generates party code to start the match' },
+                                ].map((item) => (
+                                    <div key={item.step} className="flex flex-col items-center text-center p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold text-lg mb-3">
+                                            {item.step}
+                                        </div>
+                                        <h4 className="text-white font-semibold text-sm mb-1">{item.title}</h4>
+                                        <p className="text-gray-500 text-xs">{item.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-8 flex items-center gap-3 text-sm text-gray-400 border-t border-white/5 pt-6">
+                                <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                <span>Match chat is always enabled for captains to coordinate</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </section>
         </div>
     );
 };
+

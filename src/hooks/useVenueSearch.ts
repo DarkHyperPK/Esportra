@@ -13,26 +13,7 @@ export interface VenueSearchParams {
   pageSize?: number;
 }
 
-export interface Venue {
-  id: string;
-  name: string;
-  city: string;
-  address: string;
-  description: string;
-  stations: number;
-  hours: string;
-  games: string;
-  contact_email: string;
-  contact_phone: string;
-  image_url: string | null;
-  price_range: string;
-  rating: number;
-  // For UI display
-  amenities?: string[];
-  location?: string;
-  openNow?: boolean;
-  priceRange?: string;
-}
+import { Venue } from '@/types/venue';
 
 export const useVenueSearch = () => {
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -86,7 +67,7 @@ export const useVenueSearch = () => {
     } catch (err: any) {
       console.error('Error searching venues:', err);
       setError(err.message || 'Failed to search venues');
-      
+
       toast({
         title: 'Error',
         description: `Failed to search venues: ${err.message}`,

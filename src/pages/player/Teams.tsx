@@ -16,9 +16,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/lib/supabase';
 import { Link } from 'react-router-dom';
 import TeamCreationWizard from '@/components/player/TeamCreationWizard';
-import { Plus, Users, Settings, Crown, Trash2, UserMinus, UserPlus, Calendar, Trophy, Gamepad2, Edit, X, Upload, Save } from 'lucide-react';
+import { Plus, Users, Settings, Crown, Trash2, UserMinus, UserPlus, Calendar, Trophy, Gamepad2, Edit, X, Upload, Save, Shield } from 'lucide-react';
 import esportsGames from '@/data/esportsGames.json';
 import PlayerCard from '@/components/player/PlayerCard';
+import { sendEmail } from '@/hooks/useEmail';
+import { rawgSearchGames } from '@/lib/rawgProxy';
 
 const TeamsPage = () => {
   const { user, profile } = useAuth();
@@ -32,6 +34,7 @@ const TeamsPage = () => {
     transferCaptaincy,
     disbandTeam,
     leaveTeam,
+    revokeTeamInvite,
     fetchingTeam
   } = useTeamManagement();
   const { toast } = useToast();
@@ -55,8 +58,17 @@ const TeamsPage = () => {
     username: string;
     email?: string;
     avatar_url?: string;
+    card_image_url?: string;
     role?: string;
     verified?: boolean;
+    riot_puuid?: string;
+    riot_game_name?: string;
+    riot_tag_line?: string;
+    stats?: {
+      kd: string;
+      winRate: string;
+      hs: string;
+    };
   } | null;
   const [memberToRemove, setMemberToRemove] = useState<TeamMember>(null);
   const [showTransferCaptaincy, setShowTransferCaptaincy] = useState(false);
@@ -74,12 +86,21 @@ const TeamsPage = () => {
   const [teamColors, setTeamColors] = useState({ primary: '#3B82F6', secondary: '#1E40AF' });
   const [pendingInvites, setPendingInvites] = useState<Array<{ id: string; team_id: string; roster_id?: string | null; team_name?: string; roster_name?: string }>>([]);
   const [teamInvites, setTeamInvites] = useState<Array<{ id: string; invited_email?: string | null; invited_user_id?: string | null; created_at?: string }>>([]);
-  const [ownerProfile, setOwnerProfile] = useState<{ username?: string; email?: string; avatar_url?: string } | null>(null);
+  const [ownerProfile, setOwnerProfile] = useState<{ username?: string; email?: string; avatar_url?: string; card_image_url?: string } | null>(null);
   const [refreshingAfterAccept, setRefreshingAfterAccept] = useState(false);
-  const [teamMembers, setTeamMembers] = useState<Array<{ user_id: string; username?: string; email?: string; avatar_url?: string }>>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   // Rosters
-  type Roster = { id: string; name: string; game: string; format: string | null; team_size: number; member_count?: number };
+  type RosterMember = { user_id: string; username: string; avatar_url: string | null; card_image_url?: string | null; is_starter?: boolean };
+  type Roster = {
+    id: string;
+    name: string;
+    game: string;
+    format: string | null;
+    team_size: number;
+    member_count?: number;
+    members?: RosterMember[];
+  };
   const [rosters, setRosters] = useState<Roster[]>([]);
   const [rosterModalOpen, setRosterModalOpen] = useState(false);
   const [newRosterName, setNewRosterName] = useState('');
@@ -91,13 +112,14 @@ const TeamsPage = () => {
   const [manageRosterModalOpen, setManageRosterModalOpen] = useState(false);
   const [manageRoster, setManageRoster] = useState<Roster | null>(null);
   const [manageMembers, setManageMembers] = useState<string[]>([]);
+  const [manageMemberStatuses, setManageMemberStatuses] = useState<Record<string, boolean>>({});
   const [editRosterName, setEditRosterName] = useState('');
   const [editRosterGame, setEditRosterGame] = useState('');
   const [editRosterFormat, setEditRosterFormat] = useState('');
   const [editRosterTeamSize, setEditRosterTeamSize] = useState<number>(5);
   const [inviteSearch, setInviteSearch] = useState('');
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
-  const [rosterInvites, setRosterInvites] = useState<Array<{ id: string; invited_email?: string | null; invited_user_id?: string | null; created_at?: string }>>([]);
+  const [rosterInvites, setRosterInvites] = useState<Array<{ id: string; invited_email?: string | null; invited_user_id?: string | null; created_at?: string; profiles?: { username: string; avatar_url: string } | null }>>([]);
   const [inviteInput, setInviteInput] = useState('');
   const [selectedInvitees, setSelectedInvitees] = useState<Array<{ id: string; email: string; username?: string }>>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<Array<{ id: string; email: string; username?: string }>>([]);
@@ -129,8 +151,7 @@ const TeamsPage = () => {
       await Promise.all(missing.map(async (g) => {
         try {
           const searchName = String(g).trim().toLowerCase() === 'cs2' ? 'Counter-Strike 2' : g;
-          const response = await fetch(`https://api.rawg.io/api/games?key=55e8210bf73448108b7f3c6707739206&search=${encodeURIComponent(searchName)}&page_size=1`);
-          const data = await response.json();
+          const data = await rawgSearchGames(searchName, 1);
           if (data?.results?.length > 0) {
             newImages[g] = data.results[0].background_image || '';
           }
@@ -154,7 +175,7 @@ const TeamsPage = () => {
   // State for tournaments
   type RegistrationWithTournament = {
     id: string;
-    tournaments?: { name: string; start_date: string; prize_pool: string; slug?: string } | null;
+    tournaments?: { name: string; start_date: string; prize_pool: string; slug?: string; game?: string; winner_id?: string | null; status?: string } | null;
   };
   const [upcomingTournaments, setUpcomingTournaments] = useState<any[]>([]);
   const [teamRegistrations, setTeamRegistrations] = useState<RegistrationWithTournament[]>([]);
@@ -181,26 +202,47 @@ const TeamsPage = () => {
 
   const fetchTeamStats = async () => {
     if (!currentTeam?.id) return;
+
+    let matches = 0;
+    let wins = 0;
+    let winRate = 0;
+    let tournamentWins = 0;
+
     try {
-      const { data, error } = await supabase
-        .from('brkt_matches')
-        .select('winner_id, status')
-        .or(`team1_id.eq.${currentTeam.id},team2_id.eq.${currentTeam.id}`)
-        .eq('status', 'completed');
+      // 1. Fetch Match Stats
+      try {
+        const { data, error } = await supabase
+          .from('brkt_matches')
+          .select('winner_id, status')
+          .or(`team1_id.eq.${currentTeam.id},team2_id.eq.${currentTeam.id}`)
+          .eq('status', 'completed');
 
-      if (error) throw error;
+        if (!error && data) {
+          matches = data.length;
+          wins = data.filter(m => m.winner_id === currentTeam.id).length;
+          winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
+        }
+      } catch (matchErr) {
+        console.error('Error fetching matches:', matchErr);
+      }
 
-      const matches = data?.length || 0;
-      const wins = data?.filter(m => m.winner_id === currentTeam.id).length || 0;
-      const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
+      // 2. Fetch Trophies (Independently)
+      try {
+        const { count, error: twError } = await supabase
+          .from('tournaments')
+          .select('*', { count: 'exact', head: true })
+          .eq('winner_id', currentTeam.id);
 
-      // Mock tournament wins for now - will be replaced with actual DB query when schema supports it
-      // const { count: tournamentWins } = await supabase.from('tournaments') ...
-      const tournamentWins = 0;
+        if (!twError) {
+          tournamentWins = count || 0;
+        }
+      } catch (e) {
+        console.error('Error fetching trophies:', e);
+      }
 
       setTeamStats({ matches, wins, winRate, tournamentWins });
     } catch (err) {
-      console.error('Error fetching team stats:', err);
+      console.error('Error in fetchTeamStats:', err);
     }
   };
 
@@ -231,13 +273,12 @@ const TeamsPage = () => {
         batch.map(async (game: any) => {
           try {
             const searchName = game.name.trim().toLowerCase() === 'cs2' ? 'Counter-Strike 2' : game.name;
-            const response = await fetch(`https://api.rawg.io/api/games?key=55e8210bf73448108b7f3c6707739206&search=${encodeURIComponent(searchName)}&page_size=1`);
-            const data = await response.json();
-            if (data && data.results && data.results.length > 0) {
+            const data = await rawgSearchGames(searchName, 1);
+            if (data?.results?.length > 0) {
               images[game.name] = data.results[0].background_image || '';
             }
-          } catch (error) {
-            console.error(`Failed to fetch image for ${game.name}:`, error);
+          } catch {
+            // ignore individual failures
           }
         })
       );
@@ -488,7 +529,7 @@ const TeamsPage = () => {
 
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ card_image_url: publicUrl })
         .eq('id', memberId);
 
       if (updateError) throw updateError;
@@ -524,9 +565,12 @@ const TeamsPage = () => {
     if (currentTeam) {
       // Add a small delay to prevent race conditions and allow team data to settle
       const timer = setTimeout(() => {
-        fetchTeamRegistrations();
-        fetchRosters();
-        if (isCaptain) fetchTeamPendingInvites();
+        // Parallelize fetches for better performance
+        Promise.all([
+          fetchTeamRegistrations(),
+          fetchRosters(),
+          isCaptain ? fetchTeamPendingInvites() : Promise.resolve()
+        ]);
       }, 200);
       // Fetch captain profile for display
       (async () => {
@@ -534,7 +578,7 @@ const TeamsPage = () => {
           if (currentTeam?.owner_id) {
             const { data } = await supabase
               .from('profiles')
-              .select('username, email, avatar_url')
+              .select('username, email, avatar_url, card_image_url')
               .eq('id', currentTeam.owner_id)
               .maybeSingle();
             setOwnerProfile((data as any) || null);
@@ -552,14 +596,57 @@ const TeamsPage = () => {
           const { data, error } = await supabase
             .rpc('get_team_members', { t_id: currentTeam.id });
           if (error) { setTeamMembers([]); return; }
-          const rows = (data as any[]) || [];
-          setTeamMembers(rows.map(r => ({
-            user_id: r.user_id,
-            username: r.username,
-            email: r.email,
-            avatar_url: r.avatar_url
-          })));
-        } catch {
+
+          const rawMembers = (data as any[]) || [];
+
+          // Fetch Riot accounts for these members
+          const userIds = rawMembers.map(m => m.user_id);
+          const { data: riotAccounts } = await supabase
+            .from('riot_accounts')
+            .select('user_id, puuid, game_name, tag_line')
+            .in('user_id', userIds);
+
+          // Fetch cached stats for these members
+          const { data: cachedStats } = await supabase
+            .from('valorant_player_stats')
+            .select('*')
+            .in('user_id', userIds);
+
+          const riotMap = new Map();
+          (riotAccounts || []).forEach(ra => riotMap.set(ra.user_id, ra));
+
+          const statsMap = new Map();
+          (cachedStats || []).forEach(cs => statsMap.set(cs.user_id, cs));
+
+          const membersWithRiot = rawMembers.map(r => {
+            const riotInfo = riotMap.get(r.user_id);
+            const cache = statsMap.get(r.user_id);
+            return {
+              id: r.user_id,
+              user_id: r.user_id,
+              username: r.username,
+              email: r.email,
+              avatar_url: r.avatar_url,
+              card_image_url: r.card_image_url,
+              role: r.role,
+              riot_puuid: riotInfo?.puuid,
+              riot_game_name: riotInfo?.game_name,
+              riot_tag_line: riotInfo?.tag_line,
+              stats: cache ? {
+                kd: cache.kd,
+                winRate: cache.win_rate,
+                hs: cache.hs_percent,
+                latest_match_id: cache.latest_match_id
+              } : undefined
+            };
+          });
+
+          setTeamMembers(membersWithRiot);
+
+          // Now fetch stats for those with linked accounts
+          fetchStatsForMembers(membersWithRiot);
+        } catch (err) {
+          console.error("Error fetching team members with riot info:", err);
           setTeamMembers([]);
         }
       })();
@@ -573,6 +660,97 @@ const TeamsPage = () => {
       setTeamMembers([]);
     }
   }, [currentTeam, isCaptain]);
+
+  const fetchStatsForMembers = async (members: TeamMember[]) => {
+    const membersWithPuuid = members.filter(m => m?.riot_puuid);
+    if (membersWithPuuid.length === 0) return;
+
+    for (const member of membersWithPuuid) {
+      if (!member) continue;
+      try {
+        // 1. Get region/shard
+        const shardData = await supabase.functions.invoke('riot-match-proxy', {
+          body: { endpoint: `/riot/account/v1/active-shards/by-game/val/by-puuid/${member.riot_puuid}`, region: 'americas' }
+        });
+
+        const shard = shardData.data?.activeShard?.toLowerCase();
+        let valRegion = 'ap';
+        if (['na', 'br', 'latam'].includes(shard)) { valRegion = 'na'; }
+        else if (['eu'].includes(shard)) { valRegion = 'eu'; }
+
+        // 2. Get match history (latest first)
+        const historyData = await supabase.functions.invoke('riot-match-proxy', {
+          body: { endpoint: `/val/match/v1/matchlists/by-puuid/${member.riot_puuid}`, region: valRegion }
+        });
+
+        if (!historyData.data?.history || historyData.data.history.length === 0) continue;
+
+        const latestMatchId = historyData.data.history[0]?.matchId;
+
+        // CHECK CACHE: If latest match ID hasn't changed, skip re-calculation
+        if (member.stats?.latest_match_id === latestMatchId) {
+          console.log(`[Stats] No new matches for ${member.username}, using cache.`);
+          continue;
+        }
+
+        console.log(`[Stats] Updating for ${member.username} (New match ${latestMatchId})`);
+
+        const latestMatches = historyData.data.history.slice(0, 5);
+        let totalKills = 0, totalDeaths = 0, totalWins = 0, totalHeadshots = 0, totalHits = 0;
+
+        for (const mInfo of latestMatches) {
+          const detail = await supabase.functions.invoke('riot-match-proxy', {
+            body: { endpoint: `/val/match/v1/matches/${mInfo.matchId}`, region: valRegion }
+          });
+          const match = detail.data;
+          if (!match || match.error) continue;
+
+          const p = match.players.find((pl: any) => pl.puuid === member.riot_puuid);
+          if (!p) continue;
+
+          totalKills += p.stats.kills;
+          totalDeaths += p.stats.deaths;
+
+          const teamDetails = match.teams.find((t: any) => t.teamId === p.teamId);
+          if (teamDetails?.won) totalWins++;
+
+          match.roundResults?.forEach((round: any) => {
+            const ps = round.playerStats.find((s: any) => s.puuid === member.riot_puuid);
+            ps?.damage?.forEach((d: any) => {
+              totalHeadshots += d.headshots;
+              totalHits += (d.headshots + d.bodyshots + d.legshots);
+            });
+          });
+        }
+
+        const calculatedStats = {
+          kd: (totalKills / Math.max(1, totalDeaths)).toFixed(2),
+          winRate: Math.round((totalWins / latestMatches.length) * 100) + '%',
+          hs: totalHits > 0 ? Math.round((totalHeadshots / totalHits) * 100) + '%' : '0%',
+          latest_match_id: latestMatchId
+        };
+
+        // Cache persistent stats in Supabase
+        await supabase
+          .from('valorant_player_stats')
+          .upsert({
+            user_id: member.user_id,
+            puuid: member.riot_puuid,
+            kd: calculatedStats.kd,
+            win_rate: calculatedStats.winRate,
+            hs_percent: calculatedStats.hs,
+            latest_match_id: latestMatchId,
+            last_updated: new Date().toISOString()
+          });
+
+        setTeamMembers(prev => prev.map(m =>
+          m?.user_id === member.user_id ? { ...m, stats: calculatedStats } : m
+        ));
+      } catch (err) {
+        console.error(`Failed to fetch stats for ${member.username}:`, err);
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchInvites = async () => {
@@ -632,25 +810,58 @@ const TeamsPage = () => {
       .select('id, name, game, format, team_size')
       .eq('team_id', currentTeam.id)
       .order('created_at', { ascending: false });
+
     const rosterList: Roster[] = (data as any[])?.map(r => ({
-      id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
+      id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size, members: []
     })) || [];
-    // fetch member counts (including team owner/captain)
+
     if (rosterList.length > 0) {
-      const { data: counts } = await supabase
+      // fetch roster members with profiles
+      const { data: membersData } = await supabase
         .from('team_roster_members' as any)
-        .select('roster_id, user_id')
+        .select('roster_id, user_id, is_starter, profiles:user_id(username, avatar_url, card_image_url)')
         .in('roster_id', rosterList.map(r => r.id));
-      const countMap = new Map<string, number>();
-      (counts || []).forEach((row: any) => countMap.set(row.roster_id, (countMap.get(row.roster_id) || 0) + 1));
-      // Add 1 to each count to include the team owner/captain (who is always part of the roster)
-      rosterList.forEach(r => (r.member_count = (countMap.get(r.id) || 0) + 1));
-      // If not captain, only show rosters the current user belongs to
-      if (!isCaptain && user?.id) {
-        const mine = new Set<string>((counts || []).filter((m: any) => m.user_id === user.id).map((m: any) => m.roster_id));
-        setRosters(rosterList.filter(r => mine.has(r.id)));
-        return;
+
+      const rosterMembersMap = new Map<string, RosterMember[]>();
+      (membersData || []).forEach((row: any) => {
+        const list = rosterMembersMap.get(row.roster_id) || [];
+        list.push({
+          user_id: row.user_id,
+          username: row.profiles?.username || 'Unknown',
+          avatar_url: row.profiles?.avatar_url || null,
+          card_image_url: row.profiles?.card_image_url || null,
+          is_starter: row.is_starter ?? true
+        });
+        rosterMembersMap.set(row.roster_id, list);
+      });
+
+      // Fetch owner profile if not already available
+      let currentOwnerProfile = ownerProfile;
+      if (!currentOwnerProfile && currentTeam.owner_id) {
+        const { data: op } = await supabase.from('profiles').select('username, avatar_url, card_image_url').eq('id', currentTeam.owner_id).maybeSingle();
+        if (op) {
+          currentOwnerProfile = op;
+          setOwnerProfile(op);
+        }
       }
+
+      rosterList.forEach(r => {
+        const members = rosterMembersMap.get(r.id) || [];
+        // Add captain if they are not already in the list
+        if (currentTeam.owner_id && !members.some(m => m.user_id === currentTeam.owner_id)) {
+          members.unshift({
+            user_id: currentTeam.owner_id,
+            username: currentOwnerProfile?.username || 'Captain',
+            avatar_url: currentOwnerProfile?.avatar_url || null,
+            card_image_url: currentOwnerProfile?.card_image_url || null
+          });
+        }
+        r.members = members;
+        r.member_count = members.length;
+      });
+
+      // No longer filtering rosters by membership - all team members should see all rosters.
+      // This ensures rosters don't "vanish" for members or after captaincy transfer.
     }
     setRosters(rosterList);
   };
@@ -721,7 +932,7 @@ const TeamsPage = () => {
         if (tournamentIds.length > 0) {
           const { data: tournaments, error: tournamentError } = await supabase
             .from('tournaments')
-            .select('id, name, start_date, game, prize_pool, slug')
+            .select('id, name, start_date, game, prize_pool, slug, winner_id, status')
             .in('id', tournamentIds);
           console.log('Tournaments for participants:', { tournaments, tournamentError });
           if (!tournamentError && tournaments) {
@@ -795,7 +1006,7 @@ const TeamsPage = () => {
         if (tournamentIds.length > 0) {
           const { data: tournaments, error: tournamentError } = await supabase
             .from('tournaments')
-            .select('id, name, start_date, game, prize_pool, slug')
+            .select('id, name, start_date, game, prize_pool, slug, winner_id, status')
             .in('id', tournamentIds);
 
           console.log('Tournaments query result:', { tournaments, tournamentError });
@@ -897,14 +1108,12 @@ const TeamsPage = () => {
     }
 
     try {
-      await transferCaptaincy(currentTeam.id, memberToRemove.user_id);
-      toast({
-        title: "Success",
-        description: "Captaincy transferred successfully.",
-      });
+      const success = await transferCaptaincy(currentTeam.id, memberToRemove.user_id);
       setShowTransferCaptaincy(false);
       setMemberToRemove(null);
-      fetchUserTeams();
+      if (!success) return;
+      // The hook already shows a toast and calls fetchUserTeams().
+      // The useEffect on [currentTeam, isCaptain] will re-fetch rosters & ownerProfile.
     } catch (error: any) {
       toast({
         title: "Error",
@@ -990,20 +1199,28 @@ const TeamsPage = () => {
     setManageRoster(r);
     // Set editable fields (only name is editable)
     setEditRosterName(r.name);
-    // load current members
-    const { data } = await supabase
-      .from('team_roster_members' as any)
-      .select('user_id')
-      .eq('roster_id', r.id);
-    setManageMembers(((data || []) as any[]).map(x => x.user_id));
-    // load pending invites for this roster
-    const inv = await supabase
-      .from('team_invitations' as any)
-      .select('id, invited_email, invited_user_id, created_at')
-      .eq('team_id', currentTeam?.id)
-      .eq('roster_id', r.id)
-      .eq('status', 'pending');
-    setRosterInvites((inv.data as any[]) || []);
+    // load current members and pending invites in parallel
+    const [membersRes, invitesRes] = await Promise.all([
+      supabase
+        .from('team_roster_members' as any)
+        .select('user_id, is_starter')
+        .eq('roster_id', r.id),
+      supabase
+        .from('team_invitations' as any)
+        .select('id, invited_email, invited_user_id, created_at, profiles:invited_user_id(username, avatar_url)')
+        .eq('team_id', currentTeam?.id)
+        .eq('roster_id', r.id)
+        .eq('status', 'pending')
+    ]);
+
+    const members = (membersRes.data || []) as any[];
+    setManageMembers(members.map(x => x.user_id));
+    const statusMap: Record<string, boolean> = {};
+    members.forEach(x => {
+      statusMap[x.user_id] = x.is_starter ?? true;
+    });
+    setManageMemberStatuses(statusMap);
+    setRosterInvites((invitesRes.data as any[]) || []);
     setManageRosterModalOpen(true);
   };
   const addInviteeByEmail = async () => {
@@ -1017,6 +1234,14 @@ const TeamsPage = () => {
         .maybeSingle();
       if (error || !prof) {
         toast({ title: 'User not found', description: 'No account with that email.', variant: 'destructive' });
+        return;
+      }
+      if (prof.id === user?.id) {
+        toast({ title: 'Invalid Selection', description: 'You cannot invite yourself.', variant: 'destructive' });
+        return;
+      }
+      if (manageMembers.includes(prof.id)) {
+        toast({ title: 'Already in Roster', description: 'User is already a member of this roster.', variant: 'destructive' });
         return;
       }
       if (selectedInvitees.some(p => p.id === prof.id)) {
@@ -1046,17 +1271,47 @@ const TeamsPage = () => {
           .eq('status', 'pending')
           .maybeSingle();
         if (pending) continue;
+
+        // Check if user is already on a team (not a free agent)
+        const { data: existingMembership } = await supabase
+          .from('team_members')
+          .select('id')
+          .eq('user_id', prof.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (existingMembership) continue; // Skip users already on a team
+
         const inserted = await supabase.from('team_invitations' as any).insert({
           team_id: currentTeam.id,
           roster_id: manageRoster.id,
           invited_user_id: prof.id,
           invited_email: prof.email,
           invited_by_user_id: user?.id,
+          invited_by: user?.id, // Legacy column support
           status: 'pending'
         }).select('id, invited_email, invited_user_id, created_at').single();
         if (!inserted.error && inserted.data) {
-          setRosterInvites(prev => [{ id: inserted.data.id, invited_email: inserted.data.invited_email, invited_user_id: inserted.data.invited_user_id, created_at: inserted.data.created_at }, ...prev]);
+          setRosterInvites(prev => [{
+            id: inserted.data.id,
+            invited_email: inserted.data.invited_email,
+            invited_user_id: inserted.data.invited_user_id,
+            created_at: inserted.data.created_at,
+            profiles: { username: (prof as any).username, avatar_url: (prof as any).avatar_url }
+          }, ...prev]);
           sent++;
+
+          // Dispatch Email
+          sendEmail({
+            type: 'TEAM_INVITE',
+            email: prof.email,
+            data: {
+              teamName: currentTeam.name,
+              invitedBy: user?.user_metadata?.username || 'A player',
+            }
+          }).then(res => {
+            if (!res.success) console.error('[BatchInvite] Email failed:', res.error);
+            else console.log('[BatchInvite] Email sent to:', prof.email);
+          });
         }
       }
       setSelectedInvitees([]);
@@ -1082,9 +1337,9 @@ const TeamsPage = () => {
           .select('id, email, username')
           .or(`email.ilike.%${q}%,username.ilike.%${q}%`)
           .limit(8);
-        const existingIds = new Set((currentTeam?.members || []).map((m: any) => m.user_id));
+        const existingRosterIds = new Set(manageMembers);
         const toShow = (data || [])
-          .filter((u: any) => !existingIds.has(u.id) && !selectedInvitees.some(s => s.id === u.id))
+          .filter((u: any) => u.id !== user?.id && !existingRosterIds.has(u.id) && !selectedInvitees.some(s => s.id === u.id))
           .map((u: any) => ({ id: u.id, email: u.email, username: u.username }));
         setSuggestedUsers(toShow);
       } finally {
@@ -1112,19 +1367,65 @@ const TeamsPage = () => {
   };
 
   const handleRemoveFromRoster = async (userId: string) => {
-    if (!manageRoster) return;
+    if (!manageRoster || !currentTeam) return;
     try {
-      const { error } = await supabase.from('team_roster_members' as any)
+      // 1. Remove from the specific roster
+      const { error: rosterErr } = await supabase.from('team_roster_members' as any)
         .delete()
         .eq('roster_id', manageRoster.id)
         .eq('user_id', userId);
-      if (error) throw error;
-      setManageMembers(prev => prev.filter(id => id !== userId));
-      toast({ title: 'Member removed from roster' });
-      // update roster counts locally
-      setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, member_count: Math.max(0, (r.member_count || 0) - 1) } : r));
+      if (rosterErr) throw rosterErr;
+
+      // 2. Remove from the entire team (as requested: roster removal = team kick)
+      const success = await removeMemberFromTeam(currentTeam.id, userId);
+
+      if (success) {
+        setManageMembers(prev => prev.filter(id => id !== userId));
+        // update roster counts locally for the current view
+        setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, member_count: Math.max(0, (r.member_count || 0) - 1) } : r));
+
+        toast({
+          title: 'Member Kicked',
+          description: 'User has been removed from the roster and the team.'
+        });
+      } else {
+        throw new Error('Roster entry removed, but team removal failed. Please refresh.');
+      }
     } catch (e: any) {
-      toast({ title: 'Failed to remove member', description: e.message, variant: 'destructive' });
+      toast({ title: 'Removal Failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleToggleStarter = async (userId: string, currentStatus: boolean) => {
+    if (!manageRoster) return;
+    try {
+      const newStatus = !currentStatus;
+      const { error } = await supabase
+        .from('team_roster_members' as any)
+        .update({ is_starter: newStatus })
+        .eq('roster_id', manageRoster.id)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      // Update local state
+      setManageMemberStatuses(prev => ({ ...prev, [userId]: newStatus }));
+      setRosters(prev => prev.map(r => {
+        if (r.id === manageRoster.id) {
+          return {
+            ...r,
+            members: r.members?.map(m => m.user_id === userId ? { ...m, is_starter: newStatus } : m)
+          };
+        }
+        return r;
+      }));
+
+      toast({
+        title: "Status Updated",
+        description: `Player is now ${newStatus ? 'Active' : 'Benched'}`
+      });
+    } catch (e: any) {
+      toast({ title: "Update Failed", description: e.message, variant: "destructive" });
     }
   };
 
@@ -1205,6 +1506,18 @@ const TeamsPage = () => {
         return;
       }
 
+      // Check if user is already on a team (not a free agent)
+      const { data: existingMembership } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (existingMembership) {
+        toast({ title: 'Player unavailable', description: 'This player is already on a team and cannot receive invitations.', variant: 'destructive' });
+        return;
+      }
+
       // Create invitation (member will be added to team/roster only after acceptance)
       const inserted = await supabase.from('team_invitations' as any).insert({
         team_id: currentTeam.id,
@@ -1212,6 +1525,7 @@ const TeamsPage = () => {
         invited_user_id: userId,
         invited_email: email,
         invited_by_user_id: user?.id,
+        invited_by: user?.id, // Legacy column support
         status: 'pending'
       }).select('id, invited_email, invited_user_id, created_at').single();
       if (!inserted.error && inserted.data) {
@@ -1225,9 +1539,29 @@ const TeamsPage = () => {
           type: 'team_invite',
           title: 'Team Invitation',
           message: `You have been invited to join ${currentTeam.name}${manageRoster ? ` (${manageRoster.name})` : ''}.`,
+          link: '/player/teams',
           data: { team_id: currentTeam.id, roster_id: manageRoster?.id || null }
         } as any);
       } catch { }
+
+
+      // Dispatch Email
+      await sendEmail({
+        type: 'TEAM_INVITE',
+        email: email,
+        data: {
+          teamName: currentTeam.name,
+          invitedBy: user?.user_metadata?.username || 'A player',
+        }
+      }).then(res => {
+        if (!res.success) {
+          console.error('[InviteByEmail] Email failed:', res.error);
+          toast({ title: 'Invite sent, but email failed', description: res.error, variant: 'destructive' });
+        } else {
+          console.log('[InviteByEmail] Email sent to:', email);
+        }
+      });
+
       toast({ title: 'Invitation sent' });
     } catch (e: any) {
       toast({ title: 'Invite failed', description: e?.message || 'Could not invite user', variant: 'destructive' });
@@ -1240,9 +1574,11 @@ const TeamsPage = () => {
     try {
       setRefreshingAfterAccept(true);
       await supabase.rpc('accept_team_invite', { invite_id: inviteId });
-      // Refresh team/rosters in case this adds the team to the user
-      await fetchUserTeams();
-      await fetchRosters();
+      // Refresh team/rosters in parallel
+      await Promise.all([
+        fetchUserTeams(),
+        fetchRosters()
+      ]);
       setPendingInvites(prev => prev.filter(i => i.id !== inviteId));
       toast({ title: 'Invitation accepted' });
       // allow hook to refresh before showing UI
@@ -1266,11 +1602,15 @@ const TeamsPage = () => {
   const cancelRosterInvite = async (inviteId: string) => {
     if (!isCaptain) return;
     try {
-      await supabase.from('team_invitations' as any).delete().eq('id', inviteId);
-      setRosterInvites(prev => prev.filter(i => i.id !== inviteId));
-      toast({ title: 'Invitation cancelled' });
+      const success = await revokeTeamInvite(inviteId);
+      if (success) {
+        setRosterInvites(prev => prev.filter(i => i.id !== inviteId));
+        setTeamInvites(prev => prev.filter(i => i.id !== inviteId));
+        setPendingInvites(prev => prev.filter(i => i.id !== inviteId));
+      }
     } catch (e: any) {
-      toast({ title: 'Failed', description: e?.message || 'Could not cancel invite', variant: 'destructive' });
+      // Error is handled in hook, but we catch here just in case
+      console.error('Error in cancelRosterInvite:', e);
     }
   };
 
@@ -1322,9 +1662,11 @@ const TeamsPage = () => {
       const excludedIds = new Set<string>();
       if (user?.id) excludedIds.add(user.id);
       if (currentTeam?.owner_id) excludedIds.add(currentTeam.owner_id);
-      (currentTeam?.members || []).forEach((m: any) => {
-        if (m?.user_id) excludedIds.add(m.user_id);
-      });
+      if (currentTeam?.members) {
+        currentTeam.members.forEach((m: any) => {
+          if (m?.user_id) excludedIds.add(m.user_id);
+        });
+      }
 
       const { data, error } = await supabase
         .from('profiles')
@@ -1502,6 +1844,9 @@ const TeamsPage = () => {
                         <div className="text-white/90">
                           <span className="font-semibold">{inv.team_name || 'Unknown Team'}</span>
                           <span className="text-white/50 text-sm ml-2">invites you to join</span>
+                          {inv.roster_name && (
+                            <span className="text-indigo-400 text-sm font-semibold ml-1">({inv.roster_name})</span>
+                          )}
                         </div>
                         <div className="flex gap-3">
                           <Button size="sm" className="bg-emerald-500/80 hover:bg-emerald-500 text-white rounded-full px-6" onClick={() => acceptInvite(inv.id)}>JOIN</Button>
@@ -1635,7 +1980,7 @@ const TeamsPage = () => {
                       <span className="text-xl font-mono text-indigo-400 font-medium">{teamStats.winRate}%</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Trophies</span>
+                      <span className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Tournament Won</span>
                       <span className="text-xl font-mono text-yellow-400 font-medium flex items-center gap-1">
                         <Trophy className="w-3 h-3" />
                         {teamStats.tournamentWins || 0}
@@ -1670,85 +2015,7 @@ const TeamsPage = () => {
         </div>
 
 
-        {/* Team Members */}
-        <div className="mb-12">
-          <h2 className="text-xl font-heading font-light uppercase tracking-widest text-white mb-8 flex items-center gap-3">
-            <Users className="w-5 h-5 text-white/60" />
-            Core Roster
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {/* Captain Card */}
-            {currentTeam.owner_id && ownerProfile && (
-              <PlayerCard
-                member={{
-                  user_id: currentTeam.owner_id,
-                  username: ownerProfile.username || 'Captain',
-                  avatar_url: ownerProfile.avatar_url,
-                  role: 'Captain',
-                  verified: true,
-                  stats: { rating: 99, kd: '1.50', winRate: '70%', hs: '50%' } // Mock stats
-                }}
-                isOwner={true}
-                isCurrentUser={user?.id === currentTeam.owner_id}
-                onUploadImage={
-                  user?.id === currentTeam.owner_id
-                    ? () => {
-                      // Trigger file input
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.onchange = (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (file) handlePlayerCardUpload(file, currentTeam.name, currentTeam.owner_id, profile?.username || 'user');
-                      };
-                      input.click();
-                    }
-                    : undefined
-                }
-                onEdit={undefined}
-              />
-            )}
 
-            {/* Other Members */}
-            {teamMembers.filter(m => m.user_id !== currentTeam.owner_id).map((member) => (
-              <PlayerCard
-                key={member.user_id}
-                member={{
-                  user_id: member.user_id,
-                  username: member.username || 'Member',
-                  avatar_url: member.avatar_url,
-                  role: 'Member',
-                  verified: false,
-                  stats: { rating: 88, kd: '1.20', winRate: '60%', hs: '40%' } // Mock stats
-                }}
-                isOwner={false}
-                isCurrentUser={user?.id === member.user_id}
-                onUploadImage={
-                  user?.id === member.user_id
-                    ? () => {
-                      // Trigger file input
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.onchange = (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (file) handlePlayerCardUpload(file, currentTeam.name, member.user_id, member.username || 'member');
-                      };
-                      input.click();
-                    }
-                    : undefined
-                }
-                onEdit={undefined}
-              />
-            ))}
-          </div>
-          {teamMembers.filter(m => m.user_id !== currentTeam.owner_id).length === 0 && !currentTeam.owner_id && (
-            <div className="text-center text-white/60 py-8">
-              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No team members yet</p>
-              <p className="text-sm">Invite players to fill your roster</p>
-            </div>
-          )}        </div>
 
         {/* Pending Invitations for current user */}
         {pendingInvites.length > 0 && (
@@ -1761,8 +2028,14 @@ const TeamsPage = () => {
               {pendingInvites.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors">
                   <div className="text-white font-medium">
-                    Team invite <span className="text-indigo-400 font-mono">{inv.team_id.slice(0, 8)}</span>
-                    {inv.roster_id ? <span className="text-white/60"> · roster {String(inv.roster_id).slice(0, 8)}</span> : ''}
+                    Team invite <span className="text-indigo-400">{inv.team_name || inv.team_id.slice(0, 8)}</span>
+                    {inv.roster_name ? (
+                      <span className="text-white/80 ml-2 italic">
+                        joining <span className="text-indigo-300 font-bold">{inv.roster_name}</span>
+                      </span>
+                    ) : (
+                      <span className="text-white/60 ml-2">· General Invite</span>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => acceptInvite(inv.id)}>Accept</Button>
@@ -1771,6 +2044,55 @@ const TeamsPage = () => {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Core Roster Cards Section */}
+        {rosters.length > 0 && (
+          <div className="space-y-12 mb-12">
+            {rosters.map((r) => (
+              <div key={`core-${r.id}`} className="w-full">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  <h2 className="text-sm font-heading font-bold uppercase tracking-[0.3em] text-white/40 whitespace-nowrap bg-white/5 px-6 py-2 rounded-full border border-white/5 backdrop-blur-sm">
+                    CORE ROSTER ( <span className="text-indigo-400">{r.name}</span> : <span className="text-white/60">{r.game}</span> )
+                  </h2>
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                  {r.members?.map((member) => (
+                    <PlayerCard
+                      key={`${r.id}-${member.user_id}`}
+                      member={{
+                        user_id: member.user_id,
+                        username: member.username,
+                        avatar_url: member.avatar_url || undefined,
+                        card_image_url: member.card_image_url || undefined,
+                        role: member.user_id === currentTeam?.owner_id ? 'captain' : 'member',
+                        stats: teamMembers.find(tm => tm?.user_id === member.user_id)?.stats,
+                        game: r.game
+                      }}
+                      isOwner={member.user_id === currentTeam?.owner_id}
+                      isCurrentUser={member.user_id === user?.id}
+                      className="transition-all duration-500 hover:scale-[1.05] hover:z-10"
+                    />
+                  ))}
+                  {/* Vacant Slots */}
+                  {Array.from({ length: Math.max(0, (r.team_size === 5 ? 5 : r.team_size) - (r.members?.length || 0)) }).map((_, i) => (
+                    <div
+                      key={`vacant-${r.id}-${i}`}
+                      className="relative w-full aspect-[3/4] rounded-2xl border border-dashed border-white/5 bg-white/[0.02] flex flex-col items-center justify-center group/vacant hover:bg-white/[0.04] transition-all duration-500"
+                    >
+                      <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-3 group-hover/vacant:border-white/20 transition-colors">
+                        <Users className="w-6 h-6 text-white/10 group-hover/vacant:text-white/20" />
+                      </div>
+                      <span className="text-[10px] uppercase tracking-widest text-white/10 group-hover/vacant:text-white/20 font-bold">Vacant Slot</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -1819,7 +2141,7 @@ const TeamsPage = () => {
 
                   {isCaptain && (
                     <div className="flex gap-2 pt-4 border-t border-white/5">
-                      <Button size="sm" variant="ghost" className="h-9 flex-1 text-white/60 hover:text-white hover:bg-white/5 uppercase text-xs tracking-wider" onClick={() => openManageRoster(r)}>Manage</Button>
+                      <Button size="sm" variant="ghost" className="h-9 flex-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 uppercase text-xs tracking-wider" onClick={() => openManageRoster(r)}>Manage</Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1836,16 +2158,16 @@ const TeamsPage = () => {
           )}
         </div>
 
-        {/* Registered Tournaments */}
+        {/* Active Campaigns */}
         <div className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 mb-8">
           <h2 className="text-xl font-heading font-light uppercase tracking-widest text-white mb-8 flex items-center gap-3">
             <Trophy className="w-5 h-5 text-white/60" />
-            Tournament Entries
+            Active Campaigns
           </h2>
 
-          {teamRegistrations.length > 0 ? (
+          {teamRegistrations.filter(r => r.tournaments?.status !== 'completed').length > 0 ? (
             <div className="space-y-4">
-              {teamRegistrations.map((registration) => (
+              {teamRegistrations.filter(r => r.tournaments?.status !== 'completed').map((registration) => (
                 <div
                   key={registration.id}
                   onClick={() => {
@@ -1887,6 +2209,76 @@ const TeamsPage = () => {
             <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/5">
               <div className="text-white/40 font-light tracking-wide">NO ACTIVE CAMPAIGNS</div>
               <p className="text-white/20 text-sm mt-2">Register for tournaments to compete</p>
+            </div>
+          )}
+        </div>
+
+        {/* Tournament History Timeline */}
+        <div className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 mb-8">
+          <h2 className="text-xl font-heading font-light uppercase tracking-widest text-white mb-8 flex items-center gap-3">
+            <Calendar className="w-5 h-5 text-white/60" />
+            Tournament History
+          </h2>
+
+          {teamRegistrations.filter(r => r.tournaments?.status === 'completed').length > 0 ? (
+            <div className="relative pl-8 border-l-2 border-white/10 space-y-8">
+              {teamRegistrations
+                .filter(r => r.tournaments?.status === 'completed')
+                .sort((a, b) => {
+                  const dateA = a.tournaments?.start_date ? new Date(a.tournaments.start_date).getTime() : 0;
+                  const dateB = b.tournaments?.start_date ? new Date(b.tournaments.start_date).getTime() : 0;
+                  return dateB - dateA; // Most recent first
+                })
+                .map((registration) => {
+                  const isChampion = registration.tournaments?.winner_id === currentTeam?.id;
+                  return (
+                    <div
+                      key={registration.id}
+                      onClick={() => {
+                        setSelectedTournament(registration.tournaments);
+                        setIsTournamentModalOpen(true);
+                      }}
+                      className={`group relative p-5 rounded-xl cursor-pointer transition-all duration-300 ${isChampion ? 'bg-yellow-500/10 border border-yellow-500/30 hover:border-yellow-400/50' : 'bg-black/30 border border-white/5 hover:border-white/20'}`}
+                    >
+                      {/* Timeline Dot */}
+                      <div className={`absolute -left-[41px] top-6 w-4 h-4 rounded-full border-2 ${isChampion ? 'bg-yellow-500 border-yellow-400' : 'bg-white/20 border-white/30'}`} />
+
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] text-white/30 uppercase tracking-widest">
+                              {registration.tournaments?.start_date ? new Date(registration.tournaments.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }) : 'Unknown'}
+                            </span>
+                            {registration.tournaments?.game && (
+                              <Badge variant="outline" className="text-[9px] bg-white/5 border-white/10 text-white/40 uppercase tracking-widest px-1.5 py-0">
+                                {registration.tournaments.game}
+                              </Badge>
+                            )}
+                          </div>
+                          <h3 className={`text-lg font-heading font-medium tracking-wide ${isChampion ? 'text-yellow-300' : 'text-white'}`}>
+                            {registration.tournaments?.name || 'Tournament'}
+                          </h3>
+                          {isChampion && (
+                            <div className="flex items-center gap-1.5 mt-2">
+                              <Crown className="w-4 h-4 text-yellow-400" />
+                              <span className="text-xs text-yellow-400 uppercase tracking-widest font-bold">Champion</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-mono text-lg ${isChampion ? 'text-yellow-400' : 'text-white/60'}`}>
+                            ${registration.tournaments?.prize_pool}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl bg-white/5">
+              <div className="text-white/40 font-light tracking-wide">NO TOURNAMENT HISTORY</div>
+              <p className="text-white/20 text-sm mt-2">Completed tournaments will appear here</p>
             </div>
           )}
         </div>
@@ -2080,6 +2472,21 @@ const TeamsPage = () => {
                     if (profErr) { toast({ title: 'Lookup failed', description: profErr.message, variant: 'destructive' }); setInvitingUserId(null); return; }
                     if (!prof) { toast({ title: 'User not found', description: 'No account with that email/username.', variant: 'destructive' }); setInvitingUserId(null); return; }
                     const userId = prof.id;
+
+                    // Check if user is already on a team (not a free agent)
+                    const { data: existingMembership, error: memberErr } = await supabase
+                      .from('team_members')
+                      .select('id, team_id')
+                      .eq('user_id', userId)
+                      .eq('is_active', true)
+                      .maybeSingle();
+                    if (memberErr) { toast({ title: 'Check failed', description: memberErr.message, variant: 'destructive' }); setInvitingUserId(null); return; }
+                    if (existingMembership) {
+                      toast({ title: 'Player unavailable', description: 'This player is already on a team and cannot receive invitations.', variant: 'destructive' });
+                      setInvitingUserId(null);
+                      return;
+                    }
+
                     // avoid duplicate pending
                     const { data: pending, error: pendErr } = await supabase
                       .from('team_invitations' as any)
@@ -2328,7 +2735,10 @@ const TeamsPage = () => {
                     <h3 className="text-xl font-heading font-light text-white tracking-tight">Active Roster</h3>
                   </div>
                   <Badge variant="outline" className="bg-white/5 border-white/10 text-white/60 font-mono py-1 px-3">
-                    {manageMembers.length + 1} / {manageRoster.team_size === 5 ? 7 : manageRoster.team_size}
+                    {(() => {
+                      const uniqueMembers = new Set([currentTeam?.owner_id, ...manageMembers].filter(Boolean));
+                      return uniqueMembers.size;
+                    })()} / {manageRoster.team_size === 5 ? 7 : manageRoster.team_size}
                   </Badge>
                 </div>
 
@@ -2361,43 +2771,104 @@ const TeamsPage = () => {
                       <p className="text-white/20 text-xs font-light tracking-wide uppercase">Roster is currently empty</p>
                     </div>
                   ) : (
-                    manageMembers.map(uid => {
-                      const member = teamMembers.find(m => m.user_id === uid);
-                      if (!member) return null;
-                      return (
-                        <motion.div
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          key={uid}
-                          className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.08] hover:border-white/10 transition-all group relative overflow-hidden"
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <div className="flex items-center gap-4 relative z-10">
-                            <div className="relative">
-                              <Avatar className="w-10 h-10 border-2 border-white/10 shadow-xl group-hover:border-indigo-500/50 transition-colors">
-                                <AvatarImage src={member.avatar_url} />
-                                <AvatarFallback className="text-xs bg-indigo-900/50 text-indigo-200">{member.username?.charAt(0) || '?'}</AvatarFallback>
-                              </Avatar>
-                              <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0a0a0a]" />
-                            </div>
-                            <div>
-                              <span className="text-sm font-heading font-medium text-white/90 group-hover:text-white transition-colors block">{member.username || 'Unknown User'}</span>
-                              <span className="text-[10px] uppercase tracking-widest text-white/30">Active Member</span>
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-full opacity-0 group-hover:opacity-100 transition-all relative z-10"
-                            onClick={() => handleRemoveFromRoster(uid)}
+                    manageMembers
+                      .filter(uid => uid !== currentTeam?.owner_id) // Deduplicate owner from list
+                      .map(uid => {
+                        const member = teamMembers.find(m => m.user_id === uid);
+                        if (!member) return null;
+                        return (
+                          <motion.div
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            key={uid}
+                            className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.08] hover:border-white/10 transition-all group relative overflow-hidden"
                           >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </motion.div>
-                      );
-                    })
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="flex items-center gap-4 relative z-10">
+                              <div className="relative">
+                                <Avatar className="w-10 h-10 border-2 border-white/10 shadow-xl group-hover:border-indigo-500/50 transition-colors">
+                                  <AvatarImage src={member.avatar_url} />
+                                  <AvatarFallback className="text-xs bg-indigo-900/50 text-indigo-200">{member.username?.charAt(0) || '?'}</AvatarFallback>
+                                </Avatar>
+                                <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0a0a0a]" />
+                              </div>
+                              <div>
+                                <span className="text-sm font-heading font-medium text-white/90 group-hover:text-white transition-colors block">{member.username || 'Unknown User'}</span>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleStarter(uid, manageMemberStatuses[uid] ?? true);
+                                    }}
+                                    className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-all ${(manageMemberStatuses[uid] ?? true)
+                                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                                      : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20'
+                                      }`}
+                                  >
+                                    {(manageMemberStatuses[uid] ?? true) ? 'STARTER' : 'BENCH'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 relative z-10 opacity-0 group-hover:opacity-100 transition-all">
+                              {isCaptain && uid !== currentTeam?.owner_id && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-white/20 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-full transition-all"
+                                  title="Transfer Captaincy"
+                                  onClick={() => {
+                                    setMemberToRemove(member as any);
+                                    setShowTransferCaptaincy(true);
+                                  }}
+                                >
+                                  <Shield className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all"
+                                onClick={() => handleRemoveFromRoster(uid)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </motion.div>
+                        );
+                      })
                   )}
                 </div>
+
+                {/* Team Members NOT in this roster */}
+                {isCaptain && teamMembers.some(m => !manageMembers.includes(m.user_id) && m.user_id !== currentTeam?.owner_id) && (
+                  <div className="space-y-3 mt-6">
+                    <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 block">Add Team Members</Label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {teamMembers
+                        .filter(m => !manageMembers.includes(m.user_id) && m.user_id !== currentTeam?.owner_id)
+                        .map(member => (
+                          <div key={`add-${member.user_id}`} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.05] transition-all">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="w-8 h-8 border border-white/10">
+                                <AvatarImage src={member.avatar_url} />
+                                <AvatarFallback className="text-[10px] bg-indigo-900/50 text-indigo-300">{member.username?.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs text-white/70">{member.username}</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-3 text-[10px] text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 uppercase tracking-widest"
+                              onClick={() => handleAddMemberToRoster(member.user_id)}
+                            >
+                              Add to Lineup
+                            </Button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
 
               </div>
@@ -2486,7 +2957,7 @@ const TeamsPage = () => {
                     {rosterInvites.map(inv => (
                       <div key={inv.id} className="flex items-center justify-between p-3 bg-white/[0.03] rounded-xl border border-white/[0.05] group">
                         <div className="flex flex-col">
-                          <span className="text-sm text-white/80 font-medium">{inv.invited_email || inv.invited_user_id?.slice(0, 8)}</span>
+                          <span className="text-sm text-white/80 font-medium">{(inv as any).profiles?.username || inv.invited_email || inv.invited_user_id?.slice(0, 8)}</span>
                           <span className="text-[10px] text-white/20 uppercase tracking-tight">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''} at {inv.created_at ? new Date(inv.created_at).toLocaleTimeString() : ''}</span>
                         </div>
                         <Button
@@ -2514,7 +2985,7 @@ const TeamsPage = () => {
 
       {/* Remove Member Confirmation */}
       <AlertDialog open={showRemoveMember} onOpenChange={setShowRemoveMember}>
-        <AlertDialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 relative overflow-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2538,7 +3009,7 @@ const TeamsPage = () => {
 
       {/* Transfer Captaincy Confirmation */}
       <AlertDialog open={showTransferCaptaincy} onOpenChange={setShowTransferCaptaincy}>
-        <AlertDialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 relative overflow-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2562,7 +3033,7 @@ const TeamsPage = () => {
 
       {/* Disband Team Confirmation */}
       <AlertDialog open={showDisbandTeam} onOpenChange={setShowDisbandTeam}>
-        <AlertDialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 relative overflow-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />

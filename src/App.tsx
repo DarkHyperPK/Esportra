@@ -3,7 +3,6 @@ import { Loader2 } from "lucide-react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NotificationProvider } from "@/components/NotificationContext";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/PageTransition";
@@ -16,6 +15,7 @@ import { AnimatedLiquidBackground } from "@/components/effects/AnimatedLiquidBac
 import { TransitionLayout } from "@/components/TransitionLayout";
 import { LoadingSpinner } from "@/components/effects/LoadingSpinner";
 import { SeamlessVideoLoop } from "@/components/effects/SeamlessVideoLoop";
+import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
 
 
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -31,13 +31,14 @@ const NotFound = React.lazy(() => import("./pages/NotFound"));
 const Unauthorized = React.lazy(() => import("./pages/Unauthorized"));
 const SignUp = React.lazy(() => import("./pages/auth/SignUp"));
 const SignIn = React.lazy(() => import("./pages/auth/SignIn"));
-const Profile = React.lazy(() => import("./pages/auth/Profile"));
+// Profile removed
 const Callback = React.lazy(() => import("./pages/auth/Callback"));
-const AdminPortal = React.lazy(() => import("./pages/admin/AdminPortal"));
+const SetPassword = React.lazy(() => import("./pages/auth/SetPassword"));
+
 
 // User 
-const UserDashboard = React.lazy(() => import("./pages/user/Dashboard"));
-const PlayerDashboard = React.lazy(() => import("./pages/player/Dashboard"));
+// UserDashboard removed - redundant with PlayerDashboard
+const PlayerProfile = React.lazy(() => import("./pages/player/Profile"));
 const StaffInvitesPage = React.lazy(() => import("./pages/user/StaffInvites"));
 const RaiseDispute = React.lazy(() => import("./pages/user/RaiseDispute"));
 const MyDisputes = React.lazy(() => import("./pages/user/MyDisputes"));
@@ -57,6 +58,7 @@ const UserManagementTool = React.lazy(() => import("./pages/admin/tools/UserMana
 const TournamentManagementTool = React.lazy(() => import("./pages/admin/tools/TournamentManagement"));
 const VenueManagementTool = React.lazy(() => import("./pages/admin/tools/VenueManagement"));
 const AnalyticsTool = React.lazy(() => import("./pages/admin/tools/Analytics"));
+const SponsorManagementTool = React.lazy(() => import("./pages/admin/tools/SponsorManagement"));
 
 // Venue Owner
 const VenueOwnerDashboard = React.lazy(() => import("./pages/venue-owner/Dashboard"));
@@ -73,7 +75,8 @@ const TournamentDetails = React.lazy(() => import("./pages/admin/TournamentDetai
 const CaptainMatchPage = React.lazy(() => import("./pages/tournaments/CaptainMatchPage"));
 const ManageBracketPage = React.lazy(() => import("./pages/organizer/ManageBracketPage"));
 const FullscreenBracketPage = React.lazy(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
-const OrganizerPublicProfile = React.lazy(() => import("./pages/organizer/PublicProfile"));
+const OrganizationPublicProfile = React.lazy(() => import("./pages/org/PublicProfile"));
+const OrganizationWizard = React.lazy(() => import("./pages/organizer/OrganizationWizard"));
 
 const ADMIN_ROLE_SETS = {
   anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
@@ -90,7 +93,8 @@ const ADMIN_ROLE_SETS = {
 // Venues
 const VenueSearch = React.lazy(() => import("./pages/venues/Search"));
 const FeaturedVenues = React.lazy(() => import("./pages/venues/Featured"));
-const VenueDetails = React.lazy(() => import("./pages/venues/Details"));
+const VenueDetails = React.lazy(() => import("./pages/venues/VenueDetails"));
+const ManageVenues = React.lazy(() => import("./pages/venues/ManageVenues"));
 const ListVenue = React.lazy(() => import("./pages/venues/ListVenue"));
 
 // Tournaments
@@ -103,31 +107,26 @@ const ContactPage = React.lazy(() => import("./pages/about/Contact"));
 const FAQPage = React.lazy(() => import("./pages/about/FAQ"));
 const AboutPage = React.lazy(() => import("./pages/About"));
 const PrivacyPage = React.lazy(() => import("./pages/Privacy"));
-const CareersPage = React.lazy(() => import("./pages/Careers"));
+const TermsPage = React.lazy(() => import("./pages/Terms"));
 const ContactStandalone = React.lazy(() => import("./pages/Contact"));
+const Partners = React.lazy(() => import("./pages/Partners"));
 
-// App Download
-const AppDownloadPage = React.lazy(() => import("./pages/AppDownload"));
+// App Download removed
 
 // Notifications
 const NotificationsPage = React.lazy(() => import("./pages/notifications/Notifications"));
 
 const TournamentHistoryPage = React.lazy(() => import('./pages/TournamentHistory'));
+const Leaderboards = React.lazy(() => import('./pages/Leaderboards'));
+const PlayerHistory = React.lazy(() => import('./pages/player/History'));
 const VerificationStatus = React.lazy(() => import('./pages/VerificationStatus'));
 const OrganizerDisputesPage = React.lazy(() => import('./pages/organizer/Disputes'));
 const MapVetoToken = React.lazy(() => import('./pages/tournaments/MapVetoToken'));
+const RiotTest = React.lazy(() => import("./pages/debug/RiotTest"));
 
 // Test Supabase connection on app start
+// Test Supabase connection on app start
 import './utils/testSupabase';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
 
 const AppContent = React.memo(() => {
   const location = useLocation();
@@ -144,7 +143,7 @@ const AppContent = React.memo(() => {
           src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Tournament%20dashboard%20background%20animation/background.mp4"
           className="mix-blend-screen opacity-40"
           style={{ filter: 'contrast(1.2) saturation(1.1)' }}
-          fadeDuration={0.9} // 900ms fade in/out
+
         />
       </div>
 
@@ -152,11 +151,7 @@ const AppContent = React.memo(() => {
       <Sonner />
       <Navbar />
       <div className="relative z-10">
-        <React.Suspense fallback={
-          <div className="flex items-center justify-center min-h-screen bg-transparent">
-            <LoadingSpinner size={80} text="Loading..." />
-          </div>
-        }>
+        <React.Suspense fallback={<PremiumLoadingScreen />}>
           <Routes location={location}>
             <Route element={<TransitionLayout />}>
               <Route path="/" element={<Index />} />
@@ -165,11 +160,7 @@ const AppContent = React.memo(() => {
               <Route path="/auth/signup" element={<SignUp />} />
               <Route path="/auth/signin" element={<SignIn />} />
               <Route path="/auth/callback" element={<Callback />} />
-              <Route path="/auth/profile" element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              } />
+              <Route path="/set-password" element={<SetPassword />} />
 
               {/* Admin Routes */}
               <Route path="/admin" element={
@@ -186,14 +177,14 @@ const AppContent = React.memo(() => {
               {/* Fallback dashboard route */}
               <Route path="/dashboard" element={
                 <ProtectedRoute>
-                  <Navigate to="/user/dashboard" replace />
+                  <Navigate to="/user/profile" replace />
                 </ProtectedRoute>
               } />
 
               {/* User Routes */}
-              <Route path="/user/dashboard" element={
+              <Route path="/user/profile" element={
                 <ProtectedRoute>
-                  <UserDashboard />
+                  <PlayerProfile />
                 </ProtectedRoute>
               } />
               <Route path="/user/staff-invites" element={
@@ -218,14 +209,19 @@ const AppContent = React.memo(() => {
               } />
 
               {/* Player Routes */}
-              <Route path="/player/dashboard" element={
+              <Route path="/player/profile" element={
                 <ProtectedRoute>
-                  <PlayerDashboard />
+                  <PlayerProfile />
                 </ProtectedRoute>
               } />
               <Route path="/player/teams" element={
                 <ProtectedRoute>
                   <TeamsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/player/history" element={
+                <ProtectedRoute>
+                  <PlayerHistory />
                 </ProtectedRoute>
               } />
 
@@ -299,6 +295,16 @@ const AppContent = React.memo(() => {
                 >
                   <AdminLayout>
                     <AnalyticsTool />
+                  </AdminLayout>
+                </AdminProtectedRoute>
+              } />
+              <Route path="/admin/tools/sponsor-management" element={
+                <AdminProtectedRoute
+                  requiredPermission="settings:view"
+                  requiredRoles={ADMIN_ROLE_SETS.systemSettings}
+                >
+                  <AdminLayout>
+                    <SponsorManagementTool />
                   </AdminLayout>
                 </AdminProtectedRoute>
               } />
@@ -398,6 +404,11 @@ const AppContent = React.memo(() => {
                   <OrganizerDashboard />
                 </ProtectedRoute>
               } />
+              <Route path="/organizer/setup-organization" element={
+                <ProtectedRoute allowedRoles={['organizer']}>
+                  <OrganizationWizard />
+                </ProtectedRoute>
+              } />
               <Route path="/organizer/tournaments" element={
                 <ProtectedRoute allowedRoles={['organizer']}>
                   <ManageTournaments />
@@ -429,17 +440,23 @@ const AppContent = React.memo(() => {
                 </ProtectedRoute>
               } />
               <Route path="/tournaments" element={<TournamentList />} />
-              <Route path="/organizer/profile/:userId" element={<OrganizerPublicProfile />} />
+              <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
               <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
+              <Route path="/player/:username" element={<PlayerProfile />} />
 
               {/* Venues Routes */}
               <Route path="/venues" element={<VenueSearch />} />
               <Route path="/venues/search" element={<VenueSearch />} />
               <Route path="/venues/featured" element={<FeaturedVenues />} />
-              <Route path="/venues/details/:id" element={<VenueDetails />} />
+              <Route path="/venues/:slug" element={<VenueDetails />} />
               <Route path="/venues/list-venue" element={
                 <ProtectedRoute allowedRoles={['venue_owner']}>
                   <ListVenue />
+                </ProtectedRoute>
+              } />
+              <Route path="/venues/manage" element={
+                <ProtectedRoute allowedRoles={['venue_owner']}>
+                  <ManageVenues />
                 </ProtectedRoute>
               } />
 
@@ -466,12 +483,10 @@ const AppContent = React.memo(() => {
               <Route path="/about/company" element={<AboutPage />} />
               <Route path="/about/contact" element={<ContactPage />} />
               <Route path="/about/faq" element={<FAQPage />} />
-              <Route path="/careers" element={<CareersPage />} />
               <Route path="/contact" element={<ContactStandalone />} />
+              <Route path="/partners" element={<Partners />} />
               <Route path="/privacy" element={<PrivacyPage />} />
-
-              {/* App Download Route */}
-              <Route path="/app" element={<AppDownloadPage />} />
+              <Route path="/terms" element={<TermsPage />} />
 
               {/* Notification List Route */}
               <Route path="/notifications" element={<NotificationsPage />} />
@@ -482,8 +497,14 @@ const AppContent = React.memo(() => {
               {/* Tournament History Route */}
               <Route path="/tournament-history" element={<TournamentHistoryPage />} />
 
+              {/* Leaderboard Route */}
+              <Route path="/leaderboards" element={<Leaderboards />} />
+
               {/* Verification Status Route */}
               <Route path="/verification" element={<VerificationStatus />} />
+
+              {/* Debug Routes */}
+              <Route path="/debug/riot" element={<RiotTest />} />
 
               {/* Catch-all route */}
               <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
@@ -499,23 +520,21 @@ AppContent.displayName = 'AppContent';
 
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <RoleProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <RoleProvider>
 
-            <TooltipProvider>
-              <NotificationProvider>
-                <AdminProvider>
-                  <AppContent />
-                </AdminProvider>
-              </NotificationProvider>
-            </TooltipProvider>
+          <TooltipProvider>
+            <NotificationProvider>
+              <AdminProvider>
+                <AppContent />
+              </AdminProvider>
+            </NotificationProvider>
+          </TooltipProvider>
 
-          </RoleProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+        </RoleProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 };
 

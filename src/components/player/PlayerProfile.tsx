@@ -1,46 +1,133 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
-import { Edit, Medal, Trophy, Star } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Edit, Disc, Shield, ShieldCheck, Link2Off, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from '@/lib/supabase';
+import { useRiotAccount } from '@/hooks/useRiotAccount';
+import { useToast } from '@/hooks/use-toast';
+import EditProfileDialog from './EditProfileDialog';
+import { getCountryFlag, getCountryFlagUrl } from '@/utils/countries';
 
-const PlayerProfile = () => {
-  const { profile } = useAuth();
+interface PlayerProfileProps {
+  profileData?: any;
+  isOwnProfile?: boolean;
+}
+
+const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps) => {
+  const { profile: authProfile, user } = useAuth();
   const [editMode, setEditMode] = useState(false);
-  
+  const [discordIdentity, setDiscordIdentity] = useState<any>(null);
+  const { riotAccount, isLoading: riotLoading, linkRiotAccount, unlinkRiotAccount, refetch: refetchRiot } = useRiotAccount();
+  const { toast } = useToast();
+
+  // Use passed profile data or fall back to auth profile
+  const displayProfile = profileData || authProfile;
+
+  // Handle RSO callback query params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const riotLinked = params.get('riot_linked');
+    if (riotLinked === 'success') {
+      const gameName = params.get('game_name');
+      const tagLine = params.get('tag_line');
+      toast({
+        title: 'Riot Account Linked!',
+        description: gameName ? `Successfully linked ${gameName}#${tagLine}` : 'Your Riot account has been linked.',
+      });
+      refetchRiot();
+      // Clean up query params
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (riotLinked === 'error') {
+      const reason = params.get('reason') || 'unknown';
+      toast({
+        title: 'Riot Linking Failed',
+        description: `Could not link Riot account: ${reason.replace(/_/g, ' ')}`,
+        variant: 'destructive',
+      });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    const checkDiscordLink = async () => {
+      if (!isOwnProfile || !user) return;
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const discord = currentUser?.identities?.find(id => id.provider === 'discord');
+      setDiscordIdentity(discord);
+    };
+    checkDiscordLink();
+  }, [user, isOwnProfile]);
+
+  const linkDiscord = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'discord',
+      options: {
+        redirectTo: window.location.href,
+        scopes: 'identify email'
+      }
+    });
+  };
+
+  const handleUnlinkRiot = async () => {
+    try {
+      await unlinkRiotAccount();
+      toast({ title: 'Riot Account Unlinked', description: 'Your Riot account has been removed.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to unlink Riot account.', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">
-        <h2 className="text-2xl font-bold mb-2">My Profile</h2>
-        <Button variant="outline" onClick={() => setEditMode(!editMode)}>
-          <Edit className="mr-2 h-4 w-4" />
-          Edit Profile
-        </Button>
+        <h2 className="text-2xl font-bold mb-2">{isOwnProfile ? 'My Profile' : `${displayProfile?.username}'s Profile`}</h2>
+        {isOwnProfile && (
+          <Button variant="outline" onClick={() => setEditMode(!editMode)}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Profile
+          </Button>
+        )}
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-gaming-dark border-gaming-gray/30">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xl font-bold">Player Info</CardTitle>
-            <Badge className="bg-gaming-purple">Level 24</Badge>
+          <CardHeader className="flex flex-row items-center justify-center pb-2 space-y-0">
+            <Avatar className="h-24 w-24">
+              <AvatarImage src={displayProfile?.avatar_url || ''} alt={displayProfile?.username} />
+              <AvatarFallback>{displayProfile?.username?.substring(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col items-center mt-2">
-              <Avatar src={profile?.avatar_url} name={profile?.full_name || profile?.username} size={80} className="mb-4" />
-              <h3 className="text-xl font-bold">{profile?.username}</h3>
-              <p className="text-gray-400">{profile?.full_name}</p>
-              
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold">{displayProfile?.username}</h3>
+                {displayProfile?.country_code && (
+                  <img
+                    src={getCountryFlagUrl(displayProfile.country_code)}
+                    alt={displayProfile.country_code}
+                    className="w-6 h-4 object-cover rounded shadow-sm border border-white/10"
+                    title={displayProfile.country_code}
+                  />
+                )}
+              </div>
+              <p className="text-gray-400">{displayProfile?.full_name}</p>
+
+              {displayProfile?.bio && (
+                <div className="mt-4 px-4 text-center text-sm text-gray-300 italic">
+                  "{displayProfile.bio}"
+                </div>
+              )}
+
               <div className="mt-6 space-y-3 w-full">
-                <div>
-                  <div className="text-sm text-gray-400 mb-1">Email</div>
-                  <div>{profile?.email}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-400 mb-1">Discord</div>
-                  <div>playername#1234</div>
-                </div>
+                {isOwnProfile && (
+                  <div>
+                    <div className="text-sm text-gray-400 mb-1">Email</div>
+                    <div>{displayProfile?.email}</div>
+                  </div>
+                )}
                 <div>
                   <div className="text-sm text-gray-400 mb-1">Member Since</div>
                   <div>April 2025</div>
@@ -49,82 +136,117 @@ const PlayerProfile = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gaming-dark border-gaming-gray/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-xl font-bold">Game Accounts</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="p-3 border border-gaming-gray/30 rounded-md">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <img src="https://via.placeholder.com/30" alt="Valorant" className="mr-3 rounded-full" />
-                    <div>
-                      <div className="font-medium">Valorant</div>
-                      <div className="text-sm text-gray-400">ProPlayer#NA1</div>
+              {/* ── Riot Account Section ── */}
+              {isOwnProfile ? (
+                riotLoading ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                  </div>
+                ) : riotAccount ? (
+                  <div className="p-4 border border-red-500/30 bg-red-500/5 rounded-md space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-red-500 font-bold text-sm">
+                        <ShieldCheck className="w-4 h-4" />
+                        Riot Linked
+                      </div>
+                      <Badge variant="outline" className="border-red-500/40 text-red-400 text-[10px]">VERIFIED</Badge>
+                    </div>
+                    <div className="font-mono text-white text-lg">
+                      {riotAccount.game_name}<span className="text-gray-500">#{riotAccount.tag_line}</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500">This Riot ID is verified and cannot be changed manually.</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-500 hover:text-red-400 text-xs mt-1 h-7 px-2"
+                      onClick={handleUnlinkRiot}
+                    >
+                      <Link2Off className="w-3 h-3 mr-1" /> Unlink
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="p-4 border border-red-500/20 bg-red-900/10 rounded-md text-center">
+                    <Shield className="w-8 h-8 text-red-500/50 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm mb-3">Link your Riot account for verified tournament registration.</p>
+                    <Button
+                      onClick={linkRiotAccount}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Shield className="w-4 h-4 mr-2" /> Link Riot Account
+                    </Button>
+                  </div>
+                )
+              ) : (
+                // Public profile: show linked Riot ID if available (no private data)
+                riotAccount ? (
+                  <div className="p-4 border border-red-500/30 bg-red-500/5 rounded-md">
+                    <div className="flex items-center gap-2 text-red-500 font-bold text-sm mb-1">
+                      <ShieldCheck className="w-4 h-4" /> Riot Linked
+                    </div>
+                    <div className="font-mono text-white">
+                      {riotAccount.game_name}<span className="text-gray-500">#{riotAccount.tag_line}</span>
                     </div>
                   </div>
-                  <Badge className="bg-amber-500">Diamond</Badge>
-                </div>
-              </div>
-              
-              <div className="p-3 border border-gaming-gray/30 rounded-md">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <img src="https://via.placeholder.com/30" alt="League of Legends" className="mr-3 rounded-full" />
+                ) : null
+              )}
+
+              {/* ── Discord Section ── */}
+              {isOwnProfile ? (
+                discordIdentity ? (
+                  <div className="p-4 border border-[#5865F2]/30 bg-[#5865F2]/10 rounded-md flex items-center justify-between">
                     <div>
-                      <div className="font-medium">League of Legends</div>
-                      <div className="text-sm text-gray-400">ProPlayer#NA1</div>
+                      <div className="text-[#5865F2] font-bold text-sm mb-1 flex items-center gap-2">
+                        <Disc className="w-4 h-4" /> Discord Connected
+                      </div>
+                      <div className="font-mono text-white">
+                        {discordIdentity.identity_data?.full_name || discordIdentity.identity_data?.name || discordIdentity.identity_data?.email || 'Linked'}
+                      </div>
                     </div>
                   </div>
-                  <Badge className="bg-gaming-blue">Platinum</Badge>
-                </div>
-              </div>
-              
-              <Button variant="outline" className="w-full mt-2">
-                <Edit className="mr-2 h-4 w-4" />
-                Link New Account
-              </Button>
+                ) : (
+                  <div className="text-center">
+                    <p className="text-gray-400 text-sm mb-4">Link your Discord to participate in tournaments.</p>
+                    <Button
+                      onClick={linkDiscord}
+                      className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white"
+                    >
+                      Link Discord
+                    </Button>
+                  </div>
+                )
+              ) : (
+                !riotAccount && (
+                  <div className="text-center text-gray-500 italic">
+                    Game accounts are private.
+                  </div>
+                )
+              )}
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gaming-dark border-gaming-gray/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-xl font-bold">Player Stats</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-esports-dark p-3 rounded-md text-center">
-                <Trophy className="mx-auto h-8 w-8 text-yellow-500 mb-1" />
-                <div className="text-xl font-bold">12</div>
-                <div className="text-sm text-gray-400">Tournaments</div>
-              </div>
-              
-              <div className="bg-esports-dark p-3 rounded-md text-center">
-                <Medal className="mx-auto h-8 w-8 text-amber-500 mb-1" />
-                <div className="text-xl font-bold">4</div>
-                <div className="text-sm text-gray-400">Wins</div>
-              </div>
-              
-              <div className="bg-esports-dark p-3 rounded-md text-center">
-                <Star className="mx-auto h-8 w-8 text-purple-500 mb-1" />
-                <div className="text-xl font-bold">872</div>
-                <div className="text-sm text-gray-400">Points</div>
-              </div>
-              
-              <div className="bg-esports-dark p-3 rounded-md text-center">
-                <div className="text-xl font-bold">33%</div>
-                <div className="text-sm text-gray-400">Win Rate</div>
-                <div className="w-full bg-gaming-gray/20 h-2 mt-2 rounded-full overflow-hidden">
-                  <div className="bg-gaming-purple h-2 rounded-full" style={{ width: '33%' }}></div>
-                </div>
-              </div>
+            <div className="flex items-center justify-center h-40 text-gray-500 text-sm italic">
+              No stats recorded yet.
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {isOwnProfile && (
+        <EditProfileDialog open={editMode} onOpenChange={setEditMode} />
+      )}
     </div>
   );
 };

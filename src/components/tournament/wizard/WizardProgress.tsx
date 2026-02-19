@@ -1,24 +1,31 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-import { WIZARD_STEPS } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
+
+export interface WizardStepConfig {
+    id: number;
+    title: string;
+    description: string;
+}
 
 interface WizardProgressProps {
     currentStep: number;
     stepValidation: Record<number, boolean>;
     onStepClick: (step: number) => void;
+    steps: WizardStepConfig[];
 }
 
 const WizardProgress: React.FC<WizardProgressProps> = ({
     currentStep,
     stepValidation,
     onStepClick,
+    steps,
 }) => {
     return (
         <div className="w-full mb-8">
             {/* Desktop view */}
             <div className="hidden md:flex items-center justify-between">
-                {WIZARD_STEPS.map((step, index) => {
+                {steps.map((step, index) => {
                     const isComplete = stepValidation[step.id] === true;
                     const isCurrent = currentStep === step.id;
                     const isPast = currentStep > step.id;
@@ -63,7 +70,7 @@ const WizardProgress: React.FC<WizardProgressProps> = ({
                             </div>
 
                             {/* Connector line */}
-                            {index < WIZARD_STEPS.length - 1 && (
+                            {index < steps.length - 1 && (
                                 <div className="flex-1 h-1 mx-4 rounded-full overflow-hidden bg-gray-700">
                                     <div
                                         className={cn(
@@ -86,20 +93,20 @@ const WizardProgress: React.FC<WizardProgressProps> = ({
             <div className="md:hidden">
                 <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-gray-400">
-                        Step {currentStep} of {WIZARD_STEPS.length}
+                        Step {currentStep} of {steps.length}
                     </span>
                     <span className="text-sm font-medium text-white">
-                        {WIZARD_STEPS[currentStep - 1]?.title}
+                        {steps[currentStep - 1]?.title}
                     </span>
                 </div>
                 <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                     <div
                         className="h-full bg-emerald-500 transition-all duration-300"
-                        style={{ width: `${(currentStep / WIZARD_STEPS.length) * 100}%` }}
+                        style={{ width: `${(currentStep / steps.length) * 100}%` }}
                     />
                 </div>
                 <div className="flex justify-between mt-2">
-                    {WIZARD_STEPS.map((step) => (
+                    {steps.map((step) => (
                         <div
                             key={step.id}
                             className={cn(

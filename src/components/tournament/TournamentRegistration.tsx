@@ -47,13 +47,28 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
         setLoading(false);
         return;
       }
-      // Check registration
-      const { data: regData } = await supabase
+      // Check for registration
+      // Get teams user is member of (to check for team registration)
+      const { data: userTeams } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      const teamIds = (userTeams || []).map(t => t.team_id);
+
+      let query = supabase
         .from('tournament_participants')
         .select('id')
-        .eq('tournament_id', tournamentId)
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .eq('tournament_id', tournamentId);
+
+      if (teamIds.length > 0) {
+        query = query.or(`user_id.eq.${user.id},team_id.in.(${teamIds.join(',')})`);
+      } else {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data: regData } = await query.maybeSingle();
       setIsRegistered(!!regData);
       setIsBanned(false);
       setBanReason(null);

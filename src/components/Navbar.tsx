@@ -49,7 +49,7 @@ const Navbar = () => {
       transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
       className={`${isManageBracketPage ? 'relative' : (isLandingPage ? 'fixed top-0 w-full' : 'sticky top-0')} z-[999]`}
     >
-      <div className="max-w-5xl mx-auto w-full px-4 py-3 sm:px-8">
+      <div className="max-w-6xl mx-auto w-full px-4 py-3 sm:px-8">
         <div
           className={`relative flex w-full items-center justify-between rounded-3xl border border-white/10 shadow-lg transition-all duration-300 ${isScrolled
             ? "bg-[#121212]/90 backdrop-blur-md border-white/5"

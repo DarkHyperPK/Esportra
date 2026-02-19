@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Map as MapIcon, AlertCircle, Plus, Trash2, Pencil, X, ChevronsUpDown, Book } from 'lucide-react';
+import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Map as MapIcon, AlertCircle, Plus, Trash2, Pencil, X, ChevronsUpDown, Book, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 
@@ -20,12 +20,8 @@ import { getGameTableName } from '@/utils/gameTables';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import esportsGames from '@/data/esportsGames.json';
 
-interface MapPool {
-    id: string;
-    name: string;
-    map_image_url?: string;
-}
 
 interface StageSetupWizardProps {
     open: boolean;
@@ -43,8 +39,6 @@ interface StageConfig {
     capacity: number | '';
     advancement_count: number | '';
     best_of: number;
-    map_pool_id: string | null; // 'tournament_pool', 'custom', or null (all)
-    custom_map_ids: string[]; // For custom map pool
     settings?: {
         swiss_rounds?: number;
         group_count?: number;
@@ -62,8 +56,6 @@ const DEFAULT_STAGE_CONFIG: StageConfig = {
     capacity: '',
     advancement_count: '',
     best_of: 1,
-    map_pool_id: null,
-    custom_map_ids: []
 };
 
 // Validation helper functions
@@ -77,7 +69,6 @@ const validateStageConfig = (stage: StageConfig, totalParticipants: number = 0, 
 
     const advancementCount = typeof stage.advancement_count === 'number' ? stage.advancement_count : 0;
 
-    // Rule 1: Minimum capacity for format
     const minCapacity: Record<string, number> = {
         'single_elimination': 2,
         'double_elimination': 4,
@@ -85,9 +76,11 @@ const validateStageConfig = (stage: StageConfig, totalParticipants: number = 0, 
         'round_robin': 3
     };
 
+    const minMatches = minCapacity[format] || 2;
+
     // Only validate minimum capacity if we have a known capacity (configured or actual)
-    if (effectiveCapacity > 0 && effectiveCapacity < (minCapacity[format] || 2)) {
-        return { valid: false, error: `${format.replace('_', ' ')} requires at least ${minCapacity[format]} teams.` };
+    if (effectiveCapacity > 0 && effectiveCapacity < minMatches) {
+        return { valid: false, error: `${format.replace('_', ' ')} requires at least ${minMatches} teams.` };
     }
 
     // Rule 2: Advancement count must be power of 2 for elimination formats
@@ -174,186 +167,8 @@ const getFormatTransitionWarning = (prevFormat: string | undefined, newFormat: s
     return null;
 };
 
-const MapSelector = ({
-    value,
-    onChange,
-    customIds,
-    onCustomIdsChange,
-    mapPools,
-    hasTournamentMapPool,
-    maxMaps = 7
-}: {
-    value: string | null,
-    onChange: (val: string | null) => void,
-    customIds: string[],
-    onCustomIdsChange: (ids: string[]) => void,
-    mapPools: MapPool[],
-    hasTournamentMapPool: boolean,
-    maxMaps?: number
-}) => {
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    // Helper to get display text
-    const getDisplayText = () => {
-        if (value === 'tournament_pool') return 'Tournament Pool';
-        if (value === 'custom') return `Custom Selection (${customIds.length}/${maxMaps} maps)`;
-        return 'All Maps (Default)';
-    };
 
-    return (
-        <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-black/20 border border-white/10 rounded-lg">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded bg-white/5">
-                        {value === 'tournament_pool' ? <Trophy className="h-4 w-4 text-emerald-400" /> :
-                            value === 'custom' ? <MapIcon className="h-4 w-4 text-blue-400" /> :
-                                <MapIcon className="h-4 w-4 text-gray-400" />}
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-sm font-medium text-white">{getDisplayText()}</span>
-                        <span className="text-xs text-gray-500">
-                            {value === 'custom' ? 'Specific maps selected' : 'Standard map pool'}
-                        </span>
-                    </div>
-                </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsDialogOpen(true)}
-                    className="h-8 border-white/10 hover:bg-white/5 text-xs"
-                >
-                    <Pencil className="h-3 w-3 mr-2" /> Configure
-                </Button>
-            </div>
-
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-md bg-gaming-dark border-gaming-gray/30">
-                    <DialogHeader>
-                        <DialogTitle>Configure Map Pool</DialogTitle>
-                        <DialogDescription>
-                            Select which maps will be available for this stage.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-6 py-4">
-                        {/* Pool Type Selection */}
-                        <div className="space-y-3">
-                            <Label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Pool Type</Label>
-                            <div className="grid grid-cols-1 gap-2">
-                                <div
-                                    className={cn(
-                                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                                        (!value || value === 'none') ? "bg-emerald-500/10 border-emerald-500/50" : "bg-white/5 border-white/10 hover:bg-white/10"
-                                    )}
-                                    onClick={() => onChange(null)}
-                                >
-                                    <div className={cn("h-4 w-4 rounded-full border flex items-center justify-center", (!value || value === 'none') ? "border-emerald-500" : "border-gray-500")}>
-                                        {(!value || value === 'none') && <div className="h-2 w-2 rounded-full bg-emerald-500" />}
-                                    </div>
-                                    <span className="text-sm font-medium text-white">All Maps (Default)</span>
-                                </div>
-
-                                {hasTournamentMapPool && (
-                                    <div
-                                        className={cn(
-                                            "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                                            value === 'tournament_pool' ? "bg-emerald-500/10 border-emerald-500/50" : "bg-white/5 border-white/10 hover:bg-white/10"
-                                        )}
-                                        onClick={() => onChange('tournament_pool')}
-                                    >
-                                        <div className={cn("h-4 w-4 rounded-full border flex items-center justify-center", value === 'tournament_pool' ? "border-emerald-500" : "border-gray-500")}>
-                                            {value === 'tournament_pool' && <div className="h-2 w-2 rounded-full bg-emerald-500" />}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Trophy className="h-3 w-3 text-emerald-400" />
-                                            <span className="text-sm font-medium text-white">Tournament Pool</span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div
-                                    className={cn(
-                                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                                        value === 'custom' ? "bg-emerald-500/10 border-emerald-500/50" : "bg-white/5 border-white/10 hover:bg-white/10"
-                                    )}
-                                    onClick={() => onChange('custom')}
-                                >
-                                    <div className={cn("h-4 w-4 rounded-full border flex items-center justify-center", value === 'custom' ? "border-emerald-500" : "border-gray-500")}>
-                                        {value === 'custom' && <div className="h-2 w-2 rounded-full bg-emerald-500" />}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <MapIcon className="h-3 w-3 text-blue-400" />
-                                        <span className="text-sm font-medium text-white">Custom Selection</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Custom Map Selection */}
-                        {value === 'custom' && (
-                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-medium text-gray-400 uppercase tracking-wider">
-                                        Select Maps ({customIds.length}/{maxMaps})
-                                    </Label>
-                                    <span className={cn("text-xs", customIds.length === maxMaps ? "text-amber-400" : "text-emerald-400")}>
-                                        {customIds.length === maxMaps ? "Limit Reached" : `${maxMaps - customIds.length} remaining`}
-                                    </span>
-                                </div>
-                                <ScrollArea className="h-[200px] pr-4 border border-white/10 rounded-lg bg-black/20 p-2">
-                                    <div className="space-y-1">
-                                        {mapPools.map((map) => {
-                                            const isSelected = customIds.includes(map.id);
-                                            return (
-                                                <div
-                                                    key={map.id}
-                                                    className={cn(
-                                                        "flex items-center justify-between p-2 rounded hover:bg-white/5 cursor-pointer transition-colors",
-                                                        isSelected && "bg-emerald-500/10"
-                                                    )}
-                                                    onClick={() => {
-                                                        if (isSelected) {
-                                                            onCustomIdsChange(customIds.filter(id => id !== map.id));
-                                                        } else if (customIds.length < maxMaps) {
-                                                            onCustomIdsChange([...customIds, map.id]);
-                                                        }
-                                                    }}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={cn(
-                                                            "h-4 w-4 rounded border flex items-center justify-center transition-colors",
-                                                            isSelected ? "bg-emerald-500 border-emerald-500" : "border-gray-500",
-                                                            (!isSelected && customIds.length >= maxMaps) && "opacity-50 cursor-not-allowed"
-                                                        )}>
-                                                            {isSelected && <Check className="h-3 w-3 text-white" />}
-                                                        </div>
-                                                        <span className={cn(
-                                                            "text-sm",
-                                                            isSelected ? "text-white font-medium" : "text-gray-400",
-                                                            (!isSelected && customIds.length >= maxMaps) && "opacity-50"
-                                                        )}>
-                                                            {map.name}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </ScrollArea>
-                            </div>
-                        )}
-                    </div>
-
-                    <DialogFooter>
-                        <Button onClick={() => setIsDialogOpen(false)} className="bg-emerald-600 hover:bg-emerald-500 text-white w-full sm:w-auto">
-                            Save Configuration
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
-    );
-};
 
 
 export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
@@ -371,15 +186,22 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     const [deletedStageIds, setDeletedStageIds] = useState<string[]>([]);
     const [currentStageIndex, setCurrentStageIndex] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [mapPools, setMapPools] = useState<MapPool[]>([]); // This will now hold ALL available maps
-    const [hasTournamentMapPool, setHasTournamentMapPool] = useState(false);
     const [showGuideline, setShowGuideline] = useState(false);
     const [participantsCount, setParticipantsCount] = useState<number>(0);
     const [checkInEnabled, setCheckInEnabled] = useState(false);
     const [tournamentMaxParticipants, setTournamentMaxParticipants] = useState<number | null>(null);
+    const [gameData, setGameData] = useState(() => {
+        if (!game) return null;
+        return esportsGames.games.find(g =>
+            g.name.toLowerCase() === game.toLowerCase()
+        );
+    });
 
     // Manual Form State (Lifted up for Edit capability)
-    const [manualFormState, setManualFormState] = useState<StageConfig>(DEFAULT_STAGE_CONFIG);
+    const [manualFormState, setManualFormState] = useState<StageConfig>({
+        ...DEFAULT_STAGE_CONFIG,
+        format: 'single_elimination'
+    });
     const [editingStageIndex, setEditingStageIndex] = useState<number | null>(null);
 
     // Reset state when opening
@@ -389,7 +211,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
         console.log('[StageWizard] Stages config:', stagesConfig.length);
 
         if (open) {
-            fetchMaps();
 
             // Fetch participants count for validation
             const fetchParticipants = async () => {
@@ -405,19 +226,32 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             const fetchTournamentSettings = async () => {
                 const { data } = await supabase
                     .from('tournaments')
-                    .select('check_in_enabled, max_teams')
+                    .select('check_in_required, max_teams')
                     .eq('id', tournamentId)
                     .single();
                 if (data) {
                     const d = data as any;
-                    setCheckInEnabled(d.check_in_enabled);
+                    setCheckInEnabled(d.check_in_required);
                     // Treat 0 as unlimited (null) since column is not nullable
                     const maxTeams = d.max_teams === 0 ? null : d.max_teams;
                     setTournamentMaxParticipants(maxTeams);
 
+                    let gData = gameData;
+                    if (game) {
+                        // Check game data again in case it changed or wasn't set initially
+                        const gData = esportsGames.games.find(g =>
+                            g.name.toLowerCase() === game.toLowerCase()
+                        );
+                        setGameData(gData || null);
+                    }
+
                     // Auto-set manual form capacity if creating new and max teams is set
-                    if (maxTeams && (!existingStages || existingStages.length === 0)) {
-                        setManualFormState(prev => ({ ...prev, capacity: maxTeams }));
+                    const initialCapacity = maxTeams || '';
+                    if (!existingStages || existingStages.length === 0) {
+                        setManualFormState(prev => ({
+                            ...prev,
+                            capacity: initialCapacity
+                        }));
                     }
                 }
             };
@@ -428,17 +262,9 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                 console.log('[StageWizard] Loading existing stages:', existingStages.map(s => ({ id: s.id, name: s.name })));
                 setStagesConfig(existingStages.map(s => {
                     // Use new columns directly instead of config JSONB
-                    let mapPoolId = null;
-                    let customMapIds: string[] = [];
-                    const stageAny = s as any;
-
-                    // Read map_pool from new column
-                    if (stageAny.map_pool && Array.isArray(stageAny.map_pool) && stageAny.map_pool.length > 0) {
-                        mapPoolId = 'custom';
-                        customMapIds = stageAny.map_pool;
-                    }
 
                     // Read bestOf from new column
+                    const stageAny = s as any;
                     const bestOf = stageAny.best_of || 1;
 
                     const result = {
@@ -448,8 +274,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         capacity: s.capacity || '',
                         advancement_count: s.advancement_count || '',
                         best_of: bestOf,
-                        map_pool_id: mapPoolId,
-                        custom_map_ids: customMapIds
                     };
                     console.log('[StageWizard] Mapped stage:', result);
                     return result;
@@ -469,45 +293,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
         }
     }, [open, tournamentId, game, existingStages]);
 
-    const fetchMaps = async () => {
-        if (!game) return;
-        try {
-            // 1. Check for tournament-specific pool (legacy/simple mode)
-            if (tournamentId) {
-                const tableName = getGameTableName(game, 'map_pools');
-                const { count, error } = await supabase
-                    .from(tableName as any)
-                    .select('*', { count: 'exact', head: true })
-                    .eq('tournament_id', tournamentId);
-
-                if (!error && count !== null && count > 0) {
-                    setHasTournamentMapPool(true);
-                } else {
-                    setHasTournamentMapPool(false);
-                }
-            }
-
-            // 2. Fetch ALL available maps for the game
-            const { data: maps, error } = await supabase
-                .from('game_maps')
-                .select('id, map_name, map_image_url')
-                .eq('game', game)
-                .eq('is_active', true)
-                .order('map_name');
-
-            if (error) throw error;
-
-            setMapPools(maps.map(m => ({
-                id: m.id,
-                name: m.map_name,
-                map_image_url: m.map_image_url || undefined
-            })));
-
-        } catch (err) {
-            console.warn('Could not fetch maps:', err);
-            setHasTournamentMapPool(false);
-        }
-    };
 
     const handleTemplateSelect = (templateId: string) => {
         setSelectedTemplateId(templateId);
@@ -546,8 +331,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     capacity: (i === 0 && tournamentMaxParticipants) ? tournamentMaxParticipants : '', // Auto-detect max teams for first stage
                     advancement_count: adv || '',
                     best_of: s.best_of,
-                    map_pool_id: hasTournamentMapPool ? 'tournament_pool' : null,
-                    custom_map_ids: [],
                     settings: {
                         ...s.settings,
                         swiss_groups: swissGroups,
@@ -657,7 +440,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                             capacity: stageData.capacity,
                             advancement_count: stageData.advancement_count,
                             best_of: normalizedBestOf,
-                            map_pool: stage.map_pool_id === 'custom' ? stage.custom_map_ids : [],
                             config: stage.settings, // Save format specific settings
                             veto_enabled: true
                         })
@@ -671,7 +453,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         .from('tournament_stages')
                         .insert({
                             ...stageData,
-                            map_pool: stage.map_pool_id === 'custom' ? stage.custom_map_ids : [],
                             config: stage.settings,
                             status: 'upcoming'
                         });
@@ -744,7 +525,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         Advanced Templates
                     </CardTitle>
                     <CardDescription className="text-base pt-2">
-                        Use predefined structures like "Qualifiers to Finals" or "Double Elimination". Best for standard tournaments.
+                        Use predefined structures like 'Qualifiers to Finals' or 'Double Elimination'. Best for standard tournaments.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -794,45 +575,47 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             exit="exit"
             className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4"
         >
-            {RECOMMENDED_TEMPLATES.map((template) => (
-                <Card
-                    key={template.id}
-                    className={cn(
-                        "cursor-pointer transition-all duration-200 hover:scale-[1.02]",
-                        selectedTemplateId === template.id
-                            ? "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/20"
-                            : "border-white/10 hover:border-white/20 hover:bg-white/5"
-                    )}
-                    onClick={() => handleTemplateSelect(template.id)}
-                >
-                    <CardHeader>
-                        <CardTitle className="flex items-center justify-between text-lg">
-                            {template.name}
-                            {selectedTemplateId === template.id && (
-                                <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="bg-emerald-500 rounded-full p-1"
-                                >
-                                    <Check className="h-3 w-3 text-white" />
-                                </motion.div>
-                            )}
-                        </CardTitle>
-                        <CardDescription>{template.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                            <Badge variant="secondary" className="bg-white/10">{template.stages.length} Stages</Badge>
-                            {template.stages.map((s, i) => (
-                                <span key={i} className="flex items-center text-xs">
-                                    {i > 0 && <ChevronRight className="h-3 w-3 mx-1 text-gray-600" />}
-                                    {s.name}
-                                </span>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            ))}
+            {RECOMMENDED_TEMPLATES
+                .filter(t => t.category === 'standard' || !t.category)
+                .map((template) => (
+                    <Card
+                        key={template.id}
+                        className={cn(
+                            "cursor-pointer transition-all duration-200 hover:scale-[1.02]",
+                            selectedTemplateId === template.id
+                                ? "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/20"
+                                : "border-white/10 hover:border-white/20 hover:bg-white/5"
+                        )}
+                        onClick={() => handleTemplateSelect(template.id)}
+                    >
+                        <CardHeader>
+                            <CardTitle className="flex items-center justify-between text-lg">
+                                {template.name}
+                                {selectedTemplateId === template.id && (
+                                    <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        className="bg-emerald-500 rounded-full p-1"
+                                    >
+                                        <Check className="h-3 w-3 text-white" />
+                                    </motion.div>
+                                )}
+                            </CardTitle>
+                            <CardDescription>{template.description}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                                <Badge variant="secondary" className="bg-white/10">{template.stages.length} Stages</Badge>
+                                {template.stages.map((s, i) => (
+                                    <span key={i} className="flex items-center text-xs">
+                                        {i > 0 && <ChevronRight className="h-3 w-3 mx-1 text-gray-600" />}
+                                        {s.name}
+                                    </span>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
         </motion.div>
     );
 
@@ -992,18 +775,28 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
                     {stage.format === 'round_robin' && (
                         <div className="space-y-2">
-                            <Label className="text-gray-300">Number of Groups</Label>
-                            <Input
-                                type="number"
-                                value={stage.settings?.group_count || ''}
-                                onChange={(e) => {
-                                    const val = e.target.value === '' ? undefined : Number(e.target.value);
-                                    const newSettings = { ...stage.settings, group_count: val };
-                                    updateStageConfig(currentStageIndex, 'settings', newSettings);
-                                }}
-                                placeholder="1"
-                                className="bg-black/20 border-white/10 focus:border-emerald-500/50"
-                            />
+                            <Label className="text-gray-300">Group Configuration</Label>
+                            {(() => {
+                                const cap = typeof stage.capacity === 'number' ? stage.capacity : (tournamentMaxParticipants || participantsCount || 0);
+                                const groupSize = 4; // Fixed group size
+                                const groupCount = cap > 0 ? Math.ceil(cap / groupSize) : 0;
+                                // Auto-update settings
+                                if (groupCount > 0 && stage.settings?.group_count !== groupCount) {
+                                    updateStageConfig(currentStageIndex, 'settings', { ...stage.settings, group_count: groupCount });
+                                }
+                                return (
+                                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                                        <p className="text-emerald-400 font-medium">
+                                            {groupCount} Groups × {groupSize} Teams each
+                                        </p>
+                                        {cap > 0 && cap % groupSize !== 0 && (
+                                            <p className="text-xs text-yellow-400 mt-1">
+                                                ⚠ {cap} teams isn't divisible by {groupSize}. Some groups may have {cap % groupSize} extra team(s).
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
 
@@ -1044,7 +837,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     <h4 className="text-sm font-medium mb-4 flex items-center gap-2 text-emerald-400">
                         <Shield className="h-4 w-4" /> Veto Settings
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                         <div className="space-y-2">
                             <Label className="text-gray-300">Best Of (Matches)</Label>
                             <Select
@@ -1060,17 +853,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                     <SelectItem value="5">Best of 5</SelectItem>
                                 </SelectContent>
                             </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">Map Pool</Label>
-                            <MapSelector
-                                value={stage.map_pool_id}
-                                onChange={(val) => updateStageConfig(currentStageIndex, 'map_pool_id', val)}
-                                customIds={stage.custom_map_ids}
-                                onCustomIdsChange={(ids) => updateStageConfig(currentStageIndex, 'custom_map_ids', ids)}
-                                mapPools={mapPools}
-                                hasTournamentMapPool={hasTournamentMapPool}
-                            />
                         </div>
                     </div>
                 </div>
@@ -1262,19 +1044,27 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
                             {manualFormState.format === 'round_robin' && (
                                 <div className="space-y-2">
-                                    <Label>Number of Groups</Label>
-                                    <Input
-                                        type="number"
-                                        value={manualFormState.settings?.group_count || ''}
-                                        onChange={(e) => {
-                                            const val = e.target.value === '' ? undefined : Number(e.target.value);
-                                            const newSettings = { ...manualFormState.settings, group_count: val };
-                                            setManualFormState({ ...manualFormState, settings: newSettings });
-                                        }}
-                                        placeholder="1"
-                                    />
+                                    <Label>Group Configuration</Label>
+                                    {(() => {
+                                        const cap = typeof manualFormState.capacity === 'number' ? manualFormState.capacity : (tournamentMaxParticipants || participantsCount || 0);
+                                        const groupSize = 4; // Fixed group size
+                                        const groupCount = cap > 0 ? Math.ceil(cap / groupSize) : 0;
+                                        return (
+                                            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                                                <p className="text-emerald-400 font-medium">
+                                                    {groupCount > 0 ? `${groupCount} Groups × ${groupSize} Teams each` : 'Set capacity to calculate groups'}
+                                                </p>
+                                                {cap > 0 && cap % groupSize !== 0 && (
+                                                    <p className="text-xs text-yellow-400 mt-1">
+                                                        ⚠ {cap} teams isn't divisible by {groupSize}. Some groups may have {cap % groupSize} extra team(s).
+                                                    </p>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
+
                             <div className="space-y-2">
                                 {(() => {
                                     // Stage 1 (index 0 or new stage when no stages exist): capacity comes from tournament
@@ -1397,7 +1187,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                 })()}
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4">
                             <div className="space-y-2">
                                 <Label>Best Of</Label>
                                 <Select
@@ -1411,17 +1201,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                         <SelectItem value="5">Best of 5</SelectItem>
                                     </SelectContent>
                                 </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Map Pool</Label>
-                                <MapSelector
-                                    value={manualFormState.map_pool_id}
-                                    onChange={(val) => setManualFormState({ ...manualFormState, map_pool_id: val })}
-                                    customIds={manualFormState.custom_map_ids}
-                                    onCustomIdsChange={(ids) => setManualFormState({ ...manualFormState, custom_map_ids: ids })}
-                                    mapPools={mapPools}
-                                    hasTournamentMapPool={hasTournamentMapPool}
-                                />
                             </div>
                         </div>
 
@@ -1587,18 +1366,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                         <Shield className="h-3.5 w-3.5 text-gray-500" />
                                         <span>Best of <span className="text-gray-300">{stage.best_of}</span></span>
                                     </div>
-                                    {stage.map_pool_id === 'tournament_pool' && (
-                                        <div className="flex items-center gap-2 text-emerald-400/80">
-                                            <MapIcon className="h-3.5 w-3.5" />
-                                            <span>Tournament Map Pool</span>
-                                        </div>
-                                    )}
-                                    {stage.map_pool_id === 'custom' && (
-                                        <div className="flex items-center gap-2 text-blue-400/80">
-                                            <MapIcon className="h-3.5 w-3.5" />
-                                            <span>Custom Pool ({stage.custom_map_ids.length} maps)</span>
-                                        </div>
-                                    )}
                                 </CardContent>
                             </Card>
                         </motion.div>

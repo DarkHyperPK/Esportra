@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { auditLog } from '@/lib/auditLog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,16 +18,16 @@ const SystemSettings: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const { data } = await supabase.from('system_settings').select('key,value');
-    const map: Record<string,string> = {};
-    (data as Setting[]|null)?.forEach(s => { map[s.key] = s.value; });
+    const map: Record<string, string> = {};
+    (data as Setting[] | null)?.forEach(s => { map[s.key] = s.value; });
     setSettings(map);
     setMaintenance(map['maintenance_mode'] === 'true');
     setLoading(false);
   };
 
-  useEffect(() => { 
-    load(); 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Intentionally empty - only load once on mount
 
   const save = async () => {
@@ -36,7 +37,7 @@ const SystemSettings: React.FC = () => {
         { key: 'public_contact_email', value: settings['public_contact_email'] || '' },
         { key: 'support_portal_url', value: settings['support_portal_url'] || '' },
       ], { onConflict: 'key' });
-      await supabase.from('audit_logs').insert({ action_type: 'settings:update', target_type: 'system', target_id: 'settings', target_name: 'System Settings', details: settings, severity: 'medium' });
+      await auditLog.settingsUpdated('System Settings', settings);
       toast({ title: 'Saved', description: 'System settings updated' });
     } catch (e: any) {
       toast({ title: 'Error', description: e.message || 'Failed to save', variant: 'destructive' });
@@ -64,12 +65,12 @@ const SystemSettings: React.FC = () => {
 
               <div className="p-3 bg-gray-900 rounded border border-gray-700 space-y-2">
                 <div className="text-white font-medium">Public Contact Email</div>
-                <Input value={settings['public_contact_email'] || ''} onChange={(e)=>setSettings(s => ({...s, public_contact_email: e.target.value}))} className="bg-gray-700 border-gray-600 text-white" />
+                <Input value={settings['public_contact_email'] || ''} onChange={(e) => setSettings(s => ({ ...s, public_contact_email: e.target.value }))} className="bg-gray-700 border-gray-600 text-white" />
               </div>
 
               <div className="p-3 bg-gray-900 rounded border border-gray-700 space-y-2">
                 <div className="text-white font-medium">Support Portal URL</div>
-                <Input value={settings['support_portal_url'] || ''} onChange={(e)=>setSettings(s => ({...s, support_portal_url: e.target.value}))} className="bg-gray-700 border-gray-600 text-white" />
+                <Input value={settings['support_portal_url'] || ''} onChange={(e) => setSettings(s => ({ ...s, support_portal_url: e.target.value }))} className="bg-gray-700 border-gray-600 text-white" />
               </div>
 
               <div className="flex justify-end">

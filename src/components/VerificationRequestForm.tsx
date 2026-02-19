@@ -6,8 +6,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { Building2, Trophy, MapPin, AlertCircle, CheckCircle, X } from 'lucide-react';
-import OrganizerVerificationForm from './verification/OrganizerVerificationForm';
-import VenueOwnerVerificationForm from './verification/VenueOwnerVerificationForm';
+import VerificationWizard from './verification/wizard/VerificationWizard';
+// import OrganizerVerificationForm from './verification/OrganizerVerificationForm';
+// import VenueOwnerVerificationForm from './verification/VenueOwnerVerificationForm';
 
 interface VerificationRequestFormProps {
   onSuccess?: () => void;
@@ -74,7 +75,7 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Organizer Option */}
-            <Card 
+            <Card
               className="bg-gray-700/50 border-gray-600 hover:border-purple-500 cursor-pointer transition-all duration-200 hover:bg-gray-700/70"
               onClick={() => handleRoleSelect('organizer')}
             >
@@ -113,7 +114,7 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
             </Card>
 
             {/* Venue Owner Option */}
-            <Card 
+            <Card
               className="bg-gray-700/50 border-gray-600 hover:border-green-500 cursor-pointer transition-all duration-200 hover:bg-gray-700/70"
               onClick={() => handleRoleSelect('venue_owner')}
             >
@@ -155,10 +156,10 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
           <Alert className="mt-6 bg-blue-900/20 border-blue-700">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-blue-300">
-              <strong>Important:</strong> Verification requests are reviewed by our admin team. 
+              <strong>Important:</strong> Verification requests are reviewed by our admin team.
               You will be notified via email once your request is processed. This process typically takes 1-3 business days.
               <br /><br />
-              <strong>For Venue Owners:</strong> You'll need to provide detailed information about your gaming zone, 
+              <strong>For Venue Owners:</strong> You'll need to provide detailed information about your gaming zone,
               including PC specifications, amenities, and venue photos for verification.
             </AlertDescription>
           </Alert>
@@ -180,22 +181,24 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
     );
   }
 
-  // Render the appropriate specialized form
-  if (selectedRole === 'organizer') {
+  // Render the appropriate specialized form (NOW USING WIZARD)
+  if (selectedRole === 'organizer' || selectedRole === 'venue_owner') {
     return (
-      <OrganizerVerificationForm 
-        onSuccess={handleSuccess}
-        onCancel={handleCancel}
-      />
-    );
-  }
+      <div className="max-w-4xl mx-auto p-4">
+        { /* Title Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-white mb-2">
+            {selectedRole === 'organizer' ? 'Organizer Verification' : 'Venue Verification'}
+          </h1>
+          <p className="text-gray-400">Complete the steps below to verify your account.</p>
+        </div>
 
-  if (selectedRole === 'venue_owner') {
-    return (
-      <VenueOwnerVerificationForm 
-        onSuccess={handleSuccess}
-        onCancel={handleCancel}
-      />
+        <VerificationWizard
+          role={selectedRole}
+          onSuccess={handleSuccess}
+          onCancel={handleCancel}
+        />
+      </div>
     );
   }
 

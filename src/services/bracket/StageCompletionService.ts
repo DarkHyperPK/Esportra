@@ -315,11 +315,33 @@ export class StageCompletionService {
             .single();
 
         if (!nextStage) {
-            // This is the final stage - mark as complete and return success
+            // This is the final stage - mark as complete
             await db
                 .from('tournament_stages')
                 .update({ status: 'completed' })
                 .eq('id', currentStageId);
+
+            // --- Tournament Completion Logic ---
+            // If we have at least one team, the top one is the champion
+            if (advancingTeams.length > 0) {
+                const championId = advancingTeams[0].team_id;
+                console.log(`[StageCompletionService] Tournament ${currentStage.tournament_id} finished! Champion: ${championId}`);
+
+                // Update tournament with winner and status
+                await db
+                    .from('tournaments')
+                    .update({
+                        winner_id: championId,
+                        status: 'completed'
+                    })
+                    .eq('id', currentStage.tournament_id);
+            } else {
+                // If no teams (weird case), at least mark tournament as completed
+                await db
+                    .from('tournaments')
+                    .update({ status: 'completed' })
+                    .eq('id', currentStage.tournament_id);
+            }
 
             console.log('[StageCompletionService] Final stage completed - tournament is finished!');
             return {

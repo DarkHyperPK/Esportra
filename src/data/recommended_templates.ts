@@ -7,8 +7,10 @@ export interface StageTemplate {
         format: 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin';
         best_of: number;
         advancement_count?: number; // Optional, can be calculated or set by user
+        capacity?: number;
         settings?: any;
     }[];
+    category?: 'standard';
 }
 
 export const RECOMMENDED_TEMPLATES: StageTemplate[] = [
@@ -16,6 +18,7 @@ export const RECOMMENDED_TEMPLATES: StageTemplate[] = [
         id: 'single_elim_cup',
         name: 'Standard Cup',
         description: 'Classic Single Elimination bracket. Simple and fast.',
+        category: 'standard',
         stages: [
             {
                 name: 'Main Bracket',
@@ -28,6 +31,7 @@ export const RECOMMENDED_TEMPLATES: StageTemplate[] = [
         id: 'double_elim_cup',
         name: 'Pro Cup',
         description: 'Double Elimination bracket. Teams have a second chance in the lower bracket.',
+        category: 'standard',
         stages: [
             {
                 name: 'Main Bracket',
@@ -40,6 +44,7 @@ export const RECOMMENDED_TEMPLATES: StageTemplate[] = [
         id: 'groups_to_playoffs',
         name: 'World Cup Style',
         description: 'Group Stage (Round Robin) followed by Single Elimination Playoffs.',
+        category: 'standard',
         stages: [
             {
                 name: 'Group Stage',
@@ -59,6 +64,7 @@ export const RECOMMENDED_TEMPLATES: StageTemplate[] = [
         id: 'swiss_to_playoffs',
         name: 'Major Format',
         description: 'Swiss System followed by Single Elimination Playoffs. Used in major esports events.',
+        category: 'standard',
         stages: [
             {
                 name: 'Swiss Stage',

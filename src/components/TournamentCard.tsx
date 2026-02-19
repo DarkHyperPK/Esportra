@@ -7,6 +7,7 @@ import { useRole } from '@/contexts/RoleContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
 import { cn } from '@/lib/utils';
+import { OptimizedImage } from '@/components/ui/OptimizedImage';
 
 interface TournamentCardProps {
   id: string;
@@ -136,10 +137,12 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
         >
           {/* 1. Custom Banner (if uploaded) - Highest Priority */}
           {image_url ? (
-            <img
+            <OptimizedImage
               src={image_url}
               className="w-full h-full object-cover object-center opacity-40 group-hover:opacity-50 transition-opacity"
               alt={name}
+              width={800} // Reasonable default for card width
+              responsive={true}
             />
           ) : (
             /* 2. RAWG Content (Carousel or Static) - Fallback */

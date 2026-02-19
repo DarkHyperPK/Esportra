@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X } from 'lucide-react';
+import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, MoreVertical, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import ManualAdjustmentMenu from '@/components/tournament/ManualAdjustmentMenu';
 import type { BracketMatch } from '@/types/bracketTypes';
 
 // =============================================================================
@@ -27,7 +29,11 @@ interface MatchCardProps {
     scoreDraftRef?: React.MutableRefObject<Record<string, { t1: string; t2: string }>>;
     proofs?: string[];
     onByeAdvance?: (matchId: string) => void;
-    onMatchClick?: () => void; // Alternative to onToggleExpand for simpler usage
+    onMatchClick?: () => void;
+    onAdjustmentMade?: () => void;
+    tournamentId?: string;
+    automatedStatus?: 'idle' | 'processing' | 'verified' | 'failed' | 'partial' | null;
+    onViewResults?: (match: any) => void;
 }
 
 const areMatchPropsEqual = (prev: MatchCardProps, next: MatchCardProps) => {
@@ -54,11 +60,14 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     expandedMatchId, onToggleExpand,
     isOrganizer, isProcessing,
     onScoreChange, onGoLive, onMapVeto, onPartyCode, onSaveScore,
-    scoreDraftRef, proofs, onByeAdvance, onMatchClick
+    scoreDraftRef, proofs, onByeAdvance, onMatchClick, onAdjustmentMade,
+    tournamentId,
+    automatedStatus,
+    onViewResults
 }) => {
     const id = String(match.id);
     const isExp = expandedMatchId === id;
-    const getRawId = (id: string | number) => String(id).replace('db-', '');
+    const getRawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-)/, '');
     const isDbMatch = (id: string | number) => String(id).startsWith('db-');
     const draft = scoreDraftRef?.current?.[getRawId(id)] || { t1: '', t2: '' };
     const isLive = match.status === 'in_progress';
@@ -305,6 +314,20 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                 {isEditing ? 'Update' : 'Save'}
                             </Button>
                         )}
+                        {/* Manual Adjustment Menu for organizers */}
+                        {canAct && (
+                            <ManualAdjustmentMenu
+                                matchId={getRawId(id)}
+                                tournamentId={tournamentId}
+                                team1Id={match.team1?.id}
+                                team2Id={match.team2?.id}
+                                team1Name={match.team1?.name || 'Team 1'}
+                                team2Name={match.team2?.name || 'Team 2'}
+                                matchStatus={match.status}
+                                onAdjustmentMade={onAdjustmentMade}
+                                bestOf={bestOf}
+                            />
+                        )}
                         <ChevronDown className={`w-3 h-3 text-zinc-600 transition-transform cursor-pointer ${isExp ? 'rotate-180' : ''}`} onClick={() => onToggleExpand(id)} />
                     </div>
                 </div>
@@ -337,10 +360,25 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className={`flex-1 min-w-[80px] h-8 bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800`}
-                                                    onClick={(e) => { e.stopPropagation(); setShowProofs(!showProofs); }}
+                                                    className={cn(
+                                                        "flex-1 min-w-[80px] h-8 bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800",
+                                                        automatedStatus === 'verified' && "border-blue-500/30 text-blue-400 bg-blue-500/5 hover:bg-blue-500/10"
+                                                    )}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (onViewResults) {
+                                                            onViewResults(match);
+                                                        } else {
+                                                            setShowProofs(!showProofs);
+                                                        }
+                                                    }}
                                                 >
-                                                    <Eye className="w-3.5 h-3.5 mr-1.5" /> Results
+                                                    {automatedStatus === 'verified' ? (
+                                                        <Bot className="w-3.5 h-3.5 mr-1.5" />
+                                                    ) : (
+                                                        <Eye className="w-3.5 h-3.5 mr-1.5" />
+                                                    )}
+                                                    Results
                                                 </Button>
 
                                                 {isOrganizer && (
@@ -438,6 +476,6 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                     )}
                 </AnimatePresence>
             </div>
-        </div>
+        </div >
     );
 }, areMatchPropsEqual);

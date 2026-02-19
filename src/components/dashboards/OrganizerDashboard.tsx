@@ -2,11 +2,11 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Trophy, 
-  Users, 
-  Calendar, 
-  DollarSign, 
+import {
+  Trophy,
+  Users,
+  Calendar,
+  DollarSign,
   TrendingUp,
   Building2,
   CheckCircle,
@@ -26,13 +26,11 @@ const OrganizerDashboard: React.FC = () => {
   const myTournaments = [
     { id: 1, name: 'Valorant Championship 2024', status: 'active', participants: 32, revenue: 3200, date: '2024-02-15' },
     { id: 2, name: 'CS2 Weekly Series', status: 'upcoming', participants: 16, revenue: 800, date: '2024-02-20' },
-    { id: 3, name: 'Fortnite Battle Royale', status: 'completed', participants: 64, revenue: 6400, date: '2024-02-01' },
   ];
 
   const pendingApprovals = [
     { id: 1, type: 'team_registration', team: 'Team Alpha', tournament: 'Valorant Championship', date: '2024-02-12' },
     { id: 2, type: 'score_verification', team: 'Team Beta', tournament: 'CS2 Weekly', date: '2024-02-11' },
-    { id: 3, type: 'venue_booking', venue: 'Gaming Center Pro', tournament: 'Fortnite Battle', date: '2024-02-10' },
   ];
 
   const revenueData = [
@@ -147,7 +145,7 @@ const OrganizerDashboard: React.FC = () => {
                     <h3 className="text-white font-medium">{tournament.name}</h3>
                     <Badge className={
                       tournament.status === 'active' ? 'bg-green-600' :
-                      tournament.status === 'upcoming' ? 'bg-blue-600' : 'bg-gray-600'
+                        tournament.status === 'upcoming' ? 'bg-blue-600' : 'bg-gray-600'
                     }>
                       {tournament.status}
                     </Badge>
@@ -188,7 +186,6 @@ const OrganizerDashboard: React.FC = () => {
                     <p className="text-white font-medium">
                       {approval.type === 'team_registration' && `Team Registration: ${approval.team}`}
                       {approval.type === 'score_verification' && `Score Verification: ${approval.team}`}
-                      {approval.type === 'venue_booking' && `Venue Booking: ${approval.venue}`}
                     </p>
                     <p className="text-gray-400 text-sm">{approval.tournament}</p>
                     <p className="text-gray-400 text-xs">{approval.date}</p>
@@ -220,7 +217,7 @@ const OrganizerDashboard: React.FC = () => {
           <div className="flex items-end gap-4 h-32">
             {revenueData.map((data, index) => (
               <div key={index} className="flex-1 flex flex-col items-center">
-                <div 
+                <div
                   className="bg-purple-600 w-full rounded-t"
                   style={{ height: `${(data.revenue / 6000) * 100}%` }}
                 ></div>

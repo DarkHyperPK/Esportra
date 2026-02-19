@@ -39,21 +39,26 @@ const TournamentsList = () => {
       if (!user) return;
 
       try {
-        // Fetch tournaments created by the user
+        console.log('[TournamentsList] Fetching tournaments for user:', user.id);
+
         const { data: tournamentsData, error: tournamentsError } = await supabase
           .from('tournaments')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('start_date', { ascending: true });
+          .select(`
+            *,
+            participants:tournament_participants(count)
+          `)
+          .eq('organizer_id', user.id)
+          .order('created_at', { ascending: false });
 
-        if (tournamentsError) throw tournamentsError;
+        if (tournamentsError) {
+          console.error('[TournamentsList] Error fetching tournaments:', tournamentsError);
+          throw tournamentsError;
+        }
 
-        // Get participant counts and registration status for each tournament
-        const tournamentsWithCounts = await Promise.all((tournamentsData || []).map(async (tournament) => {
-          const { count } = await supabase
-            .from('tournament_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('tournament_id', tournament.id);
+        console.log('[TournamentsList] Found tournaments:', tournamentsData?.length || 0, tournamentsData);
+
+
+        const tournamentsWithStatus = await Promise.all((tournamentsData || []).map(async (tournament: any) => {
 
           // Check if user is registered
           let isRegistered = false;
@@ -69,27 +74,44 @@ const TournamentsList = () => {
             }
           }
 
-          // Determine tournament status based on date
-          const tournamentDate = new Date(tournament.date);
+          // Compute status fallback
+          const tournamentDate = new Date(tournament.start_date);
           const now = new Date();
-          let status: 'upcoming' | 'ongoing' | 'completed';
-          if (tournamentDate > now) {
-            status = 'upcoming';
-          } else if (tournamentDate.toDateString() === now.toDateString()) {
-            status = 'ongoing';
-          } else {
-            status = 'completed';
+          let computedStatus: 'upcoming' | 'ongoing' | 'completed' = (tournament.status as any);
+
+          if (!['upcoming', 'ongoing', 'completed'].includes(computedStatus)) {
+            if (tournamentDate > now) {
+              computedStatus = 'upcoming';
+            } else if (tournamentDate.toDateString() === now.toDateString()) {
+              computedStatus = 'ongoing';
+            } else {
+              computedStatus = 'completed';
+            }
           }
 
           return {
-            ...tournament,
-            status,
-            current_participants: count || 0,
+            id: tournament.id,
+            name: tournament.name,
+            game: tournament.game || 'Unknown',
+            date: tournament.start_date,
+            time: new Date(tournament.start_date).toLocaleTimeString(),
+            venue: tournament.venue_id ? 'Venue' : 'Online',
+            max_participants: tournament.max_teams,
+            description: tournament.description,
+            entry_fee: tournament.entry_fee,
+            prize_pool: tournament.prize_pool,
+            is_online: !tournament.venue_id,
+            image_url: tournament.banner_url || tournament.logo_url,
+            user_id: tournament.organizer_id,
+            created_at: tournament.created_at,
+            updated_at: tournament.updated_at,
+            status: computedStatus,
+            current_participants: tournament.participants?.[0]?.count || 0,
             isRegistered
           };
         }));
 
-        setTournaments(tournamentsWithCounts);
+        setTournaments(tournamentsWithStatus);
       } catch (error) {
         console.error('Error fetching tournaments:', error);
       } finally {

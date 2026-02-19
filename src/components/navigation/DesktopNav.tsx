@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
-import { MapPin, Trophy, Info, Bell } from "lucide-react";
+import { MapPin, Trophy, Info, Medal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
-import { useNotifications } from "@/components/NotificationContext";
+// import { useNotifications } from "@/components/NotificationContext"; // No longer needed here
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import UserMenu from "./UserMenu";
 
 import { FramerDropdownRoot, FramerDropdownTrigger, FramerDropdownContent, FramerDropdownItem } from "@/components/ui/FramerDropdown";
@@ -17,7 +18,6 @@ const DesktopNav = ({
   const { user, profile } = useAuth();
   const { currentRole } = useRole();
   const admin = useAdmin();
-  const { unreadCount } = useNotifications();
   const userRole = currentRole;
   const isSuperAdmin = admin.isAdmin && admin.roles.includes('super_admin');
 
@@ -25,12 +25,7 @@ const DesktopNav = ({
     "w-full rounded-2xl px-4 py-2 text-[0.75rem] font-semibold text-white/70 transition-all focus:text-white hover:text-white hover:bg-white/10 focus:bg-white/10";
 
   return (
-    <div className="hidden lg:flex items-center gap-6 font-heading font-medium">
-
-      {/* Nav Link: Home */}
-      <Link to="/" className="text-base font-semibold text-white transition-colors">
-        Home
-      </Link>
+    <div className="hidden lg:flex items-center gap-5 font-heading font-medium">
 
       {/* Dropdown: Venues */}
       <FramerDropdownRoot>
@@ -42,7 +37,10 @@ const DesktopNav = ({
           <FramerDropdownItem to="/venues/search">Find Venues</FramerDropdownItem>
           <FramerDropdownItem to="/venues/featured">Featured Venues</FramerDropdownItem>
           {(userRole === 'venue_owner' || isSuperAdmin) && (
-            <FramerDropdownItem to="/venues/list-venue">List Your Venue</FramerDropdownItem>
+            <>
+              <FramerDropdownItem to="/venues/list-venue">List Your Venue</FramerDropdownItem>
+              <FramerDropdownItem to="/venues/manage">Manage Venues</FramerDropdownItem>
+            </>
           )}
         </FramerDropdownContent>
       </FramerDropdownRoot>
@@ -67,6 +65,12 @@ const DesktopNav = ({
         </FramerDropdownContent>
       </FramerDropdownRoot>
 
+      {/* Nav Link: Leaderboards */}
+      <Link to="/leaderboards" className="inline-flex items-center gap-2 text-base font-semibold text-white transition-colors hover:text-white/80">
+        <Medal className="h-4 w-4" />
+        Leaderboards
+      </Link>
+
       {/* Dropdown: About */}
       <FramerDropdownRoot>
         <FramerDropdownTrigger className="group inline-flex items-center gap-2 text-base font-semibold text-white transition-colors hover:text-white/80 outline-none">
@@ -80,22 +84,17 @@ const DesktopNav = ({
         </FramerDropdownContent>
       </FramerDropdownRoot>
 
+      {/* Nav Link: Partners */}
+      <Link to="/partners" className="text-base font-semibold text-white transition-colors hover:text-white/80">
+        Partners
+      </Link>
 
 
       {user ? (
         <>
-          {/* Notification Bell */}
-          <Link
-            to="/notifications"
-            className="relative rounded-full border border-white/10 bg-white/5 p-2 text-white/70 transition-all hover:bg-white/10 hover:text-white"
-          >
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </Link>
+
+          {/* Notification Dropdown */}
+          <NotificationDropdown />
 
           <UserMenu handleSignOut={handleSignOut} />
         </>

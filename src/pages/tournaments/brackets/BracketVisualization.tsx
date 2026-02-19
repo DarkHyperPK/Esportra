@@ -12,8 +12,9 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Radio, Copy, Check, ZoomIn, ZoomOut,
-  Trophy, PlayCircle, Swords, Gamepad2, ChevronDown, RefreshCw, Eye, Settings2, Maximize2
+  Trophy, PlayCircle, Swords, Gamepad2, ChevronDown, RefreshCw, Eye, Settings2, Maximize2, Bot
 } from 'lucide-react';
+import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -66,7 +67,8 @@ import { GroupStageView } from '@/components/bracket/GroupStageView';
 import { SwissView } from '@/components/bracket/SwissView';
 
 
-const getRawId = (id: string | number) => String(id).replace('db-', '');
+
+const getRawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-)/, '');
 const isDbMatch = (id: string | number) => String(id).startsWith('db-');
 
 const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
@@ -108,6 +110,44 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     staleTime: 1000 * 30, // 30 seconds
   });
 
+  // Fetch detailed game results (automated reports)
+  const { data: automatedGames } = useQuery({
+    queryKey: ['bracket-match-games', tournamentId],
+    queryFn: async () => {
+      if (!tournamentId) return {};
+      const { data, error } = await supabase
+        .from('brkt_match_games')
+        .select(`
+          *,
+          game_maps (
+            map_name
+          )
+        `)
+        .eq('status', 'completed');
+
+      if (error) throw error;
+
+      const map: Record<string, any[]> = {};
+      data?.forEach((game: any) => {
+        const prefixedId = game.match_id;
+        if (!map[prefixedId]) map[prefixedId] = [];
+
+        // Handle join data (sometimes PostgREST returns array for joins)
+        const joinedMapName = Array.isArray(game.game_maps)
+          ? game.game_maps[0]?.map_name
+          : game.game_maps?.map_name;
+
+        map[prefixedId].push({
+          ...game,
+          map_name: joinedMapName || game.map_name
+        });
+      });
+      return map;
+    },
+    enabled: !!tournamentId,
+    staleTime: 1000 * 30,
+  });
+
   // Fetch teams
   // Fetch teams
   const teamIds = useMemo(() => {
@@ -128,19 +168,24 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     placeholderData: (prev) => prev, // Keep previous data while fetching
   });
 
+  // Create teamsMap from fetched data (shared with child components)
+  const teamsMap = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; logo_url?: string | null }>();
+    teamsData?.forEach((t: any) => map.set(t.id, t));
+    return map;
+  }, [teamsData]);
+
   // Adapt data
   const { matches: adaptedMatches, teamCount } = useMemo(() => {
     if (propMatches.length > 0) return { matches: propMatches, teamCount: propTeamCount };
     if (!graphData?.nodes || !graphData?.edges) return { matches: [], teamCount: 0 };
 
-    const teamsMap = new Map();
-    teamsData?.forEach((t: any) => teamsMap.set(t.id, t));
-
     const adapted = adaptGraphToBracketMatches(graphData.nodes, graphData.edges, teamsMap);
     const count = Math.max(graphData.nodes.filter(n => n.bracket_type === 'winners' && n.round_index === 0).length * 2, 4);
 
     return { matches: adapted, teamCount: count };
-  }, [propMatches, propTeamCount, graphData, teamsData]);
+  }, [propMatches, propTeamCount, graphData, teamsMap]);
+
 
   // Derived matches
   const matches = useMemo(() => {
@@ -156,7 +201,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     onRefresh?.();
   }, [versionId, refetchGraph, onRefresh]);
 
-  // Detect Format
   const format = useMemo(() => {
     if (matches.some(m => m.bracketType === 'group')) return 'round_robin';
     if (matches.some(m => m.bracketType === 'swiss_round')) return 'swiss';
@@ -177,6 +221,9 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   const [isProcessing, setIsProcessing] = useState(false);
   const [mapVetoOpen, setMapVetoOpen] = useState(false);
   const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
+
+  const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
+  const [resultsDialogMatch, setResultsDialogMatch] = useState<BracketMatch | null>(null);
 
 
 
@@ -488,6 +535,11 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       scoreDraftRef={scoreDraftRef}
       proofs={proofs?.[getRawId(match.id)]}
       onByeAdvance={onByeAdvance}
+      automatedStatus={(match as any).automated_report_status}
+      onViewResults={(m) => {
+        setResultsDialogMatch(m);
+        setResultsDialogOpen(true);
+      }}
     />
   ), [expandedMatch, isOrganizer, isProcessing, handleScoreChange, toggleExpand, openGoLive, openMapVeto, openPartyCode, saveScore, proofs, onByeAdvance]);
 
@@ -506,10 +558,16 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           matches={graphData?.nodes || []}
           isOrganizer={isOrganizer}
           onMatchUpdate={handleRefresh}
+          teamsMap={teamsMap}
+          tournamentId={tournamentId}
+          onByeAdvance={onByeAdvance}
+          stage={stage}
+          advancementCount={stage?.advancement_count}
         />
       </div>
     );
   }
+
 
   if (format === 'swiss') {
     return (
@@ -723,6 +781,21 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           {mapVetoMatch && tournamentId && <MapVeto matchId={getRawId(mapVetoMatch.id)} tournamentId={tournamentId} team1Id={mapVetoMatch.team1?.id} team2Id={mapVetoMatch.team2?.id} team1Name={mapVetoMatch.team1?.name} team2Name={mapVetoMatch.team2?.name} bestOf={3} matchStatus={mapVetoMatch.status as any} onComplete={() => { setMapVetoOpen(false); onRefresh?.(); }} />}
         </DialogContent>
       </Dialog>
+
+      <MatchResultsDialog
+        open={resultsDialogOpen}
+        onOpenChange={setResultsDialogOpen}
+        results={resultsDialogMatch ? (proofs?.[getRawId(resultsDialogMatch.id)] || []).map(url => ({
+          image_url: url,
+          comment: null,
+          created_at: new Date().toISOString(),
+          reporter_user_id: ''
+        })) : []}
+        automatedResults={resultsDialogMatch ? (automatedGames?.[getRawId(resultsDialogMatch.id)] || []) : []}
+        team1Name={resultsDialogMatch?.team1?.name}
+        team2Name={resultsDialogMatch?.team2?.name}
+        team1Id={resultsDialogMatch?.team1?.id}
+      />
     </div >
   );
 });

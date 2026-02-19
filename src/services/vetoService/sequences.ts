@@ -36,6 +36,16 @@ const valorantBO5: VetoStep[] = [
     { actionNumber: 11, action: 'pick_side', team: 'T1', isDecider: true },
 ];
 
+export const CS2_CONFIG: GameVetoConfig = {
+    game: 'cs2',
+    mapPoolSize: 7,
+    sequences: {
+        1: valorantBO1,
+        3: valorantBO3,
+        5: valorantBO5,
+    },
+};
+
 export const VALORANT_CONFIG: GameVetoConfig = {
     game: 'valorant',
     mapPoolSize: 7,

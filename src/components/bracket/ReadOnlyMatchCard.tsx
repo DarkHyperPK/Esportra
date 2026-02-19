@@ -1,22 +1,27 @@
-import React from 'react';
-
 interface ReadOnlyMatchCardProps {
     match: any;
     x?: number;
     y?: number;
     className?: string;
+    onClick?: () => void;
+    hasAutomatedResults?: boolean;
+    hasProofs?: boolean;
 }
 
 export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
     match,
     x,
     y,
-    className
+    className,
+    onClick,
+    hasAutomatedResults,
+    hasProofs
 }) => {
     const team1Won = match.winner?.id && match.winner.id === match.team1?.id;
     const team2Won = match.winner?.id && match.winner.id === match.team2?.id;
     const isCompleted = match.status === 'completed';
     const isLive = match.status === 'live';
+    const hasAnyResults = hasAutomatedResults || hasProofs;
 
     const style: React.CSSProperties = x !== undefined && y !== undefined ? {
         position: 'absolute',
@@ -32,19 +37,32 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
 
     return (
         <div
-            className={`transition-all duration-300 ${className || ''}`}
+            className={`transition-all duration-300 ${className || ''} ${hasAnyResults ? 'cursor-pointer group' : ''}`}
             style={style}
+            onClick={hasAnyResults ? onClick : undefined}
         >
             <div className={`
                 relative w-full h-full rounded overflow-hidden
                 bg-slate-800 border-l-4
-                ${isLive ? 'border-red-500' : isCompleted ? 'border-slate-600' : 'border-slate-700'}
+                ${isLive ? 'border-red-500' : isCompleted ? 'border-zinc-600' : 'border-slate-700'}
+                ${hasAnyResults ? 'hover:bg-slate-700/80 transition-colors' : ''}
                 shadow-md
             `}>
                 {/* Live indicator */}
-                {isLive && (
-                    <div className="absolute top-0 right-0 px-1.5 py-0.5 bg-red-500 text-[9px] text-white font-bold uppercase tracking-wider">
-                        Live
+                <div className="absolute top-0 right-0 flex items-center">
+                    {isLive && (
+                        <div className="px-1.5 py-0.5 bg-red-500 text-[9px] text-white font-bold uppercase tracking-wider">
+                            Live
+                        </div>
+                    )}
+                </div>
+
+                {/* Hover Overlay: Show Match Details */}
+                {hasAnyResults && (
+                    <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <span className="text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                            Show match details
+                        </span>
                     </div>
                 )}
 

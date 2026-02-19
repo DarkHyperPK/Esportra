@@ -7,19 +7,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
-import { 
-  Search, 
-  Filter, 
-  Trophy, 
-  Users, 
+import {
+  Search,
+  Filter,
+  Trophy,
+  Users,
   Calendar,
   DollarSign,
   Eye,
@@ -35,6 +35,7 @@ import {
   Settings
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { auditLog } from '@/lib/auditLog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useToast } from '@/hooks/use-toast';
@@ -83,7 +84,7 @@ const TournamentManagement: React.FC = () => {
   const fetchTournaments = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch tournaments without complex joins to avoid relationship errors
       let query = supabase
         .from('tournaments')
@@ -95,7 +96,7 @@ const TournamentManagement: React.FC = () => {
       if (filterStatus !== 'all') {
         query = query.eq('status', filterStatus);
       }
-      
+
       if (filterGame !== 'all') {
         query = query.eq('game', filterGame);
       }
@@ -112,14 +113,14 @@ const TournamentManagement: React.FC = () => {
       const tournamentIds = (data || []).map(t => t.id);
       const userIds = Array.from(new Set((data || []).map(t => t.user_id).filter(Boolean)));
       const venueIds = Array.from(new Set((data || []).map(t => t.venue_id).filter(Boolean).filter(Boolean)));
-      
+
       // Fetch profiles, venues, and registration counts
       const [profilesResult, venuesResult, registrationsResult] = await Promise.all([
         userIds.length > 0 ? supabase.from('profiles').select('id, username, full_name').in('id', userIds) : { data: [], error: null },
         venueIds.length > 0 ? supabase.from('venues').select('id, name').in('id', venueIds) : { data: [], error: null },
         tournamentIds.length > 0 ? supabase.from('tournament_participants').select('tournament_id').in('tournament_id', tournamentIds) : { data: [], error: null }
       ]);
-      
+
       const profilesMap = Object.fromEntries((profilesResult.data || []).map((p: any) => [p.id, p]));
       const venuesMap = Object.fromEntries((venuesResult.data || []).map((v: any) => [v.id, v]));
       const registrationCounts = (registrationsResult.data || []).reduce((acc: any, p: any) => {
@@ -163,18 +164,18 @@ const TournamentManagement: React.FC = () => {
 
     try {
       let updateData: any = {};
-      
+
       switch (moderationAction) {
         case 'approve':
-          updateData = { 
+          updateData = {
             status: 'published',
-            is_verified: true 
+            is_verified: true
           };
           break;
         case 'reject':
-          updateData = { 
+          updateData = {
             status: 'cancelled',
-            is_verified: false 
+            is_verified: false
           };
           break;
         case 'feature':
@@ -193,7 +194,7 @@ const TournamentManagement: React.FC = () => {
       if (error) throw error;
 
       // Log the action
-      await logAdminAction(moderationAction, 'tournament', selectedTournament.id, selectedTournament.title, {
+      await auditLog.log(moderationAction as any, 'tournament', selectedTournament.id, selectedTournament.title, {
         reason: moderationReason,
         previous_status: selectedTournament.status
       });
@@ -236,7 +237,7 @@ const TournamentManagement: React.FC = () => {
       if (error) throw error;
 
       // Log the action
-      await logAdminAction('delete', 'tournament', tournamentId, tournamentTitle, {});
+      await auditLog.log('delete', 'tournament', tournamentId, tournamentTitle);
 
       toast({
         title: 'Tournament Deleted',
@@ -256,26 +257,7 @@ const TournamentManagement: React.FC = () => {
     }
   };
 
-  const logAdminAction = async (action: string, targetType: string, targetId: string, targetName: string, details: any) => {
-    try {
-      await supabase
-        .from('audit_logs')
-        .insert({
-          admin_id: currentUser?.id,
-          admin_name: currentUser?.email,
-          action_type: action,
-          target_type: targetType,
-          target_id: targetId,
-          target_name: targetName,
-          details: details,
-          ip_address: '127.0.0.1',
-          user_agent: navigator.userAgent,
-          severity: action === 'delete' ? 'high' : 'medium'
-        });
-    } catch (error) {
-      console.error('Error logging admin action:', error);
-    }
-  };
+  // Audit logging now handled by centralized auditLog utility
 
   const getStatusBadge = (status: string) => {
     const colors = {
@@ -287,7 +269,7 @@ const TournamentManagement: React.FC = () => {
       completed: 'bg-green-600',
       cancelled: 'bg-red-600'
     };
-    
+
     return (
       <Badge className={`${colors[status as keyof typeof colors] || 'bg-gray-600'} text-white`}>
         {status.replace('_', ' ').toUpperCase()}
@@ -398,7 +380,7 @@ const TournamentManagement: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-full md:w-48 bg-gray-700 border-gray-600 text-white">
                 <SelectValue placeholder="Filter by status" />
@@ -525,7 +507,7 @@ const TournamentManagement: React.FC = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        
+
                         <Button
                           variant="outline"
                           size="sm"
@@ -538,7 +520,7 @@ const TournamentManagement: React.FC = () => {
                         >
                           <CheckCircle className="w-4 h-4" />
                         </Button>
-                        
+
                         <Button
                           variant="outline"
                           size="sm"
@@ -551,7 +533,7 @@ const TournamentManagement: React.FC = () => {
                         >
                           <XCircle className="w-4 h-4" />
                         </Button>
-                        
+
                         <Button
                           variant="outline"
                           size="sm"
@@ -582,11 +564,11 @@ const TournamentManagement: React.FC = () => {
           >
             Previous
           </Button>
-          
+
           <span className="text-gray-400">
             Page {currentPage} of {totalPages}
           </span>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -616,7 +598,7 @@ const TournamentManagement: React.FC = () => {
               {moderationAction === 'unfeature' && `Remove "${selectedTournament?.title}" from featured tournaments`}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="reason" className="text-white">
@@ -629,9 +611,9 @@ const TournamentManagement: React.FC = () => {
                 id="reason"
                 placeholder={
                   moderationAction === 'approve' ? 'Add any notes about this approval...' :
-                  moderationAction === 'reject' ? 'Explain why this tournament is being rejected...' :
-                  moderationAction === 'feature' ? 'Add notes about featuring this tournament...' :
-                  'Explain why this tournament is being unfeatured...'
+                    moderationAction === 'reject' ? 'Explain why this tournament is being rejected...' :
+                      moderationAction === 'feature' ? 'Add notes about featuring this tournament...' :
+                        'Explain why this tournament is being unfeatured...'
                 }
                 value={moderationReason}
                 onChange={(e) => setModerationReason(e.target.value)}
@@ -640,7 +622,7 @@ const TournamentManagement: React.FC = () => {
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button
               variant="outline"
@@ -654,9 +636,9 @@ const TournamentManagement: React.FC = () => {
               disabled={moderationAction === 'reject' && !moderationReason}
               className={
                 moderationAction === 'approve' ? 'bg-green-600 hover:bg-green-700 text-white' :
-                moderationAction === 'reject' ? 'bg-red-600 hover:bg-red-700 text-white' :
-                moderationAction === 'feature' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' :
-                'bg-gray-600 hover:bg-gray-700 text-white'
+                  moderationAction === 'reject' ? 'bg-red-600 hover:bg-red-700 text-white' :
+                    moderationAction === 'feature' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' :
+                      'bg-gray-600 hover:bg-gray-700 text-white'
               }
             >
               {moderationAction === 'approve' && 'Approve Tournament'}

@@ -84,51 +84,66 @@ export interface Database {
           id: string
           tournament_id: string
           user_id: string
-          registration_type: 'solo' | 'team'
+          participant_type: 'solo' | 'team'
+          team_id: string | null
           gamer_tag: string
           team_name: string | null
-          team_captain: string | null
-          team_members: string | null
-          team_email: string | null
-          team_phone: string | null
-          team_logo: string | null
-          created_at: string
-          status: 'registered' | 'cancelled'
+          team_captain_id: string | null
+          team_members: Json | null
+          team_logo_url: string | null
+          team_contact_email: string | null
+          team_contact_phone: string | null
+          status: 'registered' | 'checked_in' | 'withdrawn' | 'pending'
+          registration_date: string | null
           checked_in_at: string | null
+          created_at: string
+          updated_at: string | null
         }
         Insert: {
           id?: string
           tournament_id: string
           user_id: string
-          registration_type: 'solo' | 'team'
+          participant_type: 'solo' | 'team'
+          team_id?: string | null
           gamer_tag: string
           team_name?: string | null
-          team_captain?: string | null
-          team_members?: string | null
-          team_email?: string | null
-          team_phone?: string | null
-          team_logo?: string | null
-          created_at?: string
-          status?: 'registered' | 'cancelled'
+          team_captain_id?: string | null
+          team_members?: Json | null
+          team_logo_url?: string | null
+          team_contact_email?: string | null
+          team_contact_phone?: string | null
+          status?: 'registered' | 'checked_in' | 'withdrawn' | 'pending'
+          registration_date?: string | null
           checked_in_at?: string | null
+          created_at?: string
+          updated_at?: string | null
         }
         Update: {
           id?: string
           tournament_id?: string
           user_id?: string
-          registration_type?: 'solo' | 'team'
+          participant_type?: 'solo' | 'team'
+          team_id?: string | null
           gamer_tag?: string
           team_name?: string | null
-          team_captain?: string | null
-          team_members?: string | null
-          team_email?: string | null
-          team_phone?: string | null
-          team_logo?: string | null
-          created_at?: string
-          status?: 'registered' | 'cancelled'
+          team_captain_id?: string | null
+          team_members?: Json | null
+          team_logo_url?: string | null
+          team_contact_email?: string | null
+          team_contact_phone?: string | null
+          status?: 'registered' | 'checked_in' | 'withdrawn' | 'pending'
+          registration_date?: string | null
           checked_in_at?: string | null
+          created_at?: string
+          updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tournament_participants_team_id_fkey"
+            columns: ["team_id"]
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tournament_participants_tournament_id_fkey"
             columns: ["tournament_id"]
@@ -143,66 +158,188 @@ export interface Database {
           }
         ]
       }
+      tournament_disputes: {
+        Row: {
+          id: string
+          tournament_id: string
+          match_id: string | null
+          raised_by_user_id: string
+          team_id: string | null
+          title: string
+          description: string | null
+          evidence_url: string | null
+          status: 'open' | 'in_review' | 'resolved' | 'rejected'
+          assigned_to_user_id: string | null
+          resolution_notes: string | null
+          dispute_reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tournament_id: string
+          match_id?: string | null
+          raised_by_user_id: string
+          team_id?: string | null
+          title: string
+          description?: string | null
+          evidence_url?: string | null
+          status?: 'open' | 'in_review' | 'resolved' | 'rejected'
+          assigned_to_user_id?: string | null
+          resolution_notes?: string | null
+          dispute_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tournament_id?: string
+          match_id?: string | null
+          raised_by_user_id?: string
+          team_id?: string | null
+          title?: string
+          description?: string | null
+          evidence_url?: string | null
+          status?: 'open' | 'in_review' | 'resolved' | 'rejected'
+          assigned_to_user_id?: string | null
+          resolution_notes?: string | null
+          dispute_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       tournaments: {
         Row: {
           id: string
           name: string
-          description: string
-          game: string
-          date: string
-          time: string
-          venue: string
-          max_participants: number
-          prize_pool: string
-          entry_fee: string | null
-          is_online: boolean
-          user_id: string
-          status: 'upcoming' | 'ongoing' | 'completed'
-          created_at: string
-          updated_at: string
+          description: string | null
+          slug: string
+          game: string | null
+          max_teams: number | null
+          min_teams: number | null
+          entry_fee: number | null
+          prize_pool: number | null
+          prize_distribution: Json | null
+          start_date: string | null
+          end_date: string | null
+          registration_deadline: string | null
+          check_in_time: string | null
+          status: Database['public']['Enums']['tournament_status'] | null
+          rules: string | null
+          requirements: string | null
+          age_restriction: Json | null
+          skill_level: string | null
+          banner_url: string | null
+          logo_url: string | null
+          organizer_id: string | null
+          venue_id: string | null
+          is_public: boolean | null
+          is_featured: boolean | null
+          allow_spectators: boolean | null
+          stream_url: string | null
+          stats: Json | null
+          approved_by: string | null
+          approved_at: string | null
+          rejection_reason: string | null
+          created_at: string | null
+          updated_at: string | null
           check_in_required: boolean | null
           check_in_deadline: string | null
           auto_remove_unchecked: boolean | null
+          participant_cap: number | null
+          deleted_at: string | null
+          team_size: number | null
+          settings: Json | null
+          format: string | null
+          rewards: string | null
         }
         Insert: {
           id?: string
           name: string
-          description: string
-          game: string
-          date: string
-          time: string
-          venue: string
-          max_participants: number
-          prize_pool: string
-          entry_fee?: string | null
-          is_online?: boolean
-          user_id: string
-          status?: 'upcoming' | 'ongoing' | 'completed'
-          created_at?: string
-          updated_at?: string
+          description?: string | null
+          slug: string
+          game?: string | null
+          max_teams?: number | null
+          min_teams?: number | null
+          entry_fee?: number | null
+          prize_pool?: number | null
+          prize_distribution?: Json | null
+          start_date?: string | null
+          end_date?: string | null
+          registration_deadline?: string | null
+          check_in_time?: string | null
+          status?: Database['public']['Enums']['tournament_status'] | null
+          rules?: string | null
+          requirements?: string | null
+          age_restriction?: Json | null
+          skill_level?: string | null
+          banner_url?: string | null
+          logo_url?: string | null
+          organizer_id?: string | null
+          venue_id?: string | null
+          is_public?: boolean | null
+          is_featured?: boolean | null
+          allow_spectators?: boolean | null
+          stream_url?: string | null
+          stats?: Json | null
+          approved_by?: string | null
+          approved_at?: string | null
+          rejection_reason?: string | null
+          created_at?: string | null
+          updated_at?: string | null
           check_in_required?: boolean | null
           check_in_deadline?: string | null
           auto_remove_unchecked?: boolean | null
+          participant_cap?: number | null
+          deleted_at?: string | null
+          team_size?: number | null
+          settings?: Json | null
+          format?: string | null
+          rewards?: string | null
         }
         Update: {
           id?: string
           name?: string
-          description?: string
-          game?: string
-          date?: string
-          time?: string
-          venue?: string
-          max_participants?: number
-          prize_pool?: string
-          entry_fee?: string | null
-          is_online?: boolean
-          user_id?: string
-          status?: 'upcoming' | 'ongoing' | 'completed'
-          created_at?: string
-          updated_at?: string
+          description?: string | null
+          slug?: string
+          game?: string | null
+          max_teams?: number | null
+          min_teams?: number | null
+          entry_fee?: number | null
+          prize_pool?: number | null
+          prize_distribution?: Json | null
+          start_date?: string | null
+          end_date?: string | null
+          registration_deadline?: string | null
+          check_in_time?: string | null
+          status?: Database['public']['Enums']['tournament_status'] | null
+          rules?: string | null
+          requirements?: string | null
+          age_restriction?: Json | null
+          skill_level?: string | null
+          banner_url?: string | null
+          logo_url?: string | null
+          organizer_id?: string | null
+          venue_id?: string | null
+          is_public?: boolean | null
+          is_featured?: boolean | null
+          allow_spectators?: boolean | null
+          stream_url?: string | null
+          stats?: Json | null
+          approved_by?: string | null
+          approved_at?: string | null
+          rejection_reason?: string | null
+          created_at?: string | null
+          updated_at?: string | null
           check_in_required?: boolean | null
           check_in_deadline?: string | null
           auto_remove_unchecked?: boolean | null
+          participant_cap?: number | null
+          deleted_at?: string | null
+          team_size?: number | null
+          settings?: Json | null
+          format?: string | null
+          rewards?: string | null
         }
       }
       team_invitations: {
@@ -470,10 +607,40 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role: "casual" | "organizer" | "venue_owner" | "admin"
+      invite_status: "pending" | "accepted" | "declined" | "expired"
+      match_status: "scheduled" | "in_progress" | "completed" | "cancelled"
+      notification_type: "info" | "success" | "warning" | "error"
+      registration_status:
+      | "pending"
+      | "approved"
+      | "rejected"
+      | "cancelled"
+      | "checked_in"
+      | "eliminated"
+      | "disqualified"
+      | "waitlist"
+      registration_type: "solo" | "team"
+      team_member_role: "owner" | "captain" | "member"
+      tournament_format:
+      | "single_elimination"
+      | "double_elimination"
+      | "round_robin"
+      | "swiss"
+      | "custom"
+      | "battle_royale"
+      tournament_status:
+      | "draft"
+      | "open"
+      | "closed"
+      | "check_in"
+      | "ongoing"
+      | "completed"
+      | "cancelled"
+      verification_status: "unverified" | "pending" | "verified"
     }
     CompositeTypes: {
       [_ in never]: never
     }
   }
-} 
+}

@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Users, 
-  User, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  Mail, 
+import {
+  Users,
+  User,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Mail,
   Phone,
   Trophy,
   DollarSign,
@@ -38,6 +38,8 @@ interface Registration {
   user_id?: string;
   team_id?: string;
   team_captain_id?: string;
+  riot_tag?: string;
+  steam_tag?: string;
   gamer_tag?: string;
   team_name?: string;
   team_members?: any[];
@@ -58,11 +60,15 @@ interface Registration {
     username: string;
     full_name: string;
     avatar_url?: string;
+    riot_tag?: string;
+    steam_tag?: string;
   };
   team_captain?: {
     username: string;
     full_name: string;
     avatar_url?: string;
+    riot_tag?: string;
+    steam_tag?: string;
   };
 }
 
@@ -87,13 +93,13 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
   const fetchRegistrations = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch solo registrations
       const { data: soloRegistrations, error: soloError } = await supabase
         .from('tournament_participants')
         .select(`
           *,
-          user:profiles!tournament_participants_user_id_fkey(username, full_name, avatar_url)
+          user:profiles!tournament_participants_user_id_fkey(username, full_name, avatar_url, riot_tag, steam_tag)
         `)
         .eq('tournament_id', tournamentId)
         .eq('participant_type', 'solo')
@@ -106,7 +112,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
         .from('tournament_participants')
         .select(`
           *,
-          team_captain:profiles!tournament_participants_team_captain_id_fkey(username, full_name, avatar_url)
+          team_captain:profiles!tournament_participants_team_captain_id_fkey(username, full_name, avatar_url, riot_tag, steam_tag)
         `)
         .eq('tournament_id', tournamentId)
         .eq('participant_type', 'team')
@@ -185,7 +191,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     const Icon = config.icon;
-    
+
     return (
       <Badge className={`${config.color} text-white flex items-center gap-1`}>
         <Icon className="w-3 h-3" />
@@ -205,15 +211,19 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
   };
 
   const filteredRegistrations = registrations.filter(reg => {
-    const matchesSearch = 
+    const matchesSearch =
       reg.gamer_tag?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reg.user?.riot_tag?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reg.user?.steam_tag?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reg.team_captain?.riot_tag?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reg.team_captain?.steam_tag?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       reg.team_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       reg.user?.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       reg.team_captain?.username?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'all' || reg.status === statusFilter;
     const matchesType = typeFilter === 'all' || reg.registration_type === typeFilter;
-    
+
     return matchesSearch && matchesStatus && matchesType;
   });
 
@@ -225,7 +235,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
     const totalFees = registrations
       .filter(r => r.entry_fee_paid)
       .reduce((sum, r) => sum + (r.entry_fee_amount || 0), 0);
-    
+
     return { total, pending, approved, rejected, totalFees };
   };
 
@@ -314,7 +324,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
                 />
               </div>
             </div>
-            
+
             <div>
               <Label className="text-white text-sm">Status</Label>
               <select
@@ -330,7 +340,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
                 <option value="checked_in">Checked In</option>
               </select>
             </div>
-            
+
             <div>
               <Label className="text-white text-sm">Type</Label>
               <select
@@ -374,75 +384,75 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
                           <Users className="w-5 h-5 text-green-500" />
                         )}
                         <h3 className="text-white font-semibold">
-                          {registration.registration_type === 'solo' 
-                            ? registration.gamer_tag 
+                          {registration.registration_type === 'solo'
+                            ? (registration.user?.riot_tag || registration.user?.steam_tag || registration.gamer_tag)
                             : registration.team_name}
                         </h3>
                         {getStatusBadge(registration.status)}
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div>
                           <Label className="text-gray-400">Type</Label>
                           <p className="text-white capitalize">{registration.registration_type}</p>
                         </div>
-                        
+
                         <div>
                           <Label className="text-gray-400">
                             {registration.registration_type === 'solo' ? 'Player' : 'Captain'}
                           </Label>
                           <p className="text-white">
-                            {registration.registration_type === 'solo' 
+                            {registration.registration_type === 'solo'
                               ? registration.user?.username || 'Unknown'
                               : registration.team_captain?.username || 'Unknown'}
                           </p>
                         </div>
-                        
+
                         <div>
                           <Label className="text-gray-400">Registration Date</Label>
                           <p className="text-white">{formatDate(registration.registration_date)}</p>
                         </div>
-                        
+
                         <div>
                           <Label className="text-gray-400">Contact Email</Label>
                           <p className="text-white">
-                            {registration.registration_type === 'solo' 
-                              ? registration.solo_contact_email 
+                            {registration.registration_type === 'solo'
+                              ? registration.solo_contact_email
                               : registration.team_contact_email}
                           </p>
                         </div>
-                        
+
                         <div>
                           <Label className="text-gray-400">Contact Phone</Label>
                           <p className="text-white">
-                            {registration.registration_type === 'solo' 
-                              ? registration.solo_contact_phone 
+                            {registration.registration_type === 'solo'
+                              ? registration.solo_contact_phone
                               : registration.team_contact_phone}
                           </p>
                         </div>
-                        
+
                         <div>
                           <Label className="text-gray-400">Entry Fee</Label>
                           <p className="text-white">
-                            ${registration.entry_fee_amount} 
+                            ${registration.entry_fee_amount}
                             {registration.entry_fee_paid ? ' (Paid)' : ' (Unpaid)'}
                           </p>
                         </div>
                       </div>
-                      
+
                       {registration.registration_type === 'team' && registration.team_members && (
                         <div className="mt-3">
                           <Label className="text-gray-400">Team Members</Label>
                           <div className="flex flex-wrap gap-2 mt-1">
                             {registration.team_members.map((member: any, index: number) => (
                               <Badge key={index} variant="outline" className="border-slate-500 text-slate-300">
-                                {member.username}
+                                {member.riot_tag || member.steam_tag || member.username || member.name}
                               </Badge>
                             ))}
                           </div>
                         </div>
                       )}
-                      
+
                       {registration.rejection_reason && (
                         <Alert className="mt-3 bg-red-900/20 border-red-500/50">
                           <AlertCircle className="h-4 w-4 text-red-500" />
@@ -452,7 +462,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
                         </Alert>
                       )}
                     </div>
-                    
+
                     <div className="flex flex-col gap-2 ml-4">
                       {registration.status === 'pending' && (
                         <>
@@ -487,7 +497,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
                           </Button>
                         </>
                       )}
-                      
+
                       {registration.status === 'approved' && (
                         <Button
                           onClick={() => handleStatusChange(registration.id, 'checked_in')}

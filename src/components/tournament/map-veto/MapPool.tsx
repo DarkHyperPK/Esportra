@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sword, Shield as ShieldIcon, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MatchMapVeto, GameMap, PickedMap, VETO_SEQUENCES, getVetoFormat, getTeamForAction, getSidePickerTeam } from '@/hooks/useMapVetoMachine';
+import { MatchMapVeto, GameMap, PickedMap, VETO_SEQUENCES, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
 import { vetoService } from '@/services/vetoService';
 
 interface MapPoolProps {
@@ -20,6 +20,7 @@ interface MapPoolProps {
     team1Logo?: string | null;
     team2Logo?: string | null;
     bestOf: number;
+    game?: string;
 }
 
 export const MapPool: React.FC<MapPoolProps> = ({
@@ -38,7 +39,9 @@ export const MapPool: React.FC<MapPoolProps> = ({
     team1Logo,
     team2Logo,
     bestOf,
+    game = 'valorant',
 }) => {
+    const service = React.useMemo(() => new VetoService(game), [game]);
     if (!((veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined)))) {
         return null;
     }
@@ -117,7 +120,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
         let sidePickerTeamName: string | null = null;
 
         if (pickedMap) {
-            const sequence = VETO_SEQUENCES[vetoFormat];
+            const sequence = service.getSequence(vetoFormat).map(s => s.action);
             for (let actionIdx = 0; actionIdx < sequence.length; actionIdx++) {
                 const action = sequence[actionIdx];
                 const actionNumber = actionIdx + 1;
@@ -128,14 +131,14 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         vetoFormat,
                         effectiveTeam1Id!,
                         effectiveTeam2Id!,
-                        action
+                        service
                     );
 
                     const pickerTeamPicks = mapPickerTeamId === veto.team1_id ? team1Picked : team2Picked;
 
                     let pickCount = 0;
                     for (let i = 0; i < actionIdx; i++) {
-                        if (sequence[i] === 'pick' || sequence[i] === 'auto_pick') {
+                        if (sequence[i] === 'pick') {
                             pickCount++;
                         }
                     }
@@ -165,7 +168,8 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         finalPickSideActionNumber,
                         vetoFormat,
                         effectiveTeam1Id!,
-                        effectiveTeam2Id!
+                        effectiveTeam2Id!,
+                        service
                     );
                     sidePickerTeamName = sidePickerTeamId === effectiveTeam1Id ? team1Name : team2Name;
                 }
@@ -208,13 +212,17 @@ export const MapPool: React.FC<MapPoolProps> = ({
                 // Side Selection View
                 (() => {
                     const currentActionNum = veto.current_action_number || 1;
-                    const sequence = VETO_SEQUENCES[vetoFormat];
+                    const sequence = service.getSequence(vetoFormat).map(s => s.action);
+
+                    const previousActionType = sequence[currentActionNum - 2]; // Action before the current side pick
 
                     // Check for final pick_side (decider map) - bestOf is NUMBER now
+                    // Only treat as decider if the previous action wasn't a 'pick' (i.e. it was a ban sequence leading to a leftover)
                     const isFinalPickSide =
-                        (vetoFormat === 3 && currentActionNum === 9) ||
-                        (vetoFormat === 5 && currentActionNum === 11) ||
-                        (vetoFormat === 1 && currentActionNum === 7);
+                        previousActionType !== 'pick' &&
+                        ((vetoFormat === 3 && currentActionNum === 9) ||
+                            (vetoFormat === 5 && currentActionNum === 11) ||
+                            (vetoFormat === 1 && currentActionNum === 7));
 
                     const pickActionNumber = currentActionNum - 1;
 
@@ -222,8 +230,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         return <div className="text-center py-8 text-gray-400">Invalid action number</div>;
                     }
 
-                    const previousAction = sequence[pickActionNumber - 1];
-                    if (previousAction !== 'pick' && !isFinalPickSide) {
+                    if (previousActionType !== 'pick' && !isFinalPickSide) {
                         return <div className="text-center py-8 text-gray-400">Expected pick action before side selection</div>;
                     }
 
@@ -239,13 +246,14 @@ export const MapPool: React.FC<MapPoolProps> = ({
                             mapToShow = leftoverMap;
                         }
                     } else {
+
                         const pickActionType = sequence[pickActionNumber - 1];
                         const pickActionTeamId = getTeamForAction(
                             pickActionNumber,
                             vetoFormat,
                             effectiveTeam1Id!,
                             effectiveTeam2Id!,
-                            pickActionType
+                            pickActionType === 'pick' ? service : service
                         );
 
                         let teamPicks = pickActionTeamId === effectiveTeam1Id ? team1Picked : team2Picked;

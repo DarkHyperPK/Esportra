@@ -188,10 +188,19 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         logo_url: data.logoUrl,
                         is_public: data.visibility === 'public',
                         check_in_required: data.checkInRequired,
-                        check_in_deadline: checkInDeadline?.toISOString() || null,
+                        check_in_deadline: startDateTime.toISOString(), // Check-in ends at start time
                         auto_remove_unchecked: data.autoRemoveUnchecked,
                         status: data.status,
                         rewards: data.rewards,
+                        stream_url: data.streamUrl || null,
+                        settings: {
+                            ...(data as any).settings,
+                            checkInWindowMinutes: data.checkInWindowMinutes,
+                            isOnline: data.isOnline,
+                            venue: data.isOnline ? null : data.venue,
+                            discordUrl: data.discordUrl || null,
+                            twitterUrl: data.twitterUrl || null,
+                        }
                     })
                     .eq('id', tournamentId);
 
@@ -265,6 +274,35 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     }
                 }
 
+                // Handle map pool updates
+                if (data.mapPoolIds) {
+                    // 1. Delete existing entries first
+                    const { error: deletePoolError } = await supabase
+                        .from('tournament_map_pools')
+                        .delete()
+                        .eq('tournament_id', tournamentId);
+
+                    if (deletePoolError) {
+                        console.error('Error deleting old map pool:', deletePoolError);
+                    }
+
+                    // 2. Insert new entries
+                    if (data.mapPoolIds.length > 0) {
+                        const mapPoolEntries = data.mapPoolIds.map(mapId => ({
+                            tournament_id: tournamentId,
+                            map_id: mapId,
+                        }));
+
+                        const { error: mapPoolError } = await supabase
+                            .from('tournament_map_pools')
+                            .insert(mapPoolEntries);
+
+                        if (mapPoolError) {
+                            console.error('Error updating map pool:', mapPoolError);
+                        }
+                    }
+                }
+
                 toast({
                     title: 'Tournament Updated',
                     description: 'Your tournament has been updated successfully.',
@@ -297,22 +335,30 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         max_teams: data.maxTeams,
                         min_teams: 2,
                         team_size: data.teamSize,
-                        match_count: data.bracketType === 'battle_royale' ? data.matchCount : 1,
                         entry_fee: toMoney(data.entryFee).toString(),
                         prize_pool: toMoney(data.prizePool).toString(),
                         start_date: startDateTime.toISOString(),
                         end_date: endDateTime.toISOString(),
                         registration_deadline: registrationCloses.toISOString(),
-                        status: 'open',
+                        status: 'draft',
                         banner_url: data.bannerUrl,
                         logo_url: data.logoUrl,
                         organizer_id: user.id,
                         venue_id: data.isOnline ? null : null,
-                        is_public: data.visibility === 'public',
+                        is_public: data.visibility === 'public' && false, // Force false for drafts, logic updated to be explicit
                         check_in_required: data.checkInRequired,
-                        check_in_deadline: checkInDeadline?.toISOString() || null,
+                        check_in_deadline: startDateTime.toISOString(), // Check-in ends at start time
                         auto_remove_unchecked: data.autoRemoveUnchecked,
                         rewards: data.rewards,
+                        stream_url: data.streamUrl || null,
+                        settings: {
+                            ...(data as any).settings,
+                            checkInWindowMinutes: data.checkInWindowMinutes,
+                            isOnline: data.isOnline,
+                            venue: data.isOnline ? null : data.venue,
+                            discordUrl: data.discordUrl || null,
+                            twitterUrl: data.twitterUrl || null,
+                        },
 
                     } as any)
                     .select()
@@ -339,8 +385,26 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     if (stagesError) throw stagesError;
                 }
 
+                // Insert map pool entries
+                if (data.mapPoolIds && data.mapPoolIds.length > 0) {
+                    const mapPoolEntries = data.mapPoolIds.map(mapId => ({
+                        tournament_id: tournament.id,
+                        map_id: mapId,
+                    }));
+
+                    const { error: mapPoolError } = await supabase
+                        .from('tournament_map_pools')
+                        .insert(mapPoolEntries);
+
+                    if (mapPoolError) {
+                        console.error('Error inserting map pool:', mapPoolError);
+                        // Don't throw - tournament was created, this is secondary
+                    }
+                }
+
                 // Clear draft
                 clearDraft();
+
 
                 toast({
                     title: 'Tournament Created!',

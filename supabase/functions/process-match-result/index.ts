@@ -203,7 +203,40 @@ serve(async (req) => {
             })),
         }
 
-        // 6. Update Database (brkt_match_games)
+        // 6. Detect Match MVP (highest Combat Score)
+        let mvpProfileId: string | null = null
+        try {
+            const allPlayers = matchData.players || []
+            if (allPlayers.length > 0) {
+                // Find the player with the highest combat score
+                const topPlayer = allPlayers.reduce((best: any, cur: any) => {
+                    const bestScore = best?.stats?.score || 0
+                    const curScore = cur?.stats?.score || 0
+                    return curScore > bestScore ? cur : best
+                }, allPlayers[0])
+
+                if (topPlayer?.puuid) {
+                    console.log(`[MVP] Top scorer: ${topPlayer.gameName}#${topPlayer.tagLine} (Score: ${topPlayer.stats?.score})`)
+                    // Map puuid to platform user_id
+                    const { data: mvpAccount } = await supabaseClient
+                        .from('riot_accounts')
+                        .select('user_id')
+                        .eq('puuid', topPlayer.puuid)
+                        .single()
+
+                    if (mvpAccount?.user_id) {
+                        mvpProfileId = mvpAccount.user_id
+                        console.log(`[MVP] Mapped to profile: ${mvpProfileId}`)
+                    } else {
+                        console.log(`[MVP] Player ${topPlayer.gameName} not linked to a platform account.`)
+                    }
+                }
+            }
+        } catch (mvpErr) {
+            console.warn('[MVP] Non-critical MVP detection error:', mvpErr)
+        }
+
+        // 7. Update Database (brkt_match_games)
         const { error: upsertError } = await supabaseClient
             .from('brkt_match_games')
             .upsert({
@@ -217,6 +250,7 @@ serve(async (req) => {
                 team1_score: t1Score,
                 team2_score: t2Score,
                 match_details: matchSnapshot,
+                mvp_id: mvpProfileId,
                 completed_at: new Date().toISOString()
             }, { onConflict: 'match_id, game_number' })
 

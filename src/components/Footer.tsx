@@ -32,7 +32,7 @@ const Footer = () => {
           <div>
             <h4 className="text-white text-sm font-medium tracking-[0.2em] uppercase mb-10">System</h4>
             <ul className="space-y-4">
-              {['Venues', 'Tournaments', 'Teams', 'Leaderboards'].map((link) => (
+              {['Venues', 'Tournaments'].map((link) => (
                 <li key={link}>
                   <Link to={`/${link.toLowerCase()}`} className="text-white/40 hover:text-white font-light transition-all duration-300">
                     {link}
@@ -46,7 +46,7 @@ const Footer = () => {
           <div>
             <h4 className="text-white text-sm font-medium tracking-[0.2em] uppercase mb-10">Resources</h4>
             <ul className="space-y-4">
-              {['For Organizers', 'For Venues', 'Community', 'FAQ'].map((link) => (
+              {['For Organizers', 'For Venues', 'FAQ'].map((link) => (
                 <li key={link}>
                   <Link to={`/${link.toLowerCase().replace(' ', '-')}`} className="text-white/40 hover:text-white font-light transition-all duration-300">
                     {link}

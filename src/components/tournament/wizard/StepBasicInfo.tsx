@@ -195,38 +195,36 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                 )}
             </AnimatePresence>
 
-            {/* Visibility */}
+            {/* Visibility - Simplified to Draft only */}
             <div className="w-full h-px bg-white/5 my-6" />
-            <div className="space-y-3">
-                <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Visibility</Label>
-                <RadioGroup
-                    value={data.visibility}
-                    onValueChange={(value: any) => updateData({ visibility: value })}
-                    className="grid grid-cols-2 gap-4"
-                >
-                    {[
-                        { value: 'public', icon: Eye, label: 'Public', desc: 'Visible to everyone' },
-                        { value: 'unlisted', icon: EyeOff, label: 'Unlisted (Draft)', desc: 'Only you can see' },
-                    ].map((option) => (
-                        <label
-                            key={option.value}
-                            className={cn(
-                                "flex flex-col items-center p-4 rounded-lg border-2 cursor-pointer transition-all text-center",
-                                data.visibility === option.value
-                                    ? "border-emerald-500 bg-emerald-500/10"
-                                    : "border-white/10 hover:border-white/20"
-                            )}
-                        >
-                            <RadioGroupItem value={option.value} className="sr-only" />
-                            <option.icon className={cn(
-                                "w-6 h-6 mb-2",
-                                data.visibility === option.value ? "text-emerald-400" : "text-gray-400"
-                            )} />
-                            <div className="text-sm font-medium text-white">{option.label}</div>
-                            <div className="text-xs text-gray-500 mt-1">{option.desc}</div>
-                        </label>
-                    ))}
-                </RadioGroup>
+            <div className="space-y-4">
+                <div>
+                    <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Visibility</Label>
+                    <p className="text-sm text-gray-400 mt-1">Tournaments start as unlisted drafts and can be published after setup.</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div
+                        className={cn(
+                            "flex flex-col items-center p-6 rounded-2xl border-2 transition-all text-center",
+                            "border-emerald-500 bg-emerald-500/10"
+                        )}
+                    >
+                        <EyeOff className="w-8 h-8 mb-3 text-emerald-400" />
+                        <div className="text-base font-bold text-white uppercase tracking-tight">Unlisted (Draft)</div>
+                        <div className="text-xs text-emerald-400/70 mt-1 font-medium">Only you can see this right now</div>
+                    </div>
+
+                    <div className="flex flex-col justify-center p-4 rounded-2xl border border-white/5 bg-white/[0.01] text-left">
+                        <div className="flex items-center gap-2 mb-2 text-white/40">
+                            <Globe className="w-4 h-4" />
+                            <span className="text-xs font-bold uppercase tracking-widest">Go Public Later</span>
+                        </div>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                            Once your tournament details and bracket are ready, you can publish it to the public listing with one click from the dashboard.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             {/* Date and Time */}
@@ -259,7 +257,40 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         onChange={(e) => updateData({ startTime: e.target.value })}
                         className={cn(errors.startTime && 'border-red-500', "[color-scheme:dark] font-bold tracking-tight")}
                     />
-                    {errors.startTime && <p className="text-sm text-red-500">{errors.startTime}</p>}
+                </div>
+            </div>
+
+            {/* End Date and Time */}
+            <div className="w-full h-px bg-white/5 my-6" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2 md:border-r border-white/10 pr-4">
+                    <Label htmlFor="endDate" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                        <Calendar className="w-4 h-4" />
+                        End Date
+                    </Label>
+                    <Input
+                        id="endDate"
+                        type="date"
+                        min={data.startDate || today}
+                        value={data.endDate}
+                        onChange={(e) => updateData({ endDate: e.target.value })}
+                        className={cn(errors.endDate && 'border-red-500', "[color-scheme:dark] font-bold tracking-tight")}
+                    />
+                    {errors.endDate && <p className="text-sm text-red-500">{errors.endDate}</p>}
+                </div>
+                <div className="space-y-2 pl-2">
+                    <Label htmlFor="endTime" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                        <Clock className="w-4 h-4" />
+                        End Time
+                    </Label>
+                    <Input
+                        id="endTime"
+                        type="time"
+                        value={data.endTime}
+                        onChange={(e) => updateData({ endTime: e.target.value })}
+                        className={cn(errors.endTime && 'border-red-500', "[color-scheme:dark] font-bold tracking-tight")}
+                    />
+                    {errors.endTime && <p className="text-sm text-red-500">{errors.endTime}</p>}
                 </div>
             </div>
 

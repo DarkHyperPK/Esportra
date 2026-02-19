@@ -58,10 +58,15 @@ export function adaptGraphToBracketMatches(
     teamsMap: Map<string, Team>
 ): BracketMatch[] {
     return nodes.map(node => {
-        // Look up team details
-        const team1 = node.team1_id ? teamsMap.get(node.team1_id) : undefined;
-        const team2 = node.team2_id ? teamsMap.get(node.team2_id) : undefined;
+        // Look up team details (Map takes precedence as it might be fresher, but fallback to eager loaded data)
+        const mapTeam1 = node.team1_id ? teamsMap.get(node.team1_id) : undefined;
+        const mapTeam2 = node.team2_id ? teamsMap.get(node.team2_id) : undefined;
+        // Winner usually doesn't have eager loaded data on the match itself unless we join differently, 
+        // but for now map lookup is fine for winner.
         const winner = node.winner_id ? teamsMap.get(node.winner_id) : undefined;
+
+        const team1 = mapTeam1 || (node.team1_id ? { id: node.team1_id, name: node.team1_name || 'TBD', logo_url: node.team1_logo } : undefined);
+        const team2 = mapTeam2 || (node.team2_id ? { id: node.team2_id, name: node.team2_name || 'TBD', logo_url: node.team2_logo } : undefined);
 
         // Find next match from edges (winner advancement)
         const winnerEdge = edges.find(e =>

@@ -4,6 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { useProfileManagement } from '@/hooks/useProfileManagement';
+import { detectUserCountry } from '@/utils/countries';
 import React from 'react';
 
 // Create the context outside of any component
@@ -17,7 +18,7 @@ interface AuthProviderProps {
 // Separate the provider implementation
 function AuthProviderImpl({ children }: AuthProviderProps) {
   const { user, session, loading: authLoading, error: authError } = useAuthState();
-  const { signIn, signInWithGoogle, signOut } = useAuthActions();
+  const { signIn, signInWithGoogle, signInWithDiscord, signOut } = useAuthActions();
   const { updateProfile } = useProfileManagement();
   const {
     profile,
@@ -40,9 +41,10 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     password: string,
     username: string,
     fullName?: string,
-    role?: UserRole
+    role?: UserRole,
+    dateOfBirth?: string
   ): Promise<void> => {
-    await originalSignUp(email, password, username, fullName, role);
+    await originalSignUp(email, password, username, fullName, role, dateOfBirth);
   };
 
   // Set mounted state
@@ -146,6 +148,34 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     await fetchProfile(user.id);
   };
 
+  // Silent background country detection
+  useEffect(() => {
+    if (!profile || profile.country_code || !user || !isMounted) return;
+
+    const performSilentDetection = async () => {
+      // Use a session storage flag to avoid repeated attempts if detection fails or is slow
+      const storageKey = `country_detection_attempted_${user.id}`;
+      if (sessionStorage.getItem(storageKey)) return;
+
+      sessionStorage.setItem(storageKey, 'true');
+
+      try {
+        const detected = await detectUserCountry();
+        if (detected) {
+          console.log(`[AutoCountry] Silently assigning country ${detected} to profile ${user.id}`);
+          // Update profile silently
+          await handleUpdateProfile({ country_code: detected });
+        }
+      } catch (err) {
+        console.error('[AutoCountry] Silent detection failed:', err);
+      }
+    };
+
+    // Small delay to ensure core profile data is settled
+    const timer = setTimeout(performSilentDetection, 2000);
+    return () => clearTimeout(timer);
+  }, [profile?.id, profile?.country_code, user?.id, isMounted]);
+
   const handleSignOut = async (): Promise<void> => {
     await signOut();
     clearProfile();
@@ -172,6 +202,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     signIn,
     signUp,
     signInWithGoogle,
+    signInWithDiscord,
     signOut: handleSignOut,
     updateProfile: handleUpdateProfile,
     isOrganizer,
@@ -189,6 +220,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     signIn,
     signUp,
     signInWithGoogle,
+    signInWithDiscord,
     isMounted
   ]);
 

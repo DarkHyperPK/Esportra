@@ -10,15 +10,18 @@ import { useRole } from '@/contexts/RoleContext';
 import { useNavigate } from 'react-router-dom';
 import VerificationRequestForm from '@/components/VerificationRequestForm';
 import UserRolesDisplay from '@/components/UserRolesDisplay';
-import { 
-  Shield, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Shield,
+  Clock,
+  CheckCircle,
+  XCircle,
   AlertCircle,
   Building2,
   RefreshCw,
-  Settings
+  Settings,
+  Award,
+  Briefcase,
+  Trophy
 } from 'lucide-react';
 
 interface VerificationRequest {
@@ -109,7 +112,7 @@ const VerificationStatus: React.FC = () => {
           .eq('owner_id', user.id)
           .maybeSingle();
         setVenueVerifiedByProfile(!!(venue.data?.verified || venue.data?.is_verified));
-      } catch {}
+      } catch { }
 
     } catch (error) {
       console.error('Error fetching verification data:', error);
@@ -155,8 +158,8 @@ const VerificationStatus: React.FC = () => {
   };
 
   const hasPendingRequest = (role: 'organizer' | 'venue_owner') => {
-    return requests.some(req => 
-      (req.requested_role || '').toLowerCase() === role && 
+    return requests.some(req =>
+      (req.requested_role || '').toLowerCase() === role &&
       (req.status || '').toLowerCase() === 'pending'
     );
   };
@@ -200,17 +203,17 @@ const VerificationStatus: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Verification Status</h1>
-              <p className="text-gray-400">Manage your organizer and venue owner verification</p>
+              <h1 className="text-3xl font-bold text-white mb-2">License Portal</h1>
+              <p className="text-gray-400">Apply for and manage your professional licenses</p>
             </div>
             <div className="flex gap-2">
               <Button
-              onClick={fetchVerificationData}
-              variant="outline"
-              className="border-gray-600 text-gray-300 hover:bg-gray-700"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
+                onClick={fetchVerificationData}
+                variant="outline"
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
               </Button>
               <Button
                 onClick={() => navigate(-1)}
@@ -229,96 +232,98 @@ const VerificationStatus: React.FC = () => {
 
           {/* Verification Status Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* Organizer Status */}
-            <Card className="bg-gray-800/50 border-gray-700">
+            {/* Organizer License */}
+            <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border-gray-700 hover:border-rose-500/30 transition-colors">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
-                  <Building2 className="w-5 h-5 text-blue-400" />
-                  Organizer Verification
+                  <Trophy className="w-5 h-5 text-rose-400" />
+                  Organizer License
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {hasVerifiedRole('organizer') ? (
                   <div className="space-y-3">
-                    <Badge className="bg-green-600 text-white flex items-center gap-1 w-fit">
-                      <CheckCircle className="w-4 h-4" />
-                      Verified
+                    <Badge className="bg-emerald-600 text-white flex items-center gap-1 w-fit">
+                      <Award className="w-4 h-4" />
+                      Licensed
                     </Badge>
                     <p className="text-gray-400 text-sm">
-                      You can create and manage tournaments as an organizer.
+                      You are licensed to create and manage esports tournaments.
                     </p>
                   </div>
                 ) : hasPendingRequest('organizer') ? (
                   <div className="space-y-3">
-                    <Badge className="bg-yellow-600 text-white flex items-center gap-1 w-fit">
+                    <Badge className="bg-amber-600 text-white flex items-center gap-1 w-fit">
                       <Clock className="w-4 h-4" />
-                      Pending Review
+                      Application Under Review
                     </Badge>
                     <p className="text-gray-400 text-sm">
-                      Your verification request is being reviewed by our admin team.
+                      Your license application is being reviewed by our team.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <Badge variant="outline" className="text-gray-400 border-gray-600 w-fit">
-                      Not Verified
+                      No License
                     </Badge>
                     <p className="text-gray-400 text-sm mb-4">
-                      Request verification to create and manage tournaments.
+                      Apply for an Organizer License to host and manage tournaments.
                     </p>
                     <Button
                       onClick={() => { setRequestFor('organizer'); setShowRequestForm(true); }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      className="bg-rose-600 hover:bg-rose-700 text-white"
                     >
-                      Request Verification
+                      <Briefcase className="w-4 h-4 mr-2" />
+                      Apply for License
                     </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Venue Owner Status */}
-            <Card className="bg-gray-800/50 border-gray-700">
+            {/* Venue Owner License */}
+            <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border-gray-700 hover:border-emerald-500/30 transition-colors">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
-                  <Building2 className="w-5 h-5 text-purple-400" />
-                  Venue Owner Verification
+                  <Building2 className="w-5 h-5 text-emerald-400" />
+                  Venue Owner License
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {hasVerifiedRole('venue_owner') ? (
                   <div className="space-y-3">
-                    <Badge className="bg-green-600 text-white flex items-center gap-1 w-fit">
-                      <CheckCircle className="w-4 h-4" />
-                      Verified
+                    <Badge className="bg-emerald-600 text-white flex items-center gap-1 w-fit">
+                      <Award className="w-4 h-4" />
+                      Licensed
                     </Badge>
                     <p className="text-gray-400 text-sm">
-                      You can list and manage gaming venues.
+                      You are licensed to list and manage gaming venues.
                     </p>
                   </div>
                 ) : hasPendingRequest('venue_owner') ? (
                   <div className="space-y-3">
-                    <Badge className="bg-yellow-600 text-white flex items-center gap-1 w-fit">
+                    <Badge className="bg-amber-600 text-white flex items-center gap-1 w-fit">
                       <Clock className="w-4 h-4" />
-                      Pending Review
+                      Application Under Review
                     </Badge>
                     <p className="text-gray-400 text-sm">
-                      Your verification request is being reviewed by our admin team.
+                      Your license application is being reviewed by our team.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <Badge variant="outline" className="text-gray-400 border-gray-600 w-fit">
-                      Not Verified
+                      No License
                     </Badge>
                     <p className="text-gray-400 text-sm mb-4">
-                      Request verification to list and manage gaming venues.
+                      Apply for a Venue Owner License to list and manage gaming venues.
                     </p>
                     <Button
                       onClick={() => { setRequestFor('venue_owner'); setShowRequestForm(true); }}
-                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
                     >
-                      Request Verification
+                      <Briefcase className="w-4 h-4 mr-2" />
+                      Apply for License
                     </Button>
                   </div>
                 )}
@@ -326,11 +331,11 @@ const VerificationStatus: React.FC = () => {
             </Card>
           </div>
 
-          {/* Verification Requests History */}
+          {/* Application History */}
           {requests.length > 0 && (
             <Card className="bg-gray-800/50 border-gray-700">
               <CardHeader>
-                <CardTitle className="text-white">Verification History</CardTitle>
+                <CardTitle className="text-white">Application History</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -348,7 +353,7 @@ const VerificationStatus: React.FC = () => {
                           {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                         </Badge>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-400">Submitted:</span>
@@ -392,10 +397,10 @@ const VerificationStatus: React.FC = () => {
 
           {/* Information Alert */}
           <Alert className="mt-6 bg-blue-900/20 border-blue-700">
-            <Shield className="h-4 w-4" />
+            <Award className="h-4 w-4" />
             <AlertDescription className="text-blue-300">
-              <strong>Verification Process:</strong> Our admin team reviews all verification requests within 1-3 business days. 
-              You'll receive an email notification once your request is processed. Make sure to provide accurate and complete information.
+              <strong>License Application Process:</strong> Our team reviews all license applications within 1-3 business days.
+              You'll receive an email notification once your application is processed. Please provide accurate business information.
             </AlertDescription>
           </Alert>
         </div>

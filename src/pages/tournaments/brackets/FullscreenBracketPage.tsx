@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/effects/LoadingSpinner';
 import { supabase } from '@/lib/supabase';
 import { PublicBracketView } from './PublicBracketView';
 import { DraggableContainer } from '@/components/DraggableContainer';
 import { useBracketRealtime } from '@/hooks/useBracketRealtime';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 const FullscreenBracketPage = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -89,8 +91,33 @@ const FullscreenBracketPage = () => {
 
 
 
+    const navigate = useNavigate();
+
+    const handleBack = () => {
+        // Navigate back to the tournament management page (Stages tab usually)
+        if (tournament?.slug) {
+            navigate(`/organizer/tournament/${tournament.slug}`);
+        } else if (tournament?.id) {
+            navigate(`/organizer/tournament/${tournament.id}`);
+        } else {
+            navigate(-1);
+        }
+    };
+
     return (
         <div className="w-screen h-screen bg-transparent overflow-hidden relative font-sans">
+            {/* Back Navigation */}
+            <div className="absolute top-6 left-6 z-50">
+                <Button
+                    onClick={handleBack}
+                    variant="outline"
+                    className="bg-black/60 border-white/10 text-white hover:bg-black/80 hover:border-white/30 backdrop-blur-md gap-2"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Stages
+                </Button>
+            </div>
+
             <DraggableContainer className="w-full h-full bg-black/30 backdrop-blur-sm border border-white/5">
                 <div className="min-w-[2000px] min-h-[1500px] p-20">
                     <PublicBracketView

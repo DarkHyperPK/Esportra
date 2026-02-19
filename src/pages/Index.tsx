@@ -13,6 +13,9 @@ const Index = () => {
     return (
         <PremiumBackground animated intensity={0.12}>
             <HeroSection />
+
+
+
             <LogoTicker />
             <TheManifesto />
             <FeaturesSection />

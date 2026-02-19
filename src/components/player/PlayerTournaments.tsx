@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
 
 interface TournamentRegistration {
   id: string;
@@ -57,8 +58,7 @@ interface Tournament {
   user_id: string;
 }
 
-const RAWG_API_KEY = '55e8210bf73448108b7f3c6707739206';
-const RAWG_API_URL = 'https://api.rawg.io/api/games';
+
 
 const PlayerTournaments = () => {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -160,7 +160,7 @@ const PlayerTournaments = () => {
     fetchTournaments();
   }, [user]);
 
-  // Fetch RAWG images for each game
+  // Fetch RAWG images for each game via proxy
   useEffect(() => {
     const fetchImages = async () => {
       const newImages: Record<string, { logo: string | null; banner: string | null }> = {};
@@ -168,60 +168,37 @@ const PlayerTournaments = () => {
         tournaments.map(async (tournament) => {
           const searchName = tournament.game.trim().toLowerCase() === 'cs2' ? 'Counter-Strike 2' : tournament.game;
           try {
-            console.log(`[PlayerTournaments] Fetching RAWG images for: ${searchName}`);
-            const response = await fetch(`${RAWG_API_URL}?key=${RAWG_API_KEY}&search=${encodeURIComponent(searchName)}`);
-            
-            if (!response.ok) {
-              console.error(`[PlayerTournaments] RAWG API error for ${searchName}: ${response.status} ${response.statusText}`);
-              newImages[tournament.id] = { logo: null, banner: null };
-              return;
-            }
-            
-            const data = await response.json();
-            console.log(`[PlayerTournaments] RAWG results for ${searchName}:`, data?.results?.length || 0);
-            
-            if (data && data.results && data.results.length > 0) {
+            const data = await rawgSearchGames(searchName);
+            if (data?.results?.length > 0) {
               const gameData = data.results[0];
-              console.log(`[PlayerTournaments] Found game: ${gameData.name}, ID: ${gameData.id}`);
               let banner = null;
-              // Try to get a screenshot as banner
               try {
-                const screenshotsRes = await fetch(`${RAWG_API_URL}/${gameData.id}/screenshots?key=${RAWG_API_KEY}`);
-                if (!screenshotsRes.ok) {
-                  console.warn(`[PlayerTournaments] Screenshots API error: ${screenshotsRes.status}`);
-                  throw new Error(`Screenshots API error: ${screenshotsRes.status}`);
-                }
-                const screenshotsData = await screenshotsRes.json();
-                console.log(`[PlayerTournaments] Screenshots for ${gameData.name}:`, screenshotsData?.results?.length || 0);
-                
-                if (screenshotsData && screenshotsData.results && screenshotsData.results.length > 0) {
+                const screenshotsData = await rawgGetScreenshots(gameData.id);
+                if (screenshotsData?.results?.length > 0) {
                   banner = screenshotsData.results[0].image;
                 } else {
                   banner = gameData.background_image_additional || gameData.background_image || null;
                 }
-              } catch (screenshotErr) {
-                console.error(`[PlayerTournaments] Error fetching screenshots for ${gameData.name}:`, screenshotErr);
+              } catch {
                 banner = gameData.background_image_additional || gameData.background_image || null;
               }
               newImages[tournament.id] = {
                 logo: gameData.background_image || null,
-                banner: banner,
+                banner,
               };
             } else {
-              console.warn(`[PlayerTournaments] No RAWG results for: ${searchName}`);
               newImages[tournament.id] = { logo: null, banner: null };
             }
-          } catch (err) {
-            console.error(`[PlayerTournaments] Error fetching RAWG images for ${searchName}:`, err);
+          } catch {
             newImages[tournament.id] = { logo: null, banner: null };
           }
         })
       );
       setGameImages(newImages);
-      console.log(`[PlayerTournaments] Fetched images for ${Object.keys(newImages).length} tournaments`);
     };
     if (tournaments.length > 0) fetchImages();
   }, [tournaments]);
+
 
   const handleFindTournaments = () => {
     navigate('/tournaments/upcoming');

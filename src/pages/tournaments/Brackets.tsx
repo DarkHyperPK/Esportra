@@ -63,12 +63,15 @@ const TournamentBrackets = () => {
         setSelectedStageId(stagesData[0].id);
       }
 
-      // Fetch ALL bracket versions (active or draft) for this tournament
+      // Fetch bracket versions - Organizers see drafts, others only active
+      const isActuallyOrganizer = user?.id && tournamentData.organizer_id === user.id;
+      const statusFilter = isActuallyOrganizer ? ['active', 'draft'] : ['active'];
+
       const { data: versionsData } = await (supabase as any)
         .from('brkt_versions')
         .select('id, stage_id, status, created_at')
         .eq('tournament_id', tournamentData.id)
-        .in('status', ['active', 'draft'])
+        .in('status', statusFilter)
         .order('created_at', { ascending: false });
 
       // Process versions to find latest for each stage

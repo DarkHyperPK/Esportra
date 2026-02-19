@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { auditLog } from '@/lib/auditLog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,7 +67,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [resolutionDialogOpen, setResolutionDialogOpen] = useState(false);
   const [resolutionNotes, setResolutionNotes] = useState('');
-  const [resolutionStatus, setResolutionStatus] = useState<'resolved' | 'rejected'>('resolved');
+  const [resolutionStatus, setResolutionStatus] = useState<'resolved' | 'rejected' | 'in_review'>('resolved');
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -75,6 +76,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   const [comments, setComments] = useState<Array<{ id: string; user_id: string; comment: string; created_at: string; user_name?: string; is_internal: boolean; attachment_url?: string }>>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
 
   const actorUserId = currentUserId ?? organizerId;
   const { staff, loading: staffLoading, hasPermission } = useTournamentStaff(tournamentId);
@@ -300,22 +302,10 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   }, [tournamentId, fetchDisputes, toast]);
 
   const logDisputeAudit = async (disputeId: string, action: string, meta?: Record<string, unknown>) => {
-    try {
-      await supabase.from('audit_logs').insert({
-        admin_id: actorUserId,
-        admin_name: undefined,
-        action_type: `dispute:${action}`,
-        target_type: 'dispute',
-        target_id: disputeId,
-        target_name: meta?.title,
-        details: { tournament_id: tournamentId, ...(meta || {}) },
-        ip_address: '127.0.0.1',
-        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
-        severity: action === 'resolved' || action === 'rejected' ? 'medium' : 'low',
-      });
-    } catch (error) {
-      console.error('Audit log failed', error);
-    }
+    await auditLog.log(action as any, 'dispute', disputeId, String(meta?.title || 'Dispute'), {
+      tournament_id: tournamentId,
+      ...meta
+    });
   };
 
   const handleAssignDispute = async (disputeId: string, assigneeId: string) => {
@@ -993,6 +983,22 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Image Preview Dialog */}
+      <Dialog open={!!viewingImage} onOpenChange={() => setViewingImage(null)}>
+        <DialogContent className="bg-black/95 border-gray-800 max-w-4xl p-2">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Image Preview</DialogTitle>
+          </DialogHeader>
+          {viewingImage && (
+            <img
+              src={viewingImage}
+              alt="Full size preview"
+              className="max-w-full max-h-[85vh] object-contain mx-auto rounded-lg"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -1089,4 +1095,24 @@ const DisputeCard: React.FC<DisputeCardProps> = ({ dispute, onAction, readonly }
 };
 
 export default DisputeCenter;
+
+// Image Preview Dialog - placed at end of file for component access
+const ImagePreviewDialog: React.FC<{ imageUrl: string | null; onClose: () => void }> = ({ imageUrl, onClose }) => {
+  if (!imageUrl) return null;
+
+  return (
+    <Dialog open={!!imageUrl} onOpenChange={() => onClose()}>
+      <DialogContent className="bg-black/95 border-gray-800 max-w-4xl p-2">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Image Preview</DialogTitle>
+        </DialogHeader>
+        <img
+          src={imageUrl}
+          alt="Full size preview"
+          className="max-w-full max-h-[85vh] object-contain mx-auto rounded-lg"
+        />
+      </DialogContent>
+    </Dialog>
+  );
+};
 
