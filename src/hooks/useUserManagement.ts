@@ -43,47 +43,15 @@ export const useUserManagement = () => {
   const deleteUser = async (userId: string) => {
     try {
       setProcessingRoleChange(userId);
-      
-      // First, delete all tournaments created by this user
-      const { error: tournamentError } = await supabase
-        .from('tournaments')
-        .delete()
-        .eq('user_id', userId);
 
-      if (tournamentError) {
-        console.error('Error deleting tournaments:', tournamentError);
-        throw new Error('Failed to delete user tournaments');
-      }
+      const { data, error } = await supabase.functions.invoke('manage-users', {
+        body: {
+          action: 'delete-user',
+          targetUserId: userId
+        }
+      });
 
-      // Delete the user's role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
-
-      if (roleError) {
-        console.error('Error deleting user role:', roleError);
-        throw new Error('Failed to delete user role');
-      }
-
-      // Delete the user's profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-
-      if (profileError) {
-        console.error('Error deleting user profile:', profileError);
-        throw new Error('Failed to delete user profile');
-      }
-
-      // Finally, delete the user from auth
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-
-      if (authError) {
-        console.error('Error deleting user from auth:', authError);
-        throw new Error('Failed to delete user from auth');
-      }
+      if (error) throw error;
 
       // Remove user from local state
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
@@ -96,7 +64,7 @@ export const useUserManagement = () => {
       console.error('Error deleting user:', error);
       toast({
         title: "Deletion Failed",
-        description: error.message,
+        description: error.message || "Failed to communicate with the server",
         variant: "destructive",
       });
     } finally {
@@ -107,56 +75,33 @@ export const useUserManagement = () => {
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
       setProcessingRoleChange(userId);
-      
-      // Remove existing roles for the user
-      const { error: deleteError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
 
-      if (deleteError) throw deleteError;
-      
-      // Make sure newRole is within the allowed types in Supabase
-      // Convert 'player' to a role that exists in the database enum
-      let supabaseRole: 'admin' | 'venue_owner' | 'organizer' = 'organizer';
-      
-      if (newRole === 'admin' || newRole === 'venue_owner' || newRole === 'organizer') {
-        supabaseRole = newRole;
-      } else if (newRole === 'player') {
-        // For players we'll use organizer as the closest role in the database
-        supabaseRole = 'organizer';
-      }
-      
-      // Insert new role
-      const { error } = await supabase
-        .from('user_roles')
-        .insert({ 
-          role: supabaseRole,
-          user_id: userId 
-        });
+      // Map frontend role to database role if necessary
+      let supabaseRole = newRole;
+      if (newRole === 'player') supabaseRole = 'organizer';
+
+      const { data, error } = await supabase.functions.invoke('manage-users', {
+        body: {
+          action: 'update-role',
+          targetUserId: userId,
+          payload: { newRole: supabaseRole }
+        }
+      });
 
       if (error) throw error;
 
-      // Show success toast
       toast({
         title: "Role Updated",
         description: `User role has been updated to ${newRole} successfully.`,
       });
 
-      // Optimistically update the UI
-      setUsers(prevUsers =>
-        prevUsers.map(user => {
-          if (user.id === userId) {
-            return { ...user }; // For now, no roles in the user object
-          }
-          return user;
-        })
-      );
+      // Refresh the page or fetch users again to show changes
+      await fetchUsers();
     } catch (error: any) {
       console.error('Error updating user role:', error);
       toast({
         title: "Role Update Failed",
-        description: error.message,
+        description: error.message || "Failed to communicate with the server",
         variant: "destructive",
       });
     } finally {
@@ -167,7 +112,7 @@ export const useUserManagement = () => {
   const cleanupOrphanedProfiles = async () => {
     try {
       setLoading(true);
-      
+
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -178,7 +123,7 @@ export const useUserManagement = () => {
       // For each profile, check if the user exists in auth
       for (const profile of profiles) {
         const { data: user, error: userError } = await supabase.auth.admin.getUserById(profile.id);
-        
+
         if (userError || !user) {
           // If user doesn't exist, delete the profile
           const { error: deleteError } = await supabase

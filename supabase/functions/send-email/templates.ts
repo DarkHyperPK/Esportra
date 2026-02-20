@@ -154,6 +154,41 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
     `, `${data.invitedBy || "Someone"} invited you to join ${data.teamName || "a team"}`)
     }
   },
+
+  // ── Partner Portal Welcome (Existing User) ──
+  PARTNER_WELCOME: (data) => ({
+    subject: `Access Granted: ${data.sponsorName || "Sponsor"} Portal | Esportra`,
+    html: baseLayout(`
+      <h2 style="margin:0 0 8px; font-size:22px; color:#ffffff; font-weight:700;">Partner Portal Access \uD83E\uDD1D</h2>
+      <p style="margin:0 0 24px; font-size:15px; color:#999999; line-height:1.6;">
+        You have been added as an authorized partner for <strong style="color:#f43f5e;">${data.sponsorName || "your organization"}</strong>.
+      </p>
+      <div style="background-color:#111111; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 24px; text-align: center;">
+        <p style="margin:0; font-size:14px; color:#ffffff;">
+          Since you already have an Esportra account, you can log in directly using your existing email and password.
+        </p>
+      </div>
+      ${button("Go to Partner Portal", "https://partner.esportra.com/login")}
+    `, `Access granted to the ${data.sponsorName || "Sponsor"} Portal on Esportra`)
+  }),
+
+  // ── Partner Portal Invite (New User) ──
+  PARTNER_INVITE: (data) => ({
+    subject: `Invite: ${data.sponsorName || "Sponsor"} Partner Portal | Esportra`,
+    html: baseLayout(`
+      <h2 style="margin:0 0 8px; font-size:22px; color:#ffffff; font-weight:700;">Complete Your Setup \u2728</h2>
+      <p style="margin:0 0 24px; font-size:15px; color:#999999; line-height:1.6;">
+        You've been invited to manage <strong style="color:#f43f5e;">${data.sponsorName || "your organization"}</strong> on the Esportra Partner Portal.
+      </p>
+      <p style="margin:0 0 24px; font-size:14px; color:#888888; line-height:1.6; text-align: center;">
+        Use the secure link below to set your password and activate your partner account.
+      </p>
+      ${button("Set Up Account", data.setupUrl ? String(data.setupUrl) : "https://partner.esportra.com/login")}
+      <p style="margin:24px 0 0; font-size:11px; color:#555555; text-align: center;">
+        For security, this link will expire in 24 hours.
+      </p>
+    `, `You've been invited to the ${data.sponsorName || "Sponsor"} Partner Portal`)
+  }),
 };
 
 interface EmailTemplate {
