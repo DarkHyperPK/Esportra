@@ -21,7 +21,7 @@ const baseLayout = (content: string, preheader: string = "") => `
           <tr>
             <td align="center" style="padding-bottom: 32px;">
               <a href="https://esportra.com" target="_blank" style="text-decoration: none; outline: none; border: none;">
-                <img src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png" alt="Esportra Logo" width="200" style="display: block; border: 0; outline: none; text-decoration: none;" />
+                <img src="https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png" alt="Esportra Logo" width="200" style="display: block; border: 0; outline: none; text-decoration: none;" />
               </a>
             </td>
           </tr>
@@ -77,10 +77,10 @@ const infoRow = (label: string, value: string) => `
 
 const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate> = {
 
-    // ── Tournament Registration ──
-    TOURNAMENT_REGISTRATION: (data) => ({
-        subject: `Registered: ${data.tournamentName || "Tournament"} | Esportra`,
-        html: baseLayout(`
+  // ── Tournament Registration ──
+  TOURNAMENT_REGISTRATION: (data) => ({
+    subject: `Registered: ${data.tournamentName || "Tournament"} | Esportra`,
+    html: baseLayout(`
       <h2 style="margin:0 0 8px; font-size:22px; color:#ffffff; font-weight:700;">You're In! \uD83C\uDFAE</h2>
       <p style="margin:0 0 24px; font-size:15px; color:#999999; line-height:1.6;">
         Your registration for <strong style="color:#f43f5e;">${data.tournamentName || "the tournament"}</strong> has been confirmed.
@@ -95,12 +95,12 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
       </p>
       ${button("View Tournament", data.tournamentUrl ? String(data.tournamentUrl).replace(/demo\.esportra\.com|localhost:\d+/, 'esportra.com') : "https://esportra.com")}
     `, `You're registered for ${data.tournamentName || "a tournament"} on Esportra`)
-    }),
+  }),
 
-    // ── Tournament Check-in Reminder ──
-    CHECKIN_REMINDER: (data) => ({
-        subject: `Check-in NOW: ${data.tournamentName || "Tournament"} | Esportra`,
-        html: baseLayout(`
+  // ── Tournament Check-in Reminder ──
+  CHECKIN_REMINDER: (data) => ({
+    subject: `Check-in NOW: ${data.tournamentName || "Tournament"} | Esportra`,
+    html: baseLayout(`
       <h2 style="margin:0 0 8px; font-size:22px; color:#ffffff; font-weight:700;">\u23F0 Check-in is Open!</h2>
       <p style="margin:0 0 24px; font-size:15px; color:#999999; line-height:1.6;">
         Check-in for <strong style="color:#f43f5e;">${data.tournamentName || "your tournament"}</strong> is now open.
@@ -111,28 +111,28 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
       </div>
       ${button("Check In Now", data.tournamentUrl ? String(data.tournamentUrl).replace(/demo\.esportra\.com|localhost:\d+/, 'esportra.com') : "https://esportra.com")}
     `, `Check-in is open for ${data.tournamentName || "your tournament"}`)
-    }),
+  }),
 
-    // ── Welcome Email ──
-    WELCOME: (data) => ({
-        subject: `Welcome to Esportra \uD83D\uDC4B`,
-        html: baseLayout(`
+  // ── Welcome Email ──
+  WELCOME: (data) => ({
+    subject: `Welcome to Esportra \uD83D\uDC4B`,
+    html: baseLayout(`
       <h2 style="margin:0 0 8px; font-size:22px; color:#ffffff; font-weight:700;">Welcome, ${data.username || "Player"}! \uD83C\uDF89</h2>
       <p style="margin:0 0 24px; font-size:15px; color:#999999; line-height:1.6;">
         You are now part of the Esportra competitive gaming ecosystem. Compete in tournaments, build your team, and climb the ranks.
       </p>
       ${button("Browse Tournaments", "https://esportra.com/tournaments")}
     `, `Welcome to Esportra, ${data.username || "Player"}!`)
-    }),
+  }),
 
-    // ── Team Invite ──
-    TEAM_INVITE: (data) => {
-        // Use Team Logo if available. If not, show nothing (no fallback).
-        const logoUrl = data.teamLogo ? String(data.teamLogo) : null;
+  // ── Team Invite ──
+  TEAM_INVITE: (data) => {
+    // Use Team Logo if available. If not, show nothing (no fallback).
+    const logoUrl = data.teamLogo ? String(data.teamLogo) : null;
 
-        return {
-            subject: `You've been invited to join ${data.teamName || "a team"} | Esportra`,
-            html: baseLayout(`
+    return {
+      subject: `You've been invited to join ${data.teamName || "a team"} | Esportra`,
+      html: baseLayout(`
       <div style="text-align: center; margin-bottom: 30px;">
         ${logoUrl ? `<img src="${logoUrl}" alt="Team Logo" width="100" style="width:100px; height:auto; margin-bottom: 16px; display:inline-block;">` : ''}
         <h2 style="margin:0 0 8px; font-size:24px; color:#ffffff; font-weight:800; letter-spacing: -0.5px;">Team Invitation</h2>
@@ -152,18 +152,18 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
  
       ${button("Review Invitation", "https://esportra.com/player/teams")}
     `, `${data.invitedBy || "Someone"} invited you to join ${data.teamName || "a team"}`)
-        }
-    },
+    }
+  },
 };
 
 interface EmailTemplate {
-    subject: string;
-    html: string;
+  subject: string;
+  html: string;
 }
 
 // ── Public API ──
 export function getTemplate(type: string, data: Record<string, unknown>): EmailTemplate | null {
-    const templateFn = templates[type];
-    if (!templateFn) return null;
-    return templateFn(data);
+  const templateFn = templates[type];
+  if (!templateFn) return null;
+  return templateFn(data);
 }
