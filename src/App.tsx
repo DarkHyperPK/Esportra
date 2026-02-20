@@ -3,7 +3,9 @@ import { Loader2 } from "lucide-react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NotificationProvider } from "@/components/NotificationContext";
+import { createContext, useContext, ReactNode, useState, useEffect, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/PageTransition";
 import { AdminProvider } from "@/contexts/AdminContext";
@@ -135,10 +137,19 @@ const AppContent = React.memo(() => {
   const isHome = location.pathname === '/';
 
 
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log("Recovery mode detected, redirecting to reset-password");
+        window.location.href = '/auth/reset-password';
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <>
-
-
       {/* Global Background - Video Only (Seamless Loop) */}
       <div className="fixed inset-0 w-full h-full -z-10">
         <SeamlessVideoLoop
@@ -512,10 +523,10 @@ const AppContent = React.memo(() => {
 
               {/* Catch-all route */}
               <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-            </Route>
-          </Routes>
-        </React.Suspense>
-      </div>
+            </Route >
+          </Routes >
+        </React.Suspense >
+      </div >
     </>
   );
 });

@@ -46,11 +46,13 @@ const ForgotPassword = () => {
         setError(null);
 
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-                redirectTo: `${import.meta.env.VITE_SITE_URL || window.location.origin}/auth/reset-password`,
+            // Call custom Edge Function for branded recovery email
+            const { data: result, error } = await supabase.functions.invoke('send-recovery-email', {
+                body: { email: values.email },
             });
 
             if (error) throw error;
+            if (result?.error) throw new Error(result.error);
 
             setSuccess(true);
             toast({
