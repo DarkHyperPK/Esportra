@@ -26,25 +26,34 @@ jobs:
           ls -la supabase/functions/
 
       - name: 🔑 Setup SSH Key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: 🚀 Deploy Functions via SCP + SSH
         env:
           SSH_OPTS: "-o StrictHostKeyChecking=no"
           REMOTE: "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}"
         run: |
-          # 1. Create staging directory on server
+          # 1. Trust the host
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+          # 2. Create staging directory on server
+          echo "📂 Preparing staging area..."
           ssh $SSH_OPTS $REMOTE "mkdir -p /tmp/edge-functions-update"
 
-          # 2. Copy function files to the server
+          # 3. Copy function files to the server
+          echo "📤 Uploading functions..."
           scp -r $SSH_OPTS supabase/functions/* $REMOTE:/tmp/edge-functions-update/
 
-          # 3. Move files to the live volume with correct permissions
-          ssh $SSH_OPTS $REMOTE "sudo mkdir -p ${{ env.FUNCTIONS_PATH }} && sudo cp -r /tmp/edge-functions-update/* ${{ env.FUNCTIONS_PATH }}/ && sudo chown -R 1000:1000 ${{ env.FUNCTIONS_PATH }}/ && rm -rf /tmp/edge-functions-update && echo 'Functions deployed:' && ls ${{ env.FUNCTIONS_PATH }}/"
+          # 4. Move files to the live volume with correct permissions
+          echo "🚚 Moving to production volume..."
+          ssh $SSH_OPTS $REMOTE "sudo mkdir -p ${{ env.FUNCTIONS_PATH }} && \
+            sudo cp -r /tmp/edge-functions-update/* ${{ env.FUNCTIONS_PATH }}/ && \
+            sudo chown -R 1000:1000 ${{ env.FUNCTIONS_PATH }}/ && \
+            rm -rf /tmp/edge-functions-update && \
+            echo '✅ Deployment Finished!' && \
+            sudo ls -la ${{ env.FUNCTIONS_PATH }}/"
 
       - name: ✅ Deployment Summary
         run: |
