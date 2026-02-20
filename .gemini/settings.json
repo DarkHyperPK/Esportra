@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "url": "https://api.esportra.com/mcp",
+      "type": "http"
+    }
+  }
+}

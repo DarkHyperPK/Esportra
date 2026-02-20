@@ -347,11 +347,11 @@ export class GraphMatchService {
                             try {
                                 const { data: stageInfo } = await db
                                     .from('tournament_stages')
-                                    .select('tournament_id, type')
+                                    .select('tournament_id, format')
                                     .eq('id', stageId)
                                     .single();
 
-                                if (stageInfo && (stageInfo.type === 'single_elimination' || stageInfo.type === 'double_elimination')) {
+                                if (stageInfo && (stageInfo.format === 'single_elimination' || stageInfo.format === 'double_elimination')) {
                                     // Check if this match was the final one (bracket winner)
                                     // Logic: In single elim, the winner of the last match is the champ.
                                     // In double elim, if grand finals is done, winner is champ.

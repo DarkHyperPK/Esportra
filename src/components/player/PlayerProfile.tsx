@@ -18,6 +18,7 @@ interface PlayerProfileProps {
 
 const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps) => {
   const { profile: authProfile, user } = useAuth();
+  const isDiscordSignup = user?.app_metadata?.provider === 'discord';
   const [editMode, setEditMode] = useState(false);
   const [discordIdentity, setDiscordIdentity] = useState<any>(null);
   const { riotAccount, isLoading: riotLoading, linkRiotAccount, unlinkRiotAccount, refetch: refetchRiot } = useRiotAccount();
@@ -198,7 +199,7 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
               )}
 
               {/* ── Discord Section ── */}
-              {isOwnProfile ? (
+              {isOwnProfile && isDiscordSignup && (
                 discordIdentity ? (
                   <div className="p-4 border border-[#5865F2]/30 bg-[#5865F2]/10 rounded-md flex items-center justify-between">
                     <div>
@@ -211,6 +212,7 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
                     </div>
                   </div>
                 ) : (
+                  // Fallback if metadata says Discord but identity is missing (rare)
                   <div className="text-center">
                     <p className="text-gray-400 text-sm mb-4">Link your Discord to participate in tournaments.</p>
                     <Button
@@ -221,12 +223,13 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
                     </Button>
                   </div>
                 )
-              ) : (
-                !riotAccount && (
-                  <div className="text-center text-gray-500 italic">
-                    Game accounts are private.
-                  </div>
-                )
+              )}
+
+              {/* Public profile or non-discord signup: Just show an empty state or nothing for Discord */}
+              {!isOwnProfile && !riotAccount && (
+                <div className="text-center text-gray-500 italic">
+                  Game accounts are private.
+                </div>
               )}
             </div>
           </CardContent>

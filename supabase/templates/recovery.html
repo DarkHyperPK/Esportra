@@ -2,79 +2,135 @@
 <html>
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset your password</title>
+    <style>
+        body {
+            background-color: #0c0c0e;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .wrapper {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #141416;
+            border: 1px solid #232326;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .header {
+            padding: 40px 20px;
+            text-align: center;
+            background: linear-gradient(135deg, #f43f5e 0%, #881337 100%);
+        }
+
+        .content {
+            padding: 40px 30px;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0 0 20px 0;
+            letter-spacing: -0.02em;
+        }
+
+        p {
+            color: #a1a1aa;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .button {
+            background-color: #f43f5e;
+            color: #ffffff !important;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 16px;
+            display: inline-block;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .otp-container {
+            background: #1c1c1f;
+            border: 1px dashed #3f3f46;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .otp-label {
+            font-size: 12px;
+            color: #71717a;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+
+        .otp-code {
+            font-family: 'Courier New', monospace;
+            font-size: 32px;
+            font-weight: 800;
+            color: #f43f5e;
+            letter-spacing: 0.2em;
+        }
+
+        .footer {
+            padding: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #71717a;
+            border-top: 1px solid #232326;
+        }
+
+        .footer a {
+            color: #f43f5e;
+            text-decoration: none;
+        }
+    </style>
 </head>
 
-<body
-    style="margin: 0; padding: 0; background-color: #09090b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-    <table width="100%" border="0" cellspacing="0" cellpadding="0"
-        style="background-color: #09090b; width: 100%; height: 100%;">
-        <tr>
-            <td align="center" style="padding: 40px 20px;">
-                <!-- Container -->
-                <table width="100%" border="0" cellspacing="0" cellpadding="0"
-                    style="max-width: 600px; margin: 0 auto;">
+<body>
+    <div class="wrapper">
+        <div class="header">
+            <div style="font-size: 28px; font-weight: 900; color: #ffffff; letter-spacing: 2px;">ESPORTRA</div>
+        </div>
+        <div class="content">
+            <h1>Reset Your Password</h1>
+            <p>We received a request to reset your password. If you didn't make this request, you can safely ignore this
+                email.</p>
 
-                    <!-- Logo -->
-                    <tr>
-                        <td align="center" style="padding-bottom: 32px;">
-                            <img src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSportra%20white%20varianttext.png"
-                                alt="Esportra" width="auto" height="80"
-                                style="display: block; height: 80px; border: 0;">
-                        </td>
-                    </tr>
+            <div class="button-container">
+                <a href="{{ .ConfirmationURL }}" class="button">Set New Password</a>
+            </div>
 
-                    <!-- Card -->
-                    <tr>
-                        <td align="center" bgcolor="#18181b"
-                            style="background-color: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 48px 40px;">
-                            <h1 style="color: #ffffff; font-size: 24px; font-weight: 600; margin: 0 0 24px 0;">Reset
-                                your password</h1>
-                            <p style="color: #a1a1aa; font-size: 16px; line-height: 26px; margin: 0 0 32px 0;">
-                                We received a request to reset the password for your Esportra Partner account.
-                            </p>
+            <div class="otp-container">
+                <div class="otp-label">Direct Reset Code</div>
+                <div class="otp-code">{{ .Token }}</div>
+            </div>
 
-                            <!-- Button -->
-                            <table border="0" cellspacing="0" cellpadding="0">
-                                <tr>
-                                    <td align="center" bgcolor="#e11d48"
-                                        style="background-color: #e11d48; border-radius: 8px;">
-                                        <a href="{{ .ConfirmationURL }}" target="_blank"
-                                            style="display: inline-block; padding: 14px 32px; font-family: inherit; font-size: 16px; font-weight: 600; color: #ffffff !important; background-color: #e11d48; text-decoration: none; border-radius: 8px; border: 1px solid #e11d48;">
-                                            <span style="color: #ffffff !important;">Reset Password</span>
-                                        </a>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <p style="margin-top: 32px; font-size: 14px; color: #71717a; margin-bottom: 0;">
-                                If you didn't request this, you can safely ignore this email.
-                            </p>
-                        </td>
-                    </tr>
-
-                    <!-- Footer -->
-                    <tr>
-                        <td align="center" style="padding-top: 32px;">
-                            <p style="color: #52525b; font-size: 12px; line-height: 20px; margin: 0;">
-                                &copy; 2026 Esportra. All rights reserved.<br>
-                                <a href="mailto:operations@esportra.com"
-                                    style="color: #71717a !important; text-decoration: underline;">Contact Support</a>
-                                &bull;
-                                <a href="#" style="color: #71717a !important; text-decoration: underline;">Privacy
-                                    Policy</a> &bull;
-                                <a href="#" style="color: #71717a !important; text-decoration: underline;">Terms of
-                                    Service</a>
-                            </p>
-                        </td>
-                    </tr>
-
-                </table>
-            </td>
-        </tr>
-    </table>
+            <p style="font-size: 14px; margin-top: 40px;">For security, this link and code will expire in 1 hour.</p>
+        </div>
+        <div class="footer">
+            &copy; 2026 Esportra Support. All rights reserved.<br>
+            Automated system message. Please do not reply.
+        </div>
+    </div>
 </body>
 
 </html>
