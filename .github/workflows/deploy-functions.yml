@@ -33,24 +33,18 @@ jobs:
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
       - name: 🚀 Deploy Functions via SCP + SSH
+        env:
+          SSH_OPTS: "-o StrictHostKeyChecking=no"
+          REMOTE: "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}"
         run: |
-          # 1. Copy function files directly to the server (no git needed on server)
-          scp -r -o StrictHostKeyChecking=no \
-            supabase/functions/* \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/tmp/edge-functions-update/
+          # 1. Create staging directory on server
+          ssh $SSH_OPTS $REMOTE "mkdir -p /tmp/edge-functions-update"
 
-          # 2. SSH in and move files to the live volume with correct permissions
-          ssh -o StrictHostKeyChecking=no \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'DEPLOY'
-            echo "🚀 Syncing Edge Functions..."
-            sudo mkdir -p ${{ env.FUNCTIONS_PATH }}
-            sudo cp -r /tmp/edge-functions-update/* ${{ env.FUNCTIONS_PATH }}/
-            sudo chown -R 1000:1000 ${{ env.FUNCTIONS_PATH }}/
-            rm -rf /tmp/edge-functions-update
-            echo "✅ Functions deployed successfully!"
-            echo "📂 Active functions:"
-            ls -la ${{ env.FUNCTIONS_PATH }}/
-          DEPLOY
+          # 2. Copy function files to the server
+          scp -r $SSH_OPTS supabase/functions/* $REMOTE:/tmp/edge-functions-update/
+
+          # 3. Move files to the live volume with correct permissions
+          ssh $SSH_OPTS $REMOTE "sudo mkdir -p ${{ env.FUNCTIONS_PATH }} && sudo cp -r /tmp/edge-functions-update/* ${{ env.FUNCTIONS_PATH }}/ && sudo chown -R 1000:1000 ${{ env.FUNCTIONS_PATH }}/ && rm -rf /tmp/edge-functions-update && echo 'Functions deployed:' && ls ${{ env.FUNCTIONS_PATH }}/"
 
       - name: ✅ Deployment Summary
         run: |
