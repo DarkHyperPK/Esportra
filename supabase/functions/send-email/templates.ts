@@ -1,3 +1,8 @@
+// ── Environment URLs ──
+const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'https://esportra.com';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://api.esportra.com';
+const PARTNER_URL = Deno.env.get('PARTNER_URL') || 'https://partner.esportra.com';
+
 // ── Base Layout ──
 const baseLayout = (content: string, preheader: string = "") => `
 <!DOCTYPE html>
@@ -20,8 +25,8 @@ const baseLayout = (content: string, preheader: string = "") => `
           <!-- Logo Header -->
           <tr>
             <td align="center" style="padding-bottom: 32px;">
-              <a href="https://esportra.com" target="_blank" style="text-decoration: none; outline: none; border: none;">
-                <img src="https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png" alt="Esportra Logo" width="200" style="display: block; border: 0; outline: none; text-decoration: none;" />
+              <a href="${FRONTEND_URL}" target="_blank" style="text-decoration: none; outline: none; border: none;">
+                <img src="${SUPABASE_URL}/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png" alt="Esportra Logo" width="200" style="display: block; border: 0; outline: none; text-decoration: none;" />
               </a>
             </td>
           </tr>
@@ -93,7 +98,7 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
       <p style="margin:0 0 8px; font-size:13px; color:#666666;">
         Keep an eye on your notifications for check-in reminders and match updates.
       </p>
-      ${button("View Tournament", data.tournamentUrl ? String(data.tournamentUrl).replace(/demo\.esportra\.com|localhost:\d+/, 'esportra.com') : "https://esportra.com")}
+      ${button("View Tournament", data.tournamentUrl ? String(data.tournamentUrl) : `${FRONTEND_URL}`)}
     `, `You're registered for ${data.tournamentName || "a tournament"} on Esportra`)
   }),
 
@@ -109,7 +114,7 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
       <div style="background-color:#1a0a0e; border: 1px solid #e11d48; border-radius:8px; padding:16px; margin-bottom:24px; text-align:center;">
         <p style="margin:0; font-size:13px; color:#f43f5e; font-weight:600; text-transform:uppercase; letter-spacing:1px;">\u26A0\uFE0F Failure to check in = Automatic Removal</p>
       </div>
-      ${button("Check In Now", data.tournamentUrl ? String(data.tournamentUrl).replace(/demo\.esportra\.com|localhost:\d+/, 'esportra.com') : "https://esportra.com")}
+      ${button("Check In Now", data.tournamentUrl ? String(data.tournamentUrl) : `${FRONTEND_URL}`)}
     `, `Check-in is open for ${data.tournamentName || "your tournament"}`)
   }),
 
@@ -121,7 +126,7 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
       <p style="margin:0 0 24px; font-size:15px; color:#999999; line-height:1.6;">
         You are now part of the Esportra competitive gaming ecosystem. Compete in tournaments, build your team, and climb the ranks.
       </p>
-      ${button("Browse Tournaments", "https://esportra.com/tournaments")}
+      ${button("Browse Tournaments", `${FRONTEND_URL}/tournaments`)}
     `, `Welcome to Esportra, ${data.username || "Player"}!`)
   }),
 
@@ -150,7 +155,7 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
         Accepting this invitation will add you to the roster immediately. You can view full team details before deciding.
       </p>
  
-      ${button("Review Invitation", "https://esportra.com/player/teams")}
+      ${button("Review Invitation", `${FRONTEND_URL}/player/teams`)}
     `, `${data.invitedBy || "Someone"} invited you to join ${data.teamName || "a team"}`)
     }
   },
@@ -168,7 +173,7 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
           Since you already have an Esportra account, you can log in directly using your existing email and password.
         </p>
       </div>
-      ${button("Go to Partner Portal", "https://partner.esportra.com/login")}
+      ${button("Go to Partner Portal", `${PARTNER_URL}/login`)}
     `, `Access granted to the ${data.sponsorName || "Sponsor"} Portal on Esportra`)
   }),
 
@@ -183,7 +188,7 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
       <p style="margin:0 0 24px; font-size:14px; color:#888888; line-height:1.6; text-align: center;">
         Use the secure link below to set your password and activate your partner account.
       </p>
-      ${button("Set Up Account", data.setupUrl ? String(data.setupUrl) : "https://partner.esportra.com/login")}
+      ${button("Set Up Account", data.setupUrl ? String(data.setupUrl) : `${PARTNER_URL}/login`)}
       <p style="margin:24px 0 0; font-size:11px; color:#555555; text-align: center;">
         For security, this link will expire in 24 hours.
       </p>

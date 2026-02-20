@@ -11,8 +11,9 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/riot-oauth`;
 
 // Where to send users after linking succeeds/fails
-const FRONTEND_SUCCESS_URL = "https://esportra.com/player/profile?riot_linked=success";
-const FRONTEND_ERROR_URL = "https://esportra.com/player/profile?riot_linked=error";
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://esportra.com";
+const FRONTEND_SUCCESS_URL = `${FRONTEND_URL}/player/profile?riot_linked=success`;
+const FRONTEND_ERROR_URL = `${FRONTEND_URL}/player/profile?riot_linked=error`;
 
 // Riot API endpoints
 const RIOT_TOKEN_URL = "https://auth.riotgames.com/token";

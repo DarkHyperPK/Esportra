@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'https://esportra.com';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -43,7 +44,7 @@ Deno.serve(async (req) => {
                     if (email) {
                         triggerEmail('CHECKIN_REMINDER', email, {
                             tournamentName: tournament.name,
-                            tournamentUrl: `https://esportra.com/tournaments/${tournament.slug}`,
+                            tournamentUrl: `${FRONTEND_URL}/tournaments/${tournament.slug}`,
                             username: name || 'Player'
                         });
                     }
@@ -87,7 +88,7 @@ Deno.serve(async (req) => {
                         triggerEmail('MATCH_CHECKIN_REMINDER', t.info.owner.email, {
                             opponent: t.opponent || 'TBD',
                             minutesRemaining: '15',
-                            matchUrl: `https://esportra.com/tournaments/${match.version?.tournament?.slug}/match/${match.id}`,
+                            matchUrl: `${FRONTEND_URL}/tournaments/${match.version?.tournament?.slug}/match/${match.id}`,
                             username: t.info.owner.username || 'Captain'
                         });
                     }
