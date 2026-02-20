@@ -4,11 +4,11 @@ FROM node:20-alpine AS build-stage
 WORKDIR /app
 
 # Install dependencies specifically for the partner portal
-COPY partner-portal/package*.json ./
+COPY package*.json ./
 RUN npm install
 
 # Copy partner portal source code
-COPY partner-portal/ ./
+COPY . .
 
 # Build the portal
 RUN npm run build
@@ -20,7 +20,7 @@ FROM nginx:stable-alpine AS production-stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
 # Copy custom Nginx configuration
-COPY partner-portal/nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
