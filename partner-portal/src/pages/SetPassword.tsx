@@ -15,32 +15,39 @@ const SetPassword = () => {
 
     useEffect(() => {
         const verifyTokenAndSession = async () => {
-            // Check if we arrived via a token_hash link (from invite-sponsor email)
             const params = new URLSearchParams(window.location.search);
             const tokenHash = params.get('token_hash');
             const type = params.get('type');
 
+            console.log('--- Auth Verification Start ---');
+            console.log('Params:', { hasToken: !!tokenHash, type });
+
             if (tokenHash && type === 'recovery') {
-                const { error: otpError } = await supabase.auth.verifyOtp({
+                const { data, error: otpError } = await supabase.auth.verifyOtp({
                     token_hash: tokenHash,
                     type: 'recovery',
                 });
 
                 if (otpError) {
                     console.error('Token verification failed:', otpError);
-                    setError("Your invite link has expired or is invalid. Please contact your administrator for a new one.");
+                    setError(`Verification failed: ${otpError.message}. Please request a new link.`);
+                } else if (data.session) {
+                    console.log('Session established successfully');
+                    // Success! Clean the URL
+                    window.history.replaceState({}, '', '/set-password');
+                } else {
+                    console.warn('verifyOtp succeeded but no session was returned');
+                    setError("Token verified but no session was established. Please try resetting your password again.");
                 }
-
-                // Clean the URL for a nicer UX
-                window.history.replaceState({}, '', '/set-password');
             } else {
-                // Fallback: check if we already have a session
                 const { data: { session } } = await supabase.auth.getSession();
+                console.log('Checking existing session:', !!session);
                 if (!session) {
-                    setError("No active session. Please use the link from your invitation email.");
+                    setError("No active session detected. Please use the link from your invitation email or reset your password again.");
                 }
             }
             setVerifying(false);
+            console.log('--- Auth Verification End ---');
         };
         verifyTokenAndSession();
     }, []);
