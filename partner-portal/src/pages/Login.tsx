@@ -19,12 +19,30 @@ const Login = () => {
         setError('');
 
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            const { data: { user }, error } = await supabase.auth.signInWithPassword({
                 email,
                 password
             });
 
             if (error) throw error;
+
+            if (user) {
+                // Verify they have a sponsor account
+                const { data: sponsorAccount, error: sponsorError } = await supabase
+                    .from('sponsor_accounts')
+                    .select('sponsor_id')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+
+                if (sponsorError) {
+                    console.error('Sponsor check error:', sponsorError);
+                }
+
+                if (!sponsorAccount) {
+                    await supabase.auth.signOut();
+                    throw new Error('Access denied: Your account is not linked to a sponsor profile.');
+                }
+            }
 
             // Redirect to dashboard explicitly
             navigate('/dashboard');

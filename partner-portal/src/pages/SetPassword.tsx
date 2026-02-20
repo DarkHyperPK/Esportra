@@ -23,6 +23,10 @@ const SetPassword = () => {
             console.log('Params:', { hasToken: !!tokenHash, type });
 
             if (tokenHash && type === 'recovery') {
+                // IMPORTANT: Sign out first to clear any stale/conflicting sessions
+                await supabase.auth.signOut();
+                console.log('Cleared existing sessions for fresh verification');
+
                 const { data, error: otpError } = await supabase.auth.verifyOtp({
                     token_hash: tokenHash,
                     type: 'recovery',
@@ -32,7 +36,7 @@ const SetPassword = () => {
                     console.error('Token verification failed:', otpError);
                     setError(`Verification failed: ${otpError.message}. Please request a new link.`);
                 } else if (data.session) {
-                    console.log('Session established successfully');
+                    console.log('Session established for user:', data.user?.email);
                     // Success! Clean the URL
                     window.history.replaceState({}, '', '/set-password');
                 } else {
@@ -42,7 +46,9 @@ const SetPassword = () => {
             } else {
                 const { data: { session } } = await supabase.auth.getSession();
                 console.log('Checking existing session:', !!session);
-                if (!session) {
+                if (session) {
+                    console.log('Logged in as:', session.user?.email);
+                } else {
                     setError("No active session detected. Please use the link from your invitation email or reset your password again.");
                 }
             }
@@ -69,15 +75,24 @@ const SetPassword = () => {
         setLoading(true);
 
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            console.log('Attempting password update for:', user?.email);
+
+            if (!user) {
+                throw new Error('Your session expired. Please refresh the page and try again.');
+            }
+
             const { error } = await supabase.auth.updateUser({
                 password: password
             });
 
             if (error) throw error;
 
+            console.log('Password updated successfully');
             // Success!
             navigate('/dashboard');
         } catch (err: any) {
+            console.error('Password update error:', err);
             setError(err.message || 'Failed to update password');
         } finally {
             setLoading(false);
