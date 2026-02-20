@@ -1,41 +1,60 @@
-name: Deploy Supabase Functions
+name: 🚀 Deploy Edge Functions
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - 'supabase/functions/**'
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+env:
+  FUNCTIONS_PATH: /data/coolify/services/moooksg0ssk04cg8coksgowc/volumes/functions
 
 jobs:
   deploy:
+    name: Sync Functions to Server
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_IP }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "🚀 Starting Deployment..."
-            
-            # 1. Ensure the repository exists and update it
-            if [ -d "$HOME/Esportra" ]; then
-              echo "Checking for updates in $HOME/Esportra..."
-              cd $HOME/Esportra && git pull
-            else
-              echo "Cloning repository for the first time..."
-              cd $HOME && git clone git@github.com:DarkHyperPK/Esportra.git
-            fi
-            
-            # 2. Sync files to the Coolify volume
-            echo "Syncing Edge Functions to Coolify volume..."
-            sudo mkdir -p /data/coolify/services/moooksg0ssk04cg8coksgowc/volumes/functions/
-            sudo cp -r $HOME/Esportra/supabase/functions/* /data/coolify/services/moooksg0ssk04cg8coksgowc/volumes/functions/
-            
-            # 3. Fix permissions for the Edge Runtime
-            echo "Applying permissions..."
-            sudo chown -R 1000:1000 /data/coolify/services/moooksg0ssk04cg8coksgowc/volumes/functions/
-            
-            echo "✅ Deployment Successful!"
+      - name: 📦 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📂 List changed functions
+        run: |
+          echo "Functions to deploy:"
+          ls -la supabase/functions/
+
+      - name: 🔑 Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: 🚀 Deploy Functions via SCP + SSH
+        run: |
+          # 1. Copy function files directly to the server (no git needed on server)
+          scp -r -o StrictHostKeyChecking=no \
+            supabase/functions/* \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/tmp/edge-functions-update/
+
+          # 2. SSH in and move files to the live volume with correct permissions
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'DEPLOY'
+            echo "🚀 Syncing Edge Functions..."
+            sudo mkdir -p ${{ env.FUNCTIONS_PATH }}
+            sudo cp -r /tmp/edge-functions-update/* ${{ env.FUNCTIONS_PATH }}/
+            sudo chown -R 1000:1000 ${{ env.FUNCTIONS_PATH }}/
+            rm -rf /tmp/edge-functions-update
+            echo "✅ Functions deployed successfully!"
+            echo "📂 Active functions:"
+            ls -la ${{ env.FUNCTIONS_PATH }}/
+          DEPLOY
+
+      - name: ✅ Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "Functions synced to production server." >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
