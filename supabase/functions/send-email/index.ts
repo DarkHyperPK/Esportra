@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { getTemplate } from "./templates.ts";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY"); // Triggers CI/CD sync
 const FROM_EMAIL = "Esportra <operations@esportra.com>";
 
 interface EmailRequest {

@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NotificationProvider } from "@/components/NotificationContext";
-import { createContext, useContext, ReactNode, useState, useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatePresence } from "framer-motion";

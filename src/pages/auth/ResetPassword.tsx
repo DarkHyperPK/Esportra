@@ -53,14 +53,37 @@ const ResetPassword = () => {
     });
 
     useEffect(() => {
-        // Check if we actually have a session (the user should be logged in via the recovery link)
-        const checkSession = async () => {
+        const verifyTokenAndSession = async () => {
+            // Check if we arrived via a token_hash link (from our custom recovery email)
+            const params = new URLSearchParams(window.location.search);
+            const tokenHash = params.get('token_hash');
+            const type = params.get('type');
+
+            if (tokenHash && type === 'recovery') {
+                // Verify the OTP token to establish a session
+                const { error: otpError } = await supabase.auth.verifyOtp({
+                    token_hash: tokenHash,
+                    type: 'recovery',
+                });
+
+                if (otpError) {
+                    console.error('Token verification failed:', otpError);
+                    setError("Your reset link has expired or is invalid. Please request a new one.");
+                    return;
+                }
+
+                // Clean the URL (remove query params) for a nicer UX
+                window.history.replaceState({}, '', '/auth/reset-password');
+                return; // Session is now established, form is ready
+            }
+
+            // Fallback: check if we already have a session (e.g. via hash fragment flow)
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
                 setError("Your reset session has expired or is invalid. Please request a new link.");
             }
         };
-        checkSession();
+        verifyTokenAndSession();
     }, []);
 
     const handleSubmit = async (values: ResetPasswordFormValues) => {

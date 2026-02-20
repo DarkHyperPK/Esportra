@@ -6,6 +6,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://api.esportra.com";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://esportra.com";
 const FROM_EMAIL = "Esportra <operations@esportra.com>";
+const LOGO_URL = 'https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png';
 
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -37,7 +38,7 @@ function getRecoveryTemplate(actionLink: string): string {
           <tr>
             <td align="center" style="padding-bottom: 32px;">
               <a href="${FRONTEND_URL}" target="_blank" style="text-decoration: none; outline: none; border: none;">
-                <img src="${SUPABASE_URL}/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png" alt="Esportra Logo" width="200" style="display: block; border: 0; outline: none; text-decoration: none;" />
+                <img src="${LOGO_URL}" alt="Esportra Logo" width="200" style="display: block; border: 0; outline: none; text-decoration: none;" />
               </a>
             </td>
           </tr>
@@ -129,9 +130,6 @@ Deno.serve(async (req: Request) => {
         const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
             type: "recovery",
             email,
-            options: {
-                redirectTo: `${FRONTEND_URL}/auth/reset-password`,
-            },
         });
 
         if (linkError) {
@@ -139,15 +137,19 @@ Deno.serve(async (req: Request) => {
             throw new Error(linkError.message);
         }
 
-        const actionLink = data?.properties?.action_link;
-        if (!actionLink) {
-            throw new Error("Failed to generate recovery link.");
+        // Use token_hash instead of action_link to keep users on the frontend domain
+        const tokenHash = data?.properties?.hashed_token;
+        if (!tokenHash) {
+            throw new Error("Failed to generate recovery token.");
         }
+
+        // Build a link that points to the frontend, NOT the API
+        const resetLink = `${FRONTEND_URL}/auth/reset-password?token_hash=${tokenHash}&type=recovery`;
 
         console.log(`📧 Sending branded recovery email to ${email}`);
 
         // Send branded email via Resend API
-        const html = getRecoveryTemplate(actionLink);
+        const html = getRecoveryTemplate(resetLink);
         const res = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {

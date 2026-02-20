@@ -65,13 +65,15 @@ Deno.serve(async (req) => {
 
             // Generate a secure password setup link (acts as recovery/invite)
             const partnerUrl = Deno.env.get('PARTNER_URL') || 'https://partner.esportra.com'
-            const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({
+            const { data: linkData, error: linkErr } = await supabaseClient.auth.admin.generateLink({
                 type: 'recovery',
                 email,
-                options: { redirectTo: `${partnerUrl}/set-password` }
             })
-            if (linkError) throw linkError
-            setupUrl = linkData.properties.action_link
+            if (linkErr) throw linkErr
+
+            // Use token_hash to keep users on the Partner Portal domain (not api.esportra.com)
+            const tokenHash = linkData.properties.hashed_token
+            setupUrl = `${partnerUrl}/set-password?token_hash=${tokenHash}&type=recovery`
         }
 
         // 3. Link to Sponsor Account

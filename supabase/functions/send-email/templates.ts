@@ -1,7 +1,9 @@
 // ── Environment URLs ──
 const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'https://esportra.com';
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://api.esportra.com';
 const PARTNER_URL = Deno.env.get('PARTNER_URL') || 'https://partner.esportra.com';
+
+// ── Branding ──
+const LOGO_URL = 'https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png';
 
 // ── Base Layout ──
 const baseLayout = (content: string, preheader: string = "") => `
@@ -26,7 +28,7 @@ const baseLayout = (content: string, preheader: string = "") => `
           <tr>
             <td align="center" style="padding-bottom: 32px;">
               <a href="${FRONTEND_URL}" target="_blank" style="text-decoration: none; outline: none; border: none;">
-                <img src="${SUPABASE_URL}/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png" alt="Esportra Logo" width="200" style="display: block; border: 0; outline: none; text-decoration: none;" />
+                <img src="${LOGO_URL}" alt="Esportra Logo" width="200" style="display: block; border: 0; outline: none; text-decoration: none;" />
               </a>
             </td>
           </tr>
