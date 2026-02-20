@@ -1,10 +1,11 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 
 const AuthLayout = () => {
     const [session, setSession] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const location = useLocation();
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -27,7 +28,8 @@ const AuthLayout = () => {
         );
     }
 
-    if (session) {
+    // Don't redirect away from /set-password — the user needs a session to update their password
+    if (session && location.pathname !== '/set-password') {
         return <Navigate to="/dashboard" replace />;
     }
 
