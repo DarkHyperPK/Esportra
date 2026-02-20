@@ -1,0 +1,41 @@
+name: Deploy Supabase Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/functions/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "🚀 Starting Deployment..."
+            
+            # 1. Ensure the repository exists and update it
+            if [ -d "$HOME/Esportra" ]; then
+              echo "Checking for updates in $HOME/Esportra..."
+              cd $HOME/Esportra && git pull
+            else
+              echo "Cloning repository for the first time..."
+              cd $HOME && git clone git@github.com:DarkHyperPK/Esportra.git
+            fi
+            
+            # 2. Sync files to the Coolify volume
+            echo "Syncing Edge Functions to Coolify volume..."
+            sudo mkdir -p /data/coolify/services/moooksg0ssk04cg8coksgowc/volumes/functions/
+            sudo cp -r $HOME/Esportra/supabase/functions/* /data/coolify/services/moooksg0ssk04cg8coksgowc/volumes/functions/
+            
+            # 3. Fix permissions for the Edge Runtime
+            echo "Applying permissions..."
+            sudo chown -R 1000:1000 /data/coolify/services/moooksg0ssk04cg8coksgowc/volumes/functions/
+            
+            echo "✅ Deployment Successful!"
