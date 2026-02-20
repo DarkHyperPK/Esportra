@@ -116,7 +116,7 @@ Deno.serve(async (req: Request) => {
             );
         }
 
-        const { email } = await req.json();
+        const { email, redirect_url } = await req.json();
         if (!email || typeof email !== "string") {
             throw new Error("A valid email address is required.");
         }
@@ -144,7 +144,10 @@ Deno.serve(async (req: Request) => {
         }
 
         // Build a link that points to the frontend, NOT the API
-        const resetLink = `${FRONTEND_URL}/auth/reset-password?token_hash=${tokenHash}&type=recovery`;
+        // If redirect_url is provided (e.g. from partner portal), use that base
+        const baseUrl = redirect_url || `${FRONTEND_URL}/auth/reset-password`;
+        const separator = baseUrl.includes('?') ? '&' : '?';
+        const resetLink = `${baseUrl}${separator}token_hash=${tokenHash}&type=recovery`;
 
         console.log(`📧 Sending branded recovery email to ${email}`);
 

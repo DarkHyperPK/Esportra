@@ -41,15 +41,18 @@ const Login = () => {
         setError('');
 
         try {
-            const redirectUrl = import.meta.env.VITE_PARTNER_URL ? `${import.meta.env.VITE_PARTNER_URL}/set-password` : `${window.location.origin}/set-password`;
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: redirectUrl,
+            // Use custom Edge Function instead of GoTrue's built-in (which requires SMTP config)
+            const partnerUrl = import.meta.env.VITE_PARTNER_URL || window.location.origin;
+            const { data, error } = await supabase.functions.invoke('send-recovery-email', {
+                body: { email, redirect_url: `${partnerUrl}/set-password` }
             });
 
             if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
             setResetSent(true);
         } catch (err: any) {
-            setError(err.message);
+            setError(err.message || 'Failed to send reset email');
         } finally {
             setLoading(false);
         }
