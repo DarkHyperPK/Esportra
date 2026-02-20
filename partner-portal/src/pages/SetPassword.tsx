@@ -75,20 +75,16 @@ const SetPassword = () => {
         setLoading(true);
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            console.log('Attempting password update for:', user?.email);
-
-            if (!user) {
-                throw new Error('Your session expired. Please refresh the page and try again.');
-            }
-
-            const { error } = await supabase.auth.updateUser({
-                password: password
+            // Use the set-password Edge Function (admin API) instead of client-side updateUser
+            // This bypasses the GoTrue 401 issue with recovery session tokens
+            const { data, error } = await supabase.functions.invoke('set-password', {
+                body: { password }
             });
 
             if (error) throw error;
+            if (data?.error) throw new Error(data.error);
 
-            console.log('Password updated successfully');
+            console.log('Password updated successfully for:', data?.email);
             // Success!
             navigate('/dashboard');
         } catch (err: any) {

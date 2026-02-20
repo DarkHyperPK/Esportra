@@ -91,11 +91,13 @@ const ResetPassword = () => {
         setError(null);
 
         try {
-            const { error } = await supabase.auth.updateUser({
-                password: values.password
+            // Use the set-password Edge Function (admin API) to bypass GoTrue 401 issue
+            const { data, error } = await supabase.functions.invoke('set-password', {
+                body: { password: values.password }
             });
 
             if (error) throw error;
+            if (data?.error) throw new Error(data.error);
 
             setSuccess(true);
             toast({
