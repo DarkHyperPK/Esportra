@@ -11,7 +11,17 @@ const Login = () => {
     const [error, setError] = useState('');
     const [view, setView] = useState<'login' | 'reset'>('login');
     const [resetSent, setResetSent] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
     const navigate = useNavigate();
+
+    useState(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('success') === 'password_updated') {
+            setSuccessMessage('Password successfully updated. Please sign in with your new password.');
+            // Clean URL
+            window.history.replaceState({}, '', '/login');
+        }
+    });
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -100,6 +110,17 @@ const Login = () => {
                     </h1>
                     <p className="text-[10px] font-mono text-zinc-500 tracking-[0.4em] uppercase mt-2">Protocol: Secure_Gateway</p>
                 </div>
+
+                {successMessage && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 text-emerald-400 text-sm"
+                    >
+                        <ShieldCheck className="w-5 h-5 shrink-0" />
+                        <p>{successMessage}</p>
+                    </motion.div>
+                )}
 
                 <AnimatePresence mode="wait">
                     {view === 'reset' && resetSent ? (

@@ -85,8 +85,9 @@ const SetPassword = () => {
             if (data?.error) throw new Error(data.error);
 
             console.log('Password updated successfully for:', data?.email);
-            // Success!
-            navigate('/dashboard');
+            // Redirect to login with success message instead of dashboard
+            // This ensures a fresh session and avoids the 401 issue
+            navigate('/login?success=password_updated');
         } catch (err: any) {
             console.error('Password update error:', err);
             setError(err.message || 'Failed to update password');
