@@ -1,12 +1,12 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -86,16 +86,19 @@ serve(async (req) => {
         if (linkError) throw linkError
 
         // 4. Trigger Branded Email via send-email function
+        // FIX: send-email expects { type, email, data } not { to, template, data }
         const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`
         const emailPayload = {
-            to: email,
-            template: isNewUser ? 'PARTNER_INVITE' : 'PARTNER_WELCOME',
+            type: isNewUser ? 'PARTNER_INVITE' : 'PARTNER_WELCOME',
+            email: email,
             data: {
                 sponsorName,
                 setupUrl,
                 email
             }
         }
+
+        console.log(`Sending ${emailPayload.type} email to ${email} via send-email function`)
 
         const emailResponse = await fetch(functionUrl, {
             method: 'POST',
@@ -110,6 +113,8 @@ serve(async (req) => {
             const errText = await emailResponse.text()
             console.error("Email Function Error:", errText)
             // We don't fail the whole request if email fails, but we log it
+        } else {
+            console.log("Email sent successfully!")
         }
 
         return new Response(JSON.stringify({
@@ -121,9 +126,10 @@ serve(async (req) => {
             status: 200,
         })
 
-    } catch (error: any) {
-        console.error("Critical Function Error:", error.message)
-        return new Response(JSON.stringify({ error: error.message }), {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("Critical Function Error:", message)
+        return new Response(JSON.stringify({ error: message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         })
