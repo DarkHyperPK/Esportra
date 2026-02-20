@@ -31,7 +31,15 @@ export const usePartnerData = () => {
                 .returns<{ sponsor_id: string; role: string }[]>()
                 .single();
 
-            if (accountError || !account) throw new Error('No sponsor account linked');
+            if (accountError) {
+                console.error('Sponsor account fetch error:', accountError);
+                console.log('Current User ID:', user.id);
+                // Help distinguish between RLS/Auth issues and missing data
+                if (accountError.code === 'PGRST116') throw new Error('NO_SPONSOR_LINKED');
+                throw accountError;
+            }
+
+            if (!account) throw new Error('No sponsor account linked');
 
             // Get sponsor details
             const { data: sponsor, error: sponsorError } = await supabase
