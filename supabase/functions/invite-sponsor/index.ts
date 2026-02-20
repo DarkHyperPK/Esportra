@@ -48,13 +48,13 @@ Deno.serve(async (req) => {
         let setupUrl = "";
 
         if (existingUser) {
-            console.log("Existing user detected. Linking and sending welcome email.")
+            console.log("Existing user detected. Linking to sponsor.")
             user = existingUser
         } else {
-            console.log("New user detected. Creating account and generating setup link.")
+            console.log("New user detected. Creating account.")
             isNewUser = true
 
-            // Create the user (they will need to reset password via the link)
+            // Create the user (they will need to set password via the link)
             const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
                 email,
                 email_confirm: true,
@@ -62,19 +62,19 @@ Deno.serve(async (req) => {
             })
             if (createError) throw createError
             user = newUser.user
-
-            // Generate a secure password setup link (acts as recovery/invite)
-            const partnerUrl = Deno.env.get('PARTNER_URL') || 'https://partner.esportra.com'
-            const { data: linkData, error: linkErr } = await supabaseClient.auth.admin.generateLink({
-                type: 'recovery',
-                email,
-            })
-            if (linkErr) throw linkErr
-
-            // Use token_hash to keep users on the Partner Portal domain (not api.esportra.com)
-            const tokenHash = linkData.properties.hashed_token
-            setupUrl = `${partnerUrl}/set-password?token_hash=${tokenHash}&type=recovery`
         }
+
+        // ALWAYS generate a password setup link (existing users may not have a password if they use OAuth)
+        const partnerUrl = Deno.env.get('PARTNER_URL') || 'https://partner.esportra.com'
+        const { data: linkData, error: linkErr } = await supabaseClient.auth.admin.generateLink({
+            type: 'recovery',
+            email,
+        })
+        if (linkErr) throw linkErr
+
+        // Use token_hash to keep users on the Partner Portal domain (not api.esportra.com)
+        const tokenHash = linkData.properties.hashed_token
+        setupUrl = `${partnerUrl}/set-password?token_hash=${tokenHash}&type=recovery`
 
         // 3. Link to Sponsor Account
         const { error: linkError } = await supabaseClient
@@ -87,11 +87,10 @@ Deno.serve(async (req) => {
 
         if (linkError) throw linkError
 
-        // 4. Trigger Branded Email via send-email function
-        // FIX: send-email expects { type, email, data } not { to, template, data }
+        // 4. Always send PARTNER_INVITE with setup link (so they can set a password for the portal)
         const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`
         const emailPayload = {
-            type: isNewUser ? 'PARTNER_INVITE' : 'PARTNER_WELCOME',
+            type: 'PARTNER_INVITE',
             email: email,
             data: {
                 sponsorName,
