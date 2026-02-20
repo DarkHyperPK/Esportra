@@ -3,6 +3,16 @@ FROM node:20-alpine AS build-stage
 
 WORKDIR /app
 
+# Define build arguments for environment variables
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_APP_NAME="Esportra Partner Portal"
+
+# Export them as environment variables so Vite picks them up
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+ENV VITE_APP_NAME=$VITE_APP_NAME
+
 # Install dependencies specifically for the partner portal
 COPY package*.json ./
 RUN npm install
