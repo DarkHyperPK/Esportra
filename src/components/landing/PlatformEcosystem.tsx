@@ -67,7 +67,7 @@ const PlatformEcosystem = () => {
                         >
                             <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-full" />
                             <div className="relative z-10 w-full h-full border border-white/10 rounded-full flex items-center justify-center bg-black/60 backdrop-blur-2xl">
-                                <img src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
+                                <img src="https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
                                     className="h-8 md:h-14 opacity-90 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]"
                                     alt="Core" />
                             </div>

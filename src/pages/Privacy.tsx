@@ -10,7 +10,7 @@ const PrivacyPage: React.FC = () => {
         <div className="mb-12">
           <Link to="/" className="inline-block mb-8">
             <img
-              src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
+              src="https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
               alt="Esportra"
               className="h-8 opacity-80"
             />

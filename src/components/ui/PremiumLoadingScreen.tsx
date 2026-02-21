@@ -9,7 +9,7 @@ interface PremiumLoadingScreenProps {
 export const PremiumLoadingScreen: React.FC<PremiumLoadingScreenProps> = ({
     className = ""
 }) => {
-    const logoSrc = "https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png";
+    const logoSrc = "https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png";
 
     return (
         <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-[#050507] text-white overflow-hidden ${className}`}>

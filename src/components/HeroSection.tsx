@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 
 // LCP-optimized: Use direct URL without any SDK calls
-const HERO_VIDEO_URL = 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/hero%20section%20video/video3.mp4';
+const HERO_VIDEO_URL = 'https://api.esportra.com/storage/v1/object/public/system.assets.website/hero%20section%20video/video3.mp4';
 
 const HeroSection = () => {
   const { user } = useAuth();
@@ -66,7 +66,7 @@ const HeroSection = () => {
           muted
           playsInline
           preload="auto"
-          poster="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/hero%20section%20video/poster.png"
+          poster="https://api.esportra.com/storage/v1/object/public/system.assets.website/hero%20section%20video/poster.png"
           onCanPlayThrough={() => setIsVideoLoaded(true)}
           onError={(e) => console.error("Hero video failed to load:", e)}
           initial={{ opacity: 0 }}
@@ -142,7 +142,7 @@ const HeroSection = () => {
           className="flex flex-col items-center justify-center pt-20"
         >
           <img
-            src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
+            src="https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
             alt="Esportra Logo"
             className="h-24 md:h-32 w-auto opacity-90 drop-shadow-[0_0_25px_rgba(255,255,255,0.1)] transition-all duration-1000"
           />

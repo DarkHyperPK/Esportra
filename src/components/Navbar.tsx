@@ -66,7 +66,7 @@ const Navbar = () => {
             <div className="flex items-center gap-3">
               <Link to="/" className="flex items-center gap-2 select-none">
                 <img
-                  src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
+                  src="https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
                   alt="Esportra Logo"
                   className="h-10 w-auto"
                 />

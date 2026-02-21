@@ -133,7 +133,11 @@ async function invokeTrack(sponsorId: string, eventType: 'impression' | 'click')
     console.log(`[Tracking] invoking record-metric for ${sponsorId} (${eventType})`);
     try {
         const { data, error } = await supabase.functions.invoke('record-metric', {
-            body: { sponsor_id: sponsorId, event_type: eventType },
+            body: {
+                sponsor_id: sponsorId,
+                event_type: eventType,
+                page_url: typeof window !== 'undefined' ? window.location.href : null,
+            },
         });
 
         if (error) {

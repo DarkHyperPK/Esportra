@@ -1222,7 +1222,7 @@ const TournamentDashboard = () => {
       // 2. Fetch from RAWG via Edge Function proxy if missing data
       if (!background || !logo) {
         try {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://abbjywqlxnxoutllbgke.supabase.co';
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://api.esportra.com';
           const res = await fetch(`${supabaseUrl}/functions/v1/rawg-proxy?search=${encodeURIComponent(gameName)}`);
           const data = await res.json();
           if (data && data.results && data.results.length > 0) {

@@ -71,7 +71,7 @@ const WebShowcase = () => {
                             {/* Mock UI: Brackets */}
                             <div className="p-8 md:p-12 aspect-video bg-gradient-to-br from-[#121212] to-[#0a0a0a] relative overflow-hidden">
                                 <div className="flex items-center gap-4 mb-12">
-                                    <img src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png" className="h-6 opacity-80" alt="Logo" />
+                                    <img src="https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png" className="h-6 opacity-80" alt="Logo" />
                                     <div className="h-4 w-px bg-white/10" />
                                     <div className="text-white/60 text-sm font-medium">Tournament Hub</div>
                                 </div>

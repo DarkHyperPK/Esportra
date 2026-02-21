@@ -8,7 +8,7 @@ VALUES (
   'Valorant',
   'Corrode',
   true,
-  'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/website-assets/Valorant%20Maps%20Pictures/Corrode.webp'
+  'https://api.esportra.com/storage/v1/object/public/website-assets/Valorant%20Maps%20Pictures/Corrode.webp'
 )
 ON CONFLICT (game, map_name) DO UPDATE
 SET 

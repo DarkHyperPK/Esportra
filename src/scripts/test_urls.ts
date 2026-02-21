@@ -2,9 +2,9 @@ import fetch from 'node-fetch';
 import * as fs from 'fs';
 
 const urlsToTest = [
-    { name: 'Abyss', url: 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Abyss.webp' },
-    { name: 'Ascent', url: 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Ascent.webp' },
-    { name: 'Bind', url: 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Bind.webp' },
+    { name: 'Abyss', url: 'https://api.esportra.com/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Abyss.webp' },
+    { name: 'Ascent', url: 'https://api.esportra.com/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Ascent.webp' },
+    { name: 'Bind', url: 'https://api.esportra.com/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Bind.webp' },
 ];
 
 async function testUrls() {

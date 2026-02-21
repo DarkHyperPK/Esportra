@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 
-const testUrl = 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Abyss.webp';
+const testUrl = 'https://api.esportra.com/storage/v1/object/public/system.assets.website/Valorant%20Maps%20Pictures/Abyss.webp';
 
 async function testCORS() {
     try {

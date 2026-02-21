@@ -4,7 +4,7 @@
  * The API key lives server-side only.
  */
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://abbjywqlxnxoutllbgke.supabase.co';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://api.esportra.com';
 const PROXY_URL = `${SUPABASE_URL}/functions/v1/rawg-proxy`;
 
 /**

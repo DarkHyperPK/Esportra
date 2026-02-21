@@ -436,7 +436,7 @@ const OnboardingWizard = () => {
             {/* Header */}
             <header className="relative z-10 flex items-center justify-between px-8 py-6 border-b border-white/5">
                 <div className="flex items-center gap-3">
-                    <img src={branding?.logoUrl || '/logo.svg'} alt="Esportra" className="w-7 h-7 object-contain" />
+                    <img src={branding?.logoUrl || "https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"} alt="Esportra" className="w-7 h-7 object-contain" />
                     <span className="text-sm font-black tracking-tighter">
                         ESPORTRA<span className="text-rose-500">_ONBOARD</span>
                     </span>

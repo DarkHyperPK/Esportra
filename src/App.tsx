@@ -153,7 +153,7 @@ const AppContent = React.memo(() => {
       {/* Global Background - Video Only (Seamless Loop) */}
       <div className="fixed inset-0 w-full h-full -z-10">
         <SeamlessVideoLoop
-          src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/Tournament%20dashboard%20background%20animation/background.mp4"
+          src="https://api.esportra.com/storage/v1/object/public/system.assets.website/Tournament%20dashboard%20background%20animation/background.mp4"
           className="mix-blend-screen opacity-40"
           style={{ filter: 'contrast(1.2) saturation(1.1)' }}
 

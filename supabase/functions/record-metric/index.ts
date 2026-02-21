@@ -124,7 +124,7 @@ Deno.serve(async (req: Request) => {
             .insert({
                 sponsor_id,
                 event_type,
-                page_url: req.headers.get("referer") || null,
+                page_url: body.page_url || req.headers.get("referer") || null,
                 visitor_id: visitorId,
                 metadata: { country, age_group: resolvedAgeGroup },
             })

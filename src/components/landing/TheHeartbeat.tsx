@@ -94,7 +94,7 @@ const TheHeartbeat = () => {
                             style={{ willChange: "transform, filter" }}
                             className="relative z-20"
                         >
-                            <img src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
+                            <img src="https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
                                 className="h-14 md:h-24 opacity-100"
                                 alt="Core" />
                         </motion.div>
