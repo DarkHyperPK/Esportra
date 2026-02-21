@@ -7,7 +7,7 @@ const LogoTicker = () => {
         {
             id: 'cdf07085-be07-47ce-9fe5-67bee44ee023',
             name: 'SystemOptiX',
-            logo_url: 'https://api.esportra.com/storage/v1/object/public/system.assets.sponsors/SystemOptiX/Full%20Logo%20White%20variant%20updated.png',
+            logo_url: 'https://api.esportra.com/storage/v1/object/public/system.assets.partners/SystemOptiX/logo.png',
             website_url: 'https://systemoptix.net/',
             accent_color: '#06b6d4'
         },
