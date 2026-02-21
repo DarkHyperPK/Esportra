@@ -45,6 +45,7 @@ const Login = () => {
                     .from('sponsor_accounts')
                     .select('sponsor_id')
                     .eq('user_id', user.id)
+                    .limit(1)
                     .maybeSingle();
 
                 if (sponsorError) {

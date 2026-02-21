@@ -30,7 +30,8 @@ export const usePartnerData = () => {
                 .select('sponsor_id, role')
                 .eq('user_id', user.id)
                 .returns<{ sponsor_id: string; role: string; onboarding_meta?: any }[]>()
-                .single();
+                .limit(1)
+                .maybeSingle();
 
             if (accountError) {
                 console.error('Sponsor account fetch error:', accountError);

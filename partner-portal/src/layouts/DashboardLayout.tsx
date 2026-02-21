@@ -32,7 +32,8 @@ const DashboardLayout = () => {
                     .from('sponsor_accounts')
                     .select('onboarding_meta')
                     .eq('user_id', user.id)
-                    .single();
+                    .limit(1)
+                    .maybeSingle();
 
                 const meta = account?.onboarding_meta as any;
                 if (!meta?.completed) {

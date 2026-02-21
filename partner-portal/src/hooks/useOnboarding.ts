@@ -44,7 +44,8 @@ export const useOnboarding = () => {
                 .from('sponsor_accounts')
                 .select('sponsor_id, onboarding_meta')
                 .eq('user_id', user.id)
-                .single();
+                .limit(1)
+                .maybeSingle();
 
             if (error) throw error;
             if (!data) throw new Error('No sponsor account found');
