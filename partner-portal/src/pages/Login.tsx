@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -14,14 +14,14 @@ const Login = () => {
     const [successMessage, setSuccessMessage] = useState('');
     const navigate = useNavigate();
 
-    useState(() => {
+    useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         if (params.get('success') === 'password_updated') {
             setSuccessMessage('Password successfully updated. Please sign in with your new password.');
             // Clean URL
             window.history.replaceState({}, '', '/login');
         }
-    });
+    }, [navigate]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();

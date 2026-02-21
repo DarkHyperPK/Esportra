@@ -66,10 +66,11 @@ Deno.serve(async (req: Request) => {
 
         if (!resendResponse.ok) {
             console.error("[send-email] Resend error:", resendResult);
-            throw new Error(resendResult?.message || "Failed to send email via Resend");
+            const errorMessage = resendResult?.message || resendResult?.error?.message || "Failed to send email via Resend";
+            throw new Error(`${errorMessage} (Status: ${resendResponse.status})`);
         }
 
-        console.log(`[send-email] Email sent successfully:`, resendResult);
+        console.log(`[send-email] Email sent successfully:`, resendResult.id || resendResult);
 
         return new Response(
             JSON.stringify({ success: true, id: resendResult.id }),

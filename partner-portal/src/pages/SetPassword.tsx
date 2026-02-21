@@ -14,48 +14,22 @@ const SetPassword = () => {
     const [verifying, setVerifying] = useState(true);
 
     useEffect(() => {
-        const verifyTokenAndSession = async () => {
+        const checkParams = () => {
             const params = new URLSearchParams(window.location.search);
             const tokenHash = params.get('token_hash');
             const type = params.get('type');
 
-            console.log('--- Auth Verification Start ---');
-            console.log('Params:', { hasToken: !!tokenHash, type });
-
-            if (tokenHash && type === 'recovery') {
-                // IMPORTANT: Sign out first to clear any stale/conflicting sessions
-                await supabase.auth.signOut();
-                console.log('Cleared existing sessions for fresh verification');
-
-                const { data, error: otpError } = await supabase.auth.verifyOtp({
-                    token_hash: tokenHash,
-                    type: 'recovery',
+            if (!tokenHash && !type) {
+                // If no token in URL, check for existing session as fallback
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    if (!session) {
+                        setError("No active session or valid invite link detected. Please use the link from your email.");
+                    }
                 });
-
-                if (otpError) {
-                    console.error('Token verification failed:', otpError);
-                    setError(`Verification failed: ${otpError.message}. Please request a new link.`);
-                } else if (data.session) {
-                    console.log('Session established for user:', data.user?.email);
-                    // Success! Clean the URL
-                    window.history.replaceState({}, '', '/set-password');
-                } else {
-                    console.warn('verifyOtp succeeded but no session was returned');
-                    setError("Token verified but no session was established. Please try resetting your password again.");
-                }
-            } else {
-                const { data: { session } } = await supabase.auth.getSession();
-                console.log('Checking existing session:', !!session);
-                if (session) {
-                    console.log('Logged in as:', session.user?.email);
-                } else {
-                    setError("No active session detected. Please use the link from your invitation email or reset your password again.");
-                }
             }
             setVerifying(false);
-            console.log('--- Auth Verification End ---');
         };
-        verifyTokenAndSession();
+        checkParams();
     }, []);
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -75,18 +49,25 @@ const SetPassword = () => {
         setLoading(true);
 
         try {
-            // Use the set-password Edge Function (admin API) instead of client-side updateUser
-            // This bypasses the GoTrue 401 issue with recovery session tokens
+            const params = new URLSearchParams(window.location.search);
+            const token_hash = params.get('token_hash');
+            const type = params.get('type');
+
+            // Pass token_hash and type directly to the Edge Function for server-side verification
             const { data, error } = await supabase.functions.invoke('set-password', {
-                body: { password }
+                body: {
+                    password,
+                    token_hash,
+                    type: type || 'recovery' // Default to recovery for reset links
+                }
             });
 
             if (error) throw error;
             if (data?.error) throw new Error(data.error);
 
             console.log('Password updated successfully for:', data?.email);
-            // Redirect to login with success message instead of dashboard
-            // This ensures a fresh session and avoids the 401 issue
+
+            // Redirect to login with success message as requested for "manual login" flow
             navigate('/login?success=password_updated');
         } catch (err: any) {
             console.error('Password update error:', err);
