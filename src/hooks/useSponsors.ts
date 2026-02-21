@@ -125,14 +125,14 @@ export function useSponsorStats(sponsorId: string) {
 }
 
 // ─── TRACKING VIA EDGE FUNCTION ──────────────────────────────────────
-// All tracking now goes through the `track-impression` Edge Function.
+// All tracking now goes through the `record-metric` Edge Function.
 // This is more secure (no public DB inserts), more reliable (bypasses
 // ad-blockers), and enables server-side GeoIP + age-group resolution.
 
 async function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
-    console.log(`[Tracking] invoking track-impression for ${sponsorId} (${eventType})`);
+    console.log(`[Tracking] invoking record-metric for ${sponsorId} (${eventType})`);
     try {
-        const { data, error } = await supabase.functions.invoke('track-impression', {
+        const { data, error } = await supabase.functions.invoke('record-metric', {
             body: { sponsor_id: sponsorId, event_type: eventType },
         });
 
