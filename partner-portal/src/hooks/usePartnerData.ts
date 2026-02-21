@@ -21,6 +21,7 @@ export const usePartnerData = () => {
         queryKey: ['partner', 'profile'],
         queryFn: async () => {
             const { data: { user } } = await supabase.auth.getUser();
+            console.log('HOOK EXECUTION STARTED - User ID:', user?.id);
             if (!user) throw new Error('Not authenticated');
 
             // Get linked sponsor account
