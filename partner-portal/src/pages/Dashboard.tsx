@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import EditProfileModal from '@/components/EditProfileModal';
 
 const Dashboard = () => {
-    const { data, isLoading, isError } = usePartnerData();
+    const { data, isLoading, error } = usePartnerData();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     if (isLoading) {
@@ -18,20 +18,25 @@ const Dashboard = () => {
         );
     }
 
-    if (isError || !data) {
+    if (error || !data) {
+        const errorMsg = (error as Error)?.message || 'SYNC_FAILURE';
+        const isAuthError = errorMsg.includes('Not authenticated') || errorMsg.includes('Unauthorized');
+
         return (
             <div className="h-[60vh] flex flex-col items-center justify-center gap-6 text-center px-4">
                 <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-2">
                     <TrendingUp className="w-8 h-8 text-rose-500" />
                 </div>
                 <div>
-                    <h3 className="text-xl font-bold text-white mb-2">ACCESS_DENIED or SYNC_FAILURE</h3>
+                    <h3 className="text-xl font-bold text-white mb-2">{isAuthError ? 'AUTHENTICATION_REQUIRED' : 'ACCESS_DENIED or SYNC_FAILURE'}</h3>
                     <p className="text-zinc-500 max-w-md mx-auto mb-6">
-                        We could not retrieve your partner profile. This usually means your account hasn't been linked to a sponsor yet.
+                        {isAuthError
+                            ? 'Your session has expired or is invalid. Please log in again to access the terminal.'
+                            : "We could not retrieve your partner profile. This usually means your account hasn't been linked to a sponsor yet."}
                     </p>
                     <div className="p-4 bg-rose-500/5 border border-rose-500/10 rounded-lg text-xs font-mono text-rose-400 mb-8 max-w-sm mx-auto">
-                        ERROR_CODE: NO_SPONSOR_LINKED<br />
-                        ACTION: CONTACT_ADMINISTRATOR
+                        ERROR_CODE: {isAuthError ? 'SESSION_INVALID' : (errorMsg === 'NO_SPONSOR_LINKED' ? 'NO_SPONSOR_LINKED' : 'DATA_FETCH_ERROR')}<br />
+                        DETAILS: {errorMsg}
                     </div>
                     <button
                         onClick={() => window.location.reload()}
@@ -40,10 +45,10 @@ const Dashboard = () => {
                         RETRY_CONNECTION
                     </button>
                     <button
-                        onClick={() => supabase.auth.signOut().then(() => window.location.reload())}
+                        onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')}
                         className="px-6 py-2 bg-zinc-900 border border-zinc-800 text-white font-bold rounded-lg hover:bg-zinc-800 transition-colors"
                     >
-                        SYSTEM_LOGOUT
+                        {isAuthError ? 'GO_TO_LOGIN' : 'SYSTEM_LOGOUT'}
                     </button>
                 </div>
             </div>

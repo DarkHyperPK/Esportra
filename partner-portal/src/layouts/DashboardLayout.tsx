@@ -12,8 +12,10 @@ const DashboardLayout = () => {
     const { data: branding } = useBranding();
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
+        // Use getUser() for initial verification as it hits the server to verify the session
+        // getSession() only reads from localStorage and might be stale/invalid
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setSession(user ? true : null); // We only need a truthy value here for the session check
             setIsLoading(false);
         });
 
