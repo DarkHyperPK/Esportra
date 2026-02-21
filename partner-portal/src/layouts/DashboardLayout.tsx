@@ -9,19 +9,39 @@ const DashboardLayout = () => {
     const location = useLocation();
     const [isLoading, setIsLoading] = useState(true);
     const [session, setSession] = useState<any>(null);
+    const [needsOnboarding, setNeedsOnboarding] = useState(false);
     const { data: branding } = useBranding();
 
     useEffect(() => {
         // Use getUser() for initial verification as it hits the server to verify the session
         // getSession() only reads from localStorage and might be stale/invalid
-        supabase.auth.getUser().then(({ data: { user }, error }) => {
+        supabase.auth.getUser().then(async ({ data: { user }, error }) => {
             if (error || !user) {
                 // If there's an error or no user, clear any stale state to prevent loops
                 if (user || error) supabase.auth.signOut();
                 setSession(null);
-            } else {
-                setSession(user);
+                setIsLoading(false);
+                return;
             }
+
+            setSession(user);
+
+            // Check onboarding status
+            try {
+                const { data: account } = await (supabase as any)
+                    .from('sponsor_accounts')
+                    .select('onboarding_meta')
+                    .eq('user_id', user.id)
+                    .single();
+
+                const meta = account?.onboarding_meta as any;
+                if (!meta?.completed) {
+                    setNeedsOnboarding(true);
+                }
+            } catch {
+                // If query fails, proceed normally (column may not exist for this user)
+            }
+
             setIsLoading(false);
         });
 
@@ -44,6 +64,11 @@ const DashboardLayout = () => {
 
     if (!session) {
         return <Navigate to="/login" replace />;
+    }
+
+    // Redirect first-time sponsors to onboarding wizard
+    if (needsOnboarding) {
+        return <Navigate to="/onboarding" replace />;
     }
 
     const navItems = [

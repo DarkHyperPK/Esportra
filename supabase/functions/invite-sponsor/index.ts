@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        const { email, sponsor_id } = await req.json()
+        const { email, sponsor_id, application_id } = await req.json()
 
         if (!email || !sponsor_id) {
             throw new Error("Email and sponsor_id are required")
@@ -76,18 +76,32 @@ Deno.serve(async (req) => {
         const tokenHash = linkData.properties.hashed_token
         setupUrl = `${partnerUrl}/set-password?token_hash=${tokenHash}&type=recovery`
 
-        // 3. Link to Sponsor Account
+        // 3. Link to Sponsor Account with onboarding_meta initialized
         const { error: linkError } = await supabaseClient
             .from('sponsor_accounts')
             .upsert({
                 user_id: user.id,
                 sponsor_id: sponsor_id,
-                role: 'owner'
+                role: 'owner',
+                onboarding_meta: { completed: false, current_step: 0, completed_at: null, steps: {} }
             }, { onConflict: 'user_id, sponsor_id' })
 
         if (linkError) throw linkError
 
-        // 4. Always send PARTNER_INVITE with setup link (so they can set a password for the portal)
+        // 4. If application_id provided, mark application as approved
+        if (application_id) {
+            const { error: appError } = await supabaseClient
+                .from('partner_applications')
+                .update({ status: 'approved' })
+                .eq('id', application_id)
+
+            if (appError) {
+                console.error("Failed to update application status:", appError.message)
+                // Non-fatal — don't fail the whole invite
+            }
+        }
+
+        // 5. Always send PARTNER_INVITE with setup link (so they can set a password for the portal)
         const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`
         const emailPayload = {
             type: 'PARTNER_INVITE',
@@ -121,7 +135,8 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({
             success: true,
             isNewUser,
-            user_id: user.id
+            user_id: user.id,
+            setupUrl,
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,

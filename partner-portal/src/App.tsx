@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
 import Assets from './pages/Assets';
 import Account from './pages/Account';
+import OnboardingWizard from './pages/OnboardingWizard';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 
@@ -17,6 +18,9 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/set-password" element={<SetPassword />} />
         </Route>
+
+        {/* Onboarding — Protected but no sidebar chrome */}
+        <Route path="/onboarding" element={<OnboardingWizard />} />
 
         {/* Protected Dashboard Routes */}
         <Route element={<DashboardLayout />}>

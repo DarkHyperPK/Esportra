@@ -140,7 +140,7 @@ const SponsorManagement = () => {
 
     // Modals
     const [appModal, setAppModal] = useState<{ open: boolean; app: Application | null }>({ open: false, app: null });
-    const [sponsorModal, setSponsorModal] = useState<{ open: boolean; sponsor: Partial<Sponsor> | null; isNew: boolean; linkedAppId?: string }>({ open: false, sponsor: null, isNew: true });
+    const [sponsorModal, setSponsorModal] = useState<{ open: boolean; sponsor: Partial<Sponsor> | null; isNew: boolean; linkedAppId?: string; linkedAppEmail?: string }>({ open: false, sponsor: null, isNew: true });
     const [inviteModal, setInviteModal] = useState<{ open: boolean; sponsor: Sponsor | null; email: string }>({ open: false, sponsor: null, email: '' });
 
     // Stats for Display
@@ -210,6 +210,7 @@ const SponsorManagement = () => {
             open: true,
             isNew: true,
             linkedAppId: app.id,
+            linkedAppEmail: app.contact_email,
             sponsor: {
                 name: app.company_name,
                 website_url: app.company_website,
@@ -218,7 +219,7 @@ const SponsorManagement = () => {
                 accent_color: '#8b5cf6', // Default
                 placement: ['banner'],
                 priority: 0,
-                is_active: false // Draft mode initially
+                is_active: true // Auto-activate on promotion
             }
         });
     };
@@ -232,6 +233,7 @@ const SponsorManagement = () => {
             return;
         }
 
+        setLoading(true);
         const payload = {
             name: s.name,
             tagline: s.tagline || null,
@@ -249,37 +251,53 @@ const SponsorManagement = () => {
             gallery_images: s.gallery_images || []
         };
 
-        let error;
+        let sponsorData;
+        let sponsorError;
+
         if (sponsorModal.isNew) {
-            const { error: insertError } = await supabase.from('sponsors').insert(payload);
-            error = insertError;
+            const { data, error: insertError } = await supabase.from('sponsors').insert(payload).select().single();
+            sponsorData = data;
+            sponsorError = insertError;
         } else {
-            const { error: updateError } = await supabase.from('sponsors').update(payload).eq('id', s.id!);
-            error = updateError;
+            const { data, error: updateError } = await supabase.from('sponsors').update(payload).eq('id', s.id!).select().single();
+            sponsorData = data;
+            sponsorError = updateError;
         }
 
-        if (error) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        if (sponsorError) {
+            setLoading(false);
+            toast({ title: 'Error', description: sponsorError.message, variant: 'destructive' });
             return;
         }
 
-        // If this was a promotion from an application, mark the app as approved
-        if (sponsorModal.linkedAppId) {
-            const { error: appError } = await supabase
-                .from('partner_applications')
-                .update({ status: 'approved' })
-                .eq('id', sponsorModal.linkedAppId);
+        // If this was a promotion from an application, mark the app as approved AND invite
+        if (sponsorModal.linkedAppId && sponsorModal.linkedAppEmail) {
+            try {
+                const { data: inviteData, error: inviteError } = await supabase.functions.invoke('invite-sponsor', {
+                    body: {
+                        email: sponsorModal.linkedAppEmail,
+                        sponsor_id: sponsorData.id,
+                        application_id: sponsorModal.linkedAppId
+                    }
+                });
 
-            if (appError) {
-                console.error('Failed to update application status:', appError);
-                toast({ title: 'Warning', description: 'Sponsor created, but failed to update application status.', variant: 'destructive' });
-            } else {
-                toast({ title: 'Application Approved', description: 'Application status updated to Approved.' });
+                if (inviteError) throw inviteError;
+
+                setInviteResult({
+                    open: true,
+                    message: `Sponsor created and application approved! An invitation has been sent to ${sponsorModal.linkedAppEmail}.${inviteData?.setupUrl ? '\n\nSetup URL for manual copy:' : ''}`,
+                    link: inviteData?.setupUrl
+                });
+            } catch (err: any) {
+                console.error('Failed to trigger onboarding:', err);
+                toast({ title: 'Partial Success', description: 'Sponsor created, but onboarding invite failed. Please invite manually.', variant: 'destructive' });
             }
+        } else {
+            toast({ title: 'Success', description: `Sponsor ${sponsorModal.isNew ? 'created' : 'updated'} successfully.` });
         }
 
-        toast({ title: 'Success', description: `Sponsor ${sponsorModal.isNew ? 'created' : 'updated'} successfully.` });
-        setSponsorModal({ open: false, sponsor: null, isNew: true, linkedAppId: undefined });
+        setLoading(false);
+        setSponsorModal({ open: false, sponsor: null, isNew: true, linkedAppId: undefined, linkedAppEmail: undefined });
         fetchData();
     };
 
@@ -295,7 +313,7 @@ const SponsorManagement = () => {
         fetchData();
     };
 
-    const [inviteResult, setInviteResult] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
+    const [inviteResult, setInviteResult] = useState<{ open: boolean; message: string; link?: string }>({ open: false, message: '', link: '' });
 
     const handleInviteUser = async () => {
         if (!inviteModal.email || !inviteModal.sponsor) return;
@@ -330,10 +348,11 @@ const SponsorManagement = () => {
                     open: true,
                     message: `Account found! ${inviteModal.email} is already an Esportra member. We've granted them access to this partner dashboard.`
                 });
-            } else if (data?.message === 'INVITE_SENT') {
-                toast({
-                    title: 'Invitation Sent',
-                    description: `An invite email has been sent to ${inviteModal.email}.`,
+            } else if (data?.success) {
+                setInviteResult({
+                    open: true,
+                    message: `An invitation has been sent to ${inviteModal.email}.${data.setupUrl ? '\n\nSetup URL for manual copy:' : ''}`,
+                    link: data.setupUrl
                 });
             }
 
@@ -809,10 +828,34 @@ const SponsorManagement = () => {
                     <div className="py-2 space-y-4">
                         <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
                             <p className="text-xs text-emerald-400 leading-relaxed font-medium">
-                                The account has been bridged. This sponsor can now log in to the Partner Portal using their <strong>existing Esportra email and password</strong>.
+                                {inviteResult.link
+                                    ? "The account has been created/linked. Provide the link below to the sponsor if they didn't receive the email."
+                                    : "The account has been bridged. This sponsor can now log in to the Partner Portal using their existing Esportra email and password."}
                             </p>
                         </div>
 
+                        {inviteResult.link && (
+                            <div className="space-y-2">
+                                <label className="text-[10px] uppercase text-zinc-500 font-bold ml-1">Setup Link (One-time use)</label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        readOnly
+                                        value={inviteResult.link}
+                                        className="bg-zinc-900 border-zinc-800 text-xs font-mono"
+                                    />
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(inviteResult.link!);
+                                            toast({ title: "Copied", description: "Link copied to clipboard" });
+                                        }}
+                                    >
+                                        Copy
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <DialogFooter>

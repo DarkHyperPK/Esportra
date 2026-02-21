@@ -6,7 +6,7 @@ type Sponsor = Database['public']['Tables']['sponsors']['Row'];
 
 export interface PartnerData {
     sponsor: Sponsor;
-    account: { sponsor_id: string; role: string };
+    account: { sponsor_id: string; role: string; onboarding_meta?: any };
     stats: {
         impressions: number;
         uniqueImpressions: number;
@@ -29,7 +29,7 @@ export const usePartnerData = () => {
                 .from('sponsor_accounts')
                 .select('sponsor_id, role')
                 .eq('user_id', user.id)
-                .returns<{ sponsor_id: string; role: string }[]>()
+                .returns<{ sponsor_id: string; role: string; onboarding_meta?: any }[]>()
                 .single();
 
             if (accountError) {
