@@ -14,8 +14,14 @@ const DashboardLayout = () => {
     useEffect(() => {
         // Use getUser() for initial verification as it hits the server to verify the session
         // getSession() only reads from localStorage and might be stale/invalid
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            setSession(user ? true : null); // We only need a truthy value here for the session check
+        supabase.auth.getUser().then(({ data: { user }, error }) => {
+            if (error || !user) {
+                // If there's an error or no user, clear any stale state to prevent loops
+                if (user || error) supabase.auth.signOut();
+                setSession(null);
+            } else {
+                setSession(user);
+            }
             setIsLoading(false);
         });
 

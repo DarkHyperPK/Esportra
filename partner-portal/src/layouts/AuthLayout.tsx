@@ -8,8 +8,15 @@ const AuthLayout = () => {
     const location = useLocation();
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
+        // Use getUser() to verify the session with the server
+        supabase.auth.getUser().then(({ data: { user }, error }) => {
+            if (error || !user) {
+                // If there's an error or no user, clear any stale state
+                if (user || error) supabase.auth.signOut();
+                setSession(null);
+            } else {
+                setSession(user);
+            }
             setLoading(false);
         });
 
