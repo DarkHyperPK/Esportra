@@ -28,10 +28,13 @@ const Login = () => {
         setLoading(true);
         setError('');
 
+        const cleanEmail = email.trim();
+        const cleanPassword = password.trim();
+
         try {
             const { data: { user }, error } = await supabase.auth.signInWithPassword({
-                email,
-                password
+                email: cleanEmail,
+                password: cleanPassword,
             });
 
             if (error) throw error;
