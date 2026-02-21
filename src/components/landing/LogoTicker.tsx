@@ -1,13 +1,13 @@
 import { motion } from "framer-motion";
-import { useSponsors, trackClick } from '@/hooks/useSponsors';
+import { useSponsors, trackClick, trackImpression } from '@/hooks/useSponsors';
 
 const LogoTicker = () => {
     const { data: sponsors = [], isLoading } = useSponsors();
     const sponsorsWithLogos = [
         {
-            id: '5d73e574-a02d-47c9-9698-febd195cb786',
+            id: 'cdf07085-be07-47ce-9fe5-67bee44ee023',
             name: 'SystemOptiX',
-            logo_url: 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.sponsors/SystemOptiX/Full%20Logo%20White%20variant%20updated.png',
+            logo_url: 'https://api.esportra.com/storage/v1/object/public/system.assets.sponsors/SystemOptiX/Full%20Logo%20White%20variant%20updated.png',
             website_url: 'https://systemoptix.net/',
             accent_color: '#06b6d4'
         },
@@ -32,12 +32,14 @@ const LogoTicker = () => {
             <div className="container mx-auto px-4 relative z-10">
                 <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20">
                     {sponsorsWithLogos.map((sponsor, index) => (
-                        <a
+                        <motion.a
                             key={sponsor.id}
                             href={sponsor.website_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => trackClick(sponsor.id)}
+                            onViewportEnter={() => trackImpression(sponsor.id)}
+                            viewport={{ once: true, amount: 0.5 }}
                             className="group relative transition-transform duration-300 hover:scale-105"
                         >
                             <img
@@ -45,7 +47,7 @@ const LogoTicker = () => {
                                 alt={sponsor.name}
                                 className="h-8 md:h-10 w-auto object-contain grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
                             />
-                        </a>
+                        </motion.a>
                     ))}
                 </div>
             </div>

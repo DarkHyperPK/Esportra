@@ -226,13 +226,13 @@ const Partners = () => {
     // Sort Sponsors: Platinum -> Gold -> Others
     const sponsors = React.useMemo(() => {
         const hardcodedSystemOptiX: Sponsor = {
-            id: '5d73e574-a02d-47c9-9698-febd195cb786', // Valid UUID for tracking
+            id: 'cdf07085-be07-47ce-9fe5-67bee44ee023',
             name: 'SystemOptiX',
             tagline: "DOMINATE WITH ZERO LATENCY",
             description: "Unleash Your PC's True Potential. Maximize your framerates and minimize latency with SystemOptix. Our premium PC optimization services tune your rig for peak esports performance, ensuring every millisecond counts.",
             website_url: 'https://systemoptix.net/',
-            logo_url: 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.sponsors/SystemOptiX/Full%20Logo%20White%20variant%20updated.png',
-            banner_image_url: 'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.sponsors/SystemOptiX/valorant-test-02.jpg',
+            logo_url: 'https://api.esportra.com/storage/v1/object/public/system.assets.sponsors/SystemOptiX/Full%20Logo%20White%20variant%20updated.png',
+            banner_image_url: 'https://api.esportra.com/storage/v1/object/public/system.assets.sponsors/SystemOptiX/valorant-test-02.jpg',
             accent_color: '#06b6d4',
             tier: 'radiant',
             placement: ['logo_ticker', 'partner_showcase'],
@@ -241,8 +241,8 @@ const Partners = () => {
             is_active: true,
             priority: 100,
             gallery_images: [
-                'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.sponsors/SystemOptiX/valorant-test-02.jpg',
-                'https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.sponsors/SystemOptiX/0fd808037b9c16d9f04cfee0b35b5b3be488f26e-1920x1080.jpg'
+                'https://api.esportra.com/storage/v1/object/public/system.assets.sponsors/SystemOptiX/valorant-test-02.jpg',
+                'https://api.esportra.com/storage/v1/object/public/system.assets.sponsors/SystemOptiX/0fd808037b9c16d9f04cfee0b35b5b3be488f26e-1920x1080.jpg'
             ],
             start_date: null,
             end_date: null,

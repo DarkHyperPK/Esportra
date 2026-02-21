@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { trackClick, trackImpression } from '@/hooks/useSponsors';
 
 export const VerticalAdPlacement = () => {
     // Performance HUD State (for SystemOptiX)
@@ -20,12 +21,29 @@ export const VerticalAdPlacement = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // Impression Tracking
+    const adRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    trackImpression('cdf07085-be07-47ce-9fe5-67bee44ee023');
+                    observer.disconnect();
+                }
+            },
+            { threshold: 0.5 }
+        );
+        if (adRef.current) observer.observe(adRef.current);
+        return () => observer.disconnect();
+    }, []);
+
     return (
-        <div className="mt-12 hidden lg:flex flex-col gap-8">
+        <div ref={adRef} className="mt-12 hidden lg:flex flex-col gap-8">
             <div className="relative group bg-[#080808] border border-white/5 overflow-hidden transition-all duration-500 hover:border-emerald-500/30">
                 <div className="aspect-[1/2] relative overflow-hidden">
                     <img
-                        src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.sponsors/SystemOptiX/0fd808037b9c16d9f04cfee0b35b5b3be488f26e-1920x1080.jpg"
+                        src="https://api.esportra.com/storage/v1/object/public/system.assets.sponsors/SystemOptiX/0fd808037b9c16d9f04cfee0b35b5b3be488f26e-1920x1080.jpg"
                         alt="SystemOptiX"
                         className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all [transition-duration:1500ms]"
                     />
@@ -47,7 +65,7 @@ export const VerticalAdPlacement = () => {
                 <div className="p-6 bg-zinc-950/50 backdrop-blur-sm border-t border-white/5">
                     <div className="flex items-center gap-3 mb-4">
                         <img
-                            src="https://abbjywqlxnxoutllbgke.supabase.co/storage/v1/object/public/system.assets.sponsors/SystemOptiX/Full%20Logo%20White%20variant%20updated.png"
+                            src="https://api.esportra.com/storage/v1/object/public/system.assets.sponsors/SystemOptiX/Full%20Logo%20White%20variant%20updated.png"
                             alt="SystemOptiX"
                             className="h-6 w-auto object-contain"
                         />
@@ -61,6 +79,7 @@ export const VerticalAdPlacement = () => {
                             href="https://systemoptix.net/"
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() => trackClick('cdf07085-be07-47ce-9fe5-67bee44ee023')}
                             className="text-[10px] font-mono text-white flex items-center gap-2 hover:text-emerald-400 transition-colors group/btn"
                         >
                             OPTIMIZE_NOW <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
