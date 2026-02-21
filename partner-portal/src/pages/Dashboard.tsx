@@ -63,11 +63,11 @@ const Dashboard = () => {
         { label: 'CLICK_THROUGH_RATE', value: `${stats.ctr.toFixed(2)}%`, icon: BarChart3, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
     ];
 
-    // Harden tier mapping for legacy support
+    // Harden tier mapping
     const rawTier = (sponsor?.tier || 'diamond').toLowerCase();
-    const isRadiant = rawTier === 'radiant' || rawTier === 'platinum';
-    const isAscendant = rawTier === 'ascendant' || rawTier === 'gold';
-    const isDiamond = rawTier === 'diamond' || rawTier === 'standard' || rawTier === 'bronze';
+    const isRadiant = rawTier === 'radiant';
+    const isAscendant = rawTier === 'ascendant';
+    const isStandard = !isRadiant && !isAscendant;
 
     // Normalized tier name for display
     const displayTier = isRadiant ? 'Radiant' : isAscendant ? 'Ascendant' : 'Diamond';
@@ -110,8 +110,8 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Stats Grid - Hidden for Diamond if they have zero access, but let's show them as 0/N/A or a small prompt */}
-            {!isDiamond ? (
+            {/* Stats Grid - Hidden for Standard if they have zero access, but let's show them as 0/N/A or a small prompt */}
+            {!isStandard ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {cards.map((card, i) => (
                         <motion.div
@@ -142,14 +142,14 @@ const Dashboard = () => {
                     ))}
                 </div>
             ) : (
-                <div className="p-12 rounded-2xl bg-[#0a0a0c] border border-pink-500/10 flex flex-col items-center justify-center text-center space-y-4">
-                    <div className="p-4 rounded-3xl bg-pink-500/5 border border-pink-500/10">
-                        <TrendingUp className="w-10 h-10 text-pink-500" />
+                <div className="p-12 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="p-4 rounded-3xl bg-zinc-800/10 border border-zinc-800/20">
+                        <TrendingUp className="w-10 h-10 text-zinc-500" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-white mb-2">DIAMOND_ELEVATION_ACTIVE</h3>
+                        <h3 className="text-xl font-bold text-white mb-2">STANDARD_PARTNERSHIP_ACTIVE</h3>
                         <p className="text-zinc-500 text-sm font-mono max-w-md">
-                            Your brand is currently active in our global partner ticker. Impression tracking is available in Ascendant & Radiant tiers.
+                            Your brand is currently active in our global partner ticker. Analytics and advanced tracking are available in Gold & Platinum tiers.
                         </p>
                     </div>
                 </div>

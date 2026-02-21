@@ -15,10 +15,10 @@ interface PartnerSectionProps {
 }
 
 const tierConfig: Record<string, { label: string; icon: typeof Star; color: string }> = {
-    diamond: { label: 'DIAMOND_PARTNER', icon: Star, color: 'text-rose-500' },
-    ascendant: { label: 'ASCENDANT_PARTNER', icon: Award, color: 'text-emerald-500' },
     radiant: { label: 'RADIANT_PARTNER', icon: Zap, color: 'text-amber-500' },
-    standard: { label: 'OFFICIAL_PARTNER', icon: Zap, color: 'text-zinc-500' },
+    ascendant: { label: 'ASCENDANT_PARTNER', icon: Award, color: 'text-emerald-500' },
+    diamond: { label: 'DIAMOND_PARTNER', icon: Star, color: 'text-zinc-500' },
+    standard: { label: 'OFFICIAL_PARTNER', icon: Star, color: 'text-zinc-500' },
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -249,7 +249,12 @@ const Partners = () => {
             created_at: new Date().toISOString()
         };
 
-        const tierOrder: Record<string, number> = { radiant: 3, ascendant: 2, diamond: 1, standard: 1 };
+        const tierOrder: Record<string, number> = {
+            radiant: 3,
+            ascendant: 2,
+            diamond: 1,
+            standard: 1
+        };
         const filteredRaw = rawSponsors.filter(s => s.name?.toLowerCase() !== 'systemoptix');
 
         return [hardcodedSystemOptiX, ...filteredRaw].sort((a, b) => {

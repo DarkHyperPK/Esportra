@@ -72,11 +72,11 @@ const Analytics = () => {
         ? Math.max(...chartData.map(d => d.impressions), 10)
         : 10;
 
-    // Harden tier mapping for legacy support
+    // Harden tier mapping
     const rawTier = (sponsor?.tier || 'diamond').toLowerCase();
-    const isRadiant = rawTier === 'radiant' || rawTier === 'platinum';
-    const isAscendant = rawTier === 'ascendant' || rawTier === 'gold';
-    const isDiamond = rawTier === 'diamond' || rawTier === 'standard' || rawTier === 'bronze';
+    const isRadiant = rawTier === 'radiant';
+    const isAscendant = rawTier === 'ascendant';
+    const isStandard = !isRadiant && !isAscendant;
 
     // Normalized tier name for display
     const displayTier = isRadiant ? 'Radiant' : isAscendant ? 'Ascendant' : 'Diamond';
@@ -101,7 +101,7 @@ const Analytics = () => {
     }
 
     // GATING: Diamond Tier has no analytics access
-    if (isDiamond) {
+    if (isStandard) {
         return (
             <div className="max-w-xl mx-auto py-20 text-center space-y-8">
                 <div className="w-20 h-20 bg-pink-500/10 border border-pink-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6">
@@ -145,7 +145,7 @@ const Analytics = () => {
                     </p>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${isRadiant ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                         isAscendant ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                            'bg-pink-500/10 text-pink-500 border-pink-500/20'
+                            'bg-pink-500/10 text-pink-500 border-white/10'
                         }`}>
                         {displayTier}_access
                     </span>
@@ -207,7 +207,7 @@ const Analytics = () => {
                             onClick={() => (isRadiant || isAscendant) && setRange('weekly')}
                             className={`px-3 py-1 rounded text-xs font-bold transition-colors ${range === 'weekly' ? 'bg-white/10 text-white' : (isRadiant || isAscendant) ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-700 cursor-not-allowed'
                                 }`}
-                            title={!(isRadiant || isAscendant) ? 'Standard tier restriction' : ''}
+                            title={!(isRadiant || isAscendant) ? 'Diamond tier restriction' : ''}
                         >
                             Weekly
                         </button>

@@ -14,7 +14,7 @@ export const TIER_FEATURES = {
         canViewAdvancedStats: false,
         maxShowcaseImages: 0,
         label: 'Diamond Partner',
-        color: 'text-rose-500'
+        color: 'text-zinc-500'
     },
     ascendant: {
         canUploadBanner: true,
@@ -33,11 +33,11 @@ export const TIER_FEATURES = {
 };
 
 export const normalizeTier = (tier?: string | null): Tier => {
-    if (!tier) return 'standard';
+    if (!tier) return 'diamond';
     // Case insensitive match
     const t = tier.toLowerCase() as Tier;
     if (t in TIER_FEATURES) return t;
-    return 'standard';
+    return 'diamond';
 };
 
 export const getTierFeatures = (tier?: string | null) => {

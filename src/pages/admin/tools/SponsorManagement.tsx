@@ -105,10 +105,10 @@ const SponsorCard = ({
                         variant="outline"
                         className={`capitalize ${sponsor.tier === 'radiant' ? 'border-amber-500/30 text-amber-500 bg-amber-500/5' :
                             sponsor.tier === 'ascendant' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/5' :
-                                'border-pink-500/30 text-pink-500 bg-pink-500/5'
+                                'border-zinc-500/30 text-zinc-500 bg-white/5'
                             }`}
                     >
-                        {sponsor.tier}
+                        {sponsor.tier || 'standard'}
                     </Badge>
                     <Badge variant="outline" className={`border-white/10 ${sponsor.is_active ? 'text-emerald-400 bg-emerald-500/5' : 'text-red-400 bg-red-500/5'}`}>
                         {sponsor.is_active ? 'Active' : 'Inactive'}
@@ -531,7 +531,7 @@ const SponsorManagement = () => {
                                                         variant="outline"
                                                         className={`text-xs uppercase ${app.partnership_tier === 'radiant' ? 'bg-amber-500/10 text-amber-500 border-amber-500/30' :
                                                             app.partnership_tier === 'ascendant' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
-                                                                'bg-pink-500/10 text-pink-500 border-pink-500/30'
+                                                                'bg-zinc-500/10 text-zinc-500 border-white/10'
                                                             }`}
                                                     >
                                                         {app.partnership_tier} Tier
@@ -669,7 +669,7 @@ const SponsorManagement = () => {
                                             <span className="text-zinc-500">Tier</span>
                                             <span className={`capitalize font-bold ${appModal.app.partnership_tier === 'radiant' ? 'text-amber-500' :
                                                 appModal.app.partnership_tier === 'ascendant' ? 'text-emerald-500' :
-                                                    'text-pink-500'
+                                                    'text-zinc-500'
                                                 }`}>
                                                 {appModal.app.partnership_tier}
                                             </span>
@@ -709,12 +709,12 @@ const SponsorManagement = () => {
                                 <label className="text-xs uppercase text-zinc-500 mb-1 block">Tier</label>
                                 <select
                                     className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-2 text-white text-sm"
-                                    value={sponsorModal.sponsor.tier || 'diamond'}
+                                    value={sponsorModal.sponsor.tier || 'standard'}
                                     onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, tier: e.target.value as any } })}
                                 >
-                                    <option value="diamond">Diamond (Lowest)</option>
-                                    <option value="ascendant">Ascendant (Mid)</option>
-                                    <option value="radiant">Radiant (Premium)</option>
+                                    <option value="diamond">Diamond</option>
+                                    <option value="ascendant">Ascendant</option>
+                                    <option value="radiant">Radiant</option>
                                 </select>
                             </div>
 

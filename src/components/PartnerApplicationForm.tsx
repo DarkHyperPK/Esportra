@@ -34,11 +34,11 @@ const PARTNERSHIP_GOALS = [
 ];
 
 const BUDGET_OPTIONS = [
-    { value: 'under_1k', label: 'Under $1,000', tier: 'standard' },
-    { value: '1k_5k', label: '$1,000 – $5,000', tier: 'standard' },
-    { value: '5k_15k', label: '$5,000 – $15,000', tier: 'gold' },
-    { value: '15k_50k', label: '$15,000 – $50,000', tier: 'gold' },
-    { value: '50k_plus', label: '$50,000+', tier: 'platinum' },
+    { value: 'under_1k', label: 'Under $1,000', tier: 'diamond' },
+    { value: '1k_5k', label: '$1,000 – $5,000', tier: 'diamond' },
+    { value: '5k_15k', label: '$5,000 – $15,000', tier: 'ascendant' },
+    { value: '15k_50k', label: '$15,000 – $50,000', tier: 'ascendant' },
+    { value: '50k_plus', label: '$50,000+', tier: 'radiant' },
     { value: 'undecided', label: "Let's discuss", tier: '' },
 ];
 
@@ -57,7 +57,7 @@ const PartnerApplicationForm: React.FC = () => {
 
     const [form, setForm] = useState<Partial<PartnerApplication>>({
         company_size: undefined,
-        partnership_tier: 'standard',
+        partnership_tier: 'diamond',
         partnership_goals: [],
         budget_range: undefined,
     });
@@ -222,9 +222,9 @@ const PartnerApplicationForm: React.FC = () => {
                                 <label className={labelClass}>Partnership Tier *</label>
                                 <div className="grid grid-cols-3 gap-3">
                                     {[
-                                        { value: 'platinum', label: 'Platinum', desc: 'Premium placement, co-branded events', color: '#8b5cf6' },
-                                        { value: 'gold', label: 'Gold', desc: 'Featured partner, tournament branding', color: '#f59e0b' },
-                                        { value: 'standard', label: 'Standard', desc: 'Partner listing, community access', color: '#f43f5e' },
+                                        { value: 'radiant', label: 'Radiant', desc: 'Premium placement, co-branded events', color: '#8b5cf6' },
+                                        { value: 'ascendant', label: 'Ascendant', desc: 'Featured partner, tournament branding', color: '#f59e0b' },
+                                        { value: 'diamond', label: 'Diamond', desc: 'Partner listing, community access', color: '#f43f5e' },
                                     ].map(t => (
                                         <button key={t.value} onClick={() => set('partnership_tier', t.value)}
                                             className={`p-4 rounded-xl text-center transition-all border ${form.partnership_tier === t.value

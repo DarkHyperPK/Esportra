@@ -10,7 +10,7 @@ export interface Sponsor {
     logo_url: string | null;
     banner_image_url: string | null;
     accent_color: string;
-    tier: 'radiant' | 'ascendant' | 'diamond' | 'standard';
+    tier: 'radiant' | 'ascendant' | 'diamond' | 'standard' | 'platinum' | 'gold';
     placement: string[];
     cta_text: string;
     discount_text: string | null;
