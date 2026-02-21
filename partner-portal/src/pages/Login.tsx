@@ -20,6 +20,9 @@ const Login = () => {
             setSuccessMessage('Password successfully updated. Please sign in with your new password.');
             // Clean URL
             window.history.replaceState({}, '', '/login');
+        } else if (params.get('error') === 'no_sponsor_linked') {
+            setError('Access denied: Your account is not linked to a sponsor profile in this environment. Please ensure you recreate your invite link from the Main Website.');
+            window.history.replaceState({}, '', '/login');
         }
     }, [navigate]);
 

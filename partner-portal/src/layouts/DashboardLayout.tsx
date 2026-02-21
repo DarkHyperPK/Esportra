@@ -35,12 +35,19 @@ const DashboardLayout = () => {
                     .limit(1)
                     .maybeSingle();
 
+                if (!account) {
+                    // Critical security check: They have no row. The AuthLayout redirected them too early.
+                    await supabase.auth.signOut();
+                    window.location.href = '/login?error=no_sponsor_linked';
+                    return;
+                }
+
                 const meta = account?.onboarding_meta as any;
                 if (!meta?.completed) {
                     setNeedsOnboarding(true);
                 }
-            } catch {
-                // If query fails, proceed normally (column may not exist for this user)
+            } catch (err) {
+                console.error('Failed to verify sponsor account', err);
             }
 
             setIsLoading(false);

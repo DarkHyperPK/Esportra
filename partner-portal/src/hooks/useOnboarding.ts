@@ -78,12 +78,16 @@ export const useOnboarding = () => {
                 },
             };
 
-            const { error } = await (supabase as any)
+            const { data, error } = await (supabase as any)
                 .from('sponsor_accounts')
                 .update({ onboarding_meta: updatedMeta })
-                .eq('user_id', user.id);
+                .eq('user_id', user.id)
+                .select()
+                .limit(1)
+                .maybeSingle();
 
             if (error) throw error;
+            if (!data) throw new Error('Update failed due to Row Level Security missing UPDATE policy.');
             return updatedMeta;
         },
         onSuccess: () => {
@@ -112,12 +116,16 @@ export const useOnboarding = () => {
                 },
             };
 
-            const { error } = await (supabase as any)
+            const { data, error } = await (supabase as any)
                 .from('sponsor_accounts')
                 .update({ onboarding_meta: updatedMeta })
-                .eq('user_id', user.id);
+                .eq('user_id', user.id)
+                .select()
+                .limit(1)
+                .maybeSingle();
 
             if (error) throw error;
+            if (!data) throw new Error('Activation failed due to Row Level Security missing UPDATE policy.');
             return updatedMeta;
         },
         onSuccess: () => {
