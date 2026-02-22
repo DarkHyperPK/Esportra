@@ -101,11 +101,12 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
     setTeamMembers(updated);
   };
 
-  const uploadTeamLogo = async (file: File): Promise<string | null> => {
+  const uploadTeamLogo = async (file: File, teamName: string): Promise<string | null> => {
     if (!file) return null;
+    const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
     const fileExt = file.name.split('.').pop();
     const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
-    const filePath = `team-logos/${fileName}`;
+    const filePath = `${sanitizedTeamName}/${fileName}`;
     const { error } = await supabase.storage.from('teams.logos').upload(filePath, file);
     if (error) return null;
     const { data } = supabase.storage.from('teams.logos').getPublicUrl(filePath);
@@ -117,7 +118,7 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
     setSubmitting(true);
     let logoUrl = null;
     if (teamLogoFile) {
-      logoUrl = await uploadTeamLogo(teamLogoFile);
+      logoUrl = await uploadTeamLogo(teamLogoFile, teamName);
       setTeamLogoUrl(logoUrl);
     }
     // Save registration (add your registration logic here)

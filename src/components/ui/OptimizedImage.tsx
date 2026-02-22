@@ -35,8 +35,13 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     // Helper to optimize Supabase URLs
     const getOptimizedUrl = (originalUrl: string) => {
         if (!originalUrl) return '';
-        // Check if it's a Supabase Storage URL
-        if (!originalUrl.includes('supabase.co/storage/v1/object/public')) {
+
+        // Define Supabase storage markers
+        const isSupabaseStorage =
+            originalUrl.includes('api.esportra.com/storage/v1/object/public') ||
+            originalUrl.includes(import.meta.env.VITE_SUPABASE_URL + '/storage/v1/object/public');
+
+        if (!isSupabaseStorage) {
             return originalUrl;
         }
 
@@ -61,9 +66,14 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
             params.set('height', height.toString());
         }
 
-        // Append params (handle existing query string if any)
-        const separator = originalUrl.includes('?') ? '&' : '?';
-        return `${originalUrl}${separator}transform=${params.toString()}`;
+        const canOptimize = originalUrl.includes('.supabase.co/');
+
+        const optimizedUrl = canOptimize
+            ? originalUrl.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
+            : originalUrl;
+
+        // Only append transformation parameters if we're using the Supabase render endpoint
+        return canOptimize ? `${optimizedUrl}?${params.toString()}` : optimizedUrl;
     };
 
     const optimizedSrc = getOptimizedUrl(src);

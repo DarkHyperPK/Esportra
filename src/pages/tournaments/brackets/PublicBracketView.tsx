@@ -115,6 +115,10 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
 
     // Adapt to bracket matches
     const matches = useMemo(() => {
+        if (graphData?.version?.cached_ui_state) {
+            return graphData.version.cached_ui_state;
+        }
+
         if (!graphData?.nodes || !graphData?.edges) return [];
         const teamsMap = new Map();
         teamsData?.forEach((t: any) => teamsMap.set(t.id, t));

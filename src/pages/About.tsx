@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { Zap, Shield, ChevronRight, Crosshair, Cpu, Globe, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { getWebsiteAssetUrl } from '@/lib/storage';
 
 const AboutPage: React.FC = () => {
   // Theme Constants (Rose / New Style Hardcoded)
@@ -83,7 +84,7 @@ const AboutPage: React.FC = () => {
 
                 <div className={`relative overflow-hidden bg-gray-900 w-full h-full shadow-2xl shadow-rose-500/20`}>
                   <img
-                    src="https://api.esportra.com/storage/v1/object/public/system.assets.website/About%20us%20section%20assets/origin.jpg"
+                    src={getWebsiteAssetUrl('About-us-section-assets/origin.jpg')}
                     alt="The Fragmentation"
                     className="w-full h-full object-cover filter grayscale contrast-125 group-hover:grayscale-0 transition-all [transition-duration:1500ms] ease-in-out group-hover:rotate-2 group-hover:scale-105"
                   />

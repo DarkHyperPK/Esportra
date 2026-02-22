@@ -6,6 +6,7 @@ import MobileNav from "./navigation/MobileNav";
 import DesktopNav from "./navigation/DesktopNav";
 import { BurgerMenu } from "./ui/BurgerMenu";
 import { motion, AnimatePresence } from "framer-motion";
+import { getWebsiteAssetUrl } from "@/lib/storage";
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -66,7 +67,7 @@ const Navbar = () => {
             <div className="flex items-center gap-3">
               <Link to="/" className="flex items-center gap-2 select-none">
                 <img
-                  src="https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
+                  src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
                   alt="Esportra Logo"
                   className="h-10 w-auto"
                 />

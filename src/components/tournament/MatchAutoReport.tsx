@@ -455,15 +455,29 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
 
     // ── No Report — Show Scan Button ──
     return (
-        <>
-            {isCaptain && (
+        <div className="space-y-4">
+            <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-3 rounded-lg flex items-start gap-2 text-left">
+                <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <p className="text-xs">
+                    <strong>Rule:</strong> Only the winning team should submit the match result report. The losing team simply needs to wait and accept the result once it appears.
+                </p>
+            </div>
+
+            {isCaptain ? (
                 <Button
                     onClick={() => setScanOpen(true)}
-                    className={`bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-lg shadow-indigo-900/20 ${className}`}
+                    className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-lg shadow-indigo-900/20 ${className}`}
                 >
                     <Search className="w-4 h-4 mr-2" />
-                    Report Game {gameNumber} Result
+                    Auto-Fetch Game {gameNumber} Result
                 </Button>
+            ) : (
+                <div className="flex items-center gap-2 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg mb-4">
+                    <Info className="w-4 h-4 text-indigo-400" />
+                    <p className="text-sm text-indigo-300">
+                        Ask your team captain to auto-fetch the match result.
+                    </p>
+                </div>
             )}
 
             {/* Scan Dialog */}
@@ -489,6 +503,12 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                             <p className="text-sm text-zinc-300">
                                 Make sure you have played the match on <strong>{mapName}</strong> and the game is finished.
                             </p>
+                            <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-3 rounded-lg flex items-start gap-2 text-left">
+                                <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                <p className="text-xs">
+                                    <strong>Rule:</strong> Only the winning team should submit the match result report. The losing team simply needs to wait and accept the result once it appears.
+                                </p>
+                            </div>
                             {scanError && (
                                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs">
                                     {scanError}
@@ -715,6 +735,6 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                     )}
                 </DialogContent>
             </Dialog>
-        </>
+        </div>
     );
 };

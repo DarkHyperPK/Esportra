@@ -288,13 +288,14 @@ export const useTournamentRegistration = ({
     }
   };
 
-  const uploadTeamLogo = async (file: File): Promise<string | null> => {
+  const uploadTeamLogo = async (file: File, teamName: string): Promise<string | null> => {
     if (!file) return null;
 
     try {
+      const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
       const fileExt = file.name.split('.').pop();
       const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
-      const filePath = `team-logos/${fileName}`;
+      const filePath = `${sanitizedTeamName}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('tournaments')

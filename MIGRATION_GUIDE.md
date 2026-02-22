@@ -34,16 +34,17 @@ You need keys from **two** places: your old Cloud project and your new Coolify p
 1.  Go to **Project Settings** -> **Database**.
     *   **Host**: `aws-1-us-east-1.pooler.supabase.com`
     *   **Port**: `5432`
-    *   **User**: `postgres.abbjywqlxnxoutllbgke`
+    *   **User**: `postgres`
     *   **Password**: `7ci32oggEcY2VRN0`
 2.  Go to **Project Settings** -> **API**.
-    *   **Project URL**: `https://abbjywqlxnxoutllbgke.supabase.co`
+    *   **Project URL**: `https://api.esportra.com`
     *   **service_role secret**: (Click reveal) — You need this for the storage sync.
 
 ### From Coolify Supabase (New):
 1.  In Coolify, create a new **Service** -> **Supabase**.
 2.  Once deployed, go to the Service's **Environment Variables**.
 3.  Find and note down:
+4.  Find and note down:
     *   `POSTGRES_PASSWORD`
     *   `ANON_KEY`
     *   `SERVICE_ROLE_KEY` (also called `SERVICE_KEY`)
@@ -58,7 +59,7 @@ Run this on your Ubuntu server to pull all your data into a single file.
 # Variables (Using IPv4 Pooler Host for compatibility)
 HOST="aws-1-us-east-1.pooler.supabase.com"
 PORT="5432"
-USER="postgres.abbjywqlxnxoutllbgke"
+USER="postgres"
 DB="postgres"
 
 # Execute Dump (You will be prompted for your Cloud DB Password)
@@ -89,7 +90,7 @@ Since your buckets contain photos, banners, and logos, we need to download them 
 
 ```bash
 # 1. Set the keys for the script (Use your Cloud Service Role key)
-export VITE_SUPABASE_URL="https://abbjywqlxnxoutllbgke.supabase.co"
+export VITE_SUPABASE_URL="https://api.esportra.com"
 export SUPABASE_SERVICE_ROLE_KEY="PASTE_YOUR_CLOUD_SERVICE_ROLE_KEY_HERE"
 
 # 2. Install the Supabase library

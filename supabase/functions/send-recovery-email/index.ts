@@ -6,17 +6,17 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://api.esportra.com";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://esportra.com";
 const FROM_EMAIL = "Esportra <operations@esportra.com>";
-const LOGO_URL = 'https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png';
+const LOGO_URL = `${SUPABASE_URL}/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png`;
 
 const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers":
-        "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 // ── Branded Recovery Email Template ──
 function getRecoveryTemplate(actionLink: string): string {
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,94 +99,94 @@ function getRecoveryTemplate(actionLink: string): string {
 }
 
 Deno.serve(async (req: Request) => {
-    // Handle CORS preflight
-    if (req.method === "OPTIONS") {
-        return new Response("ok", { headers: corsHeaders });
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    if (!RESEND_API_KEY) {
+      throw new Error(
+        "RESEND_API_KEY is not configured. Add it in Edge Function secrets."
+      );
+    }
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error(
+        "SUPABASE_SERVICE_ROLE_KEY is not configured. Add it in Edge Function secrets."
+      );
     }
 
-    try {
-        if (!RESEND_API_KEY) {
-            throw new Error(
-                "RESEND_API_KEY is not configured. Add it in Edge Function secrets."
-            );
-        }
-        if (!SUPABASE_SERVICE_ROLE_KEY) {
-            throw new Error(
-                "SUPABASE_SERVICE_ROLE_KEY is not configured. Add it in Edge Function secrets."
-            );
-        }
-
-        const { email, redirect_url } = await req.json();
-        if (!email || typeof email !== "string") {
-            throw new Error("A valid email address is required.");
-        }
-
-        // Create admin Supabase client
-        const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-            auth: { autoRefreshToken: false, persistSession: false },
-        });
-
-        // Generate recovery link WITHOUT sending GoTrue's default email
-        const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-            type: "recovery",
-            email,
-        });
-
-        if (linkError) {
-            console.error("generateLink error:", linkError);
-            throw new Error(linkError.message);
-        }
-
-        // Use token_hash instead of action_link to keep users on the frontend domain
-        const tokenHash = data?.properties?.hashed_token;
-        if (!tokenHash) {
-            throw new Error("Failed to generate recovery token.");
-        }
-
-        // Build a link that points to the frontend, NOT the API
-        // If redirect_url is provided (e.g. from partner portal), use that base
-        const baseUrl = redirect_url || `${FRONTEND_URL}/auth/reset-password`;
-        const separator = baseUrl.includes('?') ? '&' : '?';
-        const resetLink = `${baseUrl}${separator}token_hash=${tokenHash}&type=recovery`;
-
-        console.log(`📧 Sending branded recovery email to ${email}`);
-
-        // Send branded email via Resend API
-        const html = getRecoveryTemplate(resetLink);
-        const res = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${RESEND_API_KEY}`,
-            },
-            body: JSON.stringify({
-                from: FROM_EMAIL,
-                to: [email],
-                subject: "Reset Your Esportra Password",
-                html,
-            }),
-        });
-
-        const resData = await res.json();
-
-        if (!res.ok) {
-            console.error("Resend API error:", resData);
-            throw new Error(
-                `Failed to send email: ${resData?.message || JSON.stringify(resData)}`
-            );
-        }
-
-        console.log(`✅ Recovery email sent to ${email}`, resData);
-
-        return new Response(JSON.stringify({ success: true }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
-        console.error("send-recovery-email error:", message);
-        return new Response(JSON.stringify({ error: message }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    const { email, redirect_url } = await req.json();
+    if (!email || typeof email !== "string") {
+      throw new Error("A valid email address is required.");
     }
+
+    // Create admin Supabase client
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Generate recovery link WITHOUT sending GoTrue's default email
+    const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+    });
+
+    if (linkError) {
+      console.error("generateLink error:", linkError);
+      throw new Error(linkError.message);
+    }
+
+    // Use token_hash instead of action_link to keep users on the frontend domain
+    const tokenHash = data?.properties?.hashed_token;
+    if (!tokenHash) {
+      throw new Error("Failed to generate recovery token.");
+    }
+
+    // Build a link that points to the frontend, NOT the API
+    // If redirect_url is provided (e.g. from partner portal), use that base
+    const baseUrl = redirect_url || `${FRONTEND_URL}/auth/reset-password`;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    const resetLink = `${baseUrl}${separator}token_hash=${tokenHash}&type=recovery`;
+
+    console.log(`📧 Sending branded recovery email to ${email}`);
+
+    // Send branded email via Resend API
+    const html = getRecoveryTemplate(resetLink);
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [email],
+        subject: "Reset Your Esportra Password",
+        html,
+      }),
+    });
+
+    const resData = await res.json();
+
+    if (!res.ok) {
+      console.error("Resend API error:", resData);
+      throw new Error(
+        `Failed to send email: ${resData?.message || JSON.stringify(resData)}`
+      );
+    }
+
+    console.log(`✅ Recovery email sent to ${email}`, resData);
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("send-recovery-email error:", message);
+    return new Response(JSON.stringify({ error: message }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 });

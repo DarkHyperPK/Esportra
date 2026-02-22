@@ -11,6 +11,7 @@ export interface BracketVersion {
     status: 'draft' | 'active' | 'archived';
     created_at: string;
     activated_at?: string;
+    cached_ui_state?: any[];
 }
 
 export interface BracketNode {

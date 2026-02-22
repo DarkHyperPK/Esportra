@@ -132,28 +132,19 @@ const RiotTest = React.lazy(() => import("./pages/debug/RiotTest"));
 // Test Supabase connection on app start
 import './utils/testSupabase';
 
+import { getWebsiteAssetUrl } from "@/lib/storage";
+
 const AppContent = React.memo(() => {
   const location = useLocation();
   const isHome = location.pathname === '/';
-
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log("Recovery mode detected, redirecting to reset-password");
-        window.location.href = '/auth/reset-password';
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const BG_VIDEO_URL = getWebsiteAssetUrl("Tournament-dashboard-background-animation/background.mp4");
 
   return (
     <>
       {/* Global Background - Video Only (Seamless Loop) */}
-      <div className="fixed inset-0 w-full h-full -z-10">
+      <div className="fixed inset-0 w-full h-full z-0">
         <SeamlessVideoLoop
-          src="https://api.esportra.com/storage/v1/object/public/system.assets.website/Tournament%20dashboard%20background%20animation/background.mp4"
+          src={BG_VIDEO_URL}
           className="mix-blend-screen opacity-40"
           style={{ filter: 'contrast(1.2) saturation(1.1)' }}
 

@@ -1,5 +1,6 @@
 import { motion, useMotionValue, useMotionTemplate, animate } from "framer-motion";
 import { useEffect, useState, startTransition } from "react";
+import { getWebsiteAssetUrl } from "@/lib/storage";
 
 interface PreloadLogoProps {
     onComplete?: () => void;
@@ -10,7 +11,7 @@ interface PreloadLogoProps {
 
 export function PreloadLogo({
     onComplete,
-    logoSrc = "https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png",
+    logoSrc = getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png'),
     backgroundColor = "#000000",
     logoColor = "#FFFFFF"
 }: PreloadLogoProps) {

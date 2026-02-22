@@ -1395,7 +1395,7 @@ const TournamentDetails = () => {
               label="Tournament Banner"
               helperText="Upload a high-quality banner for your tournament (16:9 recommended)"
               bucket="system.assets.website"
-              folder={`Tournament card banners/${(tournament as any)?.organizer?.username || 'unknown'}`}
+              folder={`Tournament-card-banners/${(tournament as any)?.organizer?.username || 'unknown'}`}
               customFileName={slugify(tournament?.name || 'banner', { lower: true, strict: true })}
               useTimestamp={true}
             />

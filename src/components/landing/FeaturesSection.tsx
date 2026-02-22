@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useMotionTemplate, useMotionValue } from 'fram
 import { Users, Trophy, Wallet, Calendar, ShieldCheck, MapPin, BarChart3, Globe2, Crown, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from "@/components/ui/card";
+import { getWebsiteAssetUrl } from '@/lib/storage';
 
 type FeatureRole = 'players' | 'organizers' | 'venues';
 
@@ -80,19 +81,19 @@ const FeaturesSection = () => {
                                     icon={<Trophy className="w-6 h-6" />}
                                     title="1. Enter the Arena"
                                     description="Find verified tournaments with guaranteed prize pools. Your journey starts with a single match."
-                                    image="https://api.esportra.com/storage/v1/object/public/system.assets.website/landing%20page%20assets/enter%20arena.jpg"
+                                    image={getWebsiteAssetUrl('landing-page-assets/enter-arena.jpg')}
                                 />
                                 <MinimalCard
                                     icon={<Users className="w-6 h-6" />}
                                     title="2. Assemble the Squad"
                                     description="Invite your teammates, assign roles, and build a roster ready for the championship."
-                                    image="https://api.esportra.com/storage/v1/object/public/system.assets.website/landing%20page%20assets/form%20team.jpg"
+                                    image={getWebsiteAssetUrl('landing-page-assets/form-team.jpg')}
                                 />
                                 <MinimalCard
                                     icon={<BarChart3 className="w-6 h-6" />}
                                     title="3. Prove Your Skill"
                                     description="Every win is recorded. Build a match history that speaks for itself."
-                                    image="https://api.esportra.com/storage/v1/object/public/system.assets.website/landing%20page%20assets/Prove%20skill.jpg"
+                                    image={getWebsiteAssetUrl('landing-page-assets/Prove-skill.jpg')}
 
                                 />
                             </>

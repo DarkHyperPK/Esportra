@@ -178,10 +178,10 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                             <TabsContent value="general" className="space-y-6 mt-0">
                                 <div className="flex flex-col items-center justify-center mb-6">
                                     <AvatarUploader
-                                        value={formData.avatar_url}
-                                        onChange={(url) => handleChange('avatar_url', url)}
+                                        value={formData.avatar_url || ''}
+                                        onChange={(url) => setFormData({ ...formData, avatar_url: url })}
                                         size="xl"
-                                        uploadPath={profile?.id ? `profile pictures/${profile.id}_${Date.now()}_avatar.png` : undefined}
+                                        uploadPath={profile?.id ? `profile-pictures/${profile.id}_${Date.now()}_avatar.png` : undefined}
                                     />
                                     <p className="text-xs text-gray-500 mt-4">Click to update avatar</p>
                                 </div>
@@ -194,7 +194,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                                                 value={formData.card_image_url}
                                                 onChange={(url) => handleChange('card_image_url', url)}
                                                 size="lg"
-                                                uploadPath={profile?.id ? `Player cards/${teamName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}/${profile.id}_${Date.now()}_card.png` : undefined}
+                                                uploadPath={profile?.id ? `Player-cards/${teamName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}/${profile.id}_${Date.now()}_card.png` : undefined}
                                             />
                                         ) : (
                                             <div className="w-24 h-24 bg-zinc-900/50 rounded-lg flex items-center justify-center border-2 border-dashed border-zinc-700 opacity-50">

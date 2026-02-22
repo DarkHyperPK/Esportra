@@ -912,28 +912,26 @@ const CaptainMatchPage = () => {
                                         {/* Actions */}
                                         <div className="flex flex-col gap-3">
                                             {/* Auto-Report Button - Prominently displayed at the top if available */}
-                                            {nextGameMap && (
-                                                <MatchAutoReport
-                                                    matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                    gameNumber={nextGameNumber}
-                                                    mapName={nextGameMap.name}
-                                                    mapId={nextGameMap.id}
-                                                    scheduledTime={activeMatch.scheduledTime}
-                                                    userTeamId={userTeamId}
-                                                    team1Id={activeMatch.team1?.id}
-                                                    team2Id={activeMatch.team2?.id}
-                                                    team1Name={activeMatch.team1?.name || 'Team 1'}
-                                                    team2Name={activeMatch.team2?.name || 'Team 2'}
-                                                    isCaptain={isCaptain}
-                                                    className="w-full h-12 text-lg"
-                                                    onSuccess={() => {
-                                                        toast({ title: "Game Reported", description: "Result verified and saved." });
-                                                        refetchBracket();
-                                                        // Re-fetch games
-                                                        fetchMatchGames();
-                                                    }}
-                                                />
-                                            )}
+                                            <MatchAutoReport
+                                                matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                                gameNumber={nextGameNumber}
+                                                mapName={nextGameMap?.name || 'Unknown Map'}
+                                                mapId={nextGameMap?.id || ''}
+                                                scheduledTime={activeMatch.scheduledTime}
+                                                userTeamId={userTeamId}
+                                                team1Id={activeMatch.team1?.id}
+                                                team2Id={activeMatch.team2?.id}
+                                                team1Name={activeMatch.team1?.name || 'Team 1'}
+                                                team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                isCaptain={isCaptain}
+                                                className="w-full h-12 text-lg"
+                                                onSuccess={() => {
+                                                    toast({ title: "Game Reported", description: "Result verified and saved." });
+                                                    refetchBracket();
+                                                    // Re-fetch games
+                                                    fetchMatchGames();
+                                                }}
+                                            />
 
                                             <div className="grid grid-cols-2 gap-3">
                                                 <Button

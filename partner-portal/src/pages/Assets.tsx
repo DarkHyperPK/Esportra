@@ -39,13 +39,13 @@ const Assets = () => {
             const fileExt = file.name.split('.').pop();
             const fileName = `${sponsor.id}/${type}_${Date.now()}.${fileExt}`;
             const { error: uploadError } = await supabase.storage
-                .from('system.assets.sponsors')
+                .from('system.assets.partners')
                 .upload(fileName, file);
 
             if (uploadError) throw uploadError;
 
             const { data: { publicUrl } } = supabase.storage
-                .from('system.assets.sponsors')
+                .from('system.assets.partners')
                 .getPublicUrl(fileName);
 
             if (type === 'logo') {

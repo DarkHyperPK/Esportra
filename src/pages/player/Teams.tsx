@@ -309,15 +309,12 @@ const TeamsPage = () => {
   };
 
   // Upload team logo for edit
-  const uploadTeamLogo = async (file: File): Promise<string | null> => {
+  const uploadTeamLogo = async (file: File, teamName: string): Promise<string | null> => {
     if (!file) return null;
 
     try {
       console.log('=== LOGO UPLOAD DEBUG ===');
-      console.log('File:', file);
-      console.log('File name:', file.name);
-      console.log('File size:', file.size);
-      console.log('File type:', file.type);
+      console.log('Team name:', teamName);
 
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -331,12 +328,12 @@ const TeamsPage = () => {
         throw new Error('File size must be less than 5MB');
       }
 
+      const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
       const fileExt = file.name.split('.').pop();
-      const fileName = `team-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = fileName;
+      const fileName = `logo-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${sanitizedTeamName}/${fileName}`;
 
       console.log('Uploading to path:', filePath);
-      console.log('User ID:', user?.id);
 
       // Try uploading to team-logos bucket
       const { error } = await supabase.storage
@@ -408,7 +405,7 @@ const TeamsPage = () => {
         console.log('User:', user?.id);
         console.log('File:', editTeamLogoFile.name);
 
-        const newLogoUrl = await uploadTeamLogo(editTeamLogoFile);
+        const newLogoUrl = await uploadTeamLogo(editTeamLogoFile, editTeamName);
         if (newLogoUrl) {
           logoUrl = newLogoUrl;
           console.log('Logo upload successful:', newLogoUrl);

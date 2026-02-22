@@ -29,6 +29,7 @@ interface Team {
   game: string;
   logo: string;
   members: TeamMember[];
+  tag: string;
   tournamentWins: number;
   totalMatches: number;
 }
@@ -64,6 +65,8 @@ const PlayerTeams = () => {
   const userId = user?.id;
   const [deleteModal, setDeleteModal] = useState<{ open: boolean, team: Team | null }>({ open: false, team: null });
   const [deleting, setDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchVerifiedUsers = async () => {
@@ -88,11 +91,12 @@ const PlayerTeams = () => {
     }
   };
 
-  const uploadTeamLogo = async (file: File): Promise<string | null> => {
+  const uploadTeamLogo = async (file: File, teamName: string): Promise<string | null> => {
     if (!file) return null;
+    const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
     const fileExt = file.name.split('.').pop();
-    const fileName = `team-${Date.now()}.${fileExt}`;
-    const filePath = fileName; // Don't include folder in path since we're uploading to team-logos bucket
+    const fileName = `logo-${Date.now()}.${fileExt}`;
+    const filePath = `${sanitizedTeamName}/${fileName}`;
     const { error } = await supabase.storage.from('teams.logos').upload(filePath, file);
     if (error) return null;
     const { data } = supabase.storage.from('teams.logos').getPublicUrl(filePath);
@@ -110,7 +114,7 @@ const PlayerTeams = () => {
     return results.every(Boolean);
   };
 
-  const { createTeam, inviteUserToTeam } = useTeamManagement();
+  const { createTeam, updateTeam, inviteUserToTeam } = useTeamManagement();
 
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,7 +136,7 @@ const PlayerTeams = () => {
 
     let logoUrl = null;
     if (teamLogoFile) {
-      logoUrl = await uploadTeamLogo(teamLogoFile);
+      logoUrl = await uploadTeamLogo(teamLogoFile, teamName);
       setTeamLogoUrl(logoUrl);
     }
 
@@ -144,26 +148,40 @@ const PlayerTeams = () => {
       })
       .filter((m): m is { user_id: string; role: 'member' } => m !== null);
 
-    const newTeam = await createTeam({
-      name: teamName,
-      tag: teamTag,
-      game: game || 'Unknown',
-      game_format: 'squad', // Default
-      logo_url: logoUrl || undefined,
-      description: '',
-      members: membersList
-    });
+    const newTeam = isEditing && editingTeamId
+      ? await updateTeam(editingTeamId, {
+        name: teamName,
+        tag: teamTag,
+        game: game || 'Unknown',
+        logo_url: logoUrl || teamLogoUrl || undefined,
+      })
+      : await createTeam({
+        name: teamName,
+        tag: teamTag,
+        game: game || 'Unknown',
+        game_format: 'squad', // Default
+        logo_url: logoUrl || undefined,
+        description: '',
+        members: membersList
+      });
 
     if (newTeam) {
       setShowModal(false);
-      setTeamName('');
-      setTeamTag('');
-      setGame('');
-      setTeamLogoFile(null);
-      setTeamLogoUrl(null);
-      setMemberUsernames(['']);
+      resetForm();
     }
     setSubmitting(false);
+  };
+
+  const resetForm = () => {
+    setTeamName('');
+    setTeamTag('');
+    setGame('');
+    setTeamLogoFile(null);
+    setTeamLogoUrl(null);
+    setMemberUsernames(['']);
+    setMemberValidation([null]);
+    setIsEditing(false);
+    setEditingTeamId(null);
   };
 
   // Listen for team invite acceptance events
@@ -233,6 +251,7 @@ const PlayerTeams = () => {
           name: team.name,
           logo: team.logo_url,
           game: team.game,
+          tag: team.tag || '',
           members,
           tournamentWins: 0,
           totalMatches: 0,
@@ -350,7 +369,19 @@ const PlayerTeams = () => {
                           <Plus className="mr-2 h-4 w-4" />
                           Invite Member
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => { }}>
+                        <Button variant="outline" size="sm" onClick={() => {
+                          setIsEditing(true);
+                          setEditingTeamId(team.id);
+                          setTeamName(team.name);
+                          setTeamTag((team as any).tag || ''); // Note: tag might be missing in fetchTeams select but we'll try to get it
+                          setGame(team.game);
+                          setTeamLogoUrl(team.logo);
+                          // For existing members, we don't allow editing their usernames in this simple edit flow
+                          // but we populate the state so validation doesn't fail if we decide to allow it later
+                          setMemberUsernames(team.members.map(m => m.username));
+                          setMemberValidation(team.members.map(() => true));
+                          setShowModal(true);
+                        }}>
                           Edit
                         </Button>
                         <Button variant="destructive" size="sm" onClick={() => setDeleteModal({ open: true, team })}>
@@ -415,10 +446,13 @@ const PlayerTeams = () => {
         </Card>
       </div>
       {/* Modal for creating a team */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      <Dialog open={showModal} onOpenChange={(open) => {
+        if (!open) resetForm();
+        setShowModal(open);
+      }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create a New Team</DialogTitle>
+            <DialogTitle>{isEditing ? 'Edit Team' : 'Create a New Team'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateTeam} className="space-y-4">
             <div>
@@ -489,7 +523,7 @@ const PlayerTeams = () => {
               {errorMsg && <div className="text-red-500 text-xs mt-2">{errorMsg}</div>}
             </div>
             <Button type="submit" className="w-full bg-gaming-purple hover:bg-gaming-purple/80" disabled={submitting}>
-              {submitting ? 'Creating...' : 'Create Team'}
+              {submitting ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Changes' : 'Create Team')}
             </Button>
           </form>
         </DialogContent>

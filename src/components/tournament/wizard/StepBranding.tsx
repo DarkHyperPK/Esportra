@@ -39,7 +39,7 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                     label="Tournament Card Banner"
                     helperText="This image will be displayed as the background of your tournament card and page header."
                     bucket="system.assets.website"
-                    folder={`Tournament card banners/${organizerName}`}
+                    folder={`Tournament-card-banners/${organizerName}`}
                     customFileName={tournamentName}
                     useTimestamp={false}
                 />

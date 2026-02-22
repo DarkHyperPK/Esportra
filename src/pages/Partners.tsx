@@ -4,6 +4,7 @@ import { ExternalLink, Star, Award, Zap, ArrowRight, Trophy, Activity, TrendingU
 import { useSponsors, trackImpression, trackClick, Sponsor } from '@/hooks/useSponsors';
 import PartnerApplicationForm from '@/components/PartnerApplicationForm';
 import Footer from '@/components/Footer';
+import { getStorageUrl } from '@/lib/storage';
 
 /* ──────────────────────────────────────────────────────────────
    Interfaces & Config
@@ -231,8 +232,8 @@ const Partners = () => {
             tagline: "DOMINATE WITH ZERO LATENCY",
             description: "Unleash Your PC's True Potential. Maximize your framerates and minimize latency with SystemOptix. Our premium PC optimization services tune your rig for peak esports performance, ensuring every millisecond counts.",
             website_url: 'https://systemoptix.net/',
-            logo_url: 'https://api.esportra.com/storage/v1/object/public/system.assets.partners/SystemOptiX/logo.png',
-            banner_image_url: 'https://api.esportra.com/storage/v1/object/public/system.assets.partners/SystemOptiX/2.jpg',
+            logo_url: getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
+            banner_image_url: getStorageUrl('system.assets.partners', 'SystemOptiX/2.jpg'),
             accent_color: '#06b6d4',
             tier: 'radiant',
             placement: ['logo_ticker', 'partner_showcase'],
@@ -241,8 +242,8 @@ const Partners = () => {
             is_active: true,
             priority: 100,
             gallery_images: [
-                'https://api.esportra.com/storage/v1/object/public/system.assets.partners/SystemOptiX/1.jpg',
-                'https://api.esportra.com/storage/v1/object/public/system.assets.partners/SystemOptiX/2.jpg'
+                getStorageUrl('system.assets.partners', 'SystemOptiX/1.jpg'),
+                getStorageUrl('system.assets.partners', 'SystemOptiX/2.jpg')
             ],
             start_date: null,
             end_date: null,

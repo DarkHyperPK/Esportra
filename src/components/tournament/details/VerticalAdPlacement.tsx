@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { trackClick, trackImpression } from '@/hooks/useSponsors';
+import { getStorageUrl } from '@/lib/storage';
 
 export const VerticalAdPlacement = () => {
     // Performance HUD State (for SystemOptiX)
@@ -43,7 +44,7 @@ export const VerticalAdPlacement = () => {
             <div className="relative group bg-[#080808] border border-white/5 overflow-hidden transition-all duration-500 hover:border-emerald-500/30">
                 <div className="aspect-[1/2] relative overflow-hidden">
                     <img
-                        src="https://api.esportra.com/storage/v1/object/public/system.assets.partners/SystemOptiX/1.jpg"
+                        src={getStorageUrl('system.assets.partners', 'SystemOptiX/1.jpg')}
                         alt="SystemOptiX"
                         className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all [transition-duration:1500ms]"
                     />
@@ -65,7 +66,7 @@ export const VerticalAdPlacement = () => {
                 <div className="p-6 bg-zinc-950/50 backdrop-blur-sm border-t border-white/5">
                     <div className="flex items-center gap-3 mb-4">
                         <img
-                            src="https://api.esportra.com/storage/v1/object/public/system.assets.partners/SystemOptiX/logo.png"
+                            src={getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png')}
                             alt="SystemOptiX"
                             className="h-6 w-auto object-contain"
                         />

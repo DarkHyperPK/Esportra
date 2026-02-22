@@ -1,6 +1,7 @@
 import React from 'react';
 import Footer from '@/components/Footer';
 import { Link } from 'react-router-dom';
+import { getWebsiteAssetUrl } from '@/lib/storage';
 
 const TermsPage: React.FC = () => {
     return (
@@ -10,7 +11,7 @@ const TermsPage: React.FC = () => {
                 <div className="mb-12">
                     <Link to="/" className="inline-block mb-8">
                         <img
-                            src="https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png"
+                            src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
                             alt="Esportra"
                             className="h-8 opacity-80"
                         />

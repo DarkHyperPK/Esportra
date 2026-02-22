@@ -3,7 +3,8 @@ const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'https://esportra.com';
 const PARTNER_URL = Deno.env.get('PARTNER_URL') || 'https://partner.esportra.com';
 
 // ── Branding ──
-const LOGO_URL = 'https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://api.esportra.com';
+const LOGO_URL = `${SUPABASE_URL}/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png`;
 
 // ── Base Layout ──
 const baseLayout = (content: string, preheader: string = "") => `

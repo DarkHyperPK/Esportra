@@ -178,6 +178,15 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   // Adapt data
   const { matches: adaptedMatches, teamCount } = useMemo(() => {
     if (propMatches.length > 0) return { matches: propMatches, teamCount: propTeamCount };
+
+    // Preferred: Cache 
+    if (graphData?.version?.cached_ui_state) {
+      const cached = graphData.version.cached_ui_state;
+      const count = Math.max(cached.filter((m: any) => m.bracketSide === 'winners' && m.round === 1).length * 2, 4);
+      return { matches: cached, teamCount: count };
+    }
+
+    // Fallback: Realtime adaptation for backwards compatibility / uninitialized cache
     if (!graphData?.nodes || !graphData?.edges) return { matches: [], teamCount: 0 };
 
     const adapted = adaptGraphToBracketMatches(graphData.nodes, graphData.edges, teamsMap);

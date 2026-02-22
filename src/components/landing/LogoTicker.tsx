@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useSponsors, trackClick, trackImpression } from '@/hooks/useSponsors';
+import { getStorageUrl } from "@/lib/storage";
 
 const LogoTicker = () => {
     const { data: sponsors = [], isLoading } = useSponsors();
@@ -7,7 +8,7 @@ const LogoTicker = () => {
         {
             id: 'cdf07085-be07-47ce-9fe5-67bee44ee023',
             name: 'SystemOptiX',
-            logo_url: 'https://api.esportra.com/storage/v1/object/public/system.assets.partners/SystemOptiX/logo.png',
+            logo_url: getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
             website_url: 'https://systemoptix.net/',
             accent_color: '#06b6d4'
         },

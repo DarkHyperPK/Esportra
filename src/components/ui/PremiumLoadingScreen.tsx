@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { getWebsiteAssetUrl } from '@/lib/storage';
 
 interface PremiumLoadingScreenProps {
     text?: string;
@@ -9,7 +10,7 @@ interface PremiumLoadingScreenProps {
 export const PremiumLoadingScreen: React.FC<PremiumLoadingScreenProps> = ({
     className = ""
 }) => {
-    const logoSrc = "https://api.esportra.com/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png";
+    const logoSrc = getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png');
 
     return (
         <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-[#050507] text-white overflow-hidden ${className}`}>

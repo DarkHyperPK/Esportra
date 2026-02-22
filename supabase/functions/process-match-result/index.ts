@@ -64,15 +64,47 @@ serve(async (req) => {
         const RIOT_API_KEY = Deno.env.get('RIOT_API_KEY')
         if (!RIOT_API_KEY) throw new Error('Riot API Key not configured')
 
-        const { data: riotAccount } = await supabaseClient
+        // First, find the reporter we are verifying against
+        console.log(`[Process Result] Looking for report: Match=${matchId}, Game=${gameNumber}`)
+        const { data: report, error: reportError } = await supabaseClient
+            .from('match_result_reports')
+            .select('id, reported_by')
+            .eq('match_id', matchId)
+            .eq('game_number', gameNumber)
+            .in('status', ['pending', 'accepted'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+        if (reportError) {
+            console.error('[Process Result] Report lookup error:', reportError)
+            throw new Error(`Report lookup failed: ${reportError.message}`)
+        }
+        if (!report) {
+            throw new Error(`No pending or accepted report found for match ${matchId} game ${gameNumber}`)
+        }
+
+        console.log(`[Process Result] Found report ${report.id} by user ${report.reported_by}`)
+
+        const { data: riotAccount, error: riotError } = await supabaseClient
             .from('riot_accounts')
             .select('puuid, region')
-            .eq('user_id', user.id)
-            .single()
+            .eq('user_id', report.reported_by)
+            .maybeSingle()
+
+        if (riotError) {
+            console.error('[Process Result] Riot account lookup error:', riotError)
+            throw new Error(`Riot account lookup failed: ${riotError.message}`)
+        }
+        if (!riotAccount) {
+            throw new Error(`Reporter ${report.reported_by} does not have a linked Riot account anymore.`)
+        }
+
+        console.log(`[Process Result] Resolved Reporter: PUUID=${riotAccount.puuid}, Region=${riotAccount.region}`)
 
         const valRegion = await resolveValRegion(
-            riotAccount?.puuid || '',
-            riotAccount?.region || null,
+            riotAccount.puuid,
+            riotAccount.region,
             RIOT_API_KEY
         )
 
@@ -86,7 +118,7 @@ serve(async (req) => {
         // 2. Fetch Tournament Match Data (Teams)
         const { data: brktMatch, error: matchError } = await supabaseClient
             .from('brkt_matches')
-            .select('team1_id, team2_id, best_of')
+            .select('team1_id, team2_id, best_of, version')
             .eq('id', matchId)
             .single()
 
@@ -108,10 +140,11 @@ serve(async (req) => {
         const t1Puuids = await getRoster(brktMatch.team1_id)
         const t2Puuids = await getRoster(brktMatch.team2_id)
 
-        const bluePlayers = matchData.players.filter((p: any) => p.teamId === 'Blue' || p.teamId === 1200).map((p: any) => p.puuid)
-        const redPlayers = matchData.players.filter((p: any) => p.teamId === 'Red' || p.teamId === 1100).map((p: any) => p.puuid)
+        const bluePlayers = (matchData.players || []).filter((p: any) => p.teamId === 'Blue' || p.teamId === 1200 || p.teamId === '1200').map((p: any) => p.puuid)
+        const redPlayers = (matchData.players || []).filter((p: any) => p.teamId === 'Red' || p.teamId === 1100 || p.teamId === '1100').map((p: any) => p.puuid)
 
-        console.log(`[Verify] Riot Match Players: Blue=${bluePlayers.length}, Red=${redPlayers.length}`)
+        console.log(`[Process Result] Riot Match Players: Blue=${bluePlayers.length}, Red=${redPlayers.length}. Total=${matchData.players?.length}`)
+
 
         // Count overlaps
         const t1InBlue = bluePlayers.filter((p: string) => t1Puuids.includes(p)).length
@@ -157,14 +190,16 @@ serve(async (req) => {
 
         // 4. Extract Result
         // Support both string "Blue"/"Red" and numeric 1200/1100 in teams array
-        const t1Data = matchData.teams.find((t: any) =>
-            (t1Side === 'Blue' && (t.teamId === 'Blue' || t.teamId === 1200)) ||
-            (t1Side === 'Red' && (t.teamId === 'Red' || t.teamId === 1100))
+        const teams = matchData.teams || []
+        const t1Data = teams.find((t: any) =>
+            (t1Side === 'Blue' && (t.teamId === 'Blue' || t.teamId === 1200 || t.teamId === '1200')) ||
+            (t1Side === 'Red' && (t.teamId === 'Red' || t.teamId === 1100 || t.teamId === '1100'))
         )
-        const t2Data = matchData.teams.find((t: any) =>
-            (t2Side === 'Blue' && (t.teamId === 'Blue' || t.teamId === 1200)) ||
-            (t2Side === 'Red' && (t.teamId === 'Red' || t.teamId === 1100))
+        const t2Data = teams.find((t: any) =>
+            (t2Side === 'Blue' && (t.teamId === 'Blue' || t.teamId === 1200 || t.teamId === '1200')) ||
+            (t2Side === 'Red' && (t.teamId === 'Red' || t.teamId === 1100 || t.teamId === '1100'))
         )
+
 
         if (!t1Data || !t2Data) {
             console.error('[Verify] Failed to find team data in Riot match response', { t1Side, t2Side })
@@ -256,6 +291,21 @@ serve(async (req) => {
 
         if (upsertError) throw upsertError
 
+        // 8. Update the original report status to 'accepted'
+        const { error: patchError } = await supabaseClient
+            .from('match_result_reports')
+            .update({
+                status: 'accepted',
+                responded_by: user.id,
+                responded_at: new Date().toISOString()
+            })
+            .eq('id', report.id)
+
+        if (patchError) {
+            console.warn(`[Process Result] Non-critical: Failed to update report status for ${report.id}:`, patchError)
+        }
+
+
         // 7. Check for Series Completion
         const { data: allGames } = await supabaseClient
             .from('brkt_match_games')
@@ -283,17 +333,34 @@ serve(async (req) => {
 
             if (seriesWinnerId) {
                 console.log(`[Series] Completion detected. Winner: ${seriesWinnerId}`)
-                updateData.winner_id = seriesWinnerId
-                updateData.loser_id = seriesWinnerId === brktMatch.team1_id ? brktMatch.team2_id : brktMatch.team1_id
-                updateData.status = 'completed'
+                const seriesLoserId = seriesWinnerId === brktMatch.team1_id ? brktMatch.team2_id : brktMatch.team1_id;
+
+                // Fire optimistic locking RPC instead of direct UPDATE
+                const { data: lockSuccess, error: finalizeError } = await supabaseClient
+                    .rpc('finalize_match_locked', {
+                        p_match_id: matchId,
+                        p_winner_id: seriesWinnerId,
+                        p_loser_id: seriesLoserId,
+                        p_expected_version: brktMatch.version || 1
+                    });
+
+                if (finalizeError) throw finalizeError
+
+                if (!lockSuccess) {
+                    console.log(`[Series] Match ${matchId} was already advanced by a concurrent process. Skipping duplicate advancement.`)
+                }
+            } else {
+                // If not complete, just update the accumulated scores
+                const { error: scoreUpdateError } = await supabaseClient
+                    .from('brkt_matches')
+                    .update({
+                        team1_score: t1Wins,
+                        team2_score: t2Wins
+                    })
+                    .eq('id', matchId)
+
+                if (scoreUpdateError) throw scoreUpdateError
             }
-
-            const { error: finalizeError } = await supabaseClient
-                .from('brkt_matches')
-                .update(updateData)
-                .eq('id', matchId)
-
-            if (finalizeError) throw finalizeError
 
             if (!seriesWinnerId) {
                 console.log(`[Series] In progress. Required: ${mapsToWin}`)
@@ -312,8 +379,12 @@ serve(async (req) => {
 
     } catch (error) {
         console.error(error)
-        return new Response(JSON.stringify({ error: error.message }), {
-            status: 400,
+        const errorMessage = error instanceof Error ? error.message : (error as any)?.message || 'An unexpected error occurred';
+        return new Response(JSON.stringify({
+            success: false,
+            error: errorMessage
+        }), {
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
     }

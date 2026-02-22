@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import esportsGames from '@/data/esportsGames.json';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { getWebsiteAssetUrl } from '@/lib/storage';
 
 /* ──────────────────────────────────────────────────────────────
    Sub-components
@@ -55,7 +56,7 @@ const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index }) =
             )}
 
             <img
-                src={map.map_image_url || `https://api.esportra.com/storage/v1/object/public/system.assets.website/Backgrounds/grid-pattern.png`}
+                src={map.map_image_url || getWebsiteAssetUrl('Backgrounds/grid-pattern.png')}
                 alt={map.map_name}
                 loading={index < 8 ? "eager" : "lazy"}
                 onLoad={() => setIsImgLoaded(true)}

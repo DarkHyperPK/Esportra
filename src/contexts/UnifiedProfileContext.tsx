@@ -13,7 +13,7 @@ interface UnifiedProfile {
   email: string;
   avatar_url?: string;
   created_at: string;
-  
+
   // Unified Reputation System
   reputation: {
     overall_rating: number;
@@ -23,7 +23,7 @@ interface UnifiedProfile {
     venue_rating: number;
     badges: string[];
   };
-  
+
   // Mode-Specific Data
   player_profile: {
     gaming_stats: {
@@ -40,7 +40,7 @@ interface UnifiedProfile {
     };
     achievements: string[];
   };
-  
+
   organizer_profile: {
     company_name: string;
     company_logo?: string;
@@ -55,7 +55,7 @@ interface UnifiedProfile {
     verification_status: 'pending' | 'verified' | 'rejected';
     business_description?: string;
   };
-  
+
   venue_profile: {
     venue_name: string;
     venue_logo?: string;
@@ -70,19 +70,19 @@ interface UnifiedProfile {
     verification_status: 'pending' | 'verified' | 'rejected';
     venue_description?: string;
   };
-  
+
   // Unified Communication
   messaging: {
     unread_count: number;
     recent_conversations: any[];
   };
-  
+
   // Unified Notifications
   notifications: {
     unread_count: number;
     recent_notifications: any[];
   };
-  
+
   // Financial Overview
   financial: {
     total_earnings: number;
@@ -105,13 +105,13 @@ interface UnifiedProfileContextType {
   canAccessMode: (mode: ProfileMode) => boolean;
   updateProfile: (updates: Partial<UnifiedProfile>) => Promise<boolean>;
   refreshProfile: () => Promise<void>;
-  
+
   // Mode-specific getters
   getCurrentDisplayName: () => string;
   getCurrentAvatar: () => string | null;
   getCurrentEarnings: () => number;
   getCurrentStats: () => any;
-  
+
   // Unified features
   getUnifiedRating: () => number;
   getUnifiedBadges: () => string[];
@@ -127,7 +127,7 @@ interface UnifiedProfileProviderProps {
 export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ children }) => {
   const { user, profile: authProfile } = useAuth();
   const { toast } = useToast();
-  
+
   const [profile, setProfile] = useState<UnifiedProfile | null>(null);
   const [currentMode, setCurrentMode] = useState<ProfileMode>('player');
   const [isLoading, setIsLoading] = useState(true);
@@ -156,24 +156,24 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
           .select('*')
           .eq('user_id', user.id)
           .single(),
-        
+
         // Organizer data - removed company_profiles
         Promise.resolve({ data: null, error: null }),
-        
+
         // Venue data
         supabase
           .from('venue_profiles')
           .select('*')
           .eq('user_id', user.id)
           .single(),
-        
+
         // Reputation data
         supabase
           .from('user_reputation')
           .select('*')
           .eq('user_id', user.id)
           .single(),
-        
+
         // Financial data
         supabase
           .from('user_financials')
@@ -191,7 +191,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
         email: authProfile.email || '',
         avatar_url: authProfile.avatar_url,
         created_at: authProfile.created_at || new Date().toISOString(),
-        
+
         // Reputation
         reputation: {
           overall_rating: reputationData.data?.overall_rating || 0,
@@ -201,7 +201,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
           venue_rating: reputationData.data?.venue_rating || 0,
           badges: reputationData.data?.badges || []
         },
-        
+
         // Player profile
         player_profile: {
           gaming_stats: {
@@ -218,7 +218,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
           },
           achievements: playerData.data?.achievements || []
         },
-        
+
         // Organizer profile
         organizer_profile: {
           company_name: organizerData.data?.company_name || '',
@@ -234,7 +234,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
           verification_status: organizerData.data?.is_verified ? 'verified' : 'pending',
           business_description: organizerData.data?.business_description
         },
-        
+
         // Venue profile
         venue_profile: {
           venue_name: venueData.data?.venue_name || '',
@@ -250,18 +250,18 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
           verification_status: venueData.data?.is_verified ? 'verified' : 'pending',
           venue_description: venueData.data?.venue_description
         },
-        
+
         // Unified features
         messaging: {
           unread_count: 0,
           recent_conversations: []
         },
-        
+
         notifications: {
           unread_count: 0,
           recent_notifications: []
         },
-        
+
         financial: {
           total_earnings: financialData.data?.total_earnings || 0,
           available_balance: financialData.data?.available_balance || 0,
@@ -306,7 +306,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
     try {
       setCurrentMode(mode);
       localStorage.setItem('profileMode', mode);
-      
+
       toast({
         title: 'Mode Switched',
         description: `Switched to ${mode} mode`,
@@ -322,7 +322,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
   // Check if user can access a specific mode
   const canAccessMode = (mode: ProfileMode): boolean => {
     if (!profile) return false;
-    
+
     switch (mode) {
       case 'player':
         return true; // Everyone can be a player
@@ -342,9 +342,9 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
     try {
       // Update the profile state
       setProfile(prev => prev ? { ...prev, ...updates } : null);
-      
+
       // This would involve updating the relevant tables based on what changed
-      
+
       return true;
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -360,7 +360,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
   // Mode-specific getters
   const getCurrentDisplayName = (): string => {
     if (!profile) return 'User';
-    
+
     switch (currentMode) {
       case 'player':
         return profile.full_name || profile.username;
@@ -375,7 +375,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
 
   const getCurrentAvatar = (): string | null => {
     if (!profile) return null;
-    
+
     switch (currentMode) {
       case 'player':
         return profile.avatar_url;
@@ -390,7 +390,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
 
   const getCurrentEarnings = (): number => {
     if (!profile) return 0;
-    
+
     switch (currentMode) {
       case 'player':
         return profile.player_profile.gaming_stats.total_earnings;
@@ -405,7 +405,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
 
   const getCurrentStats = (): any => {
     if (!profile) return {};
-    
+
     switch (currentMode) {
       case 'player':
         return profile.player_profile.gaming_stats;
