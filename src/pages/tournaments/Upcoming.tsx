@@ -46,7 +46,7 @@ const UpcomingTournaments = () => {
       // First, let's check if we can see any tournaments at all
       const { data: allTournaments, error: allError } = await supabase
         .from('tournaments')
-        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at')
+        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organization_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at')
         .eq('is_public', true)
         .is('deleted_at', null);
 
@@ -60,10 +60,9 @@ const UpcomingTournaments = () => {
       const { data, error } = await supabase
         .from('tournaments')
         .select(`
-          id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organizer_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at,
-          profiles:organizer_id (
-            username,
-            full_name
+          id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organization_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at,
+          organization:organizations (
+            name, owner_id
           )
         `)
 
@@ -114,13 +113,21 @@ const UpcomingTournaments = () => {
             prize_pool: tournament.prize_pool?.toString() || '0',
             entry_fee: tournament.entry_fee?.toString() || 'Free',
             description: tournament.description || '',
-            user_id: tournament.organizer_id,
-            organizer_name: (() => {
-              const profiles = tournament.profiles as any;
-              if (Array.isArray(profiles)) {
-                return profiles[0]?.full_name || profiles[0]?.username || 'Unknown Organizer';
+            user_id: (() => {
+              const org = tournament.organization as any;
+              if (org) {
+                if (Array.isArray(org) && org.length > 0) return org[0].owner_id;
+                if (!Array.isArray(org) && org.owner_id) return org.owner_id;
               }
-              return profiles?.full_name || profiles?.username || 'Unknown Organizer';
+              return '';
+            })(),
+            organizer_name: (() => {
+              const org = tournament.organization as any;
+              if (org) {
+                if (Array.isArray(org) && org.length > 0) return org[0].name;
+                if (!Array.isArray(org) && org.name) return org.name;
+              }
+              return 'Unknown Organizer';
             })(),
             is_online: !tournament.venue_id,
             created_at: tournament.created_at,
@@ -130,6 +137,8 @@ const UpcomingTournaments = () => {
             slug: tournament.slug,
             status: tournament.status || 'open',
             registrationData,
+            start_date: tournament.start_date,
+            end_date: tournament.end_date,
           };
         })
       );
@@ -303,6 +312,8 @@ const UpcomingTournaments = () => {
                     registrationData={tournament.registrationData}
                     currentUserId={user?.id}
                     slug={tournament.slug}
+                    start_date={tournament.start_date}
+                    end_date={tournament.end_date}
                   />
                 </motion.div>
               ))

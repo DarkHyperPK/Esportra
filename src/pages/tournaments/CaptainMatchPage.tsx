@@ -912,26 +912,37 @@ const CaptainMatchPage = () => {
                                         {/* Actions */}
                                         <div className="flex flex-col gap-3">
                                             {/* Auto-Report Button - Prominently displayed at the top if available */}
-                                            <MatchAutoReport
-                                                matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                gameNumber={nextGameNumber}
-                                                mapName={nextGameMap?.name || 'Unknown Map'}
-                                                mapId={nextGameMap?.id || ''}
-                                                scheduledTime={activeMatch.scheduledTime}
-                                                userTeamId={userTeamId}
-                                                team1Id={activeMatch.team1?.id}
-                                                team2Id={activeMatch.team2?.id}
-                                                team1Name={activeMatch.team1?.name || 'Team 1'}
-                                                team2Name={activeMatch.team2?.name || 'Team 2'}
-                                                isCaptain={isCaptain}
-                                                className="w-full h-12 text-lg"
-                                                onSuccess={() => {
-                                                    toast({ title: "Game Reported", description: "Result verified and saved." });
-                                                    refetchBracket();
-                                                    // Re-fetch games
-                                                    fetchMatchGames();
-                                                }}
-                                            />
+                                            {(() => {
+                                                const bestOf = activeMatch.bestOf || 1;
+                                                const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
+                                                const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
+
+                                                if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf) {
+                                                    return (
+                                                        <MatchAutoReport
+                                                            matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                                            gameNumber={nextGameNumber}
+                                                            mapName={nextGameMap?.name || 'Unknown Map'}
+                                                            mapId={nextGameMap?.id || ''}
+                                                            scheduledTime={activeMatch.scheduledTime}
+                                                            userTeamId={userTeamId}
+                                                            team1Id={activeMatch.team1?.id}
+                                                            team2Id={activeMatch.team2?.id}
+                                                            team1Name={activeMatch.team1?.name || 'Team 1'}
+                                                            team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                            isCaptain={isCaptain}
+                                                            className="w-full h-12 text-lg"
+                                                            onSuccess={() => {
+                                                                toast({ title: "Game Reported", description: "Result verified and saved." });
+                                                                refetchBracket();
+                                                                // Re-fetch games
+                                                                fetchMatchGames();
+                                                            }}
+                                                        />
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
 
                                             <div className="grid grid-cols-2 gap-3">
                                                 <Button

@@ -12,7 +12,7 @@ export class DoubleEliminationGenerator implements IBracketGenerator {
         teams: Team[],
         tournamentId: string,
         stageId?: string,
-        bestOf: number = 3,
+        bestOf: number = 1,
         bracketSize?: number,
         advancementCount?: number
     ): BracketGraph {

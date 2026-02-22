@@ -76,9 +76,7 @@ interface DatabaseTournament {
   team_size?: number;
   prize_pool: string;
   entry_fee: string | null;
-  description: string;
   user_id: string;
-  organizer_id: string;
   rewards?: string | null;
   created_at: string;
   image_url?: string | null;
@@ -133,7 +131,7 @@ const TournamentDetails = () => {
   const [banReason, setBanReason] = useState<string | null>(null);
   const [showBannerDialog, setShowBannerDialog] = useState(false);
 
-  const isOrganizer = currentRole === 'organizer' && !!(user?.id && tournament?.organizer_id && user.id === tournament.organizer_id);
+  const isOrganizer = currentRole === 'organizer' && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id);
   const requiresCheckIn = Boolean(tournament?.check_in_required);
   const checkInDeadlineDate = tournament?.check_in_deadline ? new Date(tournament.check_in_deadline) : null;
   const registrationStatus = (registrationDetails?.status || '').toLowerCase();
@@ -321,88 +319,29 @@ const TournamentDetails = () => {
       let tournamentData: any = null;
       let tournamentError: any = null;
 
-      const bySlug = await sb
-        .from('tournaments')
-        .select(`
-          id,
-          name,
-          description,
-          slug,
-          game,
-          max_teams,
-          min_teams,
-          entry_fee,
-          prize_pool,
-          start_date,
-          end_date,
-          registration_deadline,
-          status,
-          organizer_id,
-          venue_id,
-          is_public,
-          banner_url,
-          logo_url,
-          rewards,
-          created_at,
-          check_in_required,
-          check_in_deadline,
-          auto_remove_unchecked,
-          settings,
-          organizer:organizer_id (
-            username,
-            avatar_url,
-            full_name
-          )
-        `)
-        .eq('slug', slug)
-        .is('deleted_at', null)
-        .maybeSingle();
+      // Query from the high-performance view (Data Contract)
+      // Use conditional query to avoid UUID type mismatch errors
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug || '');
 
-      if (!bySlug.error && bySlug.data) {
-        tournamentData = bySlug.data;
+      let query = sb
+        .from('v_tournament_details')
+        .select('*')
+        .is('deleted_at', null);
+
+      if (isUuid) {
+        query = query.or(`id.eq.${slug},slug.eq.${slug}`);
       } else {
-        const byId = await sb
-          .from('tournaments')
-          .select(`
-            id,
-            name,
-            description,
-            slug,
-            game,
-            max_teams,
-            min_teams,
-            entry_fee,
-            prize_pool,
-            start_date,
-            end_date,
-            registration_deadline,
-            status,
-            organizer_id,
-            venue_id,
-            is_public,
-            banner_url,
-            logo_url,
-            rewards,
-            created_at,
-            updated_at,
-            check_in_required,
-            check_in_deadline,
-            auto_remove_unchecked,
-            settings,
-            organizer:organizer_id (
-              username,
-              avatar_url,
-              full_name
-            )
-          `)
-          .eq('id', slug)
-          .is('deleted_at', null)
-          .single();
-        if (!byId.error && byId.data) {
-          tournamentData = byId.data;
-        } else {
-          tournamentError = bySlug.error || byId.error;
-        }
+        query = query.eq('slug', slug || '');
+      }
+
+      const { data: viewData, error: viewError } = await query.maybeSingle();
+
+      if (viewError) {
+        tournamentError = viewError;
+      } else if (!viewData) {
+        throw new Error('Tournament not found');
+      } else {
+        tournamentData = viewData;
       }
 
       if (tournamentError) throw tournamentError;
@@ -432,8 +371,7 @@ const TournamentDetails = () => {
         prize_pool: tournamentData.prize_pool?.toString() || '0',
         entry_fee: tournamentData.entry_fee?.toString() || '0',
         description: tournamentData.description || '',
-        user_id: tournamentData.organizer_id,
-        organizer_id: tournamentData.organizer_id,
+        user_id: tournamentData.organizer_owner_id || '',
         rewards: tournamentData.rewards,
         created_at: tournamentData.created_at,
         image_url: tournamentData.banner_url || tournamentData.logo_url || null,
@@ -441,7 +379,17 @@ const TournamentDetails = () => {
         check_in_deadline: tournamentData.check_in_deadline,
         auto_remove_unchecked: tournamentData.auto_remove_unchecked ?? true,
         end_date: tournamentData.end_date ? new Date(tournamentData.end_date).toLocaleDateString('en-CA') : undefined,
-        organizer: tournamentData.organizer,
+        organization: {
+          slug: tournamentData.organization_slug,
+          name: tournamentData.organization_name,
+          logo_url: tournamentData.organization_logo,
+          owner_id: tournamentData.organizer_owner_id
+        },
+        organization_id: tournamentData.organization_id,
+        organizer: {
+          username: tournamentData.organizer_username,
+          avatar_url: tournamentData.organizer_avatar
+        },
         settings: tournamentData.settings,
       };
 
@@ -666,6 +614,8 @@ const TournamentDetails = () => {
           tournament_id: (dbRegistration as any).tournament_id,
           user_id: (dbRegistration as any).user_id,
           registration_type: (dbRegistration as any).participant_type === 'solo' ? 'solo' : 'team',
+          riot_tag: (dbRegistration as any).riot_tag || null,
+          steam_tag: (dbRegistration as any).steam_tag || null,
           gamer_tag: (dbRegistration as any).gamer_tag || null,
           team_name: resolvedTeamName, // Use resolved team name (from teams table) as priority
           team_logo: (dbRegistration as any).team_logo_url || null,
@@ -873,6 +823,8 @@ const TournamentDetails = () => {
           tournament_id: dbData.tournament_id,
           user_id: dbData.user_id,
           registration_type: dbData.participant_type === 'solo' ? 'solo' : 'team',
+          riot_tag: dbData.riot_tag || null,
+          steam_tag: dbData.steam_tag || null,
           gamer_tag: dbData.gamer_tag || null,
           team_name: (dbData.teams as any)?.name || dbData.team_name || null,
           team_logo: dbData.team_logo_url || (dbData.teams as any)?.logo_url || null,

@@ -503,7 +503,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 return;
             }
 
-            const bestOf = (stage.config as any)?.best_of || 3;
+            const bestOf = (stage as any).best_of || (stage.config as any)?.best_of || 1;
             const advancementCount = stage.advancement_count || undefined;
 
             // Fetch tournament start date and scheduling config for auto-scheduling (Swiss/RR)

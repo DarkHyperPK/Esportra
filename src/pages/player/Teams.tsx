@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom';
 import TeamCreationWizard from '@/components/player/TeamCreationWizard';
 import { Plus, Users, Settings, Crown, Trash2, UserMinus, UserPlus, Calendar, Trophy, Gamepad2, Edit, X, Upload, Save, Shield } from 'lucide-react';
 import esportsGames from '@/data/esportsGames.json';
+import EditTeamDialog from '@/components/player/EditTeamDialog';
 import PlayerCard from '@/components/player/PlayerCard';
 import { sendEmail } from '@/hooks/useEmail';
 import { rawgSearchGames } from '@/lib/rawgProxy';
@@ -290,171 +291,7 @@ const TeamsPage = () => {
     setImagesLoading(false);
   };
 
-  // Initialize edit form with current team data
-  const initializeEditForm = () => {
-    if (currentTeam) {
-      setEditTeamName(currentTeam.name);
-      setEditTeamTag(currentTeam.tag);
-      setEditTeamLogoUrl(currentTeam.logo_url);
-      setEditTeamLogoFile(null);
-    }
-  };
-
-  // Handle logo change for edit
-  const handleEditLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setEditTeamLogoFile(e.target.files[0]);
-      setEditTeamLogoUrl(URL.createObjectURL(e.target.files[0]));
-    }
-  };
-
-  // Upload team logo for edit
-  const uploadTeamLogo = async (file: File, teamName: string): Promise<string | null> => {
-    if (!file) return null;
-
-    try {
-      console.log('=== LOGO UPLOAD DEBUG ===');
-      console.log('Team name:', teamName);
-
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        throw new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`);
-      }
-
-      // Validate file size (5MB limit)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
-        throw new Error('File size must be less than 5MB');
-      }
-
-      const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-      const fileExt = file.name.split('.').pop();
-      const fileName = `logo-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${sanitizedTeamName}/${fileName}`;
-
-      console.log('Uploading to path:', filePath);
-
-      // Try uploading to team-logos bucket
-      const { error } = await supabase.storage
-        .from('teams.logos')
-        .upload(filePath, file);
-
-      if (error) {
-        console.error('Upload error:', error);
-
-        // If it's an RLS policy error, provide helpful message
-        if (error.message.includes('row-level security policy')) {
-          throw new Error('Storage permissions not configured. Please contact support to set up storage policies.');
-        }
-
-        throw error;
-      }
-
-      console.log('File uploaded successfully');
-
-      const { data } = supabase.storage
-        .from('teams.logos')
-        .getPublicUrl(filePath);
-
-      console.log('Public URL:', data.publicUrl);
-      console.log('========================');
-
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-
-      // Provide more helpful error messages
-      if (errorMessage.includes('row-level security policy')) {
-        toast({
-          title: 'Storage Permissions Issue',
-          description: 'Logo upload is not configured. Please contact support to enable logo uploads.',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Logo Upload Failed',
-          description: `Failed to upload team logo: ${errorMessage}`,
-          variant: 'destructive',
-        });
-      }
-
-      return null;
-    }
-  };
-
-  // Handle team edit submission
-  const handleEditTeam = async () => {
-    if (!currentTeam || !editTeamName || !editTeamTag) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setEditSubmitting(true);
-
-    try {
-      // Upload new logo if provided
-      let logoUrl = currentTeam.logo_url;
-      if (editTeamLogoFile) {
-        console.log('=== ATTEMPTING LOGO UPLOAD ===');
-        console.log('User:', user?.id);
-        console.log('File:', editTeamLogoFile.name);
-
-        const newLogoUrl = await uploadTeamLogo(editTeamLogoFile, editTeamName);
-        if (newLogoUrl) {
-          logoUrl = newLogoUrl;
-          console.log('Logo upload successful:', newLogoUrl);
-        } else {
-          console.log('Logo upload failed, keeping existing logo');
-        }
-      }
-
-      // Update team in database
-      const { error } = await supabase
-        .from('teams')
-        .update({
-          name: editTeamName,
-          tag: editTeamTag,
-          logo_url: logoUrl,
-        })
-        .eq('id', currentTeam.id);
-
-      if (error) throw error;
-
-      // Show success message
-      if (editTeamLogoFile && logoUrl === currentTeam.logo_url) {
-        toast({
-          title: 'Team Updated',
-          description: 'Team information updated successfully. Logo upload failed, but you can try again later.',
-          variant: 'default',
-        });
-      } else {
-        toast({
-          title: 'Team Updated',
-          description: 'Your team has been updated successfully',
-          variant: 'default',
-        });
-      }
-
-      // Refresh team data
-      await fetchUserTeams();
-      setShowEditTeam(false);
-    } catch (error) {
-      console.error('Error updating team:', error);
-      toast({
-        title: 'Update Failed',
-        description: 'Failed to update team. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setEditSubmitting(false);
-    }
-  };
+  // Editing logic removed in favor of EditTeamDialog component
 
 
   // Test storage access (for debugging)
@@ -1933,10 +1770,7 @@ const TeamsPage = () => {
                 </div>
                 {isCaptain && (
                   <button
-                    onClick={() => {
-                      initializeEditForm();
-                      setShowEditTeam(true);
-                    }}
+                    onClick={() => setShowEditTeam(true)}
                     className="absolute -bottom-2 -right-2 w-8 h-8 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
                   >
                     <Edit className="w-4 h-4" />
@@ -2262,10 +2096,19 @@ const TeamsPage = () => {
                             </div>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex flex-col items-end gap-2">
                           <div className={`font-mono text-lg ${isChampion ? 'text-yellow-400' : 'text-white/60'}`}>
                             ${registration.tournaments?.prize_pool}
                           </div>
+                          {registration.tournaments?.slug && (
+                            <Link
+                              to={`/tournaments/${registration.tournaments.slug}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[10px] uppercase font-bold tracking-widest text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 hover:border-indigo-500/60 bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1.5 rounded-full transition-all"
+                            >
+                              View Brackets
+                            </Link>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -3095,120 +2938,11 @@ const TeamsPage = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showEditTeam} onOpenChange={setShowEditTeam}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-black/95 backdrop-blur-3xl border border-white/10 text-white rounded-3xl p-0 scrollbar-hide relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
-
-          <DialogHeader className="p-8 pb-4 relative z-10">
-            <DialogTitle className="text-3xl font-heading font-light uppercase tracking-[0.2em] text-white">
-              Identity & Ops
-            </DialogTitle>
-            <DialogDescription className="text-white/40 text-[10px] uppercase tracking-widest mt-1">
-              Configure team foundations and branding
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="p-8 pt-4 space-y-10 relative z-10">
-            {/* Team Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              <div className="space-y-6">
-                <div>
-                  <Label htmlFor="editTeamName" className="text-[10px] uppercase tracking-widest text-white/40 mb-3 block">Team Name</Label>
-                  <Input
-                    id="editTeamName"
-                    value={editTeamName}
-                    onChange={(e) => setEditTeamName(e.target.value)}
-                    placeholder="Enter team name"
-                    className="bg-white/[0.03] border-white/10 text-white focus:border-indigo-500/50 h-12 rounded-xl px-4 font-heading tracking-wide"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="editTeamTag" className="text-[10px] uppercase tracking-widest text-white/40 mb-3 block">Official Tag</Label>
-                  <Input
-                    id="editTeamTag"
-                    value={editTeamTag}
-                    onChange={(e) => setEditTeamTag(e.target.value.toUpperCase())}
-                    placeholder="3-6 characters"
-                    maxLength={6}
-                    className="bg-white/[0.03] border-white/10 text-white focus:border-indigo-500/50 h-12 rounded-xl px-4 font-mono tracking-[0.3em] uppercase"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="editTeamLogo" className="text-[10px] uppercase tracking-widest text-white/40 mb-3 block">Branding Assets</Label>
-                  <div className="space-y-4">
-                    <div className="relative group cursor-pointer">
-                      <Input
-                        id="editTeamLogo"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleEditLogoChange}
-                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                      />
-                      <div className="h-12 border border-dashed border-white/20 rounded-xl flex items-center justify-center gap-3 bg-white/[0.02] group-hover:bg-white/[0.05] transition-all">
-                        <Upload className="w-4 h-4 text-white/30" />
-                        <span className="text-xs text-white/40">Upload New Mark</span>
-                      </div>
-                    </div>
-                    {editTeamLogoUrl && (
-                      <div className="flex items-center gap-4 bg-white/[0.02] p-3 rounded-2xl border border-white/[0.05]">
-                        <div className="w-16 h-16 bg-black/40 border border-white/10 rounded-xl flex items-center justify-center overflow-hidden">
-                          <img
-                            src={editTeamLogoUrl}
-                            alt="Logo Preview"
-                            className="w-full h-full object-contain p-1"
-                          />
-                        </div>
-                        <div className="text-[10px] uppercase tracking-widest text-white/20">
-                          Primary Shield
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Game Selection can go here or in another section */}
-              <div className="bg-white/[0.02] rounded-3xl border border-white/[0.05] p-6 flex flex-col items-center justify-center gap-3">
-                <Settings className="w-10 h-10 text-white/10" />
-                <p className="text-[10px] uppercase tracking-[0.2em] text-white/20 text-center">Operational Settings<br /><span className="text-[8px] opacity-50 italic">More options coming soon</span></p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-4 border-t border-white/5 pt-8">
-              <Button
-                variant="outline"
-                onClick={() => setShowEditTeam(false)}
-                className="flex-1 border-white/10 text-white/60 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-xs"
-              >
-                DISCARD
-              </Button>
-              <Button
-                onClick={handleEditTeam}
-                disabled={editSubmitting || !editTeamName || !editTeamTag}
-                className="flex-1 bg-white text-black hover:bg-white/90 h-12 rounded-xl font-heading font-bold tracking-widest text-xs shadow-2xl transition-all hover:scale-[1.02] disabled:opacity-20 flex items-center justify-center gap-2"
-              >
-                {editSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                    UPDATING...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    COMMIT CHANGES
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <EditTeamDialog
+        open={showEditTeam}
+        onOpenChange={setShowEditTeam}
+        team={currentTeam}
+      />
       {/* Tournament Details Modal */}
       <Dialog open={isTournamentModalOpen} onOpenChange={setIsTournamentModalOpen}>
         <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-3xl border border-white/10 text-white max-w-2xl shadow-[0_0_80px_rgba(0,0,0,0.8)] rounded-3xl p-0 overflow-hidden z-[1100]">

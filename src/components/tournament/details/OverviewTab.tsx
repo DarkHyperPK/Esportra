@@ -58,13 +58,16 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
 
                         <div className="h-12 w-px bg-white/10 hidden md:block" />
 
-                        <div className="text-center md:text-right flex-1 cursor-pointer group" onClick={() => navigate(`/organizer/${tournament.organizer?.username || tournament.organizer?.slug || tournament.user_id}`)}>
-                            <p className="text-[10px] font-mono tracking-[0.3em] text-gray-500 uppercase mb-2 group-hover:text-esports-primary transition-colors">Authenticated Host</p>
-                            <div className="flex items-center justify-center md:justify-end gap-3 group-hover:translate-x-1 transition-transform">
-                                {tournament.organizer?.avatar_url ? (
+                        <div
+                            className={`text-center md:text-right flex-1 ${tournament.organization?.slug ? 'cursor-pointer group' : ''}`}
+                            onClick={tournament.organization?.slug ? () => navigate(`/org/${tournament.organization.slug}`) : undefined}
+                        >
+                            <p className={`text-[10px] font-mono tracking-[0.3em] text-gray-500 uppercase mb-2 ${tournament.organization?.slug ? 'group-hover:text-esports-primary transition-colors' : ''}`}>Authenticated Host</p>
+                            <div className={`flex items-center justify-center md:justify-end gap-3 ${tournament.organization?.slug ? 'group-hover:translate-x-1 transition-transform' : ''}`}>
+                                {tournament.organization?.logo_url || tournament.organizer?.avatar_url ? (
                                     <img
-                                        src={tournament.organizer.avatar_url}
-                                        alt={tournament.organizer.username}
+                                        src={tournament.organization?.logo_url || tournament.organizer?.avatar_url}
+                                        alt={tournament.organization?.name || tournament.organizer?.username}
                                         className="w-8 h-8 rounded-full border border-white/10 object-cover"
                                     />
                                 ) : (
@@ -72,10 +75,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                         <Users className="w-4 h-4 text-gray-400" />
                                     </div>
                                 )}
-                                <span className="text-lg font-bold text-white group-hover:text-esports-primary transition-colors">
-                                    {tournament.organizer?.username || 'Unknown Organizer'}
+                                <span className={`text-lg font-bold text-white ${tournament.organization?.slug ? 'group-hover:text-esports-primary transition-colors' : ''}`}>
+                                    {tournament.organization?.name || tournament.organizer?.username || 'Unknown Organizer'}
                                 </span>
-                                <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-esports-primary" />
+                                {tournament.organization?.slug && <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-esports-primary" />}
                             </div>
                         </div>
                     </div>

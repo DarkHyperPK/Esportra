@@ -31,6 +31,8 @@ interface TournamentCardProps {
   slug: string;
   onDelete?: () => void;
   organizer_name?: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 export const TournamentCard: React.FC<TournamentCardProps> = ({
@@ -54,6 +56,8 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
   status,
   onDelete,
   organizer_name,
+  start_date,
+  end_date,
 }) => {
   const navigate = useNavigate();
   const { currentRole } = useRole();
@@ -64,15 +68,34 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
   // Use the custom hook for game images and carousel
   const { gameLogo, gameBanner, screenshots, carouselIndex } = useRawgGame(game);
 
-  // Cross-validate status with date
-  const tournamentDate = new Date(`${date}T${time}`);
+  // Date-Driven Status Logic
   const now = new Date();
-  const isStarted = now >= tournamentDate;
-  const isTrulyOngoing = status === 'ongoing' && isStarted;
+  const startDate = start_date ? new Date(start_date) : new Date(`${date}T${time}`);
+  const endDate = end_date ? new Date(end_date) : (startDate ? new Date(startDate.getTime() + 4 * 60 * 60 * 1000) : null); // Fallback to +4h if no end_date
+
+  const isUpcoming = now < startDate;
+  const isLive = endDate ? (now >= startDate && now < endDate) : (now >= startDate && status !== 'completed');
+  const isCompleted = endDate ? (now >= endDate || status === 'completed') : (status === 'completed');
 
   // Status Badge Logic
   const getStatusBadge = () => {
-    if (isTrulyOngoing) {
+    if (status === 'cancelled') {
+      return (
+        <Badge className="bg-red-500/20 text-red-400 border-red-500/50">
+          CANCELLED
+        </Badge>
+      );
+    }
+
+    if (isCompleted) {
+      return (
+        <Badge className="bg-emerald-600 text-white border-none shadow-[0_0_10px_rgba(16,185,129,0.4)]">
+          COMPLETED
+        </Badge>
+      );
+    }
+
+    if (isLive) {
       return (
         <Badge className="bg-red-600 text-white animate-pulse border-none shadow-[0_0_10px_rgba(220,38,38,0.5)]">
           <span className="w-2 h-2 rounded-full bg-white mr-2 animate-ping" />
@@ -81,22 +104,7 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
       );
     }
 
-    if (status === 'ongoing' && !isStarted) {
-      return (
-        <Badge className="bg-amber-500 text-white border-none shadow-[0_0_10px_rgba(245,158,11,0.4)]">
-          BATTLE STARTING
-        </Badge>
-      );
-    }
-
-    if (status === 'completed') {
-      return (
-        <Badge className="bg-emerald-600 text-white border-none shadow-[0_0_10px_rgba(16,185,129,0.4)]">
-          COMPLETED
-        </Badge>
-      );
-    }
-
+    // Default to Upcoming / Registration Status
     if (status === 'check_in') {
       return (
         <Badge className="bg-yellow-500 text-black border-none shadow-[0_0_10px_rgba(234,179,8,0.4)]">
@@ -105,14 +113,9 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
       );
     }
 
-    // Handle 'open' as blue/active
-    const isRegistrationOpen = status === 'open';
     return (
-      <Badge className={cn(
-        "backdrop-blur-md border border-white/10 shadow-sm transition-all",
-        isRegistrationOpen ? "bg-blue-600/80 text-white" : "bg-gray-600/80 text-gray-300"
-      )}>
-        {status === 'open' ? 'UPCOMING' : status.toUpperCase()}
+      <Badge className="bg-blue-600 text-white border-none shadow-[0_0_10px_rgba(37,99,235,0.4)]">
+        UPCOMING
       </Badge>
     );
   };
@@ -266,33 +269,26 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
               <CheckCircle className="w-4 h-4 mr-2" />
               Registered
             </Button>
-          ) : isTrulyOngoing ? (
+          ) : isLive ? (
             <Button
-              className="w-full font-bold tracking-wide bg-red-600 hover:bg-red-500 animate-pulse text-white"
+              className="w-full font-bold tracking-wide bg-red-600 hover:bg-red-500 animate-pulse text-white font-heading"
               onClick={() => navigate(`/tournaments/${slug || id}`)}
             >
               LIVE NOW
             </Button>
-          ) : (status === 'ongoing' && !isStarted) ? (
+          ) : isUpcoming ? (
             <Button
-              className="w-full font-bold tracking-wide bg-amber-600 hover:bg-amber-500 text-white"
+              className="w-full font-bold tracking-wide bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20 font-heading"
               onClick={() => navigate(`/tournaments/${slug || id}`)}
             >
-              Starting Soon
-            </Button>
-          ) : (status === 'open') ? (
-            <Button
-              className="w-full font-bold tracking-wide bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20"
-              onClick={() => navigate(`/tournaments/${slug || id}`)}
-            >
-              View Details
+              Join Event
             </Button>
           ) : (
             <Button
-              className="w-full font-bold tracking-wide bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20"
+              className="w-full font-bold tracking-wide bg-gray-700 hover:bg-gray-600 text-white font-heading"
               onClick={() => navigate(`/tournaments/${slug || id}`)}
             >
-              View Details
+              View Info
             </Button>
           )}
         </div>

@@ -29,7 +29,7 @@ export class MatchRepository {
             team2_id: n.team2_id || null,
             winner_id: n.winner_id || null,
             loser_id: n.loser_id || null,
-            best_of: n.best_of || 3,
+            best_of: n.best_of || 1,
             group_id: n.group_id || null, // Swiss/RR groups (Group A, B, etc.)
             round_number: n.round_number || null, // Swiss round number
         }));

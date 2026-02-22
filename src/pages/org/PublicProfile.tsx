@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from 'framer-motion';
 import Footer from '@/components/Footer';
+import { TournamentCard } from '@/components/TournamentCard';
 
 const OrganizationPublicProfile = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -39,12 +40,8 @@ const OrganizationPublicProfile = () => {
         queryKey: ['org-tournaments', org?.id],
         queryFn: async () => {
             const { data, error } = await supabase
-                .from('tournaments')
-                .select(`
-          *,
-          game_meta:games(name, current_version),
-          winner_team:winner_id(name)
-        `)
+                .from('v_tournament_details')
+                .select('*')
                 .eq('organization_id', org.id)
                 .is('deleted_at', null)
                 .order('start_date', { ascending: false });
@@ -239,7 +236,29 @@ const OrganizationPublicProfile = () => {
                             {activeTournaments.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {activeTournaments.map(t => (
-                                        <TournamentCard key={t.id} tournament={t} />
+                                        <TournamentCard
+                                            key={t.id}
+                                            id={t.id}
+                                            name={t.name}
+                                            game={t.game}
+                                            date={t.start_date ? new Date(t.start_date).toLocaleDateString('en-CA') : ''}
+                                            time={t.start_date ? new Date(t.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
+                                            venue={t.settings?.venue || (t.is_online ? 'Online' : 'TBD')}
+                                            max_participants={t.max_participants || t.max_teams || 0}
+                                            current_participants={t.participant_count || 0}
+                                            status={t.status}
+                                            team_size={t.team_size || 1}
+                                            prize_pool={t.prize_pool?.toString() || '0'}
+                                            entry_fee={t.entry_fee?.toString() || 'Free'}
+                                            is_online={t.is_online}
+                                            image_url={t.banner_url || t.logo_url}
+                                            slug={t.slug}
+                                            organizer_name={t.organization_name}
+                                            organizer_id={t.organizer_owner_id}
+                                            currentUserId={user?.id}
+                                            start_date={t.start_date}
+                                            end_date={t.end_date}
+                                        />
                                     ))}
                                 </div>
                             ) : (
@@ -259,7 +278,29 @@ const OrganizationPublicProfile = () => {
                             {pastTournaments.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-80 hover:opacity-100 transition-opacity">
                                     {pastTournaments.map(t => (
-                                        <TournamentCard key={t.id} tournament={t} />
+                                        <TournamentCard
+                                            key={t.id}
+                                            id={t.id}
+                                            name={t.name}
+                                            game={t.game}
+                                            date={t.start_date ? new Date(t.start_date).toLocaleDateString('en-CA') : ''}
+                                            time={t.start_date ? new Date(t.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
+                                            venue={t.settings?.venue || (t.is_online ? 'Online' : 'TBD')}
+                                            max_participants={t.max_participants || t.max_teams || 0}
+                                            current_participants={t.participant_count || 0}
+                                            status={t.status}
+                                            team_size={t.team_size || 1}
+                                            prize_pool={t.prize_pool?.toString() || '0'}
+                                            entry_fee={t.entry_fee?.toString() || 'Free'}
+                                            is_online={t.is_online}
+                                            image_url={t.banner_url || t.logo_url}
+                                            slug={t.slug}
+                                            organizer_name={t.organization_name}
+                                            organizer_id={t.organizer_owner_id}
+                                            currentUserId={user?.id}
+                                            start_date={t.start_date}
+                                            end_date={t.end_date}
+                                        />
                                     ))}
                                 </div>
                             ) : (
@@ -448,51 +489,5 @@ const OrganizationPublicProfile = () => {
     );
 };
 
-const TournamentCard = ({ tournament }: { tournament: any }) => {
-    const navigate = useNavigate();
-    return (
-        <div
-            onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}`)}
-            className="group relative h-[320px] rounded-3xl overflow-hidden bg-[#0a0a0c] border border-white/5 hover:border-esports-accent/50 transition-all duration-300 cursor-pointer shadow-lg hover:shadow-esports-accent/10 hover:-translate-y-1"
-        >
-            {/* Banner */}
-            <div className="absolute inset-0">
-                {tournament.banner_url ? (
-                    <img src={tournament.banner_url} alt={tournament.name} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
-                ) : (
-                    <div className="w-full h-full bg-[#1a1a1f]" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/80 to-transparent" />
-            </div>
-
-            {/* Content */}
-            <div className="absolute inset-0 p-6 flex flex-col justify-between z-10">
-                <div className="flex justify-between items-start">
-                    <Badge className="bg-esports-accent text-black font-bold uppercase tracking-wider text-[10px] hover:bg-esports-accent">
-                        {tournament.game_meta?.name || 'Tournament'}
-                    </Badge>
-                    {tournament.status === 'open' && (
-                        <div className="px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs font-bold flex items-center gap-1 animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> LIVE
-                        </div>
-                    )}
-                </div>
-
-                <div>
-                    <h3 className="text-xl font-bold font-heading mb-2 leading-tight group-hover:text-esports-accent transition-colors">
-                        {tournament.name}
-                    </h3>
-                    <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
-                        <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {new Date(tournament.start_date).toLocaleDateString()}</span>
-                        {tournament.max_teams && <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {tournament.max_teams} Slots</span>}
-                    </div>
-                    <Button className="w-full bg-white/10 hover:bg-esports-accent hover:text-black hover:border-transparent border border-white/10 text-white transition-all backdrop-blur-sm">
-                        View Details
-                    </Button>
-                </div>
-            </div>
-        </div>
-    )
-}
 
 export default OrganizationPublicProfile;

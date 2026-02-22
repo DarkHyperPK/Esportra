@@ -133,6 +133,14 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
                   <div className="text-sm text-gray-400 mb-1">Member Since</div>
                   <div>April 2025</div>
                 </div>
+                {displayProfile?.license_id && (
+                  <div className="pt-2 border-t border-white/5">
+                    <div className="text-[10px] text-gray-500 font-mono uppercase tracking-[0.2em] mb-1">Professional License ID</div>
+                    <div className="font-mono text-xs text-rose-500/80 break-all bg-rose-500/5 p-2 rounded border border-rose-500/10">
+                      {displayProfile.license_id}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

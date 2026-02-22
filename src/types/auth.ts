@@ -18,6 +18,7 @@ export type UserProfile = {
   is_admin?: boolean;
   admin_roles?: string[];
   base_role?: UserRole;
+  license_id?: string | null;
 };
 
 export type AuthContextType = {

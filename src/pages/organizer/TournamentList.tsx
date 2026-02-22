@@ -26,10 +26,25 @@ const TournamentList = () => {
   const fetchTournaments = async () => {
     try {
       setLoading(true);
+
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user?.id)
+        .maybeSingle();
+
+      if (orgError) throw orgError;
+
+      if (!orgData) {
+        setTournaments([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('tournaments')
         .select('*')
-        .eq('organizer_id', user?.id)
+        .eq('organization_id', orgData.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -125,7 +140,7 @@ const TournamentList = () => {
                 venue={tournament.venue}
                 max_participants={tournament.max_participants}
                 current_participants={tournament.current_participants}
-                status={tournament.status as 'upcoming' | 'ongoing' | 'completed'}
+                status={tournament.status as 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled'}
                 team_size={tournament.team_size}
                 prize_pool={tournament.prize_pool}
                 organizer_id={tournament.organizer_id}

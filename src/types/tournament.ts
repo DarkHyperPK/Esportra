@@ -26,7 +26,6 @@ export interface BaseTournament {
     end_date?: string; // Added to support timeline display
     description: string;
     user_id: string; // Keep for legacy
-    organizer_id: string;
     rewards?: string | null;
     created_at: string;
     image_url?: string | null;
@@ -39,6 +38,13 @@ export interface BaseTournament {
         username: string;
         avatar_url?: string | null;
     };
+    organization_id?: string | null;
+    organization?: {
+        slug: string;
+        name: string;
+        logo_url?: string | null;
+        owner_id?: string;
+    } | null;
 }
 
 export interface Tournament extends BaseTournament {

@@ -143,6 +143,15 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
         setIsSubmitting(true);
 
         try {
+            // Get user's organization id
+            const { data: orgData } = await supabase
+                .from('organizations')
+                .select('id')
+                .eq('owner_id', user.id)
+                .maybeSingle();
+
+            const organizationId = orgData?.id || null;
+
             // Parse dates
             const startDateTime = new Date(`${data.startDate}T${data.startTime}`);
             const endDateTime = data.endDate && data.endTime
@@ -193,6 +202,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         status: data.status,
                         rewards: data.rewards,
                         stream_url: data.streamUrl || null,
+                        organization_id: organizationId,
                         settings: {
                             ...(data as any).settings,
                             checkInWindowMinutes: data.checkInWindowMinutes,
@@ -343,9 +353,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         status: 'draft',
                         banner_url: data.bannerUrl,
                         logo_url: data.logoUrl,
-                        organizer_id: user.id,
+                        organization_id: organizationId,
                         venue_id: data.isOnline ? null : null,
-                        is_public: data.visibility === 'public' && false, // Force false for drafts, logic updated to be explicit
+                        is_public: data.visibility === 'public',
                         check_in_required: data.checkInRequired,
                         check_in_deadline: startDateTime.toISOString(), // Check-in ends at start time
                         auto_remove_unchecked: data.autoRemoveUnchecked,

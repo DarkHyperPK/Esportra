@@ -182,7 +182,6 @@ export const useTournamentCreation = () => {
           status: 'open',
           banner_url: null,
           logo_url: null,
-          organizer_id: user.id,
           // Use null unless you have a valid venue_id (UUID) to relate
           venue_id: formData.isOnline ? null : null,
           is_public: true,

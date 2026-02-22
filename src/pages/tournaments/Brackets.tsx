@@ -36,11 +36,12 @@ const TournamentBrackets = () => {
       setLoading(true);
 
       // Fetch tournament
+      const querySpec = '*, organization:organizations(owner_id)';
       let tournamentData: any = null;
-      const { data: bySlug } = await supabase.from('tournaments').select('*').eq('slug', slug).single();
+      const { data: bySlug } = await supabase.from('tournaments').select(querySpec).eq('slug', slug).single();
       if (bySlug) tournamentData = bySlug;
       else {
-        const { data: byId } = await supabase.from('tournaments').select('*').eq('id', slug).single();
+        const { data: byId } = await supabase.from('tournaments').select(querySpec).eq('id', slug).single();
         if (byId) tournamentData = byId;
       }
 
@@ -64,7 +65,7 @@ const TournamentBrackets = () => {
       }
 
       // Fetch bracket versions - Organizers see drafts, others only active
-      const isActuallyOrganizer = user?.id && tournamentData.organizer_id === user.id;
+      const isActuallyOrganizer = user?.id && tournamentData.organization?.owner_id === user.id;
       const statusFilter = isActuallyOrganizer ? ['active', 'draft'] : ['active'];
 
       const { data: versionsData } = await (supabase as any)
@@ -135,8 +136,8 @@ const TournamentBrackets = () => {
   // 3. Permissions
   const isOrganizerRole = currentRole === 'organizer';
   const isOrganizerOwner = useMemo(() =>
-    isOrganizerRole && !!(user?.id && tournament?.organizer_id && user.id === tournament.organizer_id),
-    [isOrganizerRole, user?.id, tournament?.organizer_id]
+    isOrganizerRole && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id),
+    [isOrganizerRole, user?.id, tournament?.organization?.owner_id]
   );
 
   if (loading) {

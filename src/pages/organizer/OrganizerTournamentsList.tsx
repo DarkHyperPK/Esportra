@@ -30,10 +30,24 @@ const OrganizerTournamentsList: React.FC = () => {
     setLoading(true);
     if (!user) return;
     try {
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (orgError) throw orgError;
+
+      if (!orgData) {
+        setTournaments([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('tournaments')
         .select('id, name, game, date, time, venue, max_participants, team_size, slug')
-        .eq('organizer_id', user.id)
+        .eq('organization_id', orgData.id)
         .order('start_date', { ascending: true });
 
       if (error) throw error;

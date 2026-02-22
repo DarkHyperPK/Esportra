@@ -72,7 +72,7 @@ const ManageBracketPage = () => {
             console.log('ManageBracketPage: Fetching data for slug:', slug, 'stageId:', stageId);
 
             // Fetch tournament
-            let query = supabase.from('tournaments').select('*');
+            let query = supabase.from('tournaments').select('*, organization:organizations(owner_id)');
 
             // Check if slug is a valid UUID
             const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
@@ -98,7 +98,7 @@ const ManageBracketPage = () => {
 
             console.log('ManageBracketPage: Tournament found:', tournamentData);
             setTournament(tournamentData);
-            setIsOrganizer(user?.id === tournamentData.organizer_id);
+            setIsOrganizer(user?.id === tournamentData.organization?.owner_id);
 
             // Fetch stage
             const { data: stageData } = await supabase

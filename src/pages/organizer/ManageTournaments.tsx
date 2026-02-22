@@ -58,10 +58,23 @@ const TournamentList = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (!orgData) return [];
+
       const { data, error } = await supabase
-        .rpc('get_organizer_tournaments_with_counts', {
-          p_organizer_id: user.id
-        });
+        .from('tournaments')
+        .select(`
+          id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, entry_fee, is_public, banner_url, logo_url, slug, description, deleted_at, status, team_size,
+          tournament_participants ( count )
+        `)
+        .eq('organization_id', orgData.id)
+        .is('deleted_at', null)
+        .order('start_date', { ascending: true });
 
       if (error) throw error;
 
@@ -73,15 +86,15 @@ const TournamentList = () => {
         time: tournament.start_date ? new Date(tournament.start_date).toTimeString().split(' ')[0] : '',
         venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
         max_participants: tournament.max_teams,
-        current_participants: Number(tournament.current_participants) || 0,
+        current_participants: tournament.tournament_participants?.[0]?.count || 0,
         prize_pool: tournament.prize_pool?.toString() || '0',
-        user_id: tournament.organizer_id,
+        user_id: user.id, // Current user is organization owner here
         entry_fee: tournament.entry_fee?.toString() || 'Free',
         is_online: !tournament.venue_id,
         image_url: tournament.banner_url || tournament.logo_url,
         slug: tournament.slug,
         status: (tournament.status || 'open') as 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled',
-        team_size: 1, // fallback default
+        team_size: tournament.team_size || 1, // fallback default
       }));
     },
     enabled: !!user?.id,
@@ -95,10 +108,18 @@ const TournamentList = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (!orgData) return [];
+
       const { data, error } = await supabase
         .from('tournaments')
         .select('id, name, game, deleted_at')
-        .eq('organizer_id', user.id)
+        .eq('organization_id', orgData.id)
         .not('deleted_at', 'is', null)
         .order('deleted_at', { ascending: false });
 

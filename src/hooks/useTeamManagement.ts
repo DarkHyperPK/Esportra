@@ -22,6 +22,7 @@ export interface Team {
   games?: string[]; // Array of games the team plays
   game_format: string;
   logo_url?: string;
+  banner_url?: string;
   description?: string;
   website_url?: string;
   social_media?: any;
@@ -183,6 +184,7 @@ export const useTeamManagement = () => {
             games: team.games || [],
             game_format: team.game_format,
             logo_url: team.logo_url,
+            banner_url: team.banner_url,
             description: team.description,
             website_url: team.website_url,
             social_media: team.social_media,
