@@ -105,7 +105,7 @@ const DashboardLayout = () => {
             <aside className="w-72 border-r border-white/5 bg-[#0a0a0c]/80 backdrop-blur-xl p-8 hidden lg:flex flex-col relative z-20">
                 <div className="mb-12">
                     <div className="flex items-center gap-3 mb-2">
-                        <img src={branding?.logoUrl || getWebsiteAssetUrl('eSportra%20Logo/eSPORTRA%20white%20transparent.png')} alt="Esportra" className="w-8 h-8 object-contain" />
+                        <img src={branding?.logoUrl || getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')} alt="Esportra" className="w-8 h-8 object-contain" />
                         <h1 className="text-xl font-black font-heading tracking-tighter">
                             ESPORTRA<span className="text-rose-500">_PARTNER</span>
                         </h1>

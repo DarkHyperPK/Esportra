@@ -6,7 +6,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://api.esportra.com";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://esportra.com";
 const FROM_EMAIL = "Esportra <operations@esportra.com>";
-const LOGO_URL = `${SUPABASE_URL}/storage/v1/object/public/system.assets.website/eSportra%20Logo/eSPORTRA%20white%20transparent.png`;
+const LOGO_URL = `${SUPABASE_URL}/storage/v1/object/public/system.assets.website/eSportra-Logo/eSPORTRA-white-transparent.png`;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

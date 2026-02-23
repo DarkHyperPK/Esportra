@@ -111,7 +111,7 @@ const Login = () => {
                 {/* Brand Logo */}
                 <div className="flex flex-col items-center mb-12">
                     <div className="w-20 h-20 bg-rose-500/10 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(244,63,94,0.1)] border border-rose-500/20 backdrop-blur-md">
-                        <img src={getWebsiteAssetUrl('eSportra%20Logo/eSPORTRA%20white%20transparent.png')} alt="Esportra" className="w-10 h-10 object-contain" />
+                        <img src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')} alt="Esportra" className="w-10 h-10 object-contain" />
                     </div>
                     <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">
                         ESPORTRA<span className="text-rose-500">_PARTNER</span>
