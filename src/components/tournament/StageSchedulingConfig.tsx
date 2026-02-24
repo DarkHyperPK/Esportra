@@ -46,14 +46,28 @@ const formatInfo: Record<string, { label: string; icon: string; description: str
 const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, stageFormat, onConfigChange }) => {
     const { schedulingConfig, updateConfig, isLoading } = useMatchScheduling(stageId);
     const formatData = formatInfo[stageFormat] || formatInfo.single_elimination;
+    const [optimisticSelfPlay, setOptimisticSelfPlay] = React.useState<boolean | null>(null);
+    const isSelfPlayEnabled = optimisticSelfPlay !== null ? optimisticSelfPlay : !!schedulingConfig?.self_play_enabled;
 
     const handleUpdate = async (key: string, value: any) => {
+        if (key === 'self_play_enabled') {
+            setOptimisticSelfPlay(value);
+        }
+
         const newConfig = {
             ...schedulingConfig,
             [key]: value,
         };
-        await updateConfig.mutateAsync(newConfig);
-        onConfigChange?.(newConfig);
+
+        try {
+            await updateConfig.mutateAsync(newConfig);
+            onConfigChange?.(newConfig);
+        } catch (error) {
+            console.error('[StageSchedulingConfig] Update failed:', error);
+            if (key === 'self_play_enabled') {
+                setOptimisticSelfPlay(null); // Revert to backend state
+            }
+        }
     };
 
     if (isLoading || !schedulingConfig) {
@@ -117,7 +131,7 @@ const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, 
                         </div>
                     </div>
                     <Switch
-                        checked={schedulingConfig.self_play_enabled}
+                        checked={isSelfPlayEnabled}
                         onCheckedChange={(checked) => handleUpdate('self_play_enabled', checked)}
                         className="data-[state=checked]:bg-esports-purple"
                     />

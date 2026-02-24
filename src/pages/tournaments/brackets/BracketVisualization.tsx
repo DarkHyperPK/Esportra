@@ -26,8 +26,9 @@ import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
 import { useGraphBracket } from '@/hooks/useGraphBracket';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 
 // =============================================================================
 // LAYOUT CONSTANTS - THESE MUST MATCH ACTUAL RENDERED CARD SIZE
@@ -65,6 +66,7 @@ import { BracketExporter } from '@/components/bracket/BracketExporter';
 import { Download } from 'lucide-react';
 import { GroupStageView } from '@/components/bracket/GroupStageView';
 import { SwissView } from '@/components/bracket/SwissView';
+import EntityAvatar from '@/components/ui/EntityAvatar';
 
 
 
@@ -83,6 +85,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   stage,
 }) => {
   // Data Fetching Logic with Realtime subscriptions
+  const queryClient = useQueryClient();
   const { data: graphData, refetch: refetchGraph } = useGraphBracket(versionId || '', tournamentId || undefined);
 
   // Fetch match proofs
@@ -516,14 +519,53 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     if (s1 === s2) { toast({ title: 'Invalid scores', description: 'Scores cannot be equal.', variant: 'destructive' }); return; }
 
     setIsProcessing(true);
+
+    // --- OPTIMISTIC UPDATE ---
+    const queryKey = ['bracket-graph', versionId];
+    const previousGraphData = queryClient.getQueryData<{ nodes: any[]; edges: any[] }>(queryKey);
+
+    if (previousGraphData && versionId) {
+      const winnerId = s1 > s2 ? m.team1?.id || null : m.team2?.id || null;
+      const loserId = s1 < s2 ? m.team1?.id || null : m.team2?.id || null;
+
+      const nodesWithScore = optimisticBracket.applyScore(
+        previousGraphData.nodes,
+        getRawId(m.id),
+        s1,
+        s2,
+        m.team1?.id || null,
+        m.team2?.id || null
+      );
+
+      const nodesWithAdvancement = optimisticBracket.applyAdvancement(
+        nodesWithScore,
+        previousGraphData.edges,
+        getRawId(m.id),
+        winnerId,
+        loserId
+      );
+
+      queryClient.setQueryData(queryKey, {
+        ...previousGraphData,
+        nodes: nodesWithAdvancement,
+      });
+    }
+    // -------------------------
+
     const r = await GraphMatchService.saveScoreAndAdvance(getRawId(m.id), s1, s2, m.team1?.id || null, m.team2?.id || null);
     setIsProcessing(false);
     if (r.success) {
       delete scoreDraftRef.current[getRawId(m.id)];
       toast({ title: '🏆 Score saved!' });
     }
-    else toast({ title: 'Error', description: r.error, variant: 'destructive' });
-  }, [toast]);
+    else {
+      // ROLLBACK
+      if (previousGraphData && versionId) {
+        queryClient.setQueryData(queryKey, previousGraphData);
+      }
+      toast({ title: 'Error', description: r.error, variant: 'destructive' });
+    }
+  }, [toast, queryClient, versionId]);
 
   const renderMatchCard = useCallback((match: BracketMatch, x: number, y: number, label: string) => (
     <MatchCard
@@ -536,6 +578,8 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       onToggleExpand={toggleExpand}
       isOrganizer={isOrganizer}
       isProcessing={isProcessing}
+      versionId={versionId}
+      tournamentId={tournamentId}
       onScoreChange={handleScoreChange}
       onGoLive={openGoLive}
       onMapVeto={openMapVeto}
@@ -630,16 +674,18 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
             position: 'relative'
           }}>
             {/* Winners Bracket Heading */}
-            {(activeFilter.type === 'all' || activeFilter.type === 'winners') && matches.some(m => m.bracketSide === 'winners') && (
-              <div style={{ position: 'absolute', left: LEFT_PADDING, top: 0, width: 350, zIndex: 100 }}>
-                <h3 className="text-xl font-semibold tracking-tight text-white flex items-center gap-3">
-                  <div className="p-1.5 rounded-md bg-yellow-500/10 border border-yellow-500/20">
-                    <Trophy className="w-4 h-4 text-yellow-500" />
-                  </div>
-                  Winners Bracket
-                </h3>
-              </div>
-            )}
+            {(activeFilter.type === 'all' || activeFilter.type === 'winners') &&
+              matches.some(m => m.bracketSide === 'winners') &&
+              stage?.format !== 'single_elimination' && (
+                <div style={{ position: 'absolute', left: LEFT_PADDING, top: 0, width: 350, zIndex: 100 }}>
+                  <h3 className="text-xl font-semibold tracking-tight text-white flex items-center gap-3">
+                    <div className="p-1.5 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+                      <Trophy className="w-4 h-4 text-yellow-500" />
+                    </div>
+                    Winners Bracket
+                  </h3>
+                </div>
+              )}
 
             {/* Losers Bracket Heading */}
             {(activeFilter.type === 'all' || activeFilter.type === 'losers') && matches.some(m => m.bracketSide === 'losers') && (
@@ -719,26 +765,30 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
             {/* Team Logos - Containerless */}
             <div className="flex items-center justify-center gap-6">
               <div className="flex flex-col items-center gap-2">
-                {goLiveMatch?.team1?.logo_url ? (
-                  <img src={goLiveMatch.team1.logo_url} alt="" className="w-16 h-16 object-contain" />
-                ) : (
-                  <div className="w-16 h-16 flex items-center justify-center text-xl font-bold text-white/60 bg-white/5 rounded-lg">
-                    {(goLiveMatch?.team1?.name || 'T1').slice(0, 2).toUpperCase()}
-                  </div>
-                )}
+                <EntityAvatar
+                  src={goLiveMatch?.team1?.logo_url}
+                  name={goLiveMatch?.team1?.name}
+                  entityId={goLiveMatch?.team1?.id}
+                  type="team"
+                  size="w-16 h-16"
+                  fallbackClassName="text-xl"
+                  imgClassName="object-contain"
+                />
                 <span className="text-xs text-white/60 text-center max-w-[120px]">{goLiveMatch?.team1?.name}</span>
               </div>
 
               <span className="text-lg font-medium text-white/20">vs</span>
 
               <div className="flex flex-col items-center gap-2">
-                {goLiveMatch?.team2?.logo_url ? (
-                  <img src={goLiveMatch.team2.logo_url} alt="" className="w-16 h-16 object-contain" />
-                ) : (
-                  <div className="w-16 h-16 flex items-center justify-center text-xl font-bold text-white/60 bg-white/5 rounded-lg">
-                    {(goLiveMatch?.team2?.name || 'T2').slice(0, 2).toUpperCase()}
-                  </div>
-                )}
+                <EntityAvatar
+                  src={goLiveMatch?.team2?.logo_url}
+                  name={goLiveMatch?.team2?.name}
+                  entityId={goLiveMatch?.team2?.id}
+                  type="team"
+                  size="w-16 h-16"
+                  fallbackClassName="text-xl"
+                  imgClassName="object-contain"
+                />
                 <span className="text-xs text-white/60 text-center max-w-[120px]">{goLiveMatch?.team2?.name}</span>
               </div>
             </div>

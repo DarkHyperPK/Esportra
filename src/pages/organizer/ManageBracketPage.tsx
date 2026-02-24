@@ -16,6 +16,8 @@ import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import RoundSchedulingPanel from '@/components/tournament/RoundSchedulingPanel';
 import StageSchedulingConfig from '@/components/tournament/StageSchedulingConfig';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
+import { useQueryClient } from '@tanstack/react-query';
+import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 
 interface AdvancingTeam {
     team_id: string;
@@ -28,6 +30,7 @@ const ManageBracketPage = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user, loading: authLoading } = useAuth();
+    const queryClient = useQueryClient();
 
     const [tournament, setTournament] = useState<any>(null);
     const [stage, setStage] = useState<any>(null);
@@ -207,6 +210,35 @@ const ManageBracketPage = () => {
             const isBo1 = (match.best_of || 1) === 1;
             const winScore = isBo1 ? 13 : 1;
 
+            // --- OPTIMISTIC UPDATE ---
+            const queryKey = ['bracket-graph', versionId];
+            const previousGraphData = queryClient.getQueryData<{ nodes: any[]; edges: any[] }>(queryKey);
+
+            if (previousGraphData && versionId) {
+                const nodesWithScore = optimisticBracket.applyScore(
+                    previousGraphData.nodes,
+                    matchId,
+                    match.team1_id ? winScore : 0,
+                    match.team2_id ? winScore : 0,
+                    match.team1_id,
+                    match.team2_id
+                );
+
+                const nodesWithAdvancement = optimisticBracket.applyAdvancement(
+                    nodesWithScore,
+                    previousGraphData.edges,
+                    matchId,
+                    winnerId,
+                    null
+                );
+
+                queryClient.setQueryData(queryKey, {
+                    ...previousGraphData,
+                    nodes: nodesWithAdvancement,
+                });
+            }
+            // -------------------------
+
             // Use GraphMatchService to save score AND propagate winner to next match
             const result = await GraphMatchService.saveScoreAndAdvance(
                 matchId,
@@ -217,12 +249,16 @@ const ManageBracketPage = () => {
             );
 
             if (!result.success) {
+                // ROLLBACK
+                if (previousGraphData && versionId) {
+                    queryClient.setQueryData(['bracket-graph', versionId], previousGraphData);
+                }
                 toast({ title: 'Error', description: result.error || 'Failed to advance BYE', variant: 'destructive' });
                 return;
             }
 
             toast({ title: 'BYE Advanced', description: 'Team has been advanced!' });
-            fetchData(true);
+            // Remove fetchData(true) to preserve optimistic state
         } catch (error: any) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         }
@@ -276,25 +312,76 @@ const ManageBracketPage = () => {
                 return;
             }
 
+            // --- OPTIMISTIC UPDATE FOR ALL BYES ---
+            const queryKey = ['bracket-graph', versionId];
+            let currentGraphData = queryClient.getQueryData<{ nodes: any[]; edges: any[] }>(queryKey);
+            const originalGraphData = currentGraphData; // Save for perfect rollback
+
+            if (currentGraphData && versionId) {
+                let updatedNodes = [...currentGraphData.nodes];
+
+                for (const match of actualByeMatches) {
+                    const winnerId = match.team1_id || match.team2_id;
+                    const isBo1 = (match.best_of || 1) === 1;
+                    const winScore = isBo1 ? 13 : 1;
+                    const t1Score = match.team1_id ? winScore : 0;
+                    const t2Score = match.team2_id ? winScore : 0;
+
+                    updatedNodes = optimisticBracket.applyScore(
+                        updatedNodes,
+                        match.id,
+                        t1Score,
+                        t2Score,
+                        match.team1_id,
+                        match.team2_id
+                    );
+
+                    updatedNodes = optimisticBracket.applyAdvancement(
+                        updatedNodes,
+                        currentGraphData.edges,
+                        match.id,
+                        winnerId,
+                        null
+                    );
+                }
+
+                currentGraphData = { ...currentGraphData, nodes: updatedNodes };
+                queryClient.setQueryData(queryKey, currentGraphData);
+            }
+            // --------------------------------------
+
             // Advance each BYE match using GraphMatchService
             let advancedCount = 0;
+            let failureCount = 0;
             for (const match of actualByeMatches) {
+                const isBo1 = (match.best_of || 1) === 1;
+                const winScore = isBo1 ? 13 : 1;
                 const result = await GraphMatchService.saveScoreAndAdvance(
                     match.id,
-                    match.team1_id ? 1 : 0,
-                    match.team2_id ? 1 : 0,
+                    match.team1_id ? winScore : 0,
+                    match.team2_id ? winScore : 0,
                     match.team1_id,
                     match.team2_id
                 );
 
-                if (result.success) advancedCount++;
+                if (result.success) {
+                    advancedCount++;
+                } else {
+                    failureCount++;
+                }
+            }
+
+            if (failureCount > 0 && originalGraphData && versionId) {
+                // Partial or full failure: rollback to original state
+                queryClient.setQueryData(queryKey, originalGraphData);
+                throw new Error(`Failed to advance ${failureCount} match(es).`);
             }
 
             toast({
                 title: 'BYEs Advanced',
                 description: `${advancedCount} BYE match(es) have been processed!`
             });
-            fetchData(true);
+            // Removed fetchData(true) to preserve optimistic state
         } catch (error: any) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         }

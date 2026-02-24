@@ -295,6 +295,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                     }}
                     hasResultsMap={automatedGames}
                     hasProofsMap={proofs}
+                    isSingleElimination={currentStage?.format === 'single_elimination'}
                 />
             </>
         );

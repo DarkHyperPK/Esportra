@@ -1,3 +1,7 @@
+import { BracketMatch } from '@/types/bracketTypes';
+import EntityAvatar from '@/components/ui/EntityAvatar';
+import { formatLocalTime } from '@/lib/timeUtils';
+
 interface ReadOnlyMatchCardProps {
     match: any;
     x?: number;
@@ -28,11 +32,11 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
         left: x,
         top: y,
         width: 260,
-        height: 70
+        height: 86
     } : {
         position: 'relative',
         minWidth: 260,
-        height: 70
+        height: 86
     };
 
     return (
@@ -48,14 +52,7 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
                 ${hasAnyResults ? 'hover:bg-slate-700/80 transition-colors' : ''}
                 shadow-md
             `}>
-                {/* Live indicator */}
-                <div className="absolute top-0 right-0 flex items-center">
-                    {isLive && (
-                        <div className="px-1.5 py-0.5 bg-red-500 text-[9px] text-white font-bold uppercase tracking-wider">
-                            Live
-                        </div>
-                    )}
-                </div>
+                {/* Live indicator (moved to footer) */}
 
                 {/* Hover Overlay: Show Match Details */}
                 {hasAnyResults && (
@@ -74,13 +71,14 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
                     border-b border-slate-700/50
                 `}>
                     <div className="flex items-center gap-2 overflow-hidden">
-                        {match.team1?.logo_url ? (
-                            <img src={match.team1.logo_url} alt="" className="w-6 h-6 rounded-sm object-cover" />
-                        ) : (
-                            <div className="w-6 h-6 rounded-sm bg-slate-700 flex items-center justify-center text-[9px] text-slate-400">
-                                {match.team1?.name?.charAt(0) || '?'}
-                            </div>
-                        )}
+                        <EntityAvatar
+                            src={match.team1?.logo_url}
+                            name={match.team1?.name || '?'}
+                            entityId={match.team1?.id}
+                            type="team"
+                            size="w-6 h-6"
+                            className="rounded-sm"
+                        />
                         <span className={`text-xs font-medium truncate ${team1Won ? 'text-white' : 'text-slate-400'}`}>
                             {match.team1?.name || (isCompleted ? 'BYE' : 'TBD')}
                         </span>
@@ -100,13 +98,14 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
                     ${team2Won ? 'bg-slate-700/50' : ''}
                 `}>
                     <div className="flex items-center gap-2 overflow-hidden">
-                        {match.team2?.logo_url ? (
-                            <img src={match.team2.logo_url} alt="" className="w-6 h-6 rounded-sm object-cover" />
-                        ) : (
-                            <div className="w-6 h-6 rounded-sm bg-slate-700 flex items-center justify-center text-[9px] text-slate-400">
-                                {match.team2?.name?.charAt(0) || '?'}
-                            </div>
-                        )}
+                        <EntityAvatar
+                            src={match.team2?.logo_url}
+                            name={match.team2?.name || '?'}
+                            entityId={match.team2?.id}
+                            type="team"
+                            size="w-6 h-6"
+                            className="rounded-sm"
+                        />
                         <span className={`text-xs font-medium truncate ${team2Won ? 'text-white' : 'text-slate-400'}`}>
                             {match.team2?.name || (isCompleted ? 'BYE' : 'TBD')}
                         </span>
@@ -116,6 +115,24 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
                             {match.team2_score ?? '-'}
                         </span>
                         {team2Won && <div className="w-1 h-full absolute right-0 bottom-0 bg-orange-500" />}
+                    </div>
+                </div>
+
+                {/* Footer - Match Timing */}
+                <div className="flex items-center justify-between h-[16px] px-2 bg-slate-900/50">
+                    <div className="text-[9px] font-medium text-slate-500 uppercase flex items-center gap-1">
+                        {isLive ? (
+                            <span className="text-red-500 font-bold flex items-center gap-1">
+                                <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse"></span>
+                                LIVE
+                            </span>
+                        ) : match.scheduledTime ? (
+                            <span>
+                                {formatLocalTime(match.scheduledTime, 'MMM d • h:mm a')}
+                            </span>
+                        ) : (
+                            <span>TBD</span>
+                        )}
                     </div>
                 </div>
             </div>

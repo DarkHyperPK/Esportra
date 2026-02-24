@@ -22,6 +22,7 @@ import { MoreVertical, Award, ArrowLeftRight, RotateCcw, Loader2 } from 'lucide-
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 
 interface ManualAdjustmentMenuProps {
     matchId: string;
@@ -33,6 +34,7 @@ interface ManualAdjustmentMenuProps {
     matchStatus: string;
     onAdjustmentMade?: () => void;
     bestOf?: number;
+    versionId?: string | null;
 }
 
 type AdjustmentAction = 'walkover_team1' | 'walkover_team2' | 'swap' | 'reset';
@@ -47,6 +49,7 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
     matchStatus,
     onAdjustmentMade,
     bestOf,
+    versionId,
 }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
@@ -82,26 +85,72 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
         if (!pendingAction) return;
 
         setProcessing(true);
+
+        // --- OPTIMISTIC SNAPSHOT ---
+        const queryKey = ['bracket-graph', versionId];
+        let previousGraphData: any = null;
+        if (versionId) {
+            previousGraphData = queryClient.getQueryData<{ nodes: any[]; edges: any[] }>(queryKey);
+        }
+
         try {
             switch (pendingAction) {
                 case 'walkover_team1':
                 case 'walkover_team2': {
                     const winnerId = pendingAction === 'walkover_team1' ? team1Id : team2Id;
+                    const loserId = pendingAction === 'walkover_team1' ? team2Id : team1Id;
                     const winnerName = pendingAction === 'walkover_team1' ? team1Name : team2Name;
+                    const rawMatchId = matchId.replace(/^(db-|wb-|lb-)/, '');
 
-                    // Update match with walkover result
-                    const { error } = await supabase
+                    // Get current version for locking
+                    const { data: currentMatch } = await supabase
                         .from('brkt_matches')
-                        .update({
-                            winner_id: winnerId,
-                            status: 'completed',
-                            // Calculate score based on bestOf
-                            team1_score: pendingAction === 'walkover_team1' ? ((bestOf === 1 ? 13 : Math.ceil((bestOf || 1) / 2))) : 0,
-                            team2_score: pendingAction === 'walkover_team2' ? ((bestOf === 1 ? 13 : Math.ceil((bestOf || 1) / 2))) : 0,
-                        })
-                        .eq('id', matchId);
+                        .select('version')
+                        .eq('id', rawMatchId)
+                        .single();
 
-                    if (error) throw error;
+                    if (!currentMatch) throw new Error('Match not found');
+
+                    const team1Score = pendingAction === 'walkover_team1' ? ((bestOf === 1 ? 13 : Math.ceil((bestOf || 1) / 2))) : 0;
+                    const team2Score = pendingAction === 'walkover_team2' ? ((bestOf === 1 ? 13 : Math.ceil((bestOf || 1) / 2))) : 0;
+
+                    // --- OPTIMISTIC APPLY WALKOVER ---
+                    if (previousGraphData && versionId) {
+                        const nodesWithScore = optimisticBracket.applyScore(
+                            previousGraphData.nodes,
+                            rawMatchId,
+                            team1Score,
+                            team2Score,
+                            team1Id || null,
+                            team2Id || null
+                        );
+                        const nodesWithAdvancement = optimisticBracket.applyAdvancement(
+                            nodesWithScore,
+                            previousGraphData.edges,
+                            rawMatchId,
+                            winnerId,
+                            loserId
+                        );
+                        queryClient.setQueryData(queryKey, {
+                            ...previousGraphData,
+                            nodes: nodesWithAdvancement,
+                        });
+                    }
+                    // ---------------------------------
+
+                    // Use RPC to finalize and trigger advancement
+                    const { data: success, error: finalizeError } = await supabase.rpc('finalize_match_locked', {
+                        p_match_id: rawMatchId,
+                        p_expected_version: currentMatch.version,
+                        p_winner_id: winnerId,
+                        p_loser_id: loserId,
+                        p_team1_score: team1Score,
+                        p_team2_score: team2Score
+                    });
+
+                    if (finalizeError) throw finalizeError;
+                    if (!success) throw new Error('Failed to apply walkover: Match state has changed.');
+
                     toast({ title: 'Walkover Applied', description: `${winnerName} wins by walkover.` });
                     break;
                 }
@@ -115,6 +164,21 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
                         .single();
 
                     if (fetchError) throw fetchError;
+
+                    const rawMatchId = matchId.replace(/^(db-|wb-|lb-)/, '');
+
+                    // --- OPTIMISTIC APPLY SWAP ---
+                    if (previousGraphData && versionId) {
+                        const nodesWithSwap = optimisticBracket.applySwap(
+                            previousGraphData.nodes,
+                            rawMatchId
+                        );
+                        queryClient.setQueryData(queryKey, {
+                            ...previousGraphData,
+                            nodes: nodesWithSwap,
+                        });
+                    }
+                    // -------------------------------
 
                     // Swap teams
                     const { error } = await supabase
@@ -135,8 +199,26 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
                 case 'reset': {
                     const rawMatchId = matchId.replace(/^(db-|wb-|lb-)/, '');
 
+                    // --- OPTIMISTIC APPLY RESET ---
+                    if (previousGraphData && versionId) {
+                        const nodesWithReset = optimisticBracket.applyReset(
+                            previousGraphData.nodes,
+                            rawMatchId
+                        );
+                        queryClient.setQueryData(queryKey, {
+                            ...previousGraphData,
+                            nodes: nodesWithReset,
+                        });
+                    }
+                    // ---------------------------------
+
                     // 1. Delete associated game results
                     await supabase.from('brkt_match_games').delete().eq('match_id', rawMatchId);
+
+                    // 2. Undo any advancements that already happened
+                    await supabase.rpc('undo_match_advancement', {
+                        p_match_id: rawMatchId
+                    });
 
                     // 2. Reset Map Veto via RPC (if exists) or manual deletion
                     const { error: vetoRpcError } = await supabase.rpc('reset_match_veto', {
@@ -179,9 +261,19 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
             }
 
             onAdjustmentMade?.();
-        } catch (error: any) {
-            console.error('Manual adjustment error:', error);
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        } catch (err: any) {
+            // ROLLBACK OPTIMISTIC UPDATE
+            if (previousGraphData && versionId) {
+                queryClient.setQueryData(queryKey, previousGraphData);
+            }
+
+            console.error('Manual adjustment error:', err);
+            const errorMessage = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+            toast({
+                title: 'Action Failed',
+                description: `Error: ${errorMessage}`,
+                variant: 'destructive'
+            });
         } finally {
             setProcessing(false);
             setConfirmOpen(false);

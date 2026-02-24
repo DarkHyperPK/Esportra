@@ -54,7 +54,11 @@ export const localInputToUTC = (localDateTimeStr: string): string => {
     if (!localDateTimeStr) return '';
     // new Date() interprets a string without timezone as local time
     const date = new Date(localDateTimeStr);
-    return date.toISOString();
+    // Strip milliseconds and seconds to enforce "yyyy-MM-ddThh:mm:00.000Z" when saving,
+    // though the DB will interpret any valid ISO.
+    // However, since we feed this back to datetime-local sometimes, maintaining a clean
+    // string helps.
+    return date.toISOString().replace(/:\d{2}\.\d{3}Z$/, ':00.000Z');
 };
 
 /**

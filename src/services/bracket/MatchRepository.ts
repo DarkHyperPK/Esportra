@@ -169,7 +169,8 @@ export class MatchRepository {
             y: m.layout?.[0]?.y,
             scheduled_time: m.scheduled_time,
             best_of: m.best_of,
-            automated_report_status: m.automated_report_status
+            automated_report_status: m.automated_report_status,
+            version: m.version
         }));
 
         // Handle null edges

@@ -134,22 +134,25 @@ export const GraphBracket: React.FC<GraphBracketProps> = ({
         const winnerId = s1 > s2 ? selectedMatch.team1_id : selectedMatch.team2_id;
         const loserId = s1 > s2 ? selectedMatch.team2_id : selectedMatch.team1_id;
 
-        try {
-            // Update match with score and winner
-            const { error } = await (supabase as any)
-                .from('brkt_matches')
-                .update({
-                    status: 'completed',
-                    winner_id: winnerId,
-                    loser_id: loserId,
-                    team1_score: s1,
-                    team2_score: s2
-                })
-                .eq('id', selectedMatch.id);
-            if (error) throw error;
+        if (!winnerId || !loserId) {
+            toast({ title: 'Error', description: 'Both teams must be present to submit a score', variant: 'destructive' });
+            return;
+        }
 
-            // TODO: Advance winner to next match via AdvancementService
-            // For now, we just mark this match as complete
+        try {
+            setIsProcessing(true);
+            // Use RPC to finalize and trigger advancement
+            const { data: success, error: finalizeError } = await supabase.rpc('finalize_match_locked', {
+                p_match_id: selectedMatch.id,
+                p_expected_version: selectedMatch.version,
+                p_winner_id: winnerId,
+                p_loser_id: loserId,
+                p_team1_score: s1,
+                p_team2_score: s2
+            });
+
+            if (finalizeError) throw finalizeError;
+            if (!success) throw new Error('Failed to record score: Match state has changed.');
 
             toast({ title: 'Score recorded', description: `Winner: ${winnerId === selectedMatch.team1_id ? teamsMap.get(selectedMatch.team1_id!)?.name : teamsMap.get(selectedMatch.team2_id!)?.name}` });
             setScoreDialogOpen(false);
@@ -157,6 +160,8 @@ export const GraphBracket: React.FC<GraphBracketProps> = ({
             onMatchUpdated?.();
         } catch (err) {
             toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' });
+        } finally {
+            setIsProcessing(false);
         }
     };
 

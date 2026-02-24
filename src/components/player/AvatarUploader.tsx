@@ -3,6 +3,7 @@ import { User, Camera, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import EntityAvatar from '@/components/ui/EntityAvatar';
 
 interface AvatarUploaderProps {
     value: string | null;
@@ -81,14 +82,15 @@ const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUplo
     return (
         <div className="relative group cursor-pointer inline-block" onClick={() => !isUploading && inputRef.current?.click()}>
             <div className={cn(
-                "rounded-full overflow-hidden border-2 border-zinc-700 bg-zinc-900 group-hover:border-rose-500 transition-colors flex items-center justify-center",
-                sizeClasses[size]
+                "rounded-full border-2 border-zinc-700 bg-zinc-900 group-hover:border-rose-500 transition-colors flex items-center justify-center p-0", // Removed overflow-hidden to let EntityAvatar handle it, removed padding
             )}>
-                {value ? (
-                    <img src={value} alt="Avatar" className="h-full w-full object-cover" />
-                ) : (
-                    <User className="w-1/2 h-1/2 text-zinc-600" />
-                )}
+                <EntityAvatar
+                    src={value}
+                    name="Avatar" // Not ideal since we don't have the user name here, but better than nothing
+                    type="user"
+                    size={sizeClasses[size]}
+                    className="border-none" // Remove border from EntityAvatar to avoid double border
+                />
             </div>
 
             {/* Overlay */}

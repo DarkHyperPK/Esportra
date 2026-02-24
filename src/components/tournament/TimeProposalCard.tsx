@@ -7,6 +7,7 @@ import { useTimeProposal } from '@/hooks/useTimeProposal';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { getTimezoneAbbr, localInputToUTC } from '@/lib/timeUtils';
+import { Countdown } from '@/components/ui/Countdown';
 
 interface TimeProposalCardProps {
     matchId: string;
@@ -87,9 +88,50 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                             <p className="text-2xl font-bold text-white">
                                 {format(new Date(acceptedProposal.proposed_time), 'EEEE, MMM d')}
                             </p>
-                            <p className="text-xl text-emerald-400 font-mono">
+                            <p className="text-xl text-emerald-400 font-mono mb-4">
                                 {format(new Date(acceptedProposal.proposed_time), 'h:mm a')} {getTimezoneAbbr()}
                             </p>
+
+                            {/* Countdown Timer */}
+                            <div className="pt-4 border-t border-emerald-500/10">
+                                {(() => {
+                                    const now = new Date();
+                                    const scheduled = new Date(acceptedProposal.proposed_time);
+                                    const windowMinutes = 15; // Default check-in window
+                                    const windowStart = new Date(scheduled.getTime() - windowMinutes * 60 * 1000);
+
+                                    if (now < windowStart) {
+                                        return (
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">Check-in opens in</p>
+                                                <div className="text-2xl font-mono font-bold text-cyan-400">
+                                                    <Countdown targetDate={windowStart} />
+                                                </div>
+                                            </div>
+                                        );
+                                    } else if (now < scheduled) {
+                                        return (
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-center gap-2 mb-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    <p className="text-[10px] text-emerald-400 uppercase tracking-widest font-black">Check-in is Live</p>
+                                                </div>
+                                                <div className="text-2xl font-mono font-bold text-white">
+                                                    <Countdown targetDate={scheduled} />
+                                                </div>
+                                                <p className="text-[9px] text-zinc-500 italic mt-1 font-medium">Time remaining to check-in</p>
+                                            </div>
+                                        );
+                                    } else {
+                                        return (
+                                            <div className="flex items-center justify-center gap-2 text-red-500">
+                                                <Clock className="w-4 h-4" />
+                                                <span className="text-xs font-black uppercase tracking-widest">Match Time Passed</span>
+                                            </div>
+                                        );
+                                    }
+                                })()}
+                            </div>
                         </div>
                     </div>
                 </CardContent>

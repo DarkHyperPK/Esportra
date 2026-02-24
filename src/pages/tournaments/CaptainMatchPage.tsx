@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ArrowLeft, Trophy, AlertCircle, Swords, Copy, Calendar, MessageCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, Trophy, AlertCircle, Swords, Copy, Calendar, MessageCircle, Clock } from 'lucide-react';
 import { MatchCard } from './brackets/MatchCard';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
@@ -21,9 +21,12 @@ import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
 import TimeProposalCard from '@/components/tournament/TimeProposalCard';
 import DisputeCard from '@/components/tournament/DisputeCard';
 import MatchChat from '@/components/tournament/MatchChat';
+import EntityAvatar from '@/components/ui/EntityAvatar';
 import { format } from 'date-fns';
 import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
+import { useTeamManagement } from '@/hooks/useTeamManagement';
+import { useTimeProposal } from '@/hooks/useTimeProposal';
 
 const repo = new MatchRepository();
 
@@ -36,15 +39,18 @@ const CaptainMatchPage = () => {
 
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const { userTeams, loading: teamsLoading } = useTeamManagement();
 
     const [tournament, setTournament] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [userTeamId, setUserTeamId] = useState<string | undefined>(undefined);
     const [isCaptain, setIsCaptain] = useState(false);
+    const [isOrganizer, setIsOrganizer] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
     const [stageFormat, setStageFormat] = useState<string>('single_elimination');
     const [roundDeadline, setRoundDeadline] = useState<string | null>(null);
     const [participantStatus, setParticipantStatus] = useState<string | null>(null);
@@ -71,12 +77,12 @@ const CaptainMatchPage = () => {
                 .from('brkt_versions')
                 .select('id, tournament_id, stage_id, status')
                 .eq('tournament_id', tournament.id)
-                // Filter for active/draft, but effectively we want what's relevant
-                .in('status', ['active', 'draft']);
+                .in('status', ['published', 'active']);
             if (error) {
                 console.error('[CaptainMatchPage] Error fetching bracket versions:', error);
                 throw error;
             }
+            console.log('[CaptainMatchPage] Fetched bracket versions:', data?.length || 0, data);
             return data || [];
         },
         enabled: !!tournament?.id,
@@ -175,7 +181,7 @@ const CaptainMatchPage = () => {
         return adapted;
     }, [allGraphData?.nodes, allGraphData?.edges, teamsData]);
 
-    const bracketLoading = versionsLoading || graphLoading;
+    const bracketLoading = versionsLoading || graphLoading || teamsLoading;
 
     // Calculate team count from matches
     const teamCount = useMemo(() => {
@@ -246,34 +252,82 @@ const CaptainMatchPage = () => {
 
     // Identify captain and team
     useEffect(() => {
-        if (!user || !participants.length) return;
+        const checkRoles = async () => {
+            if (!user || !participants.length || teamsLoading || !tournament) return;
 
-        console.log('[CaptainMatchPage] Checking captain status:', { userId: user.id, participantsCount: participants.length });
-        console.log('[CaptainMatchPage] Participants data:', participants);
-
-        const userParticipant = participants.find((p: any) =>
-            p.user_id === user.id || p.team_captain_id === user.id
-        ) as any;
-
-        if (userParticipant) {
-            console.log('[CaptainMatchPage] Found participant:', userParticipant);
-            // Check if captain
-            const isCap = userParticipant.team_captain_id === user.id ||
-                (userParticipant.participant_type === 'solo' && userParticipant.user_id === user.id); // Solo players are their own captains
-
-            console.log('[CaptainMatchPage] Is Captain?', isCap, {
-                teamCaptainId: userParticipant.team_captain_id,
+            console.log('[CaptainMatchPage] Checking roles:', {
                 userId: user.id,
-                type: userParticipant.participant_type
+                participantsCount: participants.length,
+                userTeamsCount: userTeams.length,
+                tournamentOrgId: tournament.organization_id
             });
 
-            setIsCaptain(isCap);
-            setIsCaptain(isCap);
-            setUserTeamId(userParticipant.team_id || userParticipant.user_id); // Use team_id or user_id for solo
-            setParticipantStatus(userParticipant.status);
-            console.log('[CaptainMatchPage] User not found in participants');
-        }
-    }, [user, participants]);
+            // 1. Check if user is organizer or belongs to organization
+            let isOrg = tournament.organizer_id === user.id;
+
+            if (!isOrg && tournament.organization_id) {
+                // Check if user owns the organization
+                const { data: orgs } = await supabase
+                    .from('organizations')
+                    .select('id')
+                    .eq('id', tournament.organization_id)
+                    .eq('owner_id', user.id);
+
+                if (orgs && orgs.length > 0) {
+                    isOrg = true;
+                }
+            }
+            setIsOrganizer(isOrg);
+
+            // 2. Check if user is Admin
+            const isAd = !!(profile as any)?.is_admin || profile?.role === 'admin';
+            setIsAdmin(isAd);
+
+            // 3. Check if user is registered SOLO
+            let userParticipant = participants.find((p: any) => p.user_id === user.id);
+
+            // 2. If not solo, check if any of user's TEAMS are registered
+            if (!userParticipant && userTeams.length > 0) {
+                const registeredTeamIds = userTeams.map(t => t.id);
+                userParticipant = participants.find((p: any) => p.team_id && registeredTeamIds.includes(p.team_id));
+            }
+
+            if (userParticipant) {
+                console.log('[CaptainMatchPage] Found participant:', userParticipant);
+
+                let isCap = false;
+                let teamId = userParticipant.team_id || userParticipant.user_id;
+
+                if (userParticipant.participant_type === 'solo') {
+                    isCap = true; // Solo players are captains
+                } else if (userParticipant.team_id) {
+                    // Find the team in userTeams to check ownership/role
+                    const userTeam = userTeams.find(t => t.id === userParticipant.team_id);
+                    if (userTeam) {
+                        const myMember = userTeam.members?.find(m => m.id === user.id);
+                        isCap = userTeam.owner_id === user.id ||
+                            (myMember && (myMember.role === 'captain' || (myMember as any).is_captain === true));
+                    }
+                }
+
+                console.log('[CaptainMatchPage] Is Captain?', isCap, {
+                    teamId,
+                    userId: user.id
+                });
+
+                setIsCaptain(isCap);
+                setUserTeamId(teamId);
+                setParticipantStatus(userParticipant.status);
+            } else {
+                console.log('[CaptainMatchPage] User not found in participants');
+                setIsCaptain(false);
+                setUserTeamId(undefined);
+                setParticipantStatus(null);
+            }
+        };
+
+        checkRoles();
+    }, [user, profile, participants, userTeams, teamsLoading, tournament]);
 
     // Find active match for the team
     const activeMatch = useMemo(() => {
@@ -304,10 +358,47 @@ const CaptainMatchPage = () => {
         );
 
         console.log('[CaptainMatchPage] Active match found:', nextMatch);
+        return nextMatch || null;
 
-        // Return the raw match object, NOT JSX
-        return nextMatch || null; // Don't show completed matches
     }, [userTeamId, matches]);
+
+    // Lifted Proposal state for higher-level visibility
+    const { acceptedProposal } = useTimeProposal(activeMatch?.id?.replace(/^(db-|wb-|lb-)/, ''));
+
+    // The source of truth for "When is this match?"
+    // If the database has it, use it. Otherwise, if there's an accepted proposal on this page, use that.
+    const effectiveScheduledTime = useMemo(() => {
+        return activeMatch?.scheduledTime || acceptedProposal?.proposed_time;
+    }, [activeMatch?.scheduledTime, acceptedProposal?.proposed_time]);
+
+    // Fetch map veto status for the active match
+    const { data: vetoData } = useQuery({
+        queryKey: ['match-veto', activeMatch?.id],
+        queryFn: async () => {
+            if (!activeMatch?.id) return null;
+            const cleanedId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
+            const { data, error } = await supabase
+                .from('match_map_vetos')
+                .select('*')
+                .eq('match_id', cleanedId)
+                .maybeSingle();
+
+            if (error) {
+                console.error('[CaptainMatchPage] Error fetching map veto:', error);
+                throw error;
+            }
+            return data;
+        },
+        enabled: !!activeMatch?.id,
+    });
+
+    const isVetoCompleted = useMemo(() => {
+        if (!activeMatch) return false;
+        // If there's no veto record at all, we assume it's not required or not started
+        // but for safety in this enterprise flow, we require it to be completed if it exists.
+        if (!vetoData) return true;
+        return vetoData.status === 'completed' || !!vetoData.completed_at;
+    }, [activeMatch, vetoData]);
 
     // Find the latest completed match for context (e.g. "Waiting for next round")
     const lastCompletedMatch = useMemo(() => {
@@ -815,13 +906,13 @@ const CaptainMatchPage = () => {
                                         <div className="flex items-center justify-center gap-8 py-8">
                                             {/* Team 1 */}
                                             <div className="flex flex-col items-center gap-3">
-                                                {activeMatch.team1?.logo_url ? (
-                                                    <img src={activeMatch.team1.logo_url} alt={activeMatch.team1.name} className="w-20 h-20 object-contain" />
-                                                ) : (
-                                                    <span className="text-3xl font-bold text-zinc-400">
-                                                        {(activeMatch.team1?.name || 'T1').slice(0, 2).toUpperCase()}
-                                                    </span>
-                                                )}
+                                                <EntityAvatar
+                                                    src={activeMatch.team1?.logo_url}
+                                                    name={activeMatch.team1?.name}
+                                                    entityId={activeMatch.team1?.id}
+                                                    type="team"
+                                                    size="w-20 h-20"
+                                                />
                                                 <span className="text-sm font-medium text-white max-w-[120px] truncate">
                                                     {activeMatch.team1?.name || 'TBD'}
                                                 </span>
@@ -832,32 +923,21 @@ const CaptainMatchPage = () => {
 
                                             {/* Team 2 */}
                                             <div className="flex flex-col items-center gap-3">
-                                                {activeMatch.team2?.logo_url ? (
-                                                    <img src={activeMatch.team2.logo_url} alt={activeMatch.team2.name} className="w-20 h-20 object-contain" />
-                                                ) : (
-                                                    <span className="text-3xl font-bold text-zinc-400">
-                                                        {(activeMatch.team2?.name || 'T2').slice(0, 2).toUpperCase()}
-                                                    </span>
-                                                )}
+                                                <EntityAvatar
+                                                    src={activeMatch.team2?.logo_url}
+                                                    name={activeMatch.team2?.name}
+                                                    entityId={activeMatch.team2?.id}
+                                                    type="team"
+                                                    size="w-20 h-20"
+                                                />
                                                 <span className="text-sm font-medium text-white max-w-[120px] truncate">
                                                     {activeMatch.team2?.name || 'TBD'}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* Scheduled Time Display */}
-                                        {activeMatch.scheduledTime && (
-                                            <div className="flex items-center justify-center gap-2 p-4 bg-white/5 border border-white/5 rounded-xl mb-6 backdrop-blur-sm">
-                                                <Calendar className="w-4 h-4 text-esports-accent" />
-                                                <span className="text-gray-300 font-medium">
-                                                    <span className="text-gray-500 mr-2 uppercase text-xs tracking-wider">Scheduled:</span>
-                                                    {format(new Date(activeMatch.scheduledTime), 'EEEE, MMM d @ h:mm a')} {getTimezoneAbbr()}
-                                                </span>
-                                            </div>
-                                        )}
-
                                         {/* Check-in Card - shows when match has scheduled time */}
-                                        {activeMatch.scheduledTime && activeMatch.status === 'pending' && (
+                                        {effectiveScheduledTime && activeMatch.status === 'pending' && (
                                             <div className="mb-4">
                                                 <MatchCheckinCard
                                                     matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
@@ -866,7 +946,7 @@ const CaptainMatchPage = () => {
                                                     team1Name={activeMatch.team1?.name || 'Team 1'}
                                                     team2Name={activeMatch.team2?.name || 'Team 2'}
                                                     userTeamId={userTeamId}
-                                                    scheduledTime={activeMatch.scheduledTime}
+                                                    scheduledTime={effectiveScheduledTime}
                                                     isCaptain={isCaptain}
                                                     selfPlayEnabled={schedulingConfig?.self_play_enabled || false}
                                                     checkInWindowMinutes={schedulingConfig?.checkin_window_minutes || 15}
@@ -881,7 +961,7 @@ const CaptainMatchPage = () => {
 
 
                                         {/* Time Proposal Card - shows when no scheduled time AND self-play mode is enabled */}
-                                        {((!activeMatch.scheduledTime) && (schedulingConfig?.self_play_enabled && activeMatch.status === 'pending')) && (
+                                        {((!effectiveScheduledTime) && (schedulingConfig?.self_play_enabled && activeMatch.status === 'pending')) && (
                                             <div className="mb-4">
                                                 {(() => {
                                                     const roundIndex = activeMatch.round - 1;
@@ -911,8 +991,11 @@ const CaptainMatchPage = () => {
 
                                         {/* Actions */}
                                         <div className="flex flex-col gap-3">
-                                            {/* Auto-Report Button - Prominently displayed at the top if available */}
+                                            {/* Auto-Report Button - Only for Valorant (uses Riot API) */}
                                             {(() => {
+                                                const isValorant = tournament?.game?.toLowerCase() === 'valorant';
+                                                if (!isValorant) return null;
+
                                                 const bestOf = activeMatch.bestOf || 1;
                                                 const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
                                                 const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
@@ -957,10 +1040,10 @@ const CaptainMatchPage = () => {
                                                 <Button
                                                     onClick={() => handleUploadResult(activeMatch.id)}
                                                     className="bg-emerald-600 hover:bg-emerald-700 text-white h-12"
-                                                    disabled={activeMatch.status === 'completed'}
+                                                    disabled={activeMatch.status === 'completed' || !isVetoCompleted}
                                                 >
                                                     <Trophy className="w-5 h-5 mr-2" />
-                                                    Manual Report
+                                                    {isVetoCompleted ? 'Manual Report' : 'Awaiting Map Veto'}
                                                 </Button>
                                             </div>
 
@@ -1054,15 +1137,28 @@ const CaptainMatchPage = () => {
                                                 </div>
                                             </>
                                         ) : (
-                                            <>
-                                                <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                    <Swords className="w-8 h-8 text-gray-600" />
+                                            <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                                                <div className="bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800 max-w-md w-full">
+                                                    <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                                                        <Trophy className="w-8 h-8 text-zinc-600" />
+                                                    </div>
+                                                    <h2 className="text-xl font-semibold text-white mb-2">
+                                                        {tournament?.status === 'draft' ? 'Bracket in Preparation' : 'No Active Match Found'}
+                                                    </h2>
+                                                    <p className="text-zinc-400 mb-6">
+                                                        {tournament?.status === 'draft'
+                                                            ? 'The tournament organizer is still finalizing the bracket. Please check back shortly.'
+                                                            : "You don't have any active matches in this round. Stay tuned for the next update!"}
+                                                    </p>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="border-zinc-700 hover:bg-zinc-800 text-zinc-300"
+                                                        onClick={() => navigate(`/tournaments/${slug}`)}
+                                                    >
+                                                        Return to Tournament
+                                                    </Button>
                                                 </div>
-                                                <h3 className="text-lg font-medium text-white mb-2">No Active Match Found</h3>
-                                                <p className="text-gray-400 max-w-md mx-auto">
-                                                    You don't have any pending matches right now. You might be waiting for an opponent, or the bracket hasn't been generated yet.
-                                                </p>
-                                            </>
+                                            </div>
                                         )}
                                     </div>
                                 )}

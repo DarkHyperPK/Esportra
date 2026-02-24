@@ -11,6 +11,8 @@ import type { BracketMatch } from '@/types/bracketTypes';
 // =============================================================================
 const CARD_WIDTH = 320;
 const CARD_HEIGHT = 180;
+import { formatLocalTime } from '@/lib/timeUtils';
+import EntityAvatar from '@/components/ui/EntityAvatar';
 
 interface MatchCardProps {
     match: any; // BracketMatch or BracketNode
@@ -32,6 +34,7 @@ interface MatchCardProps {
     onMatchClick?: () => void;
     onAdjustmentMade?: () => void;
     tournamentId?: string;
+    versionId?: string | null;
     automatedStatus?: 'idle' | 'processing' | 'verified' | 'failed' | 'partial' | null;
     onViewResults?: (match: any) => void;
 }
@@ -61,7 +64,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     isOrganizer, isProcessing,
     onScoreChange, onGoLive, onMapVeto, onPartyCode, onSaveScore,
     scoreDraftRef, proofs, onByeAdvance, onMatchClick, onAdjustmentMade,
-    tournamentId,
+    tournamentId, versionId,
     automatedStatus,
     onViewResults
 }) => {
@@ -168,11 +171,14 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                         className={`flex items-center justify-between mb-6`}
                     >
                         <div className="flex items-center gap-3">
-                            {match.team1?.logo_url ? (
-                                <img src={match.team1.logo_url} alt={match.team1.name} className="w-8 h-8 object-contain" />
-                            ) : (
-                                <span className="text-xs font-semibold text-zinc-500">{(match.team1?.name || 'T1').slice(0, 2).toUpperCase()}</span>
-                            )}
+                            <EntityAvatar
+                                src={match.team1?.logo_url}
+                                name={match.team1?.name}
+                                entityId={match.team1?.id}
+                                type="team"
+                                size="w-8 h-8"
+                                className="mr-0"
+                            />
                             <span className={`text-sm font-medium truncate max-w-[140px] ${w1 && !isEditing ? 'text-white' : 'text-zinc-400'}`}>
                                 {match.team1?.name || (isComplete ? 'BYE' : 'TBD')}
                             </span>
@@ -222,11 +228,14 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                         className={`flex items-center justify-between mt-6`}
                     >
                         <div className="flex items-center gap-3">
-                            {match.team2?.logo_url ? (
-                                <img src={match.team2.logo_url} alt={match.team2.name} className="w-8 h-8 object-contain" />
-                            ) : (
-                                <span className="text-xs font-semibold text-zinc-500">{(match.team2?.name || 'T2').slice(0, 2).toUpperCase()}</span>
-                            )}
+                            <EntityAvatar
+                                src={match.team2?.logo_url}
+                                name={match.team2?.name}
+                                entityId={match.team2?.id}
+                                type="team"
+                                size="w-8 h-8"
+                                className="mr-0"
+                            />
                             <span className={`text-sm font-medium truncate max-w-[140px] ${w2 && !isEditing ? 'text-white' : 'text-zinc-400'}`}>
                                 {match.team2?.name || (isComplete ? 'BYE' : 'TBD')}
                             </span>
@@ -274,9 +283,16 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
                 {/* Footer */}
                 <div className="px-4 py-2 bg-black/20 border-t border-white/5 flex justify-between items-center h-9">
-                    <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${statusColor}`}>
-                        {label}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${statusColor}`}>
+                            {label}
+                        </span>
+                        {match.scheduledTime && (
+                            <span className="text-[10px] font-medium text-zinc-500 flex items-center">
+                                {formatLocalTime(match.scheduledTime, 'MMM d • h:mm a')}
+                            </span>
+                        )}
+                    </div>
                     <div className="flex items-center gap-2">
                         {/* BYE Button - Show when match has exactly one team and is not complete */}
                         {canAct && isByeMatch && !isComplete && onByeAdvance && (
@@ -319,6 +335,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                             <ManualAdjustmentMenu
                                 matchId={getRawId(id)}
                                 tournamentId={tournamentId}
+                                versionId={versionId}
                                 team1Id={match.team1?.id}
                                 team2Id={match.team2?.id}
                                 team1Name={match.team1?.name || 'Team 1'}

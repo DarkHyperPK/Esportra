@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Check, AlertCircle, ChevronDown, ChevronUp, Zap, GitBranch, Globe } from 'lucide-react';
+import { Calendar, Clock, Check, AlertCircle, ChevronDown, ChevronUp, Zap, GitBranch, Globe, Info } from 'lucide-react';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { format, addDays, isWithinInterval, parseISO } from 'date-fns';
 import { getTimezoneAbbr, utcToLocalInput, localInputToUTC, utcToLocalDate, dateInputToUTCEndOfDay } from '@/lib/timeUtils';
@@ -118,7 +118,28 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const [expandedRound, setExpandedRound] = useState<number | null>(0);
     const [expandedBracket, setExpandedBracket] = useState<string | null>(null);
     const [roundConfigs, setRoundConfigs] = useState<Map<number, RoundConfig>>(new Map());
+    const [matchEdits, setMatchEdits] = useState<Map<string, string>>(new Map());
     const [saving, setSaving] = useState(false);
+
+    // Optimistic scheduling mode with instant UI
+    const [optimisticMode, setOptimisticMode] = useState<'round_based' | 'granular' | null>(null);
+    const schedulingMode = selfPlayEnabled
+        ? 'round_based' as const
+        : (optimisticMode || schedulingConfig?.scheduling_mode || 'round_based');
+
+    const handleSetMode = async (mode: 'round_based' | 'granular') => {
+        if (selfPlayEnabled || mode === schedulingMode) return;
+        setOptimisticMode(mode); // Instant UI update
+        try {
+            await updateConfig.mutateAsync({
+                ...(schedulingConfig || {}),
+                scheduling_mode: mode
+            } as any);
+        } catch (error) {
+            console.error('[RoundScheduling] Failed to set mode:', error);
+            setOptimisticMode(null); // Revert on failure
+        }
+    };
 
     // Group matches by round — for DE, also group by bracket_type
     const matchesByRound = useMemo(() => {
@@ -165,9 +186,10 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const totalRounds = matchesByRound.size;
 
     // Initialize configs from fetched matches
+    // Initialize configs from fetched matches
     React.useEffect(() => {
         // Wait for matches AND config (if self-play) to be ready
-        if (matchesByRound.size > 0 && roundConfigs.size === 0 && (!selfPlayEnabled || schedulingConfig)) {
+        if (matchesByRound.size > 0 && (!selfPlayEnabled || schedulingConfig)) {
             const newConfigs = new Map<number, RoundConfig>();
             matchesByRound.forEach((matches, roundIndex) => {
                 const firstMatch = matches[0];
@@ -188,9 +210,18 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                     startTime: !selfPlayEnabled ? existingTime : null,
                 });
             });
-            setRoundConfigs(newConfigs);
+
+            // Only update if we don't have local edits or if the remote config changed
+            // This prevents the "reset while typing" issue but ensures data persistence
+            setRoundConfigs(prev => {
+                if (prev.size === 0) return newConfigs;
+
+                // If remote config changed, we might want to sync, but typically local state wins in an edit form
+                // unless we force a refresh. For now, let's just initialize once.
+                return prev;
+            });
         }
-    }, [matchesByRound, stageFormat, totalRounds, selfPlayEnabled, roundConfigs.size, schedulingConfig]);
+    }, [matchesByRound, stageFormat, totalRounds, selfPlayEnabled, schedulingConfig]);
 
     // Calculate default dates based on format
     const getDefaultDeadline = (roundIndex: number): string => {
@@ -242,12 +273,78 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
         });
     };
 
+    const handleSaveRound = async (roundIndex: number) => {
+        const config = roundConfigs.get(roundIndex);
+        if (!config) return;
+
+        setSaving(true);
+        try {
+            if (selfPlayEnabled) {
+                // Update specific round deadline in the config
+                const currentDeadlines = schedulingConfig?.round_deadlines || {};
+                const newDeadlines = {
+                    ...currentDeadlines,
+                    [String(roundIndex)]: config.deadline || getDefaultDeadline(roundIndex)
+                };
+
+                await updateConfig.mutateAsync({
+                    ...(schedulingConfig as any),
+                    round_deadlines: newDeadlines
+                });
+            } else {
+                // Update match times for this specific round
+                const roundMatches = matchesByRound.get(roundIndex) || [];
+                const updates = roundMatches.map(match =>
+                    updateMatchTime.mutateAsync({
+                        matchId: match.id,
+                        scheduledTime: config.startTime
+                    })
+                );
+                await Promise.all(updates);
+            }
+        } catch (error) {
+            console.error('[RoundScheduling] Failed to save round:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const updateMatchEdit = (matchId: string, value: string) => {
+        setMatchEdits(prev => {
+            const newMap = new Map(prev);
+            newMap.set(matchId, value);
+            return newMap;
+        });
+    };
+
+    const handleSaveMatch = async (matchId: string) => {
+        const time = matchEdits.get(matchId);
+        if (!time) return;
+
+        setSaving(true);
+        try {
+            await updateMatchTime.mutateAsync({
+                matchId,
+                scheduledTime: time
+            });
+            // Clear the local edit so it falls back to the now-updated server time
+            setMatchEdits(prev => {
+                const newMap = new Map(prev);
+                newMap.delete(matchId);
+                return newMap;
+            });
+        } catch (error) {
+            console.error('[RoundScheduling] Failed to save match time:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleApplySchedule = async () => {
         setSaving(true);
         try {
             if (selfPlayEnabled) {
                 // For self-play, update the STAGE CONFIG with round deadlines
-                // Merge with existing config to avoid data loss
                 const newDeadlines: Record<string, string> = { ...(schedulingConfig?.round_deadlines || {}) };
                 for (const [roundIndex, _] of matchesByRound) {
                     const config = roundConfigs.get(roundIndex);
@@ -255,11 +352,11 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                     newDeadlines[String(roundIndex)] = deadline;
                 }
 
-                // Update stage config
+                // Update stage config with full object to ensure persistence
                 await updateConfig.mutateAsync({
-                    ...schedulingConfig, // Merge existing fields
+                    ...(schedulingConfig || {}),
                     round_deadlines: newDeadlines
-                } as any); // Cast to handle the Partial mismatch if strict
+                } as any);
 
                 onScheduleApplied?.();
 
@@ -368,18 +465,29 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                         Round Deadline (End of Day)
                                         <span className="ml-1 text-esports-accent/60">({getTimezoneAbbr()})</span>
                                     </Label>
-                                    <Input
-                                        type="date"
-                                        value={config?.deadline ? utcToLocalDate(config.deadline) : (defaultDeadline ? defaultDeadline.split('T')[0] : '')}
-                                        min={tournamentStartDate ? utcToLocalDate(tournamentStartDate) : ''}
-                                        max={tournamentEndDate ? utcToLocalDate(tournamentEndDate) : ''}
-                                        onChange={(e) => {
-                                            const dateValue = e.target.value;
-                                            const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
-                                            updateRoundConfig(roundIndex, 'deadline', utcValue);
-                                        }}
-                                        className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20"
-                                    />
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="date"
+                                            value={config?.deadline ? utcToLocalDate(config.deadline) : (defaultDeadline ? defaultDeadline.split('T')[0] : '')}
+                                            min={tournamentStartDate ? utcToLocalDate(tournamentStartDate) : ''}
+                                            max={tournamentEndDate ? utcToLocalDate(tournamentEndDate) : ''}
+                                            onChange={(e) => {
+                                                const dateValue = e.target.value;
+                                                const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
+                                                updateRoundConfig(roundIndex, 'deadline', utcValue);
+                                            }}
+                                            className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 flex-1 [color-scheme:dark]"
+                                        />
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => handleSaveRound(roundIndex)}
+                                            disabled={saving}
+                                            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"
+                                        >
+                                            {saving ? '...' : 'Save'}
+                                        </Button>
+                                    </div>
                                     <p className="text-xs text-gray-500">
                                         Teams have until the end of this day to complete their match
                                     </p>
@@ -391,28 +499,125 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                     )}
                                 </div>
                             ) : (
-                                <div className="space-y-2">
-                                    <Label className="text-gray-400 text-sm">
-                                        {stageFormat === 'swiss' ? 'Round Start Time' : 'Match Start Time'}
-                                        <span className="ml-1 text-esports-accent/60">({getTimezoneAbbr()})</span>
-                                    </Label>
-                                    <Input
-                                        type="datetime-local"
-                                        value={config?.startTime ? utcToLocalInput(config.startTime) : ''}
-                                        min={tournamentStartDate ? utcToLocalInput(tournamentStartDate) : ''}
-                                        max={tournamentEndDate ? utcToLocalInput(tournamentEndDate) : ''}
-                                        onChange={(e) => updateRoundConfig(roundIndex, 'startTime', e.target.value ? localInputToUTC(e.target.value) : '')}
-                                        className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20"
-                                    />
-                                    <p className="text-xs text-gray-500">
-                                        {stageFormat === 'swiss'
-                                            ? `All ${roundMatches.length} matches in this round start together`
-                                            : stageFormat === 'round_robin'
-                                                ? `All matchday ${roundIndex + 1} games start at this time`
-                                                : `All ${roundMatches.length} matches will start at this time`
-                                        }
-                                    </p>
-                                    {config?.startTime && !isValidDate(config.startTime) && (
+                                <div className="space-y-4">
+                                    {/* Round Deadline (only shown in round-based mode to save space) */}
+                                    {schedulingMode === 'round_based' && (
+                                        <div className="space-y-2">
+                                            <Label className="text-gray-400 text-sm">
+                                                Round Deadline (End of Day)
+                                                <span className="ml-1 text-esports-accent/60">({getTimezoneAbbr()})</span>
+                                            </Label>
+                                            <Input
+                                                type="date"
+                                                value={config?.deadline ? utcToLocalDate(config.deadline) : (defaultDeadline ? defaultDeadline.split('T')[0] : '')}
+                                                min={tournamentStartDate ? utcToLocalDate(tournamentStartDate) : ''}
+                                                max={tournamentEndDate ? utcToLocalDate(tournamentEndDate) : ''}
+                                                onChange={(e) => {
+                                                    const dateValue = e.target.value;
+                                                    const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
+                                                    updateRoundConfig(roundIndex, 'deadline', utcValue);
+                                                }}
+                                                className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 [color-scheme:dark]"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {schedulingMode === 'round_based' ? (
+                                        /* Round-Based: single start time for all matches */
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label className="text-gray-400 text-sm">
+                                                    {stageFormat === 'swiss' ? 'Round Start Time' : 'Match Start Time'}
+                                                    <span className="ml-1 text-esports-accent/60">({getTimezoneAbbr()})</span>
+                                                </Label>
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        type="datetime-local"
+                                                        value={config?.startTime ? utcToLocalInput(config.startTime).slice(0, 16) : ''}
+                                                        min={tournamentStartDate ? utcToLocalInput(tournamentStartDate).slice(0, 16) : ''}
+                                                        max={tournamentEndDate ? utcToLocalInput(tournamentEndDate).slice(0, 16) : ''}
+                                                        onChange={(e) => updateRoundConfig(roundIndex, 'startTime', e.target.value ? localInputToUTC(e.target.value) : '')}
+                                                        className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 flex-1 [color-scheme:dark]"
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        onClick={() => handleSaveRound(roundIndex)}
+                                                        disabled={saving}
+                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"
+                                                    >
+                                                        {saving ? '...' : 'Save'}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-gray-500">
+                                                All {roundMatches.length} match{roundMatches.length !== 1 ? 'es' : ''} in this round will start at this time
+                                            </p>
+                                        </>
+                                    ) : (
+                                        /* Granular: individual match time pickers */
+                                        <div className="pt-2 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                                                    Individual Match Times
+                                                </Label>
+                                                <Badge variant="outline" className="text-[10px] border-esports-purple/30 text-esports-purple bg-esports-purple/5">
+                                                    Match-by-Match
+                                                </Badge>
+                                            </div>
+
+                                            <div className="space-y-2.5">
+                                                {roundMatches.map((match) => {
+                                                    const matchId = match.id;
+                                                    const matchNum = match.match_number;
+                                                    const team1 = (match as any).team1?.name || 'TBD';
+                                                    const team2 = (match as any).team2?.name || 'TBD';
+                                                    const editedTime = matchEdits.get(matchId);
+                                                    // The editedTime in state is stored in UTC, so we must convert it back to local for the input display
+                                                    const displayTime = editedTime
+                                                        ? utcToLocalInput(editedTime)
+                                                        : (match.scheduled_time ? utcToLocalInput(match.scheduled_time) : '');
+
+                                                    return (
+                                                        <div key={matchId} className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-2">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[10px] text-gray-600 font-bold bg-white/5 px-1.5 py-0.5 rounded">M{matchNum}</span>
+                                                                    <span className="text-xs text-gray-300 font-medium">
+                                                                        {team1} <span className="text-gray-600 mx-1">vs</span> {team2}
+                                                                    </span>
+                                                                </div>
+                                                                {match.scheduled_time && !editedTime && (
+                                                                    <Badge variant="outline" className="text-[10px] border-blue-500/20 text-blue-400 bg-blue-500/5">
+                                                                        Scheduled
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <Input
+                                                                    type="datetime-local"
+                                                                    value={displayTime ? displayTime.slice(0, 16) : ''}
+                                                                    onChange={(e) => updateMatchEdit(matchId, e.target.value ? localInputToUTC(e.target.value) : '')}
+                                                                    className="h-8 bg-[#0a0a0c] border-white/5 text-[11px] text-white rounded-lg focus:border-esports-accent focus:ring-esports-accent/20 flex-1 [color-scheme:dark]"
+                                                                />
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    onClick={() => handleSaveMatch(matchId)}
+                                                                    disabled={saving || !matchEdits.has(matchId)}
+                                                                    className="h-8 px-3 bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-400 text-[10px] rounded-lg transition-all"
+                                                                >
+                                                                    {saving ? '...' : 'Set Time'}
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {config?.startTime && !isValidDate(config.startTime) && schedulingMode === 'round_based' && (
                                         <p className="text-xs text-red-400 flex items-center gap-1">
                                             <AlertCircle className="w-3 h-3" />
                                             Date must be within tournament window
@@ -483,13 +688,67 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                     </div>
                 )}
 
-                {/* Self-Play Mode Indicator */}
-                {selfPlayEnabled && (
+                {/* Scheduling Mode Selector */}
+                {selfPlayEnabled ? (
+                    /* Self-Play: auto round-based, info banner */
                     <div className="flex items-center gap-3 p-4 bg-esports-purple/10 border border-esports-purple/20 rounded-2xl">
                         <Zap className="w-5 h-5 text-esports-purple" />
-                        <div className="text-sm text-esports-purple">
-                            <span className="font-medium">Self-Play Mode Active</span>
-                            <span className="text-gray-400 ml-2">— Set deadlines, teams schedule their matches</span>
+                        <div className="text-sm">
+                            <span className="text-esports-purple font-medium">Self-Play Mode</span>
+                            <span className="text-gray-400 ml-2">— Round-based deadlines. Teams propose times to each other and play within the deadline.</span>
+                        </div>
+                    </div>
+                ) : (
+                    /* Manual Mode: show mode selector cards */
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <Info className="w-4 h-4 text-gray-500" />
+                            <span className="text-xs text-gray-500">Choose how to schedule matches in this stage</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            {/* Round-Based Card */}
+                            <button
+                                onClick={() => handleSetMode('round_based')}
+                                className={`relative p-4 rounded-2xl border-2 text-left transition-all duration-200 ${schedulingMode === 'round_based'
+                                    ? 'border-esports-accent bg-esports-accent/5 shadow-[0_0_20px_rgba(0,255,200,0.08)]'
+                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+                                    }`}
+                            >
+                                {schedulingMode === 'round_based' && (
+                                    <div className="absolute top-3 right-3">
+                                        <Check className="w-4 h-4 text-esports-accent" />
+                                    </div>
+                                )}
+                                <Clock className={`w-6 h-6 mb-2 ${schedulingMode === 'round_based' ? 'text-esports-accent' : 'text-gray-500'}`} />
+                                <h4 className={`text-sm font-semibold mb-1 ${schedulingMode === 'round_based' ? 'text-white' : 'text-gray-300'}`}>
+                                    Round-Based
+                                </h4>
+                                <p className="text-[11px] text-gray-500 leading-relaxed">
+                                    One start time per round. All matches in a round share the same schedule.
+                                </p>
+                            </button>
+
+                            {/* Granular Card */}
+                            <button
+                                onClick={() => handleSetMode('granular')}
+                                className={`relative p-4 rounded-2xl border-2 text-left transition-all duration-200 ${schedulingMode === 'granular'
+                                    ? 'border-esports-purple bg-esports-purple/5 shadow-[0_0_20px_rgba(168,85,247,0.08)]'
+                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+                                    }`}
+                            >
+                                {schedulingMode === 'granular' && (
+                                    <div className="absolute top-3 right-3">
+                                        <Check className="w-4 h-4 text-esports-purple" />
+                                    </div>
+                                )}
+                                <GitBranch className={`w-6 h-6 mb-2 ${schedulingMode === 'granular' ? 'text-esports-purple' : 'text-gray-500'}`} />
+                                <h4 className={`text-sm font-semibold mb-1 ${schedulingMode === 'granular' ? 'text-white' : 'text-gray-300'}`}>
+                                    Match-by-Match
+                                </h4>
+                                <p className="text-[11px] text-gray-500 leading-relaxed">
+                                    Individual time for every match. Perfect for streamed playoffs and finals.
+                                </p>
+                            </button>
                         </div>
                     </div>
                 )}

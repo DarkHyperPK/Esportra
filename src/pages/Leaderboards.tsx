@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { getCountryFlag, getCountryFlagUrl } from '@/utils/countries';
 import CountrySelector from '@/components/ui/CountrySelector';
 import { Globe } from 'lucide-react';
+import EntityAvatar from '@/components/ui/EntityAvatar';
 
 // ── Types ──
 interface TeamStats {
@@ -394,17 +395,13 @@ const Leaderboards: React.FC = () => {
                                         {/* Name + Avatar */}
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="w-11 h-11 flex-shrink-0 flex items-center justify-center">
-                                                {(entry as any).logo_url || (entry as any).avatar_url ? (
-                                                    <img
-                                                        src={(entry as any).logo_url || (entry as any).avatar_url}
-                                                        alt=""
-                                                        className="w-full h-full object-contain filter drop-shadow-lg"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-white/5 rounded-xl border border-white/10">
-                                                        {category === 'teams' ? <Users className="w-5 h-5" /> : <User className="w-5 h-5" />}
-                                                    </div>
-                                                )}
+                                                <EntityAvatar
+                                                    src={(entry as any).logo_url || (entry as any).avatar_url}
+                                                    name={(entry as any).name || (entry as any).username}
+                                                    entityId={entry.id}
+                                                    type={category === 'teams' ? 'team' : 'user'}
+                                                    size="w-11 h-11"
+                                                />
                                             </div>
                                             <span className="text-sm font-bold text-white truncate group-hover:text-indigo-300 transition-colors">
                                                 {(entry as any).name || (entry as any).username}

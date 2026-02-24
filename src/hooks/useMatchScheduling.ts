@@ -11,6 +11,7 @@ interface SchedulingConfig {
     schedule_start_time: string | null;
     match_interval_minutes: number;
     daily_start_time?: string; // HH:mm format, default time for daily rounds (Swiss/RR)
+    scheduling_mode?: 'round_based' | 'granular'; // round_based = per-round times, granular = per-match times
 }
 
 interface MatchSchedule {
@@ -55,7 +56,18 @@ export const useMatchScheduling = (stageId: string | undefined) => {
 
             const { data, error } = await supabase
                 .from('brkt_matches')
-                .select('id, match_number, scheduled_time, team1_id, team2_id, status, round_index, bracket_type')
+                .select(`
+                    id, 
+                    match_number, 
+                    scheduled_time, 
+                    team1_id, 
+                    team2_id, 
+                    status, 
+                    round_index, 
+                    bracket_type,
+                    team1:teams!team1_id(name),
+                    team2:teams!team2_id(name)
+                `)
                 .eq('version_id', version.id)
                 .order('round_index', { ascending: true })
                 .order('match_number', { ascending: true });
@@ -68,17 +80,24 @@ export const useMatchScheduling = (stageId: string | undefined) => {
 
     // Update scheduling config
     const updateConfig = useMutation({
-        mutationFn: async (config: Partial<SchedulingConfig>) => {
+        mutationFn: async (config: SchedulingConfig) => {
             if (!stageId) throw new Error('Stage ID required');
+
+            // Log for debugging since scheduling is sensitive
+            console.log('[useMatchScheduling] Updating config for stage', stageId, config);
+
             const { error } = await supabase
                 .from('tournament_stages')
                 .update({ scheduling_config: config })
                 .eq('id', stageId);
-            if (error) throw error;
+
+            if (error) {
+                console.error('[useMatchScheduling] Update failed:', error);
+                throw error;
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['stage-scheduling-config', stageId] });
-            toast({ title: 'Config Updated', description: 'Scheduling settings saved.' });
         },
         onError: (error: any) => {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -148,11 +167,56 @@ export const useMatchScheduling = (stageId: string | undefined) => {
                 .eq('id', matchId);
             if (error) throw error;
         },
+        onMutate: async ({ matchId, scheduledTime }) => {
+            // Cancel outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ['stage-matches-for-scheduling', stageId] });
+
+            // Snapshot previous value
+            const previousMatches = queryClient.getQueryData(['stage-matches-for-scheduling', stageId]);
+
+            // Optimistically update scheduling list
+            queryClient.setQueryData(['stage-matches-for-scheduling', stageId], (old: any) => {
+                if (!old) return old;
+                return old.map((m: any) => m.id === matchId ? { ...m, scheduled_time: scheduledTime } : m);
+            });
+
+            // Optimistically update the graph engine data (used by the bracket visualization)
+            // We search across all queries that start with bracket-graph or bracket-graph-data
+            const graphQueries = queryClient.getQueriesData({ queryKey: ['bracket-graph'] });
+            const legacyGraphQueries = queryClient.getQueriesData({ queryKey: ['bracket-graph-data'] });
+
+            const allGraphQueries = [...graphQueries, ...legacyGraphQueries];
+
+            allGraphQueries.forEach(([queryKey, oldData]) => {
+                // If the query contains our match, update it
+                if (oldData) {
+                    queryClient.setQueryData(queryKey, (old: any) => {
+                        if (!old || !old.nodes) return old;
+                        return {
+                            ...old,
+                            nodes: old.nodes.map((node: any) =>
+                                node.id === matchId ? { ...node, scheduled_time: scheduledTime } : node
+                            )
+                        };
+                    });
+                }
+            });
+
+            return { previousMatches };
+        },
         onSuccess: () => {
+            // Invalidate to ensure consistency, but the UI is already updated
             queryClient.invalidateQueries({ queryKey: ['stage-matches-for-scheduling', stageId] });
+            queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
+            queryClient.invalidateQueries({ queryKey: ['bracket-graph-data', stageId] });
+            queryClient.invalidateQueries({ queryKey: ['public-tournament'] }); // Also refresh public view just in case
             toast({ title: 'Match Time Updated' });
         },
-        onError: (error: any) => {
+        onError: (error: any, variables, context) => {
+            // Rollback on Error
+            if (context?.previousMatches) {
+                queryClient.setQueryData(['stage-matches-for-scheduling', stageId], context.previousMatches);
+            }
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         },
     });

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import { motion } from 'framer-motion';
+import EntityAvatar from '@/components/ui/EntityAvatar';
 
 const TournamentHistoryPage = () => {
     const [tournaments, setTournaments] = useState<any[]>([]);
@@ -145,17 +146,14 @@ const TournamentHistoryPage = () => {
                                                 whileHover={{ scale: 1.05 }}
                                                 transition={{ duration: 0.7 }}
                                             >
-                                                {t.banner_url || t.logo_url ? (
-                                                    <img
-                                                        src={t.banner_url || t.logo_url}
-                                                        alt={t.name}
-                                                        className="h-full w-full object-cover opacity-40 group-hover:opacity-50 transition-opacity duration-500"
-                                                    />
-                                                ) : (
-                                                    <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-esports-purple/20 to-esports-dark">
-                                                        <Trophy className="h-20 w-20 text-white/10" />
-                                                    </div>
-                                                )}
+                                                <EntityAvatar
+                                                    src={t.banner_url || t.logo_url}
+                                                    name={t.name}
+                                                    entityId={t.id}
+                                                    type="team" // using team for shapes style which is better for tournaments
+                                                    size="w-full h-full rounded-none"
+                                                    imgClassName="opacity-40 group-hover:opacity-50 transition-opacity duration-500"
+                                                />
                                             </motion.div>
 
                                             {/* Gradient Overlay */}

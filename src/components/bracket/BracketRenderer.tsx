@@ -20,6 +20,7 @@ interface BracketRendererProps {
     headingMargin?: number;
     bracketSpacing?: number;
     disableAnimations?: boolean;
+    isSingleElimination?: boolean;
 }
 
 export const BracketRenderer: React.FC<BracketRendererProps> = ({
@@ -30,7 +31,7 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     hasResultsMap = {},
     hasProofsMap = {},
     cardWidth = 200,
-    cardHeight = 70,
+    cardHeight = 86,
     roundGap = 100,
     matchGap = 30,
     leftPadding = 10,
@@ -38,6 +39,7 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     headingMargin = 40,
     bracketSpacing = 80,
     disableAnimations = false,
+    isSingleElimination = false,
 }) => {
     // Helper to get raw ID (remove 'db-', 'wb-', 'lb-' prefixes if present)
     const getRawId = (id: string) => id.replace(/^(db-|wb-|lb-|source-)/, '');
@@ -212,16 +214,18 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
             )}
 
             {/* Winners Bracket Heading */}
-            {(activeFilter.type === 'all' || activeFilter.type === 'winners') && matches.some(m => m.bracketSide === 'winners') && (
-                <div style={{ position: 'absolute', left: leftPadding, top: 0, width: 350, zIndex: 100 }}>
-                    <h3 className="text-xl font-semibold tracking-tight text-white flex items-center gap-3">
-                        <div className="p-1.5 rounded-md bg-yellow-500/10 border border-yellow-500/20">
-                            <span className="text-yellow-500">🏆</span>
-                        </div>
-                        Winners Bracket
-                    </h3>
-                </div>
-            )}
+            {(activeFilter.type === 'all' || activeFilter.type === 'winners') &&
+                matches.some(m => m.bracketSide === 'winners') &&
+                !isSingleElimination && (
+                    <div style={{ position: 'absolute', left: leftPadding, top: 0, width: 350, zIndex: 100 }}>
+                        <h3 className="text-xl font-semibold tracking-tight text-white flex items-center gap-3">
+                            <div className="p-1.5 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+                                <span className="text-yellow-500">🏆</span>
+                            </div>
+                            Winners Bracket
+                        </h3>
+                    </div>
+                )}
 
             {/* Losers Bracket Heading */}
             {(activeFilter.type === 'all' || activeFilter.type === 'losers') && matches.some(m => m.bracketSide === 'losers') && (

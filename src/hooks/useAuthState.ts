@@ -13,20 +13,24 @@ export const useAuthState = () => {
     let mounted = true;
     setLoading(true);
 
-    // Set up auth state listener FIRST
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (mounted) {
         setUser(newSession?.user || null);
         setSession(newSession);
-        setLoading(false);
+
+        // Only set loading to false if we have a definitive session 
+        // OR if the getSession call below has already finished.
+        if (newSession?.user) {
+          setLoading(false);
+        }
       }
     });
 
-    // THEN check for existing session
+    // Initial session check should be the definitive source for ending 'loading'
     supabase.auth.getSession()
       .then(({ data: { session: currentSession }, error: sessionError }) => {
-        // console.log("Initial session check:", currentSession ? "session exists" : "no session");
-        if (sessionError) {
+        if (sessionError && mounted) {
           setError(sessionError);
         }
 
