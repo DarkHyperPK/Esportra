@@ -98,4 +98,8 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp.worktrees/
+*.temp
+
+# Worktrees
+.worktrees/
+worktrees/
