@@ -3,13 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Edit, Disc, Shield, ShieldCheck, Link2Off, Loader2 } from "lucide-react";
+import { Edit, Disc, Shield, ShieldCheck, Link2Off, Loader2, ExternalLink } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from '@/lib/supabase';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { useToast } from '@/hooks/use-toast';
 import EditProfileDialog from './EditProfileDialog';
 import { getCountryFlag, getCountryFlagUrl } from '@/utils/countries';
+
+const DiscordLogo = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" className={className} fill="currentColor">
+    <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.15,105.15,0,0,0,19.39,8.07C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36a77.7,77.7,0,0,0,6.89-11.1A77.2,77.2,0,0,1,28.2,80.13a20.11,20.11,0,0,0,2.15-1.55c2.39,1.74,5.08,3.22,7.74,4.56,9.15,4.64,19.26,7.1,29.41,7.1,10.15,0,20.26-2.46,29.41-7.1,2.66-1.34,5.35-2.82,7.74-4.56a20.11,20.11,0,0,0,2.15,1.55A77.2,77.2,0,0,1,95.6,85.26a77.7,77.7,0,0,0,6.89,11.1A105.73,105.73,0,0,0,126.6,80.21h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.09,53,91.04,65.69,84.69,65.69Z" />
+  </svg>
+);
 
 interface PlayerProfileProps {
   profileData?: any;
@@ -212,52 +218,75 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
               {/* ── Riot Account Section ── */}
               {isOwnProfile ? (
                 riotLoading ? (
-                  <div className="flex items-center justify-center p-4">
-                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                  <div className="flex items-center justify-center p-8 rounded-xl border border-white/5 bg-white/5">
+                    <Loader2 className="w-6 h-6 animate-spin text-gaming-primary" />
                   </div>
                 ) : riotAccount ? (
-                  <div className="p-4 border border-red-500/30 bg-red-500/5 rounded-md space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-red-500 font-bold text-sm">
-                        <ShieldCheck className="w-4 h-4" />
-                        Riot Linked
+                  <div className="relative overflow-hidden group rounded-xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-[#111] hover:border-red-500/40 transition-all duration-300">
+                    <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-500 pointer-events-none">
+                      <img src="/riot-logo.svg" alt="" className="w-40 h-40" />
+                    </div>
+                    <div className="absolute top-0 left-0 w-1 h-full bg-red-500 rounded-l-xl"></div>
+                    <div className="p-4 relative z-10 flex flex-col h-full justify-between gap-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <img src="/riot-logo.svg" alt="Riot Games" className="w-5 h-5 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                          <span className="font-bold text-red-500 tracking-wide text-sm uppercase drop-shadow-md">Riot Games</span>
+                        </div>
+                        <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10 px-2 py-0 text-[10px] font-bold shadow-[0_0_10px_rgba(239,68,68,0.2)]">VERIFIED</Badge>
                       </div>
-                      <Badge variant="outline" className="border-red-500/40 text-red-400 text-[10px]">VERIFIED</Badge>
+
+                      <div>
+                        <div className="font-black text-2xl text-white tracking-tight flex items-baseline gap-1">
+                          {riotAccount.game_name}
+                          <span className="text-red-500/70 text-lg font-bold">#{riotAccount.tag_line}</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 mt-1 font-medium">Ready for tournament registration.</p>
+                      </div>
+
+                      <div className="flex justify-end border-t border-red-500/10 pt-3 mt-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-400 hover:text-red-400 hover:bg-red-500/10 text-xs h-8 px-3 transition-colors"
+                          onClick={handleUnlinkRiot}
+                        >
+                          <Link2Off className="w-3.5 h-3.5 mr-1.5" /> Unlink Account
+                        </Button>
+                      </div>
                     </div>
-                    <div className="font-mono text-white text-lg">
-                      {riotAccount.game_name}<span className="text-gray-500">#{riotAccount.tag_line}</span>
-                    </div>
-                    <p className="text-[11px] text-gray-500">This Riot ID is verified and cannot be changed manually.</p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-500 hover:text-red-400 text-xs mt-1 h-7 px-2"
-                      onClick={handleUnlinkRiot}
-                    >
-                      <Link2Off className="w-3 h-3 mr-1" /> Unlink
-                    </Button>
                   </div>
                 ) : (
-                  <div className="p-4 border border-red-500/20 bg-red-900/10 rounded-md text-center">
-                    <Shield className="w-8 h-8 text-red-500/50 mx-auto mb-2" />
-                    <p className="text-gray-400 text-sm mb-3">Link your Riot account for verified tournament registration.</p>
-                    <Button
-                      onClick={linkRiotAccount}
-                      className="w-full bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      <Shield className="w-4 h-4 mr-2" /> Link Riot Account
-                    </Button>
+                  <div className="relative overflow-hidden group rounded-xl border border-white/5 bg-[#111]/50 hover:bg-[#151515] transition-all duration-300">
+                    <div className="p-5 relative z-10 flex flex-col items-center text-center">
+                      <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 text-red-500">
+                        <Shield className="w-6 h-6 opacity-80 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <h4 className="font-bold text-white mb-1">Connect Riot Games</h4>
+                      <p className="text-gray-400 text-xs mb-4 max-w-[200px]">Required for verified tournament registration & tracking.</p>
+                      <Button
+                        onClick={linkRiotAccount}
+                        className="w-full bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_20px_rgba(239,68,68,0.5)] transition-all"
+                      >
+                        <Shield className="w-4 h-4 mr-2" /> Link Riot Account
+                      </Button>
+                    </div>
                   </div>
                 )
               ) : (
-                // Public profile: show linked Riot ID if available (no private data)
                 riotAccount ? (
-                  <div className="p-4 border border-red-500/30 bg-red-500/5 rounded-md">
-                    <div className="flex items-center gap-2 text-red-500 font-bold text-sm mb-1">
-                      <ShieldCheck className="w-4 h-4" /> Riot Linked
-                    </div>
-                    <div className="font-mono text-white">
-                      {riotAccount.game_name}<span className="text-gray-500">#{riotAccount.tag_line}</span>
+                  <div className="relative overflow-hidden rounded-xl border border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-red-500/50 rounded-l-xl"></div>
+                    <div className="p-4 flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5 text-red-500 font-bold text-[10px] uppercase tracking-wider mb-1">
+                          <img src="/riot-logo.svg" alt="" className="w-3 h-3" /> Riot Games
+                        </div>
+                        <div className="font-bold text-white text-lg">
+                          {riotAccount.game_name}<span className="text-red-500/70">#{riotAccount.tag_line}</span>
+                        </div>
+                      </div>
+                      <ShieldCheck className="w-5 h-5 text-red-500/50" />
                     </div>
                   </div>
                 ) : null
@@ -266,34 +295,47 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
               {/* ── Discord Section ── */}
               {isOwnProfile && isDiscordSignup && (
                 discordIdentity ? (
-                  <div className="p-4 border border-[#5865F2]/30 bg-[#5865F2]/10 rounded-md flex items-center justify-between">
-                    <div>
-                      <div className="text-[#5865F2] font-bold text-sm mb-1 flex items-center gap-2">
-                        <Disc className="w-4 h-4" /> Discord Connected
+                  <div className="relative overflow-hidden group rounded-xl border border-[#5865F2]/20 bg-gradient-to-br from-[#5865F2]/10 to-[#111] hover:border-[#5865F2]/40 transition-all duration-300">
+                    <div className="absolute -right-2 -bottom-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-500 pointer-events-none">
+                      <DiscordLogo className="w-32 h-32" />
+                    </div>
+                    <div className="absolute top-0 left-0 w-1 h-full bg-[#5865F2] rounded-l-xl"></div>
+                    <div className="p-4 relative z-10 flex flex-col h-full justify-between gap-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <DiscordLogo className="w-5 h-5 text-[#5865F2] drop-shadow-[0_0_8px_rgba(88,101,242,0.5)]" />
+                          <span className="font-bold text-[#5865F2] tracking-wide text-sm uppercase drop-shadow-[0_0_8px_rgba(88,101,242,0.5)]">Discord</span>
+                        </div>
+                        <Badge variant="outline" className="border-[#5865F2]/30 text-[#5865F2] bg-[#5865F2]/10 px-2 py-0 text-[10px] font-bold shadow-[0_0_10px_rgba(88,101,242,0.2)]">CONNECTED</Badge>
                       </div>
-                      <div className="font-mono text-white">
-                        {discordIdentity.identity_data?.full_name || discordIdentity.identity_data?.name || discordIdentity.identity_data?.email || 'Linked'}
+                      <div className="font-black text-xl text-white tracking-tight">
+                        {discordIdentity.identity_data?.full_name || discordIdentity.identity_data?.name || discordIdentity.identity_data?.email || 'Linked User'}
                       </div>
                     </div>
                   </div>
                 ) : (
-                  // Fallback if metadata says Discord but identity is missing (rare)
-                  <div className="text-center">
-                    <p className="text-gray-400 text-sm mb-4">Link your Discord to participate in tournaments.</p>
-                    <Button
-                      onClick={linkDiscord}
-                      className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white"
-                    >
-                      Link Discord
-                    </Button>
+                  <div className="relative overflow-hidden group rounded-xl border border-white/5 bg-[#111]/50 hover:bg-[#151515] transition-all duration-300">
+                    <div className="p-5 relative z-10 flex flex-col items-center text-center">
+                      <div className="w-12 h-12 rounded-full bg-[#5865F2]/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                        <DiscordLogo className="w-6 h-6 text-[#5865F2] opacity-80 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <h4 className="font-bold text-white mb-1">Connect Discord</h4>
+                      <p className="text-gray-400 text-xs mb-4 max-w-[200px]">Link your Discord to participate in community tournaments.</p>
+                      <Button
+                        onClick={linkDiscord}
+                        className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white shadow-[0_0_15px_rgba(88,101,242,0.3)] hover:shadow-[0_0_20px_rgba(88,101,242,0.5)] transition-all"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" /> Link Discord
+                      </Button>
+                    </div>
                   </div>
                 )
               )}
 
               {/* Public profile or non-discord signup: Just show an empty state or nothing for Discord */}
               {!isOwnProfile && !riotAccount && (
-                <div className="text-center text-gray-500 italic">
-                  Game accounts are private.
+                <div className="flex items-center justify-center h-24 border border-white/5 bg-[#111]/30 rounded-xl text-center">
+                  <span className="text-gray-500 italic text-sm">Game accounts are private.</span>
                 </div>
               )}
             </div>
