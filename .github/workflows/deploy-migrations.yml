@@ -1,0 +1,34 @@
+name: 🔄 Deploy DB Migrations
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  deploy-migrations:
+    name: 🚀 Deploy Migrations to Production
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+          
+      - name: 🔗 Link Supabase Project
+        run: supabase link --project-ref $SUPABASE_PROJECT_ID
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          
+      - name: 🚀 Push Migrations
+        run: supabase db push
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
