@@ -234,7 +234,7 @@ const UserManagementTool = () => {
         }
     };
 
-    const handleUnsuspendUser = async (userId: string) => {
+    const handleUnsuspendUser = async (userId: string, targetName: string) => {
         try {
             setLoading(true);
 
@@ -249,7 +249,7 @@ const UserManagementTool = () => {
             import('@/lib/auditLog').then(({ auditLog }) => {
                 auditLog.userUnsuspended(
                     userId,
-                    selectedUser?.full_name || selectedUser?.username || 'Unknown',
+                    targetName,
                     'Administrative Unsuspension'
                 );
             });
@@ -584,7 +584,7 @@ const UserManagementTool = () => {
                                                     {user.is_suspended ? (
                                                         <DropdownMenuItem
                                                             className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10"
-                                                            onClick={() => handleUnsuspendUser(user.id)}
+                                                            onClick={() => handleUnsuspendUser(user.id, user.full_name || user.username || 'Unknown')}
                                                         >
                                                             <UserCheck className="w-4 h-4 mr-2" />
                                                             Unsuspend User
