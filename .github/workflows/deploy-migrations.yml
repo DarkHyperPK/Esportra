@@ -22,5 +22,26 @@ jobs:
         with:
           version: latest
           
-      - name: 🚀 Push Migrations
-        run: supabase db push --db-url ${{ secrets.PROD_DB_URL }}
+      - name: 🔑 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🚀 Push Migrations via SSH Tunnel
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+        run: |
+          # 1. Trust the host
+          ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+          
+          # 2. Open an SSH tunnel in the background (mapping local port 5432 to the server's local Postgres)
+          ssh -o StrictHostKeyChecking=no -f -N -L 5432:127.0.0.1:5432 $SERVER_USER@$SERVER_IP
+          
+          # 3. Rewrite the PROD_DB_URL to point to the tunneled local port instead of the public IP
+          TUNNELED_DB_URL="${PROD_DB_URL/$SERVER_IP/127.0.0.1}"
+          
+          # 4. Push migrations through the secure tunnel
+          echo "Pushing migrations through secure SSH tunnel..."
+          supabase db push --db-url "$TUNNELED_DB_URL"
