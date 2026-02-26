@@ -39,12 +39,9 @@ jobs:
           # 2. Open an SSH tunnel in the background (mapping local port 5432 to the server's local Postgres)
           ssh -o StrictHostKeyChecking=no -f -N -L 5432:127.0.0.1:5432 $SERVER_USER@$SERVER_IP
           
-          # 3. Rewrite the PROD_DB_URL to point to the tunneled local port and disable SSL
+          # 3. Rewrite the PROD_DB_URL to point to the tunneled local port
           TUNNELED_DB_URL="${PROD_DB_URL/$SERVER_IP/127.0.0.1}"
-          if [[ "$TUNNELED_DB_URL" != *"?sslmode="* ]]; then
-            TUNNELED_DB_URL="${TUNNELED_DB_URL}?sslmode=disable"
-          fi
           
-          # 4. Push migrations through the secure tunnel
+          # 4. Push migrations through the secure tunnel with TLS disabled (over localhost)
           echo "Pushing migrations through secure SSH tunnel..."
-          supabase db push --db-url "$TUNNELED_DB_URL"
+          PGSSLMODE=disable supabase db push --db-url "$TUNNELED_DB_URL"
