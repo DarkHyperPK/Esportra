@@ -74,9 +74,8 @@ By the time the React frontend finishes building, the database schema and edge f
 For the automated GitHub Actions to work, you must configure these **Repository Secrets** in GitHub (`Settings` -> `Secrets and variables` -> `Actions`):
 
 ### Database Migrations (`deploy-migrations.yml`)
-* `SUPABASE_ACCESS_TOKEN`: A personal access token from your Supabase account.
-* `SUPABASE_PROJECT_ID`: Your project's reference ID.
-* `SUPABASE_DB_PASSWORD`: The PostgreSQL password for your production DB.
+Because you are self-hosting Supabase on Coolify, you do not need Cloud API tokens. You only need the direct connection string.
+* `PROD_DB_URL`: Your full PostgreSQL connection string. Format: `postgresql://postgres:[PASSWORD]@[COOLIFY_SERVER_IP]:5432/postgres`
 
 ### Edge Functions (`deploy-functions.yml`)
 * `SERVER_IP`: The public IP address of your Coolify server.
