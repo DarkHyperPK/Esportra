@@ -3284,7 +3284,7 @@ CREATE TABLE IF NOT EXISTS "public"."daily_sponsor_stats" (
 );
 
 
-ALTER TABLE "public"."daily_sponsor_stats" OWNER TO "supabase_admin";
+ALTER TABLE "public"."daily_sponsor_stats" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."dispute_comments" (
@@ -8786,3 +8786,4 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 RESET ALL;
+
