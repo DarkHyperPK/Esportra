@@ -19,6 +19,10 @@ export type UserProfile = {
   admin_roles?: string[];
   base_role?: UserRole;
   license_id?: string | null;
+  is_suspended?: boolean;
+  suspension_until?: string | null;
+  suspension_reason?: string | null;
+  suspension_type?: string | null;
 };
 
 export type AuthContextType = {

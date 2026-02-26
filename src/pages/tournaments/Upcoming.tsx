@@ -65,9 +65,9 @@ const UpcomingTournaments = () => {
             name, owner_id
           )
         `)
-
         .eq('is_public', true)
         .is('deleted_at', null)
+        .not('status', 'in', '("completed","cancelled")')
         .order('start_date', { ascending: true });
 
       if (error) {

@@ -70,25 +70,11 @@ Deno.serve(async (req: Request) => {
             const { data: { user }, error: userError } = await userClient.auth.getUser();
 
             if (userError || !user) {
-                console.log("getUser with user token failed, trying JWT extraction via admin...");
-                const token = authHeader.replace("Bearer ", "");
-                try {
-                    const payload = JSON.parse(atob(token.split('.')[1]));
-                    userId = payload.sub;
-
-                    if (!userId) {
-                        return new Response(
-                            JSON.stringify({ error: "Invalid token: no user ID found" }),
-                            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-                        );
-                    }
-                } catch (decodeErr) {
-                    console.error("JWT decode error:", decodeErr);
-                    return new Response(
-                        JSON.stringify({ error: "Invalid or expired session. Please request a new reset link." }),
-                        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-                    );
-                }
+                console.error("getUser with user token failed:", userError);
+                return new Response(
+                    JSON.stringify({ error: "Invalid or expired session. Please request a new reset link." }),
+                    { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                );
             } else {
                 userId = user.id;
                 email = user.email || "";

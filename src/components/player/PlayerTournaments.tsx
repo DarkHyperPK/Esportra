@@ -72,58 +72,18 @@ const PlayerTournaments = () => {
       if (!user) return;
 
       try {
-        // Get all tournaments the user is registered for
-        const { data: registrations, error: registrationsError } = await supabase
-          .from('tournament_participants')
-          .select(`
-            id,
-            tournament_id,
-            user_id,
-            participant_type,
-            team_name,
-            team_captain,
-            team_email,
-            team_phone,
-            team_members,
-            team_logo,
-            created_at,
-            status,
-            tournaments (
-              id,
-              name,
-              game,
-              date,
-              time,
-              venue,
-              max_participants,
-              slug,
-              image_url,
-              prize_pool,
-              entry_fee,
-              is_online,
-              team_size,
-              user_id
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+        const { data, error } = await supabase.rpc('get_user_registered_tournaments', {
+          p_user_id: user.id
+        });
 
-        if (registrationsError) throw registrationsError;
+        if (error) throw error;
 
-        // Get participant counts for each tournament
-        const validRegistrations = (Array.isArray(registrations) ? registrations : [])
-          .filter((reg): reg is NonNullable<typeof reg> => reg != null)
-          .filter((reg) => typeof reg === 'object' && 'id' in reg && reg.tournaments && typeof reg.tournaments === 'object' && 'id' in reg.tournaments);
-        const tournamentsWithCounts = (await Promise.all(validRegistrations.map(async (reg) => {
-          const typedReg = (reg!) as unknown as TournamentRegistration;
-          const { count } = await supabase
-            .from('tournament_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('tournament_id', typedReg.tournament_id);
-          // Determine tournament status based on date
-          const tournamentDate = new Date(typedReg.tournaments.date);
+        // Process status and filter completed
+        const processedTournaments = (data || []).map((t: any) => {
+          const tournamentDate = new Date(t.date);
           const now = new Date();
           let status: 'upcoming' | 'ongoing' | 'completed';
+
           if (tournamentDate > now) {
             status = 'upcoming';
           } else if (tournamentDate.toDateString() === now.toDateString()) {
@@ -131,25 +91,14 @@ const PlayerTournaments = () => {
           } else {
             status = 'completed';
           }
+
           return {
-            ...typedReg.tournaments,
-            status,
-            current_participants: count || 0,
-            registered_at: typedReg.created_at,
-            team_size: typedReg.tournaments.team_size ?? 1,
-            prize_pool: typedReg.tournaments.prize_pool || '',
-            entry_fee: typedReg.tournaments.entry_fee || 'Free',
-            is_online: typedReg.tournaments.is_online ?? false,
-            image_url: typedReg.tournaments.image_url || undefined,
-            slug: typedReg.tournaments.slug || '',
-            user_id: typedReg.tournaments.user_id,
+            ...t,
+            status: status as any
           };
-        }))).filter((reg): reg is NonNullable<typeof reg> => reg != null);
-        // Only show tournaments that are not completed
-        const activeTournaments = tournamentsWithCounts.filter(
-          (t) => t.status !== 'completed'
-        );
-        setTournaments(activeTournaments);
+        }).filter((t: any) => t.status !== 'completed');
+
+        setTournaments(processedTournaments);
       } catch (error) {
         console.error('Error fetching tournaments:', error);
       } finally {

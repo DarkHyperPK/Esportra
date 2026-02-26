@@ -143,11 +143,31 @@ Deno.serve(async (req: Request) => {
       throw new Error("Failed to generate recovery token.");
     }
 
-    // Build a link that points to the frontend, NOT the API
-    // If redirect_url is provided (e.g. from partner portal), use that base
-    const baseUrl = redirect_url || `${FRONTEND_URL}/auth/reset-password`;
-    const separator = baseUrl.includes('?') ? '&' : '?';
-    const resetLink = `${baseUrl}${separator}token_hash=${tokenHash}&type=recovery`;
+    // ── SECURITY: Validate redirect_url against approved domains ──
+    const ALLOWED_REDIRECT_ORIGINS = [
+      FRONTEND_URL,
+      'https://esportra.com',
+      'https://www.esportra.com',
+      'https://partner.esportra.com',
+    ].map(u => new URL(u).origin);
+
+    let validatedRedirectBase = `${FRONTEND_URL}/auth/reset-password`;
+    if (redirect_url) {
+      try {
+        const parsedUrl = new URL(redirect_url);
+        if (ALLOWED_REDIRECT_ORIGINS.includes(parsedUrl.origin)) {
+          validatedRedirectBase = redirect_url;
+        } else {
+          console.warn(`[send-recovery-email] Blocked untrusted redirect_url: ${redirect_url}`);
+          // Fall through to default frontend URL
+        }
+      } catch {
+        console.warn(`[send-recovery-email] Invalid redirect_url format: ${redirect_url}`);
+      }
+    }
+
+    const separator = validatedRedirectBase.includes('?') ? '&' : '?';
+    const resetLink = `${validatedRedirectBase}${separator}token_hash=${tokenHash}&type=recovery`;
 
     console.log(`📧 Sending branded recovery email to ${email}`);
 

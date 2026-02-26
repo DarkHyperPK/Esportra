@@ -27,6 +27,33 @@ Deno.serve(async (req: Request) => {
             throw new Error("RESEND_API_KEY is not configured. Add it in Supabase Dashboard > Edge Functions > Secrets.");
         }
 
+        // ── SECURITY: Require valid JWT or service_role key ──
+        const authHeader = req.headers.get('Authorization') || '';
+        const isServiceRole = authHeader === `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`;
+
+        if (!isServiceRole) {
+            // Verify the JWT token
+            const { createClient } = await import("jsr:@supabase/supabase-js@2");
+            const token = authHeader.replace('Bearer ', '');
+            if (!token) {
+                return new Response(JSON.stringify({ error: 'Authentication required' }), {
+                    status: 401,
+                    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+                });
+            }
+            const { data: { user }, error: authError } = await createClient(
+                Deno.env.get('SUPABASE_URL') ?? '',
+                Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+            ).auth.getUser(token);
+
+            if (authError || !user) {
+                return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                    status: 401,
+                    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+                });
+            }
+        }
+
         // DEBUG: Log incoming request details
         console.log("[send-email] Incoming request headers:", JSON.stringify(Object.fromEntries(req.headers.entries())));
         const bodyText = await req.text();

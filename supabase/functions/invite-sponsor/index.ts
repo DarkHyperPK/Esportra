@@ -12,10 +12,44 @@ Deno.serve(async (req) => {
     }
 
     try {
+        // ── AUTH CHECK: Verify caller is an authenticated admin ──
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
+        }
+
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
+
+        // Verify the JWT and get the calling user
+        const token = authHeader.replace('Bearer ', '')
+        const { data: { user: caller }, error: authError } = await createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+        ).auth.getUser(token)
+
+        if (authError || !caller) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
+        }
+
+        // Verify caller is a platform admin
+        const { data: callerProfile } = await supabaseClient
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', caller.id)
+            .single()
+
+        if (!callerProfile?.is_admin) {
+            return new Response(JSON.stringify({ error: 'Forbidden: Admin privileges required' }), {
+                status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
+        }
 
         const { email, sponsor_id, application_id } = await req.json()
 

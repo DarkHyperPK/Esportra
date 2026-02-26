@@ -38,6 +38,7 @@ import {
   MapPin,
   Plus,
   Settings,
+  ShieldCheck,
   Shuffle,
   Trash2,
   Trophy,
@@ -72,7 +73,8 @@ import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 
 import BanManagement from '@/components/organizer/BanManagement';
 import DisputeCenter from '@/components/organizer/DisputeCenter';
-import TournamentStaffManager from '@/components/organizer/TournamentStaffManager';
+import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnouncementPanel';
+// Staff management has moved to Organization Settings (OrganizationStaffManager)
 import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
@@ -1164,6 +1166,7 @@ const TournamentDashboard = () => {
   const canAssistDisputes = isOrganizer || staffPermissions.includes('disputes:assist');
   const canManageTeams = isOrganizer || staffPermissions.includes('teams:manage');
   const canEditBracket = isOrganizer || staffPermissions.includes('bracket:edit');
+  const canSendAnnouncements = isOrganizer || staffPermissions.includes('announcements:send');
 
   const PermissionNotice = ({ message }: { message: string }) => (
     <Card className="bg-[#080d18] border border-white/5">
@@ -1524,10 +1527,11 @@ const TournamentDashboard = () => {
                   <SelectValue placeholder="Select View" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#09090b] border-white/10 text-white z-[60]">
-                  {['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'staff', 'settings'].map((tab) => {
+                  {['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'].map((tab) => {
                     // Filter tabs based on permissions
                     if (tab === 'bans' && !canManageTeams) return null;
                     if (tab === 'disputes' && !canAssistDisputes) return null;
+                    if (tab === 'announcements' && !canSendAnnouncements) return null;
                     if (tab === 'staff' && !canManageStaff) return null;
                     if (tab === 'settings' && !isOrganizer) return null;
 
@@ -1551,7 +1555,7 @@ const TournamentDashboard = () => {
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               <TabsList className="bg-transparent p-0 h-auto gap-1">
-                {['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'staff', 'settings'].map((tab) => {
+                {['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'].map((tab) => {
                   if (tab === 'brackets') {
                     return (
                       <button
@@ -1815,14 +1819,33 @@ const TournamentDashboard = () => {
               {activeTab === 'staff' && (
                 <TabsContent value="staff" forceMount key="staff">
                   <TabTransition direction={direction}>
-                    {canManageStaff && tournament?.id && user?.id ? (
-                      <TournamentStaffManager tournamentId={tournament.id} organizerId={user.id} />
+                    <Card className="bg-none bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8">
+                      <CardContent className="text-center py-8 space-y-4">
+                        <ShieldCheck className="w-12 h-12 text-emerald-400 mx-auto" />
+                        <h3 className="text-xl font-bold text-white">Staff Management Moved</h3>
+                        <p className="text-gray-400 max-w-md mx-auto">
+                          Staff is now managed at the <strong>organization level</strong>.
+                          Staff members added to your organization automatically gain access to all your tournaments.
+                        </p>
+                        <Button
+                          onClick={() => navigate('/organizer/dashboard?tab=staff')}
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl transition-all hover:scale-105"
+                        >
+                          Go to Organization Settings
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </TabTransition>
+                </TabsContent>
+              )}
+
+              {activeTab === 'announcements' && (
+                <TabsContent value="announcements" forceMount key="announcements">
+                  <TabTransition direction={direction}>
+                    {tournament?.id ? (
+                      <TournamentAnnouncementPanel tournamentId={tournament.id} />
                     ) : (
-                      <Card className="bg-none bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl border-0">
-                        <CardContent className="text-sm text-gray-400 py-6">
-                          Sign in to assign moderators to this tournament.
-                        </CardContent>
-                      </Card>
+                      <PermissionNotice message="Tournament not loaded." />
                     )}
                   </TabTransition>
                 </TabsContent>

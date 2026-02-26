@@ -27,6 +27,45 @@ export interface AdvanceTeamResult {
 }
 
 export class GraphMatchService {
+    /** Helper to log staff actions on a match */
+    private static async logMatchAction(matchId: string, action: string, details: any) {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user) return;
+
+            // Find organization_id via match -> version -> tournament
+            const { data: matchData, error } = await db
+                .from('brkt_matches')
+                .select(`
+                    id,
+                    brkt_versions (
+                        tournaments (
+                            organization_id
+                        )
+                    )
+                `)
+                .eq('id', matchId)
+                .single();
+
+            if (error || !matchData) return;
+
+            const orgId = matchData.brkt_versions?.tournaments?.organization_id;
+            if (!orgId) return;
+
+            const { logAuditEvent } = await import('@/lib/organizationStaff');
+            await logAuditEvent({
+                organizationId: orgId,
+                actorId: session.user.id,
+                action,
+                targetType: 'match',
+                targetId: matchId,
+                details
+            });
+        } catch (e) {
+            console.error('[GraphMatchService.logMatchAction] Failed:', e);
+        }
+    }
+
     /**
      * Set a match to "in_progress" with a party code.
      * This is the Go Live functionality.
@@ -45,6 +84,9 @@ export class GraphMatchService {
                 console.error('[GraphMatchService.goLive] Error:', error);
                 return { success: false, error: error.message };
             }
+
+            // Audit
+            await this.logMatchAction(matchId, 'match.go_live', { partyCode: partyCode.trim().toUpperCase() });
 
             return { success: true };
         } catch (e: any) {
@@ -104,6 +146,9 @@ export class GraphMatchService {
                 console.warn('[GraphMatchService.saveScore] Warning: Failed to create game summary:', gameError);
                 // We don't fail the whole operation if just the summary fails
             }
+
+            // Audit
+            await this.logMatchAction(matchId, 'match.update_score', { team1Score, team2Score, winnerId, loserId });
 
             return { success: true, winnerId: winnerId || undefined, loserId: loserId || undefined };
         } catch (e: any) {

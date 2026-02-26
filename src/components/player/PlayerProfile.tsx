@@ -30,6 +30,64 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
   // Handle RSO callback query params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // ── NEW SECURE CALLBACK FLOW ──
+    const riotCallback = params.get('riot_callback');
+    if (riotCallback === 'true') {
+      const code = params.get('code');
+      const state = params.get('state');
+      const storedState = sessionStorage.getItem('riotOAuthState');
+
+      if (!state || state !== storedState) {
+        toast({
+          title: 'Security Error',
+          description: 'Invalid security token (CSRF mismatch). Request blocked to protect your account.',
+          variant: 'destructive',
+        });
+        sessionStorage.removeItem('riotOAuthState');
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
+
+      // State matches! Consume it.
+      sessionStorage.removeItem('riotOAuthState');
+
+      const linkAccount = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/riot-oauth`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: JSON.stringify({ code })
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.reason || data.error || 'Failed to link account');
+
+          toast({
+            title: 'Riot Account Linked!',
+            description: data.gameName ? `Successfully linked ${data.gameName}#${data.tagLine}` : 'Your Riot account has been linked.',
+          });
+          refetchRiot();
+        } catch (err: any) {
+          toast({
+            title: 'Riot Linking Failed',
+            description: err.message,
+            variant: 'destructive',
+          });
+        } finally {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      };
+
+      linkAccount();
+      return;
+    }
+
+    // ── OLD/FALLBACK FLOW (for error redirects directly from Edge) ──
     const riotLinked = params.get('riot_linked');
     if (riotLinked === 'success') {
       const gameName = params.get('game_name');
@@ -39,7 +97,6 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
         description: gameName ? `Successfully linked ${gameName}#${tagLine}` : 'Your Riot account has been linked.',
       });
       refetchRiot();
-      // Clean up query params
       window.history.replaceState({}, '', window.location.pathname);
     } else if (riotLinked === 'error') {
       const reason = params.get('reason') || 'unknown';

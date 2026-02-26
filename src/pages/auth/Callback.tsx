@@ -23,6 +23,32 @@ const Callback = () => {
       }
 
       if (session) {
+        // Check for suspension
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_suspended, suspension_until, suspension_reason, suspension_type')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile?.is_suspended) {
+          console.warn("[AuthCallback] Suspended user attempted OAuth login:", session.user.id);
+          await supabase.auth.signOut();
+          toast({
+            title: 'Account Restricted',
+            description: `This account is suspended. Reason: ${profile.suspension_reason || 'Violation of terms'}`,
+            variant: 'destructive'
+          });
+          navigate('/suspended', {
+            replace: true,
+            state: {
+              reason: profile.suspension_reason,
+              type: profile.suspension_type,
+              until: profile.suspension_until
+            }
+          });
+          return;
+        }
+
         // If we are here because of a password recovery link
         const hash = window.location.hash;
         if (hash && hash.includes('type=recovery')) {

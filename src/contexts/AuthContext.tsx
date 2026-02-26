@@ -4,6 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { useProfileManagement } from '@/hooks/useProfileManagement';
+import { supabase } from '@/lib/supabase';
 import { detectUserCountry } from '@/utils/countries';
 import React from 'react';
 
@@ -110,9 +111,14 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
           if (!profileResult) {
             console.log("⚠️ No profile found for authenticated user. User may need to complete profile setup.");
           } else {
-
             // Update profile ID ref after successful fetch
             prevProfileIdRef.current = profileResult.id;
+
+            // Immediate suspension check for already-logged-in sessions
+            if (profileResult.is_suspended && window.location.pathname !== '/suspended') {
+              console.warn("[AuthContext] Active session suspended, redirecting...");
+              window.location.href = '/suspended';
+            }
           }
         } catch (err: any) {
           setError(err.message || "Failed to load profile");
@@ -127,7 +133,38 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     };
 
     handleUserChange();
-  }, [user?.id, authLoading, isMounted]); // Removed profile?.id from dependencies to prevent loops
+
+    // Set up real-time subscription for the user's profile to catch live suspensions
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    if (user?.id) {
+      subscription = supabase
+        .channel(`profile:${user.id}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        }, (payload) => {
+          console.log("[AuthContext] Profile update detected via real-time", payload.new);
+          const newProfile = payload.new as UserProfile;
+
+          // If they were just suspended, force redirect
+          if (newProfile.is_suspended && window.location.pathname !== '/suspended') {
+            console.warn("[AuthContext] Real-time suspension detected!");
+            window.location.href = '/suspended';
+          }
+
+          // Update local state
+          fetchProfile(user.id);
+        })
+        .subscribe();
+    }
+
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
+  }, [user?.id, authLoading, isMounted]);
 
   // React to auth errors
   useEffect(() => {

@@ -48,10 +48,12 @@ import {
 
 interface AuditLog {
   id: string;
-  action: string;
-  user_id: string | null;
+  action_type: string;
+  admin_id: string | null;
+  admin_name: string | null;
   target_type: string;
   target_id: string;
+  target_name: string | null;
   details: any;
   created_at: string;
 }
@@ -100,42 +102,22 @@ const AdminManagement = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const [
-        { count: userCount },
-        { count: venueCount },
-        { count: tournamentCount },
-        { count: verificationCount },
-        { count: bookingCount },
-        { data: tournaments },
-        { count: newUsersCount },
-        { count: partnerCount },
-      ] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('venues').select('*', { count: 'exact', head: true }),
-        supabase.from('tournaments').select('*', { count: 'exact', head: true }),
-        supabase.from('verification_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('venue_bookings').select('*', { count: 'exact', head: true }),
-        supabase.from('tournaments').select('prize_pool').neq('status', 'cancelled'),
-        supabase.from('profiles').select('*', { count: 'exact', head: true })
-          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
-        supabase.from('partner_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-      ]);
+      const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
 
-      let totalRevenue = 0;
-      if (tournaments) {
-        totalRevenue = tournaments.reduce((sum, t) => sum + (parseFloat(t.prize_pool) || 0), 0);
+      if (error) throw error;
+
+      if (data) {
+        setStats({
+          totalUsers: data.totalUsers || 0,
+          activeVenues: data.activeVenues || 0,
+          activeTournaments: data.activeTournaments || 0,
+          totalRevenue: data.totalRevenue || 0,
+          pendingVerifications: data.pendingVerifications || 0,
+          totalBookings: data.totalBookings || 0,
+          newUsersToday: data.newUsersToday || 0,
+          pendingPartners: data.pendingPartners || 0,
+        });
       }
-
-      setStats({
-        totalUsers: userCount || 0,
-        activeVenues: venueCount || 0,
-        activeTournaments: tournamentCount || 0,
-        totalRevenue,
-        pendingVerifications: verificationCount || 0,
-        totalBookings: bookingCount || 0,
-        newUsersToday: newUsersCount || 0,
-        pendingPartners: partnerCount || 0,
-      });
     } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {
@@ -229,13 +211,14 @@ const AdminManagement = () => {
 
   const exportAuditCSV = () => {
     const csv = [
-      ['Date', 'Action', 'User', 'Target Type', 'Target ID', 'Details'],
+      ['Date', 'Action', 'Admin', 'Target Type', 'Target ID', 'Target Name', 'Details'],
       ...auditLogs.map(log => [
         new Date(log.created_at).toLocaleString(),
-        log.action,
-        log.user_id || 'system',
+        log.action_type,
+        log.admin_name || log.admin_id || 'system',
         log.target_type || '',
         log.target_id || '',
+        log.target_name || '',
         JSON.stringify(log.details)
       ])
     ].map(row => row.join(',')).join('\n');
@@ -251,8 +234,10 @@ const AdminManagement = () => {
 
   const filteredLogs = auditLogs.filter(log =>
     !auditSearch ||
-    log.action?.toLowerCase().includes(auditSearch.toLowerCase()) ||
-    log.target_type?.toLowerCase().includes(auditSearch.toLowerCase())
+    log.action_type?.toLowerCase().includes(auditSearch.toLowerCase()) ||
+    log.admin_name?.toLowerCase().includes(auditSearch.toLowerCase()) ||
+    log.target_type?.toLowerCase().includes(auditSearch.toLowerCase()) ||
+    log.target_name?.toLowerCase().includes(auditSearch.toLowerCase())
   );
 
   const formatTimeAgo = (date: string) => {
@@ -270,6 +255,7 @@ const AdminManagement = () => {
   };
 
   const getActionColor = (action: string) => {
+    if (!action) return 'text-zinc-400 bg-zinc-500/10';
     if (action.includes('create') || action.includes('add')) return 'text-emerald-400 bg-emerald-500/10';
     if (action.includes('delete') || action.includes('remove')) return 'text-red-400 bg-red-500/10';
     if (action.includes('update') || action.includes('edit')) return 'text-blue-400 bg-blue-500/10';
@@ -542,12 +528,18 @@ const AdminManagement = () => {
                       <p className="text-xs text-zinc-500">{new Date(log.created_at).toLocaleDateString()}</p>
                       <p className="text-xs text-zinc-600">{new Date(log.created_at).toLocaleTimeString()}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded-md text-xs font-medium uppercase ${getActionColor(log.action)}`}>
-                      {log.action}
+                    <span className={`px-2 py-1 rounded-md text-xs font-medium uppercase ${getActionColor(log.action_type)}`}>
+                      {log.action_type?.replace('_', ' ')}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <span className="text-xs text-zinc-500">{log.target_type}</span>
-                      <span className="text-xs text-zinc-600 ml-2 font-mono">{log.target_id?.slice(0, 8)}...</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-zinc-500 font-medium">{log.admin_name || 'System'}</span>
+                        <span className="text-[10px] text-zinc-600">→</span>
+                        <span className="text-xs text-zinc-400 capitalize">{log.target_type}</span>
+                      </div>
+                      <p className="text-[10px] text-zinc-600 truncate">
+                        {log.target_name || log.target_id?.slice(0, 12)}
+                      </p>
                     </div>
                     <Eye className="w-4 h-4 text-zinc-600" />
                   </motion.div>
@@ -601,8 +593,8 @@ const AdminManagement = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-xl bg-zinc-900/50">
                   <p className="text-xs text-zinc-500 uppercase">Action</p>
-                  <p className={`text-sm font-medium mt-1 ${getActionColor(selectedLog.action).split(' ')[0]}`}>
-                    {selectedLog.action}
+                  <p className={`text-sm font-medium mt-1 ${getActionColor(selectedLog.action_type).split(' ')[0]}`}>
+                    {selectedLog.action_type?.replace('_', ' ')}
                   </p>
                 </div>
                 <div className="p-3 rounded-xl bg-zinc-900/50">
@@ -610,12 +602,12 @@ const AdminManagement = () => {
                   <p className="text-white text-sm mt-1">{new Date(selectedLog.created_at).toLocaleString()}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-zinc-900/50">
-                  <p className="text-xs text-zinc-500 uppercase">User ID</p>
-                  <p className="text-white text-sm font-mono mt-1">{selectedLog.user_id || 'system'}</p>
+                  <p className="text-xs text-zinc-500 uppercase">Admin</p>
+                  <p className="text-white text-sm mt-1">{selectedLog.admin_name || 'System'}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-zinc-900/50">
                   <p className="text-xs text-zinc-500 uppercase">Target</p>
-                  <p className="text-white text-sm mt-1">{selectedLog.target_type} / {selectedLog.target_id?.slice(0, 12)}...</p>
+                  <p className="text-white text-sm mt-1">{selectedLog.target_type} / {selectedLog.target_name || selectedLog.target_id?.slice(0, 12)}</p>
                 </div>
               </div>
               <div className="p-3 rounded-xl bg-zinc-900/50">

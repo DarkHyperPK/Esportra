@@ -3,27 +3,35 @@ import { useNotifications } from '@/components/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Bell, CheckCheck, Trash2, Users, ShieldAlert, Info, ArrowRight } from 'lucide-react';
+import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { respondToOrgStaffInvite } from '@/lib/organizationStaff';
+import { useToast } from '@/hooks/use-toast';
 
 export const NotificationDropdown = () => {
     const { notifications, unreadCount, markAsRead, refreshNotifications } = useNotifications();
+    const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
+    const { toast } = useToast();
 
-    // Optimistic UI for read status in dropdown (local only, context handles global)
+    // Optimistic UI for read status in dropdown
     const [optimisticReadIds, setOptimisticReadIds] = useState<string[]>([]);
+    // Track which invites are being processed
+    const [processingInvites, setProcessingInvites] = useState<Record<string, 'accepting' | 'declining'>>({});
+    // Track resolved invites (so we can show result state)
+    const [resolvedInvites, setResolvedInvites] = useState<Record<string, 'accepted' | 'declined'>>({});
+    // Track expanded long-form announcements
+    const [expandedAnnouncementId, setExpandedAnnouncementId] = useState<string | null>(null);
 
-    // Limit shown notifications in dropdown
     const recentNotifications = notifications.slice(0, 10);
-    const hasMore = notifications.length > 10;
 
     const handleMarkAllRead = async () => {
-        // Optimistically mark all visible as read
         const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
-        setOptimisticReadIds(prev => [...prev, ...unreadIds]); // Visual update
+        setOptimisticReadIds(prev => [...prev, ...unreadIds]);
 
         for (const id of unreadIds) {
             if (!String(id).startsWith('invite-')) {
@@ -34,10 +42,25 @@ export const NotificationDropdown = () => {
     };
 
     const handleNotificationClick = async (notification: any) => {
+        // Don't navigate if it's a staff_invite — actions are inline
+        if (notification.type === 'staff_invite' && notification.data?.organization_staff_id) {
+            return;
+        }
+
+        // Announcements toggle expansion inline instead of navigating immediately
+        if (notification.type === 'tournament_announcement') {
+            if (!notification.is_read) {
+                setOptimisticReadIds(prev => [...prev, notification.id]);
+                markAsRead(notification.id);
+            }
+            setExpandedAnnouncementId(prev => prev === notification.id ? null : notification.id);
+            return;
+        }
+
         if (!notification.is_read) {
             setOptimisticReadIds(prev => [...prev, notification.id]);
             if (!String(notification.id).startsWith('invite-')) {
-                markAsRead(notification.id); // Fire and forget
+                markAsRead(notification.id);
             }
         }
 
@@ -45,9 +68,62 @@ export const NotificationDropdown = () => {
 
         if (notification.link) {
             navigate(notification.link);
+        } else if (notification.data?.link) {
+            navigate(notification.data.link);
         } else if (notification.type === 'team_invite') {
-            // Fallback if no link exists for some reason
             navigate('/player/teams');
+        }
+    };
+
+    const handleStaffInviteAction = async (notification: any, accept: boolean) => {
+        const staffId = notification.data?.organization_staff_id;
+        if (!staffId || !user?.id) return;
+
+        const action = accept ? 'accepting' : 'declining';
+        setProcessingInvites(prev => ({ ...prev, [notification.id]: action }));
+
+        try {
+            await respondToOrgStaffInvite({
+                inviteId: staffId,
+                accept,
+                userId: user.id,
+            });
+
+            setResolvedInvites(prev => ({ ...prev, [notification.id]: accept ? 'accepted' : 'declined' }));
+
+            // Mark as read
+            if (!String(notification.id).startsWith('invite-')) {
+                await markAsRead(notification.id);
+            }
+            setOptimisticReadIds(prev => [...prev, notification.id]);
+
+            toast({
+                title: accept ? "Invitation Accepted" : "Invitation Declined",
+                description: accept
+                    ? `You're now part of ${notification.data?.org_name || 'the organization'}. Redirecting...`
+                    : "You've declined the staff invitation.",
+            });
+
+            if (accept) {
+                setTimeout(() => {
+                    setIsOpen(false);
+                    navigate('/staff/dashboard');
+                }, 1200);
+            }
+
+            await refreshNotifications();
+        } catch (err: any) {
+            toast({
+                title: "Action failed",
+                description: err.message || "Something went wrong",
+                variant: "destructive",
+            });
+        } finally {
+            setProcessingInvites(prev => {
+                const copy = { ...prev };
+                delete copy[notification.id];
+                return copy;
+            });
         }
     };
 
@@ -55,14 +131,103 @@ export const NotificationDropdown = () => {
         switch (type) {
             case 'team_invite':
                 return <Users className="h-4 w-4 text-blue-400" />;
+            case 'staff_invite':
+                return <Shield className="h-4 w-4 text-amber-400" />;
             case 'ban':
             case 'kick':
                 return <ShieldAlert className="h-4 w-4 text-red-500" />;
             case 'team_invite_response':
                 return <Users className="h-4 w-4 text-green-400" />;
+            case 'tournament_announcement':
+                return <Bell className="h-4 w-4 text-emerald-400" />;
             default:
                 return <Info className="h-4 w-4 text-gray-400" />;
         }
+    };
+
+    const renderNotificationContent = (n: any) => {
+        const isRead = n.is_read || optimisticReadIds.includes(n.id);
+        const isStaffInvite = n.type === 'staff_invite' && n.data?.organization_staff_id;
+        const processing = processingInvites[n.id];
+        const resolved = resolvedInvites[n.id];
+
+        return (
+            <div
+                key={n.id}
+                className={cn(
+                    "w-full text-left px-4 py-3 transition-colors flex gap-3",
+                    !isRead && "bg-gaming-purple/5",
+                    isStaffInvite ? "cursor-default" : "cursor-pointer hover:bg-white/5"
+                )}
+                onClick={() => !isStaffInvite && handleNotificationClick(n)}
+            >
+                <div className={cn(
+                    "mt-1 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-white/10",
+                    !isRead ? "bg-gaming-purple/10" : "bg-white/5"
+                )}>
+                    {typeIcon(n.type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className={cn("text-sm font-medium leading-none pr-2", !isRead ? "text-white" : "text-gray-400", expandedAnnouncementId !== n.id && "truncate")}>
+                        {n.title}
+                    </p>
+                    <p className={cn(
+                        "text-xs text-gray-500 mt-1 leading-relaxed whitespace-pre-wrap break-all transition-all",
+                        expandedAnnouncementId !== n.id && "line-clamp-2"
+                    )}>
+                        {n.message}
+                    </p>
+
+                    {n.type === 'tournament_announcement' && (
+                        <p className="text-[10px] text-emerald-500/70 mt-1 font-medium hover:text-emerald-400 transition-colors">
+                            {expandedAnnouncementId === n.id ? "Show less" : "Read more"}
+                        </p>
+                    )}
+
+                    {/* Staff Invite Action Buttons */}
+                    {isStaffInvite && !resolved && (
+                        <div className="flex items-center gap-2 mt-2.5">
+                            <Button
+                                size="sm"
+                                disabled={!!processing}
+                                onClick={(e) => { e.stopPropagation(); handleStaffInviteAction(n, true); }}
+                                className="h-7 px-3 text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-300"
+                            >
+                                {processing === 'accepting' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+                                Accept
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={!!processing}
+                                onClick={(e) => { e.stopPropagation(); handleStaffInviteAction(n, false); }}
+                                className="h-7 px-3 text-[11px] font-semibold text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                            >
+                                {processing === 'declining' ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3 mr-1" />}
+                                Decline
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* Resolved state */}
+                    {isStaffInvite && resolved && (
+                        <div className={cn(
+                            "mt-2 text-[11px] font-mono uppercase tracking-widest",
+                            resolved === 'accepted' ? "text-emerald-400" : "text-red-400/70"
+                        )}>
+                            {resolved === 'accepted' ? '✓ Accepted' : '✕ Declined'}
+                        </div>
+                    )}
+
+                    <p className="text-[10px] text-gray-600 mt-1.5 font-mono">
+                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                    </p>
+                </div>
+                {!isRead && !isStaffInvite && (
+                    <div className="w-2 h-2 rounded-full bg-gaming-purple mt-2 flex-shrink-0" />
+                )}
+            </div>
+        );
     };
 
     return (
@@ -117,40 +282,7 @@ export const NotificationDropdown = () => {
                         </div>
                     ) : (
                         <div className="divide-y divide-white/5">
-                            {recentNotifications.map((n) => {
-                                const isRead = n.is_read || optimisticReadIds.includes(n.id);
-                                return (
-                                    <button
-                                        key={n.id}
-                                        onClick={() => handleNotificationClick(n)}
-                                        className={cn(
-                                            "w-full text-left px-4 py-3 hover:bg-white/5 transition-colors flex gap-3",
-                                            !isRead && "bg-gaming-purple/5"
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            "mt-1 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-white/10",
-                                            !isRead ? "bg-gaming-purple/10" : "bg-white/5"
-                                        )}>
-                                            {typeIcon(n.type)}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className={cn("text-sm font-medium leading-none truncate pr-2", !isRead ? "text-white" : "text-gray-400")}>
-                                                {n.title}
-                                            </p>
-                                            <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
-                                                {n.message}
-                                            </p>
-                                            <p className="text-[10px] text-gray-600 mt-1.5 font-mono">
-                                                {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-                                            </p>
-                                        </div>
-                                        {!isRead && (
-                                            <div className="w-2 h-2 rounded-full bg-gaming-purple mt-2 flex-shrink-0" />
-                                        )}
-                                    </button>
-                                );
-                            })}
+                            {recentNotifications.map((n) => renderNotificationContent(n))}
                         </div>
                     )}
                 </ScrollArea>

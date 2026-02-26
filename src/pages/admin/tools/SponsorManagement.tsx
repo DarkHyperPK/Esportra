@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import JSZip from 'jszip';
+import { auditLog } from '@/lib/auditLog';
 import { saveAs } from 'file-saver';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -198,6 +199,8 @@ const SponsorManagement = () => {
             return;
         }
 
+        const app = applications.find(a => a.id === id);
+        await auditLog.log(status === 'approved' ? 'approve' : status === 'rejected' ? 'reject' : 'update', 'sponsor', id, app?.company_name || 'Unknown', { status });
         toast({ title: 'Status Updated', description: `Application marked as ${status}` });
         fetchData();
         if (appModal.open) setAppModal({ open: false, app: null });
@@ -296,6 +299,7 @@ const SponsorManagement = () => {
             toast({ title: 'Success', description: `Sponsor ${sponsorModal.isNew ? 'created' : 'updated'} successfully.` });
         }
 
+        await auditLog.log(sponsorModal.isNew ? 'create' : 'update', 'sponsor', sponsorData?.id || '', s.name || 'Unknown', { tier: s.tier, is_active: s.is_active });
         setLoading(false);
         setSponsorModal({ open: false, sponsor: null, isNew: true, linkedAppId: undefined, linkedAppEmail: undefined });
         fetchData();
@@ -303,13 +307,16 @@ const SponsorManagement = () => {
 
     const handleDeleteSponsor = async (id: string) => {
         if (!confirm('Are you sure you want to delete this sponsor?')) return;
+        const sponsor = sponsors.find(s => s.id === id);
         await supabase.from('sponsors').delete().eq('id', id);
+        await auditLog.log('delete', 'sponsor', id, sponsor?.name || 'Unknown');
         toast({ title: 'Deleted', description: 'Sponsor removed.' });
         fetchData();
     };
 
     const toggleSponsorActive = async (sponsor: Sponsor) => {
         await supabase.from('sponsors').update({ is_active: !sponsor.is_active }).eq('id', sponsor.id);
+        await auditLog.log('update', 'sponsor', sponsor.id, sponsor.name, { is_active: !sponsor.is_active, toggled: true });
         fetchData();
     };
 

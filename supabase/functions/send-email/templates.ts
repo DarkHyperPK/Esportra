@@ -197,6 +197,45 @@ const templates: Record<string, (data: Record<string, unknown>) => EmailTemplate
       </p>
     `, `You've been invited to the ${data.sponsorName || "Sponsor"} Partner Portal`)
   }),
+
+  // ── Staff Invite ──
+  STAFF_INVITE: (data) => {
+    const permList = Array.isArray(data.permissions) && data.permissions.length > 0
+      ? data.permissions.map((p: unknown) => `<li style="padding:4px 0; color:#cccccc; font-size:13px;">${String(p)}</li>`).join('')
+      : '<li style="padding:4px 0; color:#666666; font-size:13px;">No specific permissions</li>';
+
+    return {
+      subject: `You've been invited to staff ${data.orgName || "an organization"} | Esportra`,
+      html: baseLayout(`
+      <div style="text-align: center; margin-bottom: 30px;">
+        ${data.orgLogo ? `<img src="${data.orgLogo}" alt="Org Logo" width="80" style="width:80px; height:80px; border-radius:12px; object-fit:cover; margin-bottom:16px; display:inline-block;">` : ''}
+        <h2 style="margin:0 0 8px; font-size:24px; color:#ffffff; font-weight:800; letter-spacing:-0.5px;">Staff Invitation</h2>
+        <p style="margin:0; font-size:16px; color:#a3a3a3;">You've been recruited.</p>
+      </div>
+
+      <div style="background-color:#1a1a1a; border:1px solid #333; border-radius:8px; padding:20px; margin-bottom:24px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          ${infoRow("Organization", String(data.orgName || "Esportra Org"))}
+          ${infoRow("Role", String(data.role || "Moderator"))}
+          ${data.invitedBy ? infoRow("Invited By", String(data.invitedBy)) : ""}
+        </table>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <p style="margin:0 0 8px; font-size:13px; color:#777777; text-transform:uppercase; letter-spacing:1px; font-weight:600;">Permissions Granted</p>
+        <ul style="margin:0; padding-left:20px; list-style:disc;">
+          ${permList}
+        </ul>
+      </div>
+
+      <p style="margin:0 0 24px; font-size:14px; color:#888888; line-height:1.6; text-align:center;">
+        Accept the invitation from your organizer dashboard to begin managing tournaments.
+      </p>
+
+      ${button("Review Invitation", `${FRONTEND_URL}/organizer/dashboard?tab=staff`)}
+    `, `${data.invitedBy || "An organizer"} invited you to staff ${data.orgName || "an organization"} on Esportra`)
+    }
+  },
 };
 
 interface EmailTemplate {

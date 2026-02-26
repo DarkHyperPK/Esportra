@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { auditLog } from '@/lib/auditLog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -438,6 +439,7 @@ const AdminAccess: React.FC = () => {
       }
 
       toast({ title: 'Role Assigned', description: `${roleDisplayName} assigned to ${email}` });
+      await auditLog.log('role_change', 'user', user.id, email, { action: 'assign', role: roleDisplayName });
 
       window.dispatchEvent(new CustomEvent('adminRolesUpdated'));
 
@@ -637,6 +639,7 @@ const AdminAccess: React.FC = () => {
         title: 'Role Revoked',
         description: `${roleDisplayName} revoked from ${email}`,
       });
+      await auditLog.log('role_change', 'user', user.id, email, { action: 'revoke', role: roleDisplayName });
     } catch (e: any) {
       console.error('Error revoking role:', e);
       toast({ title: 'Error', description: e.message || 'Failed to revoke role', variant: 'destructive' });

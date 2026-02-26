@@ -14,7 +14,7 @@ export type ActionType =
     | 'login' | 'logout'
     | 'settings_update' | 'role_change';
 
-export type TargetType = 'user' | 'tournament' | 'venue' | 'payment' | 'team' | 'match' | 'dispute' | 'system';
+export type TargetType = 'user' | 'tournament' | 'venue' | 'payment' | 'team' | 'match' | 'dispute' | 'system' | 'sponsor';
 
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 
@@ -68,6 +68,7 @@ class AuditLogger {
             // Get current user
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
+                console.warn('[AuditLog] No authenticated user found — audit log will NOT be written.');
                 return { success: false, error: 'No authenticated user' };
             }
 
@@ -97,20 +98,26 @@ class AuditLogger {
                 .insert(entry);
 
             if (error) {
-                console.error('Failed to write audit log:', error);
+                console.warn('[AuditLog] INSERT FAILED:', error.message, error.details, error.hint, { entry });
                 return { success: false, error: error.message };
             }
 
+            console.log('[AuditLog] ✅ Successfully logged:', actionType, targetType, targetName);
+
             return { success: true };
         } catch (err) {
-            console.error('Audit logging error:', err);
+            console.warn('[AuditLog] EXCEPTION during audit logging:', err);
             return { success: false, error: String(err) };
         }
     }
 
     // Convenience methods for common actions
-    async userSuspended(userId: string, userName: string, reason: string) {
-        return this.log('suspend', 'user', userId, userName, { reason });
+    async userSuspended(userId: string, userName: string, reason: string, suspensionType: string, suspendedUntil?: string) {
+        return this.log('suspend', 'user', userId, userName, { reason, suspensionType, suspendedUntil });
+    }
+
+    async userUnsuspended(userId: string, userName: string, reason?: string) {
+        return this.log('unsuspend', 'user', userId, userName, { reason });
     }
 
     async userBanned(userId: string, userName: string, reason: string) {

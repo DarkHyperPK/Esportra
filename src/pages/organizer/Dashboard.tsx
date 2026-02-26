@@ -7,23 +7,74 @@ import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Users, Calendar, BarChart3, Plus, Building2, ChevronRight } from "lucide-react";
+import { Trophy, Users, Calendar, BarChart3, Plus, Building2, ChevronRight, ShieldCheck } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import TournamentsList from "@/components/organizer/TournamentsList";
 import ParticipantsList from "@/components/organizer/ParticipantsList";
 import TournamentSchedule from "@/components/organizer/TournamentSchedule";
 import TournamentAnalytics from "@/components/organizer/TournamentAnalytics";
+import TournamentHistory from "@/components/organizer/TournamentHistory";
 import OrganizationSettings from "@/pages/organizer/OrganizationSettings";
+import OrganizationStaffManager from "@/components/organizer/OrganizationStaffManager";
 import { Button } from "@/components/ui/button";
 
 import { useOrganizerStats } from "@/hooks/useOrganizerStats";
 
 const OrganizerDashboard = () => {
-  const { profile } = useAuth();
-  const [searchParams] = useSearchParams();
+  const { profile, user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl || "tournaments");
+  const [activeTab, setActiveTabState] = useState(tabFromUrl || "tournaments");
   const navigate = useNavigate();
+
+  // Sync tab changes to the URL so refresh preserves the active section
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    setSearchParams({ tab }, { replace: true });
+  };
   const { data: stats, isLoading: statsLoading } = useOrganizerStats();
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [orgName, setOrgName] = useState<string>("");
+  const [orgLogo, setOrgLogo] = useState<string | null>(null);
+
+  // Fetch organization for staff management
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchOrg = async () => {
+      // 1. Try to find an org where user is owner
+      const { data: ownerData } = await supabase
+        .from('organizations')
+        .select('id, name, logo_url')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+
+      if (ownerData) {
+        setOrgId(ownerData.id);
+        setOrgName(ownerData.name || "");
+        setOrgLogo(ownerData.logo_url || null);
+        return;
+      }
+
+      // 2. If not owner, check if they are active staff
+      const { data: staffData } = await supabase
+        .from('organization_staff')
+        .select('organization_id, organizations!inner(id, name, logo_url)')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+
+      if (staffData && staffData.organizations) {
+        const org = Array.isArray(staffData.organizations) ? staffData.organizations[0] : staffData.organizations;
+        setOrgId(org.id);
+        setOrgName(org.name || "");
+        setOrgLogo(org.logo_url || null);
+      }
+    };
+
+    fetchOrg();
+  }, [user?.id]);
 
   // Update activeTab when URL query changes
   useEffect(() => {
@@ -54,7 +105,7 @@ const OrganizerDashboard = () => {
               <div className="w-8 h-[1px] bg-rose-500" />
               <span className="text-rose-500 font-mono text-xs tracking-widest uppercase">ORGANIZER_PANEL</span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight">Tournament Dashboard</h1>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight">Organization Dashboard</h1>
             <p className="text-zinc-500 mt-1">Welcome back, {profile?.full_name || profile?.username}</p>
           </div>
           <div className="flex gap-3">
@@ -166,6 +217,20 @@ const OrganizerDashboard = () => {
                   <span className="text-sm font-medium">My Organization</span>
                   <ChevronRight className={cn("ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity", activeTab === "organization" && "opacity-100 text-rose-500")} />
                 </button>
+
+                <button
+                  onClick={() => setActiveTab("staff")}
+                  className={cn(
+                    "flex items-center w-full px-4 py-3 text-left rounded-xl transition-all duration-200 group",
+                    activeTab === "staff"
+                      ? "bg-rose-500/10 text-white border border-rose-500/30"
+                      : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent"
+                  )}
+                >
+                  <ShieldCheck className={cn("mr-3 h-4 w-4", activeTab === "staff" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
+                  <span className="text-sm font-medium">Staff</span>
+                  <ChevronRight className={cn("ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity", activeTab === "staff" && "opacity-100 text-rose-500")} />
+                </button>
               </div>
 
             </div>
@@ -233,11 +298,28 @@ const OrganizerDashboard = () => {
             </TabsContent>
 
             <TabsContent value="history" className="m-0">
-              {/* Placeholder for history content */}
+              <TournamentHistory />
             </TabsContent>
 
             <TabsContent value="organization" className="m-0">
               <OrganizationSettings />
+            </TabsContent>
+
+            <TabsContent value="staff" className="m-0">
+              {orgId && user?.id ? (
+                <OrganizationStaffManager
+                  organizationId={orgId}
+                  ownerId={user.id}
+                  orgName={orgName}
+                  orgLogo={orgLogo}
+                  ownerName={profile?.full_name || profile?.username || "An Organizer"}
+                />
+              ) : (
+                <div className="text-center py-12 text-zinc-500">
+                  <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-zinc-700" />
+                  <p>Create an organization first to manage staff.</p>
+                </div>
+              )}
             </TabsContent>
           </div>
         </Tabs>

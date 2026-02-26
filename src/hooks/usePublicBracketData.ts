@@ -26,39 +26,44 @@ export const usePublicBracketData = (tournamentId: string | undefined) => {
 
         try {
             setLoading(true);
-            // 1. Fetch Stages
+            // Single nested query to fetch stages and their associated versions
             const { data: stagesData, error: stagesError } = await supabase
                 .from('tournament_stages')
-                .select('*')
+                .select(`
+                    id, name, stage_order, format, scheduling_config,
+                    brkt_versions(id, status, created_at)
+                `)
                 .eq('tournament_id', tournamentId)
+                .in('brkt_versions.status', ['active', 'draft', 'completed'])
                 .order('stage_order', { ascending: true });
 
             if (stagesError) throw stagesError;
 
             const validStages = stagesData || [];
-            setStages(validStages);
 
-            // 2. Fetch Active Versions for each stage
-            if (validStages.length > 0) {
-                const stageIds = validStages.map(s => s.id);
+            // Map stages and extract active versions in one pass
+            const vMap: Record<string, string> = {};
+            const processedStages = validStages.map(stage => {
+                // Versions are ordered by created_at desc locally to be safe,
+                // or we pick the first one from the sorted array
+                const sortedVersions = (stage.brkt_versions as any[] || [])
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-                // Allow 'active' AND 'draft' for flexibility in public viewing during testing
-                const { data: versions } = await supabase
-                    .from('brkt_versions')
-                    .select('id, stage_id, status, created_at')
-                    .in('stage_id', stageIds)
-                    .in('status', ['active', 'draft', 'completed'])
-                    .order('created_at', { ascending: false });
+                if (sortedVersions.length > 0) {
+                    vMap[stage.id] = sortedVersions[0].id;
+                }
 
-                const vMap: Record<string, string> = {};
-                (versions || []).forEach((v: any) => {
-                    // Since ordered by created_at desc, first one we see for a stage is the latest
-                    if (!vMap[v.stage_id]) {
-                        vMap[v.stage_id] = v.id;
-                    }
-                });
-                setActiveVersionsMap(vMap);
-            }
+                return {
+                    id: stage.id,
+                    name: stage.name,
+                    stage_order: stage.stage_order,
+                    format: stage.format,
+                    scheduling_config: stage.scheduling_config
+                } as Stage;
+            });
+
+            setStages(processedStages);
+            setActiveVersionsMap(vMap);
         } catch (err: any) {
             console.error('Error fetching bracket data:', err);
             setError(err);

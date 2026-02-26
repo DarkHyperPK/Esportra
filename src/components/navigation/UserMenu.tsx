@@ -191,14 +191,14 @@ const UserMenu = ({
       }
       try {
         const { data } = await supabase
-          .from('tournament_staff')
+          .from('organization_staff')
           .select('id')
           .eq('user_id', user.id)
           .eq('status', 'pending')
           .limit(1);
         setHasStaffInvites(!!(data && data.length > 0));
         const { data: activeAssignments } = await supabase
-          .from('tournament_staff')
+          .from('organization_staff')
           .select('id')
           .eq('user_id', user.id)
           .eq('status', 'active')
@@ -308,7 +308,7 @@ const UserMenu = ({
               </FramerDropdownItem>
             )}
             {hasStaffAssignments && (
-              <FramerDropdownItem to="/staff">
+              <FramerDropdownItem to="/staff/dashboard">
                 <div className="flex w-full items-center justify-between">
                   <span>Staff Console</span>
                   <span aria-label="active staff role" className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />

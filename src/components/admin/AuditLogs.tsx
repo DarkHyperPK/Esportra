@@ -35,7 +35,7 @@ interface AuditLog {
   admin_id: string;
   admin_name: string;
   action_type: string;
-  target_type: 'user' | 'tournament' | 'venue' | 'payment' | 'system';
+  target_type: 'user' | 'tournament' | 'venue' | 'payment' | 'system' | 'sponsor' | 'dispute' | 'match' | 'team';
   target_id: string;
   target_name: string;
   details: any;
@@ -57,6 +57,8 @@ const AuditLogs: React.FC = () => {
   const itemsPerPage = 20;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const fetchAuditLogs = async () => {
     try {
@@ -81,6 +83,15 @@ const AuditLogs: React.FC = () => {
         query = query.or(`admin_name.ilike.%${searchTerm}%,target_name.ilike.%${searchTerm}%,action_type.ilike.%${searchTerm}%`);
       }
 
+      if (dateFrom) {
+        query = query.gte('created_at', new Date(dateFrom).toISOString());
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setDate(endDate.getDate() + 1);
+        query = query.lt('created_at', endDate.toISOString());
+      }
+
       const { data, error, count } = await query;
 
       if (error) throw error;
@@ -97,7 +108,7 @@ const AuditLogs: React.FC = () => {
 
   useEffect(() => {
     fetchAuditLogs();
-  }, [currentPage, filterType, filterSeverity, searchTerm]);
+  }, [currentPage, filterType, filterSeverity, searchTerm, dateFrom, dateTo]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -129,6 +140,10 @@ const AuditLogs: React.FC = () => {
       case 'venue': return <Shield className="w-4 h-4" />;
       case 'payment': return <CheckCircle className="w-4 h-4" />;
       case 'system': return <Activity className="w-4 h-4" />;
+      case 'sponsor': return <Eye className="w-4 h-4" />;
+      case 'dispute': return <AlertTriangle className="w-4 h-4" />;
+      case 'match': return <Activity className="w-4 h-4" />;
+      case 'team': return <User className="w-4 h-4" />;
       default: return <Activity className="w-4 h-4" />;
     }
   };
@@ -215,6 +230,10 @@ const AuditLogs: React.FC = () => {
                 <SelectItem value="tournament">Tournaments</SelectItem>
                 <SelectItem value="venue">Venues</SelectItem>
                 <SelectItem value="payment">Payments</SelectItem>
+                <SelectItem value="sponsor">Sponsors</SelectItem>
+                <SelectItem value="dispute">Disputes</SelectItem>
+                <SelectItem value="match">Matches</SelectItem>
+                <SelectItem value="team">Teams</SelectItem>
                 <SelectItem value="system">System</SelectItem>
               </SelectContent>
             </Select>
@@ -231,6 +250,40 @@ const AuditLogs: React.FC = () => {
                 <SelectItem value="low">Low</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Date Range Row */}
+          <div className="flex flex-col md:flex-row gap-4 mt-4">
+            <div className="flex-1">
+              <label className="text-xs text-gray-400 mb-1 block">From</label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+                className="bg-gray-700 border-gray-600 text-white"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-gray-400 mb-1 block">To</label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+                className="bg-gray-700 border-gray-600 text-white"
+              />
+            </div>
+            {(dateFrom || dateTo) && (
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setDateFrom(''); setDateTo(''); setCurrentPage(1); }}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                >
+                  Clear Dates
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

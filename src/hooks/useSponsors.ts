@@ -141,14 +141,15 @@ async function invokeTrack(sponsorId: string, eventType: 'impression' | 'click')
         });
 
         if (error) {
-            // Extract the actual response body from FunctionsHttpError
             let errorBody = null;
             try {
-                if (error.context && typeof error.context.json === 'function') {
-                    errorBody = await error.context.json();
+                if (error.context && typeof error.context.text === 'function') {
+                    errorBody = await error.context.text();
+                } else if (error.message) {
+                    errorBody = error.message;
                 }
             } catch (_) { /* ignore parse errors */ }
-            console.error('[Tracking] Edge function error:', error.message, 'Body:', errorBody);
+            console.warn(`[Tracking] Edge function warning: ${errorBody || String(error)}`);
         } else {
             console.log('[Tracking] Success:', data);
         }

@@ -9,7 +9,8 @@ export type EmailType =
     | 'CHECKIN_REMINDER'
     | 'MATCH_CHECKIN_REMINDER'
     | 'WELCOME'
-    | 'TEAM_INVITE';
+    | 'TEAM_INVITE'
+    | 'STAFF_INVITE';
 
 interface SendEmailParams {
     type: EmailType;

@@ -68,6 +68,7 @@ const HeroSection = () => {
           muted
           playsInline
           preload="auto"
+          crossOrigin="anonymous"
           onCanPlayThrough={() => setIsVideoLoaded(true)}
           onError={(e) => console.error("Hero video failed to load:", e)}
           initial={{ opacity: 0 }}

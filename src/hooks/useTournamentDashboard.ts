@@ -243,18 +243,53 @@ export function useTournamentDashboard(slug: string | undefined) {
                 isOrganizer = tournament.organizer_id === user.id;
 
                 if (!isOrganizer) {
-                    const { data: staffRecord, error: staffError } = await supabase
-                        .from('tournament_staff')
-                        .select('permissions')
-                        .eq('tournament_id', tournament.id)
-                        .eq('user_id', user.id)
-                        .eq('status', 'active')
-                        .maybeSingle();
+                    // Check organization-level staff (enterprise system)
+                    if (tournament.organization_id) {
+                        const { data: orgStaffRecord, error: orgStaffError } = await supabase
+                            .from('organization_staff')
+                            .select('id, role, permissions')
+                            .eq('organization_id', tournament.organization_id)
+                            .eq('user_id', user.id)
+                            .eq('status', 'active')
+                            .maybeSingle();
 
-                    if (staffError) {
-                        console.error('[useTournamentDashboard] Staff check error:', staffError);
-                    } else if (staffRecord) {
-                        staffPermissions = staffRecord.permissions;
+                        if (orgStaffError) {
+                            console.error('[useTournamentDashboard] Org staff check error:', orgStaffError);
+                        } else if (orgStaffRecord) {
+                            // Admins get access to ALL tournaments in their org
+                            if (orgStaffRecord.role === 'admin') {
+                                staffPermissions = orgStaffRecord.permissions;
+                            } else {
+                                // Non-admins need a specific tournament assignment
+                                const { data: assignment } = await supabase
+                                    .from('staff_tournament_assignments')
+                                    .select('id')
+                                    .eq('organization_staff_id', orgStaffRecord.id)
+                                    .eq('tournament_id', tournament.id)
+                                    .maybeSingle();
+
+                                if (assignment) {
+                                    staffPermissions = orgStaffRecord.permissions;
+                                }
+                            }
+                        }
+                    }
+
+                    // Fallback to legacy tournament_staff if no org staff found
+                    if (staffPermissions.length === 0) {
+                        const { data: staffRecord, error: staffError } = await supabase
+                            .from('tournament_staff')
+                            .select('permissions')
+                            .eq('tournament_id', tournament.id)
+                            .eq('user_id', user.id)
+                            .eq('status', 'active')
+                            .maybeSingle();
+
+                        if (staffError) {
+                            console.error('[useTournamentDashboard] Staff check error:', staffError);
+                        } else if (staffRecord) {
+                            staffPermissions = staffRecord.permissions;
+                        }
                     }
                 }
             } else {

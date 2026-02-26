@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Edit, Trash, Plus } from 'lucide-react';
 import { VenueCard } from '@/components/venues/VenueCard';
 import { VenueEditModal } from '@/components/admin/VenueEditModal';
+import { auditLog } from '@/lib/auditLog';
 
 import { Venue } from '@/types/venue';
 
@@ -59,12 +60,15 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
   const handleDeleteVenue = async (id: string) => {
     if (confirm('Are you sure you want to delete this venue?')) {
       try {
+        const venue = venues.find(v => v.id === id);
         const { error } = await supabase
           .from('venues')
           .delete()
           .eq('id', id);
 
         if (error) throw error;
+
+        await auditLog.log('delete', 'venue', id, venue?.name || 'Unknown', { owner_id: userId });
 
         toast({
           title: 'Venue deleted',

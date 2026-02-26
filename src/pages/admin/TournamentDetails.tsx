@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { auditLog } from '@/lib/auditLog';
 
 function getTournamentStatus(tournament: any) {
   if (tournament.finished) return 'Completed';
@@ -46,31 +47,19 @@ const TournamentDetails = () => {
       return;
     }
 
-    // Create audit log
-    const { error: auditError } = await supabase
-      .from('audit_logs')
-      .insert({
-        action: 'tournament_finished',
-        user_id: user?.id || null,
-        target_type: 'tournament',
-        target_id: id,
-        details: {
-          tournament_name: tournament.name,
-          tournament_id: id,
-          finished_by: user?.id || 'system'
-        }
-      });
-
-    if (auditError) {
-      console.error('Failed to create audit log:', auditError);
-    }
+    await auditLog.log('update', 'tournament', id!, tournament?.name || 'Unknown', {
+      action: 'marked_finished',
+      tournament_id: id,
+    });
 
     toast({ title: 'Tournament marked as finished.' });
     await fetchTournament();
   };
 
   const handleDelete = async () => {
+    const name = tournament?.name || 'Unknown';
     await supabase.from('tournaments').delete().eq('id', id);
+    await auditLog.log('delete', 'tournament', id!, name, { deleted_from: 'admin_details' });
     toast({ title: 'Tournament deleted.' });
     navigate('/admin');
   };

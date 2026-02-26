@@ -56,6 +56,9 @@ interface User {
     avatar_url: string | null;
     created_at: string;
     is_suspended?: boolean;
+    suspension_until?: string | null;
+    suspension_reason?: string | null;
+    suspension_type?: string | null;
     user_roles?: UserRole[];
     admin_roles?: string[]; // Array of role names
 }
@@ -72,6 +75,11 @@ const UserManagementTool = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [availableAdminRoles, setAvailableAdminRoles] = useState<string[]>([]);
 
+    // Suspend Form State
+    const [suspensionType, setSuspensionType] = useState<string>('Standard');
+    const [suspensionDuration, setSuspensionDuration] = useState<string>('1 week');
+    const [suspensionReason, setSuspensionReason] = useState<string>('');
+
     const fetchUsers = useCallback(async () => {
         setLoading(true);
 
@@ -79,7 +87,7 @@ const UserManagementTool = () => {
             // 1. Fetch profiles
             const { data: profiles, error: profilesError } = await supabase
                 .from('profiles')
-                .select('id, username, full_name, email, avatar_url, created_at')
+                .select('id, username, full_name, email, avatar_url, created_at, is_suspended, suspension_until, suspension_reason, suspension_type')
                 .order('created_at', { ascending: false });
 
             if (profilesError) {
@@ -170,17 +178,91 @@ const UserManagementTool = () => {
     };
 
     const handleSuspendUser = async (userId: string) => {
-        await supabase.from('audit_logs').insert({
-            action: 'user_suspended',
-            user_id: userId,
-            target_type: 'user',
-            target_id: userId,
-            details: { suspended_by: 'admin', reason: 'Manual suspension' }
-        });
+        if (!suspensionReason.trim()) {
+            toast({ title: 'Error', description: 'Please provide a reason for suspension.', variant: 'destructive' });
+            return;
+        }
 
-        toast({ title: 'User Suspended', description: 'The user has been suspended.' });
-        setSuspendDialogOpen(false);
-        setSelectedUser(null);
+        try {
+            setLoading(true);
+
+            // Calculate suspension_until
+            let suspensionUntil: Date | null = null;
+            const now = new Date();
+
+            if (suspensionDuration === '24h') {
+                suspensionUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            } else if (suspensionDuration === '1 week') {
+                suspensionUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            } else if (suspensionDuration === '1 month') {
+                suspensionUntil = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            }
+            // 'permanent' remains null
+
+            // 1. Update Profile securely via RPC
+            const { error: profileError } = await supabase.rpc('admin_suspend_user', {
+                target_user_id: userId,
+                reason: suspensionReason,
+                duration: suspensionDuration,
+                type: suspensionType,
+                until_time: suspensionUntil?.toISOString() || null
+            });
+
+            if (profileError) throw profileError;
+
+            // 2. Log Action
+            import('@/lib/auditLog').then(({ auditLog }) => {
+                auditLog.userSuspended(
+                    userId,
+                    selectedUser?.full_name || selectedUser?.username || 'Unknown',
+                    suspensionReason,
+                    suspensionType,
+                    suspensionUntil?.toISOString()
+                );
+            });
+
+            toast({ title: 'User Suspended', description: `The user has been suspended (${suspensionDuration}).` });
+            setSuspendDialogOpen(false);
+            setSuspensionReason('');
+            fetchUsers();
+        } catch (error: any) {
+            console.error('Error suspending user:', error);
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        } finally {
+            setLoading(false);
+            setSelectedUser(null);
+        }
+    };
+
+    const handleUnsuspendUser = async (userId: string) => {
+        try {
+            setLoading(true);
+
+            // 1. Update Profile securely via RPC
+            const { error: profileError } = await supabase.rpc('admin_unsuspend_user', {
+                target_user_id: userId
+            });
+
+            if (profileError) throw profileError;
+
+            // 2. Log Action
+            import('@/lib/auditLog').then(({ auditLog }) => {
+                auditLog.userUnsuspended(
+                    userId,
+                    selectedUser?.full_name || selectedUser?.username || 'Unknown',
+                    'Administrative Unsuspension'
+                );
+            });
+
+            toast({ title: 'User Unsuspended', description: 'The user has been unsuspended.' });
+            fetchUsers();
+        } catch (error: any) {
+            console.error('Error unsuspending user:', error);
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        } finally {
+            setLoading(false);
+            setSelectedUser(null);
+        }
     };
 
     const exportUsersCSV = () => {
@@ -420,17 +502,29 @@ const UserManagementTool = () => {
                                     >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center overflow-hidden">
+                                                <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center overflow-hidden relative">
                                                     {user.avatar_url ? (
                                                         <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
                                                     ) : (
                                                         <Users className="w-5 h-5 text-rose-500" />
                                                     )}
+                                                    {user.is_suspended && (
+                                                        <div className="absolute inset-0 bg-red-500/60 flex items-center justify-center">
+                                                            <Ban className="w-4 h-4 text-white" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-medium text-white">
-                                                        {user.full_name || user.username || 'Unnamed'}
-                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-sm font-medium text-white">
+                                                            {user.full_name || user.username || 'Unnamed'}
+                                                        </p>
+                                                        {user.is_suspended && (
+                                                            <Badge variant="destructive" className="text-[10px] h-4 px-1 leading-none bg-red-500/10 text-red-500 border-red-500/20">
+                                                                Suspended
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                     <p className="text-xs text-zinc-500">@{user.username || 'no-username'}</p>
                                                 </div>
                                             </div>
@@ -487,16 +581,26 @@ const UserManagementTool = () => {
                                                         <ExternalLink className="w-4 h-4 mr-2" />
                                                         View Details
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
-                                                        onClick={() => {
-                                                            setSelectedUser(user);
-                                                            setSuspendDialogOpen(true);
-                                                        }}
-                                                    >
-                                                        <Ban className="w-4 h-4 mr-2" />
-                                                        Suspend User
-                                                    </DropdownMenuItem>
+                                                    {user.is_suspended ? (
+                                                        <DropdownMenuItem
+                                                            className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10"
+                                                            onClick={() => handleUnsuspendUser(user.id)}
+                                                        >
+                                                            <UserCheck className="w-4 h-4 mr-2" />
+                                                            Unsuspend User
+                                                        </DropdownMenuItem>
+                                                    ) : (
+                                                        <DropdownMenuItem
+                                                            className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
+                                                            onClick={() => {
+                                                                setSelectedUser(user);
+                                                                setSuspendDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            <Ban className="w-4 h-4 mr-2" />
+                                                            Suspend User
+                                                        </DropdownMenuItem>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </td>
@@ -523,15 +627,69 @@ const UserManagementTool = () => {
                             {selectedUser?.full_name || selectedUser?.username}
                         </span>?
                     </p>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-xs text-zinc-500 uppercase font-mono tracking-widest">Suspension Type</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {['Warning', 'Standard', 'Security', 'Permanent'].map(type => (
+                                    <Button
+                                        key={type}
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setSuspensionType(type)}
+                                        className={`border-zinc-800 text-xs ${suspensionType === type ? 'bg-red-500/10 text-red-500 border-red-500/30' : 'text-zinc-500'}`}
+                                    >
+                                        {type}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs text-zinc-500 uppercase font-mono tracking-widest">Duration</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {[
+                                    { label: '24 Hours', value: '24h' },
+                                    { label: '1 Week', value: '1 week' },
+                                    { label: '1 Month', value: '1 month' },
+                                    { label: 'Permanent', value: 'permanent' },
+                                ].map(duration => (
+                                    <Button
+                                        key={duration.value}
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setSuspensionDuration(duration.value)}
+                                        className={`border-zinc-800 text-xs ${suspensionDuration === duration.value ? 'bg-red-500/10 text-red-500 border-red-500/30' : 'text-zinc-500'}`}
+                                    >
+                                        {duration.label}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs text-zinc-500 uppercase font-mono tracking-widest">Reason for Restriction</label>
+                            <textarea
+                                value={suspensionReason}
+                                onChange={(e) => setSuspensionReason(e.target.value)}
+                                placeholder="Explain the violation for the user and audit log..."
+                                className="w-full h-24 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-sm text-zinc-300 focus:outline-none focus:border-red-500/50 resize-none"
+                            />
+                        </div>
+                    </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setSuspendDialogOpen(false)} className="border-zinc-800">
+                        <Button variant="outline" onClick={() => {
+                            setSuspendDialogOpen(false);
+                            setSuspensionReason('');
+                        }} className="border-zinc-800">
                             Cancel
                         </Button>
                         <Button
-                            className="bg-red-500 hover:bg-red-600"
+                            className="bg-red-500 hover:bg-red-600 px-8"
                             onClick={() => selectedUser && handleSuspendUser(selectedUser.id)}
+                            disabled={loading}
                         >
-                            Suspend
+                            {loading ? 'Restricting...' : 'Apply Restriction'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

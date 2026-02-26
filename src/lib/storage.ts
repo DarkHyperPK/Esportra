@@ -18,8 +18,11 @@ export const getStorageUrl = (bucket: string, path: string): string => {
     // Remove leading slash if present
     const cleanPath = path.startsWith('/') ? path.substring(1) : path;
 
-    // Let the browser/fetch APIs handle URL encoding natively to prevent double-encoding
-    return `${STORAGE_ROOT}/${bucket}/${cleanPath}`;
+    // Properly encode each segment of the path to handle spaces, dashes, and special characters
+    // This helps avoid net::ERR_HTTP2_PROTOCOL_ERROR on certain proxies/WAFs
+    const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+
+    return `${STORAGE_ROOT}/${bucket}/${encodedPath}`;
 };
 
 /**

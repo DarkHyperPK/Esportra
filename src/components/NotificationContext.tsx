@@ -12,6 +12,7 @@ export interface Notification {
   link?: string;
   team_id?: string;
   is_read: boolean;
+  data?: Record<string, any>;
   created_at: string;
 }
 

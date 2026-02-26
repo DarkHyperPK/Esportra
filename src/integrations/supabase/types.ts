@@ -10,6 +10,52 @@ export type Database = {
   public: {
     Tables: {
 
+      audit_logs: {
+        Row: {
+          id: string
+          admin_id: string | null
+          admin_name: string
+          action_type: string
+          target_type: string
+          target_id: string
+          target_name: string
+          details: Json | null
+          ip_address: string | null
+          user_agent: string | null
+          severity: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          admin_id?: string | null
+          admin_name?: string
+          action_type: string
+          target_type: string
+          target_id?: string
+          target_name?: string
+          details?: Json | null
+          ip_address?: string | null
+          user_agent?: string | null
+          severity?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          admin_id?: string | null
+          admin_name?: string
+          action_type?: string
+          target_type?: string
+          target_id?: string
+          target_name?: string
+          details?: Json | null
+          ip_address?: string | null
+          user_agent?: string | null
+          severity?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+
       profiles: {
         Row: {
           avatar_url: string | null
@@ -20,6 +66,10 @@ export type Database = {
           role: string
           updated_at: string | null
           username: string
+          is_suspended: boolean | null
+          suspension_until: string | null
+          suspension_reason: string | null
+          suspension_type: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -30,6 +80,10 @@ export type Database = {
           role?: string
           updated_at?: string | null
           username: string
+          is_suspended?: boolean | null
+          suspension_until?: string | null
+          suspension_reason?: string | null
+          suspension_type?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -40,6 +94,10 @@ export type Database = {
           role?: string
           updated_at?: string | null
           username?: string
+          is_suspended?: boolean | null
+          suspension_until?: string | null
+          suspension_reason?: string | null
+          suspension_type?: string | null
         }
         Relationships: []
       }

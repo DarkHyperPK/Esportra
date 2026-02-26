@@ -56,12 +56,11 @@ async function generateVisitorId(ip: string): Promise<string> {
 Deno.serve(async (req: Request) => {
     // CORS handles
     if (req.method === "OPTIONS") {
-        return new Response(null, {
-            status: 204,
+        return new Response("ok", {
             headers: {
                 "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
+                "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
+                "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
             },
         });
     }
@@ -72,7 +71,13 @@ Deno.serve(async (req: Request) => {
     };
 
     try {
-        const body = await req.json();
+        let body;
+        try {
+            body = await req.json();
+        } catch (e) {
+            return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
+        }
+
         const { sponsor_id, event_type } = body;
 
         if (!sponsor_id || !event_type) {
@@ -133,10 +138,10 @@ Deno.serve(async (req: Request) => {
 
         if (error) throw error;
 
-        return new Response(JSON.stringify({ ok: true, data }), { status: 200, headers: corsHeaders });
+        return new Response(JSON.stringify({ ok: true, data: error || data }), { status: 200, headers: corsHeaders });
 
-    } catch (err) {
+    } catch (err: any) {
         console.error("[System Error]", err);
-        return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: err.message || String(err) }), { status: 500, headers: corsHeaders });
     }
 });

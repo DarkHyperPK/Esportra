@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import { Trash2, ImageIcon, Folder, Plus, ArrowLeft, MoreVertical, Edit2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import OrganizationStaffManager from '@/components/organizer/OrganizationStaffManager';
 
 interface Organization {
     id: string;
@@ -85,23 +86,50 @@ const OrganizationSettings: React.FC = () => {
     const [newAlbumDesc, setNewAlbumDesc] = useState('');
     const [creatingAlbum, setCreatingAlbum] = useState(false);
 
+    // Branding confirmation state
+    const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+    const [pendingLogoPreview, setPendingLogoPreview] = useState<string | null>(null);
+    const [pendingBannerFile, setPendingBannerFile] = useState<File | null>(null);
+    const [pendingBannerPreview, setPendingBannerPreview] = useState<string | null>(null);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingBanner, setUploadingBanner] = useState(false);
+
     useEffect(() => {
         if (user?.id) {
             fetchOrganization();
-            fetchStats();
         }
     }, [user?.id]);
 
     const fetchOrganization = async () => {
         try {
-            const { data, error } = await supabase
+            // First check if owner
+            let { data: ownerData, error: ownerError } = await supabase
                 .from('organizations')
                 .select('*')
                 .eq('owner_id', user?.id)
-                .single();
+                .maybeSingle();
 
-            if (error && error.code !== 'PGRST116') {
-                throw error;
+            if (ownerError && ownerError.code !== 'PGRST116') {
+                throw ownerError;
+            }
+
+            let data = ownerData;
+
+            // If not owner, check if staff
+            if (!data) {
+                const { data: staffData, error: staffError } = await supabase
+                    .from('organization_staff')
+                    .select('organization_id, organizations!inner(*)')
+                    .eq('user_id', user?.id)
+                    .eq('status', 'active')
+                    .limit(1)
+                    .maybeSingle();
+
+                if (staffError) throw staffError;
+
+                if (staffData && staffData.organizations) {
+                    data = Array.isArray(staffData.organizations) ? staffData.organizations[0] : staffData.organizations;
+                }
             }
 
             if (data) {
@@ -114,6 +142,7 @@ const OrganizationSettings: React.FC = () => {
                 setSocialLinks(data.social_links || {});
                 fetchAlbums(data.id);
                 fetchMedia(data.id, null); // Fetch root media initially
+                fetchStats(data.id); // Fetch stats using org ID
             }
         } catch (error: any) {
             console.error('Error fetching organization:', error);
@@ -148,40 +177,43 @@ const OrganizationSettings: React.FC = () => {
         }
     };
 
-    const fetchStats = async () => {
+    const fetchStats = async (orgId?: string) => {
+        if (!orgId) return;
         try {
-            // Get total tournaments
-            const { count: totalTournaments } = await supabase
+            // Get all tournaments for this organization
+            const { data: allTournaments, error: tErr } = await supabase
                 .from('tournaments')
-                .select('*', { count: 'exact', head: true })
-                .eq('organizer_id', user?.id);
+                .select('id, status')
+                .eq('organization_id', orgId);
 
-            // Get active tournaments
-            const { count: activeTournaments } = await supabase
-                .from('tournaments')
-                .select('*', { count: 'exact', head: true })
-                .eq('organizer_id', user?.id)
-                .in('status', ['open', 'ongoing', 'check_in']);
+            if (tErr) {
+                console.error('Error fetching tournament stats:', tErr);
+            }
 
-            // Get tournament IDs for this organizer
-            const { data: tournamentIds } = await supabase
-                .from('tournaments')
-                .select('id')
-                .eq('organizer_id', user?.id);
+            const tournaments = allTournaments || [];
+            const totalTournaments = tournaments.length;
+            const activeTournaments = tournaments.filter(
+                (t) => ['open', 'ongoing', 'check_in'].includes(t.status)
+            ).length;
 
+            // Get participant count across all org tournaments
             let totalParticipants = 0;
-            if (tournamentIds && tournamentIds.length > 0) {
-                const { count } = await supabase
+            if (tournaments.length > 0) {
+                const { data: participants, error: pErr } = await supabase
                     .from('tournament_participants')
-                    .select('*', { count: 'exact', head: true })
-                    .in('tournament_id', tournamentIds.map(t => t.id));
-                totalParticipants = count || 0;
+                    .select('id')
+                    .in('tournament_id', tournaments.map(t => t.id));
+
+                if (pErr) {
+                    console.error('Error fetching participant stats:', pErr);
+                }
+                totalParticipants = participants?.length || 0;
             }
 
             setStats({
-                totalTournaments: totalTournaments || 0,
+                totalTournaments,
                 totalParticipants,
-                activeTournaments: activeTournaments || 0,
+                activeTournaments,
             });
         } catch (error) {
             console.error('Error fetching stats:', error);
@@ -276,54 +308,105 @@ const OrganizationSettings: React.FC = () => {
         }
     };
 
-    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setPendingLogoFile(file);
+        setPendingLogoPreview(URL.createObjectURL(file));
+        // Reset input so the same file can be re-selected
+        e.target.value = '';
+    };
 
+    const confirmLogoUpload = async () => {
+        if (!pendingLogoFile) return;
+        setUploadingLogo(true);
         try {
-            const fileExt = file.name.split('.').pop();
+            const fileExt = pendingLogoFile.name.split('.').pop();
             const fileName = `${user?.id}/org-logo.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('organizer-media')
-                .upload(fileName, file, { upsert: true });
-
+                .upload(fileName, pendingLogoFile, { upsert: true });
             if (uploadError) throw uploadError;
 
             const { data: urlData } = supabase.storage
                 .from('organizer-media')
                 .getPublicUrl(fileName);
 
-            setLogoUrl(urlData.publicUrl);
-            toast({ title: 'Logo uploaded!' });
+            const publicUrl = urlData.publicUrl;
+            setLogoUrl(publicUrl);
+
+            if (organization?.id) {
+                const { error: updateError } = await supabase
+                    .from('organizations')
+                    .update({ logo_url: publicUrl })
+                    .eq('id', organization.id);
+                if (updateError) throw updateError;
+            }
+
+            toast({ title: 'Logo saved!' });
         } catch (error: any) {
             toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+        } finally {
+            setUploadingLogo(false);
+            cancelLogoPreview();
         }
     };
 
-    const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cancelLogoPreview = () => {
+        if (pendingLogoPreview) URL.revokeObjectURL(pendingLogoPreview);
+        setPendingLogoFile(null);
+        setPendingLogoPreview(null);
+    };
+
+    const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setPendingBannerFile(file);
+        setPendingBannerPreview(URL.createObjectURL(file));
+        e.target.value = '';
+    };
 
+    const confirmBannerUpload = async () => {
+        if (!pendingBannerFile) return;
+        setUploadingBanner(true);
         try {
-            const fileExt = file.name.split('.').pop();
+            const fileExt = pendingBannerFile.name.split('.').pop();
             const fileName = `${user?.id}/org-banner.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('organizer-media')
-                .upload(fileName, file, { upsert: true });
-
+                .upload(fileName, pendingBannerFile, { upsert: true });
             if (uploadError) throw uploadError;
 
             const { data: urlData } = supabase.storage
                 .from('organizer-media')
                 .getPublicUrl(fileName);
 
-            setBannerUrl(urlData.publicUrl);
-            toast({ title: 'Banner uploaded!' });
+            const publicUrl = urlData.publicUrl;
+            setBannerUrl(publicUrl);
+
+            if (organization?.id) {
+                const { error: updateError } = await supabase
+                    .from('organizations')
+                    .update({ banner_url: publicUrl })
+                    .eq('id', organization.id);
+                if (updateError) throw updateError;
+            }
+
+            toast({ title: 'Banner saved!' });
         } catch (error: any) {
             toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+        } finally {
+            setUploadingBanner(false);
+            cancelBannerPreview();
         }
+    };
+
+    const cancelBannerPreview = () => {
+        if (pendingBannerPreview) URL.revokeObjectURL(pendingBannerPreview);
+        setPendingBannerFile(null);
+        setPendingBannerPreview(null);
     };
 
     const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -513,19 +596,7 @@ const OrganizationSettings: React.FC = () => {
                 >
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-transparent to-transparent" />
 
-                    {/* Banner Edit Overlay */}
-                    <label className="absolute inset-0 cursor-pointer flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 z-10">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleBannerUpload}
-                            className="hidden"
-                        />
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-500 text-white font-medium text-sm">
-                            <Edit2 className="h-4 w-4" />
-                            {bannerUrl ? 'Change Banner' : 'Add Banner'}
-                        </div>
-                    </label>
+                    {/* Preview only — no interactive upload here */}
 
                     <div className="absolute bottom-0 left-6 translate-y-1/2">
                         <Avatar className="h-24 w-24 border-4 border-[#050507] shadow-xl ring-2 ring-esports-accent/30">
@@ -656,7 +727,55 @@ const OrganizationSettings: React.FC = () => {
                 </CardContent>
             </Card>
 
-            {/* Social Links */}
+            {/* Logo Confirmation Dialog */}
+            <Dialog open={!!pendingLogoPreview} onOpenChange={(open) => { if (!open) cancelLogoPreview(); }}>
+                <DialogContent className="sm:max-w-md bg-[#0a0a0c] border-zinc-800">
+                    <DialogHeader>
+                        <DialogTitle>Confirm Logo</DialogTitle>
+                        <DialogDescription>Preview your new logo before saving.</DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-center py-6">
+                        <Avatar className="h-32 w-32 border-2 border-white/10">
+                            <AvatarImage src={pendingLogoPreview || ''} />
+                            <AvatarFallback className="bg-gradient-to-br from-esports-purple to-esports-accent text-3xl">
+                                {name ? name[0].toUpperCase() : 'O'}
+                            </AvatarFallback>
+                        </Avatar>
+                    </div>
+                    <DialogFooter className="flex gap-2 sm:justify-end">
+                        <Button variant="outline" onClick={cancelLogoPreview} className="border-white/10 hover:bg-white/5">
+                            Cancel
+                        </Button>
+                        <Button onClick={confirmLogoUpload} disabled={uploadingLogo} className="bg-esports-accent hover:bg-esports-accent/80">
+                            {uploadingLogo ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : 'Confirm & Save'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Banner Confirmation Dialog */}
+            <Dialog open={!!pendingBannerPreview} onOpenChange={(open) => { if (!open) cancelBannerPreview(); }}>
+                <DialogContent className="sm:max-w-2xl bg-[#0a0a0c] border-zinc-800">
+                    <DialogHeader>
+                        <DialogTitle>Confirm Banner</DialogTitle>
+                        <DialogDescription>Preview your new banner before saving.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div
+                            className="h-36 rounded-xl bg-gradient-to-r from-esports-purple/20 to-esports-accent/20 border border-white/10 overflow-hidden"
+                            style={pendingBannerPreview ? { backgroundImage: `url(${pendingBannerPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                        />
+                    </div>
+                    <DialogFooter className="flex gap-2 sm:justify-end">
+                        <Button variant="outline" onClick={cancelBannerPreview} className="border-white/10 hover:bg-white/5">
+                            Cancel
+                        </Button>
+                        <Button onClick={confirmBannerUpload} disabled={uploadingBanner} className="bg-esports-accent hover:bg-esports-accent/80">
+                            {uploadingBanner ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : 'Confirm & Save'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <Card className="border-white/5 bg-gradient-to-br from-[#0a0a0c] to-[#050507]">
                 <CardHeader>
                     <CardTitle className="font-heading">Social Links</CardTitle>
@@ -913,6 +1032,14 @@ const OrganizationSettings: React.FC = () => {
                 </CardContent>
             </Card>
 
+            {/* Organization Staff */}
+            {organization && user?.id && (
+                <OrganizationStaffManager
+                    organizationId={organization.id}
+                    ownerId={user.id}
+                />
+            )}
+
             {/* Save Button */}
             <div className="flex justify-end pt-4">
                 <Button
@@ -935,7 +1062,7 @@ const OrganizationSettings: React.FC = () => {
             </div>
 
             {/* Danger Zone */}
-            {organization && (
+            {organization && organization.owner_id === user?.id && (
                 <Card className="border-red-900/30 bg-red-950/10 mt-12">
                     <CardHeader>
                         <CardTitle className="text-red-500 font-heading">Danger Zone</CardTitle>

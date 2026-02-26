@@ -30,6 +30,8 @@ interface Tournament {
   image_url: string | null;
   slug: string | null;
   deleted_at?: string | null;
+  start_date?: string;
+  end_date?: string;
 }
 
 interface DeletedTournament {
@@ -74,6 +76,7 @@ const TournamentList = () => {
         `)
         .eq('organization_id', orgData.id)
         .is('deleted_at', null)
+        .not('status', 'in', '("completed","cancelled")')
         .order('start_date', { ascending: true });
 
       if (error) throw error;
@@ -95,6 +98,8 @@ const TournamentList = () => {
         slug: tournament.slug,
         status: (tournament.status || 'open') as 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled',
         team_size: tournament.team_size || 1, // fallback default
+        start_date: tournament.start_date,
+        end_date: tournament.end_date,
       }));
     },
     enabled: !!user?.id,
@@ -340,6 +345,8 @@ const TournamentList = () => {
                     image_url={tournament.image_url || undefined}
                     currentUserId={user?.id}
                     slug={tournament.slug || ''}
+                    start_date={tournament.start_date}
+                    end_date={tournament.end_date}
                     onDelete={() => handleDeleteClick(tournament.id, tournament.name, tournament.status)}
                   />
                 ))}

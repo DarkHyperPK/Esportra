@@ -60,12 +60,9 @@ export const useOrganizerStats = () => {
                 const startDate = new Date(t.start_date);
 
                 // Status priority: DB status first
-                if (['ongoing', 'check_in'].includes(t.status)) {
+                if (['open', 'ongoing', 'check_in'].includes(t.status)) {
                     activeCount++;
                 } else if (t.status === 'upcoming') {
-                    upcomingCount++;
-                } else if (t.status === 'open') {
-                    // Open usually means upcoming/registering
                     upcomingCount++;
                 } else {
                     // Fallback to date if status is ambiguous or 'published'

@@ -13,6 +13,29 @@ serve(async (req) => {
     }
 
     try {
+        // ── SECURITY: Require valid JWT ──
+        const authHeader = req.headers.get('Authorization') || '';
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: "Authentication required" }), {
+                status: 401,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+        ).auth.getUser(token);
+
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+                status: 401,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+
         const { endpoint, region } = await req.json();
 
         if (!endpoint) {
@@ -29,9 +52,25 @@ serve(async (req) => {
             });
         }
 
+        // ── SECURITY: Validate endpoint path against allowlist ──
+        const ALLOWED_ENDPOINT_PATTERNS = [
+            /^\/riot\/account\/v1\/accounts\//,
+            /^\/val\/match\/v1\/matches\//,
+            /^\/val\/match\/v1\/matchlists\//,
+            /^\/val\/content\/v1\/contents/,
+            /^\/val\/ranked\/v1\/leaderboards/,
+        ];
+
+        const isAllowedEndpoint = ALLOWED_ENDPOINT_PATTERNS.some(pattern => pattern.test(endpoint));
+        if (!isAllowedEndpoint) {
+            console.error(`[riot-proxy] Blocked disallowed endpoint: ${endpoint}`);
+            return new Response(JSON.stringify({ error: "Endpoint not allowed" }), {
+                status: 403,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+
         // Build the full URL
-        // region can be 'asia', 'americas', 'europe', 'esports' for Account/Match V5
-        // or 'ap1', 'br1', 'euw1', etc for VAL-CONTENT / VAL-MATCH
         const baseUrl = `https://${region || "asia"}.api.riotgames.com`;
         const url = `${baseUrl}${endpoint}`;
 

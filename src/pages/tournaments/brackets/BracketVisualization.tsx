@@ -475,12 +475,39 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     const code = codeOverride || partyCodeInput;
 
     if (!match || !isDbMatch(match.id) || !code?.trim()) { toast({ title: 'Party code required', variant: 'destructive' }); return; }
+
     setIsProcessing(true);
+
+    // --- OPTIMISTIC UPDATE ---
+    const queryKey = ['bracket-graph', versionId];
+    const previousGraphData = queryClient.getQueryData<{ nodes: any[]; edges: any[] }>(queryKey);
+
+    if (previousGraphData && versionId) {
+      queryClient.setQueryData(queryKey, {
+        ...previousGraphData,
+        nodes: previousGraphData.nodes.map((n: any) =>
+          n.id === getRawId(match.id)
+            ? { ...n, status: 'in_progress', party_code: code.trim().toUpperCase() }
+            : n
+        ),
+      });
+    }
+    // -------------------------
+
     const r = await GraphMatchService.goLive(getRawId(match.id), code.trim());
     setIsProcessing(false);
-    if (r.success) { toast({ title: '🎮 Match is LIVE!' }); setGoLiveDialogOpen(false); }
-    else toast({ title: 'Error', description: r.error, variant: 'destructive' });
-  }, [goLiveMatch, partyCodeInput, toast]);
+
+    if (r.success) {
+      toast({ title: '🎮 Match is LIVE!' });
+      setGoLiveDialogOpen(false);
+    } else {
+      // ROLLBACK
+      if (previousGraphData && versionId) {
+        queryClient.setQueryData(queryKey, previousGraphData);
+      }
+      toast({ title: 'Error', description: r.error, variant: 'destructive' });
+    }
+  }, [goLiveMatch, partyCodeInput, toast, queryClient, versionId]);
 
   const openGoLive = useCallback((m: BracketMatch, code?: string) => {
     if (code) {

@@ -3,6 +3,22 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 serve(async (req) => {
     try {
+        // ── SECURITY: Verify the request is from a trusted internal source ──
+        const authHeader = req.headers.get('Authorization') || ''
+        const webhookSecret = req.headers.get('x-webhook-secret') || ''
+        const expectedSecret = Deno.env.get('WEBHOOK_SECRET') || ''
+
+        const isServiceRole = authHeader === `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+        const isValidWebhook = expectedSecret !== '' && webhookSecret === expectedSecret
+
+        if (!isServiceRole && !isValidWebhook) {
+            console.error('[worker-bracket-advancement] Unauthorized request blocked')
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' }
+            })
+        }
+
         const payload = await req.json()
         const record = payload.record;
 

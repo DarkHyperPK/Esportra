@@ -38,6 +38,8 @@ const Callback = React.lazy(() => import("./pages/auth/Callback"));
 const SetPassword = React.lazy(() => import("./pages/auth/SetPassword"));
 const ForgotPassword = React.lazy(() => import("./pages/auth/ForgotPassword"));
 const ResetPassword = React.lazy(() => import("./pages/auth/ResetPassword"));
+const Suspended = React.lazy(() => import("./pages/auth/Suspended"));
+const SuspensionGuard = React.lazy(() => import("./components/auth/SuspensionGuard").then(m => ({ default: m.SuspensionGuard })));
 
 
 // User 
@@ -156,366 +158,374 @@ const AppContent = React.memo(() => {
       <Navbar />
       <div className="relative z-10">
         <React.Suspense fallback={<PremiumLoadingScreen />}>
-          <Routes location={location}>
-            <Route element={<TransitionLayout />}>
-              <Route path="/" element={<Index />} />
+          <SuspensionGuard>
+            <Routes location={location}>
+              <Route element={<TransitionLayout />}>
+                <Route path="/" element={<Index />} />
 
-              {/* Auth Routes */}
-              <Route path="/auth/signup" element={<SignUp />} />
-              <Route path="/auth/signin" element={<SignIn />} />
-              <Route path="/auth/callback" element={<Callback />} />
-              <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-              <Route path="/auth/reset-password" element={<ResetPassword />} />
-              <Route path="/set-password" element={<SetPassword />} />
+                {/* Auth Routes */}
+                <Route path="/auth/signup" element={<SignUp />} />
+                <Route path="/auth/signin" element={<SignIn />} />
+                <Route path="/auth/callback" element={<Callback />} />
+                <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+                <Route path="/auth/reset-password" element={<ResetPassword />} />
+                <Route path="/set-password" element={<SetPassword />} />
+                <Route path="/suspended" element={<Suspended />} />
 
-              {/* Admin Routes */}
-              <Route path="/admin" element={
-                <AdminProtectedRoute>
-                  <AdminLayout>
-                    <Navigate to="/admin/dashboard" replace />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
+                {/* Admin Routes */}
+                <Route path="/admin" element={
+                  <AdminProtectedRoute>
+                    <AdminLayout>
+                      <Navigate to="/admin/dashboard" replace />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
 
-              {/* Unauthorized Route */}
-              <Route path="/unauthorized" element={<Unauthorized />} />
+                {/* Unauthorized Route */}
+                <Route path="/unauthorized" element={<Unauthorized />} />
 
-              {/* Fallback dashboard route */}
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <Navigate to="/user/profile" replace />
-                </ProtectedRoute>
-              } />
+                {/* Fallback dashboard route */}
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Navigate to="/user/profile" replace />
+                  </ProtectedRoute>
+                } />
 
-              {/* User Routes */}
-              <Route path="/user/profile" element={
-                <ProtectedRoute>
-                  <PlayerProfile />
-                </ProtectedRoute>
-              } />
-              <Route path="/user/staff-invites" element={
-                <ProtectedRoute>
-                  <StaffInvitesPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/user/raise-dispute" element={
-                <ProtectedRoute>
-                  <RaiseDispute />
-                </ProtectedRoute>
-              } />
-              <Route path="/user/my-disputes" element={
-                <ProtectedRoute>
-                  <MyDisputes />
-                </ProtectedRoute>
-              } />
-              <Route path="/staff" element={
-                <ProtectedRoute>
-                  <StaffDashboard />
-                </ProtectedRoute>
-              } />
+                {/* User Routes */}
+                <Route path="/user/profile" element={
+                  <ProtectedRoute>
+                    <PlayerProfile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/user/staff-invites" element={
+                  <ProtectedRoute>
+                    <StaffInvitesPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/user/raise-dispute" element={
+                  <ProtectedRoute>
+                    <RaiseDispute />
+                  </ProtectedRoute>
+                } />
+                <Route path="/user/my-disputes" element={
+                  <ProtectedRoute>
+                    <MyDisputes />
+                  </ProtectedRoute>
+                } />
+                <Route path="/staff" element={
+                  <ProtectedRoute>
+                    <StaffDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/staff/dashboard" element={
+                  <ProtectedRoute>
+                    <StaffDashboard />
+                  </ProtectedRoute>
+                } />
 
-              {/* Player Routes */}
-              <Route path="/player/profile" element={
-                <ProtectedRoute>
-                  <PlayerProfile />
-                </ProtectedRoute>
-              } />
-              <Route path="/player/teams" element={
-                <ProtectedRoute>
-                  <TeamsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/player/history" element={
-                <ProtectedRoute>
-                  <PlayerHistory />
-                </ProtectedRoute>
-              } />
+                {/* Player Routes */}
+                <Route path="/player/profile" element={
+                  <ProtectedRoute>
+                    <PlayerProfile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/player/teams" element={
+                  <ProtectedRoute>
+                    <TeamsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/player/history" element={
+                  <ProtectedRoute>
+                    <PlayerHistory />
+                  </ProtectedRoute>
+                } />
 
-              {/* Admin Tool Routes removed - all tools disabled */}
-              {/* System Status removed for now */}
+                {/* Admin Tool Routes removed - all tools disabled */}
+                {/* System Status removed for now */}
 
-              {/* Admin Dashboard Routes */}
-              <Route path="/admin/dashboard" element={
-                <AdminProtectedRoute requiredRoles={ADMIN_ROLE_SETS.anyAdmin}>
-                  <AdminLayout>
-                    <AdminManagement />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
+                {/* Admin Dashboard Routes */}
+                <Route path="/admin/dashboard" element={
+                  <AdminProtectedRoute requiredRoles={ADMIN_ROLE_SETS.anyAdmin}>
+                    <AdminLayout>
+                      <AdminManagement />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
 
-              {/* Admin Tool Routes */}
-              <Route path="/admin/tools/user-management" element={
-                <AdminProtectedRoute
-                  requiredPermission="user:view"
-                  requiredRoles={ADMIN_ROLE_SETS.userManagement}
-                >
-                  <AdminLayout>
-                    <UserManagementTool />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/tools/tournament-management" element={
-                <AdminProtectedRoute
-                  requiredPermission="tournament:view"
-                  requiredRoles={ADMIN_ROLE_SETS.tournamentManagement}
-                >
-                  <AdminLayout>
-                    <TournamentManagementTool />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/tools/venue-management" element={
-                <AdminProtectedRoute
-                  requiredPermission="venue:view"
-                  requiredRoles={ADMIN_ROLE_SETS.venueManagement}
-                >
-                  <AdminLayout>
-                    <VenueManagementTool />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/tools/verification-system" element={
-                <AdminProtectedRoute
-                  requiredPermission="verification:view"
-                  requiredRoles={ADMIN_ROLE_SETS.verification}
-                >
-                  <AdminLayout>
-                    <VerificationSystemTool />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/tools/audit-logs" element={
-                <AdminProtectedRoute
-                  requiredPermission="audit:view"
-                  requiredRoles={ADMIN_ROLE_SETS.auditAccess}
-                >
-                  <AdminLayout>
-                    <AuditLogsTool />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/tools/analytics" element={
-                <AdminProtectedRoute
-                  requiredPermission="audit:view"
-                  requiredRoles={ADMIN_ROLE_SETS.analytics}
-                >
-                  <AdminLayout>
-                    <AnalyticsTool />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/tools/sponsor-management" element={
-                <AdminProtectedRoute
-                  requiredPermission="settings:view"
-                  requiredRoles={ADMIN_ROLE_SETS.systemSettings}
-                >
-                  <AdminLayout>
-                    <SponsorManagementTool />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/tools/system-settings" element={
-                <AdminProtectedRoute
-                  requiredPermission="settings:view"
-                  requiredRoles={ADMIN_ROLE_SETS.systemSettings}
-                >
-                  <AdminLayout>
-                    <SystemSettings />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
+                {/* Admin Tool Routes */}
+                <Route path="/admin/tools/user-management" element={
+                  <AdminProtectedRoute
+                    requiredPermission="user:view"
+                    requiredRoles={ADMIN_ROLE_SETS.userManagement}
+                  >
+                    <AdminLayout>
+                      <UserManagementTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/tools/tournament-management" element={
+                  <AdminProtectedRoute
+                    requiredPermission="tournament:view"
+                    requiredRoles={ADMIN_ROLE_SETS.tournamentManagement}
+                  >
+                    <AdminLayout>
+                      <TournamentManagementTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/tools/venue-management" element={
+                  <AdminProtectedRoute
+                    requiredPermission="venue:view"
+                    requiredRoles={ADMIN_ROLE_SETS.venueManagement}
+                  >
+                    <AdminLayout>
+                      <VenueManagementTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/tools/verification-system" element={
+                  <AdminProtectedRoute
+                    requiredPermission="verification:view"
+                    requiredRoles={ADMIN_ROLE_SETS.verification}
+                  >
+                    <AdminLayout>
+                      <VerificationSystemTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/tools/audit-logs" element={
+                  <AdminProtectedRoute
+                    requiredPermission="audit:view"
+                    requiredRoles={ADMIN_ROLE_SETS.auditAccess}
+                  >
+                    <AdminLayout>
+                      <AuditLogsTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/tools/analytics" element={
+                  <AdminProtectedRoute
+                    requiredPermission="audit:view"
+                    requiredRoles={ADMIN_ROLE_SETS.analytics}
+                  >
+                    <AdminLayout>
+                      <AnalyticsTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/tools/sponsor-management" element={
+                  <AdminProtectedRoute
+                    requiredPermission="settings:view"
+                    requiredRoles={ADMIN_ROLE_SETS.systemSettings}
+                  >
+                    <AdminLayout>
+                      <SponsorManagementTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/tools/system-settings" element={
+                  <AdminProtectedRoute
+                    requiredPermission="settings:view"
+                    requiredRoles={ADMIN_ROLE_SETS.systemSettings}
+                  >
+                    <AdminLayout>
+                      <SystemSettings />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
 
-              {/* Admin Management - Super Admin Only */}
-              <Route path="/admin/tools/admin-management" element={
-                <AdminProtectedRoute
-                  requiredPermission="admin:assign_roles"
-                  requiredRoles={['super_admin']}
-                >
-                  <AdminLayout>
-                    <AdminRoleManagement />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
+                {/* Admin Management - Super Admin Only */}
+                <Route path="/admin/tools/admin-management" element={
+                  <AdminProtectedRoute
+                    requiredPermission="admin:assign_roles"
+                    requiredRoles={['super_admin']}
+                  >
+                    <AdminLayout>
+                      <AdminRoleManagement />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
 
-              {/* Legacy Admin Routes (for backward compatibility) */}
-              <Route path="/admin/access" element={
-                <AdminProtectedRoute
-                  requiredPermission="admin:assign_roles"
-                  requiredRoles={['super_admin']}
-                >
-                  <AdminLayout>
-                    <AdminAccess />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/disputes" element={
-                <AdminProtectedRoute
-                  requiredPermission="dispute:resolve"
-                  requiredRoles={ADMIN_ROLE_SETS.disputes}
-                >
-                  <DisputeCenter />
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/settings" element={
-                <AdminProtectedRoute
-                  requiredPermission="settings:edit"
-                  requiredRoles={ADMIN_ROLE_SETS.systemSettings}
-                >
-                  <AdminLayout>
-                    <SystemSettings />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/verification" element={
-                <AdminProtectedRoute
-                  requiredPermission="verification:view"
-                  requiredRoles={ADMIN_ROLE_SETS.verification}
-                >
-                  <AdminLayout>
-                    <VerificationSystemTool />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/audit" element={
-                <AdminProtectedRoute
-                  requiredPermission="audit:view"
-                  requiredRoles={ADMIN_ROLE_SETS.auditAccess}
-                >
-                  <AdminLayout>
-                    <AuditLogsTool />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
-              <Route path="/admin/users" element={
-                <AdminProtectedRoute
-                  requiredPermission="user:view"
-                  requiredRoles={ADMIN_ROLE_SETS.userManagement}
-                >
-                  <AdminLayout>
-                    <UserManagementTool />
-                  </AdminLayout>
-                </AdminProtectedRoute>
-              } />
+                {/* Legacy Admin Routes (for backward compatibility) */}
+                <Route path="/admin/access" element={
+                  <AdminProtectedRoute
+                    requiredPermission="admin:assign_roles"
+                    requiredRoles={['super_admin']}
+                  >
+                    <AdminLayout>
+                      <AdminAccess />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/disputes" element={
+                  <AdminProtectedRoute
+                    requiredPermission="dispute:resolve"
+                    requiredRoles={ADMIN_ROLE_SETS.disputes}
+                  >
+                    <DisputeCenter />
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/settings" element={
+                  <AdminProtectedRoute
+                    requiredPermission="settings:edit"
+                    requiredRoles={ADMIN_ROLE_SETS.systemSettings}
+                  >
+                    <AdminLayout>
+                      <SystemSettings />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/verification" element={
+                  <AdminProtectedRoute
+                    requiredPermission="verification:view"
+                    requiredRoles={ADMIN_ROLE_SETS.verification}
+                  >
+                    <AdminLayout>
+                      <VerificationSystemTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/audit" element={
+                  <AdminProtectedRoute
+                    requiredPermission="audit:view"
+                    requiredRoles={ADMIN_ROLE_SETS.auditAccess}
+                  >
+                    <AdminLayout>
+                      <AuditLogsTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/users" element={
+                  <AdminProtectedRoute
+                    requiredPermission="user:view"
+                    requiredRoles={ADMIN_ROLE_SETS.userManagement}
+                  >
+                    <AdminLayout>
+                      <UserManagementTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
 
-              {/* Venue Owner Routes */}
-              <Route path="/venue-owner/dashboard" element={
-                <ProtectedRoute allowedRoles={['venue_owner']}>
-                  <VenueOwnerDashboard />
-                </ProtectedRoute>
-              } />
+                {/* Venue Owner Routes */}
+                <Route path="/venue-owner/dashboard" element={
+                  <ProtectedRoute allowedRoles={['venue_owner']}>
+                    <VenueOwnerDashboard />
+                  </ProtectedRoute>
+                } />
 
-              {/* Tournament Organizer Routes */}
-              <Route path="/organizer/dashboard" element={
-                <ProtectedRoute allowedRoles={['organizer']}>
-                  <OrganizerDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/organizer/setup-organization" element={
-                <ProtectedRoute allowedRoles={['organizer']}>
-                  <OrganizationWizard />
-                </ProtectedRoute>
-              } />
-              <Route path="/organizer/tournaments" element={
-                <ProtectedRoute allowedRoles={['organizer']}>
-                  <ManageTournaments />
-                </ProtectedRoute>
-              } />
-              <Route path="/organizer/tournament/:slug" element={
-                <ProtectedRoute allowedRoles={['organizer']}>
-                  <TournamentManage />
-                </ProtectedRoute>
-              } />
-              <Route path="/organizer/tournament/:slug/edit" element={
-                <ProtectedRoute allowedRoles={['organizer']}>
-                  <EditTournament />
-                </ProtectedRoute>
-              } />
-              <Route path="/organizer/tournament/:slug/brackets" element={
-                <ProtectedRoute allowedRoles={['organizer']}>
-                  <TournamentBrackets />
-                </ProtectedRoute>
-              } />
-              <Route path="/organizer/tournament/:slug/manage-bracket/:stageId" element={
-                <ProtectedRoute allowedRoles={['organizer']}>
-                  <ManageBracketPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/organizer/disputes" element={
-                <ProtectedRoute allowedRoles={['organizer']}>
-                  <OrganizerDisputesPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/tournaments" element={<TournamentList />} />
-              <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
-              <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
-              <Route path="/player/:username" element={<PlayerProfile />} />
+                {/* Tournament Organizer Routes */}
+                <Route path="/organizer/dashboard" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <OrganizerDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/setup-organization" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <OrganizationWizard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/tournaments" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <ManageTournaments />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/tournament/:slug" element={
+                  <ProtectedRoute>
+                    <TournamentManage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/tournament/:slug/edit" element={
+                  <ProtectedRoute>
+                    <EditTournament />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/tournament/:slug/brackets" element={
+                  <ProtectedRoute>
+                    <TournamentBrackets />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/tournament/:slug/manage-bracket/:stageId" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <ManageBracketPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/disputes" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <OrganizerDisputesPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tournaments" element={<TournamentList />} />
+                <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
+                <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
+                <Route path="/player/:username" element={<PlayerProfile />} />
 
-              {/* Venues Routes */}
-              <Route path="/venues" element={<VenueSearch />} />
-              <Route path="/venues/search" element={<VenueSearch />} />
-              <Route path="/venues/featured" element={<FeaturedVenues />} />
-              <Route path="/venues/:slug" element={<VenueDetails />} />
-              <Route path="/venues/list-venue" element={
-                <ProtectedRoute allowedRoles={['venue_owner']}>
-                  <ListVenue />
-                </ProtectedRoute>
-              } />
-              <Route path="/venues/manage" element={
-                <ProtectedRoute allowedRoles={['venue_owner']}>
-                  <ManageVenues />
-                </ProtectedRoute>
-              } />
+                {/* Venues Routes */}
+                <Route path="/venues" element={<VenueSearch />} />
+                <Route path="/venues/search" element={<VenueSearch />} />
+                <Route path="/venues/featured" element={<FeaturedVenues />} />
+                <Route path="/venues/:slug" element={<VenueDetails />} />
+                <Route path="/venues/list-venue" element={
+                  <ProtectedRoute allowedRoles={['venue_owner']}>
+                    <ListVenue />
+                  </ProtectedRoute>
+                } />
+                <Route path="/venues/manage" element={
+                  <ProtectedRoute allowedRoles={['venue_owner']}>
+                    <ManageVenues />
+                  </ProtectedRoute>
+                } />
 
-              {/* Tournaments Routes */}
-              <Route path="/tournaments/upcoming" element={<UpcomingTournaments />} />
-              <Route path="/tournaments/ongoing" element={<OngoingTournaments />} />
-              <Route path="/tournaments/create" element={
-                <ProtectedRoute allowedRoles={['organizer']}>
-                  <CreateTournament />
-                </ProtectedRoute>
-              } />
-              <Route path="/tournaments/edit/:slug" element={<EditTournament />} />
-              <Route path="/tournaments/:slug/brackets" element={<TournamentBrackets />} />
-              <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />
-              <Route path="/tournaments/:slug/captain-match" element={
-                <ProtectedRoute>
-                  <CaptainMatchPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/map-veto/:token" element={<MapVetoToken />} />
+                {/* Tournaments Routes */}
+                <Route path="/tournaments/upcoming" element={<UpcomingTournaments />} />
+                <Route path="/tournaments/ongoing" element={<OngoingTournaments />} />
+                <Route path="/tournaments/create" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <CreateTournament />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tournaments/edit/:slug" element={<EditTournament />} />
+                <Route path="/tournaments/:slug/brackets" element={<TournamentBrackets />} />
+                <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />
+                <Route path="/tournaments/:slug/captain-match" element={
+                  <ProtectedRoute>
+                    <CaptainMatchPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/map-veto/:token" element={<MapVetoToken />} />
 
-              {/* Company Pages */}
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/about/company" element={<AboutPage />} />
-              <Route path="/about/contact" element={<ContactPage />} />
-              <Route path="/about/faq" element={<FAQPage />} />
-              <Route path="/contact" element={<ContactStandalone />} />
-              <Route path="/partners" element={<Partners />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/terms" element={<TermsPage />} />
+                {/* Company Pages */}
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/about/company" element={<AboutPage />} />
+                <Route path="/about/contact" element={<ContactPage />} />
+                <Route path="/about/faq" element={<FAQPage />} />
+                <Route path="/contact" element={<ContactStandalone />} />
+                <Route path="/partners" element={<Partners />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
 
-              {/* Notification List Route */}
-              <Route path="/notifications" element={<NotificationsPage />} />
+                {/* Notification List Route */}
+                <Route path="/notifications" element={<NotificationsPage />} />
 
-              {/* Admin Protected Route for TournamentDetails */}
-              <Route path="/admin/tournaments/:id" element={<AdminProtectedRoute><TournamentDetails /></AdminProtectedRoute>} />
+                {/* Admin Protected Route for TournamentDetails */}
+                <Route path="/admin/tournaments/:id" element={<AdminProtectedRoute><TournamentDetails /></AdminProtectedRoute>} />
 
-              {/* Tournament History Route */}
-              <Route path="/tournament-history" element={<TournamentHistoryPage />} />
+                {/* Tournament History Route */}
+                <Route path="/tournament-history" element={<TournamentHistoryPage />} />
 
-              {/* Leaderboard Route */}
-              <Route path="/leaderboards" element={<Leaderboards />} />
+                {/* Leaderboard Route */}
+                <Route path="/leaderboards" element={<Leaderboards />} />
 
-              {/* Verification Status Route */}
-              <Route path="/verification" element={<VerificationStatus />} />
+                {/* Verification Status Route */}
+                <Route path="/verification" element={<VerificationStatus />} />
 
-              {/* Debug Routes */}
-              <Route path="/debug/riot" element={<RiotTest />} />
+                {/* Debug Routes */}
+                <Route path="/debug/riot" element={<RiotTest />} />
 
-              {/* Catch-all route */}
-              <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-            </Route >
-          </Routes >
+                {/* Catch-all route */}
+                <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+              </Route >
+            </Routes >
+          </SuspensionGuard>
         </React.Suspense >
       </div >
     </>

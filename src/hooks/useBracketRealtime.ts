@@ -59,17 +59,17 @@ export function useBracketRealtime({
 
         const channel = supabase.channel(channelName);
 
-        // Legacy match updates removed - relying on brkt_matches for versioned brackets
-        if (tournamentId && !versionId) {
-            console.log('[useBracketRealtime] Legacy tournament_matches subscription skipped (table removed). Please upgrade to brkt_matches.');
-        }
-
         // Subscribe to new brkt_matches if versionId is present
         if (versionId) {
             channel
                 .on(
                     'postgres_changes',
-                    { event: '*', schema: 'public', table: 'brkt_matches', filter: `version_id=eq.${versionId}` },
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'brkt_matches',
+                        filter: `version_id=eq.${versionId}` // Note: Supabase JS V2 requires correct RLS to access this via websockets
+                    },
                     (payload) => {
                         console.log('[useBracketRealtime] Graph match update:', payload.eventType, payload.new);
 
@@ -121,8 +121,9 @@ export function useBracketRealtime({
                 );
         }
 
-        channel.subscribe((status) => {
-            console.log(`[useBracketRealtime] Subscription status: ${status}`);
+        channel.subscribe((status, err) => {
+            console.log(`[useBracketRealtime] Subscription status: ${status}`, err);
+            // If it times out, we can try to reconnect or just wait for standard React Query refetches.
         });
 
         channelRef.current = channel;

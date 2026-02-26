@@ -19,6 +19,10 @@ export interface Database {
           roles: string | null
           updated_at: string | null
           created_at: string | null
+          is_suspended: boolean
+          suspension_until: string | null
+          suspension_reason: string | null
+          suspension_type: string | null
         }
         Insert: {
           id?: string
@@ -29,6 +33,10 @@ export interface Database {
           roles?: string | null
           updated_at?: string | null
           created_at?: string | null
+          is_suspended?: boolean
+          suspension_until?: string | null
+          suspension_reason?: string | null
+          suspension_type?: string | null
         }
         Update: {
           id?: string
@@ -39,6 +47,10 @@ export interface Database {
           roles?: string | null
           updated_at?: string | null
           created_at?: string | null
+          is_suspended?: boolean
+          suspension_until?: string | null
+          suspension_reason?: string | null
+          suspension_type?: string | null
         }
       }
       tournament_matches: {

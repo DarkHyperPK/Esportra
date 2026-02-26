@@ -26,6 +26,36 @@ export const useAuthActions = () => {
       }
 
       console.log("Sign in successful:", data.user?.id);
+
+      // Check for suspension
+      const { data: profile, error: pError } = await supabase
+        .from('profiles')
+        .select('is_suspended, suspension_until, suspension_reason, suspension_type')
+        .eq('id', data.user.id)
+        .single();
+
+      console.log("[Auth] Suspension check for login:", { user: data.user.id, is_suspended: profile?.is_suspended, error: pError });
+
+      if (profile?.is_suspended) {
+        console.warn("[Auth] Suspended user attempted login:", data.user.id);
+        await supabase.auth.signOut();
+        toast({
+          title: 'Account Restricted',
+          description: `This account is suspended. Reason: ${profile.suspension_reason || 'Violation of terms'}`,
+          variant: 'destructive'
+        });
+        navigate('/suspended', {
+          replace: true,
+          state: {
+            reason: profile.suspension_reason,
+            type: profile.suspension_type,
+            until: profile.suspension_until
+          }
+        });
+        setLoading(false);
+        return;
+      }
+
       toast({
         title: 'Welcome back!',
         description: 'You have successfully signed in.',

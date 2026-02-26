@@ -54,8 +54,13 @@ export function useRiotAccount() {
             console.error('[useRiotAccount] Missing VITE_SUPABASE_URL. Riot OAuth will fail.');
             return;
         }
+
+        // Generate a cryptographically secure random state (CSRF Token)
+        const state = crypto.randomUUID();
+        sessionStorage.setItem('riotOAuthState', state);
+
         const redirectUri = `${supabaseUrl}/functions/v1/riot-oauth`;
-        const riotAuthUrl = `https://auth.riotgames.com/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${clientId}&response_type=code&scope=openid&state=${user.id}&prompt=login`;
+        const riotAuthUrl = `https://auth.riotgames.com/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${clientId}&response_type=code&scope=openid&state=${state}&prompt=login`;
         window.location.href = riotAuthUrl;
     };
 
