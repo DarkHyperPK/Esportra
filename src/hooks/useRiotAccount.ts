@@ -69,16 +69,32 @@ export function useRiotAccount() {
      */
     const unlinkRiotAccount = async () => {
         if (!user?.id) return;
-        const { error } = await supabase
+
+        // 1. Delete from riot_accounts
+        const { error: unlinkError } = await supabase
             .from('riot_accounts')
             .delete()
             .eq('user_id', user.id);
 
-        if (error) {
-            console.error('[useRiotAccount] Error unlinking riot account:', error);
-            throw error;
+        if (unlinkError) {
+            console.error('[useRiotAccount] Error unlinking riot account:', unlinkError);
+            throw unlinkError;
         }
+
+        // 2. Clear riot_tag from profiles
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ riot_tag: null })
+            .eq('id', user.id);
+
+        if (profileError) {
+            console.error('[useRiotAccount] Error clearing riot_tag from profile:', profileError);
+            throw profileError;
+        }
+
+        // 3. Invalidate queries to refresh UI
         queryClient.invalidateQueries({ queryKey: ['riot-account', user.id] });
+        queryClient.invalidateQueries({ queryKey: ['profile', user.id] }); // Usually profiles are keyed like this or similar
     };
 
     return {
