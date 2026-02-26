@@ -44,14 +44,14 @@ jobs:
 
           # 3. Copy function files to the server
           echo "📤 Uploading functions..."
-          scp -r $SSH_OPTS supabase/functions/* $REMOTE:/tmp/edge-functions-update/
+          scp -r $SSH_OPTS supabase/functions $REMOTE:/tmp/edge-functions-update
 
           # 4. Move files to the live volume with correct permissions
           echo "🚚 Moving to production volume..."
           ssh $SSH_OPTS $REMOTE "sudo mkdir -p ${{ env.FUNCTIONS_PATH }} && \
-            sudo cp -r /tmp/edge-functions-update/* ${{ env.FUNCTIONS_PATH }}/ && \
+            sudo cp -r /tmp/edge-functions-update/functions/* ${{ env.FUNCTIONS_PATH }}/ && \
             sudo chown -R 1000:1000 ${{ env.FUNCTIONS_PATH }}/ && \
-            rm -rf /tmp/edge-functions-update && \
+            sudo rm -rf /tmp/edge-functions-update && \
             echo '✅ Deployment Finished!' && \
             sudo ls -la ${{ env.FUNCTIONS_PATH }}/"
 
