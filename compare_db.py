@@ -16,7 +16,7 @@ def get_row_counts(conn_string):
     return counts
 
 local_conn = "postgresql://postgres:postgres@localhost:54322/postgres"
-prod_conn = "postgresql://postgres:UcXRNmIJriixCwenlLG3dYJRMdFBEdk7@localhost:5433/postgres"
+prod_conn = "postgresql://postgres:UcXRNmIJriixCwenlLG3dYJRMdFBEdk7@localhost:54323/postgres"
 
 print("Fetching Local counts...")
 local_counts = get_row_counts(local_conn)
