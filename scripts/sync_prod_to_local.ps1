@@ -231,28 +231,37 @@ Write-Host "  Database restored." -ForegroundColor Green
 if (-not $SkipStorage) {
     Write-Host "[5/6] Downloading storage files from production..." -ForegroundColor Green
 
-    New-Item -ItemType Directory -Path $LOCAL_STORAGE -Force | Out-Null
+    $LOCAL_STORAGE_TEMP = "$PSScriptRoot\..\supabase\storage"
+    New-Item -ItemType Directory -Path $LOCAL_STORAGE_TEMP -Force | Out-Null
 
-    # Use SCP to download the entire storage volume
-    Write-Host "  This may take a while depending on how many files exist..."
-    & scp -i $SSH_KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null `
-        -r "${SERVER_USER}@${SERVER_IP}:${REMOTE_STORAGE}/" `
-        "$LOCAL_STORAGE/" 2>$null
+    # 5a. Create a readable copy on the server (files need sudo to read)
+    Write-Host "  Preparing files on server..."
+    & ssh -i $SSH_KEY -o StrictHostKeyChecking=no "${SERVER_USER}@${SERVER_IP}" "sudo rm -rf /tmp/storage_export && sudo cp -r ${REMOTE_STORAGE}/ /tmp/storage_export && sudo chown -R ${SERVER_USER}:${SERVER_USER} /tmp/storage_export"
 
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  Storage files downloaded." -ForegroundColor Green
+    # 5b. Download via SCP
+    Write-Host "  Downloading files (this may take a few minutes for ~300MB)..."
+    & scp -i $SSH_KEY -o StrictHostKeyChecking=no -r "${SERVER_USER}@${SERVER_IP}:/tmp/storage_export/" "$LOCAL_STORAGE_TEMP\"
 
-        # Now we need to copy these into the local Supabase storage Docker volume
-        # The local supabase stores files via the storage-api container
-        # We'll upload them via the Supabase Storage API instead of direct volume mounting
-        Write-Host "  NOTE: Storage files saved to supabase/storage/." -ForegroundColor Yellow
-        Write-Host "  For images to work locally, they'll be served from your production URL" -ForegroundColor Yellow
-        Write-Host "  since local storage upload requires API calls per file." -ForegroundColor Yellow
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  WARNING: SCP download failed or was partial." -ForegroundColor Yellow
     }
     else {
-        Write-Host "  WARNING: Storage download failed or was partial." -ForegroundColor Yellow
-        Write-Host "  The remote path may differ. Images will show from production URLs." -ForegroundColor Yellow
+        # 5c. Copy files into the Docker storage container volume
+        Write-Host "  Injecting files into Docker storage container..."
+        & docker cp "${LOCAL_STORAGE_TEMP}\storage_export\." supabase_storage_frag-and-book-main:/mnt/
+
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  Storage files synced into container." -ForegroundColor Green
+        }
+        else {
+            Write-Host "  WARNING: docker cp failed." -ForegroundColor Yellow
+        }
     }
+
+    # 5d. Cleanup server temp
+    & ssh -i $SSH_KEY -o StrictHostKeyChecking=no "${SERVER_USER}@${SERVER_IP}" "sudo rm -rf /tmp/storage_export" 2>$null
+
+    Write-Host "  Storage sync complete." -ForegroundColor Green
 }
 else {
     Write-Host "[5/6] Skipping storage download (--SkipStorage flag)." -ForegroundColor Yellow
