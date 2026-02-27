@@ -1,0 +1,47 @@
+name: 🔄 Deploy Staging Migrations
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - 'supabase/migrations/**'
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  deploy-migrations:
+    name: 🚀 Deploy Migrations to Staging
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+          
+      - name: 🔑 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🚀 Push Migrations via SSH Tunnel to Staging
+        env:
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          STAGING_DB_URL: ${{ secrets.STAGING_DB_URL }}
+        run: |
+          # 1. Trust the host
+          ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+          
+          # 2. Open an SSH tunnel in the background (mapping local port 5433 to the server's staging Postgres port 5433)
+          ssh -o StrictHostKeyChecking=no -f -N -L 5433:127.0.0.1:5433 $SERVER_USER@$SERVER_IP
+          
+          # 3. Rewrite the STAGING_DB_URL to point to the tunneled local port
+          TUNNELED_DB_URL="${STAGING_DB_URL/$SERVER_IP/127.0.0.1}"
+          
+          # 4. Push migrations through the secure tunnel with TLS disabled (over localhost)
+          echo "Pushing migrations to staging through secure SSH tunnel..."
+          PGSSLMODE=disable supabase db push --db-url "$TUNNELED_DB_URL"
