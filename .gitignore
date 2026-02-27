@@ -99,3 +99,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp.worktrees/
+
+# Local dev sync (production dumps and storage files)
+supabase/dumps/
+supabase/storage/
