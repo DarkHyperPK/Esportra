@@ -20,19 +20,19 @@ param(
 )
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-$SSH_KEY        = "$env:USERPROFILE\Downloads\esportra-dubai-ssh-key-2026-02-24.key"
-$SERVER_IP      = "84.235.246.82"
-$SERVER_USER    = "ubuntu"
-$TUNNEL_PORT    = 15432                     # local port for the SSH tunnel (avoid conflict with local supabase on 54322)
-$PROD_DB_USER   = "postgres"
-$PROD_DB_PASS   = "UcXRNmIJriixCwenlLG3dYJRMdFBEdk7"
-$PROD_DB_NAME   = "postgres"
-$LOCAL_DB_URL   = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-$DUMP_DIR       = "$PSScriptRoot\..\supabase\dumps"
+$SSH_KEY = "$env:USERPROFILE\Downloads\esportra-dubai-ssh-key-2026-02-24.key"
+$SERVER_IP = "84.235.246.82"
+$SERVER_USER = "ubuntu"
+$TUNNEL_PORT = 15432                     # local port for the SSH tunnel (avoid conflict with local supabase on 54322)
+$PROD_DB_USER = "postgres"
+$PROD_DB_PASS = "UcXRNmIJriixCwenlLG3dYJRMdFBEdk7"
+$PROD_DB_NAME = "postgres"
+$LOCAL_DB_URL = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+$DUMP_DIR = "$PSScriptRoot\..\supabase\dumps"
 
 # Storage path on the production server (Coolify docker volume)
 $REMOTE_STORAGE = "/data/coolify/services/moooksg0ssk04cg8coksgowc/volumes/storage"
-$LOCAL_STORAGE  = "$PSScriptRoot\..\supabase\storage"
+$LOCAL_STORAGE = "$PSScriptRoot\..\supabase\storage"
 
 # ── Pre-flight checks ────────────────────────────────────────────────────────
 $ErrorActionPreference = "Stop"
@@ -53,7 +53,8 @@ if (-not (Test-Path $SSH_KEY)) {
 # Check that local supabase is running
 try {
     $null = Invoke-RestMethod -Uri "http://127.0.0.1:54321/rest/v1/" -Method Head -ErrorAction Stop 2>$null
-} catch {
+}
+catch {
     Write-Host "ERROR: Local Supabase doesn't seem to be running on port 54321." -ForegroundColor Red
     Write-Host "Run 'supabase start' first, then try again." -ForegroundColor Yellow
     exit 1
@@ -61,7 +62,7 @@ try {
 
 # Check pg_dump and psql are available
 $pgDump = Get-Command pg_dump -ErrorAction SilentlyContinue
-$psql   = Get-Command psql -ErrorAction SilentlyContinue
+$psql = Get-Command psql -ErrorAction SilentlyContinue
 if (-not $pgDump -or -not $psql) {
     Write-Host "ERROR: pg_dump and/or psql not found in PATH." -ForegroundColor Red
     Write-Host "Install PostgreSQL client tools or add them to your PATH." -ForegroundColor Yellow
@@ -117,7 +118,8 @@ try {
     $test = & psql -h 127.0.0.1 -p $TUNNEL_PORT -U $PROD_DB_USER -d $PROD_DB_NAME -c "SELECT 1;" 2>&1
     if ($LASTEXITCODE -ne 0) { throw "Connection failed" }
     Write-Host "  Tunnel connected successfully." -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Host "  ERROR: SSH tunnel failed. Check your SSH key and server IP." -ForegroundColor Red
     Stop-Process -Id $sshProcess.Id -Force -ErrorAction SilentlyContinue
     exit 1
@@ -174,41 +176,31 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $publicSize = (Get-Item "$DUMP_DIR\public_schema.sql").Length / 1KB
-$authSize   = if (Test-Path "$DUMP_DIR\auth_data.sql") { (Get-Item "$DUMP_DIR\auth_data.sql").Length / 1KB } else { 0 }
-$storSize   = if (Test-Path "$DUMP_DIR\storage_data.sql") { (Get-Item "$DUMP_DIR\storage_data.sql").Length / 1KB } else { 0 }
+$authSize = if (Test-Path "$DUMP_DIR\auth_data.sql") { (Get-Item "$DUMP_DIR\auth_data.sql").Length / 1KB } else { 0 }
+$storSize = if (Test-Path "$DUMP_DIR\storage_data.sql") { (Get-Item "$DUMP_DIR\storage_data.sql").Length / 1KB } else { 0 }
 Write-Host "  Dumps complete: public=${publicSize}KB, auth=${authSize}KB, storage=${storSize}KB" -ForegroundColor Green
 
 # ── Step 3: Reset Local Database ─────────────────────────────────────────────
 Write-Host "[3/6] Resetting local database..." -ForegroundColor Green
 
+# From here on, don't let psql stderr notices (harmless) crash the script
+$ErrorActionPreference = "Continue"
 $env:PGPASSWORD = "postgres"
 
 # Drop and recreate public schema to get a clean slate
-& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c @"
-DROP SCHEMA IF EXISTS public CASCADE;
-CREATE SCHEMA public;
-GRANT ALL ON SCHEMA public TO postgres;
-GRANT ALL ON SCHEMA public TO public;
-"@
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  WARNING: Schema reset had issues." -ForegroundColor Yellow
-}
+& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "DROP SCHEMA IF EXISTS public CASCADE;" 2>$null
+& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;" 2>$null
 
 # Clear auth tables (order matters due to foreign keys)
-& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c @"
-DELETE FROM auth.sessions;
-DELETE FROM auth.refresh_tokens;
-DELETE FROM auth.mfa_factors;
-DELETE FROM auth.identities;
-DELETE FROM auth.users;
-"@ 2>$null
+& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "DELETE FROM auth.sessions;" 2>$null
+& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "DELETE FROM auth.refresh_tokens;" 2>$null
+& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "DELETE FROM auth.mfa_factors;" 2>$null
+& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "DELETE FROM auth.identities;" 2>$null
+& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "DELETE FROM auth.users;" 2>$null
 
 # Clear storage tables
-& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c @"
-DELETE FROM storage.objects;
-DELETE FROM storage.buckets;
-"@ 2>$null
+& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "DELETE FROM storage.objects;" 2>$null
+& psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c "DELETE FROM storage.buckets;" 2>$null
 
 Write-Host "  Local database cleaned." -ForegroundColor Green
 
@@ -256,11 +248,13 @@ if (-not $SkipStorage) {
         Write-Host "  NOTE: Storage files saved to supabase/storage/." -ForegroundColor Yellow
         Write-Host "  For images to work locally, they'll be served from your production URL" -ForegroundColor Yellow
         Write-Host "  since local storage upload requires API calls per file." -ForegroundColor Yellow
-    } else {
+    }
+    else {
         Write-Host "  WARNING: Storage download failed or was partial." -ForegroundColor Yellow
         Write-Host "  The remote path may differ. Images will show from production URLs." -ForegroundColor Yellow
     }
-} else {
+}
+else {
     Write-Host "[5/6] Skipping storage download (--SkipStorage flag)." -ForegroundColor Yellow
 }
 
@@ -270,15 +264,8 @@ Write-Host "[6/6] Verifying sync..." -ForegroundColor Green
 $env:PGPASSWORD = "postgres"
 
 # Count tables and rows locally
-$localCounts = & psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -t -A -c @"
-SELECT 'tables', count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-UNION ALL
-SELECT 'auth_users', count(*) FROM auth.users
-UNION ALL
-SELECT 'storage_buckets', count(*) FROM storage.buckets
-UNION ALL
-SELECT 'storage_objects', count(*) FROM storage.objects;
-"@
+$verifyQuery = "SELECT 'tables', count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' UNION ALL SELECT 'auth_users', count(*) FROM auth.users UNION ALL SELECT 'storage_buckets', count(*) FROM storage.buckets UNION ALL SELECT 'storage_objects', count(*) FROM storage.objects;"
+$localCounts = & psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -t -A -c $verifyQuery
 
 Write-Host ""
 Write-Host "  Local database summary:" -ForegroundColor Cyan
