@@ -11,13 +11,15 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
   SET search_path TO 'public'
 AS $function$
 BEGIN
-    INSERT INTO public.profiles (id, username, full_name, email, avatar_url)
+    INSERT INTO public.profiles (id, username, full_name, email, avatar_url, role, date_of_birth)
     VALUES (
         NEW.id,
         COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
         COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
         NEW.email,
-        NEW.raw_user_meta_data->>'avatar_url'
+        NEW.raw_user_meta_data->>'avatar_url',
+        COALESCE(NEW.raw_user_meta_data->>'role', 'casual')::app_role,
+        (NEW.raw_user_meta_data->>'date_of_birth')::date
     );
     RETURN NEW;
 END;

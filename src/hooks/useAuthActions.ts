@@ -105,35 +105,7 @@ export const useAuthActions = () => {
       }
 
       console.log(`User created with ID: ${authData.user.id} and role: ${role}`);
-
-      // Step 2: Create user profile (with upsert to handle duplicates)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authData.user.id,
-          username: username,
-          full_name: fullName || null,
-          email: email,
-          avatar_url: null,
-          role: role,
-          date_of_birth: dateOfBirth || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
-        });
-
-      if (profileError) {
-        console.error("Error creating profile:", profileError);
-        // Don't try to delete the auth user - this requires admin privileges
-        // Instead, mark the error for cleanup
-        throw new Error(`Failed to create user profile: ${profileError.message}`);
-      }
-
-      console.log("Successfully created user profile");
-
-      // Step 3: Role is already set in the profile table, no need for separate role assignment
-      console.log(`User created with role: ${role}`);
+      // Profile is created automatically by the handle_new_user trigger on auth.users.
 
       toast({
         title: 'Account created',
