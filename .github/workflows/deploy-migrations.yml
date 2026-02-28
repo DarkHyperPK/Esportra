@@ -6,13 +6,18 @@ on:
       - main
     paths:
       - 'supabase/migrations/**'
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
+
+concurrency:
+  group: db-migrations-prod
+  cancel-in-progress: false
 
 jobs:
   deploy-migrations:
     name: 🚀 Deploy Migrations to Production
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 15
+
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
@@ -21,7 +26,7 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
-          
+
       - name: 🔑 Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -35,19 +40,17 @@ jobs:
         run: |
           # 1. Trust the host
           ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
-          
-          # 2. Open an SSH tunnel in the background (mapping local port 5432 to the server's local Postgres)
-          ssh -o StrictHostKeyChecking=no -f -N -L 5432:127.0.0.1:5432 $SERVER_USER@$SERVER_IP
-          
-          # 3. Rewrite the PROD_DB_URL to point to the tunneled local port
-          TUNNELED_DB_URL="${PROD_DB_URL/$SERVER_IP/127.0.0.1}"
-          
-          # 4. Sync production migration history to match our git repository exactly
-          # This cleans up old records that exist on production but not locally anymore.
-          # We use "|| true" so it doesn't fail if they are already repaired.
-          echo "Repairing migration history..."
-          PGSSLMODE=disable supabase migration repair --status reverted 20251228171750 20251228173526 20251228173815 20251228174925 20251228181427 20251228181634 20251228181715 20251228183128 20251229082930 20251229085341 20251229085415 20260106093347 20260106171528 20260106171838 20260106173153 20260106173934 20260106181059 20260106181118 20260106181140 20260106181211 20260106182705 20260106182736 20260110212621 20260110221011 20260113115820 20260113121008 20260118122337 20260118122635 20260122234157 20260124142020 20260124142832 20260124154558 20260124155417 20260125002813 20260125035757 20260125050518 20260125202249 20260125235735 20260126000102 20260126001430 20260126204805 20260127152105 20260127162438 20260127201358 20260128005013 20260128010405 20260128015601 20260128022040 20260128105557 20260128124041 20260128125133 20260128131943 20260128193035 20260128193048 20260129000642 20260129004033 20260129013423 20260129022504 20260129023035 20260130091423 20260130142306 20260130143113 20260201014128 20260201015812 20260201021827 20260202185150 20260206182337 20260211091520 20260211104825 20260211124819 20260211145012 20260211150756 20260211174948 20260212124600 20260212124604 20260212133000 20260212172423 20260212175509 20260212181600 20260212181617 20260212182843 20260212200239 20260212203241 20260212210722 20260212210810 20260212211404 20260212232133 20260212233605 20260213015639 20260213122027 20260213122144 20260213171312 20260213174255 20260213175150 20260213175617 20260213182042 20260213204403 20260214010118 20260214021833 20260214033121 20260216155633 20260217113541 20260217114425 20260219030517 20260219031753 20260219032640 20260219032751 20260219032812 20260219044034 20260219045832 --db-url "$TUNNELED_DB_URL" || true
 
-          # 5. Push migrations through the secure tunnel with TLS disabled (over localhost)
+          # 2. Open SSH tunnel: local 5432 → server's Postgres 5432
+          ssh -o StrictHostKeyChecking=no -f -N -L 5432:127.0.0.1:5432 $SERVER_USER@$SERVER_IP
+
+          # 3. Rewrite DB URL to point through the tunnel
+          TUNNELED_DB_URL="${PROD_DB_URL/$SERVER_IP/127.0.0.1}"
+
+          # 4. Push only new migrations (skips already-applied ones automatically)
           echo "Pushing migrations through secure SSH tunnel..."
           PGSSLMODE=disable supabase db push --db-url "$TUNNELED_DB_URL"
+
+          # NOTE: If migration history ever drifts (e.g. IDs in the DB that no longer
+          # exist locally), run repair manually before re-triggering this workflow:
+          #   PGSSLMODE=disable supabase migration repair --status reverted <id> ... --db-url "$TUNNELED_DB_URL"

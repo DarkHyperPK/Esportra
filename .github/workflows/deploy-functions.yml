@@ -5,7 +5,11 @@ on:
     branches: [main]
     paths:
       - 'supabase/functions/**'
-  workflow_dispatch: # Manual trigger from GitHub UI
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-functions-prod
+  cancel-in-progress: false
 
 env:
   FUNCTIONS_PATH: /data/coolify/services/moooksg0ssk04cg8coksgowc/volumes/functions
@@ -14,13 +18,13 @@ jobs:
   deploy:
     name: Sync Functions to Server
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: 📦 Checkout Code
         uses: actions/checkout@v4
 
-      - name: 📂 List changed functions
+      - name: 📂 List functions
         run: |
           echo "Functions to deploy:"
           ls -la supabase/functions/
@@ -35,18 +39,14 @@ jobs:
           SSH_OPTS: "-o StrictHostKeyChecking=no"
           REMOTE: "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}"
         run: |
-          # 1. Trust the host
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
-          # 2. Create staging directory on server
-          echo "📂 Preparing staging area..."
+          echo "📂 Preparing temp area..."
           ssh $SSH_OPTS $REMOTE "mkdir -p /tmp/edge-functions-update"
 
-          # 3. Copy function files to the server
           echo "📤 Uploading functions..."
           scp -r $SSH_OPTS supabase/functions $REMOTE:/tmp/edge-functions-update
 
-          # 4. Move files to the live volume with correct permissions
           echo "🚚 Moving to production volume..."
           ssh $SSH_OPTS $REMOTE "sudo mkdir -p ${{ env.FUNCTIONS_PATH }} && \
             sudo cp -r /tmp/edge-functions-update/functions/* ${{ env.FUNCTIONS_PATH }}/ && \
