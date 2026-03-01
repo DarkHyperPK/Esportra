@@ -9,12 +9,16 @@ const corsHeaders = {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Allowed endpoint patterns — whitelist to prevent abuse
-const ALLOWED_PATTERNS = [
-    /^\/players\/[^/]+\/history(\?.*)?$/,      // match history by player_id
-    /^\/players(\?nickname=.+)?$/,             // player lookup by nickname
-    /^\/matches\/[^/]+$/,                      // match details
-    /^\/matches\/[^/]+\/stats$/,               // match stats
+// Allowlist — matched against the PATH only (query string stripped before check)
+const ALLOWED_PATH_PATTERNS = [
+    /^\/players$/,                                  // player lookup by nickname (?nickname=)
+    /^\/players\/[^/]+$/,                           // player profile by ID
+    /^\/players\/[^/]+\/history$/,                  // match history (?game=cs2&limit=N)
+    /^\/players\/[^/]+\/games\/[^/]+\/stats$/,      // player lifetime stats for a game
+    /^\/matches\/[^/]+$/,                           // match details
+    /^\/matches\/[^/]+\/stats$/,                    // match round stats
+    /^\/games$/,                                    // list all games
+    /^\/games\/[^/]+$/,                             // specific game info
 ];
 
 Deno.serve(async (req: Request) => {
@@ -32,8 +36,7 @@ Deno.serve(async (req: Request) => {
             });
         }
 
-        const { createClient: mkClient } = await import("jsr:@supabase/supabase-js@2");
-        const supabase = mkClient(
+        const supabase = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
             Deno.env.get("SUPABASE_ANON_KEY") ?? ""
         );
@@ -62,9 +65,9 @@ Deno.serve(async (req: Request) => {
             });
         }
 
-        // Strip query string for pattern check
+        // Check path only (strip query string) against the allowlist
         const pathOnly = endpoint.split("?")[0];
-        const isAllowed = ALLOWED_PATTERNS.some(p => p.test(endpoint));
+        const isAllowed = ALLOWED_PATH_PATTERNS.some(p => p.test(pathOnly));
         if (!isAllowed) {
             console.error(`[faceit-proxy] Blocked endpoint: ${endpoint}`);
             return new Response(JSON.stringify({ error: "Endpoint not allowed" }), {
