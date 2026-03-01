@@ -433,27 +433,26 @@ const TeamsPage = () => {
 
           const rawMembers = (data as any[]) || [];
 
-          // Fetch Riot accounts for these members
+          // Fetch Riot + Faceit accounts and cached stats in parallel
           const userIds = rawMembers.map(m => m.user_id);
-          const { data: riotAccounts } = await supabase
-            .from('riot_accounts')
-            .select('user_id, puuid, game_name, tag_line')
-            .in('user_id', userIds);
-
-          // Fetch cached stats for these members
-          const { data: cachedStats } = await supabase
-            .from('valorant_player_stats')
-            .select('*')
-            .in('user_id', userIds);
+          const [{ data: riotAccounts }, { data: faceitAccounts }, { data: cachedStats }] = await Promise.all([
+            supabase.from('riot_accounts').select('user_id, puuid, game_name, tag_line').in('user_id', userIds),
+            supabase.from('faceit_accounts').select('user_id, faceit_id, nickname').in('user_id', userIds),
+            supabase.from('valorant_player_stats').select('*').in('user_id', userIds),
+          ]);
 
           const riotMap = new Map();
           (riotAccounts || []).forEach(ra => riotMap.set(ra.user_id, ra));
+
+          const faceitMap = new Map();
+          (faceitAccounts || []).forEach(fa => faceitMap.set(fa.user_id, fa));
 
           const statsMap = new Map();
           (cachedStats || []).forEach(cs => statsMap.set(cs.user_id, cs));
 
           const membersWithRiot = rawMembers.map(r => {
             const riotInfo = riotMap.get(r.user_id);
+            const faceitInfo = faceitMap.get(r.user_id);
             const cache = statsMap.get(r.user_id);
             return {
               id: r.user_id,
@@ -466,6 +465,8 @@ const TeamsPage = () => {
               riot_puuid: riotInfo?.puuid,
               riot_game_name: riotInfo?.game_name,
               riot_tag_line: riotInfo?.tag_line,
+              faceit_id: faceitInfo?.faceit_id,
+              faceit_nickname: faceitInfo?.nickname,
               stats: cache ? {
                 kd: cache.kd,
                 winRate: cache.win_rate,

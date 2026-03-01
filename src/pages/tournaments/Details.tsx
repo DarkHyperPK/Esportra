@@ -238,7 +238,7 @@ const TournamentDetails = () => {
       if (allUserIds.size > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, username, full_name, avatar_url, riot_tag, steam_tag')
+          .select('id, username, full_name, avatar_url, riot_tag, steam_tag, faceit_nickname')
           .in('id', Array.from(allUserIds));
 
         const profileMap: Record<string, any> = {};
@@ -249,10 +249,14 @@ const TournamentDetails = () => {
             const profile = profileMap[p.user_id];
             p.user = profile;
 
-            // If Valorant, prioritize Riot ID (riot_tag)
-            const isValorant = tournament?.game?.toLowerCase() === 'valorant';
+            // Prioritize game-specific IDs for display
+            const gameKey = tournament?.game?.toLowerCase();
+            const isValorant = gameKey === 'valorant';
+            const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
             if (isValorant && profile.riot_tag) {
               p.display_name = profile.riot_tag;
+            } else if (isCS2 && profile.faceit_nickname) {
+              p.display_name = profile.faceit_nickname;
             } else {
               p.display_name = profile.username || profile.full_name || 'Anonymous';
             }
@@ -1063,8 +1067,10 @@ const TournamentDetails = () => {
           .select('*')
           .in('id', memberIds);
         const names = (profiles || []).map(p => {
-          const isValorant = tournament?.game?.toLowerCase() === 'valorant';
-          return (isValorant && (p as any).riot_tag) || (p as any).username || (p as any).full_name || (p as any).id;
+          const gameKey = tournament?.game?.toLowerCase();
+          const isValorant = gameKey === 'valorant';
+          const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
+          return (isValorant && (p as any).riot_tag) || (isCS2 && (p as any).faceit_nickname) || (p as any).username || (p as any).full_name || (p as any).id;
         }).filter(Boolean) as string[];
         setResolvedMembers(names);
       } catch {
@@ -1097,8 +1103,10 @@ const TournamentDetails = () => {
             // Step 1: roster_id
             if (rosterId) {
               const { data: roster } = await sb.rpc('get_roster_members', { r_id: rosterId });
-              const isValorant = tournament?.game?.toLowerCase() === 'valorant';
-              names = (roster || []).map((row: any) => (isValorant && row.riot_tag) || row.username || row.full_name || `player_${String(row.user_id).substring(0, 8)}`);
+              const gameKey = tournament?.game?.toLowerCase();
+              const isValorant = gameKey === 'valorant';
+              const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
+              names = (roster || []).map((row: any) => (isValorant && row.riot_tag) || (isCS2 && row.faceit_nickname) || row.username || row.full_name || `player_${String(row.user_id).substring(0, 8)}`);
             }
             // Step 2: derive by team_id + game if still empty
             if ((!names || names.length === 0) && game) {

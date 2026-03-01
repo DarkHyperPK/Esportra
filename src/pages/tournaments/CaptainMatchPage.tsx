@@ -15,6 +15,7 @@ import { MapVeto } from '@/components/tournament/MapVeto';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
+import { FaceitMatchReport } from '@/components/tournament/FaceitMatchReport';
 import { BracketMatch, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
 import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
@@ -991,6 +992,28 @@ const CaptainMatchPage = () => {
 
                                         {/* Actions */}
                                         <div className="flex flex-col gap-3">
+                                            {/* Auto-Report Button - CS2 (uses Faceit Match ID) */}
+                                            {(() => {
+                                                const gameKey = tournament?.game?.toLowerCase();
+                                                const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
+                                                if (!isCS2) return null;
+                                                if (activeMatch.status === 'completed') return null;
+
+                                                return (
+                                                    <FaceitMatchReport
+                                                        matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                                        team1Name={activeMatch.team1?.name || 'Team 1'}
+                                                        team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                        isCaptain={isCaptain}
+                                                        onSuccess={() => {
+                                                            toast({ title: "Match Reported", description: "CS2 result verified and saved." });
+                                                            refetchBracket();
+                                                            fetchMatchGames();
+                                                        }}
+                                                    />
+                                                );
+                                            })()}
+
                                             {/* Auto-Report Button - Only for Valorant (uses Riot API) */}
                                             {(() => {
                                                 const isValorant = tournament?.game?.toLowerCase() === 'valorant';

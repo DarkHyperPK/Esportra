@@ -7,6 +7,7 @@ import { Edit, Disc, Shield, ShieldCheck, Link2Off, Loader2, ExternalLink } from
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from '@/lib/supabase';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
+import { useFaceitAccount } from '@/hooks/useFaceitAccount';
 import { useToast } from '@/hooks/use-toast';
 import EditProfileDialog from './EditProfileDialog';
 import { getCountryFlag, getCountryFlagUrl } from '@/utils/countries';
@@ -28,6 +29,7 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
   const [editMode, setEditMode] = useState(false);
   const [discordIdentity, setDiscordIdentity] = useState<any>(null);
   const { riotAccount, isLoading: riotLoading, linkRiotAccount, unlinkRiotAccount, refetch: refetchRiot } = useRiotAccount();
+  const { faceitAccount, isLoading: faceitLoading, linkFaceitAccount, unlinkFaceitAccount, refetch: refetchFaceit } = useFaceitAccount();
   const { toast } = useToast();
 
   // Use passed profile data or fall back to auth profile
@@ -93,6 +95,69 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
       return;
     }
 
+    // ── FACEIT CALLBACK FLOW ──
+    const faceitCallback = params.get('faceit_callback');
+    if (faceitCallback === 'true') {
+      const code = params.get('code');
+      const state = params.get('state');
+      const storedState = sessionStorage.getItem('faceitOAuthState');
+
+      if (!state || state !== storedState) {
+        toast({
+          title: 'Security Error',
+          description: 'Invalid security token (CSRF mismatch). Request blocked.',
+          variant: 'destructive',
+        });
+        sessionStorage.removeItem('faceitOAuthState');
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
+
+      sessionStorage.removeItem('faceitOAuthState');
+
+      const linkFaceit = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/faceit-oauth`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ code }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || data.error || 'Failed to link account');
+
+          toast({
+            title: 'Faceit Account Linked!',
+            description: data.nickname ? `Successfully linked "${data.nickname}"` : 'Your Faceit account has been linked.',
+          });
+          refetchFaceit();
+        } catch (err: any) {
+          toast({ title: 'Faceit Linking Failed', description: err.message, variant: 'destructive' });
+        } finally {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      };
+
+      linkFaceit();
+      return;
+    }
+
+    // ── FACEIT ERROR REDIRECT ──
+    const faceitLinked = params.get('faceit_linked');
+    if (faceitLinked === 'error') {
+      const reason = params.get('reason') || 'unknown';
+      toast({
+        title: 'Faceit Linking Failed',
+        description: `Could not link Faceit account: ${reason.replace(/_/g, ' ')}`,
+        variant: 'destructive',
+      });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     // ── OLD/FALLBACK FLOW (for error redirects directly from Edge) ──
     const riotLinked = params.get('riot_linked');
     if (riotLinked === 'success') {
@@ -141,6 +206,15 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
       toast({ title: 'Riot Account Unlinked', description: 'Your Riot account has been removed.' });
     } catch {
       toast({ title: 'Error', description: 'Failed to unlink Riot account.', variant: 'destructive' });
+    }
+  };
+
+  const handleUnlinkFaceit = async () => {
+    try {
+      await unlinkFaceitAccount();
+      toast({ title: 'Faceit Account Unlinked', description: 'Your Faceit account has been removed.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to unlink Faceit account.', variant: 'destructive' });
     }
   };
 
@@ -287,6 +361,73 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
                         </div>
                       </div>
                       <ShieldCheck className="w-5 h-5 text-red-500/50" />
+                    </div>
+                  </div>
+                ) : null
+              )}
+
+              {/* ── Faceit Account Section ── */}
+              {isOwnProfile ? (
+                faceitLoading ? (
+                  <div className="flex items-center justify-center p-8 rounded-xl border border-white/5 bg-white/5">
+                    <Loader2 className="w-6 h-6 animate-spin text-gaming-primary" />
+                  </div>
+                ) : faceitAccount ? (
+                  <div className="relative overflow-hidden group rounded-xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-[#111] hover:border-orange-500/40 transition-all duration-300">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-orange-500 rounded-l-xl" />
+                    <div className="p-4 relative z-10 flex flex-col h-full justify-between gap-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <img src="/faceit-logo.svg" alt="Faceit" className="w-5 h-5 drop-shadow-[0_0_8px_rgba(255,85,0,0.5)]" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          <span className="font-bold text-orange-500 tracking-wide text-sm uppercase drop-shadow-md">FACEIT</span>
+                        </div>
+                        <Badge variant="outline" className="border-orange-500/30 text-orange-400 bg-orange-500/10 px-2 py-0 text-[10px] font-bold">VERIFIED</Badge>
+                      </div>
+                      <div>
+                        <div className="font-black text-2xl text-white tracking-tight">{faceitAccount.nickname}</div>
+                        <p className="text-[11px] text-gray-400 mt-1 font-medium">Ready for CS2 tournament registration.</p>
+                      </div>
+                      <div className="flex justify-end border-t border-orange-500/10 pt-3 mt-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-400 hover:text-orange-400 hover:bg-orange-500/10 text-xs h-8 px-3 transition-colors"
+                          onClick={handleUnlinkFaceit}
+                        >
+                          <Link2Off className="w-3.5 h-3.5 mr-1.5" /> Unlink Account
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative overflow-hidden group rounded-xl border border-white/5 bg-[#111]/50 hover:bg-[#151515] transition-all duration-300">
+                    <div className="p-5 relative z-10 flex flex-col items-center text-center">
+                      <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 text-orange-500">
+                        <Shield className="w-6 h-6 opacity-80 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <h4 className="font-bold text-white mb-1">Connect Faceit</h4>
+                      <p className="text-gray-400 text-xs mb-4 max-w-[200px]">Required for CS2 tournament registration & match verification.</p>
+                      <Button
+                        onClick={linkFaceitAccount}
+                        className="w-full bg-orange-600 hover:bg-orange-500 text-white shadow-[0_0_15px_rgba(255,85,0,0.3)] hover:shadow-[0_0_20px_rgba(255,85,0,0.5)] transition-all"
+                      >
+                        <Shield className="w-4 h-4 mr-2" /> Link Faceit Account
+                      </Button>
+                    </div>
+                  </div>
+                )
+              ) : (
+                faceitAccount ? (
+                  <div className="relative overflow-hidden rounded-xl border border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-transparent">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-orange-500/50 rounded-l-xl" />
+                    <div className="p-4 flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5 text-orange-500 font-bold text-[10px] uppercase tracking-wider mb-1">
+                          FACEIT
+                        </div>
+                        <div className="font-bold text-white text-lg">{faceitAccount.nickname}</div>
+                      </div>
+                      <ShieldCheck className="w-5 h-5 text-orange-500/50" />
                     </div>
                   </div>
                 ) : null

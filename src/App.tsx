@@ -129,6 +129,7 @@ const VerificationStatus = React.lazy(() => import('./pages/VerificationStatus')
 const OrganizerDisputesPage = React.lazy(() => import('./pages/organizer/Disputes'));
 const MapVetoToken = React.lazy(() => import('./pages/tournaments/MapVetoToken'));
 const RiotTest = React.lazy(() => import("./pages/debug/RiotTest"));
+const FaceitTest = React.lazy(() => import("./pages/debug/FaceitTest"));
 
 // Test Supabase connection on app start
 // Test Supabase connection on app start
@@ -520,6 +521,7 @@ const AppContent = React.memo(() => {
 
                 {/* Debug Routes */}
                 <Route path="/debug/riot" element={<RiotTest />} />
+                <Route path="/debug/faceit" element={<FaceitTest />} />
 
                 {/* Catch-all route */}
                 <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
