@@ -237,14 +237,13 @@ const FaceitTest = () => {
                                             <span className="text-zinc-600 mx-2 font-normal text-xs">vs</span>
                                             <span className={winner === 'faction2' ? 'text-emerald-400' : 'text-zinc-300'}>{f2?.nickname}</span>
                                         </div>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                            {mapName ? (
-                                                <span className="flex items-center gap-1 text-xs text-orange-400/80 font-medium">
-                                                    <MapIcon className="w-3 h-3" />{mapName}
+                                        <div className="flex items-center gap-2 mt-1">
+                                            {mapName && (
+                                                <span className="inline-flex items-center gap-1 bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                    <MapIcon className="w-2.5 h-2.5" />{mapName}
                                                 </span>
-                                            ) : (
-                                                <span className="text-xs text-zinc-600 font-mono truncate">{m.match_id}</span>
                                             )}
+                                            <span className="text-[10px] text-zinc-700 font-mono truncate">{m.match_id}</span>
                                         </div>
                                     </div>
 
@@ -275,8 +274,12 @@ const FaceitTest = () => {
                                             </div>
                                         )}
 
-                                        {stats.rounds?.[0]?.teams?.map((team: any, ti: number) => {
-                                            const isWinnerTeam = team.team_stats?.['Win'] === '1';
+                                        {(() => {
+                                            const teams: any[] = stats.rounds?.[0]?.teams || [];
+                                            const scores = teams.map((t: any) => parseInt(t.team_stats?.['Final Score'] || '0', 10));
+                                            const maxScore = Math.max(...scores);
+                                            return teams.map((team: any, ti: number) => {
+                                            const isWinnerTeam = parseInt(team.team_stats?.['Final Score'] || '0', 10) === maxScore && maxScore > 0;
                                             return (
                                                 <div key={ti}>
                                                     {/* Team header */}
@@ -327,7 +330,7 @@ const FaceitTest = () => {
                                                                         >
                                                                             <td className="py-2 pl-3 rounded-l-lg">
                                                                                 <span className={`font-bold ${isTarget ? 'text-orange-300' : 'text-zinc-200'}`}>
-                                                                                    {ps?.['Nickname']}
+                                                                                    {p.nickname}
                                                                                 </span>
                                                                             </td>
                                                                             <td className="text-center font-bold text-white tabular-nums">{ps?.['Kills']}</td>
@@ -345,7 +348,8 @@ const FaceitTest = () => {
                                                     </div>
                                                 </div>
                                             );
-                                        })}
+                                            });
+                                        })()}
                                     </div>
                                 )}
 
