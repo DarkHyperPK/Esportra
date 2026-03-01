@@ -130,6 +130,7 @@ const OrganizerDisputesPage = React.lazy(() => import('./pages/organizer/Dispute
 const MapVetoToken = React.lazy(() => import('./pages/tournaments/MapVetoToken'));
 const RiotTest = React.lazy(() => import("./pages/debug/RiotTest"));
 const FaceitTest = React.lazy(() => import("./pages/debug/FaceitTest"));
+const FaceitOAuthCallback = React.lazy(() => import("./pages/auth/FaceitOAuthCallback"));
 
 // Test Supabase connection on app start
 // Test Supabase connection on app start
@@ -518,6 +519,9 @@ const AppContent = React.memo(() => {
 
                 {/* Verification Status Route */}
                 <Route path="/verification" element={<VerificationStatus />} />
+
+                {/* Faceit OAuth callback — catches local dev redirect from Faceit */}
+                <Route path="/functions/v1/faceit-oauth" element={<FaceitOAuthCallback />} />
 
                 {/* Debug Routes */}
                 <Route path="/debug/riot" element={<RiotTest />} />

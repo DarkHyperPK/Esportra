@@ -49,17 +49,18 @@ export function useFaceitAccount() {
         if (!user?.id) return;
 
         const clientId = import.meta.env.VITE_FACEIT_CLIENT_ID;
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        // VITE_FACEIT_REDIRECT_URI must match the URI registered in the Faceit Developer Portal
+        const redirectUri = import.meta.env.VITE_FACEIT_REDIRECT_URI
+            || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/faceit-oauth`;
 
-        if (!clientId || !supabaseUrl) {
-            console.error('[useFaceitAccount] Missing VITE_FACEIT_CLIENT_ID or VITE_SUPABASE_URL.');
+        if (!clientId) {
+            console.error('[useFaceitAccount] Missing VITE_FACEIT_CLIENT_ID.');
             return;
         }
 
         const state = crypto.randomUUID();
         sessionStorage.setItem('faceitOAuthState', state);
 
-        const redirectUri = `${supabaseUrl}/functions/v1/faceit-oauth`;
         const faceitAuthUrl =
             `https://accounts.faceit.com/?client_id=${clientId}` +
             `&redirect_uri=${encodeURIComponent(redirectUri)}` +
