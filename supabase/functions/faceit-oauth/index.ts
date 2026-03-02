@@ -107,26 +107,47 @@ Deno.serve(async (req: Request) => {
             const tokenData = await tokenResponse.json();
             const { access_token, refresh_token, expires_in } = tokenData;
 
-            // Fetch Faceit player identity via userinfo endpoint
-            console.log("[faceit-oauth] Fetching Faceit user info...");
-            const userinfoResponse = await fetch(FACEIT_USERINFO_URL, {
-                headers: { "Authorization": `Bearer ${access_token}` },
-            });
+            // Extract user info: try JWT decode first, fall back to userinfo endpoint
+            let faceitId: string = "";
+            let nickname: string = "";
+            let avatarUrl: string | null = null;
 
-            if (!userinfoResponse.ok) {
-                const errorText = await userinfoResponse.text();
-                console.error("[faceit-oauth] Userinfo fetch failed:", errorText);
-                return new Response(JSON.stringify({ error: "Userinfo fetch failed" }), { status: 400 });
+            try {
+                // Faceit PKCE returns a signed JWT — decode the payload directly
+                const parts = access_token.split(".");
+                if (parts.length === 3) {
+                    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+                    console.log("[faceit-oauth] JWT payload:", JSON.stringify(payload));
+                    faceitId = payload.sub || payload.guid || payload.user_id || "";
+                    nickname = payload.nickname || payload.name || "";
+                    avatarUrl = payload.picture || payload.avatar || null;
+                }
+            } catch (jwtErr) {
+                console.warn("[faceit-oauth] JWT decode failed, trying userinfo endpoint:", jwtErr);
             }
 
-            const userinfo = await userinfoResponse.json();
-            // Faceit userinfo response shape: { sub, nickname, picture, email, ... }
-            const faceitId: string = userinfo.sub || userinfo.guid;
-            const nickname: string = userinfo.nickname;
-            const avatarUrl: string | null = userinfo.picture || null;
+            // If JWT decode didn't give us what we need, call userinfo endpoint
+            if (!faceitId || !nickname) {
+                console.log("[faceit-oauth] Fetching Faceit user info from endpoint...");
+                const userinfoResponse = await fetch(FACEIT_USERINFO_URL, {
+                    headers: { "Authorization": `Bearer ${access_token}` },
+                });
+
+                if (!userinfoResponse.ok) {
+                    const errorText = await userinfoResponse.text();
+                    console.error("[faceit-oauth] Userinfo fetch failed:", errorText);
+                    return new Response(JSON.stringify({ error: "Userinfo fetch failed", detail: errorText }), { status: 400 });
+                }
+
+                const userinfo = await userinfoResponse.json();
+                console.log("[faceit-oauth] Userinfo response:", JSON.stringify(userinfo));
+                faceitId = userinfo.sub || userinfo.guid || faceitId;
+                nickname = userinfo.nickname || userinfo.name || nickname;
+                avatarUrl = userinfo.picture || userinfo.avatar || avatarUrl;
+            }
 
             if (!faceitId || !nickname) {
-                console.error("[faceit-oauth] Missing faceit_id or nickname in userinfo:", userinfo);
+                console.error("[faceit-oauth] Missing faceit_id or nickname after all attempts");
                 return new Response(JSON.stringify({ error: "Invalid Faceit user data" }), { status: 400 });
             }
 
