@@ -122,6 +122,9 @@ const Partners = React.lazy(() => import("./pages/Partners"));
 // Notifications
 const NotificationsPage = React.lazy(() => import("./pages/notifications/Notifications"));
 
+// Account Settings
+const AccountSettings = React.lazy(() => import("./pages/account/Settings"));
+
 const TournamentHistoryPage = React.lazy(() => import('./pages/TournamentHistory'));
 const Leaderboards = React.lazy(() => import('./pages/Leaderboards'));
 const PlayerHistory = React.lazy(() => import('./pages/player/History'));
@@ -508,6 +511,13 @@ const AppContent = React.memo(() => {
 
                 {/* Notification List Route */}
                 <Route path="/notifications" element={<NotificationsPage />} />
+
+                {/* Account Settings Route */}
+                <Route path="/account/settings" element={
+                  <ProtectedRoute>
+                    <AccountSettings />
+                  </ProtectedRoute>
+                } />
 
                 {/* Admin Protected Route for TournamentDetails */}
                 <Route path="/admin/tournaments/:id" element={<AdminProtectedRoute><TournamentDetails /></AdminProtectedRoute>} />

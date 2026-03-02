@@ -1,9 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTrackImpression } from '@/hooks/useVenueImpressions';
+import { useVenueLiveStatus } from '@/hooks/useVenueLiveStatus';
 import {
     MapPin,
     Clock,
@@ -141,6 +143,10 @@ const VenueDetails = () => {
     const [newComment, setNewComment] = useState<string>('');
     const [submittingReview, setSubmittingReview] = useState<boolean>(false);
 
+    // Impression tracking + live status
+    const { mutate: trackImpression } = useTrackImpression();
+    const liveStatus = useVenueLiveStatus(venue?.id);
+    const impressionTracked = useRef(false);
 
     useEffect(() => {
         fetchVenue();
@@ -167,6 +173,12 @@ const VenueDetails = () => {
             setVenue(data);
 
             fetchReviews(data.id);
+
+            // Fire a view impression once (guard against double-fire in strict mode)
+            if (!impressionTracked.current) {
+                impressionTracked.current = true;
+                trackImpression({ venueId: data.id, eventType: 'view', userId: user?.id });
+            }
 
         } catch (error: any) {
             console.error('Error fetching venue:', error);
@@ -470,6 +482,28 @@ const VenueDetails = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Live Status Card — only shown when desktop agent is connected */}
+                    {liveStatus && (
+                        <div className={`rounded-2xl border p-4 flex items-center gap-3 ${
+                            liveStatus.is_open
+                                ? 'bg-emerald-500/5 border-emerald-500/20'
+                                : 'bg-zinc-800/50 border-zinc-700/50'
+                        }`}>
+                            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${liveStatus.is_open ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
+                            <div>
+                                <div className={`text-sm font-medium ${liveStatus.is_open ? 'text-emerald-400' : 'text-gray-500'}`}>
+                                    {liveStatus.is_open ? 'Open Now' : 'Closed'}
+                                </div>
+                                {liveStatus.is_open && liveStatus.seats_total > 0 && (
+                                    <div className="text-xs text-gray-400">
+                                        {liveStatus.seats_occupied} / {liveStatus.seats_total} seats occupied
+                                    </div>
+                                )}
+                            </div>
+                            <div className="ml-auto text-xs text-gray-600">Live</div>
+                        </div>
+                    )}
 
                     {/* Reviews Section */}
                     <div className="bg-[#0a0a0c] border border-white/5 rounded-3xl p-6 mt-8">

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { User, Users, MessageSquare, ArrowRightLeft, Building2, Award } from "lucide-react";
+import { User, Users, MessageSquare, ArrowRightLeft, Building2, Award, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -276,10 +276,9 @@ const UserMenu = ({
 
           <div className="px-1 py-1 space-y-0.5">
             <FramerDropdownItem to="/user/profile">My Profile</FramerDropdownItem>
-            {/* Removed redundant Profile link if it pointed to same page, or keep strictly unique */}
-            {/* Previous code had /auth/profile. I will assume /user/profile is the NEW main profile. */}
-            {/* If /auth/profile is legacy/dead, I should remove it. The user said "/auth/profile is removed". */}
-            {/* So I will remove the second link to /auth/profile completely. */}
+            <FramerDropdownItem to="/account/settings" icon={<Settings className="h-4 w-4" />}>
+              Account Settings
+            </FramerDropdownItem>
             {!admin.isAdmin && (
               <FramerDropdownItem to="/verification" icon={<Award className="h-4 w-4" />}>
                 Apply for License

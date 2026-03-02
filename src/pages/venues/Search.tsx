@@ -4,29 +4,70 @@ import Footer from '@/components/Footer';
 import LocationFilter from '@/components/LocationFilter';
 import { VenueCard } from '@/components/venues/VenueCard';
 import { Button } from '@/components/ui/button';
-import { Filter } from 'lucide-react';
-import { useVenueSearch, VenueSearchParams } from '@/hooks/useVenueSearch';
+import { Filter, MapPin, Loader2 } from 'lucide-react';
+import { useVenueSearch, NearMeParams } from '@/hooks/useVenueSearch';
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from 'framer-motion';
+import { useToast } from '@/hooks/use-toast';
 
 const VenueSearch = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [nearMeActive, setNearMeActive] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const { toast } = useToast();
   const { venues, loading, searchVenues } = useVenueSearch();
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    setNearMeActive(false);
     searchVenues({ query });
   };
 
-  const handleLocationChange = (location: { latitude: number | null, longitude: number | null }) => {
-    searchVenues({
-      latitude: location.latitude,
-      longitude: location.longitude
-    });
+  const handleLocationChange = (location: { latitude: number | null; longitude: number | null }) => {
+    searchVenues({ latitude: location.latitude, longitude: location.longitude });
   };
 
   const handleDistanceChange = (distance: string) => {
     searchVenues({ distance });
+  };
+
+  const handleNearMe = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: 'Not supported',
+        description: 'Geolocation is not supported by your browser.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords: NearMeParams = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          radiusKm: 50,
+        };
+        setNearMeActive(true);
+        setLocating(false);
+        // Pass nearMe directly in params — no timing issue
+        searchVenues({ nearMe: coords });
+      },
+      () => {
+        setLocating(false);
+        toast({
+          title: 'Location denied',
+          description: 'Allow location access to find venues near you.',
+          variant: 'destructive',
+        });
+      },
+      { timeout: 10000 },
+    );
+  };
+
+  const handleClearNearMe = () => {
+    setNearMeActive(false);
+    searchVenues({ query: searchQuery });
   };
 
   return (
@@ -43,14 +84,39 @@ const VenueSearch = () => {
         </div>
 
         <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Button variant="outline" className="border-gaming-purple">
               <Filter className="mr-2" />
               Filters
             </Button>
+
+            {nearMeActive ? (
+              <Button
+                variant="outline"
+                className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+                onClick={handleClearNearMe}
+              >
+                <MapPin className="w-4 h-4 mr-2 fill-emerald-400" />
+                Near Me &nbsp;✕
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className="border-white/20 hover:border-white/40"
+                onClick={handleNearMe}
+                disabled={locating}
+              >
+                {locating
+                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  : <MapPin className="w-4 h-4 mr-2" />
+                }
+                Near Me
+              </Button>
+            )}
           </div>
           <div className="text-gray-400">
-            Showing {venues.length} venues
+            Showing {venues.length} venue{venues.length !== 1 ? 's' : ''}
+            {nearMeActive ? ' nearby' : ''}
           </div>
         </div>
 
@@ -59,19 +125,12 @@ const VenueSearch = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             initial="hidden"
             animate="show"
-            variants={{
-              show: {
-                transition: { staggerChildren: 0.1 }
-              }
-            }}
+            variants={{ show: { transition: { staggerChildren: 0.1 } } }}
           >
             {[1, 2, 3, 4, 5, 6].map((index) => (
               <motion.div
                 key={index}
-                variants={{
-                  hidden: { opacity: 0, y: 20 },
-                  show: { opacity: 1, y: 0 }
-                }}
+                variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
                 transition={{ duration: 0.3 }}
                 className="bg-gaming-dark border border-gaming-gray/30 rounded-lg overflow-hidden"
               >
@@ -96,19 +155,12 @@ const VenueSearch = () => {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             initial="hidden"
             animate="show"
-            variants={{
-              show: {
-                transition: { staggerChildren: 0.1 }
-              }
-            }}
+            variants={{ show: { transition: { staggerChildren: 0.1 } } }}
           >
             {venues.map((venue, index) => (
               <motion.div
                 key={venue.id}
-                variants={{
-                  hidden: { opacity: 0, y: 20 },
-                  show: { opacity: 1, y: 0 }
-                }}
+                variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
               >
                 <VenueCard venue={venue} />
@@ -118,7 +170,11 @@ const VenueSearch = () => {
         ) : (
           <div className="text-center py-12 bg-gaming-dark border border-gaming-gray/30 rounded-lg">
             <p className="text-gray-400 mb-2">No venues found</p>
-            <p className="text-sm text-gray-500">Try adjusting your search parameters</p>
+            <p className="text-sm text-gray-500">
+              {nearMeActive
+                ? 'No venues within 50 km. Try clearing the Near Me filter.'
+                : 'Try adjusting your search parameters'}
+            </p>
           </div>
         )}
       </main>
