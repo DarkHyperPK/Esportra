@@ -42,14 +42,13 @@ export function useFaceitAccount() {
 
     /**
      * Redirect user to Faceit OAuth to link their account.
-     * A CSRF state token is stored in sessionStorage and verified
-     * when the edge function redirects back to /player/profile.
+     * Uses PKCE (S256) — code_verifier stored in sessionStorage and sent
+     * to the edge function for the server-side token exchange.
      */
-    const linkFaceitAccount = () => {
+    const linkFaceitAccount = async () => {
         if (!user?.id) return;
 
         const clientId = import.meta.env.VITE_FACEIT_CLIENT_ID;
-        // VITE_FACEIT_REDIRECT_URI must match the URI registered in the Faceit Developer Portal
         const redirectUri = import.meta.env.VITE_FACEIT_REDIRECT_URI
             || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/faceit-oauth`;
 
@@ -58,14 +57,28 @@ export function useFaceitAccount() {
             return;
         }
 
+        // Generate PKCE code verifier (random 32-byte base64url string)
+        const verifierBytes = new Uint8Array(32);
+        crypto.getRandomValues(verifierBytes);
+        const codeVerifier = btoa(String.fromCharCode(...verifierBytes))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+        // Derive code challenge: base64url(SHA-256(verifier))
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier));
+        const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
         const state = crypto.randomUUID();
         sessionStorage.setItem('faceitOAuthState', state);
+        sessionStorage.setItem('faceitCodeVerifier', codeVerifier);
 
         const faceitAuthUrl =
             `https://accounts.faceit.com/?client_id=${clientId}` +
             `&redirect_uri=${encodeURIComponent(redirectUri)}` +
             `&response_type=code` +
-            `&state=${state}`;
+            `&state=${state}` +
+            `&code_challenge=${codeChallenge}` +
+            `&code_challenge_method=S256`;
 
         window.location.href = faceitAuthUrl;
     };

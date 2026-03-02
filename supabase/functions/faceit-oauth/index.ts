@@ -75,24 +75,27 @@ Deno.serve(async (req: Request) => {
 
             const userId = user.id;
             const body = await req.json();
-            const { code } = body;
+            const { code, code_verifier } = body;
             if (!code) {
                 return new Response(JSON.stringify({ error: "Missing authorization code" }), { status: 400 });
             }
 
-            // Exchange authorization code for access + refresh tokens
+            // Exchange authorization code for access + refresh tokens (PKCE flow)
             console.log("[faceit-oauth] Exchanging code for token...");
+            const tokenParams: Record<string, string> = {
+                grant_type: "authorization_code",
+                code,
+                redirect_uri: REDIRECT_URI,
+            };
+            if (code_verifier) tokenParams.code_verifier = code_verifier;
+
             const tokenResponse = await fetch(FACEIT_TOKEN_URL, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Authorization": `Basic ${btoa(`${FACEIT_CLIENT_ID}:${FACEIT_CLIENT_SECRET}`)}`,
                 },
-                body: new URLSearchParams({
-                    grant_type: "authorization_code",
-                    code,
-                    redirect_uri: REDIRECT_URI,
-                }),
+                body: new URLSearchParams(tokenParams),
             });
 
             if (!tokenResponse.ok) {

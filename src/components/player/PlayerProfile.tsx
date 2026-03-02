@@ -114,6 +114,8 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
       }
 
       sessionStorage.removeItem('faceitOAuthState');
+      const codeVerifier = sessionStorage.getItem('faceitCodeVerifier');
+      sessionStorage.removeItem('faceitCodeVerifier');
 
       const linkFaceit = async () => {
         try {
@@ -124,7 +126,7 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session?.access_token}`,
             },
-            body: JSON.stringify({ code }),
+            body: JSON.stringify({ code, code_verifier: codeVerifier }),
           });
 
           const data = await res.json();
