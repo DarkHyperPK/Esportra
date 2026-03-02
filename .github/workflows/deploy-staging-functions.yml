@@ -51,8 +51,16 @@ jobs:
             sudo cp -r /tmp/edge-functions-staging-update/functions/* $STAGING_FUNCTIONS_PATH/ && \
             sudo chown -R 1000:1000 $STAGING_FUNCTIONS_PATH/ && \
             sudo rm -rf /tmp/edge-functions-staging-update && \
-            echo '🔄 Restarting edge runtime container...' && \
-            sudo docker restart \$(sudo docker ps --filter 'name=supabase_functions' --format '{{.Names}}' | head -1) && \
+            echo '🔍 Finding edge runtime container...' && \
+            CONTAINER=\$(sudo docker ps --format '{{.Names}}' | grep -iE 'function|edge.?runtime' | head -1) && \
+            if [ -n \"\$CONTAINER\" ]; then \
+              echo \"🔄 Restarting: \$CONTAINER\"; \
+              sudo docker restart \"\$CONTAINER\"; \
+            else \
+              echo '⚠️ No functions container found. Running containers:'; \
+              sudo docker ps --format '{{.Names}}'; \
+              echo 'Restart manually in Coolify if needed.'; \
+            fi && \
             echo '✅ Staging Deployment Finished!' && \
             sudo ls -la $STAGING_FUNCTIONS_PATH/"
 
