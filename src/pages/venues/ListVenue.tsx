@@ -87,7 +87,8 @@ const ListVenue = () => {
       ram: '',
       monitors: '',
       // Amenities
-      amenities: [] as string[]
+      amenities: [] as string[],
+      pricePerHour: ''
     };
   });
 
@@ -156,7 +157,7 @@ const ListVenue = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (submitStatus: 'draft' | 'pending_review') => {
     if (!user) {
       toast({ title: "Authentication Required", description: "Please sign in.", variant: "destructive" });
       navigate('/auth/signin');
@@ -181,39 +182,32 @@ const ListVenue = () => {
           hours: formData.hours,
           games: formData.games,
           amenities: formData.amenities,
-          images: formData.images, // Array of URLs
-          card_image: formData.card_image || (formData.images.length > 0 ? formData.images[0] : null), // Fallback to main image
-          pc_specs: {
-            cpu: formData.cpu,
-            gpu: formData.gpu,
-            ram: formData.ram,
-            monitors: formData.monitors
-          },
-          // Auto-generate slug
+          images: formData.images,
+          card_image: formData.card_image || (formData.images.length > 0 ? formData.images[0] : null),
+          pc_specs: { cpu: formData.cpu, gpu: formData.gpu, ram: formData.ram, monitors: formData.monitors },
           slug: formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 7),
           contact_email: formData.contactEmail,
           contact_phone: formData.contactPhone,
+          price_per_hour: parseFloat(formData.pricePerHour) || 0,
+          status: submitStatus,
+          submitted_at: submitStatus === 'pending_review' ? new Date().toISOString() : null,
         });
 
       if (error) throw error;
 
-      toast({
-        title: "Venue Listed! 🎉",
-        description: "Your venue has been submitted successfully.",
-      });
+      if (submitStatus === 'pending_review') {
+        toast({ title: "Submitted for Review!", description: "Your venue is under review. We'll notify you when it's approved." });
+      } else {
+        toast({ title: "Draft Saved", description: "Your venue has been saved as a draft. Submit for review when ready." });
+      }
 
-      // Clear local storage on success
       localStorage.removeItem('venue_list_data');
       localStorage.removeItem('venue_list_step');
 
-      navigate('/venues/search');
+      navigate('/venues/manage');
     } catch (error: any) {
       console.error('Error submitting venue:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -557,6 +551,19 @@ const ListVenue = () => {
                           className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
                         />
                       </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-300 mb-1.5 block">Price Per Hour (USD)</label>
+                        <Input
+                          name="pricePerHour"
+                          type="number"
+                          min="0"
+                          step="0.50"
+                          value={formData.pricePerHour}
+                          onChange={handleChange}
+                          placeholder="e.g. 5.00"
+                          className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
+                        />
+                      </div>
                     </div>
                   </>
                 )}
@@ -574,9 +581,23 @@ const ListVenue = () => {
                   Next Step <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
-                <Button onClick={handleSubmit} disabled={loading} className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-8 rounded-xl">
-                  {loading ? 'Publishing...' : 'Publish Venue'}
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSubmit('draft')}
+                    disabled={loading}
+                    className="border-white/10 hover:bg-white/5 text-gray-300 px-6 rounded-xl"
+                  >
+                    {loading ? 'Saving...' : 'Save as Draft'}
+                  </Button>
+                  <Button
+                    onClick={() => handleSubmit('pending_review')}
+                    disabled={loading}
+                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-8 rounded-xl"
+                  >
+                    {loading ? 'Submitting...' : 'Submit for Review'}
+                  </Button>
+                </div>
               )}
             </div>
           </div>

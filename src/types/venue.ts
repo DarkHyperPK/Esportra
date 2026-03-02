@@ -1,4 +1,7 @@
 
+export type VenueStatus = 'draft' | 'pending_review' | 'published' | 'rejected' | 'suspended' | 'archived';
+export type VenueSubscriptionTier = 'free' | 'basic' | 'pro' | 'enterprise';
+
 export interface Venue {
     id: string;
     name: string;
@@ -16,6 +19,7 @@ export interface Venue {
     images?: string[] | null;
     card_image?: string | null;
     price_range: string;
+    price_per_hour?: number;
     rating: number;
     slug?: string;
     owner_id?: string;
@@ -23,6 +27,16 @@ export interface Venue {
     location?: string;
     openNow?: boolean;
     priceRange?: string;
+    // Venue management fields
+    venue_id?: string;
+    status?: VenueStatus;
+    rejection_reason?: string;
+    reviewed_by?: string;
+    reviewed_at?: string;
+    submitted_at?: string;
+    published_at?: string;
+    subscription_tier?: VenueSubscriptionTier;
+    desktop_pairing_token?: string;
     // Metadata for DB
     created_at?: string;
     updated_at?: string;

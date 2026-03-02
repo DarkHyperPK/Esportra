@@ -24,7 +24,10 @@ import {
     CheckCircle,
     Star,
     X,
-    User
+    User,
+    Copy,
+    Check,
+    AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -55,6 +58,7 @@ const AMENITIES_LABELS: Record<string, string> = {
 
 interface Venue {
     id: string;
+    slug: string;
     name: string;
     description: string;
     city: string;
@@ -78,6 +82,9 @@ interface Venue {
         monitors: string;
     };
     owner_id: string;
+    venue_id?: string;
+    status?: string;
+    rejection_reason?: string;
 }
 
 interface Review {
@@ -91,6 +98,30 @@ interface Review {
         username: string;
         avatar_url: string;
     }
+}
+
+function VenueIdBadge({ venueId }: { venueId: string }) {
+    const [copied, setCopied] = useState(false);
+    const { toast } = useToast();
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(venueId);
+            setCopied(true);
+            toast({ title: 'Copied', description: `${venueId} copied to clipboard` });
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            toast({ title: 'Copy failed', variant: 'destructive' });
+        }
+    };
+    return (
+        <button
+            onClick={handleCopy}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-gray-400 font-mono transition-colors border border-white/10"
+        >
+            {venueId}
+            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+        </button>
+    );
 }
 
 const VenueDetails = () => {
@@ -125,10 +156,15 @@ const VenueDetails = () => {
                 .single();
 
             if (error) throw error;
-            setVenue(data);
-            if (data.images && data.images.length > 0) {
-                // activeImage logic removed, using venue.images[0] for hero directly
+
+            // Guard: non-published venues are only visible to their owner
+            if (data.status && data.status !== 'published' && user?.id !== data.owner_id) {
+                toast({ title: 'Venue not found', description: 'This venue is not currently available.', variant: 'destructive' });
+                navigate('/venues/search');
+                return;
             }
+
+            setVenue(data);
 
             fetchReviews(data.id);
 
@@ -210,6 +246,26 @@ const VenueDetails = () => {
 
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-purple-500/30">
+            {/* Owner status banner — only shown when venue is not published */}
+            {venue.status && venue.status !== 'published' && user?.id === venue.owner_id && (
+                <div className={`px-4 py-3 text-sm text-center font-medium flex items-center justify-center gap-2 ${
+                    venue.status === 'draft'          ? 'bg-zinc-800 text-zinc-300' :
+                    venue.status === 'pending_review' ? 'bg-yellow-900/60 text-yellow-300' :
+                    venue.status === 'rejected'       ? 'bg-rose-900/60 text-rose-300' :
+                    venue.status === 'suspended'      ? 'bg-orange-900/60 text-orange-300' :
+                    'bg-zinc-800 text-zinc-400'
+                }`}>
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>
+                        {venue.status === 'draft'          && 'This venue is a draft and not visible to the public.'}
+                        {venue.status === 'pending_review' && 'This venue is pending review and not yet visible to the public.'}
+                        {venue.status === 'rejected'       && `Rejected: ${venue.rejection_reason || 'Please edit and resubmit.'}`}
+                        {venue.status === 'suspended'      && 'This venue has been suspended. Contact support for details.'}
+                        {venue.status === 'archived'       && 'This venue is archived.'}
+                    </span>
+                </div>
+            )}
+
             {/* Hero Section */}
             <div className="relative h-[60vh] md:h-[70vh] w-full overflow-hidden">
                 {/* Background Image / Gradient */}
@@ -364,7 +420,10 @@ const VenueDetails = () => {
                 <div className="space-y-8">
                     {/* Location Card */}
                     <div className="bg-[#0a0a0c] border border-white/5 rounded-3xl p-6 sticky top-24">
-                        <h3 className="text-xl font-bold mb-6">Location & Contact</h3>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold">Location & Contact</h3>
+                            {venue.venue_id && <VenueIdBadge venueId={venue.venue_id} />}
+                        </div>
 
                         <div className="space-y-6">
                             <div className="flex items-start gap-4">

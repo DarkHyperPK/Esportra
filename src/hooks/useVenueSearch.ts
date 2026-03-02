@@ -15,7 +15,12 @@ export interface VenueSearchParams {
 
 import { Venue } from '@/types/venue';
 
-export const useVenueSearch = () => {
+export interface VenueSearchOptions {
+  /** When true, skips the published filter (for owner dashboards) */
+  includeOwned?: boolean;
+}
+
+export const useVenueSearch = (options: VenueSearchOptions = {}) => {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,8 +39,12 @@ export const useVenueSearch = () => {
       const updatedParams = { ...searchParams, ...params };
       setSearchParams(updatedParams);
 
-      // Build the query
+      // Build the query — public search only shows published venues
       let query = supabase.from('venues').select('*');
+
+      if (!options.includeOwned) {
+        query = query.eq('status', 'published');
+      }
 
       // Apply filters if they exist
       if (updatedParams.query) {
@@ -46,11 +55,8 @@ export const useVenueSearch = () => {
         query = query.ilike('city', `%${updatedParams.city}%`);
       }
 
-      // For now, we don't have latitude/longitude in our db
-      // In the future, we would calculate distance here
-
-      // Execute the query
-      const { data, error } = await query;
+      // Execute the query with limit
+      const { data, error } = await query.limit(updatedParams.pageSize ?? 20);
 
       if (error) throw error;
 

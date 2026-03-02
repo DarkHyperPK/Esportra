@@ -7,13 +7,23 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { OptimizedImage } from '@/components/ui/OptimizedImage';
 
-import { Venue } from '@/types/venue';
+import { Venue, VenueStatus } from '@/types/venue';
+
+const STATUS_BADGE: Record<VenueStatus, { label: string; classes: string }> = {
+    draft:          { label: 'Draft',          classes: 'bg-zinc-700/90 text-zinc-200' },
+    pending_review: { label: 'Pending Review', classes: 'bg-yellow-600/80 text-yellow-100' },
+    published:      { label: 'Published',      classes: 'bg-emerald-600/80 text-emerald-100' },
+    rejected:       { label: 'Rejected',       classes: 'bg-rose-600/80 text-rose-100' },
+    suspended:      { label: 'Suspended',      classes: 'bg-orange-600/80 text-orange-100' },
+    archived:       { label: 'Archived',       classes: 'bg-zinc-800/90 text-zinc-400' },
+};
 
 interface VenueCardProps {
     venue: Venue;
+    showStatus?: boolean;
 }
 
-export const VenueCard: React.FC<VenueCardProps> = ({ venue }) => {
+export const VenueCard: React.FC<VenueCardProps> = ({ venue, showStatus = false }) => {
     const navigate = useNavigate();
     const [isHovered, setIsHovered] = useState(false);
 
@@ -61,7 +71,13 @@ export const VenueCard: React.FC<VenueCardProps> = ({ venue }) => {
 
             {/* 2. Top Bar (Floating) */}
             <div className="absolute top-0 inset-x-0 p-4 flex justify-between items-start z-10">
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                    {/* Status badge (owner context only) */}
+                    {showStatus && venue.status && STATUS_BADGE[venue.status as VenueStatus] && (
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-md ${STATUS_BADGE[venue.status as VenueStatus].classes}`}>
+                            {STATUS_BADGE[venue.status as VenueStatus].label}
+                        </span>
+                    )}
                     {venue.openNow !== undefined && (
                         <Badge className={cn(
                             "border-none shadow-sm flex items-center gap-1.5 backdrop-blur-md",
