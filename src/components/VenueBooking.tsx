@@ -1,4 +1,3 @@
-
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -7,7 +6,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -22,9 +20,8 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
 
-const VenueBooking: React.FC<UseVenueBookingProps> = ({ venueId, venueName, pricePerHour, availableStations }) => {
+export default function VenueBooking({ venueId, venueName, pricePerHour, availableStations }: UseVenueBookingProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -165,6 +162,4 @@ const VenueBooking: React.FC<UseVenueBookingProps> = ({ venueId, venueName, pric
       </DialogContent>
     </Dialog>
   );
-};
-
-export default VenueBooking;
+}
