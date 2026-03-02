@@ -100,7 +100,7 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
     if (faceitCallback === 'true') {
       const code = params.get('code');
       const state = params.get('state');
-      const storedState = sessionStorage.getItem('faceitOAuthState');
+      const storedState = localStorage.getItem('faceitOAuthState');
 
       if (!state || state !== storedState) {
         toast({
@@ -108,14 +108,14 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
           description: 'Invalid security token (CSRF mismatch). Request blocked.',
           variant: 'destructive',
         });
-        sessionStorage.removeItem('faceitOAuthState');
+        localStorage.removeItem('faceitOAuthState');
         window.history.replaceState({}, '', window.location.pathname);
         return;
       }
 
-      sessionStorage.removeItem('faceitOAuthState');
-      const codeVerifier = sessionStorage.getItem('faceitCodeVerifier');
-      sessionStorage.removeItem('faceitCodeVerifier');
+      localStorage.removeItem('faceitOAuthState');
+      const codeVerifier = localStorage.getItem('faceitCodeVerifier');
+      localStorage.removeItem('faceitCodeVerifier');
 
       const linkFaceit = async () => {
         try {
@@ -136,6 +136,8 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
             title: 'Faceit Account Linked!',
             description: data.nickname ? `Successfully linked "${data.nickname}"` : 'Your Faceit account has been linked.',
           });
+          // Signal other tabs (the original tab) to refetch
+          localStorage.setItem('faceit_just_linked', Date.now().toString());
           refetchFaceit();
         } catch (err: any) {
           toast({ title: 'Faceit Linking Failed', description: err.message, variant: 'destructive' });

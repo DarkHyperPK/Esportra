@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,6 +41,17 @@ export function useFaceitAccount() {
         enabled: !!user?.id,
     });
 
+    // When another tab completes Faceit linking, refresh this tab's cache
+    useEffect(() => {
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === 'faceit_just_linked') {
+                queryClient.invalidateQueries({ queryKey: ['faceit-account'] });
+            }
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, [queryClient]);
+
     /**
      * Redirect user to Faceit OAuth to link their account.
      * Uses PKCE (S256) — code_verifier stored in sessionStorage and sent
@@ -69,8 +81,9 @@ export function useFaceitAccount() {
             .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 
         const state = crypto.randomUUID();
-        sessionStorage.setItem('faceitOAuthState', state);
-        sessionStorage.setItem('faceitCodeVerifier', codeVerifier);
+        // Use localStorage so the verifier/state survive across tabs
+        localStorage.setItem('faceitOAuthState', state);
+        localStorage.setItem('faceitCodeVerifier', codeVerifier);
 
         const faceitAuthUrl =
             `https://accounts.faceit.com/?client_id=${clientId}` +
@@ -80,7 +93,7 @@ export function useFaceitAccount() {
             `&code_challenge=${codeChallenge}` +
             `&code_challenge_method=S256`;
 
-        window.location.href = faceitAuthUrl;
+        window.open(faceitAuthUrl, '_blank');
     };
 
     /**
