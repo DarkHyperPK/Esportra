@@ -19,8 +19,8 @@ CREATE POLICY "Owners update own live status"
   ON public.venue_live_status FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM public.venues
-      WHERE id = venue_id AND owner_id = auth.uid()
+      SELECT 1 FROM public.venues v
+      WHERE v.id = venue_live_status.venue_id AND v.owner_id = auth.uid()
     )
   );
 
