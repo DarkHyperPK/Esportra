@@ -19,12 +19,13 @@ CREATE POLICY "Anyone can log impressions"
   WITH CHECK (true);
 
 -- Venue owners can read their own venue impressions
+-- Use alias + explicit table prefix to avoid ambiguity with venues.venue_id (TEXT)
 CREATE POLICY "Owners see own venue impressions"
   ON public.venue_impressions FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM public.venues
-      WHERE id = venue_id AND owner_id = auth.uid()
+      SELECT 1 FROM public.venues v
+      WHERE v.id = venue_impressions.venue_id AND v.owner_id = auth.uid()
     )
   );
 
