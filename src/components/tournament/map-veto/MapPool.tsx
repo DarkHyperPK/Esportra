@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sword, Shield as ShieldIcon, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto, GameMap, PickedMap, VETO_SEQUENCES, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
@@ -42,6 +42,29 @@ export const MapPool: React.FC<MapPoolProps> = ({
     game = 'valorant',
 }) => {
     const service = React.useMemo(() => new VetoService(game), [game]);
+
+    // Optimistic UI: immediately reflect user's ban/pick before DB confirms
+    const [optimisticBanned, setOptimisticBanned] = useState<Set<string>>(new Set());
+    const [optimisticPicked, setOptimisticPicked] = useState<Set<string>>(new Set());
+
+    // Clear optimistic state when the in-flight action completes (success or failure)
+    useEffect(() => {
+        if (actionLoading === null) {
+            setOptimisticBanned(new Set());
+            setOptimisticPicked(new Set());
+        }
+    }, [actionLoading]);
+
+    // Wrap handleMapAction to apply optimistic update before the async call
+    const handleMapActionWithOptimistic = (mapId: string) => {
+        if (veto.current_action === 'ban') {
+            setOptimisticBanned(prev => new Set([...prev, mapId]));
+        } else if (veto.current_action === 'pick') {
+            setOptimisticPicked(prev => new Set([...prev, mapId]));
+        }
+        handleMapAction(mapId);
+    };
+
     if (!((veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined)))) {
         return null;
     }
@@ -105,7 +128,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
 
     const availableMapsToShow = availableMaps.filter((m) => {
         const mapId = String(m.id);
-        return !allUsedMaps.includes(mapId);
+        return !allUsedMaps.includes(mapId) && !optimisticBanned.has(mapId) && !optimisticPicked.has(mapId);
     });
 
     const getMapStatus = (mapId: string) => {
@@ -351,14 +374,6 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         const mapStatus = getMapStatus(map.id);
                         const canInteract = !mapStatus.isBanned && !mapStatus.isPicked && isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined));
 
-                        console.log('[MapPool] Render Map:', {
-                            mapId: map.id,
-                            isUserTurn,
-                            actionLoading,
-                            vetoStatus: veto.status,
-                            mapStatus
-                        });
-
                         let mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
                         // Revert: Do not replace system.assets.website with system.assets.games as it might be breaking images
                         // if (mapImageUrl && mapImageUrl.includes('website-assets')) {
@@ -397,10 +412,10 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                 onKeyDown={(e) => {
                                     if (canInteract && (e.key === 'Enter' || e.key === ' ')) {
                                         e.preventDefault();
-                                        handleMapAction(map.id);
+                                        handleMapActionWithOptimistic(map.id);
                                     }
                                 }}
-                                onClick={() => canInteract && handleMapAction(map.id)}
+                                onClick={() => canInteract && handleMapActionWithOptimistic(map.id)}
                             >
                                 {!isImageLoaded && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
