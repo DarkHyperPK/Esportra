@@ -1023,7 +1023,12 @@ const CaptainMatchPage = () => {
                                                 const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
                                                 const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
 
-                                                if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf) {
+                                                // Only show auto-fetch when the game is actually live:
+                                                // party code shared OR map veto genuinely completed
+                                                const isGameLive = !!activeMatch.partyCode ||
+                                                    (vetoData != null && (vetoData.status === 'completed' || !!vetoData.completed_at));
+
+                                                if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && isGameLive) {
                                                     return (
                                                         <MatchAutoReport
                                                             matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
@@ -1053,7 +1058,7 @@ const CaptainMatchPage = () => {
                                             <div className="grid grid-cols-2 gap-3">
                                                 <Button
                                                     onClick={() => handleOpenVeto(activeMatch)}
-                                                    className="bg-zinc-800 hover:bg-zinc-700 text-white h-12 border border-zinc-700"
+                                                    className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white h-12 font-bold font-mono tracking-wider transition-all"
                                                     disabled={activeMatch.status === 'completed'}
                                                 >
                                                     <Swords className="w-5 h-5 mr-2" />
@@ -1062,7 +1067,7 @@ const CaptainMatchPage = () => {
 
                                                 <Button
                                                     onClick={() => handleUploadResult(activeMatch.id)}
-                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white h-12"
+                                                    className="bg-rose-500 hover:bg-rose-600 transition-all text-white h-12 font-bold font-mono tracking-wider disabled:opacity-40"
                                                     disabled={activeMatch.status === 'completed' || !isVetoCompleted}
                                                 >
                                                     <Trophy className="w-5 h-5 mr-2" />

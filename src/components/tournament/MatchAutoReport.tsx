@@ -466,7 +466,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
             {isCaptain ? (
                 <Button
                     onClick={() => setScanOpen(true)}
-                    className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-lg shadow-indigo-900/20 ${className}`}
+                    className={`w-full bg-rose-500 hover:bg-rose-600 transition-all text-white font-bold font-mono tracking-wider shadow-lg shadow-rose-900/20 ${className}`}
                 >
                     <Search className="w-4 h-4 mr-2" />
                     Auto-Fetch Game {gameNumber} Result
