@@ -7,17 +7,12 @@ import { useLicenses } from '@/hooks/useLicenses';
 import { useFaceitAccount } from '@/hooks/useFaceitAccount';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { useVenueSearch } from '@/hooks/useVenueSearch';
-import AvatarUploader from '@/components/player/AvatarUploader';
-import { countries, detectUserCountry, getCountryFlagUrl, getCountryName, getCountryFlag } from '@/utils/countries';
 import {
   Loader2, Copy, Check, Shield, Link2, Link2Off, Award, Monitor,
-  User, Share2, Save, Globe, Gamepad2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Footer from '@/components/Footer';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -60,12 +55,11 @@ const LICENSE_STATUS_CLASS: Record<string, string> = {
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
-type Tab = 'profile' | 'connected_accounts' | 'licenses' | 'desktop_pairing' | 'security';
+type Tab = 'connected_accounts' | 'licenses' | 'desktop_pairing' | 'security';
 
 interface NavItem { key: Tab; label: string; icon: React.ReactNode; description: string; venueOwnerOnly?: boolean }
 
 const NAV: NavItem[] = [
-  { key: 'profile',            label: 'Profile',            description: 'Avatar, bio, social links',              icon: <User className="w-4 h-4" /> },
   { key: 'connected_accounts', label: 'Connected Accounts', description: 'Riot, Faceit, Discord',                  icon: <Link2 className="w-4 h-4" /> },
   { key: 'licenses',           label: 'My Licenses',        description: 'Professional license IDs',               icon: <Award className="w-4 h-4" /> },
   { key: 'desktop_pairing',    label: 'Desktop Pairing',    description: 'Venue hub pairing tokens', venueOwnerOnly: true, icon: <Monitor className="w-4 h-4" /> },
@@ -78,7 +72,7 @@ export default function AccountSettings() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [activeTab, setActiveTab] = useState<Tab>('connected_accounts');
   // Show Desktop Pairing to anyone who actually owns at least one venue
   const [ownsVenues, setOwnsVenues] = useState(false);
   useEffect(() => {
@@ -195,7 +189,7 @@ export default function AccountSettings() {
 
         <div className="flex gap-10">
           {/* ── Left Sidebar ── */}
-          <aside className="w-56 shrink-0">
+          <aside className="w-56 shrink-0 border-r border-white/5 pr-4">
             <nav className="space-y-0.5">
               {visibleNav.map((item) => (
                 <button
@@ -204,10 +198,10 @@ export default function AccountSettings() {
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-all ${
                     activeTab === item.key
                       ? 'bg-rose-500/10 text-rose-400 font-medium'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      : 'text-gray-300 hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  <span className={activeTab === item.key ? 'text-rose-400' : 'text-gray-600'}>
+                  <span className={activeTab === item.key ? 'text-rose-400' : 'text-gray-400'}>
                     {item.icon}
                   </span>
                   {item.label}
@@ -224,7 +218,6 @@ export default function AccountSettings() {
               <p className="text-sm text-gray-500">{activeItem?.description}</p>
             </div>
 
-            {activeTab === 'profile'            && <ProfileTab />}
             {activeTab === 'connected_accounts' && <ConnectedAccountsTab />}
             {activeTab === 'licenses'           && <LicensesTab userId={user?.id} />}
             {activeTab === 'desktop_pairing'    && ownsVenues && <DesktopPairingTab userId={user?.id} />}
@@ -233,268 +226,6 @@ export default function AccountSettings() {
         </div>
       </main>
       <Footer />
-    </div>
-  );
-}
-
-// ─── Tab: Profile ─────────────────────────────────────────────────────────────
-
-function ProfileTab() {
-  const { profile, updateProfile } = useAuth();
-  const { toast } = useToast();
-  const [saving, setSaving] = useState(false);
-  const [detecting, setDetecting] = useState(false);
-  const [detectionFailed, setDetectionFailed] = useState(false);
-  const [showCountrySelector, setShowCountrySelector] = useState(false);
-  const [teamName, setTeamName] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    username: '',
-    full_name: '',
-    bio: '',
-    avatar_url: '',
-    card_image_url: '',
-    country_code: '',
-    social_links: { twitter: '', twitch: '', youtube: '', instagram: '' },
-  });
-
-  // Fetch team membership (needed for player card upload path)
-  useEffect(() => {
-    if (!profile?.id) return;
-    supabase
-      .from('team_members')
-      .select('team:teams(name)')
-      .eq('user_id', profile.id)
-      .eq('is_active', true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.team) setTeamName((data.team as any).name);
-      });
-  }, [profile?.id]);
-
-  useEffect(() => {
-    if (!profile) return;
-    setForm({
-      username: profile.username || '',
-      full_name: profile.full_name || '',
-      bio: profile.bio || '',
-      avatar_url: profile.avatar_url || '',
-      card_image_url: profile.card_image_url || '',
-      country_code: profile.country_code || '',
-      social_links: {
-        twitter: profile.social_links?.twitter || '',
-        twitch: profile.social_links?.twitch || '',
-        youtube: profile.social_links?.youtube || '',
-        instagram: profile.social_links?.instagram || '',
-      },
-    });
-    if (!profile.country_code) handleAutodetect();
-  }, [profile?.id]);
-
-  const handleAutodetect = async () => {
-    setDetecting(true);
-    setDetectionFailed(false);
-    try {
-      const detected = await detectUserCountry();
-      if (detected) {
-        setForm(prev => ({ ...prev, country_code: detected }));
-      } else {
-        setDetectionFailed(true);
-      }
-    } catch {
-      setDetectionFailed(true);
-    } finally {
-      setDetecting(false);
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updateProfile({
-        username: form.username,
-        full_name: form.full_name,
-        bio: form.bio,
-        avatar_url: form.avatar_url,
-        card_image_url: form.card_image_url,
-        country_code: form.country_code,
-        social_links: form.social_links,
-      });
-      toast({ title: 'Profile saved', description: 'Your changes have been saved.' });
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!profile) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-rose-400" /></div>;
-  }
-
-  return (
-    <div className="space-y-6 max-w-2xl">
-      {/* Avatar & Player Card */}
-      <section className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
-        <h3 className="text-sm font-medium text-gray-300 mb-5">Profile Pictures</h3>
-
-        <div className="flex flex-col sm:flex-row gap-8">
-          {/* Avatar */}
-          <div className="flex flex-col items-center gap-2">
-            <AvatarUploader
-              value={form.avatar_url}
-              onChange={(url) => setForm(prev => ({ ...prev, avatar_url: url }))}
-              size="xl"
-              uploadPath={profile.id ? `profile-pictures/${profile.id}_${Date.now()}_avatar.png` : undefined}
-            />
-            <span className="text-xs text-gray-600">Avatar</span>
-          </div>
-
-          {/* Player Card */}
-          <div className="flex flex-col items-center gap-2">
-            {teamName ? (
-              <AvatarUploader
-                value={form.card_image_url}
-                onChange={(url) => setForm(prev => ({ ...prev, card_image_url: url }))}
-                size="xl"
-                uploadPath={profile.id
-                  ? `Player-cards/${teamName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}/${profile.id}_${Date.now()}_card.png`
-                  : undefined}
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-xl bg-white/[0.02] border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-1">
-                <Gamepad2 className="w-5 h-5 text-gray-700" />
-                <span className="text-[10px] text-gray-700 text-center leading-tight px-1">Join a team first</span>
-              </div>
-            )}
-            <span className="text-xs text-gray-600">Player Card</span>
-          </div>
-
-          <div className="flex-1 flex items-center">
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Your <span className="text-gray-400">avatar</span> is shown across the platform.
-              Your <span className="text-gray-400">player card</span> appears on your team's roster —
-              you must be part of a team to upload one.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Basic Info */}
-      <section className="rounded-xl border border-white/5 bg-white/[0.02] p-6 space-y-4">
-        <h3 className="text-sm font-medium text-gray-300">Basic Info</h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-gray-500 uppercase tracking-wide">Username</Label>
-            <Input
-              value={form.username}
-              onChange={(e) => setForm(prev => ({ ...prev, username: e.target.value }))}
-              className="bg-black/20 border-white/10 focus:border-rose-500/50 text-white"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-gray-500 uppercase tracking-wide">Display Name</Label>
-            <Input
-              value={form.full_name}
-              onChange={(e) => setForm(prev => ({ ...prev, full_name: e.target.value }))}
-              className="bg-black/20 border-white/10 focus:border-rose-500/50 text-white"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs text-gray-500 uppercase tracking-wide">Bio</Label>
-          <Textarea
-            value={form.bio}
-            onChange={(e) => setForm(prev => ({ ...prev, bio: e.target.value }))}
-            className="bg-black/20 border-white/10 focus:border-rose-500/50 text-white min-h-[90px]"
-            placeholder="Tell the community about yourself..."
-          />
-        </div>
-
-        {/* Country */}
-        <div className="space-y-1.5">
-          <Label className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5" /> Country
-          </Label>
-          <div className="flex items-center gap-3 px-3 py-2.5 bg-black/20 border border-white/10 rounded-lg">
-            {form.country_code ? (
-              <>
-                <img src={getCountryFlagUrl(form.country_code)} alt="" className="w-6 h-4 object-cover rounded border border-white/10" />
-                <span className="text-sm text-white flex-1">{getCountryName(form.country_code)}</span>
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-gray-500 hover:text-white"
-                  onClick={() => setShowCountrySelector(true)}>
-                  Change
-                </Button>
-              </>
-            ) : detecting ? (
-              <div className="flex items-center gap-2 text-gray-500 text-sm">
-                <Loader2 className="w-4 h-4 animate-spin" /> Detecting location...
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 text-sm flex-1">{detectionFailed ? 'Detection failed' : 'Not set'}</span>
-                <Button size="sm" variant="outline" className="h-7 text-xs border-white/10" onClick={handleAutodetect}>
-                  <Globe className="w-3 h-3 mr-1" /> Detect
-                </Button>
-              </div>
-            )}
-          </div>
-          {(showCountrySelector || (detectionFailed && !form.country_code)) && (
-            <Select
-              value={form.country_code}
-              onValueChange={(v) => { setForm(prev => ({ ...prev, country_code: v })); setShowCountrySelector(false); }}
-            >
-              <SelectTrigger className="bg-black/40 border-white/10 text-white">
-                <SelectValue placeholder="Select country" />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800 text-white max-h-60">
-                {countries.map((c) => (
-                  <SelectItem key={c.code} value={c.code}>{getCountryFlag(c.code)} {c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-      </section>
-
-      {/* Social Links */}
-      <section className="rounded-xl border border-white/5 bg-white/[0.02] p-6 space-y-4">
-        <h3 className="text-sm font-medium text-gray-300 flex items-center gap-2">
-          <Share2 className="w-3.5 h-3.5" /> Social Links
-        </h3>
-        {([
-          { key: 'twitter',   prefix: '@',              placeholder: 'username' },
-          { key: 'twitch',    prefix: 'twitch.tv/',     placeholder: 'channel' },
-          { key: 'youtube',   prefix: 'youtube.com/',   placeholder: '@channel' },
-          { key: 'instagram', prefix: 'instagram.com/', placeholder: 'username' },
-        ] as const).map(({ key, prefix, placeholder }) => (
-          <div key={key} className="space-y-1.5">
-            <Label className="text-xs text-gray-500 uppercase tracking-wide capitalize">{key}</Label>
-            <div className="flex rounded-lg overflow-hidden">
-              <span className="inline-flex items-center px-3 border border-r-0 border-white/10 bg-white/5 text-gray-500 text-sm whitespace-nowrap">
-                {prefix}
-              </span>
-              <Input
-                value={form.social_links[key]}
-                onChange={(e) => setForm(prev => ({
-                  ...prev,
-                  social_links: { ...prev.social_links, [key]: e.target.value },
-                }))}
-                className="rounded-l-none bg-black/20 border-white/10 focus:border-rose-500/50 text-white"
-                placeholder={placeholder}
-              />
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <div className="flex justify-end pt-2">
-        <Button onClick={handleSave} disabled={saving} className="bg-rose-500 hover:bg-rose-600 disabled:opacity-40 px-8">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Save Changes
-        </Button>
-      </div>
     </div>
   );
 }
