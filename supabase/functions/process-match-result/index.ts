@@ -305,6 +305,19 @@ serve(async (req) => {
             console.warn(`[Process Result] Non-critical: Failed to update report status for ${report.id}:`, patchError)
         }
 
+        // 8b. Notify the original reporter that their result was accepted
+        if (report.reported_by) {
+            await supabaseClient.from('notifications').insert({
+                user_id: report.reported_by,
+                type: 'result_accepted',
+                title: 'Result Accepted',
+                message: 'The opposing team has verified your match result.',
+                link: '/tournaments/captain',
+                data: { match_id: matchId },
+                is_read: false,
+            })
+        }
+
 
         // 7. Check for Series Completion
         const { data: allGames } = await supabaseClient
@@ -350,6 +363,27 @@ serve(async (req) => {
 
                 if (!lockSuccess) {
                     console.log(`[Series] Match ${matchId} was already advanced by a concurrent process. Skipping duplicate advancement.`)
+                } else {
+                    // Notify both team captains that the series is complete
+                    const { data: captains } = await supabaseClient
+                        .from('team_members')
+                        .select('user_id')
+                        .in('team_id', [brktMatch.team1_id, brktMatch.team2_id])
+                        .eq('role', 'captain')
+                        .eq('is_active', true)
+                    if (captains?.length) {
+                        await supabaseClient.from('notifications').insert(
+                            captains.map((c: { user_id: string }) => ({
+                                user_id: c.user_id,
+                                type: 'match_completed',
+                                title: 'Match Complete',
+                                message: `The series is over. Final score: ${t1Wins}-${t2Wins}.`,
+                                link: '/tournaments/captain',
+                                data: { match_id: matchId, winner_id: seriesWinnerId, t1Wins, t2Wins },
+                                is_read: false,
+                            }))
+                        )
+                    }
                 }
             } else {
                 // If not complete, just update the accumulated scores

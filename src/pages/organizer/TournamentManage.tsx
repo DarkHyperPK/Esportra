@@ -2,7 +2,7 @@
 // This file is for managing a single tournament (participants, brackets, settings, etc.)
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -256,6 +256,7 @@ const TournamentDashboard = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
   const userId = user?.id;
@@ -307,8 +308,10 @@ const TournamentDashboard = () => {
   const [teamLoading, setTeamLoading] = useState<boolean>(false);
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [teamModalData, setTeamModalData] = useState<{ id?: string | null; name: string; logo?: string | null; members: string[] }>({ name: '', members: [] });
-  // Initialize activeTab from location state if available
-  const [activeTab, setActiveTab] = useState((location.state as { activeTab?: string })?.activeTab || 'overview');
+  // Initialize activeTab from ?tab= query param, then location state, then default 'overview'
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get('tab') || (location.state as { activeTab?: string })?.activeTab || 'overview'
+  );
 
   const [removingUnchecked, setRemovingUnchecked] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);

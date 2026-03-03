@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNotifications } from '@/components/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2 } from 'lucide-react';
+import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ import { respondToOrgStaffInvite } from '@/lib/organizationStaff';
 import { useToast } from '@/hooks/use-toast';
 
 export const NotificationDropdown = () => {
-    const { notifications, unreadCount, markAsRead, refreshNotifications } = useNotifications();
+    const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
     const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
@@ -30,16 +30,15 @@ export const NotificationDropdown = () => {
     const recentNotifications = notifications.slice(0, 10);
 
     const handleMarkAllRead = async () => {
-        const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
-        setOptimisticReadIds(prev => [...prev, ...unreadIds]);
-
-        for (const id of unreadIds) {
-            if (!String(id).startsWith('invite-')) {
-                await markAsRead(id);
-            }
-        }
-        await refreshNotifications();
+        setOptimisticReadIds(prev => [...prev, ...notifications.filter(n => !n.is_read).map(n => n.id)]);
+        await markAllAsRead();
     };
+
+    useEffect(() => {
+        if (isOpen && unreadCount > 0) {
+            handleMarkAllRead();
+        }
+    }, [isOpen, unreadCount]);
 
     const handleNotificationClick = async (notification: any) => {
         // Don't navigate if it's a staff_invite — actions are inline
@@ -140,6 +139,24 @@ export const NotificationDropdown = () => {
                 return <Users className="h-4 w-4 text-green-400" />;
             case 'tournament_announcement':
                 return <Bell className="h-4 w-4 text-emerald-400" />;
+            case 'result_reported':
+                return <FileText className="h-4 w-4 text-blue-400" />;
+            case 'result_accepted':
+                return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+            case 'result_disputed':
+            case 'dispute_filed':
+                return <AlertTriangle className="h-4 w-4 text-yellow-400" />;
+            case 'dispute_resolved':
+                return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+            case 'dispute_rejected':
+                return <XCircle className="h-4 w-4 text-red-400" />;
+            case 'veto_your_turn':
+            case 'match_ready':
+                return <Swords className="h-4 w-4 text-rose-400" />;
+            case 'veto_completed':
+                return <Map className="h-4 w-4 text-blue-400" />;
+            case 'match_completed':
+                return <Trophy className="h-4 w-4 text-yellow-400" />;
             default:
                 return <Info className="h-4 w-4 text-gray-400" />;
         }

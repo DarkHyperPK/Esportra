@@ -105,6 +105,40 @@ export const useMatchResultReport = (matchId: string | undefined, gameNumber?: n
         .single();
 
       if (error) throw error;
+
+      // Notify opposing captain that a result has been reported
+      const { data: brktMatch } = await supabase
+        .from('brkt_matches')
+        .select('team1_id, team2_id')
+        .eq('id', matchId)
+        .maybeSingle();
+
+      if (brktMatch) {
+        const opposingTeamId = brktMatch.team1_id === reportedByTeamId
+          ? brktMatch.team2_id
+          : brktMatch.team1_id;
+        if (opposingTeamId) {
+          const { data: captainRow } = await supabase
+            .from('team_members')
+            .select('user_id')
+            .eq('team_id', opposingTeamId)
+            .eq('role', 'captain')
+            .eq('is_active', true)
+            .maybeSingle();
+          if (captainRow?.user_id) {
+            await supabase.from('notifications').insert({
+              user_id: captainRow.user_id,
+              type: 'result_reported',
+              title: 'Match Result Reported',
+              message: 'Your opponent has reported the match result. Please verify or dispute.',
+              link: '/tournaments/captain',
+              data: { match_id: matchId },
+              is_read: false,
+            });
+          }
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -176,32 +210,16 @@ export const useMatchResultReport = (matchId: string | undefined, gameNumber?: n
     }) => {
       if (!matchId || !user) throw new Error('Missing required data');
 
-      // 1. Mark report as disputed
-      const { error: updateError } = await supabase
-        .from('match_result_reports')
-        .update({
-          status: 'disputed',
-          responded_by: user.id,
-          responded_at: new Date().toISOString(),
-          dispute_reason: reason,
-        })
-        .eq('id', reportId);
+      // Atomic RPC: marks report disputed, writes to match_disputes + tournament_disputes,
+      // and sends notifications to the reporter and organizer.
+      const { error } = await supabase.rpc('file_match_result_dispute', {
+        p_report_id: reportId,
+        p_match_id: matchId,
+        p_team_id: teamId,
+        p_reason: reason,
+      });
 
-      if (updateError) throw updateError;
-
-      // 2. Create a match_disputes entry for organizer
-      const { error: disputeError } = await supabase
-        .from('match_disputes')
-        .insert({
-          match_id: matchId,
-          disputed_by_team_id: teamId,
-          disputed_by_user_id: user.id,
-          reason: `Result disputed: ${reason}`,
-          evidence_urls: [],
-          status: 'pending',
-        });
-
-      if (disputeError) throw disputeError;
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] });

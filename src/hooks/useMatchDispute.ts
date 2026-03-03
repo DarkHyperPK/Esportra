@@ -102,6 +102,47 @@ export const useMatchDispute = (matchId: string | undefined) => {
                 .eq('id', disputeId);
 
             if (error) throw error;
+
+            // Send notifications to both parties after resolution
+            if (dispute) {
+                const notifType = status === 'resolved' ? 'dispute_resolved' : 'dispute_rejected';
+                const notifTitle = status === 'resolved' ? 'Dispute Resolved' : 'Dispute Rejected';
+                const notifMessage = status === 'resolved'
+                    ? `Your match dispute has been resolved. Organizer note: ${resolution}`
+                    : `Your match dispute was rejected. Organizer note: ${resolution}`;
+
+                // Notify the disputing captain
+                await supabase.from('notifications').insert({
+                    user_id: dispute.disputed_by_user_id,
+                    type: notifType,
+                    title: notifTitle,
+                    message: notifMessage,
+                    link: '/tournaments/captain',
+                    data: { match_id: dispute.match_id },
+                    is_read: false,
+                });
+
+                // Notify the original reporter (look up via match_result_reports)
+                const { data: reportRow } = await supabase
+                    .from('match_result_reports')
+                    .select('reported_by')
+                    .eq('match_id', dispute.match_id)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (reportRow?.reported_by && reportRow.reported_by !== dispute.disputed_by_user_id) {
+                    await supabase.from('notifications').insert({
+                        user_id: reportRow.reported_by,
+                        type: notifType,
+                        title: notifTitle,
+                        message: notifMessage,
+                        link: '/tournaments/captain',
+                        data: { match_id: dispute.match_id },
+                        is_read: false,
+                    });
+                }
+            }
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ['match-dispute', matchId] });

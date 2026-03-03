@@ -1083,6 +1083,58 @@ export const useMapVetoMachine = ({
             }
 
             toast({ title: 'Success', description: 'Action completed' });
+
+            // Fire-and-forget veto notifications (non-blocking — don't await)
+            if (!isComplete && nextStep && dbVeto.team1_id && dbVeto.team2_id) {
+                const nextTeamId = nextStep.team === 'T1' ? dbVeto.team1_id : dbVeto.team2_id;
+                supabase
+                    .from('team_members')
+                    .select('user_id')
+                    .eq('team_id', nextTeamId)
+                    .eq('role', 'captain')
+                    .eq('is_active', true)
+                    .maybeSingle()
+                    .then(({ data: cap }) => {
+                        if (cap?.user_id) {
+                            const actionLabel = nextStep.action === 'ban' ? 'ban'
+                                : nextStep.action === 'pick' ? 'pick'
+                                : 'pick a side for';
+                            supabase.from('notifications').insert({
+                                user_id: cap.user_id,
+                                type: 'veto_your_turn',
+                                title: 'Your Veto Turn',
+                                message: `It's your turn to ${actionLabel} a map.`,
+                                link: '/tournaments/captain',
+                                data: { match_id: matchId },
+                                is_read: false,
+                            });
+                        }
+                    });
+            }
+            if (isComplete && dbVeto.team1_id && dbVeto.team2_id) {
+                supabase
+                    .from('team_members')
+                    .select('user_id')
+                    .in('team_id', [dbVeto.team1_id, dbVeto.team2_id])
+                    .eq('role', 'captain')
+                    .eq('is_active', true)
+                    .then(({ data: caps }) => {
+                        if (caps?.length) {
+                            supabase.from('notifications').insert(
+                                caps.map(c => ({
+                                    user_id: c.user_id,
+                                    type: 'veto_completed',
+                                    title: 'Map Veto Complete',
+                                    message: 'The map veto has finished. Good luck in your match!',
+                                    link: '/tournaments/captain',
+                                    data: { match_id: matchId },
+                                    is_read: false,
+                                }))
+                            );
+                        }
+                    });
+            }
+
             if (isComplete && onComplete) onComplete();
 
         } catch (error: any) {
