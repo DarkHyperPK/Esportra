@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMatchResultReport, MatchResultReport } from '@/hooks/useMatchResultReport';
 import { formatDistanceToNow, format } from 'date-fns';
 import { FullScoreboard, getAgentIcon, getMapSplash, MAP_THEMES } from './FullScoreboard';
+import EntityAvatar from '@/components/ui/EntityAvatar';
 
 interface MatchCandidate {
     id: string;
@@ -42,6 +43,8 @@ interface MatchAutoReportProps {
     team2Id?: string;
     team1Name?: string;
     team2Name?: string;
+    team1Logo?: string;
+    team2Logo?: string;
     isCaptain?: boolean;
     onSuccess: () => void;
     className?: string;
@@ -60,6 +63,8 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     team2Id,
     team1Name = 'Team 1',
     team2Name = 'Team 2',
+    team1Logo,
+    team2Logo,
     isCaptain = true,
     onSuccess,
     className
@@ -219,26 +224,59 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     // ── Accepted State ──
     if (acceptedReport) {
         return (
-            <Card className="bg-zinc-900/50 border-emerald-500/30 overflow-hidden">
+            <Card className="bg-black border-zinc-800 overflow-hidden">
                 <CardContent className="p-0">
-                    <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 p-4 border-b border-zinc-800">
+                    <div className="bg-zinc-900/50 p-4 border-b border-zinc-800">
                         <h3 className="font-semibold text-white flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                             Game {acceptedReport.game_number} — Result Verified
                         </h3>
                     </div>
                     <div className="p-4 space-y-4">
-                        <div className="text-center p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                            <Trophy className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
-                            <p className="text-lg font-bold text-white">
-                                {acceptedReport.map_name || 'Map'}
-                            </p>
-                            <p className="text-2xl font-mono text-emerald-400 font-bold">
-                                {acceptedReport.team1_score} — {acceptedReport.team2_score}
-                            </p>
-                            <p className="text-xs text-zinc-500 mt-1">
-                                Verified {acceptedReport.responded_at ? format(new Date(acceptedReport.responded_at), 'MMM d, h:mm a') : ''}
-                            </p>
+                        <div className="p-4 bg-zinc-900/30 border border-zinc-800 rounded-lg">
+                            <div className="text-center py-2">
+                                <p className="text-sm font-black text-white uppercase tracking-widest mb-6">
+                                    {acceptedReport.map_name || 'MAP'}
+                                </p>
+                                <div className="flex items-center justify-center gap-8">
+                                    <div className="flex flex-col items-center">
+                                        <div className="mb-2">
+                                            <EntityAvatar
+                                                src={team1Logo}
+                                                name={team1Name}
+                                                entityId={team1Id}
+                                                type="team"
+                                                size="w-12 h-12 rounded-lg"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-zinc-500 mb-2">{team1Name}</p>
+                                        <p className="text-3xl font-black font-mono text-emerald-500">
+                                            {acceptedReport.team1_score}
+                                        </p>
+                                    </div>
+                                    <span className="text-zinc-600 text-lg flex items-center h-full pt-16">—</span>
+                                    <div className="flex flex-col items-center">
+                                        <div className="mb-2">
+                                            <EntityAvatar
+                                                src={team2Logo}
+                                                name={team2Name}
+                                                entityId={team2Id}
+                                                type="team"
+                                                size="w-12 h-12 rounded-lg"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-zinc-500 mb-2">{team2Name}</p>
+                                        <p className="text-3xl font-black font-mono text-rose-500">
+                                            {acceptedReport.team2_score}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="text-center mt-6">
+                                <p className="text-xs text-zinc-500">
+                                    Verified {acceptedReport.responded_at ? format(new Date(acceptedReport.responded_at), 'MMM d, h:mm a') : ''}
+                                </p>
+                            </div>
                         </div>
 
                         {acceptedReport.match_data?.players && (
@@ -285,12 +323,12 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     // ── Pending Report State ──
     if (activeReport) {
         return (
-            <Card className="bg-zinc-900/50 border-blue-500/30 overflow-hidden">
+            <Card className="bg-black border-zinc-800 overflow-hidden">
                 <CardContent className="p-0">
-                    <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 p-4 border-b border-zinc-800">
+                    <div className="bg-zinc-900/50 p-4 border-b border-zinc-800">
                         <div className="flex items-center justify-between">
                             <h3 className="font-semibold text-white flex items-center gap-2">
-                                <Swords className="w-4 h-4 text-blue-400" />
+                                <Swords className="w-4 h-4 text-zinc-400" />
                                 Game {activeReport.game_number} — Result Reported
                             </h3>
                             <span className="text-xs text-zinc-500">
@@ -300,27 +338,35 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                     </div>
                     <div className="p-4 space-y-4">
                         {/* Reported score */}
-                        <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs text-blue-400 uppercase tracking-wider">
+                        <div className="p-4 bg-zinc-900/30 border border-zinc-800 rounded-lg">
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">
                                     {isMyReport ? 'Your Report' : 'Opponent Reported'}
                                 </span>
                             </div>
                             <div className="text-center py-2">
-                                <p className="text-sm text-zinc-400 mb-1">
-                                    {activeReport.map_name || 'Map'}
+                                <p className="text-sm font-black text-white uppercase tracking-widest mb-6">
+                                    {activeReport.map_name || 'MAP'}
                                 </p>
-                                <div className="flex items-center justify-center gap-4">
-                                    <div className="text-center">
-                                        <p className="text-xs text-zinc-500">{team1Name}</p>
-                                        <p className="text-2xl font-bold font-mono text-white">
+                                <div className="flex items-center justify-center gap-8">
+                                    <div className="flex flex-col items-center">
+                                        {/* You'd typically pass actual logo URLs here if available in activeReport/context. For now, using placeholders or initials if unavailable in this component's scope without further plumbing. Assuming we can fallback to name initials or null if no logo in activeReport. */}
+                                        <div className="w-12 h-12 rounded-lg bg-zinc-800 border border-zinc-700 mb-2 flex items-center justify-center overflow-hidden">
+                                            {/* EntityAvatar or plain image could go here, fallback to initials */}
+                                            <span className="text-xs text-zinc-500 font-bold">{team1Name.substring(0, 2).toUpperCase()}</span>
+                                        </div>
+                                        <p className="text-xs text-zinc-500 mb-2">{team1Name}</p>
+                                        <p className="text-3xl font-black font-mono text-emerald-500">
                                             {activeReport.team1_score}
                                         </p>
                                     </div>
-                                    <span className="text-zinc-600 text-lg">—</span>
-                                    <div className="text-center">
-                                        <p className="text-xs text-zinc-500">{team2Name}</p>
-                                        <p className="text-2xl font-bold font-mono text-white">
+                                    <span className="text-zinc-600 text-lg flex items-center h-full pt-16">—</span>
+                                    <div className="flex flex-col items-center">
+                                        <div className="w-12 h-12 rounded-lg bg-zinc-800 border border-zinc-700 mb-2 flex items-center justify-center overflow-hidden">
+                                            <span className="text-xs text-zinc-500 font-bold">{team2Name.substring(0, 2).toUpperCase()}</span>
+                                        </div>
+                                        <p className="text-xs text-zinc-500 mb-2">{team2Name}</p>
+                                        <p className="text-3xl font-black font-mono text-rose-500">
                                             {activeReport.team2_score}
                                         </p>
                                     </div>
@@ -455,14 +501,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
 
     // ── No Report — Show Scan Button ──
     return (
-        <div className="space-y-4">
-            <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-3 rounded-lg flex items-start gap-2 text-left">
-                <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <p className="text-xs">
-                    <strong>Rule:</strong> Only the winning team should submit the match result report. The losing team simply needs to wait and accept the result once it appears.
-                </p>
-            </div>
-
+        <div className="space-y-4 flex flex-col items-center">
             {isCaptain ? (
                 <Button
                     onClick={() => setScanOpen(true)}
@@ -503,21 +542,17 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                             <p className="text-sm text-zinc-300">
                                 Make sure you have played the match on <strong>{mapName}</strong> and the game is finished.
                             </p>
-                            <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-3 rounded-lg flex items-start gap-2 text-left">
-                                <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                                <p className="text-xs">
-                                    <strong>Rule:</strong> Only the winning team should submit the match result report. The losing team simply needs to wait and accept the result once it appears.
-                                </p>
-                            </div>
                             {scanError && (
                                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs">
                                     {scanError}
                                 </div>
                             )}
-                            <Button onClick={handleScan} className="w-full bg-indigo-600 hover:bg-indigo-700">
-                                <Search className="w-4 h-4 mr-2" />
-                                Scan Recent Matches
-                            </Button>
+                            <div className="flex justify-center mt-6">
+                                <Button onClick={handleScan} className="w-full max-w-[280px] bg-indigo-600 hover:bg-indigo-700">
+                                    <Search className="w-4 h-4 mr-2" />
+                                    Scan Recent Matches
+                                </Button>
+                            </div>
                         </div>
                     )}
 

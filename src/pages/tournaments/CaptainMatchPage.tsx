@@ -23,7 +23,8 @@ import TimeProposalCard from '@/components/tournament/TimeProposalCard';
 import DisputeCard from '@/components/tournament/DisputeCard';
 import MatchChat from '@/components/tournament/MatchChat';
 import EntityAvatar from '@/components/ui/EntityAvatar';
-import { format } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
+import { FullScoreboard, getAgentIcon, getMapSplash, MAP_THEMES } from './FullScoreboard';
 import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
@@ -603,6 +604,7 @@ const CaptainMatchPage = () => {
                     console.log('[CaptainMatchPage] Veto updated via realtime:', payload);
                     determineMap();
                     queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+                    queryClient.invalidateQueries({ queryKey: ['match-veto', activeMatch?.id] });
                 }
             )
             .on(
@@ -886,312 +888,272 @@ const CaptainMatchPage = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: Match Details */}
                     <div className="lg:col-span-2 space-y-6">
-                        <Card className="glass-dark border-white/5 shadow-2xl rounded-3xl overflow-hidden">
-                            <CardHeader className="border-b border-white/5 pb-6 bg-white/5">
-                                <CardTitle className="flex items-center gap-3 text-white font-heading text-xl">
-                                    <Swords className="w-5 h-5 text-esports-accent" />
-                                    Your Active Match
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-8 pb-8 flex justify-center">
-                                {activeMatch ? (
-                                    <div className="w-full max-w-lg">
-                                        {/* Round Name */}
-                                        <div className="text-center mb-6">
-                                            <span className="text-sm font-medium text-emerald-500 uppercase tracking-wider">
-                                                {getRoundName(activeMatch.round, activeMatch.bracketSide)}
+                        {/* Active Match Section */}
+                        <div className="space-y-5">
+                            <h2 className="flex items-center gap-2 text-base font-semibold text-white">
+                                <Swords className="w-4 h-4 text-esports-accent" />
+                                Your Active Match
+                            </h2>
+
+                            {activeMatch ? (
+                                <div className="w-full max-w-lg mx-auto space-y-4">
+                                    {/* Round Name */}
+                                    <p className="text-center text-xs font-medium text-emerald-500 uppercase tracking-widest">
+                                        {getRoundName(activeMatch.round, activeMatch.bracketSide)}
+                                    </p>
+
+                                    {/* Team VS Team — compact */}
+                                    <div className="flex items-center justify-center gap-6 py-4">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <EntityAvatar
+                                                src={activeMatch.team1?.logo_url}
+                                                name={activeMatch.team1?.name}
+                                                entityId={activeMatch.team1?.id}
+                                                type="team"
+                                                size="w-14 h-14"
+                                            />
+                                            <span className="text-xs font-medium text-white max-w-[100px] truncate">
+                                                {activeMatch.team1?.name || 'TBD'}
                                             </span>
                                         </div>
 
-                                        {/* Team VS Team Display */}
-                                        <div className="flex items-center justify-center gap-8 py-8">
-                                            {/* Team 1 */}
-                                            <div className="flex flex-col items-center gap-3">
-                                                <EntityAvatar
-                                                    src={activeMatch.team1?.logo_url}
-                                                    name={activeMatch.team1?.name}
-                                                    entityId={activeMatch.team1?.id}
-                                                    type="team"
-                                                    size="w-20 h-20"
-                                                />
-                                                <span className="text-sm font-medium text-white max-w-[120px] truncate">
-                                                    {activeMatch.team1?.name || 'TBD'}
-                                                </span>
-                                            </div>
+                                        <span className="text-lg font-bold text-zinc-600">VS</span>
 
-                                            {/* VS */}
-                                            <span className="text-2xl font-bold text-zinc-600">VS</span>
-
-                                            {/* Team 2 */}
-                                            <div className="flex flex-col items-center gap-3">
-                                                <EntityAvatar
-                                                    src={activeMatch.team2?.logo_url}
-                                                    name={activeMatch.team2?.name}
-                                                    entityId={activeMatch.team2?.id}
-                                                    type="team"
-                                                    size="w-20 h-20"
-                                                />
-                                                <span className="text-sm font-medium text-white max-w-[120px] truncate">
-                                                    {activeMatch.team2?.name || 'TBD'}
-                                                </span>
-                                            </div>
+                                        <div className="flex flex-col items-center gap-2">
+                                            <EntityAvatar
+                                                src={activeMatch.team2?.logo_url}
+                                                name={activeMatch.team2?.name}
+                                                entityId={activeMatch.team2?.id}
+                                                type="team"
+                                                size="w-14 h-14"
+                                            />
+                                            <span className="text-xs font-medium text-white max-w-[100px] truncate">
+                                                {activeMatch.team2?.name || 'TBD'}
+                                            </span>
                                         </div>
+                                    </div>
 
-                                        {/* Check-in Card - shows when match has scheduled time */}
-                                        {effectiveScheduledTime && activeMatch.status === 'pending' && (
-                                            <div className="mb-4">
-                                                <MatchCheckinCard
+                                    {/* Check-in Card */}
+                                    {effectiveScheduledTime && activeMatch.status === 'pending' && (
+                                        <MatchCheckinCard
+                                            matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                            team1Id={activeMatch.team1?.id}
+                                            team2Id={activeMatch.team2?.id}
+                                            team1Name={activeMatch.team1?.name || 'Team 1'}
+                                            team2Name={activeMatch.team2?.name || 'Team 2'}
+                                            userTeamId={userTeamId}
+                                            scheduledTime={effectiveScheduledTime}
+                                            isCaptain={isCaptain}
+                                            selfPlayEnabled={schedulingConfig?.self_play_enabled || false}
+                                            checkInWindowMinutes={schedulingConfig?.checkin_window_minutes || 15}
+                                            onPartyCodeGenerated={(code) => {
+                                                refetchBracket();
+                                                toast({ title: 'Match Started', description: `Party Code: ${code}` });
+                                            }}
+                                        />
+                                    )}
+
+                                    {/* Time Proposal Card */}
+                                    {((!effectiveScheduledTime) && (schedulingConfig?.self_play_enabled && activeMatch.status === 'pending')) && (
+                                        (() => {
+                                            const roundIndex = activeMatch.round - 1;
+                                            const configDeadline = schedulingConfig?.round_deadlines?.[String(roundIndex)];
+                                            const defaultDeadline = getDefaultDeadline(roundIndex);
+                                            const effectiveDeadline = configDeadline || defaultDeadline || roundDeadline || activeMatch.scheduledTime;
+                                            return (
+                                                <TimeProposalCard
                                                     matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                    team1Id={activeMatch.team1?.id}
-                                                    team2Id={activeMatch.team2?.id}
+                                                    roundDeadline={effectiveDeadline}
                                                     team1Name={activeMatch.team1?.name || 'Team 1'}
                                                     team2Name={activeMatch.team2?.name || 'Team 2'}
                                                     userTeamId={userTeamId}
-                                                    scheduledTime={effectiveScheduledTime}
+                                                    team1Id={activeMatch.team1?.id}
                                                     isCaptain={isCaptain}
-                                                    selfPlayEnabled={schedulingConfig?.self_play_enabled || false}
-                                                    checkInWindowMinutes={schedulingConfig?.checkin_window_minutes || 15}
-                                                    onPartyCodeGenerated={(code) => {
+                                                    onTimeAccepted={() => {
                                                         refetchBracket();
-                                                        toast({ title: 'Match Started', description: `Party Code: ${code}` });
+                                                        toast({ title: 'Match Scheduled!', description: 'Now proceed to check-in.' });
                                                     }}
                                                 />
-                                            </div>
-                                        )}
+                                            );
+                                        })()
+                                    )}
 
+                                    {/* Actions — compact */}
+                                    <div className="space-y-2">
+                                        {/* CS2 Auto-Report */}
+                                        {(() => {
+                                            const gameKey = tournament?.game?.toLowerCase();
+                                            const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
+                                            if (!isCS2 || activeMatch.status === 'completed') return null;
+                                            return (
+                                                <FaceitMatchReport
+                                                    matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                                    team1Name={activeMatch.team1?.name || 'Team 1'}
+                                                    team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                    isCaptain={isCaptain}
+                                                    onSuccess={() => {
+                                                        toast({ title: "Match Reported", description: "CS2 result verified and saved." });
+                                                        refetchBracket();
+                                                        fetchMatchGames();
+                                                    }}
+                                                />
+                                            );
+                                        })()}
 
-
-                                        {/* Time Proposal Card - shows when no scheduled time AND self-play mode is enabled */}
-                                        {((!effectiveScheduledTime) && (schedulingConfig?.self_play_enabled && activeMatch.status === 'pending')) && (
-                                            <div className="mb-4">
-                                                {(() => {
-                                                    const roundIndex = activeMatch.round - 1;
-                                                    // Priority: 1. Explicit Config, 2. Default Calculation, 3. Legacy/Existing
-                                                    const configDeadline = schedulingConfig?.round_deadlines?.[String(roundIndex)];
-                                                    const defaultDeadline = getDefaultDeadline(roundIndex);
-                                                    const effectiveDeadline = configDeadline || defaultDeadline || roundDeadline || activeMatch.scheduledTime;
-
-                                                    return (
-                                                        <TimeProposalCard
-                                                            matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                            roundDeadline={effectiveDeadline}
-                                                            team1Name={activeMatch.team1?.name || 'Team 1'}
-                                                            team2Name={activeMatch.team2?.name || 'Team 2'}
-                                                            userTeamId={userTeamId}
-                                                            team1Id={activeMatch.team1?.id}
-                                                            isCaptain={isCaptain}
-                                                            onTimeAccepted={() => {
-                                                                refetchBracket();
-                                                                toast({ title: 'Match Scheduled!', description: 'Now proceed to check-in.' });
-                                                            }}
-                                                        />
-                                                    );
-                                                })()}
-                                            </div>
-                                        )}
-
-                                        {/* Actions */}
-                                        <div className="flex flex-col gap-3">
-                                            {/* Auto-Report Button - CS2 (uses Faceit Match ID) */}
-                                            {(() => {
-                                                const gameKey = tournament?.game?.toLowerCase();
-                                                const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
-                                                if (!isCS2) return null;
-                                                if (activeMatch.status === 'completed') return null;
-
+                                        {/* Valorant Auto-Report */}
+                                        {(() => {
+                                            const isValorant = tournament?.game?.toLowerCase() === 'valorant';
+                                            if (!isValorant) return null;
+                                            const bestOf = activeMatch.bestOf || 1;
+                                            const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
+                                            const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
+                                            const isGameLive = !!activeMatch.partyCode ||
+                                                (vetoData != null && (vetoData.status === 'completed' || !!vetoData.completed_at));
+                                            if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && isGameLive) {
                                                 return (
-                                                    <FaceitMatchReport
+                                                    <MatchAutoReport
                                                         matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                                        gameNumber={nextGameNumber}
+                                                        mapName={nextGameMap?.name || 'Unknown Map'}
+                                                        mapId={nextGameMap?.id || ''}
+                                                        scheduledTime={activeMatch.scheduledTime}
+                                                        userTeamId={userTeamId}
+                                                        team1Id={activeMatch.team1?.id}
+                                                        team2Id={activeMatch.team2?.id}
                                                         team1Name={activeMatch.team1?.name || 'Team 1'}
                                                         team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                        team1Logo={activeMatch.team1?.logo_url}
+                                                        team2Logo={activeMatch.team2?.logo_url}
                                                         isCaptain={isCaptain}
+                                                        className="w-full h-10"
                                                         onSuccess={() => {
-                                                            toast({ title: "Match Reported", description: "CS2 result verified and saved." });
+                                                            toast({ title: "Game Reported", description: "Result verified and saved." });
                                                             refetchBracket();
                                                             fetchMatchGames();
                                                         }}
                                                     />
                                                 );
-                                            })()}
+                                            }
+                                            return null;
+                                        })()}
 
-                                            {/* Auto-Report Button - Only for Valorant (uses Riot API) */}
-                                            {(() => {
-                                                const isValorant = tournament?.game?.toLowerCase() === 'valorant';
-                                                if (!isValorant) return null;
-
-                                                const bestOf = activeMatch.bestOf || 1;
-                                                const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
-                                                const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
-
-                                                // Only show auto-fetch when the game is actually live:
-                                                // party code shared OR map veto genuinely completed
-                                                const isGameLive = !!activeMatch.partyCode ||
-                                                    (vetoData != null && (vetoData.status === 'completed' || !!vetoData.completed_at));
-
-                                                if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && isGameLive) {
-                                                    return (
-                                                        <MatchAutoReport
-                                                            matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                            gameNumber={nextGameNumber}
-                                                            mapName={nextGameMap?.name || 'Unknown Map'}
-                                                            mapId={nextGameMap?.id || ''}
-                                                            scheduledTime={activeMatch.scheduledTime}
-                                                            userTeamId={userTeamId}
-                                                            team1Id={activeMatch.team1?.id}
-                                                            team2Id={activeMatch.team2?.id}
-                                                            team1Name={activeMatch.team1?.name || 'Team 1'}
-                                                            team2Name={activeMatch.team2?.name || 'Team 2'}
-                                                            isCaptain={isCaptain}
-                                                            className="w-full h-12 text-lg"
-                                                            onSuccess={() => {
-                                                                toast({ title: "Game Reported", description: "Result verified and saved." });
-                                                                refetchBracket();
-                                                                // Re-fetch games
-                                                                fetchMatchGames();
-                                                            }}
-                                                        />
-                                                    );
-                                                }
-                                                return null;
-                                            })()}
-
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <Button
-                                                    onClick={() => handleOpenVeto(activeMatch)}
-                                                    className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white h-12 font-bold font-mono tracking-wider transition-all"
-                                                    disabled={activeMatch.status === 'completed'}
-                                                >
-                                                    <Swords className="w-5 h-5 mr-2" />
-                                                    Map Veto
-                                                </Button>
-
-                                                <Button
-                                                    onClick={() => handleUploadResult(activeMatch.id)}
-                                                    className="bg-rose-500 hover:bg-rose-600 transition-all text-white h-12 font-bold font-mono tracking-wider disabled:opacity-40"
-                                                    disabled={activeMatch.status === 'completed' || !isVetoCompleted}
-                                                >
-                                                    <Trophy className="w-5 h-5 mr-2" />
-                                                    {isVetoCompleted ? 'Manual Report' : 'Awaiting Map Veto'}
-                                                </Button>
-                                            </div>
-
-                                            {/* Party Code */}
-                                            {activeMatch.partyCode && (
-                                                <div className="flex items-center justify-between bg-zinc-900/50 p-4 rounded-lg border border-zinc-800">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-xs text-zinc-500 uppercase tracking-wider font-bold">Party Code</span>
-                                                        <code className="text-lg font-mono text-emerald-400 font-bold tracking-wide">{activeMatch.partyCode}</code>
-                                                    </div>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        className="h-10 w-10 p-0 hover:bg-zinc-800 hover:text-white"
-                                                        onClick={() => {
-                                                            navigator.clipboard.writeText(activeMatch.partyCode);
-                                                            toast({ title: "Copied", description: "Party code copied to clipboard" });
-                                                        }}
-                                                    >
-                                                        <Copy className="h-5 w-5" />
-                                                    </Button>
-                                                </div>
-                                            )}
-
-                                            {/* Dispute System - Show for completed matches */}
-                                            {activeMatch.status === 'completed' && (
-                                                <div className="mt-2">
-                                                    <DisputeCard
-                                                        matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                        userTeamId={userTeamId}
-                                                        isCaptain={isCaptain}
-                                                        matchStatus={activeMatch.status}
-                                                    />
-                                                </div>
-                                            )}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <Button
+                                                onClick={() => handleOpenVeto(activeMatch)}
+                                                className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-white h-10 text-sm font-semibold font-mono tracking-wide"
+                                                disabled={activeMatch.status === 'completed'}
+                                            >
+                                                <Swords className="w-4 h-4 mr-1.5" />
+                                                Map Veto
+                                            </Button>
+                                            <Button
+                                                onClick={() => handleUploadResult(activeMatch.id)}
+                                                className="bg-rose-500 hover:bg-rose-600 text-white h-10 text-sm font-semibold font-mono tracking-wide disabled:opacity-40"
+                                                disabled={activeMatch.status === 'completed' || !isVetoCompleted}
+                                            >
+                                                <Trophy className="w-4 h-4 mr-1.5" />
+                                                {isVetoCompleted ? 'Manual Report' : 'Awaiting Veto'}
+                                            </Button>
                                         </div>
 
+                                        {/* Party Code — inline */}
+                                        {activeMatch.partyCode && (
+                                            <div className="flex items-center justify-between bg-zinc-900/40 px-4 py-3 rounded-lg border border-zinc-800/60">
+                                                <div>
+                                                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold block">Party Code</span>
+                                                    <code className="text-base font-mono text-emerald-400 font-bold">{activeMatch.partyCode}</code>
+                                                </div>
+                                                <button
+                                                    className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(activeMatch.partyCode);
+                                                        toast({ title: "Copied", description: "Party code copied" });
+                                                    }}
+                                                >
+                                                    <Copy className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Dispute */}
                                         {activeMatch.status === 'completed' && (
-                                            <div className="mt-6 text-center p-4 bg-zinc-900/50 rounded-lg border border-zinc-800">
-                                                <p className="text-gray-400">This match is completed.</p>
-                                            </div>
+                                            <DisputeCard
+                                                matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                                userTeamId={userTeamId}
+                                                isCaptain={isCaptain}
+                                                matchStatus={activeMatch.status}
+                                            />
                                         )}
                                     </div>
-                                ) : (
-                                    <div className="text-center py-12">
-                                        {isTournamentWinner ? (
-                                            <div className="text-center py-8">
-                                                <div className="relative inline-block mb-6">
-                                                    <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
-                                                    <div className="relative w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center transform rotate-12 shadow-2xl border border-emerald-400/50">
-                                                        <Trophy className="w-12 h-12 text-white transform -rotate-12" />
-                                                    </div>
-                                                </div>
-                                                <h2 className="text-3xl font-black text-white mb-2 tracking-tight uppercase">Tournament Champions!</h2>
-                                                <p className="text-emerald-400 font-medium mb-6 uppercase tracking-[0.2em] text-sm">You have claimed the victory</p>
-                                                <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl max-w-sm mx-auto backdrop-blur-md">
-                                                    <p className="text-emerald-100 text-sm leading-relaxed">
-                                                        Congratulations on reaching the pinnacle! Your team has emerged victorious across the entire bracket.
-                                                    </p>
+
+                                    {activeMatch.status === 'completed' && (
+                                        <p className="text-center text-sm text-zinc-500 pt-2">Match completed.</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="text-center py-10">
+                                    {isTournamentWinner ? (
+                                        <div className="py-6">
+                                            <div className="relative inline-block mb-5">
+                                                <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
+                                                <div className="relative w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center transform rotate-12 shadow-2xl border border-emerald-400/50">
+                                                    <Trophy className="w-10 h-10 text-white transform -rotate-12" />
                                                 </div>
                                             </div>
-                                        ) : isTournamentRunnerUp ? (
-                                            <div className="text-center py-8">
-                                                <div className="relative inline-block mb-6">
-                                                    <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
-                                                    <div className="relative w-24 h-24 bg-gradient-to-br from-slate-400 to-slate-600 rounded-2xl flex items-center justify-center transform rotate-12 shadow-2xl border border-slate-400/50">
-                                                        <Trophy className="w-12 h-12 text-slate-100 transform -rotate-12" />
-                                                    </div>
-                                                </div>
-                                                <h2 className="text-3xl font-black text-white mb-2 tracking-tight uppercase">Tournament Runners-Up</h2>
-                                                <p className="text-slate-400 font-medium mb-6 uppercase tracking-[0.2em] text-sm">A hard-fought journey</p>
-                                                <div className="bg-slate-500/10 border border-slate-500/20 p-6 rounded-2xl max-w-sm mx-auto backdrop-blur-md">
-                                                    <p className="text-slate-200 text-sm leading-relaxed">
-                                                        Incredible performance! You've navigated through the bracket to the very end. While the final didn't go your way, your journey was one of champions.
-                                                    </p>
+                                            <h2 className="text-2xl font-black text-white mb-1 uppercase">Tournament Champions!</h2>
+                                            <p className="text-emerald-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">You have claimed the victory</p>
+                                            <p className="text-emerald-100/70 text-sm max-w-xs mx-auto">Your team has emerged victorious across the entire bracket.</p>
+                                        </div>
+                                    ) : isTournamentRunnerUp ? (
+                                        <div className="py-6">
+                                            <div className="relative inline-block mb-5">
+                                                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
+                                                <div className="relative w-20 h-20 bg-gradient-to-br from-slate-400 to-slate-600 rounded-2xl flex items-center justify-center transform rotate-12 shadow-2xl border border-slate-400/50">
+                                                    <Trophy className="w-10 h-10 text-slate-100 transform -rotate-12" />
                                                 </div>
                                             </div>
-                                        ) : lastCompletedMatch ? (
-                                            <>
-                                                <div className="w-16 h-16 bg-emerald-900/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30">
-                                                    <Calendar className="w-8 h-8 text-emerald-500" />
-                                                </div>
-                                                <h3 className="text-lg font-medium text-white mb-2">Waiting for Next Round</h3>
-                                                <p className="text-gray-400 max-w-md mx-auto mb-6">
-                                                    You have completed your match for {getRoundName(lastCompletedMatch.round, lastCompletedMatch.bracketSide)}.
-                                                    Please wait for the next round pairings to be generated.
-                                                </p>
-                                                <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 rounded-lg border border-zinc-800 text-sm text-zinc-400">
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                    Checking for updates...
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-                                                <div className="bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800 max-w-md w-full">
-                                                    <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                                                        <Trophy className="w-8 h-8 text-zinc-600" />
-                                                    </div>
-                                                    <h2 className="text-xl font-semibold text-white mb-2">
-                                                        {tournament?.status === 'draft' ? 'Bracket in Preparation' : 'No Active Match Found'}
-                                                    </h2>
-                                                    <p className="text-zinc-400 mb-6">
-                                                        {tournament?.status === 'draft'
-                                                            ? 'The tournament organizer is still finalizing the bracket. Please check back shortly.'
-                                                            : "You don't have any active matches in this round. Stay tuned for the next update!"}
-                                                    </p>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="border-zinc-700 hover:bg-zinc-800 text-zinc-300"
-                                                        onClick={() => navigate(`/tournaments/${slug}`)}
-                                                    >
-                                                        Return to Tournament
-                                                    </Button>
-                                                </div>
+                                            <h2 className="text-2xl font-black text-white mb-1 uppercase">Tournament Runners-Up</h2>
+                                            <p className="text-slate-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">A hard-fought journey</p>
+                                            <p className="text-slate-300/70 text-sm max-w-xs mx-auto">You navigated through the bracket to the very end. An incredible performance.</p>
+                                        </div>
+                                    ) : lastCompletedMatch ? (
+                                        <>
+                                            <div className="w-12 h-12 bg-emerald-900/20 rounded-full flex items-center justify-center mx-auto mb-3 border border-emerald-500/30">
+                                                <Calendar className="w-6 h-6 text-emerald-500" />
                                             </div>
-                                        )}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                                            <h3 className="text-base font-medium text-white mb-1">Waiting for Next Round</h3>
+                                            <p className="text-sm text-gray-500 max-w-sm mx-auto mb-4">
+                                                Completed {getRoundName(lastCompletedMatch.round, lastCompletedMatch.bracketSide)}. Waiting for next round pairings.
+                                            </p>
+                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-zinc-900 rounded-lg border border-zinc-800 text-xs text-zinc-500">
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                Checking for updates…
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="py-12 px-4">
+                                            <Trophy className="w-8 h-8 text-zinc-700 mx-auto mb-4" />
+                                            <h2 className="text-lg font-semibold text-white mb-1">
+                                                {tournament?.status === 'draft' ? 'Bracket in Preparation' : 'No Active Match'}
+                                            </h2>
+                                            <p className="text-sm text-zinc-500 max-w-sm mx-auto mb-5">
+                                                {tournament?.status === 'draft'
+                                                    ? 'The organizer is still finalizing the bracket.'
+                                                    : 'No active matches in this round. Stay tuned!'}
+                                            </p>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="border-zinc-700 hover:bg-zinc-800 text-zinc-400"
+                                                onClick={() => navigate(`/tournaments/${slug}`)}
+                                            >
+                                                Return to Tournament
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {userTeamId && (
                             <CaptainMatchHistory
