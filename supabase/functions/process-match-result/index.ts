@@ -341,7 +341,9 @@ serve(async (req) => {
                         p_match_id: matchId,
                         p_winner_id: seriesWinnerId,
                         p_loser_id: seriesLoserId,
-                        p_expected_version: brktMatch.version || 1
+                        p_expected_version: brktMatch.version || 1,
+                        p_team1_score: t1Wins,
+                        p_team2_score: t2Wins
                     });
 
                 if (finalizeError) throw finalizeError
