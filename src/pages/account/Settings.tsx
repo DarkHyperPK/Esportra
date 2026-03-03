@@ -190,7 +190,7 @@ export default function AccountSettings() {
         <div className="flex gap-10">
           {/* ── Left Sidebar ── */}
           <aside className="w-56 shrink-0 border-r border-white/5 pr-4">
-            <nav className="space-y-0.5">
+            <div className="space-y-0.5">
               {visibleNav.map((item) => (
                 <button
                   key={item.key}
@@ -207,7 +207,7 @@ export default function AccountSettings() {
                   {item.label}
                 </button>
               ))}
-            </nav>
+            </div>
           </aside>
 
           {/* ── Content ── */}
