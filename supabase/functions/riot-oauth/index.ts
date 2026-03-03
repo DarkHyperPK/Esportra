@@ -12,8 +12,8 @@ const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/riot-oauth`;
 
 // Where to send users after linking succeeds/fails
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://esportra.com";
-const FRONTEND_SUCCESS_URL = `${FRONTEND_URL}/player/profile?riot_linked=success`;
-const FRONTEND_ERROR_URL = `${FRONTEND_URL}/player/profile?riot_linked=error`;
+const FRONTEND_SUCCESS_URL = `${FRONTEND_URL}/account/settings?riot_linked=success`;
+const FRONTEND_ERROR_URL = `${FRONTEND_URL}/account/settings?riot_linked=error`;
 
 // Riot API endpoints
 const RIOT_TOKEN_URL = "https://auth.riotgames.com/token";
@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
             }
 
             // Redirect back to the frontend so it can verify the CSRF state
-            return Response.redirect(`${FRONTEND_URL}/player/profile?riot_callback=true&code=${code}&state=${state}`, 302);
+            return Response.redirect(`${FRONTEND_URL}/account/settings?riot_callback=true&code=${code}&state=${state}`, 302);
         }
 
         // ── STEP 2: Handle Frontend POST Request (Token Exchange) ──
