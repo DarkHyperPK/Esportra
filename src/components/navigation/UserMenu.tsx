@@ -110,22 +110,22 @@ const UserMenu = ({
         return;
       }
       try {
-        // Check for approved & active verified roles
-        const { data: verifiedRoles } = await supabase
-          .from('verified_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('status', 'approved')
-          .eq('is_active', true)
-          .in('role', ['organizer', 'venue_owner']);
-
-        // Check for active user roles
-        const { data: userRoles } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .in('role', ['organizer', 'venue_owner']);
+        // Fetch both in parallel
+        const [{ data: verifiedRoles }, { data: userRoles }] = await Promise.all([
+          supabase
+            .from('verified_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .eq('status', 'approved')
+            .eq('is_active', true)
+            .in('role', ['organizer', 'venue_owner']),
+          supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+            .in('role', ['organizer', 'venue_owner']),
+        ]);
 
         // User has approved license if they have BOTH verified_role AND user_role for any role
         const verifiedRoleSet = new Set(verifiedRoles?.map(r => r.role) || []);

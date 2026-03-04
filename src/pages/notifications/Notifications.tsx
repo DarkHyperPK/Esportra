@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const NotificationsPage = () => {
-  const { notifications, markAsRead, refreshNotifications } = useNotifications();
+  const { notifications, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
   const [selected, setSelected] = useState<null | typeof notifications[0]>(null);
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -181,16 +181,7 @@ const NotificationsPage = () => {
 
   // Mark all read
   const handleMarkAllRead = async () => {
-    try {
-      const regularIds = notifications.filter(n => !n.is_read && !String(n.id).startsWith('invite-')).map(n => n.id);
-      if (regularIds.length > 0) {
-        await supabase.from('notifications').update({ is_read: true }).in('id', regularIds);
-        toast({ title: 'All marked as read', variant: 'default' });
-        await refreshNotifications();
-      }
-    } catch (error) {
-      console.error(error);
-    }
+    await markAllAsRead();
   };
 
   const toggleNotificationSelection = (id: string) => {

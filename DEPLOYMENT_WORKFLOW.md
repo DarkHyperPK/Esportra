@@ -11,8 +11,8 @@ Two branches, two environments. `staging` is where you develop and test. `main` 
 | **Branch** | `staging` | `main` |
 | **Supabase URL** | `http://supabasekong-usoocgow4s0wow00gsw04kcg.84.235.246.82.sslip.io` | `https://api.esportra.com` |
 | **Postgres port** | `5433` (on VPS) | `5432` (on VPS) |
-| **Frontend** | `localhost:3000` (local dev) | Coolify auto-deploy |
-| **Partner portal** | `localhost:5173` (always hits production Supabase) | `https://partner.esportra.com` |
+| **Main site frontend** | `localhost:3000` (local dev against staging Supabase) | Coolify (auto-deploy on push to `main`) |
+| **Partner portal frontend** | `localhost:5173` (local dev, hits staging Supabase) | `https://partner.esportra.com` (Coolify) |
 
 ---
 
@@ -36,7 +36,7 @@ GitHub Action                 GitHub Action
 Schema updated                 Functions updated
 ```
 
-No Coolify frontend deploy for staging. Run `npm run dev` locally against staging Supabase.
+No frontend deploy for staging. Run `npm run dev` locally — it already points to staging Supabase via `.env`.
 
 ### Push to `main`
 
@@ -48,7 +48,7 @@ git push origin main
    |                              |                    |
    v                              v                    v
 Coolify                    GitHub Action         GitHub Action
-(Frontend)                 (DB Migrations)       (Edge Functions)
+(Main site frontend)       (DB Migrations)       (Edge Functions)
    |                              |                    |
    | Pulls repo                   | SSH tunnel → 5432  | SCP files via SSH
    | npm run build                | supabase db push   | to production volume
@@ -57,17 +57,18 @@ Coolify                    GitHub Action         GitHub Action
 New UI live               Schema updated         Functions updated
 ```
 
-All three fire independently based on which paths changed. Changing only `src/` triggers only Coolify. Changing only `supabase/migrations/**` triggers only the DB action.
+All triggers fire independently based on which paths changed. On `main`, changing only `src/` triggers Coolify but not the DB action. Changing only `supabase/migrations/**` triggers only the DB action. On `staging`, only the DB and functions actions fire — there is no hosted frontend deploy.
 
 ---
 
 ## The deploy systems
 
-### Frontend — Coolify (`main` only)
+### Frontend — `localhost:3000` (`staging`) + Coolify (`main`)
 
-Coolify watches the GitHub repo. On any push to `main` it pulls the code, runs `npm run build`, and swaps the running container.
+- **Staging**: No hosted frontend. Run `npm run dev` locally — `.env` is already pointed at staging Supabase. Test at `http://localhost:3000`.
+- **Production**: Coolify watches `main`. On push it pulls the code, runs `npm run build`, and swaps the running container.
 
-**Common failure:** After a server migration, the GitHub App webhook still points to the old IP. Fix it in Coolify dashboard > Sources > GitHub App > re-authenticate.
+**Common Coolify failure:** After a server migration, the GitHub App webhook still points to the old IP. Fix it in Coolify dashboard > Sources > GitHub App > re-authenticate.
 
 ### Database migrations — GitHub Actions (both branches)
 
@@ -95,60 +96,51 @@ Both workflows SCP `supabase/functions/` to the server and set `1000:1000` owner
 
 ## Developer workflow
 
-### 1. Local dev against staging
+### Step 1 — Local dev against staging
 
-Local dev hits staging Supabase. The `.env` is already configured for this — don't change it.
+Both the main site and partner portal hit **staging** Supabase in local dev. The `.env` files are already configured — don't change them.
 
 ```bash
-npm run dev        # main site at http://localhost:3000
+# Terminal 1 — main site at http://localhost:3000
+npm run dev
+
+# Terminal 2 — partner portal at http://localhost:5173 (optional)
+cd partner-portal && npm run dev
 ```
 
-In a second terminal if you need the partner portal:
-```bash
-cd partner-portal
-npm run dev        # partner portal at http://localhost:5173 (hits production Supabase)
-```
+### Step 2 — Make your changes
 
-### 2. Make database changes
-
-Write migrations against staging. The easiest flow:
+Write code, add features, fix bugs. For database changes write a migration file:
 
 ```bash
-# Option A — use Supabase CLI diff after making changes in staging Studio
+# Option A — diff after making changes in staging Studio
 supabase db diff -f describe_what_you_changed --db-url "postgresql://postgres:[STAGING_PASS]@localhost:54324/postgres"
 
-# Option B — write the SQL by hand in supabase/migrations/<timestamp>_name.sql
+# Option B — write SQL by hand
+# supabase/migrations/<timestamp>_name.sql
 ```
 
-Open the generated file. Read it. Confirm it does exactly what you intended — the diff tool sometimes generates unnecessary `ALTER` statements or misses dependent objects.
+Open the generated file. Read it. Confirm it does exactly what you intended.
 
-### 3. Test on staging
+### Step 3 — Push to staging and test
 
 ```bash
-git add supabase/migrations/
-git commit -m "feat: add points system"
+git add .
+git commit -m "feat: describe what you built"
 git push origin staging
 ```
 
-GitHub Actions will push the migration to staging Supabase automatically. Refresh your local dev server and test.
+GitHub Actions deploys the migration + functions automatically. Vercel deploys the frontend. Test everything on the staging site.
 
-### 4. Test Edge Functions (if applicable)
-
-```bash
-supabase functions serve my-function-name --env-file .env
-```
-
-Hit it with `curl` or from the local frontend.
-
-### 5. Build check before merging
+### Step 4 — Build check before promoting
 
 ```bash
 npm run build
 ```
 
-If this fails, production will also fail. Fix it first.
+If this fails locally, production will also fail. Fix it first.
 
-### 6. Promote to production
+### Step 5 — Promote to production
 
 ```bash
 git checkout main
@@ -173,6 +165,12 @@ Use the sync script to copy production DB + storage into staging. Run this when 
 ```
 
 The script opens SSH tunnels, dumps production, restores to staging, re-applies Supabase schema grants (which `pg_dump --no-privileges` strips), and mirrors the storage bucket via MinIO.
+
+After a sync, re-run any staging-only migrations that were overwritten:
+
+```bash
+git push origin staging  # triggers --include-all which re-applies them
+```
 
 ---
 
@@ -200,7 +198,7 @@ Go to your repository on GitHub > Settings > Secrets and variables > Actions.
 |--------|---------|-------|
 | `PROD_DB_URL` | `deploy-migrations.yml` | `postgresql://postgres:[PASSWORD]@[SERVER_IP]:5432/postgres` |
 | `STAGING_DB_URL` | `deploy-staging-migrations.yml` | `postgresql://postgres:[PASSWORD]@[SERVER_IP]:5433/postgres` |
-| `SERVER_IP` | all 4 workflows | Public IP of the Coolify VPS |
+| `SERVER_IP` | all 4 workflows | Public IP of the VPS |
 | `SERVER_USER` | all 4 workflows | SSH username (`ubuntu`) |
 | `SSH_PRIVATE_KEY` | all 4 workflows | Private key authorized on the server |
 | `STAGING_FUNCTIONS_PATH` | `deploy-staging-functions.yml` | Path to staging functions volume on server |
@@ -252,4 +250,4 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO postgres, anon, authenticated
 Coolify might be serving a cached build. Force a redeploy from the Coolify dashboard. If it's a database issue, use the MCP tools to verify the expected table/column/function actually exists on production.
 
 **Staging works but production doesn't.**
-Partner portal always points to production Supabase even in local dev — check the partner portal `.env` if it's the partner portal that's broken. For the main site, confirm `.env.production` has the correct production Supabase URL and anon key.
+Confirm `.env.production` (main site) and `partner-portal/.env.production` both have the correct production Supabase URL and anon key.

@@ -44,7 +44,7 @@ export const RoleSwitcherDialog: React.FC<{
   onOpenChange: (open: boolean) => void;
 }> = ({ open, onOpenChange }) => {
   const { currentRole, isLoading, switchRole } = useRole();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   const [reason, setReason] = useState('');
@@ -61,9 +61,11 @@ export const RoleSwitcherDialog: React.FC<{
   const checkVerificationStatus = async () => {
     if (!user) return;
     try {
-      const { data: userRoles } = await supabase.from('user_roles').select('role').eq('user_id', user.id).eq('is_active', true);
-      const { data: verifiedRoles } = await supabase.from('verified_roles').select('role, status, is_active').eq('user_id', user.id).eq('status', 'approved').eq('is_active', true);
-      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+      // Fetch user_roles and verified_roles in parallel (profile is already available from useAuth)
+      const [{ data: userRoles }, { data: verifiedRoles }] = await Promise.all([
+        supabase.from('user_roles').select('role').eq('user_id', user.id).eq('is_active', true),
+        supabase.from('verified_roles').select('role, status, is_active').eq('user_id', user.id).eq('status', 'approved').eq('is_active', true),
+      ]);
 
       const isAdmin = profile?.is_admin;
       const hasOrganizerRole = userRoles?.some(r => r.role === 'organizer') || false;
@@ -152,8 +154,8 @@ export const RoleSwitcherDialog: React.FC<{
               <button
                 key="casual"
                 className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-all ${currentRole === 'casual'
-                    ? 'border-cyan-400/60 bg-cyan-500/10'
-                    : 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5'
+                  ? 'border-cyan-400/60 bg-cyan-500/10'
+                  : 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5'
                   }`}
                 onClick={() => currentRole !== 'casual' && handleRoleSwitch('casual')}
                 disabled={switching || currentRole === 'casual'}
@@ -174,8 +176,8 @@ export const RoleSwitcherDialog: React.FC<{
                 <button
                   key="organizer"
                   className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-all ${currentRole === 'organizer'
-                      ? 'border-rose-400/70 bg-rose-500/10'
-                      : 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5'
+                    ? 'border-rose-400/70 bg-rose-500/10'
+                    : 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5'
                     }`}
                   onClick={() => currentRole !== 'organizer' && handleRoleSwitch('organizer')}
                   disabled={switching || currentRole === 'organizer'}
@@ -199,8 +201,8 @@ export const RoleSwitcherDialog: React.FC<{
                 <button
                   key="venue_owner"
                   className={`w-full rounded-2xl border px-3 py-2.5 text-left transition-all ${currentRole === 'venue_owner'
-                      ? 'border-emerald-400/70 bg-emerald-500/10'
-                      : 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5'
+                    ? 'border-emerald-400/70 bg-emerald-500/10'
+                    : 'border-white/10 hover:border-cyan-400/40 hover:bg-white/5'
                     }`}
                   onClick={() => currentRole !== 'venue_owner' && handleRoleSwitch('venue_owner')}
                   disabled={switching || currentRole === 'venue_owner'}

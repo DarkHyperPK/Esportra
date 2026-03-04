@@ -4,7 +4,6 @@ import { useMapVetoMachine } from '@/hooks/useMapVetoMachine';
 import { VetoHeader } from './map-veto/VetoHeader';
 import { VetoTeamDisplay } from './map-veto/VetoTeamDisplay';
 import { VetoSelectedMaps } from './map-veto/VetoSelectedMaps';
-import { VetoShareLinks } from './map-veto/VetoShareLinks';
 import { VetoTurnIndicator } from './map-veto/VetoTurnIndicator';
 import { MapPool } from './map-veto/MapPool';
 import { VetoDialogs } from './map-veto/VetoDialogs';
@@ -61,9 +60,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     isOrganizer,
     isCaptain,
     userTeamId,
-    getTeamLink,
-    copyToClipboard,
-    copiedLink,
     showSideDialog,
     setShowSideDialog,
     pendingMapId,
@@ -169,19 +165,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         setImagesLoaded={setImagesLoaded}
         bestOf={currentBestOf}
         game={game}
-      />
-
-      <VetoShareLinks
-        veto={veto}
-        effectiveIsOrganizer={effectiveIsOrganizer}
-        isCaptain={isCaptain}
-        userTeamId={userTeamId}
-        team1Name={team1Name}
-        team2Name={team2Name}
-        getTeamLink={getTeamLink}
-        copyToClipboard={copyToClipboard}
-        copiedLink={copiedLink}
-        isOrganizer={isOrganizer}
       />
 
       <VetoTurnIndicator

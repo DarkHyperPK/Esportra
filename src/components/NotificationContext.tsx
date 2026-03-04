@@ -20,6 +20,7 @@ interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
   markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
 }
 
@@ -211,16 +212,42 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   }, [user, fetchNotifications]);
 
   const markAsRead = async (id: string) => {
-    // Update in database - realtime subscription will handle state update
+    // Optimistic update: mark as read in local state immediately
+    setNotifications(prev => {
+      const updated = prev.map(n => n.id === id ? { ...n, is_read: true } : n);
+      setUnreadCount(updated.filter(n => !n.is_read).length);
+      return updated;
+    });
+
+    // Skip DB call for synthetic invite notifications
+    if (String(id).startsWith('invite-')) return;
+
     await supabase
       .from('notifications')
       .update({ is_read: true })
       .eq('id', id);
-    // No need to call fetchNotifications - realtime UPDATE event will update state
+  };
+
+  const markAllAsRead = async () => {
+    // Optimistic: mark all as read locally immediately
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+
+    // Update all regular (non-synthetic) unread notifications in DB
+    const regularUnreadIds = notifications
+      .filter(n => !n.is_read && !String(n.id).startsWith('invite-'))
+      .map(n => n.id);
+
+    if (regularUnreadIds.length > 0) {
+      await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .in('id', regularUnreadIds);
+    }
   };
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, refreshNotifications: fetchNotifications }}>
+    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications: fetchNotifications }}>
       {children}
     </NotificationContext.Provider>
   );

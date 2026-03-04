@@ -40,21 +40,13 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     }
 
     try {
-      // Check if user is admin first
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('is_admin, admin_roles')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      const isAdmin = profileData?.is_admin || false;
-      const adminRoles = (profileData?.admin_roles as string[]) || [];
+      // Use profile from AuthContext instead of querying the DB again
+      const isAdmin = profile?.is_admin || false;
+      const adminRoles = (profile?.admin_roles as string[]) || [];
       const isSuperAdmin = adminRoles.includes('super_admin');
 
       // If user is admin, set role based on admin type
       if (isAdmin) {
-        // Super admin: set to 'admin' role (gets all perks)
-        // Other admins: set to 'casual' role (stay on casual, get admin perks)
         const adminRole: UserRole = isSuperAdmin ? 'admin' : 'casual';
         setCurrentRole(adminRole);
         localStorage.setItem('sessionRole', adminRole);
@@ -96,24 +88,10 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
         setCurrentRole(activeRole);
         localStorage.setItem('sessionRole', activeRole);
       } else {
-        // Fallback to base role from profiles
-        const { data: freshProfile, error } = await supabase
-          .from('profiles')
-          .select('base_role')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching fresh profile:', error);
-          // Fallback to cached profile
-          const userBaseRole = (profile?.role as UserRole) || 'casual';
-          setCurrentRole(userBaseRole);
-        } else {
-          // Use fresh database data
-          const userBaseRole = (freshProfile?.base_role as UserRole) || 'casual';
-          setCurrentRole(userBaseRole);
-          localStorage.setItem('sessionRole', userBaseRole);
-        }
+        // Fallback to base role from the already-loaded profile
+        const userBaseRole = (profile?.base_role as UserRole) || (profile?.role as UserRole) || 'casual';
+        setCurrentRole(userBaseRole);
+        localStorage.setItem('sessionRole', userBaseRole);
       }
 
     } catch (error) {

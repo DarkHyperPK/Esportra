@@ -65,8 +65,8 @@ export function adaptGraphToBracketMatches(
         // but for now map lookup is fine for winner.
         const winner = node.winner_id ? teamsMap.get(node.winner_id) : undefined;
 
-        const team1 = mapTeam1 || (node.team1_id ? { id: node.team1_id, name: node.team1_name || 'TBD', logo_url: node.team1_logo } : undefined);
-        const team2 = mapTeam2 || (node.team2_id ? { id: node.team2_id, name: node.team2_name || 'TBD', logo_url: node.team2_logo } : undefined);
+        const team1: Team | undefined = mapTeam1 || (node.team1_id ? { id: node.team1_id, name: (node as any).team1_name || 'TBD', logo_url: (node as any).team1_logo } : undefined);
+        const team2: Team | undefined = mapTeam2 || (node.team2_id ? { id: node.team2_id, name: (node as any).team2_name || 'TBD', logo_url: (node as any).team2_logo } : undefined);
 
         // Find next match from edges (winner advancement)
         const winnerEdge = edges.find(e =>

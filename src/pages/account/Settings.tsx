@@ -60,10 +60,10 @@ type Tab = 'connected_accounts' | 'licenses' | 'desktop_pairing' | 'security';
 interface NavItem { key: Tab; label: string; icon: React.ReactNode; description: string; venueOwnerOnly?: boolean }
 
 const NAV: NavItem[] = [
-  { key: 'connected_accounts', label: 'Connected Accounts', description: 'Riot, Faceit, Discord',                  icon: <Link2 className="w-4 h-4" /> },
-  { key: 'licenses',           label: 'My Licenses',        description: 'Professional license IDs',               icon: <Award className="w-4 h-4" /> },
-  { key: 'desktop_pairing',    label: 'Desktop Pairing',    description: 'Venue hub pairing tokens', venueOwnerOnly: true, icon: <Monitor className="w-4 h-4" /> },
-  { key: 'security',           label: 'Security',           description: 'Password & account safety',               icon: <Shield className="w-4 h-4" /> },
+  { key: 'connected_accounts', label: 'Connected Accounts', description: 'Riot, Faceit, Discord', icon: <Link2 className="w-4 h-4" /> },
+  { key: 'licenses', label: 'My Licenses', description: 'Professional license IDs', icon: <Award className="w-4 h-4" /> },
+  { key: 'desktop_pairing', label: 'Desktop Pairing', description: 'Venue hub pairing tokens', venueOwnerOnly: true, icon: <Monitor className="w-4 h-4" /> },
+  { key: 'security', label: 'Security', description: 'Password & account safety', icon: <Shield className="w-4 h-4" /> },
 ];
 
 // ─── AccountSettings ──────────────────────────────────────────────────────────
@@ -195,11 +195,10 @@ export default function AccountSettings() {
                 <button
                   key={item.key}
                   onClick={() => setActiveTab(item.key)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-all ${
-                    activeTab === item.key
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-all ${activeTab === item.key
                       ? 'bg-rose-500/10 text-rose-400 font-medium'
                       : 'text-gray-300 hover:text-white hover:bg-white/5'
-                  }`}
+                    }`}
                 >
                   <span className={activeTab === item.key ? 'text-rose-400' : 'text-gray-400'}>
                     {item.icon}
@@ -219,9 +218,9 @@ export default function AccountSettings() {
             </div>
 
             {activeTab === 'connected_accounts' && <ConnectedAccountsTab />}
-            {activeTab === 'licenses'           && <LicensesTab userId={user?.id} />}
-            {activeTab === 'desktop_pairing'    && ownsVenues && <DesktopPairingTab userId={user?.id} />}
-            {activeTab === 'security'           && <SecurityTab />}
+            {activeTab === 'licenses' && <LicensesTab userId={user?.id} />}
+            {activeTab === 'desktop_pairing' && ownsVenues && <DesktopPairingTab userId={user?.id} />}
+            {activeTab === 'security' && <SecurityTab />}
           </div>
         </div>
       </main>
@@ -280,8 +279,7 @@ function ConnectedAccountsTab() {
         ? `${riotAccount.game_name}#${riotAccount.tag_line}`
         : 'Required for Valorant tournament registration',
       connected: !!riotAccount, loading: riotLoading,
-      iconBg: 'bg-red-500/10 border-red-500/20',
-      icon: <img src="/riot-logo.svg" alt="Riot" className="w-5 h-5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
+      icon: <img src="/riot-logo.svg" alt="Riot" className="w-8 h-8 drop-shadow-md" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
       onConnect: linkRiotAccount, onUnlink: handleUnlinkRiot, unlinking: unlinkingRiot,
       connectClass: 'bg-red-600 hover:bg-red-500',
     },
@@ -291,8 +289,7 @@ function ConnectedAccountsTab() {
         ? faceitAccount.nickname
         : 'Required for CS2 tournament registration',
       connected: !!faceitAccount, loading: faceitLoading,
-      iconBg: 'bg-orange-500/10 border-orange-500/20',
-      icon: <img src="/faceit-logo.svg" alt="Faceit" className="w-5 h-5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
+      icon: <img src="/faceit-logo.svg" alt="Faceit" className="w-8 h-8 rounded-full drop-shadow-md" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
       onConnect: linkFaceitAccount, onUnlink: handleUnlinkFaceit, unlinking: unlinkingFaceit,
       connectClass: 'bg-orange-600 hover:bg-orange-500',
     },
@@ -302,8 +299,7 @@ function ConnectedAccountsTab() {
         ? discordIdentity.identity_data?.full_name || discordIdentity.identity_data?.email || 'Linked'
         : 'Link your Discord account',
       connected: !!discordIdentity, loading: false,
-      iconBg: 'bg-indigo-500/10 border-indigo-500/20',
-      icon: <span className="text-indigo-400 font-bold text-xs">DC</span>,
+      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" className="w-8 h-8 drop-shadow-md"><path fill="#5865F2" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z" /></svg>,
       onConnect: linkDiscord, onUnlink: undefined, unlinking: false,
       connectClass: 'bg-[#5865F2] hover:bg-[#4752C4]',
     },
@@ -313,7 +309,7 @@ function ConnectedAccountsTab() {
     <div className="space-y-3 max-w-2xl">
       {accounts.map((acc) => (
         <div key={acc.key} className="rounded-xl border border-white/5 bg-white/[0.02] p-4 flex items-center gap-4">
-          <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${acc.iconBg}`}>
+          <div className="flex items-center justify-center shrink-0 w-10">
             {acc.icon}
           </div>
           <div className="flex-1 min-w-0">
@@ -344,8 +340,8 @@ function ConnectedAccountsTab() {
 
       {/* Steam — coming soon */}
       <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 flex items-center gap-4 opacity-40">
-        <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-          <span className="text-blue-400 font-bold text-xs">ST</span>
+        <div className="flex items-center justify-center shrink-0 w-10">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" className="w-8 h-8 opacity-90"><path fill="#ffffff" d="M248 8C111.03 8 0 119.03 0 256s111.03 248 248 248 248-111.03 248-248S384.97 8 248 8zm64.51 245.89v-3.92c0-30.83-25.04-55.87-55.87-55.87-30.84 0-55.88 25.04-55.88 55.87v3.92c0 30.83 25.04 55.87 55.88 55.87 30.83 0 55.87-25.04 55.87-55.87zm-142.3 84.15c0 14.63 11.89 26.51 26.51 26.51 14.63 0 26.52-11.88 26.52-26.51 0-14.62-11.89-26.51-26.52-26.51-14.62 0-26.51 11.89-26.51 26.51zm8.39-95.21v.57c-5.88-5.35-13.88-8.62-22.6-8.62-18.06 0-32.72 14.66-32.72 32.72s14.66 32.72 32.72 32.72c8.73 0 16.73-3.27 22.6-8.62v.57c0 10.96-8.91 19.87-19.87 19.87-10.97 0-19.88-8.91-19.88-19.87s8.91-19.87 19.88-19.87c10.96 0 19.87 8.91 19.87 19.87zm-55.33 62.49c-30.84 0-55.88-25.04-55.88-55.87v-3.92c0-30.84 25.04-55.88 55.88-55.88 30.83 0 55.87 25.04 55.87 55.88v3.92c0 30.83-25.04 55.87-55.87 55.87zm116.32-62.49c10.96 0 19.87 8.91 19.87 19.87s-8.91 19.87-19.87 19.87-19.88-8.91-19.88-19.87 8.92-19.87 19.88-19.87zm.76-32.54c18.06 0 32.71 14.66 32.71 32.71 0 18.06-14.65 32.72-32.71 32.72-18.06 0-32.72-14.66-32.72-32.72 0-18.05 14.66-32.71 32.72-32.71zm56.84 32.54c10.97 0 19.87 8.91 19.87 19.87s-8.9 19.87-19.87 19.87c-10.96 0-19.87-8.91-19.87-19.87s8.91-19.87 19.87-19.87zm-.76-32.54c-18.06 0-32.72 14.66-32.72 32.71 0 18.06 14.66 32.72 32.72 32.72s32.72-14.66 32.72-32.72c0-18.05-14.66-32.71-32.72-32.71z" /></svg>
         </div>
         <div className="flex-1">
           <div className="font-medium text-white text-sm">Steam</div>
