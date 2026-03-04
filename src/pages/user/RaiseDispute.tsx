@@ -471,6 +471,16 @@ const RaiseDispute = () => {
       }
 
       if (disputeType === 'general') {
+        // General support → notify all admins/moderators
+        if (data?.id) {
+          await supabase.rpc('notify_admins_of_dispute', {
+            p_dispute_id: data.id,
+            p_type: 'dispute_filed',
+            p_title: 'New General Support Request',
+            p_message: `A user submitted a general support request: "${title.trim()}"`,
+            p_link: '/admin/disputes',
+          });
+        }
         toast({
           title: 'Support request submitted',
           description: 'Your general support request has been submitted and will be reviewed by administrators.',
@@ -478,17 +488,43 @@ const RaiseDispute = () => {
       } else {
         const tournament = tournaments.find(t => t.id === selectedTournament);
         const canResolveWithOrganizer = ORGANIZER_RESOLVABLE_REASONS.includes(disputeReason);
-        
+        const reasonLabel = DISPUTE_REASONS.find(r => r.value === disputeReason)?.label || disputeReason;
+
+        if (canResolveWithOrganizer) {
+          // Notify tournament organizer
+          if (tournament?.organizer_id && data?.id) {
+            await supabase.from('notifications').insert({
+              user_id: tournament.organizer_id,
+              type: 'dispute_filed',
+              title: 'New Dispute Filed',
+              message: `A player filed a dispute in "${tournament.name}" — ${reasonLabel}.`,
+              link: '/organizer/disputes',
+              data: { dispute_id: data.id, tournament_id: tournament.id },
+              is_read: false,
+            });
+          }
+        } else {
+          // Admin-routed (cheating, unsportsmanlike, other) → notify all admins/moderators
+          if (data?.id) {
+            await supabase.rpc('notify_admins_of_dispute', {
+              p_dispute_id: data.id,
+              p_type: 'dispute_filed',
+              p_title: 'New Dispute Filed',
+              p_message: `A player filed a dispute in "${tournament?.name ?? 'a tournament'}" — ${reasonLabel}.`,
+              p_link: '/admin/disputes',
+            });
+          }
+        }
+
         toast({
           title: 'Dispute submitted',
-          description: canResolveWithOrganizer 
+          description: canResolveWithOrganizer
             ? `Your dispute has been submitted and will be reviewed by the tournament organizer.`
             : `Your dispute has been submitted and will be reviewed by administrators.`,
         });
       }
 
-      // Always redirect to dashboard - the organizer/admin will see it in their dispute center
-      navigate('/user/dashboard');
+      navigate('/user/my-disputes');
     } catch (error: unknown) {
       console.error('Error submitting dispute:', error);
       const errorMessage = error instanceof Error 
@@ -833,7 +869,7 @@ const RaiseDispute = () => {
                 )}
                 <Button
                   variant="ghost"
-                  onClick={() => navigate('/user/dashboard')}
+                  onClick={() => navigate('/user/my-disputes')}
                   className="text-white/70 hover:text-white hover:bg-white/10 w-full sm:w-auto border border-white/20"
                 >
                   Cancel

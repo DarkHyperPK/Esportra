@@ -49,7 +49,7 @@ const steps = [
 const DISPUTE_REASONS = [
   { value: 'cheating', label: 'Cheating / Hacking' },
   { value: 'unsportsmanlike', label: 'Unsportsmanlike Conduct' },
-  { value: 'unapproved_player', label: 'Unapproved Player / Roster Violation' },
+  { value: 'roster_violation', label: 'Unapproved Player / Roster Violation' },
   { value: 'match_result', label: 'Match Result Discrepancy' },
   { value: 'scheduling', label: 'Scheduling / No-Show' },
   { value: 'technical_issue', label: 'Technical Issue / Server Problems' },
@@ -57,6 +57,9 @@ const DISPUTE_REASONS = [
   { value: 'ban_appeal', label: 'Ban Appeal' },
   { value: 'other', label: 'Other' },
 ];
+
+// These reasons bypass the organizer and go straight to admins/moderators
+const ADMIN_ROUTED_REASONS = ['cheating', 'unsportsmanlike', 'other'];
 
 const DisputeSubmission: React.FC<DisputeSubmissionProps> = ({
   tournamentId,
@@ -254,6 +257,43 @@ const DisputeSubmission: React.FC<DisputeSubmissionProps> = ({
 
       if (error) throw error;
 
+      // Notify organizer or admins based on reason
+      try {
+        const reasonLabel = DISPUTE_REASONS.find(r => r.value === disputeReason)?.label || disputeReason;
+        if (ADMIN_ROUTED_REASONS.includes(disputeReason)) {
+          // Cheating / unsportsmanlike / other → notify all admins/moderators
+          if (data?.id) {
+            await supabase.rpc('notify_admins_of_dispute', {
+              p_dispute_id: data.id,
+              p_type: 'dispute_filed',
+              p_title: 'New Dispute Filed',
+              p_message: `A player filed a dispute in "${tournamentName}" — ${reasonLabel}.`,
+              p_link: '/admin/disputes',
+            });
+          }
+        } else {
+          // Organizer-routed: notify the tournament organizer
+          const { data: tourneyData } = await supabase
+            .from('tournaments')
+            .select('organizer_id, name')
+            .eq('id', tournamentId)
+            .single();
+          if (tourneyData?.organizer_id && data?.id) {
+            await supabase.from('notifications').insert({
+              user_id: tourneyData.organizer_id,
+              type: 'dispute_filed',
+              title: 'New Dispute Filed',
+              message: `A player filed a dispute in "${tourneyData.name}" — ${reasonLabel}.`,
+              link: '/organizer/disputes',
+              data: { dispute_id: data.id, tournament_id: tournamentId },
+              is_read: false,
+            });
+          }
+        }
+      } catch {
+        // Non-critical — dispute is created, notification failure is silent
+      }
+
       toast({
         title: 'Dispute submitted',
         description: 'Your dispute has been submitted. Organizers will review it shortly.',
@@ -264,7 +304,7 @@ const DisputeSubmission: React.FC<DisputeSubmissionProps> = ({
       setDescription('');
       setDisputeReason('');
       setEvidenceFile(null);
-      
+
       onClose?.();
     } catch (error: any) {
       console.error('Error submitting dispute:', error);

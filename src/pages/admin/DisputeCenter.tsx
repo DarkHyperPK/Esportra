@@ -28,6 +28,20 @@ type Dispute = {
   raised_by_name?: string;
 };
 
+const DISPUTE_REASON_LABELS: Record<string, string> = {
+  cheating: 'Cheating / Hacking',
+  unsportsmanlike: 'Unsportsmanlike Conduct',
+  roster_violation: 'Unapproved Player / Roster Violation',
+  match_result: 'Match Result Discrepancy',
+  result_dispute: 'Match Result Dispute',
+  scheduling: 'Scheduling / No-Show',
+  technical_issue: 'Technical Issue / Server Problems',
+  rule_violation: 'Tournament Rule Violation',
+  ban_appeal: 'Ban Appeal',
+  general_support: 'General Support',
+  other: 'Other',
+};
+
 const statusMeta: Record<Dispute['status'], { label: string; className: string; icon: React.ElementType }> = {
   open: { label: 'Open', className: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40', icon: Clock },
   in_review: { label: 'In Review', className: 'bg-blue-500/15 text-blue-300 border-blue-500/40', icon: MessageSquare },
@@ -444,7 +458,7 @@ const DisputeCenter: React.FC = () => {
                                   {d.dispute_reason && (
                                     <>
                                       <span>•</span>
-                                      <span>Reason: {d.dispute_reason}</span>
+                                      <span>{DISPUTE_REASON_LABELS[d.dispute_reason] || d.dispute_reason}</span>
                                     </>
                                   )}
                                   <span>•</span>
