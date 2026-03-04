@@ -15,7 +15,8 @@ export const MAP_THEMES: Record<string, { color: string; bg: string; id: string 
     'abyss': { color: 'text-blue-400', bg: 'bg-blue-500/10', id: '224b0a95-48b9-f703-1bd8-67aca101a61f' },
     'infinity': { color: 'text-blue-400', bg: 'bg-blue-500/10', id: '224b0a95-48b9-f703-1bd8-67aca101a61f' },
     'corrode': { color: 'text-zinc-400', bg: 'bg-zinc-500/10', id: '1c18ab1f-420d-0d8b-71d0-77ad3c439115' },
-    'rook': { color: 'text-zinc-400', bg: 'bg-zinc-500/10', id: '1c18ab1f-420d-0d8b-71d0-77ad3c439115' }
+    'rook': { color: 'text-zinc-400', bg: 'bg-zinc-500/10', id: '1c18ab1f-420d-0d8b-71d0-77ad3c439115' },
+    'pearl': { color: 'text-teal-400', bg: 'bg-teal-500/10', id: 'fd267378-4d1d-484f-ff52-77821ed10dc2' }
 };
 
 export const getAgentIcon = (characterId: string | number) => `https://media.valorant-api.com/agents/${characterId}/displayicon.png`;
