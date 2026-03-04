@@ -24,6 +24,7 @@ interface GameDetail {
     riot_match_id: string;
     map_id: string;
     map_name: string;
+    map_image_url: string | null;
     match_details: any;
     reported_by_team_id?: string;
 }
@@ -65,7 +66,8 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                     match_details,
                     reported_by_team_id,
                     game_maps (
-                        map_name
+                        map_name,
+                        map_image_url
                     )
                 `)
                 .in('match_id', rawMatchIds)
@@ -81,7 +83,8 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                 if (!grouped[prefixedId]) grouped[prefixedId] = [];
                 grouped[prefixedId].push({
                     ...game,
-                    map_name: game.game_maps?.map_name || 'Unknown Map'
+                    map_name: game.game_maps?.map_name || 'Unknown Map',
+                    map_image_url: game.game_maps?.map_image_url || null,
                 });
             });
             return grouped;
@@ -163,9 +166,6 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                                                             <p className="text-center text-xs text-zinc-600 italic py-2">No detailed game data available.</p>
                                                         ) : (
                                                             games.map((game) => {
-                                                                const mapTheme = MAP_THEMES[game.map_name.toLowerCase()];
-                                                                const riotMapId = mapTheme?.id || game.map_id;
-
                                                                 return (
                                                                     <div key={game.id} className="space-y-2">
                                                                         <div
@@ -173,14 +173,16 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                                                                             onClick={() => toggleGame(game.id)}
                                                                         >
                                                                             {/* Map Splash Background */}
-                                                                            <div className="absolute inset-0 z-0">
-                                                                                <img
-                                                                                    src={`https://media.valorant-api.com/maps/${riotMapId}/splash.png`}
-                                                                                    alt=""
-                                                                                    className="w-full h-full object-cover opacity-40 group-hover/game:opacity-60 transition-opacity"
-                                                                                />
-                                                                                <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/40 to-transparent" />
-                                                                            </div>
+                                                                            {game.map_image_url && (
+                                                                                <div className="absolute inset-0 z-0">
+                                                                                    <img
+                                                                                        src={game.map_image_url}
+                                                                                        alt=""
+                                                                                        className="w-full h-full object-cover opacity-40 group-hover/game:opacity-60 transition-opacity"
+                                                                                    />
+                                                                                    <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/40 to-transparent" />
+                                                                                </div>
+                                                                            )}
 
                                                                             <div className="relative z-10 flex flex-col p-5">
                                                                                 <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1 drop-shadow-md">
