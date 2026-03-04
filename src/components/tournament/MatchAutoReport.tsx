@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Trophy, Clock, Swords, CheckCircle2, AlertCircle, Check, X, ShieldAlert, Search, Info, SearchX, RefreshCcw, Zap, AlertTriangle } from 'lucide-react';
+import { Loader2, Trophy, Clock, Swords, CheckCircle2, AlertCircle, Check, X, ShieldAlert, Search, Info, SearchX, RefreshCcw, Zap, AlertTriangle, Upload, ImagePlus, X as XIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
@@ -90,6 +90,8 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     // Dispute dialog state
     const [disputeOpen, setDisputeOpen] = useState(false);
     const [disputeReason, setDisputeReason] = useState('');
+    const [disputeEvidenceFile, setDisputeEvidenceFile] = useState<File | null>(null);
+    const [disputeEvidencePreview, setDisputeEvidencePreview] = useState<string | null>(null);
     const [showScoreboard, setShowScoreboard] = useState(false);
 
     const isTeam1 = userTeamId === team1Id;
@@ -206,6 +208,18 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     };
 
     // ── Dispute Flow ──
+    const handleEvidenceSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null;
+        setDisputeEvidenceFile(file);
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => setDisputeEvidencePreview(ev.target?.result as string);
+            reader.readAsDataURL(file);
+        } else {
+            setDisputeEvidencePreview(null);
+        }
+    };
+
     const handleDispute = async () => {
         if (!activeReport || !userTeamId) return;
         try {
@@ -213,9 +227,12 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                 reportId: activeReport.id,
                 reason: disputeReason || 'Result does not match our records.',
                 teamId: userTeamId,
+                evidenceFile: disputeEvidenceFile,
             });
             setDisputeOpen(false);
             setDisputeReason('');
+            setDisputeEvidenceFile(null);
+            setDisputeEvidencePreview(null);
         } catch (err: any) {
             console.error('Dispute failed:', err);
         }
@@ -450,7 +467,10 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                 </CardContent>
 
                 {/* Dispute Dialog */}
-                <Dialog open={disputeOpen} onOpenChange={setDisputeOpen}>
+                <Dialog open={disputeOpen} onOpenChange={(open: boolean) => {
+                    setDisputeOpen(open);
+                    if (!open) { setDisputeEvidenceFile(null); setDisputeEvidencePreview(null); setDisputeReason(''); }
+                }}>
                     <DialogContent className="bg-zinc-900 border border-zinc-700 text-white sm:max-w-md">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
@@ -477,13 +497,52 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                     rows={3}
                                 />
                             </div>
+
+                            {/* Evidence image attachment */}
+                            <div className="space-y-2">
+                                <label className="text-xs text-zinc-400">Attach screenshot (optional)</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    id="dispute-evidence-input"
+                                    onChange={handleEvidenceSelect}
+                                />
+                                {disputeEvidencePreview ? (
+                                    <div className="relative rounded-lg overflow-hidden border border-zinc-700">
+                                        <img
+                                            src={disputeEvidencePreview}
+                                            alt="Evidence preview"
+                                            className="w-full max-h-40 object-cover"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => { setDisputeEvidenceFile(null); setDisputeEvidencePreview(null); }}
+                                            className="absolute top-2 right-2 p-1 rounded-full bg-black/70 hover:bg-black text-white transition-colors"
+                                        >
+                                            <XIcon className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <label
+                                        htmlFor="dispute-evidence-input"
+                                        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors text-sm"
+                                    >
+                                        <ImagePlus className="w-4 h-4 shrink-0" />
+                                        Click to attach a screenshot
+                                    </label>
+                                )}
+                            </div>
+
                             <div className="flex gap-2">
                                 <Button
                                     onClick={handleDispute}
                                     disabled={disputeReport.isPending}
                                     className="flex-1 bg-red-600 hover:bg-red-700"
                                 >
-                                    {disputeReport.isPending ? 'Submitting...' : 'File Dispute'}
+                                    {disputeReport.isPending ? (
+                                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Submitting...</>
+                                    ) : 'File Dispute'}
                                 </Button>
                                 <Button
                                     variant="ghost"

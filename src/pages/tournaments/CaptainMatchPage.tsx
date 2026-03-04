@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ArrowLeft, Trophy, AlertCircle, Swords, Copy, Calendar, MessageCircle, Clock } from 'lucide-react';
+import { Loader2, ArrowLeft, Trophy, AlertCircle, Swords, Copy, Calendar, MessageCircle, Clock, ShieldAlert, ExternalLink } from 'lucide-react';
 import { MatchCard } from './brackets/MatchCard';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
@@ -29,6 +29,7 @@ import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useTimeProposal } from '@/hooks/useTimeProposal';
+import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 
 const repo = new MatchRepository();
 
@@ -462,6 +463,11 @@ const CaptainMatchPage = () => {
         if (!activeMatchVersion?.stage_id) return null;
         return stageConfigs[activeMatchVersion.stage_id]?.scheduling_config;
     }, [activeMatchVersion, stageConfigs]);
+
+    // Watch reports for the active match — used to detect disputed status
+    const activeMatchRawId = activeMatch ? activeMatch.id.replace(/^(db-|wb-|lb-)/, '') : undefined;
+    const { reports: activeMatchReports } = useMatchResultReport(activeMatchRawId);
+    const hasDisputedReport = activeMatchReports?.some((r: { status: string }) => r.status === 'disputed') ?? false;
 
     // Auto-Report State
     const [matchGames, setMatchGames] = useState<any[]>([]);
@@ -999,6 +1005,25 @@ const CaptainMatchPage = () => {
                                                 />
                                             );
                                         })()}
+
+                                        {/* Disputed result notice */}
+                                        {hasDisputedReport && (
+                                            <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                                                <ShieldAlert className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-yellow-300">Match Result Disputed</p>
+                                                    <p className="text-xs text-yellow-400/80 mt-0.5">
+                                                        A result has been disputed and is pending organizer review.
+                                                    </p>
+                                                </div>
+                                                <a
+                                                    href="/disputes"
+                                                    className="flex items-center gap-1 text-xs text-yellow-400 hover:text-yellow-300 font-semibold shrink-0 transition-colors"
+                                                >
+                                                    My Disputes <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                            </div>
+                                        )}
 
                                         {/* Valorant Auto-Report */}
                                         {(() => {

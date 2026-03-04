@@ -197,16 +197,32 @@ export const useMatchResultReport = (matchId: string | undefined, gameNumber?: n
     },
   });
 
+  // Upload a single evidence file to the dispute evidence bucket
+  const uploadDisputeEvidence = async (file: File, disputeId: string): Promise<string> => {
+    const ext = file.name.split('.').pop() ?? 'jpg';
+    const path = `${disputeId}/result_dispute/${user!.id}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('tournaments.disputes.evidence')
+      .upload(path, file, { upsert: false });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage
+      .from('tournaments.disputes.evidence')
+      .getPublicUrl(path);
+    return urlData.publicUrl;
+  };
+
   // Dispute a result report (opposing captain)
   const disputeReport = useMutation({
     mutationFn: async ({
       reportId,
       reason,
       teamId,
+      evidenceFile,
     }: {
       reportId: string;
       reason: string;
       teamId: string;
+      evidenceFile?: File | null;
     }) => {
       if (!matchId || !user) throw new Error('Missing required data');
 
@@ -220,6 +236,34 @@ export const useMatchResultReport = (matchId: string | undefined, gameNumber?: n
       });
 
       if (error) throw error;
+
+      // If evidence image was attached, find the tournament_dispute just created
+      // and add it as an initial comment with attachment so it's visible in MyDisputes.
+      if (evidenceFile) {
+        const { data: tournamentDispute } = await supabase
+          .from('tournament_disputes')
+          .select('id')
+          .eq('match_id', matchId)
+          .eq('raised_by_user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (tournamentDispute) {
+          try {
+            const attachmentUrl = await uploadDisputeEvidence(evidenceFile, tournamentDispute.id);
+            await supabase.from('dispute_comments').insert({
+              dispute_id: tournamentDispute.id,
+              user_id: user.id,
+              comment: reason,
+              attachment_url: attachmentUrl,
+              is_internal: false,
+            });
+          } catch {
+            // Evidence upload is best-effort — dispute was already filed successfully
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] });
