@@ -1017,7 +1017,7 @@ const CaptainMatchPage = () => {
                                                     </p>
                                                 </div>
                                                 <a
-                                                    href="/disputes"
+                                                    href="/user/my-disputes"
                                                     className="flex items-center gap-1 text-xs text-yellow-400 hover:text-yellow-300 font-semibold shrink-0 transition-colors"
                                                 >
                                                     My Disputes <ExternalLink className="w-3 h-3" />
