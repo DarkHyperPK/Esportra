@@ -1,6 +1,16 @@
-import { supabase } from '@/lib/supabase';
+/**
+ * useTournamentDashboard — Domain 4: Tournament Detail + Organizer View
+ *
+ * Migrated from Supabase sequential queries to .NET API single consolidated call.
+ * Old: 4-6 sequential queries (tournament, participants, stages, org-staff, tournament-staff, ID fallback).
+ * New: GET /api/tournaments/{slugOrId} — backend handles all lookups + permissions in one call.
+ *
+ * Public types are backward-compatible with all existing callers (StageManagementTab, etc.).
+ */
+
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/lib/apiClient';
 
 export interface DashboardTournament {
     id: string;
@@ -28,7 +38,7 @@ export interface DashboardTournament {
     auto_remove_unchecked: boolean;
     team_size: number;
     format: 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin';
-    // Legacy/Computed fields for compatibility
+    // Legacy/Computed fields
     date?: string;
     time?: string;
     venue?: string;
@@ -68,7 +78,6 @@ export interface DashboardStage {
     stage_order: number;
     status: 'draft' | 'published' | 'ongoing' | 'completed';
     config: any;
-    // Extended fields for StageManagementTab compatibility
     capacity: number;
     advancement_count: number;
     is_locked: boolean;
@@ -87,226 +96,73 @@ export interface TournamentDashboardData {
 export function useTournamentDashboard(slug: string | undefined) {
     const { user } = useAuth();
 
-    return useQuery({
+    return useQuery<TournamentDashboardData>({
         queryKey: ['tournament-dashboard', slug, user?.id],
         queryFn: async (): Promise<TournamentDashboardData> => {
             if (!slug) throw new Error('Slug is required');
 
-            // 1. Fetch Tournament
-            const identifier = (slug || '').trim();
-            console.log('[useTournamentDashboard] Fetching tournament for identifier:', identifier);
-
-            // Sanity check: if slug is literal string "undefined", treat as missing
-            if (!identifier || identifier === 'undefined' || identifier === 'null') {
-                console.warn('[useTournamentDashboard] Invalid tournament identifier:', identifier);
+            const identifier = slug.trim();
+            if (!identifier || identifier === 'undefined' || identifier === 'null')
                 throw new Error('Invalid tournament identifier');
-            }
 
-            // Attempt by slug first (case-sensitive exact match)
-            let { data: tournament, error: tError } = await supabase
-                .from('tournaments')
-                .select('*')
-                .eq('slug', identifier)
-                .is('deleted_at', null)
-                .maybeSingle();
+            const result = await apiClient.get<{
+                tournament: any;
+                participants: any[];
+                stages: any[];
+                isOrganizer: boolean;
+                staffPermissions: string[] | null;
+            }>(`/api/tournaments/${encodeURIComponent(identifier)}`);
 
-            // If slug lookup failed or returned nothing, try by slug case-insensitive (ilike)
-            if (!tournament && !tError) {
-                const { data: ilikeTournament, error: ilikeError } = await supabase
-                    .from('tournaments')
-                    .select('*')
-                    .ilike('slug', identifier)
-                    .is('deleted_at', null)
-                    .maybeSingle();
+            const t = result.tournament;
 
-                if (ilikeTournament) {
-                    tournament = ilikeTournament;
-                } else if (ilikeError) {
-                    // Log but continue to ID fallback
-                    console.log('[useTournamentDashboard] ilike slug lookup error:', ilikeError.message);
-                }
-            }
-
-            // Fallback to ID-based lookup if slug failed
-            if (!tournament) {
-                // Only try ID lookup if the slug looks like a UUID to avoid Postgres syntax errors
-                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
-                if (isUuid) {
-                    console.log('[useTournamentDashboard] Identifier looks like UUID, trying ID lookup...');
-                    const { data: byId, error: idError } = await supabase
-                        .from('tournaments')
-                        .select('*')
-                        .eq('id', identifier)
-                        .is('deleted_at', null)
-                        .maybeSingle();
-
-                    if (byId) {
-                        tournament = byId;
-                        tError = null;
-                    } else if (idError) {
-                        console.error('[useTournamentDashboard] ID lookup error:', idError.message || idError);
-                        tError = idError;
-                    }
-                }
-            }
-
-            if (tError) {
-                console.error('[useTournamentDashboard] Final fetch error:', tError);
-                throw tError;
-            }
-
-            if (!tournament) {
-                console.warn('[useTournamentDashboard] Tournament not found for identifier:', slug);
-                throw new Error('Tournament not found');
-            }
-
-            // 1.5 Map Legacy Fields
-            const mappedTournament = {
-                ...tournament,
-                status: tournament.status, // Preserve 'draft' status for organizer dashboard
-                date: tournament.start_date ? new Date(tournament.start_date).toLocaleDateString() : '',
-                time: tournament.start_date ? new Date(tournament.start_date).toLocaleTimeString() : '',
-                venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
-                is_online: !tournament.venue_id,
-                max_participants: tournament.max_teams || 0,
-                registration_open: tournament.status === 'open'
+            const mappedTournament: DashboardTournament = {
+                ...t,
+                entry_fee:   t.entry_fee?.toString()  ?? '0',
+                prize_pool:  t.prize_pool?.toString()  ?? '0',
+                // Legacy computed fields
+                date:                  t.start_date ? new Date(t.start_date).toLocaleDateString() : '',
+                time:                  t.start_date ? new Date(t.start_date).toLocaleTimeString() : '',
+                venue:                 t.venue_id ? `Venue ${t.venue_id}` : 'Online',
+                is_online:             !t.venue_id,
+                max_participants:      t.max_teams ?? 0,
+                registration_open:     t.status === 'open',
+                current_participants:  t.current_participants ?? result.participants.length,
             };
 
-            // 2. Fetch Participants with User Profiles
-            const { data: participants, error: pError } = await supabase
-                .from('tournament_participants')
-                .select(`
-          *,
-          user:profiles!user_id (
-            username,
-            avatar_url,
-            full_name,
-            riot_tag,
-            steam_tag
-          ),
-          teams:team_id (
-            name,
-            logo_url
-          )
-        `)
-                .eq('tournament_id', tournament.id)
-                .order('created_at', { ascending: false });
-
-            if (pError) throw pError;
-
-            // Map database fields to dashboard interface
-            const mappedParticipants = (participants || []).map(p => ({
-                id: p.id,
-                user_id: p.user_id,
-                tournament_id: p.tournament_id,
-                status: p.status,
+            const mappedParticipants: DashboardParticipant[] = result.participants.map((p: any) => ({
+                id:               p.id,
+                user_id:          p.user_id,
+                tournament_id:    p.tournament_id,
+                status:           p.status,
                 participant_type: p.participant_type,
-                team_name: (p.teams as any)?.name || p.team_name, // Prioritize official team name
-                team_logo: p.team_logo_url || (p.teams as any)?.logo_url, // Map team_logo_url, fallback to teams.logo_url
-                team_members: Array.isArray(p.team_members)
-                    ? p.team_members.join(', ')
-                    : typeof p.team_members === 'string'
-                        ? p.team_members
-                        : '',
-                gamer_tag: p.gamer_tag,
-                registered_at: p.registration_date || p.created_at, // Map to registered_at
-                created_at: p.created_at,
-                user: p.user,
-                checked_in_at: p.checked_in_at
+                team_name:        p.team_name ?? null,
+                team_logo:        p.team_logo ?? null,
+                team_members:     '',
+                gamer_tag:        p.gamer_tag ?? null,
+                registered_at:    p.registration_date ?? p.created_at,
+                created_at:       p.created_at,
+                user:             p.username ? { username: p.username, avatar_url: null, full_name: null } : undefined,
+                teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));
 
-            // 2.5 Update current_participants count
-            mappedTournament.current_participants = mappedParticipants.length;
-
-            // 3. Fetch Stages
-            const { data: stages, error: sError } = await supabase
-                .from('tournament_stages')
-                .select('*')
-                .eq('tournament_id', tournament.id)
-                .order('stage_order', { ascending: true });
-
-            if (sError) throw sError;
-
-            const mappedStages = (stages || []).map(s => ({
+            const mappedStages: DashboardStage[] = result.stages.map((s: any) => ({
                 ...s,
-                stage_order: s.stage_order,
-                capacity: s.capacity || 0,
-                advancement_count: s.advancement_count || 0,
-                is_locked: !!s.is_locked
+                capacity:          s.capacity ?? 0,
+                advancement_count: s.advancement_count ?? 0,
+                is_locked:         !!s.is_locked,
             }));
-
-            // 4. Check Permissions
-            let isOrganizer = false;
-            let staffPermissions: string[] = [];
-
-            if (user) {
-                isOrganizer = tournament.organizer_id === user.id;
-
-                if (!isOrganizer) {
-                    // Check organization-level staff (enterprise system)
-                    if (tournament.organization_id) {
-                        const { data: orgStaffRecord, error: orgStaffError } = await supabase
-                            .from('organization_staff')
-                            .select('id, role, permissions')
-                            .eq('organization_id', tournament.organization_id)
-                            .eq('user_id', user.id)
-                            .eq('status', 'active')
-                            .maybeSingle();
-
-                        if (orgStaffError) {
-                            console.error('[useTournamentDashboard] Org staff check error:', orgStaffError);
-                        } else if (orgStaffRecord) {
-                            // Admins get access to ALL tournaments in their org
-                            if (orgStaffRecord.role === 'admin') {
-                                staffPermissions = orgStaffRecord.permissions;
-                            } else {
-                                // Non-admins need a specific tournament assignment
-                                const { data: assignment } = await supabase
-                                    .from('staff_tournament_assignments')
-                                    .select('id')
-                                    .eq('organization_staff_id', orgStaffRecord.id)
-                                    .eq('tournament_id', tournament.id)
-                                    .maybeSingle();
-
-                                if (assignment) {
-                                    staffPermissions = orgStaffRecord.permissions;
-                                }
-                            }
-                        }
-                    }
-
-                    // Fallback to legacy tournament_staff if no org staff found
-                    if (staffPermissions.length === 0) {
-                        const { data: staffRecord, error: staffError } = await supabase
-                            .from('tournament_staff')
-                            .select('permissions')
-                            .eq('tournament_id', tournament.id)
-                            .eq('user_id', user.id)
-                            .eq('status', 'active')
-                            .maybeSingle();
-
-                        if (staffError) {
-                            console.error('[useTournamentDashboard] Staff check error:', staffError);
-                        } else if (staffRecord) {
-                            staffPermissions = staffRecord.permissions;
-                        }
-                    }
-                }
-            } else {
-                console.log('[useTournamentDashboard] No user found, skipping permission checks');
-            }
 
             return {
-                tournament: mappedTournament as DashboardTournament,
-                participants: mappedParticipants as DashboardParticipant[],
-                stages: mappedStages as DashboardStage[],
-                isOrganizer,
-                staffPermissions
+                tournament:       mappedTournament,
+                participants:     mappedParticipants,
+                stages:           mappedStages,
+                isOrganizer:      result.isOrganizer,
+                staffPermissions: result.staffPermissions ?? [],
             };
         },
-        enabled: !!slug,
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        refetchOnWindowFocus: false, // Disable automatic background refetches for organizer dashboard
-        refetchOnReconnect: false,   // Disable automatic reconnection refetches for organizer dashboard
+        enabled:              !!slug,
+        staleTime:            1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect:   false,
     });
 }
