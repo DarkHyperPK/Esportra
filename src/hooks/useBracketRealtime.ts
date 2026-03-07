@@ -1,145 +1,80 @@
 /**
- * useBracketRealtime - Real-time subscription hook for bracket updates
- * 
- * This hook subscribes to changes in tournament_matches table and automatically
- * invalidates the bracket query cache when updates occur. This enables live
- * updates for spectators and participants watching the bracket.
+ * useBracketRealtime — live bracket match updates via SignalR BracketHub.
+ * Replaces Supabase postgres_changes on brkt_matches.
+ *
+ * Groups joined: bracket:{versionId}
+ * Events: MatchUpdated, MatchInserted, BracketReset
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { HubConnectionState } from '@microsoft/signalr';
+import { useHub } from '@/contexts/SignalRContext';
+import { HubPaths } from '@/lib/signalrClient';
+import type { BracketNode } from '@/types/bracket-graph';
 
-interface UseBracketRealtimeOptions {
-    /** Tournament ID to subscribe to */
-    tournamentId: string;
-    /** Optional stage ID to filter updates (if not provided, subscribes to all stages) */
-    stageId?: string;
-    /** Whether the subscription is enabled (default: true) */
-    enabled?: boolean;
-    /** Optional slug for cache key (used by Brackets.tsx) */
-    slug?: string;
-    /** Optional callback to trigger when an update is received */
-    onUpdate?: () => void;
+interface Options {
+  versionId: string | null | undefined;
+  enabled?: boolean;
+  onMatchUpdated?: (node: Partial<BracketNode> & { matchId: string }) => void;
+  onBracketReset?: () => void;
 }
 
-/**
- * Hook that subscribes to real-time bracket updates
- * 
- * @example
- * ```tsx
- * // In Brackets.tsx
- * useBracketRealtime({ tournamentId, slug, onUpdate: refetch });
- * 
- * // In TournamentBracket.tsx
- * useBracketRealtime({ tournamentId });
- * ```
- */
 export function useBracketRealtime({
-    tournamentId,
-    stageId,
-    versionId,
-    enabled = true,
-    slug,
-    onUpdate
-}: UseBracketRealtimeOptions & { versionId?: string }) {
-    const queryClient = useQueryClient();
-    const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  versionId,
+  enabled = true,
+  onMatchUpdated,
+  onBracketReset,
+}: Options) {
+  const conn        = useHub(HubPaths.Bracket);
+  const queryClient = useQueryClient();
 
-    useEffect(() => {
-        if (!enabled || (!tournamentId && !versionId)) return;
+  useEffect(() => {
+    if (!enabled || !versionId) return;
 
-        const channelName = versionId
-            ? `bracket-version-${versionId}`
-            : stageId
-                ? `bracket-${tournamentId}-${stageId}`
-                : `bracket-${tournamentId}`;
+    let active = true;
 
-        console.log(`[useBracketRealtime] Subscribing to ${channelName}`);
-
-        const channel = supabase.channel(channelName);
-
-        // Subscribe to new brkt_matches if versionId is present
-        if (versionId) {
-            channel
-                .on(
-                    'postgres_changes',
-                    {
-                        event: '*',
-                        schema: 'public',
-                        table: 'brkt_matches',
-                        filter: `version_id=eq.${versionId}` // Note: Supabase JS V2 requires correct RLS to access this via websockets
-                    },
-                    (payload) => {
-                        console.log('[useBracketRealtime] Graph match update:', payload.eventType, payload.new);
-
-                        // Use setQueryData for incremental updates (no full refetch)
-                        if (payload.eventType === 'UPDATE' && payload.new) {
-                            const updatedMatch = payload.new as any;
-
-                            // Merge the updated match into existing graph data
-                            queryClient.setQueryData(
-                                ['bracket-graph', versionId],
-                                (oldData: { nodes: any[]; edges: any[] } | undefined) => {
-                                    if (!oldData) return oldData;
-                                    return {
-                                        ...oldData,
-                                        nodes: oldData.nodes.map((node: any) =>
-                                            node.id === updatedMatch.id ? { ...node, ...updatedMatch } : node
-                                        )
-                                    };
-                                }
-                            );
-                        } else if (payload.eventType === 'INSERT' && payload.new) {
-                            // For new matches (advancement), add to existing nodes
-                            const newMatch = payload.new as any;
-                            queryClient.setQueryData(
-                                ['bracket-graph', versionId],
-                                (oldData: { nodes: any[]; edges: any[] } | undefined) => {
-                                    if (!oldData) return oldData;
-                                    // Check if already exists
-                                    if (oldData.nodes.some((n: any) => n.id === newMatch.id)) {
-                                        // Update existing
-                                        return {
-                                            ...oldData,
-                                            nodes: oldData.nodes.map((node: any) =>
-                                                node.id === newMatch.id ? { ...node, ...newMatch } : node
-                                            )
-                                        };
-                                    }
-                                    // Add new
-                                    return {
-                                        ...oldData,
-                                        nodes: [...oldData.nodes, newMatch]
-                                    };
-                                }
-                            );
-                        }
-
-                        if (onUpdate) onUpdate();
-                    }
-                );
-        }
-
-        channel.subscribe((status, err) => {
-            console.log(`[useBracketRealtime] Subscription status: ${status}`, err);
-            // If it times out, we can try to reconnect or just wait for standard React Query refetches.
-        });
-
-        channelRef.current = channel;
-
-        return () => {
-            console.log(`[useBracketRealtime] Unsubscribing from ${channelName}`);
-            if (channelRef.current) {
-                supabase.removeChannel(channelRef.current);
-                channelRef.current = null;
-            }
-        };
-    }, [tournamentId, stageId, versionId, enabled, slug, queryClient, onUpdate]);
-
-    return {
-        isSubscribed: !!channelRef.current
+    const handleMatchUpdated = (payload: Partial<BracketNode> & { matchId?: string }) => {
+      if (!active) return;
+      const id = payload.matchId ?? (payload as any).id;
+      queryClient.setQueriesData<BracketNode[]>(
+        { queryKey: ['bracket', versionId] },
+        (old) => old ? old.map((n) => n.id === id ? { ...n, ...payload } : n) : old,
+      );
+      onMatchUpdated?.(payload as Partial<BracketNode> & { matchId: string });
     };
+
+    const handleMatchInserted = (payload: { versionId: string }) => {
+      if (!active || payload.versionId !== versionId) return;
+      queryClient.invalidateQueries({ queryKey: ['bracket', versionId] });
+    };
+
+    const handleBracketReset = () => {
+      if (!active) return;
+      queryClient.invalidateQueries({ queryKey: ['bracket', versionId] });
+      onBracketReset?.();
+    };
+
+    conn.on('MatchUpdated', handleMatchUpdated);
+    conn.on('MatchInserted', handleMatchInserted);
+    conn.on('BracketReset', handleBracketReset);
+
+    const join = () => {
+      if (!active || conn.state !== HubConnectionState.Connected) return;
+      conn.invoke('JoinBracket', versionId).catch(console.warn);
+    };
+    join();
+    conn.onreconnected(join);
+
+    return () => {
+      active = false;
+      conn.off('MatchUpdated', handleMatchUpdated);
+      conn.off('MatchInserted', handleMatchInserted);
+      conn.off('BracketReset', handleBracketReset);
+      if (conn.state === HubConnectionState.Connected)
+        conn.invoke('LeaveBracket', versionId).catch(() => {});
+    };
+  }, [conn, versionId, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 export default useBracketRealtime;

@@ -11,6 +11,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RoleProvider } from "@/contexts/RoleContext";
+import { SignalRProvider } from "@/contexts/SignalRContext";
 import { BackgroundRotator } from "@/components/effects/BackgroundRotator";
 
 import { AnimatedLiquidBackground } from "@/components/effects/AnimatedLiquidBackground";
@@ -556,17 +557,19 @@ const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <RoleProvider>
+        <SignalRProvider>
+          <RoleProvider>
 
-          <TooltipProvider>
-            <NotificationProvider>
-              <AdminProvider>
-                <AppContent />
-              </AdminProvider>
-            </NotificationProvider>
-          </TooltipProvider>
+            <TooltipProvider>
+              <NotificationProvider>
+                <AdminProvider>
+                  <AppContent />
+                </AdminProvider>
+              </NotificationProvider>
+            </TooltipProvider>
 
-        </RoleProvider>
+          </RoleProvider>
+        </SignalRProvider>
       </AuthProvider>
     </BrowserRouter>
   );
