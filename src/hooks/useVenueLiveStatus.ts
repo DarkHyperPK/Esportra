@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { HubConnectionState } from '@microsoft/signalr';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useHub } from '@/contexts/SignalRContext';
 import { HubPaths } from '@/lib/signalrClient';
 
@@ -27,15 +27,12 @@ export function useVenueLiveStatus(venueId: string | undefined): LiveStatus | nu
   const [status, setStatus] = useState<LiveStatus | null>(null);
   const conn = useHub(HubPaths.Live);
 
-  // Initial fetch from Supabase
+  // Initial fetch from .NET API
   useEffect(() => {
     if (!venueId) return;
-    supabase
-      .from('venue_live_status')
-      .select('*')
-      .eq('venue_id', venueId)
-      .maybeSingle()
-      .then(({ data }) => { if (data) setStatus(data as LiveStatus); });
+    apiClient.get<LiveStatus>(`/api/venues/${venueId}/live-status`)
+      .then((data) => setStatus(data))
+      .catch(() => { /* venue not connected to agent — null is valid state */ });
   }, [venueId]);
 
   // SignalR live updates

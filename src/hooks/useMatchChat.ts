@@ -1,15 +1,15 @@
 /**
  * useMatchChat — match chat via SignalR ChatHub.
- * - Initial messages: React Query → Supabase (unchanged)
+ * - Initial messages: GET /api/matches/{id}/messages (.NET)
  * - Real-time: SignalR ChatHub MessageReceived → cache append (no refetch)
  * - sendMessage: SignalR hub invocation (hub persists to DB + broadcasts)
- * - sendSystemMessage: Supabase direct insert (system msgs, no teamId needed via hub)
+ * - sendSystemMessage: POST /api/matches/{id}/messages/system (.NET, broadcasts via ChatHub)
  */
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { HubConnectionState } from '@microsoft/signalr';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHub } from '@/contexts/SignalRContext';
@@ -49,20 +49,11 @@ export const useMatchChat = (matchId: string | undefined) => {
   const scrollRef   = useRef<HTMLDivElement>(null);
   const conn        = useHub(HubPaths.Chat);
 
-  // ── Initial fetch (Supabase) ─────────────────────────────────────────────────
+  // ── Initial fetch (.NET API) ─────────────────────────────────────────────────
   const { data: messages, isLoading } = useQuery<MatchMessage[]>({
     queryKey: ['match-messages', matchId],
-    queryFn: async () => {
-      if (!matchId) return [];
-      const { data, error } = await supabase
-        .from('match_messages')
-        .select('*')
-        .eq('match_id', matchId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      return data as MatchMessage[];
-    },
-    enabled: !!matchId,
+    queryFn:  () => apiClient.get<MatchMessage[]>(`/api/matches/${matchId}/messages`),
+    enabled:  !!matchId,
     staleTime: 30_000,
   });
 
@@ -122,23 +113,16 @@ export const useMatchChat = (matchId: string | undefined) => {
     },
   });
 
-  // ── System message (direct Supabase insert) ──────────────────────────────────
+  // ── System message (.NET API — server inserts + broadcasts via ChatHub) ──────
   const sendSystemMessage = useCallback(async (content: string, metadata?: any) => {
     if (!matchId) return;
     try {
-      await supabase.from('match_messages').insert({
-        match_id:     matchId,
-        sender_id:    user?.id ?? '00000000-0000-0000-0000-000000000000',
-        sender_name:  'System',
-        content,
-        message_type: 'system',
-        metadata,
-      });
-      queryClient.invalidateQueries({ queryKey: ['match-messages', matchId] });
+      await apiClient.post(`/api/matches/${matchId}/messages/system`, { content, metadata });
+      // ChatHub broadcasts MessageReceived to all in chat — cache update happens via SignalR
     } catch (err) {
       console.error('System message error:', err);
     }
-  }, [matchId, user?.id, queryClient]);
+  }, [matchId]);
 
   const scrollToBottom = useCallback(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });

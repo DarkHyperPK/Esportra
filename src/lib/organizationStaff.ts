@@ -12,7 +12,6 @@
  */
 
 import { apiClient } from "@/lib/apiClient";
-import { supabase } from "@/lib/supabase";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types (unchanged)
@@ -229,36 +228,19 @@ export const fetchTournamentAssignedStaff = async (
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /**
- * Check if a user has staff access to a tournament via the organization.
- * Kept as Supabase call — this is a pure read that the dashboard endpoint already
- * covers in useTournamentDashboard. Preserving here for any direct callers.
+ * Check if the current user has staff permissions for a tournament via the organization.
+ * Migrated from 2 Supabase calls to a single .NET API call.
+ * Note: userId param is kept for signature compatibility but ignored — .NET reads from JWT.
  */
 export const getOrgStaffPermissionsForTournament = async (
-    userId: string,
+    _userId: string,
     tournamentOrganizationId: string | null,
     tournamentId?: string
 ): Promise<StaffPermission[]> => {
     if (!tournamentOrganizationId) return [];
-    const { data: staffRecord } = await supabase
-        .from("organization_staff")
-        .select("id, role, permissions")
-        .eq("organization_id", tournamentOrganizationId)
-        .eq("user_id", userId)
-        .eq("status", "active")
-        .maybeSingle();
-
-    if (!staffRecord) return [];
-    if (staffRecord.role === "admin") return staffRecord.permissions as StaffPermission[];
-    if (!tournamentId) return [];
-
-    const { data: assignment } = await supabase
-        .from("staff_tournament_assignments")
-        .select("id")
-        .eq("organization_staff_id", staffRecord.id)
-        .eq("tournament_id", tournamentId)
-        .maybeSingle();
-
-    return assignment ? (staffRecord.permissions as StaffPermission[]) : [];
+    const qs = new URLSearchParams({ organizationId: tournamentOrganizationId });
+    if (tournamentId) qs.set('tournamentId', tournamentId);
+    return apiClient.get<StaffPermission[]>(`/api/organizations/staff/permissions?${qs}`);
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
