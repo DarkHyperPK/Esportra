@@ -1,8 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMatchRealtime } from '@/hooks/useMatchRealtime';
+
+interface MatchCheckin {
+  match_id: string;
+  team_id: string;
+  user_id: string;
+  checked_in_at: string;
+}
 
 interface CheckinStatus {
   team1CheckedIn: boolean;
@@ -12,134 +19,84 @@ interface CheckinStatus {
   bothCheckedIn: boolean;
 }
 
-export const useMatchCheckin = (matchId: string | undefined, team1Id: string | undefined, team2Id: string | undefined) => {
+export const useMatchCheckin = (
+  matchId: string | undefined,
+  team1Id: string | undefined,
+  team2Id: string | undefined,
+) => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const { toast }   = useToast();
+  const { user }    = useAuth();
 
-  // Fetch check-in status
-  const { data: checkins, isLoading } = useQuery({
+  const { data: checkins, isLoading } = useQuery<MatchCheckin[]>({
     queryKey: ['match-checkins', matchId],
-    queryFn: async () => {
-      if (!matchId) return [];
-      const { data, error } = await supabase
-        .from('match_checkins')
-        .select('*')
-        .eq('match_id', matchId);
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: () => apiClient.get<MatchCheckin[]>(`/api/matches/${matchId}/checkins`),
     enabled: !!matchId,
+    staleTime: 10_000,
   });
 
-  // Calculate status
   const checkinStatus: CheckinStatus = {
-    team1CheckedIn: checkins?.some(c => c.team_id === team1Id) ?? false,
-    team2CheckedIn: checkins?.some(c => c.team_id === team2Id) ?? false,
-    team1CheckinTime: checkins?.find(c => c.team_id === team1Id)?.checked_in_at ?? null,
-    team2CheckinTime: checkins?.find(c => c.team_id === team2Id)?.checked_in_at ?? null,
+    team1CheckedIn:  checkins?.some((c) => c.team_id === team1Id) ?? false,
+    team2CheckedIn:  checkins?.some((c) => c.team_id === team2Id) ?? false,
+    team1CheckinTime: checkins?.find((c) => c.team_id === team1Id)?.checked_in_at ?? null,
+    team2CheckinTime: checkins?.find((c) => c.team_id === team2Id)?.checked_in_at ?? null,
     bothCheckedIn: false,
   };
   checkinStatus.bothCheckedIn = checkinStatus.team1CheckedIn && checkinStatus.team2CheckedIn;
 
-  // Check in mutation
-  const checkIn = useMutation({
-    mutationFn: async (teamId: string) => {
-      if (!matchId || !user) throw new Error('Missing required data');
+  // Live check-in updates via SignalR MatchHub
+  useMatchRealtime({
+    matchId,
+    enabled: !!matchId,
+    onCheckInUpdated: () =>
+      queryClient.invalidateQueries({ queryKey: ['match-checkins', matchId] }),
+  });
 
-      const { error } = await supabase
-        .from('match_checkins')
-        .insert({
-          match_id: matchId,
-          team_id: teamId,
-          user_id: user.id,
-        });
-      if (error) throw error;
+  const checkIn = useMutation({
+    mutationFn: (teamId: string) => {
+      if (!matchId || !user) throw new Error('Missing required data');
+      return apiClient.post(`/api/matches/${matchId}/checkin`, { teamId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['match-checkins', matchId] });
       toast({ title: 'Checked In!', description: 'You are ready for the match.' });
     },
-    onError: (error: any) => {
-      if (error.message?.includes('duplicate')) {
+    onError: (err: Error) => {
+      const msg = err.message;
+      if (msg.includes('duplicate') || msg.includes('conflict')) {
         toast({ title: 'Already Checked In', description: 'Your team has already checked in.' });
       } else {
-        toast({ title: 'Check-in Failed', description: error.message, variant: 'destructive' });
+        toast({ title: 'Check-in Failed', description: msg, variant: 'destructive' });
       }
     },
   });
 
-  // Real-time subscription
-  useEffect(() => {
-    if (!matchId) return;
+  // ── Scheduling helpers (pure client-side time calculations) ──────────────────
 
-    const channel = supabase
-      .channel(`match-checkins-${matchId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'match_checkins',
-          filter: `match_id=eq.${matchId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['match-checkins', matchId] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [matchId, queryClient]);
-
-  // Check if check-in window is open (Starts at [Scheduled - Window], Ends at [Scheduled])
-  const isCheckinWindowOpen = (scheduledTime: string | null, windowMinutes: number = 15): boolean => {
+  const isCheckinWindowOpen = (scheduledTime: string | null, windowMinutes = 15): boolean => {
     if (!scheduledTime) return false;
-
-    const scheduled = new Date(scheduledTime);
-    const now = new Date();
-    // Window opens X minutes before match
-    const windowStart = new Date(scheduled.getTime() - windowMinutes * 60 * 1000);
-    // Window closes strictly AT match start time
-    const windowEnd = scheduled;
-
-    return now >= windowStart && now < windowEnd;
+    const scheduled   = new Date(scheduledTime);
+    const now         = new Date();
+    const windowStart = new Date(scheduled.getTime() - windowMinutes * 60_000);
+    return now >= windowStart && now < scheduled;
   };
 
-  // Get time until check-in opens
-  const getTimeUntilCheckinOpens = (scheduledTime: string | null, windowMinutes: number = 15): number | null => {
+  const getTimeUntilCheckinOpens = (scheduledTime: string | null, windowMinutes = 15): number | null => {
     if (!scheduledTime) return null;
-
-    const scheduled = new Date(scheduledTime);
-    const now = new Date();
-    const windowStart = new Date(scheduled.getTime() - windowMinutes * 60 * 1000);
-
-    const diff = windowStart.getTime() - now.getTime();
+    const scheduled   = new Date(scheduledTime);
+    const windowStart = new Date(scheduled.getTime() - windowMinutes * 60_000);
+    const diff = windowStart.getTime() - Date.now();
     return diff > 0 ? diff : null;
   };
 
-  // Check if check-in window has closed (past scheduled time)
-  const isCheckinWindowClosed = (scheduledTime: string | null, windowMinutes: number = 15): boolean => {
+  const isCheckinWindowClosed = (scheduledTime: string | null): boolean => {
     if (!scheduledTime) return false;
-
-    const scheduled = new Date(scheduledTime);
-    const now = new Date();
-    // Strict deadline: Match Scheduled Time
-    return now >= scheduled;
+    return Date.now() >= new Date(scheduledTime).getTime();
   };
 
-  // Get time remaining until window closes (for countdown)
-  const getTimeUntilWindowCloses = (scheduledTime: string | null, windowMinutes: number = 15): number | null => {
+  const getTimeUntilWindowCloses = (scheduledTime: string | null): number | null => {
     if (!scheduledTime) return null;
-
-    const scheduled = new Date(scheduledTime);
-    const now = new Date();
-    // Closes at scheduled time
-    const windowEnd = scheduled;
-
-    const diff = windowEnd.getTime() - now.getTime();
+    const diff = new Date(scheduledTime).getTime() - Date.now();
     return diff > 0 ? diff : null;
   };
 
