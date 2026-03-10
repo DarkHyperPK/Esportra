@@ -102,14 +102,11 @@ export default function AccountSettings() {
       sessionStorage.removeItem('riotOAuthState');
       (async () => {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/riot-oauth`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-            body: JSON.stringify({ code }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.reason || data.error || 'Failed to link');
+          const riotRedirectUri = `${window.location.origin}/auth/riot/callback`;
+          const data = await apiClient.post<{ gameName?: string; tagLine?: string }>(
+            '/api/integrations/riot/callback',
+            { code, redirectUri: riotRedirectUri },
+          );
           toast({ title: 'Riot Account Linked!', description: data.gameName ? `Linked ${data.gameName}#${data.tagLine}` : 'Riot account linked.' });
           queryClient.invalidateQueries({ queryKey: ['riot-account', user?.id] });
         } catch (err: any) {
@@ -150,14 +147,12 @@ export default function AccountSettings() {
       localStorage.removeItem('faceitCodeVerifier');
       (async () => {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/faceit-oauth`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-            body: JSON.stringify({ code, code_verifier: codeVerifier }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || data.error || 'Failed to link');
+          const faceitRedirectUri = import.meta.env.VITE_FACEIT_REDIRECT_URI
+            || `${window.location.origin}/functions/v1/faceit-oauth`;
+          const data = await apiClient.post<{ nickname?: string }>(
+            '/api/integrations/faceit/callback',
+            { code, codeVerifier, redirectUri: faceitRedirectUri },
+          );
           toast({ title: 'Faceit Account Linked!', description: data.nickname ? `Linked "${data.nickname}"` : 'Faceit account linked.' });
           localStorage.setItem('faceit_just_linked', Date.now().toString());
           queryClient.invalidateQueries({ queryKey: ['faceit-account', user?.id] });

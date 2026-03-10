@@ -41,16 +41,10 @@ export function useRiotAccount() {
     const linkRiotAccount = () => {
         if (!user?.id) return;
         const clientId = '2c69ea8c-08ad-4e39-a558-dc7f8106a2a2';
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        if (!supabaseUrl) {
-            console.error('[useRiotAccount] Missing VITE_SUPABASE_URL. Riot OAuth will fail.');
-            return;
-        }
-
         const state = crypto.randomUUID();
         sessionStorage.setItem('riotOAuthState', state);
 
-        const redirectUri = `${supabaseUrl}/functions/v1/riot-oauth`;
+        const redirectUri = `${window.location.origin}/auth/riot/callback`;
         const riotAuthUrl = `https://auth.riotgames.com/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${clientId}&response_type=code&scope=openid&state=${state}&prompt=login`;
         window.location.href = riotAuthUrl;
     };
