@@ -82,10 +82,11 @@ function sleep(ms: number): Promise<void> {
 
 /** Known hub paths — add more as Phase 3 progresses. */
 export const HubPaths = {
-  Notification : '/hubs/notifications',
-  Bracket      : '/hubs/bracket',
-  Match        : '/hubs/match',
-  Veto         : '/hubs/veto',
-  Chat         : '/hubs/chat',
-  Live         : '/hubs/live',
+  Notification  : '/hubs/notifications',
+  Bracket       : '/hubs/bracket',
+  Match         : '/hubs/match',
+  Veto          : '/hubs/veto',
+  Chat          : '/hubs/chat',
+  Conversation  : '/hubs/conversations',
+  Live          : '/hubs/live',
 } as const;

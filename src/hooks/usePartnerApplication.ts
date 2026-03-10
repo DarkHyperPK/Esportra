@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
 export interface PartnerApplication {
@@ -23,12 +23,7 @@ export const usePartnerApplication = () => {
 
     const submitApplication = useMutation({
         mutationFn: async (application: PartnerApplication) => {
-            const { data, error } = await supabase
-                .from('partner_applications')
-                .insert(application);
-
-            if (error) throw error;
-            return data;
+            return apiClient.post('/api/partners/apply', application);
         },
         onSuccess: () => {
             toast({

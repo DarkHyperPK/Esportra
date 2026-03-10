@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from './AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -57,15 +57,17 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
       // Check for session role first (from localStorage) - only for non-admins
       const sessionRole = localStorage.getItem('sessionRole') as UserRole;
 
-      if (sessionRole && ['casual', 'organizer', 'venue_owner'].includes(sessionRole)) {
-        // Verify the user actually has this role in the multi-role system
-        const { data: userRoles } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('is_active', true);
+      // Fetch roles from API once for both checks
+      let rolesList: Array<{ role: string }> = [];
+      try {
+        const rolesData = await apiClient.get<{ userRoles: Array<{ role: string; is_active: boolean }>; verifiedRoles: any[] }>('/api/me/roles');
+        rolesList = rolesData.userRoles || [];
+      } catch {
+        rolesList = [];
+      }
 
-        const hasRole = userRoles?.some(r => r.role === sessionRole);
+      if (sessionRole && ['casual', 'organizer', 'venue_owner'].includes(sessionRole)) {
+        const hasRole = rolesList.some(r => r.role === sessionRole);
 
         if (hasRole || sessionRole === 'casual') {
           setCurrentRole(sessionRole);
@@ -75,16 +77,8 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
       }
 
       // Fallback to user's active roles or base role
-      const { data: userRoles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .order('assigned_at', { ascending: false });
-
-      if (userRoles && userRoles.length > 0) {
-        // Use the most recently assigned active role
-        const activeRole = userRoles[0].role as UserRole;
+      if (rolesList.length > 0) {
+        const activeRole = rolesList[0].role as UserRole;
         setCurrentRole(activeRole);
         localStorage.setItem('sessionRole', activeRole);
       } else {
@@ -178,15 +172,14 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
       // Check if user has this role in the multi-role system
       if (newRole !== 'casual') {
-        const { data: userRoles, error: userRolesError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('is_active', true);
+        let rolesData: { userRoles: Array<{ role: string }>; verifiedRoles: Array<{ role: string; status: string; is_active: boolean }> };
+        try {
+          rolesData = await apiClient.get<typeof rolesData>('/api/me/roles');
+        } catch {
+          rolesData = { userRoles: [], verifiedRoles: [] };
+        }
 
-        if (userRolesError) console.error('Error fetching user_roles:', userRolesError);
-
-        const hasRole = userRoles?.some(r => r.role === newRole);
+        const hasRole = rolesData.userRoles?.some(r => r.role === newRole);
 
         if (!hasRole) {
           toast({
@@ -200,18 +193,9 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
         // For organizer/venue_owner, check verification status (must be approved AND active)
         if (newRole === 'organizer' || newRole === 'venue_owner') {
-          const { data: verifiedRoles, error: verifyError } = await supabase
-            .from('verified_roles')
-            .select('status, is_active')
-            .eq('user_id', user.id)
-            .eq('role', newRole)
-            .eq('status', 'approved')
-            .eq('is_active', true)
-            .limit(1);
-
-          if (verifyError) console.error('Error fetching verified_roles:', verifyError);
-
-          const isVerified = verifiedRoles && verifiedRoles.length > 0;
+          const isVerified = rolesData.verifiedRoles?.some(
+            r => r.role === newRole && r.status === 'approved' && r.is_active
+          );
 
           if (!isVerified) {
             toast({

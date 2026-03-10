@@ -1,7 +1,7 @@
-import { supabase } from '@/lib/supabase';
+import { apiClient, ApiError } from '@/lib/apiClient';
 
 /**
- * Email types supported by the send-email Edge Function.
+ * Email types supported by the .NET email endpoint.
  * Each type maps to a custom HTML template on the server.
  */
 export type EmailType =
@@ -19,8 +19,7 @@ interface SendEmailParams {
 }
 
 /**
- * Sends a transactional email via the `send-email` Supabase Edge Function.
- * The API key is stored securely server-side; nothing is exposed to the client.
+ * Sends a transactional email via POST /api/emails (.NET backend).
  *
  * @example
  * await sendEmail({
@@ -31,25 +30,23 @@ interface SendEmailParams {
  */
 export async function sendEmail({ type, email, data }: SendEmailParams): Promise<{ success: boolean; error?: string }> {
     try {
-        const { data: result, error } = await supabase.functions.invoke('send-email', {
-            body: { type, email, data },
+        const result = await apiClient.post<{ success: boolean; error?: string }>('/api/emails', {
+            type,
+            email,
+            data,
         });
-
-        if (error) {
-            console.error('[sendEmail] Edge function error:', error);
-            return { success: false, error: error.message };
-        }
 
         if (result?.error) {
             console.error('[sendEmail] Server error:', result.error);
             return { success: false, error: result.error };
         }
 
-        console.log('[sendEmail] Email sent:', type, '->', email);
         return { success: true };
     } catch (err: unknown) {
-        const e = err as { message?: string };
-        console.error('[sendEmail] Unexpected error:', e);
-        return { success: false, error: e.message || 'Unknown error sending email' };
+        const message = err instanceof ApiError
+            ? `API ${err.status}: ${err.message}`
+            : err instanceof Error ? err.message : 'Unknown error sending email';
+        console.error('[sendEmail] Error:', err);
+        return { success: false, error: message };
     }
 }

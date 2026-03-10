@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';

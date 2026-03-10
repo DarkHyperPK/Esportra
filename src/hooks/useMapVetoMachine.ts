@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
+import { buildHubConnection, startWithRetry, HubPaths } from '@/lib/signalrClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useToast } from '@/hooks/use-toast';
 import { valorantTables } from '@/utils/gameTables';
 import { vetoService, BestOf, TeamSide, VetoService } from '@/services/vetoService';
+import type { HubConnection } from '@microsoft/signalr';
 export { VetoService };
 
 // Types
@@ -43,6 +46,33 @@ export interface MatchMapVeto {
     selected_map_id: string | null;
     started_at: string | null;
     completed_at: string | null;
+}
+
+// Maps camelCase API response to snake_case MatchMapVeto (backend returns C# PascalCase → JSON camelCase)
+function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
+    return {
+        id:                    apiVeto.id,
+        match_id:              apiVeto.matchId ?? apiVeto.match_id,
+        tournament_id:         apiVeto.tournamentId ?? apiVeto.tournament_id,
+        team1_id:              apiVeto.team1Id ?? apiVeto.team1_id ?? null,
+        team2_id:              apiVeto.team2Id ?? apiVeto.team2_id ?? null,
+        team1_link_token:      apiVeto.team1LinkToken ?? apiVeto.team1_link_token ?? null,
+        team2_link_token:      apiVeto.team2LinkToken ?? apiVeto.team2_link_token ?? null,
+        best_of:               getBestOf(apiVeto.bestOf ?? apiVeto.best_of),
+        status:                apiVeto.status ?? 'pending',
+        current_team_id:       apiVeto.currentTeamId ?? apiVeto.current_team_id ?? null,
+        current_action:        apiVeto.currentAction ?? apiVeto.current_action ?? null,
+        current_action_number: apiVeto.currentActionNumber ?? apiVeto.current_action_number ?? 0,
+        turn_started_at:       apiVeto.turnStartedAt ?? apiVeto.turn_started_at ?? null,
+        turn_duration_seconds: apiVeto.turnDurationSeconds ?? apiVeto.turn_duration_seconds ?? 0,
+        team1_banned_maps:     Array.isArray(apiVeto.team1BannedMaps ?? apiVeto.team1_banned_maps) ? (apiVeto.team1BannedMaps ?? apiVeto.team1_banned_maps) : [],
+        team2_banned_maps:     Array.isArray(apiVeto.team2BannedMaps ?? apiVeto.team2_banned_maps) ? (apiVeto.team2BannedMaps ?? apiVeto.team2_banned_maps) : [],
+        team1_picked_maps:     Array.isArray(apiVeto.team1PickedMaps ?? apiVeto.team1_picked_maps) ? (apiVeto.team1PickedMaps ?? apiVeto.team1_picked_maps) : [],
+        team2_picked_maps:     Array.isArray(apiVeto.team2PickedMaps ?? apiVeto.team2_picked_maps) ? (apiVeto.team2PickedMaps ?? apiVeto.team2_picked_maps) : [],
+        selected_map_id:       apiVeto.selectedMapId ?? apiVeto.selected_map_id ?? null,
+        started_at:            apiVeto.startedAt ?? apiVeto.started_at ?? null,
+        completed_at:          apiVeto.completedAt ?? apiVeto.completed_at ?? null,
+    } as MatchMapVeto;
 }
 
 // Helper Functions
@@ -667,86 +697,55 @@ export const useMapVetoMachine = ({
         fetchVetoData();
     }, [fetchVetoData]);
 
-    // Real-time Subscription
+    // Ref to track VetoHub connection
+    const vetoConnectionRef = useRef<HubConnection | null>(null);
+
+    // Real-time Subscription via SignalR VetoHub
     useEffect(() => {
         if (!matchId) return;
 
         let mounted = true;
+        const connection = buildHubConnection(HubPaths.Veto);
+        vetoConnectionRef.current = connection;
 
-        const channel = supabase
-            .channel(`match-veto-${matchId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: valorantTables.match_vetos,
-                    filter: `match_id=eq.${matchId}`,
-                },
-                async (payload) => {
-                    if (!mounted) return;
+        // Handle state sync (sent on join + after each action)
+        connection.on('StateSync', (rawVeto: any) => {
+            if (!mounted) return;
+            setVeto(mapApiVetoToLocal(rawVeto));
+        });
 
-                    if (payload.eventType === 'UPDATE' && payload.new) {
-                        const rawVeto = payload.new;
-                        const updatedVeto = {
-                            ...rawVeto,
-                            team1_banned_maps: Array.isArray(rawVeto.team1_banned_maps) ? rawVeto.team1_banned_maps : [],
-                            team2_banned_maps: Array.isArray(rawVeto.team2_banned_maps) ? rawVeto.team2_banned_maps : [],
-                            team1_picked_maps: Array.isArray(rawVeto.team1_picked_maps) ? rawVeto.team1_picked_maps : [],
-                            team2_picked_maps: Array.isArray(rawVeto.team2_picked_maps) ? rawVeto.team2_picked_maps : [],
-                        } as MatchMapVeto;
+        // Handle veto action updates
+        connection.on('VetoAction', (rawVeto: any) => {
+            if (!mounted) return;
+            setVeto(mapApiVetoToLocal(rawVeto));
+        });
 
-                        setVeto(updatedVeto);
-                    } else if (payload.eventType === 'INSERT' && payload.new) {
-                        const rawVeto = payload.new;
-                        const newVeto = {
-                            ...rawVeto,
-                            team1_picked_maps: (rawVeto.team1_picked_maps as unknown) as PickedMap[] || [],
-                            team2_picked_maps: (rawVeto.team2_picked_maps as unknown) as PickedMap[] || [],
-                        } as MatchMapVeto;
-                        setVeto(newVeto);
-                    } else if (payload.eventType === 'DELETE') {
-                        setVeto(null);
-                    }
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: valorantTables.veto_actions,
-                    filter: `match_id=eq.${matchId}`,
-                },
-                async (payload) => {
-                    if (!mounted) return;
+        // Handle veto reset
+        connection.on('VetoReset', () => {
+            if (!mounted) return;
+            setVeto(null);
+            fetchVetoData();
+        });
 
-                    if (payload.eventType === 'INSERT' && payload.new) {
-                        // Refetch veto to get updated current_action_number
-                        const { data: updatedVeto } = await supabase
-                            .from(valorantTables.match_vetos)
-                            .select('*')
-                            .eq('match_id', matchId)
-                            .maybeSingle();
+        // Handle veto complete
+        connection.on('VetoComplete', (_pickedMaps: PickedMap[]) => {
+            if (!mounted) return;
+            // Refetch to get final state
+            fetchVetoData();
+        });
 
-                        if (updatedVeto) {
-                            const typedVeto = {
-                                ...updatedVeto,
-                                team1_picked_maps: (updatedVeto.team1_picked_maps as unknown) as PickedMap[] || [],
-                                team2_picked_maps: (updatedVeto.team2_picked_maps as unknown) as PickedMap[] || [],
-                            } as MatchMapVeto;
-                            setVeto(typedVeto);
-                        }
-                    }
-                }
-            )
-            .subscribe();
+        // Start connection and join veto room
+        startWithRetry(connection)
+            .then(() => connection.invoke('JoinVeto', matchId))
+            .catch(err => console.error('[VetoHub] Failed to connect:', err));
 
         return () => {
             mounted = false;
-            supabase.removeChannel(channel);
+            connection.invoke('LeaveVeto', matchId).catch(() => {});
+            connection.stop();
+            vetoConnectionRef.current = null;
         };
-    }, [matchId]);
+    }, [matchId, fetchVetoData]);
 
     // Dialog Auto-Show Logic
     useEffect(() => {
@@ -815,20 +814,13 @@ export const useMapVetoMachine = ({
         const firstAction = localSequences[normalizedBestOf][0];
 
         try {
-            const { error } = await supabase
-                .from(valorantTables.match_vetos)
-                .update({
-                    best_of: normalizedBestOf,  // Now INTEGER
-                    status: 'in_progress',
-                    started_at: new Date().toISOString(),
-                    turn_started_at: new Date().toISOString(),
-                    current_action: firstAction,
-                    current_action_number: 1,
-                    current_team_id: veto.team1_id,
-                })
-                .eq('id', veto.id);
-
-            if (error) throw error;
+            await apiClient.post(`/api/veto/${matchId}/init`, {
+                tournamentId: veto.tournament_id,
+                team1Id: veto.team1_id,
+                team2Id: veto.team2_id,
+                bestOf: normalizedBestOf,
+                game: veto.game || 'valorant',
+            });
 
             setShowBODialog(false);
             setDialogStep('bo'); // Reset or keep as is
@@ -870,11 +862,7 @@ export const useMapVetoMachine = ({
 
         setResetting(true);
         try {
-            const { error } = await supabase.rpc('reset_match_veto', {
-                p_match_id: matchId,
-            });
-
-            if (error) throw error;
+            await apiClient.post(`/api/veto/${matchId}/reset`, {});
 
             toast({ title: 'Veto Reset', description: 'Please select Best Of format.' });
             await fetchVetoData();
@@ -971,116 +959,34 @@ export const useMapVetoMachine = ({
                 expectedTeamId = getTeamForAction(currentActionNum, currentBestOf, dbVeto.team1_id!, dbVeto.team2_id!, service);
             }
 
-            // 3. Insert Action
-            const { error: actionError } = await supabase.from(valorantTables.veto_actions).insert({
-                veto_id: veto.id,
-                match_id: matchId,
-                team_id: expectedTeamId,
-                action_type: actionType,
-                map_id: mapId,
-                action_number: currentActionNum,
-                side: side || null,
-            });
+            // 3. Perform action via backend API (replaces client-side insert + update)
+            const endpoint = actionType === 'ban' ? 'ban'
+                : actionType === 'pick' ? 'pick'
+                : 'pick-side';
 
-            if (actionError) {
-                if (actionError.code === '23505') { // Duplicate key
-                    return;
-                }
-                throw actionError;
+            const payload: any = { mapId };
+            if (actionType === 'pick_side' && side) {
+                payload.side = side;
             }
 
-            // 4. Update Veto State
+            let updatedVetoResponse: any;
+            try {
+                updatedVetoResponse = await apiClient.post(`/api/veto/${matchId}/${endpoint}`, payload);
+            } catch (err: any) {
+                // Duplicate action (race condition) — silently ignore
+                if (err.status === 409 || err.message?.includes('duplicate')) return;
+                throw err;
+            }
+
+            // 4. Map camelCase API response to snake_case frontend types
+            if (updatedVetoResponse) {
+                const typedVeto = mapApiVetoToLocal(updatedVetoResponse);
+                setVeto(typedVeto);
+            }
+
             const nextActionNumber = currentActionNum + 1;
             const nextStep = service.getStep(currentBestOf, nextActionNumber);
             const isComplete = !nextStep;
-
-            let updateData: any = {
-                current_action_number: nextActionNumber,
-                turn_started_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            };
-
-            // Update arrays based on action
-            if (actionType === 'ban') {
-                if (expectedTeamId === dbVeto.team1_id) {
-                    updateData.team1_banned_maps = [...dbVeto.team1_banned_maps, mapId];
-                } else {
-                    updateData.team2_banned_maps = [...dbVeto.team2_banned_maps, mapId];
-                }
-            } else if (actionType === 'pick') {
-                const pickedMap: PickedMap = { map_id: mapId, side: undefined };
-                if (expectedTeamId === dbVeto.team1_id) {
-                    updateData.team1_picked_maps = [...dbVeto.team1_picked_maps, pickedMap];
-                } else {
-                    updateData.team2_picked_maps = [...dbVeto.team2_picked_maps, pickedMap];
-                }
-            } else if (actionType === 'pick_side') {
-                // Check if this is a decider map using Service
-                const isDecider = service.isDeciderAction(currentBestOf, currentActionNum);
-
-                // If it's a decider, the side picker (expectedTeamId) gets the map in their list
-                // If it's NOT a decider, the side picker is picking for the OTHER team's map
-                const teamToUpdateId = isDecider ? expectedTeamId : (expectedTeamId === veto.team1_id ? veto.team2_id : veto.team1_id);
-
-                if (teamToUpdateId === dbVeto.team1_id) {
-                    const current = dbVeto.team1_picked_maps;
-                    if (isDecider) {
-                        const newMap: PickedMap = { map_id: mapId, side: side || undefined };
-                        updateData.team1_picked_maps = [...current, newMap];
-                    } else if (current.length > 0) {
-                        const lastMap = { ...current[current.length - 1] };
-                        lastMap.side = side || undefined;
-                        updateData.team1_picked_maps = [...current.slice(0, current.length - 1), lastMap];
-                    }
-                } else {
-                    const current = dbVeto.team2_picked_maps;
-                    if (isDecider) {
-                        const newMap: PickedMap = { map_id: mapId, side: side || undefined };
-                        updateData.team2_picked_maps = [...current, newMap];
-                    } else if (current.length > 0) {
-                        const lastMap = { ...current[current.length - 1] };
-                        lastMap.side = side || undefined;
-                        updateData.team2_picked_maps = [...current.slice(0, current.length - 1), lastMap];
-                    }
-                }
-            }
-
-            if (!isComplete && nextStep) {
-                updateData.current_action = nextStep.action;
-                updateData.current_team_id = nextStep.team === 'T1' ? dbVeto.team1_id : dbVeto.team2_id;
-            } else {
-                updateData.status = 'completed';
-                updateData.completed_at = new Date().toISOString();
-                updateData.current_team_id = null;
-                updateData.current_action = null;
-
-                // Set selected_map_id on completion for easy retrieval (especially BO1)
-                // mapId is the map involved in the final action (pick or pick_side)
-                const isDecider = service.isDeciderAction(currentBestOf, currentActionNum);
-                if (currentBestOf === 1 || isDecider) {
-                    updateData.selected_map_id = mapId;
-                }
-            }
-
-            const { data: updatedVeto, error: updateError } = await supabase
-                .from(valorantTables.match_vetos)
-                .update(updateData)
-                .eq('id', veto.id)
-                .select()
-                .single();
-
-            if (updateError) throw updateError;
-
-            if (updatedVeto) {
-                const typedVeto = {
-                    ...updatedVeto,
-                    team1_banned_maps: Array.isArray(updatedVeto.team1_banned_maps) ? updatedVeto.team1_banned_maps : [],
-                    team2_banned_maps: Array.isArray(updatedVeto.team2_banned_maps) ? updatedVeto.team2_banned_maps : [],
-                    team1_picked_maps: Array.isArray(updatedVeto.team1_picked_maps) ? updatedVeto.team1_picked_maps : [],
-                    team2_picked_maps: Array.isArray(updatedVeto.team2_picked_maps) ? updatedVeto.team2_picked_maps : [],
-                } as MatchMapVeto;
-                setVeto(typedVeto);
-            }
 
             toast({ title: 'Success', description: 'Action completed' });
 

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 
 export interface Sponsor {
     id: string;
@@ -124,37 +125,20 @@ export function useSponsorStats(sponsorId: string) {
     });
 }
 
-// ─── TRACKING VIA EDGE FUNCTION ──────────────────────────────────────
-// All tracking now goes through the `record-metric` Edge Function.
+// ─── TRACKING VIA .NET BACKEND ───────────────────────────────────────
+// All tracking now goes through POST /api/sponsors/track (.NET endpoint).
 // This is more secure (no public DB inserts), more reliable (bypasses
 // ad-blockers), and enables server-side GeoIP + age-group resolution.
 
 async function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
-    console.log(`[Tracking] invoking record-metric for ${sponsorId} (${eventType})`);
     try {
-        const { data, error } = await supabase.functions.invoke('record-metric', {
-            body: {
-                sponsor_id: sponsorId,
-                event_type: eventType,
-                page_url: typeof window !== 'undefined' ? window.location.href : null,
-            },
+        await apiClient.post('/api/sponsors/track', {
+            sponsorId,
+            eventType,
+            pageUrl: typeof window !== 'undefined' ? window.location.href : null,
         });
-
-        if (error) {
-            let errorBody = null;
-            try {
-                if (error.context && typeof error.context.text === 'function') {
-                    errorBody = await error.context.text();
-                } else if (error.message) {
-                    errorBody = error.message;
-                }
-            } catch (_) { /* ignore parse errors */ }
-            console.warn(`[Tracking] Edge function warning: ${errorBody || String(error)}`);
-        } else {
-            console.log('[Tracking] Success:', data);
-        }
     } catch (err) {
-        console.error('[Tracking] Edge function call failed (exception):', err);
+        console.warn('[Tracking] API call failed:', err);
     }
 }
 

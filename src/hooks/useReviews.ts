@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/lib/apiClient';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -61,111 +62,43 @@ export const useReviews = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch reviews for a specific entity
   const fetchReviews = useCallback(async (entityType: 'user' | 'venue' | 'tournament', entityId: string) => {
     try {
-      const query = supabase
-        .from('reviews')
-        .select(`
-          *,
-          reviewer:profiles!reviews_reviewer_id_fkey(id, username, full_name, avatar_url),
-          reviewee:profiles!reviews_reviewee_id_fkey(id, username, full_name, avatar_url),
-          venue:venues(id, name, city),
-          tournament:tournaments(id, name, game)
-        `)
-        .eq('review_type', entityType)
-        .order('created_at', { ascending: false });
-
-      let finalQuery;
-      switch (entityType) {
-        case 'user':
-          finalQuery = query.eq('reviewee_id', entityId);
-          break;
-        case 'venue':
-          finalQuery = query.eq('venue_id', entityId);
-          break;
-        case 'tournament':
-          finalQuery = query.eq('tournament_id', entityId);
-          break;
-      }
-
-      const { data, error } = await finalQuery;
-
-      if (error) throw error;
-      setReviews(data || []);
+      const data = await apiClient.get<Review[]>(`/api/reviews/${entityType}/${entityId}`);
+      setReviews(data ?? []);
     } catch (error) {
       console.error('Error fetching reviews:', error);
     }
   }, []);
 
-  // Fetch user's own reviews
   const fetchUserReviews = useCallback(async () => {
     if (!user) return;
-
     try {
-      const { data, error } = await supabase
-        .from('reviews')
-        .select(`
-          *,
-          reviewee:profiles!reviews_reviewee_id_fkey(id, username, full_name, avatar_url),
-          venue:venues(id, name, city),
-          tournament:tournaments(id, name, game)
-        `)
-        .eq('reviewer_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUserReviews(data || []);
+      const data = await apiClient.get<Review[]>('/api/reviews/mine');
+      setUserReviews(data ?? []);
     } catch (error) {
       console.error('Error fetching user reviews:', error);
     }
   }, [user]);
 
-  // Get review statistics
   const getReviewStats = useCallback(async (entityType: 'user' | 'venue' | 'tournament', entityId: string): Promise<ReviewStats | null> => {
     try {
-      const query = supabase
-        .from('reviews')
-        .select('rating')
-        .eq('review_type', entityType);
-
-      let finalQuery;
-      switch (entityType) {
-        case 'user':
-          finalQuery = query.eq('reviewee_id', entityId);
-          break;
-        case 'venue':
-          finalQuery = query.eq('venue_id', entityId);
-          break;
-        case 'tournament':
-          finalQuery = query.eq('tournament_id', entityId);
-          break;
-      }
-
-      const { data, error } = await finalQuery;
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) {
-        return {
-          average_rating: 0,
-          total_reviews: 0,
-          rating_breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
-        };
-      }
-
-      const totalReviews = data.length;
-      const averageRating = data.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
-      
-      const ratingBreakdown = data.reduce((acc, review) => {
-        acc[review.rating as keyof typeof acc]++;
-        return acc;
-      }, { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
+      const stats = await apiClient.get<{
+        average_rating: number;
+        total_reviews: number;
+        rating_breakdown: { five: number; four: number; three: number; two: number; one: number };
+      }>(`/api/reviews/stats/${entityType}/${entityId}`);
 
       return {
-        average_rating: Math.round(averageRating * 10) / 10,
-        total_reviews: totalReviews,
-        rating_breakdown: ratingBreakdown,
+        average_rating: stats.average_rating,
+        total_reviews: stats.total_reviews,
+        rating_breakdown: {
+          5: stats.rating_breakdown.five,
+          4: stats.rating_breakdown.four,
+          3: stats.rating_breakdown.three,
+          2: stats.rating_breakdown.two,
+          1: stats.rating_breakdown.one,
+        },
       };
     } catch (error) {
       console.error('Error fetching review stats:', error);
@@ -173,7 +106,6 @@ export const useReviews = () => {
     }
   }, []);
 
-  // Create a review
   const createReview = async (reviewData: {
     reviewee_id?: string;
     venue_id?: string;
@@ -188,54 +120,15 @@ export const useReviews = () => {
     try {
       setSubmitting(true);
 
-      // Check if user has already reviewed this entity
-      const existingReview = await supabase
-        .from('reviews')
-        .select('id')
-        .eq('reviewer_id', user.id)
-        .eq('review_type', reviewData.review_type);
-
-      let existingQuery;
-      switch (reviewData.review_type) {
-        case 'user':
-          existingQuery = existingReview.eq('reviewee_id', reviewData.reviewee_id);
-          break;
-        case 'venue':
-          existingQuery = existingReview.eq('venue_id', reviewData.venue_id);
-          break;
-        case 'tournament':
-          existingQuery = existingReview.eq('tournament_id', reviewData.tournament_id);
-          break;
-      }
-
-      const { data: existing } = await existingQuery;
-
-      if (existing && existing.length > 0) {
-        toast({
-          title: 'Already Reviewed',
-          description: 'You have already reviewed this item.',
-          variant: 'destructive',
-        });
-        return null;
-      }
-
-      const { data, error } = await supabase
-        .from('reviews')
-        .insert({
-          reviewer_id: user.id,
-          ...reviewData,
-          is_verified: false, // Will be verified by admin or system
-        })
-        .select(`
-          *,
-          reviewer:profiles!reviews_reviewer_id_fkey(id, username, full_name, avatar_url),
-          reviewee:profiles!reviews_reviewee_id_fkey(id, username, full_name, avatar_url),
-          venue:venues(id, name, city),
-          tournament:tournaments(id, name, game)
-        `)
-        .single();
-
-      if (error) throw error;
+      const data = await apiClient.post<Review>('/api/reviews', {
+        reviewType:   reviewData.review_type,
+        rating:       reviewData.rating,
+        title:        reviewData.title,
+        comment:      reviewData.comment,
+        venueId:      reviewData.venue_id,
+        revieweeId:   reviewData.reviewee_id,
+        tournamentId: reviewData.tournament_id,
+      });
 
       toast({
         title: 'Review Submitted',
@@ -243,7 +136,6 @@ export const useReviews = () => {
         variant: 'default',
       });
 
-      // Refresh reviews
       if (reviewData.reviewee_id) {
         await fetchReviews('user', reviewData.reviewee_id);
       } else if (reviewData.venue_id) {
@@ -253,22 +145,19 @@ export const useReviews = () => {
       }
 
       await fetchUserReviews();
-
       return data;
     } catch (error: any) {
       console.error('Error creating review:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to submit review.',
-        variant: 'destructive',
-      });
+      const msg = error.status === 409
+        ? 'You have already reviewed this item.'
+        : error.message || 'Failed to submit review.';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
       return null;
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Update a review
   const updateReview = async (reviewId: string, updates: {
     rating?: number;
     title?: string;
@@ -278,22 +167,7 @@ export const useReviews = () => {
 
     try {
       setSubmitting(true);
-
-      const { data, error } = await supabase
-        .from('reviews')
-        .update(updates)
-        .eq('id', reviewId)
-        .eq('reviewer_id', user.id)
-        .select(`
-          *,
-          reviewer:profiles!reviews_reviewer_id_fkey(id, username, full_name, avatar_url),
-          reviewee:profiles!reviews_reviewee_id_fkey(id, username, full_name, avatar_url),
-          venue:venues(id, name, city),
-          tournament:tournaments(id, name, game)
-        `)
-        .single();
-
-      if (error) throw error;
+      const data = await apiClient.put<Review>(`/api/reviews/${reviewId}`, updates);
 
       toast({
         title: 'Review Updated',
@@ -301,9 +175,7 @@ export const useReviews = () => {
         variant: 'default',
       });
 
-      // Refresh reviews
       await fetchUserReviews();
-
       return data;
     } catch (error: any) {
       console.error('Error updating review:', error);
@@ -318,20 +190,12 @@ export const useReviews = () => {
     }
   };
 
-  // Delete a review
   const deleteReview = async (reviewId: string) => {
     if (!user) return false;
 
     try {
       setSubmitting(true);
-
-      const { error } = await supabase
-        .from('reviews')
-        .delete()
-        .eq('id', reviewId)
-        .eq('reviewer_id', user.id);
-
-      if (error) throw error;
+      await apiClient.delete(`/api/reviews/${reviewId}`);
 
       toast({
         title: 'Review Deleted',
@@ -339,9 +203,7 @@ export const useReviews = () => {
         variant: 'default',
       });
 
-      // Refresh reviews
       await fetchUserReviews();
-
       return true;
     } catch (error: any) {
       console.error('Error deleting review:', error);
@@ -356,12 +218,11 @@ export const useReviews = () => {
     }
   };
 
-  // Check if user can review an entity
+  // canReview — kept on Supabase (complex multi-table eligibility check)
   const canReview = async (entityType: 'user' | 'venue' | 'tournament', entityId: string): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      // Check if user has already reviewed
       const existingReview = await supabase
         .from('reviews')
         .select('id')
@@ -384,10 +245,9 @@ export const useReviews = () => {
       const { data: existing } = await existingQuery;
 
       if (existing && existing.length > 0) {
-        return false; // Already reviewed
+        return false;
       }
 
-      // Check if user has interacted with the entity (e.g., booked venue, participated in tournament)
       switch (entityType) {
         case 'venue':
           const { data: venueBooking } = await supabase
@@ -410,7 +270,6 @@ export const useReviews = () => {
           return tournamentParticipation && tournamentParticipation.length > 0;
 
         case 'user':
-          // For user reviews, check if they've been in the same team or tournament
           const { data: teamInteraction } = await supabase
             .from('team_members')
             .select('team_id')
@@ -439,7 +298,6 @@ export const useReviews = () => {
     }
   };
 
-  // Initialize data
   useEffect(() => {
     if (user) {
       fetchUserReviews().finally(() => setLoading(false));
@@ -454,7 +312,6 @@ export const useReviews = () => {
     loading,
     submitting,
     
-    // Actions
     fetchReviews,
     fetchUserReviews,
     getReviewStats,

@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
+import { buildHubConnection, startWithRetry, HubPaths } from '@/lib/signalrClient';
 import { useToast } from '@/hooks/use-toast';
+import type { HubConnection } from '@microsoft/signalr';
 
 export interface Conversation {
   id: string;
@@ -58,129 +60,42 @@ export const useMessaging = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
-  // Fetch user's conversations
   const fetchConversations = useCallback(async () => {
     if (!user) return;
-
     try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          participants:conversation_participants(
-            *,
-            user:profiles(id, username, full_name, avatar_url)
-          ),
-          last_message:messages(
-            *,
-            sender:profiles(id, username, full_name, avatar_url)
-          )
-        `)
-        .eq('participants.user_id', user.id)
-        .eq('participants.is_active', true)
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Process conversations to add unread counts
-      const processedConversations = await Promise.all(
-        (data || []).map(async (conv) => {
-          const { count } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('conversation_id', conv.id)
-            .gt('created_at', conv.participants?.[0]?.last_read_at || '1970-01-01');
-
-          return {
-            ...conv,
-            unread_count: count || 0,
-          };
-        })
-      );
-
-      setConversations(processedConversations);
+      const data = await apiClient.get<Conversation[]>('/api/conversations');
+      setConversations(data ?? []);
     } catch (error) {
       console.error('Error fetching conversations:', error);
     }
   }, [user]);
 
-  // Fetch messages for a conversation
   const fetchMessages = useCallback(async (conversationId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`
-          *,
-          sender:profiles(id, username, full_name, avatar_url)
-        `)
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setMessages(data || []);
+      const data = await apiClient.get<Message[]>(`/api/conversations/${conversationId}/messages`);
+      setMessages(data ?? []);
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
   }, []);
 
-  // Create a new conversation
   const createConversation = async (participantIds: string[], type: 'direct' | 'group' = 'direct', title?: string) => {
     if (!user) return null;
 
     try {
       setSending(true);
+      const conversation = await apiClient.post<Conversation>('/api/conversations', {
+        type,
+        title,
+        participantIds,
+      });
 
-      // For direct messages, check if conversation already exists
-      if (type === 'direct' && participantIds.length === 1) {
-        const { data: existingConv } = await supabase
-          .from('conversations')
-          .select(`
-            *,
-            participants:conversation_participants(*)
-          `)
-          .eq('type', 'direct')
-          .eq('participants.user_id', user.id)
-          .eq('participants.is_active', true);
-
-        const directConv = existingConv?.find(conv => 
-          conv.participants.some((p: any) => p.user_id === participantIds[0])
-        );
-
-        if (directConv) {
-          setCurrentConversation(directConv);
-          await fetchMessages(directConv.id);
-          return directConv;
-        }
+      setCurrentConversation(conversation);
+      if (conversation?.id) {
+        await fetchMessages(conversation.id);
       }
-
-      // Create new conversation
-      const { data: conversation, error: convError } = await supabase
-        .from('conversations')
-        .insert({
-          type,
-          title,
-          created_by: user.id,
-        })
-        .select()
-        .single();
-
-      if (convError) throw convError;
-
-      // Add participants
-      const participants = [
-        { conversation_id: conversation.id, user_id: user.id },
-        ...participantIds.map(id => ({ conversation_id: conversation.id, user_id: id }))
-      ];
-
-      const { error: participantsError } = await supabase
-        .from('conversation_participants')
-        .insert(participants);
-
-      if (participantsError) throw participantsError;
-
       await fetchConversations();
       return conversation;
-
     } catch (error: any) {
       console.error('Error creating conversation:', error);
       toast({
@@ -194,44 +109,20 @@ export const useMessaging = () => {
     }
   };
 
-  // Send a message
   const sendMessage = async (conversationId: string, content: string, messageType: 'text' | 'image' | 'file' = 'text', attachments: any = {}) => {
     if (!user) return null;
 
     try {
       setSending(true);
+      const data = await apiClient.post<Message>(`/api/conversations/${conversationId}/messages`, {
+        content,
+        messageType,
+        attachments: JSON.stringify(attachments),
+      });
 
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          sender_id: user.id,
-          content,
-          message_type: messageType,
-          attachments,
-        })
-        .select(`
-          *,
-          sender:profiles(id, username, full_name, avatar_url)
-        `)
-        .single();
-
-      if (error) throw error;
-
-      // Update conversation timestamp
-      await supabase
-        .from('conversations')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', conversationId);
-
-      // Add message to current messages
       setMessages(prev => [...prev, data]);
-
-      // Update conversations list
       await fetchConversations();
-
       return data;
-
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
@@ -245,37 +136,20 @@ export const useMessaging = () => {
     }
   };
 
-  // Mark messages as read
   const markAsRead = async (conversationId: string) => {
     if (!user) return;
-
     try {
-      await supabase
-        .from('conversation_participants')
-        .update({ last_read_at: new Date().toISOString() })
-        .eq('conversation_id', conversationId)
-        .eq('user_id', user.id);
-
+      await apiClient.put(`/api/conversations/${conversationId}/read`, {});
       await fetchConversations();
     } catch (error) {
       console.error('Error marking messages as read:', error);
     }
   };
 
-  // Join a conversation
   const joinConversation = async (conversationId: string) => {
     if (!user) return false;
-
     try {
-      const { error } = await supabase
-        .from('conversation_participants')
-        .insert({
-          conversation_id: conversationId,
-          user_id: user.id,
-        });
-
-      if (error) throw error;
-
+      await apiClient.post(`/api/conversations/${conversationId}/join`, {});
       await fetchConversations();
       return true;
     } catch (error: any) {
@@ -284,19 +158,10 @@ export const useMessaging = () => {
     }
   };
 
-  // Leave a conversation
   const leaveConversation = async (conversationId: string) => {
     if (!user) return false;
-
     try {
-      const { error } = await supabase
-        .from('conversation_participants')
-        .update({ is_active: false })
-        .eq('conversation_id', conversationId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
+      await apiClient.post(`/api/conversations/${conversationId}/leave`, {});
       await fetchConversations();
       setCurrentConversation(null);
       setMessages([]);
@@ -307,28 +172,12 @@ export const useMessaging = () => {
     }
   };
 
-  // Edit a message
   const editMessage = async (messageId: string, newContent: string) => {
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .update({
-          content: newContent,
-          is_edited: true,
-          edited_at: new Date().toISOString(),
-        })
-        .eq('id', messageId)
-        .eq('sender_id', user?.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update messages list
-      setMessages(prev => prev.map(msg => 
+      const data = await apiClient.put<Message>(`/api/messages/${messageId}`, { content: newContent });
+      setMessages(prev => prev.map(msg =>
         msg.id === messageId ? { ...msg, ...data } : msg
       ));
-
       return data;
     } catch (error: any) {
       console.error('Error editing message:', error);
@@ -341,20 +190,10 @@ export const useMessaging = () => {
     }
   };
 
-  // Delete a message
   const deleteMessage = async (messageId: string) => {
     try {
-      const { error } = await supabase
-        .from('messages')
-        .delete()
-        .eq('id', messageId)
-        .eq('sender_id', user?.id);
-
-      if (error) throw error;
-
-      // Remove from messages list
+      await apiClient.delete(`/api/messages/${messageId}`);
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
-
       return true;
     } catch (error: any) {
       console.error('Error deleting message:', error);
@@ -367,63 +206,70 @@ export const useMessaging = () => {
     }
   };
 
-  // Memoize conversation IDs to prevent subscription remounts
   const conversationIds = useMemo(() => {
     return conversations.map(c => c.id);
   }, [conversations]);
 
-  // Set up real-time subscriptions
+  // Ref to track SignalR connection
+  const connectionRef = useRef<HubConnection | null>(null);
+
+  // Real-time subscription via SignalR ConversationHub
   useEffect(() => {
     if (!user || conversationIds.length === 0) return;
 
-    // Subscribe to new messages
-    const messageSubscription = supabase
-      .channel('messages')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `conversation_id=in.(${conversationIds.join(',')})`,
-      }, (payload) => {
-        const newMessage = payload.new as Message;
-        
-        // Add to current messages if it's the active conversation
-        if (currentConversation && newMessage.conversation_id === currentConversation.id) {
-          setMessages(prev => {
-            // Check if message already exists to avoid duplicates
-            const exists = prev.some(m => m.id === newMessage.id);
-            if (exists) return prev;
-            return [...prev, newMessage];
-          });
-        }
+    const connection = buildHubConnection(HubPaths.Conversation);
+    connectionRef.current = connection;
 
-        // Update conversations list directly - update the conversation's last_message and updated_at
-        setConversations(prev => {
-          return prev.map(conv => {
-            if (conv.id === newMessage.conversation_id) {
-              return {
-                ...conv,
-                last_message: newMessage,
-                updated_at: newMessage.created_at,
-                unread_count: currentConversation?.id === conv.id 
-                  ? (conv.unread_count || 0) 
-                  : (conv.unread_count || 0) + 1,
-              };
-            }
-            return conv;
-          }).sort((a, b) => 
-            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-          );
+    // Event handlers
+    connection.on('MessageReceived', (newMessage: Message) => {
+      if (currentConversation && newMessage.conversation_id === currentConversation.id) {
+        setMessages(prev => {
+          const exists = prev.some(m => m.id === newMessage.id);
+          if (exists) return prev;
+          return [...prev, newMessage];
         });
-      })
-      .subscribe();
+      }
+
+      setConversations(prev => {
+        return prev.map(conv => {
+          if (conv.id === newMessage.conversation_id) {
+            return {
+              ...conv,
+              last_message: newMessage,
+              updated_at: newMessage.created_at,
+              unread_count: currentConversation?.id === conv.id 
+                ? (conv.unread_count || 0) 
+                : (conv.unread_count || 0) + 1,
+            };
+          }
+          return conv;
+        }).sort((a, b) => 
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        );
+      });
+    });
+
+    connection.on('MessageEdited', (update: { id: string; content: string; is_edited: boolean; edited_at: string }) => {
+      setMessages(prev => prev.map(msg =>
+        msg.id === update.id ? { ...msg, content: update.content, is_edited: update.is_edited, edited_at: update.edited_at } : msg
+      ));
+    });
+
+    connection.on('MessageDeleted', (payload: { id: string }) => {
+      setMessages(prev => prev.filter(msg => msg.id !== payload.id));
+    });
+
+    // Start connection and join all conversations
+    startWithRetry(connection)
+      .then(() => connection.invoke('JoinConversations', conversationIds))
+      .catch(err => console.error('[ConversationHub] Failed to connect:', err));
 
     return () => {
-      messageSubscription.unsubscribe();
+      connection.stop();
+      connectionRef.current = null;
     };
-  }, [user, conversationIds, currentConversation]); // Removed fetchConversations from dependencies
+  }, [user, conversationIds, currentConversation]);
 
-  // Initialize data
   useEffect(() => {
     if (user) {
       fetchConversations().finally(() => setLoading(false));
@@ -439,7 +285,6 @@ export const useMessaging = () => {
     loading,
     sending,
     
-    // Actions
     fetchConversations,
     fetchMessages,
     createConversation,

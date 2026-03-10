@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserProfile {
@@ -21,13 +21,8 @@ export const useUserManagement = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, email, full_name, avatar_url');
-
-      if (error) throw error;
-
-      setUsers(data || []);
+      const result = await apiClient.get<{ data: UserProfile[]; total: number }>('/api/admin/users?limit=500');
+      setUsers(result.data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch users');
       toast({
@@ -44,16 +39,8 @@ export const useUserManagement = () => {
     try {
       setProcessingRoleChange(userId);
 
-      const { data, error } = await supabase.functions.invoke('manage-users', {
-        body: {
-          action: 'delete-user',
-          targetUserId: userId
-        }
-      });
+      await apiClient.post(`/api/admin/users/${userId}/action`, { action: 'delete-user' });
 
-      if (error) throw error;
-
-      // Remove user from local state
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
 
       toast({
@@ -76,26 +63,19 @@ export const useUserManagement = () => {
     try {
       setProcessingRoleChange(userId);
 
-      // Map frontend role to database role if necessary
-      let supabaseRole = newRole;
-      if (newRole === 'player') supabaseRole = 'organizer';
+      let mappedRole = newRole;
+      if (newRole === 'player') mappedRole = 'organizer';
 
-      const { data, error } = await supabase.functions.invoke('manage-users', {
-        body: {
-          action: 'update-role',
-          targetUserId: userId,
-          payload: { newRole: supabaseRole }
-        }
+      await apiClient.post(`/api/admin/users/${userId}/action`, {
+        action: 'update-role',
+        role: mappedRole,
       });
-
-      if (error) throw error;
 
       toast({
         title: "Role Updated",
         description: `User role has been updated to ${newRole} successfully.`,
       });
 
-      // Refresh the page or fetch users again to show changes
       await fetchUsers();
     } catch (error: any) {
       console.error('Error updating user role:', error);
@@ -112,36 +92,9 @@ export const useUserManagement = () => {
   const cleanupOrphanedProfiles = async () => {
     try {
       setLoading(true);
-
-      // Get all profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id');
-
-      if (profilesError) throw profilesError;
-
-      // For each profile, check if the user exists in auth
-      for (const profile of profiles) {
-        const { data: user, error: userError } = await supabase.auth.admin.getUserById(profile.id);
-
-        if (userError || !user) {
-          // If user doesn't exist, delete the profile
-          const { error: deleteError } = await supabase
-            .from('profiles')
-            .delete()
-            .eq('id', profile.id);
-
-          if (deleteError) {
-            console.error(`Failed to delete orphaned profile ${profile.id}:`, deleteError);
-          } else {
-            console.log(`Deleted orphaned profile: ${profile.id}`);
-          }
-        }
-      }
-
-      // Refresh the users list
+      // Orphan cleanup requires server-side auth.admin access — delegate to backend
+      await apiClient.post('/api/admin/users/cleanup', {});
       await fetchUsers();
-
       toast({
         title: "Cleanup Complete",
         description: "Orphaned profiles have been removed.",
@@ -150,7 +103,7 @@ export const useUserManagement = () => {
       console.error('Error cleaning up profiles:', error);
       toast({
         title: "Cleanup Failed",
-        description: error.message,
+        description: error.message || "Cleanup endpoint not yet implemented on backend",
         variant: "destructive",
       });
     } finally {

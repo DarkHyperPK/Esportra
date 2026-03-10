@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_PERMISSIONS } from '@/hooks/useAdminPermissions';
 
@@ -47,53 +47,27 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const normalizeRole = (role?: string | null) =>
         role ? role.toLowerCase().replace(/\s+/g, '_') : null;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_admin, admin_roles, admin_permissions')
-        .eq('id', user.id)
-        .maybeSingle();
+      // Single API call replaces 3 Supabase queries (profile + admin_user_roles + admin_roles)
+      // The profile's admin_roles column is the canonical source of role names
+      const profile = await apiClient.get<{
+        is_admin: boolean;
+        admin_roles: string[] | null;
+        admin_permissions: string[] | null;
+      }>('/api/profiles/me');
 
-      const profileRoles = (profile?.admin_roles as string[]) || [];
-      const normalizedProfileRoles = profileRoles
+      const profileRoles = (profile?.admin_roles || [])
         .map(normalizeRole)
         .filter((role): role is string => !!role);
 
-      const directPermissions = (profile?.admin_permissions as string[]) || [];
-
-      let normalizedRolesFromMapping: string[] = [];
-      const { data: adminUserRoleRecords } = await supabase
-        .from('admin_user_roles')
-        .select('role_id')
-        .eq('user_id', user.id);
-
-      if (adminUserRoleRecords && adminUserRoleRecords.length > 0) {
-        const roleIds = adminUserRoleRecords
-          .map(record => record.role_id)
-          .filter((roleId): roleId is string => !!roleId);
-
-        if (roleIds.length > 0) {
-          const { data: roleRecords } = await supabase
-            .from('admin_roles')
-            .select('id, name')
-            .in('id', roleIds);
-
-          normalizedRolesFromMapping = (roleRecords || [])
-            .map(record => normalizeRole(record?.name))
-            .filter((role): role is string => !!role);
-        }
-      }
-
-      const combinedRoles = Array.from(
-        new Set([...normalizedProfileRoles, ...normalizedRolesFromMapping])
-      );
-      const isUserAdmin = !!profile?.is_admin || combinedRoles.length > 0;
+      const directPermissions = profile?.admin_permissions || [];
+      const isUserAdmin = !!profile?.is_admin || profileRoles.length > 0;
 
       setIsAdmin(isUserAdmin);
-      setRoles(combinedRoles);
+      setRoles(profileRoles);
 
       const rolePermissions = new Set<string>();
 
-      combinedRoles.forEach(role => {
+      profileRoles.forEach(role => {
         const rolePerms = ROLE_PERMISSIONS[role] || [];
         rolePerms.forEach(perm => rolePermissions.add(perm));
       });
@@ -135,15 +109,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [user, load]);
 
-  useEffect(() => {
-    if (!user) return;
-
-    const pollInterval = setInterval(() => {
-      load({ silent: true });
-    }, 10000);
-
-    return () => clearInterval(pollInterval);
-  }, [user, load]);
+  // Polling removed — admin roles refresh on-demand via events or page navigation
 
   const hasPermission = (perm: string): boolean => {
     if (!isAdmin) return false;

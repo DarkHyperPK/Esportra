@@ -151,55 +151,26 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     streamUrl:            data.streamUrl || null,
                 });
 
-                // Stage diff logic — kept in Supabase (complex delete/upsert/insert)
+                // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
                 if (data.stages.length > 0 || initialData?.stages) {
-                    const { data: existingDbStages } = await supabase
-                        .from('tournament_stages').select('id').eq('tournament_id', tournamentId);
-
-                    const existingDbStageIds = existingDbStages?.map(s => s.id) ?? [];
-                    const currentStageIds    = data.stages.filter(s => s.id).map(s => s.id);
-                    const stagesToDelete     = existingDbStageIds.filter(id => !currentStageIds.includes(id));
-
-                    if (stagesToDelete.length > 0) {
-                        await supabase.from('tournament_stages').delete().in('id', stagesToDelete);
-                    }
-
-                    const existingStages = data.stages.filter(s => s.id);
-                    const newStages      = data.stages.filter(s => !s.id);
-
-                    if (existingStages.length > 0) {
-                        await supabase.from('tournament_stages').upsert(
-                            existingStages.map(s => ({
-                                id: s.id, tournament_id: tournamentId, name: s.name,
-                                format: s.format, stage_order: s.stage_order,
-                                best_of: (s as any).best_of || 1,
-                                capacity: (s as any).capacity || null,
-                                advancement_count: (s as any).advancement_count || null,
-                            }))
-                        );
-                    }
-
-                    if (newStages.length > 0) {
-                        await supabase.from('tournament_stages').insert(
-                            newStages.map(s => ({
-                                tournament_id: tournamentId, name: s.name,
-                                format: s.format, stage_order: s.stage_order,
-                                best_of: (s as any).best_of || 1,
-                                capacity: (s as any).capacity || null,
-                                advancement_count: (s as any).advancement_count || null,
-                            }))
-                        );
-                    }
+                    await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
+                        stages: data.stages.map(s => ({
+                            id:               s.id || null,
+                            name:             s.name,
+                            format:           s.format,
+                            stageOrder:       s.stage_order,
+                            bestOf:           (s as any).best_of || 1,
+                            capacity:         (s as any).capacity || null,
+                            advancementCount: (s as any).advancement_count || null,
+                        })),
+                    });
                 }
 
-                // Map pool — delete + re-insert (Supabase)
+                // Map pool — single PUT replaces delete + re-insert
                 if (data.mapPoolIds) {
-                    await supabase.from('tournament_map_pools').delete().eq('tournament_id', tournamentId);
-                    if (data.mapPoolIds.length > 0) {
-                        await supabase.from('tournament_map_pools').insert(
-                            data.mapPoolIds.map(mapId => ({ tournament_id: tournamentId, map_id: mapId }))
-                        );
-                    }
+                    await apiClient.put(`/api/tournaments/${tournamentId}/map-pools`, {
+                        mapIds: data.mapPoolIds,
+                    });
                 }
 
                 toast({ title: 'Tournament Updated', description: 'Your tournament has been updated successfully.' });
