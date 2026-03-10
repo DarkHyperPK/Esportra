@@ -1,10 +1,9 @@
-name: 🚀 Deploy Edge Functions
+name: 🚀 Deploy Edge Functions (DEPRECATED)
+# Edge Functions have been replaced by the .NET 9 backend (esportra-backend repo).
+# Auto-deploy is disabled. Trigger manually only if you need to push a legacy hotfix
+# during the 48h traffic-validation window before full decommission.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'supabase/functions/**'
   workflow_dispatch:
 
 concurrency:
