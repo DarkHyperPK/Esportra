@@ -1,0 +1,376 @@
+================================================================================
+              ESPORTRA — COMPLETE END-TO-END DEPLOYMENT GUIDE
+                    Architecture: .NET 9 + Redis + SignalR
+                          Generated: 2026-03-10
+================================================================================
+
+This guide replaces all previous deployment docs. The architecture has been
+fully migrated from Supabase Edge Functions to a .NET 9 backend with Redis.
+Supabase is now used for Auth and Storage only.
+
+================================================================================
+ARCHITECTURE OVERVIEW
+================================================================================
+
+    Browser
+      |
+      |  HTTPS / WSS
+      +---> esportra.com                  Frontend (React/Vite, Coolify)
+      +---> backend.esportra.com          .NET 9 API + SignalR (Coolify)
+      +---> api.esportra.com              Supabase Kong (Auth + Storage ONLY)
+                                          NOT used for API calls anymore
+      Internal (not exposed publicly):
+            Redis                         Cache, rate limiting, queues
+
+    Repos:
+      Frontend:  github.com/DarkHyperPK/Esportra         (main = prod, staging = staging)
+      Backend:   github.com/DarkHyperPK/esportra-backend  (main = prod, staging = staging)
+
+================================================================================
+PART 1 — PRE-DEPLOYMENT CHECKLIST
+================================================================================
+
+DNS Records (add at registrar/Cloudflare before starting):
+--------------------------------------------------------------
+    api-staging.esportra.com   A   84.235.246.82
+    backend.esportra.com       A   84.235.246.82
+
+NOTE: api.esportra.com is already taken by Supabase Kong. The .NET backend
+      must use backend.esportra.com for production.
+
+Third-Party OAuth — Add Redirect URIs:
+-----------------------------------------
+  FACEIT Developer Console (your app -> Settings -> Allowed Redirect URIs):
+    https://esportra.com/functions/v1/faceit-oauth        (production)
+    http://localhost:3000/functions/v1/faceit-oauth        (local dev)
+
+  Riot Developer Console (your app -> Redirect URIs):
+    https://esportra.com/auth/riot/callback                (production, NEW)
+    http://localhost:3000/auth/riot/callback               (local dev)
+
+================================================================================
+PART 2 — STAGING DEPLOYMENT
+================================================================================
+
+STEP 1: Deploy Redis (Staging)
+--------------------------------
+1. Coolify Dashboard -> Staging environment -> + New -> Service -> Redis (redis:7-alpine)
+2. Settings:
+     Name:     esportra-redis-staging
+     Password: <generate strong random password — SAVE IT>
+     Port:     6379 (do NOT expose publicly, internal only)
+3. Click Deploy -> wait for green check
+4. Copy the internal container hostname Coolify shows
+   (e.g. esportra-redis-staging or redis-abc123)
+   This is your <STAGING_REDIS_HOST> used in Step 2.
+
+STEP 2: Deploy .NET API (Staging)
+------------------------------------
+1. Coolify -> Staging -> + New -> Application -> GitHub
+2. Repository: DarkHyperPK/esportra-backend
+3. Branch: staging
+4. Build settings:
+     Build Pack:          Dockerfile
+     Base Directory:      /
+     Dockerfile Location: src/Esportra.Api/Dockerfile
+     Port Exposed:        8080
+5. Click Save — DO NOT deploy yet.
+
+6. Go to Environment Variables tab. Add ALL of the following:
+
+   Key                            Value
+   ---                            -----
+   ASPNETCORE_ENVIRONMENT         Staging
+   ConnectionStrings__Postgres    Host=84.235.246.82;Port=5433;Database=postgres;Username=postgres;Password=<STAGING_DB_PASS>
+   ConnectionStrings__Redis       <STAGING_REDIS_HOST>:6379,password=<STAGING_REDIS_PASS>
+   Supabase__Url                  https://staging.esportra.com
+   Supabase__ServiceKey           <staging service_role key from Supabase Studio -> Settings -> API>
+   Supabase__JwtSecret            <staging JWT secret from Supabase Studio -> Settings -> API -> JWT Settings>
+   Supabase__JwtAudience          authenticated
+   Supabase__JwtIssuer            (leave EMPTY — self-hosted Supabase omits iss claim)
+   Resend__ApiKey                 re_...
+   Resend__FromEmail              noreply@esportra.com
+   Resend__FromName               Esportra
+   Metrics__VisitorSalt           <any random string e.g. staging-salt-xxxxx>
+   Riot__ApiKey                   <your Riot API key>
+   Riot__OAuthClientId            <Riot OAuth client ID>
+   Riot__OAuthClientSecret        <Riot OAuth client secret>
+   Faceit__ApiKey                 <FACEIT API key>
+   Faceit__ClientId               9a748da0-5482-4acf-8ef7-37ee247ee56f
+   Faceit__ClientSecret           <FACEIT staging client secret>
+   Rawg__ApiKey                   <RAWG API key>
+   FrontendUrl                    https://staging.esportra.com
+   PartnerUrl                     https://partner.esportra.com
+
+7. Go to Domains tab:
+     Domain:      https://api-staging.esportra.com
+     SSL:         Let's Encrypt (enabled)
+
+8. Click Deploy. First build takes ~3-5 minutes (.NET SDK download + compile).
+
+9. Verify:
+     curl https://api-staging.esportra.com/health
+     Expected: {"status":"healthy","environment":"Staging","timestamp":"..."}
+
+STEP 3: Local Dev Against Staging
+------------------------------------
+Your local .env is already configured. Just run:
+    npm run dev
+This hits staging Supabase (staging.esportra.com) and staging .NET API
+(api-staging.esportra.com) simultaneously.
+
+No hosted staging frontend is deployed — local dev is the staging frontend.
+
+================================================================================
+PART 3 — PRODUCTION DEPLOYMENT
+================================================================================
+
+STEP 4: Deploy Redis (Production)
+------------------------------------
+Same as Step 1 but in the Production environment:
+    Name:     esportra-redis-prod
+    Password: <DIFFERENT and stronger password than staging>
+    Port:     6379 (internal only, no public exposure)
+
+STEP 5: Deploy .NET API (Production)
+---------------------------------------
+Same as Step 2 but:
+    Repository:  DarkHyperPK/esportra-backend
+    Branch:      main
+    Domain:      https://backend.esportra.com
+
+Environment Variables (same keys as staging, different values):
+
+   Key                            Value
+   ---                            -----
+   ASPNETCORE_ENVIRONMENT         Production
+   ConnectionStrings__Postgres    Host=84.235.246.82;Port=5432;Database=postgres;Username=postgres;Password=<PROD_DB_PASS>
+                                  NOTE: Port 5432 (not 5433 which is staging)
+   ConnectionStrings__Redis       <PROD_REDIS_HOST>:6379,password=<PROD_REDIS_PASS>
+   Supabase__Url                  https://api.esportra.com
+   Supabase__ServiceKey           <PROD service_role key>
+   Supabase__JwtSecret            <PROD JWT secret>
+   Supabase__JwtAudience          authenticated
+   Supabase__JwtIssuer            (leave EMPTY)
+   Resend__ApiKey                 re_...
+   Resend__FromEmail              noreply@esportra.com
+   Resend__FromName               Esportra
+   Metrics__VisitorSalt           <any random string — DIFFERENT from staging>
+   Riot__ApiKey                   <Riot API key>
+   Riot__OAuthClientId            <Riot OAuth client ID>
+   Riot__OAuthClientSecret        <Riot OAuth client secret>
+   Faceit__ApiKey                 <FACEIT API key>
+   Faceit__ClientId               bc06f504-827e-441c-8f3c-06517fc2f339  (prod FACEIT app)
+   Faceit__ClientSecret           <FACEIT prod client secret>
+   Rawg__ApiKey                   <RAWG API key>
+   FrontendUrl                    https://esportra.com
+   PartnerUrl                     https://partner.esportra.com
+
+Verify:
+    curl https://backend.esportra.com/health
+    Expected: {"status":"healthy","environment":"Production","timestamp":"..."}
+
+STEP 6: Deploy Frontend (Production)
+-----------------------------------------
+Coolify already has your frontend app (React) running on the main branch.
+Go to that app -> Environment Variables.
+
+For each variable below, click the gear icon (⚙) and enable "Build Variable".
+This is REQUIRED — Vite bakes env vars at compile time, not runtime. Without
+the Build Variable toggle, they won't be seen by npm run build inside Docker.
+
+   Key                        Value
+   ---                        -----
+   VITE_SUPABASE_URL          https://api.esportra.com
+   VITE_SUPABASE_ANON_KEY     eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MTUyNTY4MCwiZXhwIjo0OTI3MTk5MjgwLCJyb2xlIjoiYW5vbiJ9.4dFhdHD4sNmrTksU1D0rM6tyPWhdjkbm791U1_Ftznw
+   VITE_API_URL               https://backend.esportra.com
+   VITE_APP_NAME              Esportra
+   VITE_APP_VERSION           1.0.0
+   VITE_FACEIT_CLIENT_ID      bc06f504-827e-441c-8f3c-06517fc2f339
+   VITE_FACEIT_REDIRECT_URI   https://esportra.com/functions/v1/faceit-oauth
+
+Then click Redeploy from Coolify (~2 min). The new bundle will have
+VITE_API_URL=https://backend.esportra.com baked in.
+
+================================================================================
+PART 4 — VERIFICATION CHECKLIST
+================================================================================
+
+Run these after both staging and production are deployed:
+
+1. Health check
+   curl https://backend.esportra.com/health
+   -> {"status":"healthy","environment":"Production"}
+
+2. Auth + API
+   - Log into esportra.com
+   - Open DevTools -> Network tab
+   - Filter by "backend.esportra.com"
+   - Should see GET /api/me returning 200
+   - Should NOT see any calls to api.esportra.com/functions/v1/
+
+3. SignalR hubs
+   - DevTools -> Network -> WS filter
+   - Should see all of these as 101 Switching Protocols:
+     wss://backend.esportra.com/hubs/notifications?access_token=...
+     wss://backend.esportra.com/hubs/bracket?access_token=...
+     wss://backend.esportra.com/hubs/match?access_token=...
+     wss://backend.esportra.com/hubs/veto?access_token=...
+     wss://backend.esportra.com/hubs/chat?access_token=...
+     wss://backend.esportra.com/hubs/conversations?access_token=...
+     wss://backend.esportra.com/hubs/live?access_token=...
+
+4. FACEIT OAuth
+   - Settings -> Connected Accounts -> Link FACEIT
+   - Should redirect to accounts.faceit.com, then back to esportra.com
+   - Token exchange hits POST /api/integrations/faceit/callback (NOT edge function)
+
+5. Riot OAuth
+   - Settings -> Connected Accounts -> Link Riot
+   - Should redirect to auth.riotgames.com, then back to esportra.com/auth/riot/callback
+   - Token exchange hits POST /api/integrations/riot/callback (NOT edge function)
+
+6. Rate limiter (proves Redis is working)
+   - Make 20+ rapid requests from browser
+   - Should eventually see 429 Too Many Requests
+
+================================================================================
+PART 5 — HOW IT ALL CONNECTS (END-TO-END FLOW)
+================================================================================
+
+FACEIT OAuth flow:
+    User clicks "Link FACEIT"
+    -> useFaceitAccount opens accounts.faceit.com
+       with redirect_uri=https://esportra.com/functions/v1/faceit-oauth
+    -> FACEIT redirects browser to esportra.com/functions/v1/faceit-oauth?code=xxx
+    -> FaceitOAuthCallback.tsx (React route) relays to
+       /settings?faceit_callback=true&code=xxx
+    -> Settings.tsx calls POST backend.esportra.com/api/integrations/faceit/callback
+    -> .NET backend exchanges code+PKCE with FACEIT, saves to DB ✅
+
+Riot OAuth flow:
+    User clicks "Link Riot"
+    -> useRiotAccount opens auth.riotgames.com
+       with redirect_uri=https://esportra.com/auth/riot/callback
+    -> Riot redirects browser to esportra.com/auth/riot/callback?code=xxx
+    -> RiotOAuthCallback.tsx (React route) relays to
+       /settings?riot_callback=true&code=xxx
+    -> Settings.tsx calls POST backend.esportra.com/api/integrations/riot/callback
+    -> .NET backend exchanges code with Riot, saves to DB ✅
+
+All other API calls (tournaments, teams, bracket, veto, etc.):
+    apiClient.ts -> https://backend.esportra.com/api/...
+
+All SignalR real-time:
+    signalrClient.ts -> wss://backend.esportra.com/hubs/...
+    JWT passed as ?access_token= query string (WebSocket handshake can't set headers)
+
+Supabase (api.esportra.com) — used for:
+    Auth only: login, signup, password reset, Discord OAuth
+    Storage only: file/image uploads and downloads
+    Edge Functions: NONE (all decommissioned — see Part 6)
+
+================================================================================
+PART 6 — ONGOING DEPLOY WORKFLOW
+================================================================================
+
+Git push triggers:
+
+  git push origin staging (either repo)
+    Frontend repo:   GitHub Actions runs DB migrations only (no hosted frontend)
+    Backend repo:    Coolify auto-redeploys api-staging.esportra.com ✅
+
+  git push origin main (after staging verified)
+    Frontend repo:   Coolify redeploys esportra.com frontend ✅
+                     GitHub Actions runs DB migrations
+    Backend repo:    Coolify redeploys backend.esportra.com ✅
+
+Edge Functions:
+    Workflows now disabled (push trigger removed). Only fire on manual
+    workflow_dispatch during the 48h decommission window.
+    After decommission: delete all folders under supabase/functions/
+
+Database migrations:
+    Unchanged — GitHub Actions SSH tunnel -> supabase db push
+    Staging: deploy-staging-migrations.yml (port 5433)
+    Prod:    deploy-migrations.yml (port 5432)
+
+================================================================================
+PART 7 — ROLLBACK
+================================================================================
+
+.NET backend:
+    Coolify -> your .NET app -> Deployments tab -> click previous build -> Rollback
+
+Frontend:
+    Revert the commit that broke it, push to main
+    OR: Coolify -> Frontend app -> Deployments -> Rollback
+
+Redis failure:
+    Non-critical — Redis is only cache + rate limiting
+    App falls back gracefully. Redis restart self-heals.
+
+================================================================================
+PART 8 — TROUBLESHOOTING
+================================================================================
+
+SYMPTOM                              FIX
+-------                              ---
+curl /health returns 502             Container crashed. Check Coolify logs.
+                                     Usually wrong Postgres port (5432 vs 5433)
+                                     or wrong Redis password.
+
+SignalR 401 Unauthorized             Supabase__JwtSecret mismatch.
+                                     Must match exactly what Supabase shows
+                                     in Studio -> Settings -> API -> JWT Settings.
+
+CORS error in browser                Wrong ASPNETCORE_ENVIRONMENT env var.
+                                     Check appsettings.{Env}.json has your
+                                     frontend domain in AllowedOrigins.
+
+Frontend still calling edge funcs    Build vars not marked as "Build Variable"
+                                     in Coolify. Enable the toggle, force redeploy.
+
+FACEIT OAuth 404 on callback         FACEIT developer dashboard is missing the
+                                     redirect URI. Add:
+                                     https://esportra.com/functions/v1/faceit-oauth
+
+Riot OAuth 400 on callback           Riot developer dashboard is missing:
+                                     https://esportra.com/auth/riot/callback
+
+500 errors on any API endpoint       Check Coolify container logs.
+                                     ConnectionStrings__Postgres is most common cause.
+
+Redis connection refused             Use container hostname (not localhost).
+                                     Redis is on internal Docker network.
+
+Coolify not auto-deploying           Webhook may point to old IP.
+                                     Coolify -> Sources -> GitHub App -> re-auth.
+
+================================================================================
+PART 9 — CONFIGURATION FILES REFERENCE
+================================================================================
+
+Backend appsettings hierarchy:
+    appsettings.json              Base config (all REPLACE_WITH_ placeholders)
+    appsettings.Staging.json      Staging overrides (Supabase URL, CORS origins)
+    appsettings.Production.json   Prod overrides (Supabase URL, CORS origins)
+    Secrets injected via Coolify environment variables at runtime
+
+Frontend env files (gitignored, local only):
+    .env                          Local dev (staging Supabase + localhost:5200)
+    .env.production               Production defaults — NOT used by Coolify build
+                                  Coolify uses Build Variables instead (see Part 3, Step 6)
+
+Key repos:
+    Frontend:  https://github.com/DarkHyperPK/Esportra
+    Backend:   https://github.com/DarkHyperPK/esportra-backend
+
+VPS:           84.235.246.82 (ubuntu)
+SSH key:       ~/Downloads/esportra-dubai-ssh-key-2026-02-24.key
+Staging DB:    port 5433
+Production DB: port 5432
+
+================================================================================
+END OF GUIDE
+================================================================================
