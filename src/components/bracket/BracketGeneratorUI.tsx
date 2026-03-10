@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { SingleEliminationGenerator } from '@/services/bracket/SingleEliminationGenerator';
 import { DoubleEliminationGenerator } from '@/services/bracket/DoubleEliminationGenerator';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
@@ -42,14 +42,9 @@ export const BracketGeneratorUI: React.FC<BracketGeneratorUIProps> = ({
         setIsGenerating(true);
         try {
             // Get next version_number to avoid unique constraint violation
-            const { data: maxVersionData } = await (supabase as any)
-                .from('brkt_versions')
-                .select('version_number')
-                .eq('tournament_id', tournamentId)
-                .order('version_number', { ascending: false })
-                .limit(1)
-                .single();
-            const nextVersionNumber = (maxVersionData?.version_number || 0) + 1;
+            const versions = await apiClient.get(`/api/tournaments/${tournamentId}/bracket-versions`);
+            const maxVersionNumber = versions?.reduce((max: number, v: any) => Math.max(max, v.version_number || 0), 0) || 0;
+            const nextVersionNumber = maxVersionNumber + 1;
 
             let generator;
             if (stageFormat === 'single_elimination') {

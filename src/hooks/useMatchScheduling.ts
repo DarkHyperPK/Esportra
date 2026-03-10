@@ -1,17 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
 interface SchedulingConfig {
-    self_play_enabled: boolean;
-    checkin_enabled: boolean;
-    checkin_window_minutes: number;
-    round_deadline: string | null;
-    round_deadlines?: Record<string, string>; // Map of round_index to deadline ISO string
-    schedule_start_time: string | null;
-    match_interval_minutes: number;
-    daily_start_time?: string; // HH:mm format, default time for daily rounds (Swiss/RR)
-    scheduling_mode?: 'round_based' | 'granular'; // round_based = per-round times, granular = per-match times
+    selfPlayEnabled: boolean;
+    checkinEnabled: boolean;
+    checkinWindowMinutes: number;
+    roundDeadline: string | null;
+    roundDeadlines?: Record<string, string>;
+    scheduleStartTime: string | null;
+    matchIntervalMinutes: number;
+    dailyStartTime?: string;
+    schedulingMode?: 'round_based' | 'granular';
+}
+
+interface StageMatch {
+    id: string;
+    match_number: number;
+    scheduled_time: string | null;
+    team1_id: string | null;
+    team2_id: string | null;
+    status: string;
+    round_index: number;
+    bracket_type: string;
+    team1_name: string | null;
+    team2_name: string | null;
 }
 
 interface MatchSchedule {
@@ -25,56 +38,16 @@ export const useMatchScheduling = (stageId: string | undefined) => {
     const { toast } = useToast();
 
     // Fetch stage scheduling config
-    const { data: schedulingConfig, isLoading: configLoading } = useQuery({
+    const { data: schedulingConfig, isLoading: configLoading } = useQuery<SchedulingConfig | null>({
         queryKey: ['stage-scheduling-config', stageId],
-        queryFn: async () => {
-            if (!stageId) return null;
-            const { data, error } = await supabase
-                .from('tournament_stages')
-                .select('scheduling_config')
-                .eq('id', stageId)
-                .single();
-            if (error) throw error;
-            return data?.scheduling_config as SchedulingConfig;
-        },
+        queryFn: () => apiClient.get<SchedulingConfig>(`/api/stages/${stageId}/scheduling-config`),
         enabled: !!stageId,
     });
 
-    // Fetch matches for a stage/version to schedule
-    const { data: matches, isLoading: matchesLoading } = useQuery({
+    // Fetch matches for a stage to schedule
+    const { data: matches, isLoading: matchesLoading } = useQuery<StageMatch[]>({
         queryKey: ['stage-matches-for-scheduling', stageId],
-        queryFn: async () => {
-            if (!stageId) return [];
-            // Get version for this stage
-            const { data: version, error: versionError } = await supabase
-                .from('brkt_versions')
-                .select('id')
-                .eq('stage_id', stageId)
-                .single();
-
-            if (versionError || !version) return [];
-
-            const { data, error } = await supabase
-                .from('brkt_matches')
-                .select(`
-                    id, 
-                    match_number, 
-                    scheduled_time, 
-                    team1_id, 
-                    team2_id, 
-                    status, 
-                    round_index, 
-                    bracket_type,
-                    team1:teams!team1_id(name),
-                    team2:teams!team2_id(name)
-                `)
-                .eq('version_id', version.id)
-                .order('round_index', { ascending: true })
-                .order('match_number', { ascending: true });
-
-            if (error) throw error;
-            return data || [];
-        },
+        queryFn: () => apiClient.get<StageMatch[]>(`/api/stages/${stageId}/matches`),
         enabled: !!stageId,
     });
 
@@ -82,24 +55,12 @@ export const useMatchScheduling = (stageId: string | undefined) => {
     const updateConfig = useMutation({
         mutationFn: async (config: SchedulingConfig) => {
             if (!stageId) throw new Error('Stage ID required');
-
-            // Log for debugging since scheduling is sensitive
-            console.log('[useMatchScheduling] Updating config for stage', stageId, config);
-
-            const { error } = await supabase
-                .from('tournament_stages')
-                .update({ scheduling_config: config })
-                .eq('id', stageId);
-
-            if (error) {
-                console.error('[useMatchScheduling] Update failed:', error);
-                throw error;
-            }
+            return apiClient.put(`/api/stages/${stageId}/scheduling-config`, config);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['stage-scheduling-config', stageId] });
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         },
     });
@@ -110,17 +71,16 @@ export const useMatchScheduling = (stageId: string | undefined) => {
             if (!matches || matches.length === 0) throw new Error('No matches to schedule');
 
             // Group matches by round
-            const matchesByRound = matches.reduce((acc: Record<number, typeof matches>, match) => {
+            const matchesByRound = matches.reduce((acc: Record<number, StageMatch[]>, match) => {
                 const round = match.round_index;
                 if (!acc[round]) acc[round] = [];
                 acc[round].push(match);
                 return acc;
             }, {});
 
-            const updates: MatchSchedule[] = [];
+            const updates: { matchId: string; scheduledTime: string }[] = [];
             let currentTime = new Date(startTime);
 
-            // Schedule matches round by round
             const rounds = Object.keys(matchesByRound).map(Number).sort((a, b) => a - b);
 
             for (const round of rounds) {
@@ -129,31 +89,22 @@ export const useMatchScheduling = (stageId: string | undefined) => {
                     updates.push({
                         matchId: match.id,
                         scheduledTime: currentTime.toISOString(),
-                        matchNumber: match.match_number,
                     });
                     currentTime = new Date(currentTime.getTime() + intervalMinutes * 60 * 1000);
                 }
             }
 
-            // Batch update all matches
-            for (const update of updates) {
-                const { error } = await supabase
-                    .from('brkt_matches')
-                    .update({ scheduled_time: update.scheduledTime })
-                    .eq('id', update.matchId);
-                if (error) throw error;
-            }
-
-            return updates;
+            // Single bulk update via .NET API
+            return apiClient.post(`/api/stages/${stageId}/schedule-bulk`, { updates });
         },
-        onSuccess: (updates) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['stage-matches-for-scheduling', stageId] });
             toast({
                 title: 'Schedule Applied',
-                description: `${updates.length} matches scheduled successfully.`
+                description: 'All matches scheduled successfully.',
             });
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             toast({ title: 'Scheduling Failed', description: error.message, variant: 'destructive' });
         },
     });
@@ -161,34 +112,23 @@ export const useMatchScheduling = (stageId: string | undefined) => {
     // Update single match time
     const updateMatchTime = useMutation({
         mutationFn: async ({ matchId, scheduledTime }: { matchId: string; scheduledTime: string | null }) => {
-            const { error } = await supabase
-                .from('brkt_matches')
-                .update({ scheduled_time: scheduledTime })
-                .eq('id', matchId);
-            if (error) throw error;
+            return apiClient.put(`/api/matches/${matchId}/scheduled-time`, { scheduledTime });
         },
         onMutate: async ({ matchId, scheduledTime }) => {
-            // Cancel outgoing refetches
             await queryClient.cancelQueries({ queryKey: ['stage-matches-for-scheduling', stageId] });
-
-            // Snapshot previous value
             const previousMatches = queryClient.getQueryData(['stage-matches-for-scheduling', stageId]);
 
-            // Optimistically update scheduling list
-            queryClient.setQueryData(['stage-matches-for-scheduling', stageId], (old: any) => {
+            // Optimistic update on scheduling list
+            queryClient.setQueryData(['stage-matches-for-scheduling', stageId], (old: StageMatch[] | undefined) => {
                 if (!old) return old;
-                return old.map((m: any) => m.id === matchId ? { ...m, scheduled_time: scheduledTime } : m);
+                return old.map((m) => m.id === matchId ? { ...m, scheduled_time: scheduledTime } : m);
             });
 
-            // Optimistically update the graph engine data (used by the bracket visualization)
-            // We search across all queries that start with bracket-graph or bracket-graph-data
+            // Optimistic update on bracket graph data
             const graphQueries = queryClient.getQueriesData({ queryKey: ['bracket-graph'] });
             const legacyGraphQueries = queryClient.getQueriesData({ queryKey: ['bracket-graph-data'] });
 
-            const allGraphQueries = [...graphQueries, ...legacyGraphQueries];
-
-            allGraphQueries.forEach(([queryKey, oldData]) => {
-                // If the query contains our match, update it
+            [...graphQueries, ...legacyGraphQueries].forEach(([queryKey, oldData]) => {
                 if (oldData) {
                     queryClient.setQueryData(queryKey, (old: any) => {
                         if (!old || !old.nodes) return old;
@@ -196,7 +136,7 @@ export const useMatchScheduling = (stageId: string | undefined) => {
                             ...old,
                             nodes: old.nodes.map((node: any) =>
                                 node.id === matchId ? { ...node, scheduled_time: scheduledTime } : node
-                            )
+                            ),
                         };
                     });
                 }
@@ -205,15 +145,13 @@ export const useMatchScheduling = (stageId: string | undefined) => {
             return { previousMatches };
         },
         onSuccess: () => {
-            // Invalidate to ensure consistency, but the UI is already updated
             queryClient.invalidateQueries({ queryKey: ['stage-matches-for-scheduling', stageId] });
             queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
             queryClient.invalidateQueries({ queryKey: ['bracket-graph-data', stageId] });
-            queryClient.invalidateQueries({ queryKey: ['public-tournament'] }); // Also refresh public view just in case
+            queryClient.invalidateQueries({ queryKey: ['public-tournament'] });
             toast({ title: 'Match Time Updated' });
         },
-        onError: (error: any, variables, context) => {
-            // Rollback on Error
+        onError: (error: Error, _variables, context) => {
             if (context?.previousMatches) {
                 queryClient.setQueryData(['stage-matches-for-scheduling', stageId], context.previousMatches);
             }
@@ -225,7 +163,7 @@ export const useMatchScheduling = (stageId: string | undefined) => {
     const generateSchedulePreview = (startTime: Date, intervalMinutes: number): MatchSchedule[] => {
         if (!matches || matches.length === 0) return [];
 
-        const matchesByRound = matches.reduce((acc: Record<number, typeof matches>, match) => {
+        const matchesByRound = matches.reduce((acc: Record<number, StageMatch[]>, match) => {
             const round = match.round_index;
             if (!acc[round]) acc[round] = [];
             acc[round].push(match);

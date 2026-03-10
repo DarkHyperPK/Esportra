@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -102,35 +103,8 @@ const OrganizationSettings: React.FC = () => {
 
     const fetchOrganization = async () => {
         try {
-            // First check if owner
-            let { data: ownerData, error: ownerError } = await supabase
-                .from('organizations')
-                .select('*')
-                .eq('owner_id', user?.id)
-                .maybeSingle();
-
-            if (ownerError && ownerError.code !== 'PGRST116') {
-                throw ownerError;
-            }
-
-            let data = ownerData;
-
-            // If not owner, check if staff
-            if (!data) {
-                const { data: staffData, error: staffError } = await supabase
-                    .from('organization_staff')
-                    .select('organization_id, organizations!inner(*)')
-                    .eq('user_id', user?.id)
-                    .eq('status', 'active')
-                    .limit(1)
-                    .maybeSingle();
-
-                if (staffError) throw staffError;
-
-                if (staffData && staffData.organizations) {
-                    data = Array.isArray(staffData.organizations) ? staffData.organizations[0] : staffData.organizations;
-                }
-            }
+            // The API returns the org the current user owns or is staff of
+            const data = await apiClient.get<Organization | null>('/api/organizations/mine');
 
             if (data) {
                 setOrganization(data);
@@ -153,24 +127,11 @@ const OrganizationSettings: React.FC = () => {
 
     const fetchAlbums = async (orgId: string) => {
         try {
-            // Fetch albums and their latest media item for cover
-            const { data, error } = await supabase
-                .from('organization_albums')
-                .select(`
-                    *,
-                    media:organization_media(url)
-                `)
-                .eq('organization_id', orgId)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
-            // Map to include a simple cover_url property
-            const albumsWithCovers = data?.map((album: any) => ({
+            const data = await apiClient.get<any[]>(`/api/organizations/${orgId}/albums`);
+            const albumsWithCovers = (data || []).map((album: any) => ({
                 ...album,
-                cover_url: album.media?.[0]?.url || null // Supabase returns array for 1:N
-            })) || [];
-
+                cover_url: album.cover_url || album.media?.[0]?.url || null,
+            }));
             setAlbums(albumsWithCovers);
         } catch (error) {
             console.error('Error fetching albums:', error);
@@ -180,69 +141,21 @@ const OrganizationSettings: React.FC = () => {
     const fetchStats = async (orgId?: string) => {
         if (!orgId) return;
         try {
-            // Get all tournaments for this organization
-            const { data: allTournaments, error: tErr } = await supabase
-                .from('tournaments')
-                .select('id, status')
-                .eq('organization_id', orgId);
-
-            if (tErr) {
-                console.error('Error fetching tournament stats:', tErr);
-            }
-
-            const tournaments = allTournaments || [];
-            const totalTournaments = tournaments.length;
-            const activeTournaments = tournaments.filter(
-                (t) => ['open', 'ongoing', 'check_in'].includes(t.status)
-            ).length;
-
-            // Get participant count across all org tournaments
-            let totalParticipants = 0;
-            if (tournaments.length > 0) {
-                const { data: participants, error: pErr } = await supabase
-                    .from('tournament_participants')
-                    .select('id')
-                    .in('tournament_id', tournaments.map(t => t.id));
-
-                if (pErr) {
-                    console.error('Error fetching participant stats:', pErr);
-                }
-                totalParticipants = participants?.length || 0;
-            }
-
-            setStats({
-                totalTournaments,
-                totalParticipants,
-                activeTournaments,
-            });
+            const data = await apiClient.get<OrgStats>(`/api/organizations/${orgId}/stats`);
+            setStats(data || { totalTournaments: 0, totalParticipants: 0, activeTournaments: 0 });
         } catch (error) {
             console.error('Error fetching stats:', error);
         }
     };
 
     const fetchMedia = async (orgId: string, albumId: string | null = null) => {
-        let query = supabase
-            .from('organization_media')
-            .select('*')
-            .eq('organization_id', orgId)
-            .order('created_at', { ascending: false });
-
-        if (albumId) {
-            query = query.eq('album_id', albumId);
-        } else {
-            // If root (no album), only show media with no album_id? 
-            // Or show ALL? 
-            // "Media Gallery" usually implies all. But if we have albums, maybe root = Uncategorized.
-            // Let's make it Root View = Recent All OR Uncategorized.
-            // User Request: "post an album".
-            // Let's filter by album_id is null for "Uncategorized" view?
-            // But previously uploaded media has null album_id.
-            // Let's keep it simple: If activeAlbum is set, filter by it. If not, filter where album_id is null (Root folder).
-            query = query.is('album_id', null);
+        try {
+            const params = albumId ? `?albumId=${albumId}` : '';
+            const data = await apiClient.get<any[]>(`/api/organizations/${orgId}/media${params}`);
+            if (data) setMediaItems(data);
+        } catch (error) {
+            console.error('Error fetching media:', error);
         }
-
-        const { data } = await query;
-        if (data) setMediaItems(data);
     };
 
     const generateSlug = (name: string) => {
@@ -280,21 +193,10 @@ const OrganizationSettings: React.FC = () => {
             };
 
             if (organization) {
-                const { error } = await supabase
-                    .from('organizations')
-                    .update(orgData)
-                    .eq('id', organization.id);
-
-                if (error) throw error;
+                await apiClient.put(`/api/organizations/${organization.id}`, orgData);
                 toast({ title: 'Success', description: 'Organization updated successfully!' });
             } else {
-                const { data, error } = await supabase
-                    .from('organizations')
-                    .insert(orgData)
-                    .select()
-                    .single();
-
-                if (error) throw error;
+                const data = await apiClient.post<Organization>('/api/organizations', orgData);
                 setOrganization(data);
                 toast({ title: 'Success', description: 'Organization created successfully!' });
             }
@@ -337,11 +239,7 @@ const OrganizationSettings: React.FC = () => {
             setLogoUrl(publicUrl);
 
             if (organization?.id) {
-                const { error: updateError } = await supabase
-                    .from('organizations')
-                    .update({ logo_url: publicUrl })
-                    .eq('id', organization.id);
-                if (updateError) throw updateError;
+                await apiClient.put(`/api/organizations/${organization.id}/logo`, { url: publicUrl });
             }
 
             toast({ title: 'Logo saved!' });
@@ -387,11 +285,7 @@ const OrganizationSettings: React.FC = () => {
             setBannerUrl(publicUrl);
 
             if (organization?.id) {
-                const { error: updateError } = await supabase
-                    .from('organizations')
-                    .update({ banner_url: publicUrl })
-                    .eq('id', organization.id);
-                if (updateError) throw updateError;
+                await apiClient.put(`/api/organizations/${organization.id}/banner`, { url: publicUrl });
             }
 
             toast({ title: 'Banner saved!' });
@@ -432,13 +326,11 @@ const OrganizationSettings: React.FC = () => {
                     .getPublicUrl(fileName);
 
                 // Insert to DB
-                // Insert to DB
-                await supabase.from('organization_media').insert({
-                    organization_id: organization.id,
+                await apiClient.post(`/api/organizations/${organization.id}/media`, {
                     url: publicUrl,
                     type: file.type.startsWith('video') ? 'video' : 'image',
                     caption: file.name,
-                    album_id: activeAlbum?.id || null
+                    albumId: activeAlbum?.id || null
                 });
             }
             toast({ title: 'Success', description: 'Media uploaded successfully' });
@@ -455,7 +347,7 @@ const OrganizationSettings: React.FC = () => {
         try {
             // Extract path and delete from storage could be added here if needed
             // For now just delete record
-            await supabase.from('organization_media').delete().eq('id', id);
+            await apiClient.delete(`/api/organizations/${organization!.id}/media/${id}`);
             if (organization) fetchMedia(organization.id, activeAlbum?.id || null);
             toast({ title: 'Deleted', description: 'Media removed.' });
         } catch (e) {
@@ -468,17 +360,10 @@ const OrganizationSettings: React.FC = () => {
 
         setCreatingAlbum(true);
         try {
-            const { data, error } = await supabase
-                .from('organization_albums')
-                .insert({
-                    organization_id: organization.id,
-                    title: newAlbumTitle.trim(),
-                    description: newAlbumDesc.trim() || null
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
+            const data = await apiClient.post<Album>(`/api/organizations/${organization.id}/albums`, {
+                title: newAlbumTitle.trim(),
+                description: newAlbumDesc.trim() || null,
+            });
 
             setAlbums([data, ...albums]);
             setNewAlbumTitle('');
@@ -495,7 +380,7 @@ const OrganizationSettings: React.FC = () => {
     const handleDeleteAlbum = async (albumId: string) => {
         // Rely on CASCADE delete for media
         try {
-            await supabase.from('organization_albums').delete().eq('id', albumId);
+            await apiClient.delete(`/api/organizations/${organization!.id}/albums/${albumId}`);
             setAlbums(albums.filter(a => a.id !== albumId));
             if (activeAlbum?.id === albumId) setActiveAlbum(null);
             toast({ title: 'Deleted', description: 'Album removed.' });
@@ -1109,11 +994,7 @@ const OrganizationSettings: React.FC = () => {
                                             onClick={async () => {
                                                 try {
                                                     setLoading(true);
-                                                    const { data, error } = await supabase.rpc('delete_organization_safely', {
-                                                        p_org_id: organization.id
-                                                    });
-
-                                                    if (error) throw error;
+                                                    const data = await apiClient.delete<any>(`/api/organizations/${organization.id}`);
 
                                                     if (data && !data.success) {
                                                         toast({ title: "Cannot Delete", description: data.message, variant: "destructive" });

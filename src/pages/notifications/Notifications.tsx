@@ -3,7 +3,7 @@ import { useNotifications } from '@/components/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, CheckCheck, Bell, Inbox, ShieldAlert, Users, Info, ExternalLink, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,61 +44,19 @@ const NotificationsPage = () => {
   const handleAcceptInvite = async (notification: any) => {
     const notifId = notification.id;
     try {
-      // 1. Optimistic Update: Hide instantly
       hideOptimistically(notifId);
-      toast({ title: 'Joining team...', duration: 1000 }); // Feedback
+      toast({ title: 'Joining team...', duration: 1000 });
 
-      // 2. Background Operations
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user?.id).single();
-
-      if (profile?.is_admin) {
-        throw new Error('Admins cannot join teams');
-      }
-
-      const { data: invite, error: inviteErr } = await supabase
-        .from('team_invitations')
-        .select('*')
-        .eq('invited_user_id', notification.user_id)
-        .eq('team_id', notification.team_id)
-        .eq('status', 'pending')
-        .maybeSingle();
-
-      if (inviteErr) throw inviteErr;
-      if (!invite) throw new Error('Invite not found or expired');
-
-      const { error: addErr } = await supabase.from('team_members').upsert({
-        team_id: invite.team_id,
-        user_id: invite.invited_user_id,
-        role: 'member',
-        is_active: true,
-        joined_at: new Date().toISOString()
-      }, { onConflict: 'team_id,user_id' });
-      if (addErr) throw addErr;
-
-      await supabase.from('team_invitations').update({ status: 'accepted', responded_at: new Date().toISOString() }).eq('id', invite.id);
-
-      if (notification.id && !String(notification.id).startsWith('invite-')) {
-        await markAsRead(notification.id);
-      }
-
-      // Notify inviter
-      await supabase.from('notifications').insert({
-        user_id: invite.invited_by_user_id,
-        type: 'team_invite_response',
-        title: 'Team Invite Accepted',
-        message: 'An invited player accepted your team invite.',
-        team_id: invite.team_id,
-        is_read: false
+      await apiClient.post('/api/notifications/accept-invite', {
+        notificationId: notifId,
+        teamId: notification.team_id,
       });
 
-      // 3. Success Feedback
       toast({ title: 'Joined team successfully!', variant: 'default' });
-      await refreshNotifications(); // Sync real state
+      await refreshNotifications();
       window.dispatchEvent(new CustomEvent('teamInviteAccepted'));
     } catch (e: any) {
       console.error(e);
-      // 4. Revert on Error
       revertOptimistic(notifId);
       toast({ title: 'Error accepting invite', description: e.message, variant: 'destructive' });
     }
@@ -110,20 +68,9 @@ const NotificationsPage = () => {
     try {
       hideOptimistically(notifId);
 
-      const { data: invite } = await supabase.from('team_invitations').select('*').eq('invited_user_id', notification.user_id).eq('team_id', notification.team_id).eq('status', 'pending').maybeSingle();
-      if (!invite) throw new Error('Invite not found');
-
-      await supabase.from('team_invitations').update({ status: 'rejected', responded_at: new Date().toISOString() }).eq('id', invite.id);
-
-      if (notification.id && !String(notification.id).startsWith('invite-')) await markAsRead(notification.id);
-
-      await supabase.from('notifications').insert({
-        user_id: invite.invited_by_user_id,
-        type: 'team_invite_response',
-        title: 'Team Invite Rejected',
-        message: 'An invited player rejected your team invite.',
-        team_id: invite.team_id,
-        is_read: false
+      await apiClient.post('/api/notifications/reject-invite', {
+        notificationId: notifId,
+        teamId: notification.team_id,
       });
 
       toast({ title: 'Invite rejected', variant: 'default' });
@@ -139,12 +86,7 @@ const NotificationsPage = () => {
   const handleDeleteNotification = async (notificationId: string) => {
     try {
       setIsDeleting(true);
-      if (String(notificationId).startsWith('invite-')) {
-        const inviteId = notificationId.replace('invite-', '');
-        await supabase.from('team_invitations').delete().eq('id', inviteId);
-      } else {
-        await supabase.from('notifications').delete().eq('id', notificationId);
-      }
+      await apiClient.delete(`/api/notifications/${notificationId}`);
       toast({ title: 'Deleted', variant: 'default' });
       await refreshNotifications();
     } catch (error) {
@@ -159,16 +101,7 @@ const NotificationsPage = () => {
     if (selectedNotifications.length === 0) return;
     try {
       setIsDeleting(true);
-      const syntheticIds = selectedNotifications.filter(id => String(id).startsWith('invite-'));
-      const regularIds = selectedNotifications.filter(id => !String(id).startsWith('invite-'));
-
-      if (syntheticIds.length > 0) {
-        await supabase.from('team_invitations').delete().in('id', syntheticIds.map(id => id.replace('invite-', '')));
-      }
-      if (regularIds.length > 0) {
-        await supabase.from('notifications').delete().in('id', regularIds);
-      }
-
+      await apiClient.post('/api/notifications/bulk-delete', { ids: selectedNotifications });
       toast({ title: 'Deleted selected', variant: 'default' });
       setSelectedNotifications([]);
       await refreshNotifications();

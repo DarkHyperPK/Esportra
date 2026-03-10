@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/effects/LoadingSpinner';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { PublicBracketView } from './PublicBracketView';
 import { DraggableContainer } from '@/components/DraggableContainer';
 import { useBracketRealtime } from '@/hooks/useBracketRealtime';
@@ -18,30 +18,15 @@ const FullscreenBracketPage = () => {
         try {
             setLoading(true);
 
-            // Fetch tournament
-            let tournamentData: any = null;
-            const { data: bySlug } = await supabase.from('tournaments').select('*').eq('slug', slug).single();
-            if (bySlug) tournamentData = bySlug;
-            else {
-                const { data: byId } = await supabase.from('tournaments').select('*').eq('id', slug).single();
-                if (byId) tournamentData = byId;
-            }
-
+            // Fetch tournament (supports slug or id)
+            const tournamentData = await apiClient.get(`/api/tournaments/${slug}`);
             if (!tournamentData) throw new Error('Tournament not found');
             setTournament(tournamentData);
 
             // Fetch bracket version (active or draft)
-            const { data: versionData } = await (supabase as any)
-                .from('brkt_versions')
-                .select('id')
-                .eq('tournament_id', tournamentData.id)
-                .in('status', ['active', 'draft'])
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (versionData) {
-                setActiveVersionId(versionData.id);
+            const versionsData = await apiClient.get(`/api/tournaments/${tournamentData.id}/bracket-versions?status=active,draft`);
+            if (versionsData && versionsData.length > 0) {
+                setActiveVersionId(versionsData[0].id);
             } else {
                 setActiveVersionId(null);
             }

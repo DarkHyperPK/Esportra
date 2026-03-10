@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Users, Trophy } from "lucide-react";
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import Select from 'react-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -39,22 +40,18 @@ const PlayerTeams = () => {
   const [teamName, setTeamName] = useState('');
   const [teamLogoFile, setTeamLogoFile] = useState<File | null>(null);
   const [teamLogoUrl, setTeamLogoUrl] = useState<string | null>(null);
-  const [members, setMembers] = useState<any[]>([]);
   const [verifiedUsers, setVerifiedUsers] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
   const [teamTag, setTeamTag] = useState('');
   const [game, setGame] = useState('');
-  const [games, setGames] = useState([
+  const [games] = useState([
     { value: 'valorant', label: 'VALORANT', logo: '/games/valorant.png' },
     { value: 'cs2', label: 'CS2', logo: '/games/cs2.png' },
     { value: 'fortnite', label: 'Fortnite', logo: '/games/fortnite.png' },
-    // Add more games as needed
   ]);
   const [memberUsernames, setMemberUsernames] = useState(['']);
   const [memberValidation, setMemberValidation] = useState<(boolean | null)[]>([null]);
-  const [memberTooltip, setMemberTooltip] = useState('Make sure usernames are correct; no invite will be sent otherwise.');
+  const [memberTooltip] = useState('Make sure usernames are correct; no invite will be sent otherwise.');
   const { toast } = useToast();
   const [errorMsg, setErrorMsg] = useState('');
   const [inviteModal, setInviteModal] = useState<{ open: boolean, teamId: string | null }>({ open: false, teamId: null });
@@ -68,16 +65,42 @@ const PlayerTeams = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
 
+  const {
+    userTeams,
+    loading,
+    createTeam,
+    updateTeam,
+    deleteTeam,
+    inviteUserToTeam,
+    removeTeamMember,
+    getVerifiedUsers,
+    refreshTeams,
+  } = useTeamManagement();
+
+  // Map hook teams to local Team shape
+  const teams: Team[] = userTeams.map(t => ({
+    id: t.id,
+    name: t.name,
+    logo: t.logo_url || '',
+    game: t.game,
+    tag: t.tag || '',
+    members: (t.members || []).map(m => ({
+      id: m.id,
+      username: m.username || 'Unknown',
+      avatar: m.avatar_url || '',
+      role: m.role === 'captain' ? 'Captain' : 'Member',
+    })),
+    tournamentWins: t.tournament_wins || 0,
+    totalMatches: t.total_matches || 0,
+  }));
+
   useEffect(() => {
     const fetchVerifiedUsers = async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, email')
-        .eq('is_verified', true);
-      if (!error && data) setVerifiedUsers(data);
+      const data = await getVerifiedUsers();
+      if (data) setVerifiedUsers(data);
     };
     fetchVerifiedUsers();
-  }, []);
+  }, [getVerifiedUsers]);
 
   const userOptions = verifiedUsers.map(user => ({
     value: user.id,
@@ -91,6 +114,7 @@ const PlayerTeams = () => {
     }
   };
 
+  // Storage upload stays with Supabase (intentional)
   const uploadTeamLogo = async (file: File, teamName: string): Promise<string | null> => {
     if (!file) return null;
     const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
@@ -103,25 +127,26 @@ const PlayerTeams = () => {
     return data.publicUrl;
   };
 
-  // Validate usernames on submit
+  // Validate usernames via API
   const validateMembers = async () => {
     const results = await Promise.all(memberUsernames.map(async (username) => {
       if (!username) return false;
-      const { data } = await supabase.from('profiles').select('id').eq('username', username).single();
-      return !!data;
+      try {
+        await apiClient.get(`/api/profiles/by-username/${encodeURIComponent(username)}`);
+        return true;
+      } catch {
+        return false;
+      }
     }));
     setMemberValidation(results);
     return results.every(Boolean);
   };
-
-  const { createTeam, updateTeam, inviteUserToTeam } = useTeamManagement();
 
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setErrorMsg('');
 
-    // Validate members
     const valid = await validateMembers();
     if (!valid) {
       setErrorMsg('One or more usernames are invalid. Please check and try again.');
@@ -159,7 +184,7 @@ const PlayerTeams = () => {
         name: teamName,
         tag: teamTag,
         game: game || 'Unknown',
-        game_format: 'squad', // Default
+        game_format: 'squad',
         logo_url: logoUrl || undefined,
         description: '',
         members: membersList
@@ -187,83 +212,11 @@ const PlayerTeams = () => {
   // Listen for team invite acceptance events
   useEffect(() => {
     const handleTeamInviteAccepted = () => {
-      console.log('Team invite accepted, refreshing teams...');
-      setShowModal(prev => prev); // Trigger refresh
+      refreshTeams();
     };
-
     window.addEventListener('teamInviteAccepted', handleTeamInviteAccepted);
-
-    return () => {
-      window.removeEventListener('teamInviteAccepted', handleTeamInviteAccepted);
-    };
-  }, []);
-
-  useEffect(() => {
-    const fetchTeams = async () => {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setTeams([]);
-        setLoading(false);
-        return;
-      }
-      // Get all team_ids where user is a member
-      const { data: memberRows } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id);
-
-      const teamIds = memberRows ? memberRows.map(row => row.team_id) : [];
-
-      // Fetch teams where user is a member or owner
-      const { data: teamRows, error: teamError } = await supabase
-        .from('teams')
-        .select('id, name, logo_url, owner_id, game, tag')
-        .or(`owner_id.eq.${user.id}${teamIds.length > 0 ? `,id.in.(${teamIds.join(',')})` : ''}`);
-
-      if (teamError || !teamRows) {
-        setTeams([]);
-        setLoading(false);
-        return;
-      }
-
-      // Remove duplicates
-      const uniqueTeams = Array.from(new Map(teamRows.map(t => [t.id, t])).values());
-
-      const teamsWithMembers = await Promise.all(uniqueTeams.map(async (team) => {
-        const { data: memberList } = await supabase
-          .from('team_members')
-          .select('user_id, role, profiles(username, avatar_url)')
-          .eq('team_id', team.id);
-
-        const members = (memberList || []).map((m: any) => {
-          const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-          return {
-            id: m.user_id,
-            username: profile?.username || 'Unknown',
-            avatar: profile?.avatar_url || '',
-            role: m.role === 'captain' ? 'Captain' : 'Member',
-          };
-        });
-
-        return {
-          id: team.id,
-          name: team.name,
-          logo: team.logo_url,
-          game: team.game,
-          tag: team.tag || '',
-          members,
-          tournamentWins: 0,
-          totalMatches: 0,
-        };
-      }));
-
-      setTeams(teamsWithMembers);
-      setLoading(false);
-    };
-
-    fetchTeams();
-  }, [showModal]);
+    return () => window.removeEventListener('teamInviteAccepted', handleTeamInviteAccepted);
+  }, [refreshTeams]);
 
   const gameOptions = games.map(g => ({ value: g.value, label: g.label }));
 
@@ -274,27 +227,17 @@ const PlayerTeams = () => {
 
     if (!inviteModal.teamId) return;
 
-    // Resolve username to ID first (since hook expects ID)
-    const { data: user, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', inviteUsername)
-      .single();
-
-    if (error || !user) {
+    try {
+      const profile = await apiClient.get<{ id: string }>(`/api/profiles/by-username/${encodeURIComponent(inviteUsername)}`);
+      const success = await inviteUserToTeam(inviteModal.teamId, profile.id);
+      setInviteLoading(false);
+      if (success) {
+        setInviteModal({ open: false, teamId: null });
+        setInviteUsername('');
+      }
+    } catch {
       setInviteError('User not found.');
       setInviteLoading(false);
-      return;
-    }
-
-    const success = await inviteUserToTeam(inviteModal.teamId, user.id);
-
-    setInviteLoading(false);
-    if (success) {
-      setInviteModal({ open: false, teamId: null });
-      setInviteUsername('');
-    } else {
-      // useTeamManagement handles the toast for errors, but we can clear the loading state
     }
   };
 
@@ -352,10 +295,7 @@ const PlayerTeams = () => {
                           )}
                           {team.members.some(m => m.role === 'Captain' && m.id === userId) && member.role !== 'Captain' && (
                             <Button variant="destructive" size="sm" onClick={async () => {
-                              // Remove member logic
-                              await supabase.from('team_members').delete().eq('team_id', team.id).eq('user_id', member.id);
-                              toast({ title: 'Member removed', variant: 'default' });
-                              setShowModal(false);
+                              await removeTeamMember(team.id, member.id);
                             }}>
                               Remove
                             </Button>
@@ -373,11 +313,9 @@ const PlayerTeams = () => {
                           setIsEditing(true);
                           setEditingTeamId(team.id);
                           setTeamName(team.name);
-                          setTeamTag((team as any).tag || ''); // Note: tag might be missing in fetchTeams select but we'll try to get it
+                          setTeamTag((team as any).tag || '');
                           setGame(team.game);
                           setTeamLogoUrl(team.logo);
-                          // For existing members, we don't allow editing their usernames in this simple edit flow
-                          // but we populate the state so validation doesn't fail if we decide to allow it later
                           setMemberUsernames(team.members.map(m => m.username));
                           setMemberValidation(team.members.map(() => true));
                           setShowModal(true);
@@ -414,13 +352,13 @@ const PlayerTeams = () => {
                       <div className="flex justify-between items-center mb-2">
                         <div className="text-sm text-gray-400">Win Rate</div>
                         <div className="font-medium">
-                          {Math.round((team.tournamentWins / team.totalMatches) * 100)}%
+                          {team.totalMatches > 0 ? Math.round((team.tournamentWins / team.totalMatches) * 100) : 0}%
                         </div>
                       </div>
                       <div className="w-full h-2 bg-gaming-gray/20 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gaming-purple"
-                          style={{ width: `${(team.tournamentWins / team.totalMatches) * 100}%` }}
+                          style={{ width: `${team.totalMatches > 0 ? (team.tournamentWins / team.totalMatches) * 100 : 0}%` }}
                         />
                       </div>
                     </div>
@@ -557,15 +495,9 @@ const PlayerTeams = () => {
               <Button variant="destructive" disabled={deleting} onClick={async () => {
                 setDeleting(true);
                 try {
-                  // Delete team (cascades to members/invites)
-                  const { error } = await supabase.from('teams').delete().eq('id', deleteModal.team?.id);
-                  if (error) throw error;
+                  await deleteTeam(deleteModal.team!.id);
                   setDeleteModal({ open: false, team: null });
-                  toast({ title: 'Team deleted', variant: 'default' });
-                  // Refetch teams
-                  setShowModal(false);
-                  // Optionally, trigger a global refresh (e.g., via context or notification)
-                } catch (err) {
+                } catch (err: any) {
                   toast({ title: 'Delete failed', description: err.message, variant: 'destructive' });
                 } finally {
                   setDeleting(false);
@@ -577,12 +509,6 @@ const PlayerTeams = () => {
           </div>
         </ConfirmDialogContent>
       </ConfirmDialog>
-      {/*
-        NEXT STEPS:
-        - Implement invite/accept/decline logic for team members
-        - Show pending invites and allow members to accept/reject
-        - Add audit log and notification logic
-      */}
     </div>
   );
 };

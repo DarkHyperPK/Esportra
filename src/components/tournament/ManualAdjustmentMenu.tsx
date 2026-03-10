@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { MoreVertical, Award, ArrowLeftRight, RotateCcw, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
@@ -102,15 +102,6 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
                     const winnerName = pendingAction === 'walkover_team1' ? team1Name : team2Name;
                     const rawMatchId = matchId.replace(/^(db-|wb-|lb-)/, '');
 
-                    // Get current version for locking
-                    const { data: currentMatch } = await supabase
-                        .from('brkt_matches')
-                        .select('version')
-                        .eq('id', rawMatchId)
-                        .single();
-
-                    if (!currentMatch) throw new Error('Match not found');
-
                     const team1Score = pendingAction === 'walkover_team1' ? ((bestOf === 1 ? 13 : Math.ceil((bestOf || 1) / 2))) : 0;
                     const team2Score = pendingAction === 'walkover_team2' ? ((bestOf === 1 ? 13 : Math.ceil((bestOf || 1) / 2))) : 0;
 
@@ -138,33 +129,18 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
                     }
                     // ---------------------------------
 
-                    // Use RPC to finalize and trigger advancement
-                    const { data: success, error: finalizeError } = await supabase.rpc('finalize_match_locked', {
-                        p_match_id: rawMatchId,
-                        p_expected_version: currentMatch.version,
-                        p_winner_id: winnerId,
-                        p_loser_id: loserId,
-                        p_team1_score: team1Score,
-                        p_team2_score: team2Score
+                    await apiClient.post(`/api/matches/${rawMatchId}/award-walkover`, {
+                        winnerId,
+                        loserId,
+                        team1Score,
+                        team2Score,
                     });
-
-                    if (finalizeError) throw finalizeError;
-                    if (!success) throw new Error('Failed to apply walkover: Match state has changed.');
 
                     toast({ title: 'Walkover Applied', description: `${winnerName} wins by walkover.` });
                     break;
                 }
 
                 case 'swap': {
-                    // Fetch current match to get team IDs
-                    const { data: match, error: fetchError } = await supabase
-                        .from('brkt_matches')
-                        .select('team1_id, team2_id, team1_score, team2_score')
-                        .eq('id', matchId)
-                        .single();
-
-                    if (fetchError) throw fetchError;
-
                     const rawMatchId = matchId.replace(/^(db-|wb-|lb-)/, '');
 
                     // --- OPTIMISTIC APPLY SWAP ---
@@ -180,18 +156,8 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
                     }
                     // -------------------------------
 
-                    // Swap teams
-                    const { error } = await supabase
-                        .from('brkt_matches')
-                        .update({
-                            team1_id: match.team2_id,
-                            team2_id: match.team1_id,
-                            team1_score: match.team2_score,
-                            team2_score: match.team1_score,
-                        })
-                        .eq('id', matchId);
+                    await apiClient.post(`/api/matches/${rawMatchId}/swap-teams`);
 
-                    if (error) throw error;
                     toast({ title: 'Teams Swapped', description: 'Team positions have been exchanged.' });
                     break;
                 }
@@ -212,45 +178,9 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
                     }
                     // ---------------------------------
 
-                    // 1. Delete associated game results
-                    await supabase.from('brkt_match_games').delete().eq('match_id', rawMatchId);
+                    await apiClient.post(`/api/matches/${rawMatchId}/reset`);
 
-                    // 2. Undo any advancements that already happened
-                    await supabase.rpc('undo_match_advancement', {
-                        p_match_id: rawMatchId
-                    });
-
-                    // 2. Reset Map Veto via RPC (if exists) or manual deletion
-                    const { error: vetoRpcError } = await supabase.rpc('reset_match_veto', {
-                        p_match_id: rawMatchId
-                    });
-
-                    if (vetoRpcError) {
-                        console.warn('Veto RPC reset failed, falling back to manual deletion:', vetoRpcError);
-                        await supabase.from('match_map_veto_actions').delete().eq('match_id', rawMatchId);
-                        await supabase.from('match_map_vetos').delete().eq('match_id', rawMatchId);
-                    }
-
-                    // 3. Delete captain reports/screenshots/automated reports
-                    await supabase.from('tournament_match_results').delete().eq('match_id', rawMatchId);
-                    await supabase.from('match_result_reports').delete().eq('match_id', rawMatchId);
-                    await supabase.from('tournament_disputes').delete().eq('match_id', rawMatchId);
-
-                    // 4. Reset main match record
-                    const { error } = await supabase
-                        .from('brkt_matches')
-                        .update({
-                            winner_id: null,
-                            status: 'pending',
-                            team1_score: 0,
-                            team2_score: 0,
-                            party_code: null,
-                        })
-                        .eq('id', rawMatchId);
-
-                    if (error) throw error;
-
-                    // 5. Invalidate relevant queries to refresh the UI
+                    // Invalidate relevant queries to refresh the UI
                     await queryClient.invalidateQueries({ queryKey: ['match-result-reports', rawMatchId] });
                     await queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
                     await queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });

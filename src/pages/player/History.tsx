@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from "@/components/ui/badge";
@@ -20,16 +20,8 @@ const PlayerHistory = () => {
             if (!user) return;
             setLoading(true);
 
-            const { data, error } = await supabase
-                .from('tournament_participants')
-                .select('tournament_id, tournaments!inner(id, name, start_date, status, slug, game, banner_url, logo_url, prize_pool)')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Error fetching player history:', error);
-            } else {
-                const allTournaments = (data || []).map((reg: any) => reg.tournaments);
+            try {
+                const allTournaments = await apiClient.get('/api/tournaments/me/history') || [];
 
                 // Split into active and past
                 const active = [];
@@ -54,6 +46,8 @@ const PlayerHistory = () => {
 
                 setActiveTournaments(active);
                 setPastTournaments(past);
+            } catch (error) {
+                console.error('Error fetching player history:', error);
             }
             setLoading(false);
         };

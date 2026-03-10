@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Link } from 'react-router-dom';
 import TeamCreationWizard from '@/components/player/TeamCreationWizard';
 import { Plus, Users, Settings, Crown, Trash2, UserMinus, UserPlus, Calendar, Trophy, Gamepad2, Edit, X, Upload, Save, Shield } from 'lucide-react';
@@ -203,45 +204,11 @@ const TeamsPage = () => {
 
   const fetchTeamStats = async () => {
     if (!currentTeam?.id) return;
-
-    let matches = 0;
-    let wins = 0;
-    let winRate = 0;
-    let tournamentWins = 0;
-
     try {
-      // 1. Fetch Match Stats
-      try {
-        const { data, error } = await supabase
-          .from('brkt_matches')
-          .select('winner_id, status')
-          .or(`team1_id.eq.${currentTeam.id},team2_id.eq.${currentTeam.id}`)
-          .eq('status', 'completed');
-
-        if (!error && data) {
-          matches = data.length;
-          wins = data.filter(m => m.winner_id === currentTeam.id).length;
-          winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
-        }
-      } catch (matchErr) {
-        console.error('Error fetching matches:', matchErr);
-      }
-
-      // 2. Fetch Trophies (Independently)
-      try {
-        const { count, error: twError } = await supabase
-          .from('tournaments')
-          .select('*', { count: 'exact', head: true })
-          .eq('winner_id', currentTeam.id);
-
-        if (!twError) {
-          tournamentWins = count || 0;
-        }
-      } catch (e) {
-        console.error('Error fetching trophies:', e);
-      }
-
-      setTeamStats({ matches, wins, winRate, tournamentWins });
+      const stats = await apiClient.get<{ matches: number; wins: number; winRate: number; tournamentWins: number }>(
+        `/api/teams/${currentTeam.id}/stats`
+      );
+      setTeamStats(stats);
     } catch (err) {
       console.error('Error in fetchTeamStats:', err);
     }
@@ -361,12 +328,7 @@ const TeamsPage = () => {
       // unless we have a specific team_member_avatar column.
       // Based on previous code, PlayerCard uses member.avatar_url from profile.
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ card_image_url: publicUrl })
-        .eq('id', memberId);
-
-      if (updateError) throw updateError;
+      await apiClient.put(`/api/profiles/${memberId}/card-image`, { url: publicUrl });
 
       // Refresh data
       toast({
@@ -410,12 +372,8 @@ const TeamsPage = () => {
       (async () => {
         try {
           if (currentTeam?.owner_id) {
-            const { data } = await supabase
-              .from('profiles')
-              .select('username, email, avatar_url, card_image_url')
-              .eq('id', currentTeam.owner_id)
-              .maybeSingle();
-            setOwnerProfile((data as any) || null);
+            const data = await apiClient.get<any>(`/api/profiles/${currentTeam.owner_id}`);
+            setOwnerProfile(data || null);
           } else {
             setOwnerProfile(null);
           }
@@ -423,65 +381,37 @@ const TeamsPage = () => {
           setOwnerProfile(null);
         }
       })();
-      // Fetch full team members for display
+      // Fetch full team members with riot/faceit/stats in one API call
       (async () => {
         try {
           if (!currentTeam?.id) { setTeamMembers([]); return; }
-          const { data, error } = await supabase
-            .rpc('get_team_members', { t_id: currentTeam.id });
-          if (error) { setTeamMembers([]); return; }
+          const rawMembers = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/members/detailed`);
 
-          const rawMembers = (data as any[]) || [];
-
-          // Fetch Riot + Faceit accounts and cached stats in parallel
-          const userIds = rawMembers.map(m => m.user_id);
-          const [{ data: riotAccounts }, { data: faceitAccounts }, { data: cachedStats }] = await Promise.all([
-            supabase.from('riot_accounts').select('user_id, puuid, game_name, tag_line').in('user_id', userIds),
-            supabase.from('faceit_accounts').select('user_id, faceit_id, nickname').in('user_id', userIds),
-            supabase.from('valorant_player_stats').select('*').in('user_id', userIds),
-          ]);
-
-          const riotMap = new Map();
-          (riotAccounts || []).forEach(ra => riotMap.set(ra.user_id, ra));
-
-          const faceitMap = new Map();
-          (faceitAccounts || []).forEach(fa => faceitMap.set(fa.user_id, fa));
-
-          const statsMap = new Map();
-          (cachedStats || []).forEach(cs => statsMap.set(cs.user_id, cs));
-
-          const membersWithRiot = rawMembers.map(r => {
-            const riotInfo = riotMap.get(r.user_id);
-            const faceitInfo = faceitMap.get(r.user_id);
-            const cache = statsMap.get(r.user_id);
-            return {
-              id: r.user_id,
-              user_id: r.user_id,
-              username: r.username,
-              email: r.email,
-              avatar_url: r.avatar_url,
-              card_image_url: r.card_image_url,
-              role: r.role,
-              riot_puuid: riotInfo?.puuid,
-              riot_game_name: riotInfo?.game_name,
-              riot_tag_line: riotInfo?.tag_line,
-              faceit_id: faceitInfo?.faceit_id,
-              faceit_nickname: faceitInfo?.nickname,
-              stats: cache ? {
-                kd: cache.kd,
-                winRate: cache.win_rate,
-                hs: cache.hs_percent,
-                latest_match_id: cache.latest_match_id
-              } : undefined
-            };
-          });
+          const membersWithRiot = (rawMembers || []).map((r: any) => ({
+            id: r.user_id,
+            user_id: r.user_id,
+            username: r.username,
+            email: r.email,
+            avatar_url: r.avatar_url,
+            card_image_url: r.card_image_url,
+            role: r.role,
+            riot_puuid: r.riot_puuid,
+            riot_game_name: r.riot_game_name,
+            riot_tag_line: r.riot_tag_line,
+            faceit_id: r.faceit_id,
+            faceit_nickname: r.faceit_nickname,
+            stats: r.kd ? {
+              kd: r.kd,
+              winRate: r.win_rate,
+              hs: r.hs_percent,
+              latest_match_id: r.latest_match_id
+            } : undefined
+          }));
 
           setTeamMembers(membersWithRiot);
-
-          // Now fetch stats for those with linked accounts
           fetchStatsForMembers(membersWithRiot);
         } catch (err) {
-          console.error("Error fetching team members with riot info:", err);
+          console.error("Error fetching team members:", err);
           setTeamMembers([]);
         }
       })();
@@ -503,53 +433,46 @@ const TeamsPage = () => {
     for (const member of membersWithPuuid) {
       if (!member) continue;
       try {
-        // 1. Get region/shard
-        const shardData = await supabase.functions.invoke('riot-match-proxy', {
-          body: { endpoint: `/riot/account/v1/active-shards/by-game/val/by-puuid/${member.riot_puuid}`, region: 'americas' }
+        // 1. Get region/shard via .NET proxy
+        const shardData = await apiClient.post<any>('/api/integrations/riot/proxy', {
+          endpoint: `/riot/account/v1/active-shards/by-game/val/by-puuid/${member.riot_puuid}`, region: 'americas'
         });
 
-        const shard = shardData.data?.activeShard?.toLowerCase();
+        const shard = shardData?.activeShard?.toLowerCase();
         let valRegion = 'ap';
         if (['na', 'br', 'latam'].includes(shard)) { valRegion = 'na'; }
         else if (['eu'].includes(shard)) { valRegion = 'eu'; }
 
-        // 2. Get match history (latest first)
-        const historyData = await supabase.functions.invoke('riot-match-proxy', {
-          body: { endpoint: `/val/match/v1/matchlists/by-puuid/${member.riot_puuid}`, region: valRegion }
+        // 2. Get match history
+        const historyData = await apiClient.post<any>('/api/integrations/riot/proxy', {
+          endpoint: `/val/match/v1/matchlists/by-puuid/${member.riot_puuid}`, region: valRegion
         });
 
-        if (!historyData.data?.history || historyData.data.history.length === 0) continue;
+        if (!historyData?.history || historyData.history.length === 0) continue;
 
-        const latestMatchId = historyData.data.history[0]?.matchId;
+        const latestMatchId = historyData.history[0]?.matchId;
 
-        // CHECK CACHE: If latest match ID hasn't changed, skip re-calculation
-        if (member.stats?.latest_match_id === latestMatchId) {
-          console.log(`[Stats] No new matches for ${member.username}, using cache.`);
-          continue;
-        }
+        if (member.stats?.latest_match_id === latestMatchId) continue;
 
-        console.log(`[Stats] Updating for ${member.username} (New match ${latestMatchId})`);
-
-        const latestMatches = historyData.data.history.slice(0, 5);
+        const latestMatches = historyData.history.slice(0, 5);
         let totalKills = 0, totalDeaths = 0, totalWins = 0, totalHeadshots = 0, totalHits = 0;
 
         for (const mInfo of latestMatches) {
-          const detail = await supabase.functions.invoke('riot-match-proxy', {
-            body: { endpoint: `/val/match/v1/matches/${mInfo.matchId}`, region: valRegion }
+          const detail = await apiClient.post<any>('/api/integrations/riot/proxy', {
+            endpoint: `/val/match/v1/matches/${mInfo.matchId}`, region: valRegion
           });
-          const match = detail.data;
-          if (!match || match.error) continue;
+          if (!detail || detail.error) continue;
 
-          const p = match.players.find((pl: any) => pl.puuid === member.riot_puuid);
+          const p = detail.players.find((pl: any) => pl.puuid === member.riot_puuid);
           if (!p) continue;
 
           totalKills += p.stats.kills;
           totalDeaths += p.stats.deaths;
 
-          const teamDetails = match.teams.find((t: any) => t.teamId === p.teamId);
+          const teamDetails = detail.teams.find((t: any) => t.teamId === p.teamId);
           if (teamDetails?.won) totalWins++;
 
-          match.roundResults?.forEach((round: any) => {
+          detail.roundResults?.forEach((round: any) => {
             const ps = round.playerStats.find((s: any) => s.puuid === member.riot_puuid);
             ps?.damage?.forEach((d: any) => {
               totalHeadshots += d.headshots;
@@ -565,18 +488,14 @@ const TeamsPage = () => {
           latest_match_id: latestMatchId
         };
 
-        // Cache persistent stats in Supabase
-        await supabase
-          .from('valorant_player_stats')
-          .upsert({
-            user_id: member.user_id,
-            puuid: member.riot_puuid,
-            kd: calculatedStats.kd,
-            win_rate: calculatedStats.winRate,
-            hs_percent: calculatedStats.hs,
-            latest_match_id: latestMatchId,
-            last_updated: new Date().toISOString()
-          });
+        // Cache persistent stats via .NET API
+        await apiClient.put(`/api/integrations/riot/player-stats/${member.user_id}`, {
+          puuid: member.riot_puuid,
+          kd: calculatedStats.kd,
+          winRate: calculatedStats.winRate,
+          hsPercent: calculatedStats.hs,
+          latestMatchId: latestMatchId,
+        });
 
         setTeamMembers(prev => prev.map(m =>
           m?.user_id === member.user_id ? { ...m, stats: calculatedStats } : m
@@ -590,282 +509,85 @@ const TeamsPage = () => {
   useEffect(() => {
     const fetchInvites = async () => {
       if (!user?.id) { setPendingInvites([]); return; }
-      // Base invite rows
-      const base = await supabase
-        .from('team_invitations' as any)
-        .select('id, team_id, roster_id, invited_email')
-        .or(`invited_user_id.eq.${user.id},invited_email.eq.${user.email}`)
-        .eq('status', 'pending');
-      const rows: any[] = (base.data as any[]) || [];
-
-      if (rows.length === 0) { setPendingInvites([]); return; }
-
-      // Fetch team and roster names in bulk to avoid relationship issues
-      const teamIds = Array.from(new Set(rows.map(r => r.team_id).filter(Boolean)));
-      const rosterIds = Array.from(new Set(rows.map(r => r.roster_id).filter(Boolean)));
-
-      const [teamsRes, rostersRes] = await Promise.all([
-        teamIds.length > 0 ? supabase.from('teams').select('id,name').in('id', teamIds) : Promise.resolve({ data: [] } as any),
-        rosterIds.length > 0 ? supabase.from('team_rosters' as any).select('id,name').in('id', rosterIds) : Promise.resolve({ data: [] } as any),
-      ]);
-
-      const teamNameById = new Map<string, string>();
-      ((teamsRes.data as any[]) || []).forEach(t => teamNameById.set(t.id, t.name));
-      const rosterNameById = new Map<string, string>();
-      ((rostersRes.data as any[]) || []).forEach(r => rosterNameById.set(r.id, r.name));
-
-      const list = rows.map(r => ({
-        id: r.id,
-        team_id: r.team_id,
-        roster_id: r.roster_id,
-        team_name: teamNameById.get(r.team_id) || null,
-        roster_name: r.roster_id ? (rosterNameById.get(r.roster_id) || null) : null,
-      }));
-      setPendingInvites(list);
+      try {
+        const list = await apiClient.get<any[]>('/api/teams/me/pending-invites');
+        setPendingInvites(list || []);
+      } catch {
+        setPendingInvites([]);
+      }
     };
     fetchInvites();
-  }, [user?.id, user?.email]);
+  }, [user?.id]);
 
   const fetchTeamPendingInvites = async () => {
     if (!currentTeam?.id) return;
-    const { data } = await supabase
-      .from('team_invitations' as any)
-      .select('id, invited_email, invited_user_id, created_at')
-      .eq('team_id', currentTeam.id)
-      .is('roster_id', null)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-    setTeamInvites((data as any[]) || []);
+    try {
+      const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/invites`);
+      // Filter to team-level invites (no roster_id)
+      setTeamInvites((data || []).filter((i: any) => !i.roster_id));
+    } catch {
+      setTeamInvites([]);
+    }
   };
 
   const fetchRosters = async () => {
     if (!currentTeam?.id) return;
-    const { data } = await supabase
-      .from('team_rosters' as any)
-      .select('id, name, game, format, team_size')
-      .eq('team_id', currentTeam.id)
-      .order('created_at', { ascending: false });
+    try {
+      const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/rosters`);
+      const rosterList: Roster[] = (data || []).map((r: any) => {
+        const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
+          .map((m: any) => ({
+            user_id: m.user_id,
+            username: m.username || 'Unknown',
+            avatar_url: m.avatar_url || null,
+            card_image_url: m.card_image_url || null,
+            is_starter: m.is_starter ?? true
+          }));
 
-    const rosterList: Roster[] = (data as any[])?.map(r => ({
-      id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size, members: []
-    })) || [];
-
-    if (rosterList.length > 0) {
-      // fetch roster members with profiles
-      const { data: membersData } = await supabase
-        .from('team_roster_members' as any)
-        .select('roster_id, user_id, is_starter, profiles:user_id(username, avatar_url, card_image_url)')
-        .in('roster_id', rosterList.map(r => r.id));
-
-      const rosterMembersMap = new Map<string, RosterMember[]>();
-      (membersData || []).forEach((row: any) => {
-        const list = rosterMembersMap.get(row.roster_id) || [];
-        list.push({
-          user_id: row.user_id,
-          username: row.profiles?.username || 'Unknown',
-          avatar_url: row.profiles?.avatar_url || null,
-          card_image_url: row.profiles?.card_image_url || null,
-          is_starter: row.is_starter ?? true
-        });
-        rosterMembersMap.set(row.roster_id, list);
-      });
-
-      // Fetch owner profile if not already available
-      let currentOwnerProfile = ownerProfile;
-      if (!currentOwnerProfile && currentTeam.owner_id) {
-        const { data: op } = await supabase.from('profiles').select('username, avatar_url, card_image_url').eq('id', currentTeam.owner_id).maybeSingle();
-        if (op) {
-          currentOwnerProfile = op;
-          setOwnerProfile(op);
-        }
-      }
-
-      rosterList.forEach(r => {
-        const members = rosterMembersMap.get(r.id) || [];
-        // Add captain if they are not already in the list
+        // Add captain if not already in members
         if (currentTeam.owner_id && !members.some(m => m.user_id === currentTeam.owner_id)) {
           members.unshift({
             user_id: currentTeam.owner_id,
-            username: currentOwnerProfile?.username || 'Captain',
-            avatar_url: currentOwnerProfile?.avatar_url || null,
-            card_image_url: currentOwnerProfile?.card_image_url || null
+            username: ownerProfile?.username || 'Captain',
+            avatar_url: ownerProfile?.avatar_url || null,
+            card_image_url: ownerProfile?.card_image_url || null
           });
         }
-        r.members = members;
-        r.member_count = members.length;
-      });
 
-      // No longer filtering rosters by membership - all team members should see all rosters.
-      // This ensures rosters don't "vanish" for members or after captaincy transfer.
+        return {
+          id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
+          members, member_count: members.length
+        };
+      });
+      setRosters(rosterList);
+    } catch {
+      setRosters([]);
     }
-    setRosters(rosterList);
   };
 
   const fetchUpcomingTournaments = async () => {
     try {
-      // Attempt with start_date first
-      let query = supabase
-        .from('tournaments')
-        .select('*')
-        .gte('start_date', new Date().toISOString())
-        .order('start_date', { ascending: true })
-        .limit(5);
-
-      let { data, error } = await query;
-
-      if (error) {
-        // Fallback: some schemas use 'date' instead of 'start_date'
-        const fallback = await supabase
-          .from('tournaments')
-          .select('*')
-          .gte('date', new Date().toISOString())
-          .order('start_date', { ascending: true })
-          .limit(5);
-        data = fallback.data;
-        error = fallback.error;
-      }
-
-      if (error) {
-        // Final fallback: no date filter, just most recent
-        const latest = await supabase
-          .from('tournaments')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
-        if (latest.error) throw latest.error;
-        setUpcomingTournaments(latest.data || []);
-        return;
-      }
-
+      const data = await apiClient.get<any[]>('/api/tournaments/upcoming');
       setUpcomingTournaments(data || []);
-    } catch (error) {
-      console.error('Error fetching tournaments:', error);
+    } catch {
       setUpcomingTournaments([]);
     }
   };
 
   const fetchTeamRegistrations = async () => {
     if (!currentTeam || !currentTeam.id) {
-      console.log('No current team or team ID, skipping team registrations fetch');
       setTeamRegistrations([]);
       return;
     }
-
-    console.log('Fetching team registrations for team:', currentTeam.id);
-
     try {
-      // Preferred source: tournament_participants (new canonical)
-      const { data: participants, error: partsError } = await supabase
-        .from('tournament_participants')
-        .select('*')
-        .eq('team_id', currentTeam.id);
-
-      console.log('Participants query result:', { participants, partsError });
-
-      if (!partsError && participants && participants.length > 0) {
-        const tournamentIds = participants.map(p => p.tournament_id).filter(Boolean);
-        if (tournamentIds.length > 0) {
-          const { data: tournaments, error: tournamentError } = await supabase
-            .from('tournaments')
-            .select('id, name, start_date, game, prize_pool, slug, winner_id, status')
-            .in('id', tournamentIds);
-          console.log('Tournaments for participants:', { tournaments, tournamentError });
-          if (!tournamentError && tournaments) {
-            const combined = participants.map(reg => ({
-              ...reg,
-              tournaments: tournaments.find(t => t.id === reg.tournament_id)
-            }));
-            setTeamRegistrations(combined as any);
-          } else {
-            setTeamRegistrations(participants as any);
-          }
-          return;
-        } else {
-          setTeamRegistrations([]);
-          return;
-        }
-      }
-
-      // Skip name-based fallback to avoid showing stale registrations from deleted teams
-
-      // Fallback B: legacy table tournament_participants (deprecated - kept for backwards compatibility only)
-      // Note: This table is no longer used. All registrations are in tournament_participants.
-      let registrations = null;
-      let regError = null;
-      try {
-        const result = await supabase
-          .from('tournament_participants')
-          .select('*')
-          .eq('team_id', currentTeam.id);
-        registrations = result.data;
-        regError = result.error;
-      } catch (e) {
-        // Table may not exist if migration has run
-        regError = e;
-      }
-
-      console.log('Basic registrations (legacy) result:', { registrations, regError });
-
-      if (regError) {
-        console.error('Error with legacy registrations query:', regError);
-
-        // Check if it's a table not found error
-        if (regError.message?.includes('relation') || regError.message?.includes('does not exist')) {
-          console.log('Tournament registrations table does not exist, setting empty array');
-          setTeamRegistrations([]);
-          return;
-        }
-
-        // Try alternative table names
-        const { data: altRegistrations, error: altRegError } = await supabase
-          .from('tournament_teams')
-          .select('*')
-          .eq('team_id', currentTeam.id);
-
-        console.log('Alternative registrations (tournament_teams) result:', { altRegistrations, altRegError });
-
-        if (altRegError) {
-          console.error('Both registration table queries failed:', { regError, altRegError });
-          setTeamRegistrations([]);
-          return;
-        }
-
-        setTeamRegistrations(altRegistrations || []);
-        return;
-      }
-
-      // If basic query works, try to get tournament details separately
-      if (registrations && registrations.length > 0) {
-        const tournamentIds = registrations.map(reg => reg.tournament_id).filter(Boolean);
-
-        if (tournamentIds.length > 0) {
-          const { data: tournaments, error: tournamentError } = await supabase
-            .from('tournaments')
-            .select('id, name, start_date, game, prize_pool, slug, winner_id, status')
-            .in('id', tournamentIds);
-
-          console.log('Tournaments query result:', { tournaments, tournamentError });
-
-          if (!tournamentError && tournaments) {
-            // Combine the data
-            const combinedData = registrations.map(reg => ({
-              ...reg,
-              tournaments: tournaments.find(t => t.id === reg.tournament_id)
-            }));
-            setTeamRegistrations(combinedData);
-          } else {
-            setTeamRegistrations(registrations);
-          }
-        } else {
-          setTeamRegistrations(registrations);
-        }
-      } else {
-        setTeamRegistrations([]);
-      }
-
-      console.log('Set team registrations (fallback path)');
-    } catch (error) {
-      console.error('Error fetching team registrations:', error);
+      const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/registrations`);
+      // Parse tournaments JSON if returned as string
+      const parsed = (data || []).map((r: any) => ({
+        ...r,
+        tournaments: typeof r.tournaments === 'string' ? JSON.parse(r.tournaments) : r.tournaments
+      }));
+      setTeamRegistrations(parsed);
+    } catch {
       setTeamRegistrations([]);
     }
   };
@@ -1007,18 +729,12 @@ const TeamsPage = () => {
     // Creation no longer requires full members; allow 0..max (members can be added later)
     setRosterSubmitting(true);
     try {
-      const ins = await supabase
-        .from('team_rosters' as any)
-        .insert({
-          team_id: currentTeam.id,
-          name: newRosterName,
-          game: newRosterGame,
-          format: newRosterFormat || null,
-          team_size: newRosterTeamSize,
-        })
-        .select('id')
-        .single();
-      if (ins.error) throw ins.error;
+      await apiClient.post(`/api/teams/${currentTeam.id}/rosters`, {
+        name: newRosterName,
+        game: newRosterGame,
+        format: newRosterFormat || null,
+        teamSize: newRosterTeamSize,
+      });
       // Members can be added later through the Manage Roster dialog
       await fetchRosters();
       setRosterModalOpen(false);
@@ -1034,40 +750,31 @@ const TeamsPage = () => {
     setManageRoster(r);
     // Set editable fields (only name is editable)
     setEditRosterName(r.name);
-    // load current members and pending invites in parallel
-    const [membersRes, invitesRes] = await Promise.all([
-      supabase
-        .from('team_roster_members' as any)
-        .select('user_id, is_starter')
-        .eq('roster_id', r.id),
-      supabase
-        .from('team_invitations' as any)
-        .select('id, invited_email, invited_user_id, created_at, profiles:invited_user_id(username, avatar_url)')
-        .eq('team_id', currentTeam?.id)
-        .eq('roster_id', r.id)
-        .eq('status', 'pending')
-    ]);
-
-    const members = (membersRes.data || []) as any[];
-    setManageMembers(members.map(x => x.user_id));
+    // Load roster members from the roster data we already have
+    const rosterMembers = (r.members || []).filter((m: any) => m.user_id !== currentTeam?.owner_id);
+    setManageMembers(rosterMembers.map((x: any) => x.user_id));
     const statusMap: Record<string, boolean> = {};
-    members.forEach(x => {
+    rosterMembers.forEach((x: any) => {
       statusMap[x.user_id] = x.is_starter ?? true;
     });
     setManageMemberStatuses(statusMap);
-    setRosterInvites((invitesRes.data as any[]) || []);
+
+    // Fetch roster-specific invites
+    try {
+      const allInvites = await apiClient.get<any[]>(`/api/teams/${currentTeam?.id}/invites`);
+      setRosterInvites((allInvites || []).filter((i: any) => i.roster_id === r.id));
+    } catch {
+      setRosterInvites([]);
+    }
     setManageRosterModalOpen(true);
   };
   const addInviteeByEmail = async () => {
     if (!inviteInput || !manageRoster || !currentTeam) return;
     const email = inviteInput.trim();
     try {
-      const { data: prof, error } = await supabase
-        .from('profiles')
-        .select('id, email, username')
-        .ilike('email', email)
-        .maybeSingle();
-      if (error || !prof) {
+      const results = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(email)}`);
+      const prof = (results || []).find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      if (!prof) {
         toast({ title: 'User not found', description: 'No account with that email.', variant: 'destructive' });
         return;
       }
@@ -1094,64 +801,29 @@ const TeamsPage = () => {
     if (!manageRoster || !currentTeam) return;
     if (selectedInvitees.length === 0) return;
     try {
-      let sent = 0;
+      const result = await apiClient.post<{ sent: number }>(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/invite-batch`, {
+        invitees: selectedInvitees.map(p => ({ userId: p.id, email: p.email }))
+      });
+
+      // Send emails for each invitee
       for (const prof of selectedInvitees) {
-        // prevent duplicate pending
-        const { data: pending } = await supabase
-          .from('team_invitations' as any)
-          .select('id')
-          .eq('team_id', currentTeam.id)
-          .eq('roster_id', manageRoster.id)
-          .eq('invited_user_id', prof.id)
-          .eq('status', 'pending')
-          .maybeSingle();
-        if (pending) continue;
-
-        // Check if user is already on a team (not a free agent)
-        const { data: existingMembership } = await supabase
-          .from('team_members')
-          .select('id')
-          .eq('user_id', prof.id)
-          .eq('is_active', true)
-          .maybeSingle();
-        if (existingMembership) continue; // Skip users already on a team
-
-        const inserted = await supabase.from('team_invitations' as any).insert({
-          team_id: currentTeam.id,
-          roster_id: manageRoster.id,
-          invited_user_id: prof.id,
-          invited_email: prof.email,
-          invited_by_user_id: user?.id,
-          invited_by: user?.id, // Legacy column support
-          status: 'pending'
-        }).select('id, invited_email, invited_user_id, created_at').single();
-        if (!inserted.error && inserted.data) {
-          setRosterInvites(prev => [{
-            id: inserted.data.id,
-            invited_email: inserted.data.invited_email,
-            invited_user_id: inserted.data.invited_user_id,
-            created_at: inserted.data.created_at,
-            profiles: { username: (prof as any).username, avatar_url: (prof as any).avatar_url }
-          }, ...prev]);
-          sent++;
-
-          // Dispatch Email
-          sendEmail({
-            type: 'TEAM_INVITE',
-            email: prof.email,
-            data: {
-              teamName: currentTeam.name,
-              invitedBy: user?.user_metadata?.username || 'A player',
-            }
-          }).then(res => {
-            if (!res.success) console.error('[BatchInvite] Email failed:', res.error);
-            else console.log('[BatchInvite] Email sent to:', prof.email);
-          });
-        }
+        sendEmail({
+          type: 'TEAM_INVITE',
+          email: prof.email,
+          data: {
+            teamName: currentTeam.name,
+            invitedBy: user?.user_metadata?.username || 'A player',
+          }
+        }).catch(() => {});
       }
+
       setSelectedInvitees([]);
-      if (sent > 0) toast({ title: `Sent ${sent} invite${sent > 1 ? 's' : ''}` });
+      if (result.sent > 0) toast({ title: `Sent ${result.sent} invite${result.sent > 1 ? 's' : ''}` });
       else toast({ title: 'No invites sent', description: 'Users may already have pending invites.' });
+
+      // Refresh invites
+      const allInvites = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/invites`);
+      setRosterInvites((allInvites || []).filter((i: any) => i.roster_id === manageRoster.id));
     } catch (e: any) {
       toast({ title: 'Invite failed', description: e?.message || '', variant: 'destructive' });
     }
@@ -1167,11 +839,7 @@ const TeamsPage = () => {
       }
       try {
         setIsSearchingInvitee(true);
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, email, username')
-          .or(`email.ilike.%${q}%,username.ilike.%${q}%`)
-          .limit(8);
+        const data = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(q)}`);
         const existingRosterIds = new Set(manageMembers);
         const toShow = (data || [])
           .filter((u: any) => u.id !== user?.id && !existingRosterIds.has(u.id) && !selectedInvitees.some(s => s.id === u.id))
@@ -1185,13 +853,9 @@ const TeamsPage = () => {
   }, [inviteInput, manageRoster, currentTeam?.members, selectedInvitees]);
 
   const handleAddMemberToRoster = async (userId: string) => {
-    if (!manageRoster) return;
+    if (!manageRoster || !currentTeam) return;
     try {
-      const { error } = await supabase.from('team_roster_members' as any).insert({
-        roster_id: manageRoster.id,
-        user_id: userId
-      });
-      if (error) throw error;
+      await apiClient.post(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members`, { userId });
       setManageMembers(prev => [...prev, userId]);
       toast({ title: 'Member added to roster' });
       // update roster counts locally
@@ -1205,11 +869,7 @@ const TeamsPage = () => {
     if (!manageRoster || !currentTeam) return;
     try {
       // 1. Remove from the specific roster
-      const { error: rosterErr } = await supabase.from('team_roster_members' as any)
-        .delete()
-        .eq('roster_id', manageRoster.id)
-        .eq('user_id', userId);
-      if (rosterErr) throw rosterErr;
+      await apiClient.delete(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members/${userId}`);
 
       // 2. Remove from the entire team (as requested: roster removal = team kick)
       const success = await removeMemberFromTeam(currentTeam.id, userId);
@@ -1232,16 +892,10 @@ const TeamsPage = () => {
   };
 
   const handleToggleStarter = async (userId: string, currentStatus: boolean) => {
-    if (!manageRoster) return;
+    if (!manageRoster || !currentTeam) return;
     try {
       const newStatus = !currentStatus;
-      const { error } = await supabase
-        .from('team_roster_members' as any)
-        .update({ is_starter: newStatus })
-        .eq('roster_id', manageRoster.id)
-        .eq('user_id', userId);
-
-      if (error) throw error;
+      await apiClient.put(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members/${userId}/starter`, { isStarter: newStatus });
 
       // Update local state
       setManageMemberStatuses(prev => ({ ...prev, [userId]: newStatus }));
@@ -1265,10 +919,10 @@ const TeamsPage = () => {
   };
 
   const saveManageRoster = async () => {
-    if (!manageRoster || !editRosterName) return;
+    if (!manageRoster || !editRosterName || !currentTeam) return;
     try {
       if (editRosterName !== manageRoster.name) {
-        await supabase.from('team_rosters' as any).update({ name: editRosterName }).eq('id', manageRoster.id);
+        await apiClient.put(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}`, { name: editRosterName });
         manageRoster.name = editRosterName; // update local ref
         setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, name: editRosterName } : r));
       }
@@ -1285,13 +939,7 @@ const TeamsPage = () => {
       return;
     }
     try {
-      // Delete roster (cascade will handle roster members and invitations)
-      const { error } = await supabase
-        .from('team_rosters' as any)
-        .delete()
-        .eq('id', roster.id);
-
-      if (error) throw error;
+      await apiClient.delete(`/api/teams/${currentTeam.id}/rosters/${roster.id}`);
 
       await fetchRosters();
       toast({ title: 'Roster deleted', description: `Roster "${roster.name}" has been deleted.` });
@@ -1316,69 +964,22 @@ const TeamsPage = () => {
     try {
       setInvitingUserId('invite');
       // Find user by email
-      const { data: prof, error } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .ilike('email', email)
-        .maybeSingle();
-      if (error || !prof) {
+      const results = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(email)}`);
+      const prof = (results || []).find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      if (!prof) {
         toast({ title: 'User not found', description: 'No account with that email.', variant: 'destructive' });
         return;
       }
-      const userId = prof.id;
 
-      // Avoid duplicate pending invites
-      const { data: pending } = await supabase
-        .from('team_invitations' as any)
-        .select('id')
-        .eq('team_id', currentTeam.id)
-        .eq('roster_id', manageRoster.id)
-        .eq('invited_user_id', userId)
-        .eq('status', 'pending')
-        .maybeSingle();
-      if (pending) {
-        toast({ title: 'Invite already pending' });
-        return;
-      }
+      // Create invitation via API (handles duplicate/team checks + notification server-side)
+      const invite = await apiClient.post<any>(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/invite`, {
+        userId: prof.id, email
+      });
 
-      // Check if user is already on a team (not a free agent)
-      const { data: existingMembership } = await supabase
-        .from('team_members')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
-      if (existingMembership) {
-        toast({ title: 'Player unavailable', description: 'This player is already on a team and cannot receive invitations.', variant: 'destructive' });
-        return;
-      }
-
-      // Create invitation (member will be added to team/roster only after acceptance)
-      const inserted = await supabase.from('team_invitations' as any).insert({
-        team_id: currentTeam.id,
-        roster_id: manageRoster.id,
-        invited_user_id: userId,
-        invited_email: email,
-        invited_by_user_id: user?.id,
-        invited_by: user?.id, // Legacy column support
-        status: 'pending'
-      }).select('id, invited_email, invited_user_id, created_at').single();
-      if (!inserted.error && inserted.data) {
-        setRosterInvites(prev => [{ id: inserted.data.id, invited_email: inserted.data.invited_email, invited_user_id: inserted.data.invited_user_id, created_at: inserted.data.created_at }, ...prev]);
+      if (invite) {
+        setRosterInvites(prev => [{ id: invite.id, invited_email: invite.invited_email, invited_user_id: invite.invited_user_id, created_at: invite.created_at }, ...prev]);
         setInviteSearch('');
       }
-      // Notify invited user
-      try {
-        await supabase.from('notifications').insert({
-          user_id: userId,
-          type: 'team_invite',
-          title: 'Team Invitation',
-          message: `You have been invited to join ${currentTeam.name}${manageRoster ? ` (${manageRoster.name})` : ''}.`,
-          link: '/player/teams',
-          data: { team_id: currentTeam.id, roster_id: manageRoster?.id || null }
-        } as any);
-      } catch { }
-
 
       // Dispatch Email
       await sendEmail({
@@ -1391,9 +992,6 @@ const TeamsPage = () => {
       }).then(res => {
         if (!res.success) {
           console.error('[InviteByEmail] Email failed:', res.error);
-          toast({ title: 'Invite sent, but email failed', description: res.error, variant: 'destructive' });
-        } else {
-          console.log('[InviteByEmail] Email sent to:', email);
         }
       });
 
@@ -1408,7 +1006,7 @@ const TeamsPage = () => {
   const acceptInvite = async (inviteId: string) => {
     try {
       setRefreshingAfterAccept(true);
-      await supabase.rpc('accept_team_invite', { invite_id: inviteId });
+      await apiClient.post(`/api/teams/invites/${inviteId}/accept`);
       // Refresh team/rosters in parallel
       await Promise.all([
         fetchUserTeams(),
@@ -1426,7 +1024,7 @@ const TeamsPage = () => {
 
   const declineInvite = async (inviteId: string) => {
     try {
-      await supabase.rpc('decline_team_invite', { invite_id: inviteId });
+      await apiClient.post(`/api/teams/invites/${inviteId}/decline`);
       setPendingInvites(prev => prev.filter(i => i.id !== inviteId));
       toast({ title: 'Invitation declined' });
     } catch (e: any) {
@@ -1453,24 +1051,7 @@ const TeamsPage = () => {
     if (!currentTeam || !announcementText.trim()) return;
 
     try {
-      // Send announcement to all team members
-      const { data: members } = await supabase
-        .from('team_members')
-        .select('user_id')
-        .eq('team_id', currentTeam.id);
-
-      if (members) {
-        const notifications = members.map(member => ({
-          user_id: member.user_id,
-          type: 'team_announcement',
-          title: 'Team Announcement',
-          message: announcementText,
-          data: { team_id: currentTeam.id, team_name: currentTeam.name }
-        }));
-
-        await supabase.from('notifications').insert(notifications);
-      }
-
+      await apiClient.post(`/api/teams/${currentTeam.id}/announce`, { message: announcementText });
       toast({
         title: "Success",
         description: "Announcement sent to all team members.",
@@ -1493,7 +1074,6 @@ const TeamsPage = () => {
     }
 
     try {
-      // Build exclusion list: current user + everyone already in this team
       const excludedIds = new Set<string>();
       if (user?.id) excludedIds.add(user.id);
       if (currentTeam?.owner_id) excludedIds.add(currentTeam.owner_id);
@@ -1503,14 +1083,7 @@ const TeamsPage = () => {
         });
       }
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, email, avatar_url')
-        .or(`username.ilike.%${query}%,email.ilike.%${query}%`)
-        .limit(50);
-
-      if (error) throw error;
-      // Exclude team members/current user client-side for reliability
+      const data = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(query)}`);
       const selectedIds = new Set(selectedUsers.map(u => u.id));
       const excludeIds = new Set<string>([...excludedIds, ...selectedIds]);
       setSearchResults(((data || []) as any[]).filter(u => !excludeIds.has(u.id)) as any);
@@ -2301,58 +1874,19 @@ const TeamsPage = () => {
                   className="bg-white/5 border-white/10 text-white flex-1 focus:border-indigo-500/50"
                 />
                 <Button onClick={async () => {
-                  // re-use inviteByEmail with no roster context
                   if (!inviteSearch || !inviteSearch.includes('@') || !currentTeam?.id) return;
                   try {
                     setInvitingUserId('team');
-                    const { data: prof, error: profErr } = await supabase
-                      .from('profiles')
-                      .select('id, email, username')
-                      .or(`email.ilike.${inviteSearch.trim()},username.ilike.${inviteSearch.trim()}`)
-                      .maybeSingle();
-                    if (profErr) { toast({ title: 'Lookup failed', description: profErr.message, variant: 'destructive' }); setInvitingUserId(null); return; }
+                    // Lookup user by email
+                    const results = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(inviteSearch.trim())}`);
+                    const prof = (results || []).find((u: any) => u.email?.toLowerCase() === inviteSearch.trim().toLowerCase() || u.username?.toLowerCase() === inviteSearch.trim().toLowerCase());
                     if (!prof) { toast({ title: 'User not found', description: 'No account with that email/username.', variant: 'destructive' }); setInvitingUserId(null); return; }
-                    const userId = prof.id;
 
-                    // Check if user is already on a team (not a free agent)
-                    const { data: existingMembership, error: memberErr } = await supabase
-                      .from('team_members')
-                      .select('id, team_id')
-                      .eq('user_id', userId)
-                      .eq('is_active', true)
-                      .maybeSingle();
-                    if (memberErr) { toast({ title: 'Check failed', description: memberErr.message, variant: 'destructive' }); setInvitingUserId(null); return; }
-                    if (existingMembership) {
-                      toast({ title: 'Player unavailable', description: 'This player is already on a team and cannot receive invitations.', variant: 'destructive' });
-                      setInvitingUserId(null);
-                      return;
-                    }
-
-                    // avoid duplicate pending
-                    const { data: pending, error: pendErr } = await supabase
-                      .from('team_invitations' as any)
-                      .select('id')
-                      .eq('team_id', currentTeam.id)
-                      .is('roster_id', null)
-                      .eq('invited_user_id', userId)
-                      .eq('status', 'pending')
-                      .maybeSingle();
-                    if (pendErr) { toast({ title: 'Check failed', description: pendErr.message, variant: 'destructive' }); setInvitingUserId(null); return; }
-                    if (pending) { toast({ title: 'Invite already pending' }); setInvitingUserId(null); return; }
-                    const inserted = await supabase.from('team_invitations' as any).insert({
-                      team_id: currentTeam.id,
-                      roster_id: null,
-                      invited_user_id: userId,
-                      invited_email: inviteSearch.trim(),
-                      invited_by_user_id: user?.id,
-                      status: 'pending'
-                    }).select('id, invited_email, invited_user_id, created_at').single();
-                    if (inserted.error) {
-                      toast({ title: 'Invite failed', description: inserted.error.message, variant: 'destructive' });
-                    } else if (inserted.data) {
-                      setTeamInvites(prev => [{ id: inserted.data.id, invited_email: inserted.data.invited_email, invited_user_id: inserted.data.invited_user_id, created_at: inserted.data.created_at }, ...prev]);
+                    // Use the hook's inviteUserToTeam which handles all server-side checks
+                    const success = await inviteUserToTeam(currentTeam.id, prof.id);
+                    if (success) {
                       setInviteSearch('');
-                      toast({ title: 'Invitation sent' });
+                      await fetchTeamPendingInvites();
                     }
                   } catch (e: any) {
                     toast({ title: 'Invite failed', description: e?.message || 'Could not invite user', variant: 'destructive' });
@@ -2377,7 +1911,7 @@ const TeamsPage = () => {
                         <span className="text-white/30 text-xs ml-2">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''}</span>
                       </div>
                       <Button size="sm" variant="ghost" className="text-white/40 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0" onClick={async () => {
-                        await supabase.from('team_invitations' as any).delete().eq('id', inv.id);
+                        await revokeTeamInvite(inv.id);
                         setTeamInvites(prev => prev.filter(i => i.id !== inv.id));
                       }}>
                         <Trash2 className="w-4 h-4" />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLicenses } from '@/hooks/useLicenses';
@@ -77,8 +77,9 @@ export default function AccountSettings() {
   const [ownsVenues, setOwnsVenues] = useState(false);
   useEffect(() => {
     if (!user?.id) return;
-    supabase.from('venues').select('id').eq('owner_id', user.id).limit(1)
-      .then(({ data }) => setOwnsVenues((data?.length ?? 0) > 0));
+    apiClient.get(`/api/venues?owner_id=${user.id}&limit=1`)
+      .then((data: any) => setOwnsVenues(Array.isArray(data) ? data.length > 0 : false))
+      .catch(() => setOwnsVenues(false));
   }, [user?.id]);
 
   // Handle Riot / Faceit OAuth callbacks that redirect back to this page

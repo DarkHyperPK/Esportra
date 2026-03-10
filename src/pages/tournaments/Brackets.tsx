@@ -4,7 +4,7 @@ import { LoadingSpinner } from '@/components/effects/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,45 +35,25 @@ const TournamentBrackets = () => {
     try {
       setLoading(true);
 
-      // Fetch tournament
-      const querySpec = '*, organization:organizations(owner_id)';
-      let tournamentData: any = null;
-      const { data: bySlug } = await supabase.from('tournaments').select(querySpec).eq('slug', slug).single();
-      if (bySlug) tournamentData = bySlug;
-      else {
-        const { data: byId } = await supabase.from('tournaments').select(querySpec).eq('id', slug).single();
-        if (byId) tournamentData = byId;
-      }
-
+      // Fetch tournament (supports slug or id)
+      const tournamentData = await apiClient.get(`/api/tournaments/${slug}`);
       if (!tournamentData) throw new Error('Tournament not found');
       setTournament(tournamentData);
 
       // Fetch stages
-      const { data: stagesData } = await supabase
-        .from('tournament_stages')
-        .select('*')
-        .eq('tournament_id', tournamentData.id)
-        .order('stage_order', { ascending: true });
-
+      const stagesData = await apiClient.get(`/api/tournaments/${tournamentData.id}/stages`);
       setStages(stagesData || []);
 
       // Default selected stage to the first one if not set
       if (stagesData && stagesData.length > 0 && !selectedStageId) {
-        // Check if we can find a stage with a bracket first? 
-        // For now just pick the first stage or the current ongoing one logic (omitted for simplicity, picking first)
         setSelectedStageId(stagesData[0].id);
       }
 
       // Fetch bracket versions - Organizers see drafts, others only active
       const isActuallyOrganizer = user?.id && tournamentData.organization?.owner_id === user.id;
-      const statusFilter = isActuallyOrganizer ? ['active', 'draft'] : ['active'];
+      const statusFilter = isActuallyOrganizer ? 'active,draft' : 'active';
 
-      const { data: versionsData } = await (supabase as any)
-        .from('brkt_versions')
-        .select('id, stage_id, status, created_at')
-        .eq('tournament_id', tournamentData.id)
-        .in('status', statusFilter)
-        .order('created_at', { ascending: false });
+      const versionsData = await apiClient.get(`/api/tournaments/${tournamentData.id}/bracket-versions?status=${statusFilter}`);
 
       // Process versions to find latest for each stage
       const vMap: Record<string, string> = {};
@@ -92,17 +72,11 @@ const TournamentBrackets = () => {
         const stageWithBracket = stagesData.find((s: any) => vMap[s.id]);
         setSelectedStageId(stageWithBracket ? stageWithBracket.id : stagesData[0].id);
       } else if (selectedStageId && !stagesData?.find(s => s.id === selectedStageId)) {
-        // If selected stage is invalid (e.g. from previous load?), reset
         if (stagesData && stagesData.length > 0) setSelectedStageId(stagesData[0].id);
       }
 
-
-      // Fetch participants (for team list in generator and access control)
-      const { data: parts } = await supabase
-        .from('tournament_participants')
-        .select('*')
-        .eq('tournament_id', tournamentData.id);
-
+      // Fetch participants
+      const parts = await apiClient.get(`/api/tournaments/${tournamentData.id}/participants`);
       setParticipants(parts || []);
 
     } catch (error: any) {

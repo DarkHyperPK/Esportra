@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Settings, ArrowLeft, Users, Trophy, MapPin, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 
 const SystemStatusTool = () => {
   const navigate = useNavigate();
@@ -14,22 +14,11 @@ const SystemStatusTool = () => {
     const loadStats = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase.rpc('get_system_stats');
-        if (error) throw error;
+        const data = await apiClient.get<any>('/api/admin/system-stats');
         setStats(data);
       } catch (e) {
-        console.warn('get_system_stats unavailable, falling back:', e);
-        const [users, tournaments, venues] = await Promise.all([
-          supabase.from('profiles').select('*', { count: 'exact', head: true }),
-          supabase.from('tournaments').select('*', { count: 'exact', head: true }),
-          supabase.from('venues').select('*', { count: 'exact', head: true })
-        ]);
-        setStats({
-          total_users: users.count || 0,
-          total_tournaments: tournaments.count || 0,
-          total_venues: venues.count || 0,
-          total_prize_pool: 0
-        });
+        console.error('Failed to load system stats:', e);
+        setStats({ total_users: 0, total_tournaments: 0, total_venues: 0, total_prize_pool: 0 });
       } finally {
         setLoading(false);
       }

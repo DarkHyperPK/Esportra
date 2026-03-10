@@ -129,19 +129,10 @@ export const useMatchResultReport = (matchId: string | undefined, gameNumber?: n
 
       let evidenceUrls: string[] = [];
 
-      // Upload evidence to Supabase Storage first (Storage stays with Supabase)
+      // Upload evidence to Supabase Storage (Storage stays with Supabase)
       if (params.evidenceFile) {
         try {
-          // Temporarily get dispute ID from a fresh fetch to upload evidence
-          const existingDispute = await supabase
-            .from('tournament_disputes')
-            .select('id')
-            .eq('match_id', matchId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          const disputeId = existingDispute.data?.id ?? crypto.randomUUID();
+          const disputeId = crypto.randomUUID();
           const url = await uploadDisputeEvidence(params.evidenceFile, disputeId);
           evidenceUrls = [url];
         } catch {

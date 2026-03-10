@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 
 export type StaffPermission =
   | "scores:update"
@@ -46,26 +46,9 @@ export interface TournamentStaffInvite extends TournamentStaffRecord {
 export const fetchTournamentStaff = async (
   tournamentId: string
 ): Promise<TournamentStaffRecord[]> => {
-  const { data, error } = await supabase
-    .from("tournament_staff")
-    .select(
-      `
-        *,
-        profiles:profiles!tournament_staff_user_id_fkey(
-          full_name,
-          username,
-          email,
-          avatar_url
-        )
-      `
-    )
-    .eq("tournament_id", tournamentId)
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    throw error;
-  }
-  return (data || []) as TournamentStaffRecord[];
+  return apiClient.get<TournamentStaffRecord[]>(
+    `/api/tournaments/${tournamentId}/staff`
+  );
 };
 
 export const inviteTournamentStaff = async ({
@@ -73,7 +56,6 @@ export const inviteTournamentStaff = async ({
   userEmail,
   role,
   permissions,
-  assignedBy,
 }: {
   tournamentId: string;
   userEmail: string;
@@ -81,42 +63,11 @@ export const inviteTournamentStaff = async ({
   permissions: StaffPermission[];
   assignedBy: string;
 }) => {
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, email")
-    .ilike("email", userEmail)
-    .maybeSingle();
-
-  if (profileError) throw profileError;
-  if (!profile) throw new Error("User not found");
-  const { data: existing } = await supabase
-    .from("tournament_staff")
-    .select("id")
-    .eq("tournament_id", tournamentId)
-    .eq("user_id", profile.id)
-    .maybeSingle();
-
-  const payload = {
-    tournament_id: tournamentId,
-    user_id: profile.id,
+  return apiClient.post(`/api/tournaments/${tournamentId}/staff`, {
+    userEmail,
     role,
     permissions,
-    assigned_by: assignedBy,
-    status: "pending",
-    accepted_at: null,
-    responded_at: null,
-  };
-
-  if (existing?.id) {
-    const { error } = await supabase
-      .from("tournament_staff")
-      .update(payload)
-      .eq("id", existing.id);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase.from("tournament_staff").insert(payload);
-    if (error) throw error;
-  }
+  });
 };
 
 export const updateTournamentStaff = async ({
@@ -128,83 +79,30 @@ export const updateTournamentStaff = async ({
   role: string;
   permissions: StaffPermission[];
 }) => {
-  const { error } = await supabase
-    .from("tournament_staff")
-    .update({
-      role,
-      permissions,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", staffId);
-  if (error) throw error;
+  return apiClient.put(`/api/tournaments/staff/${staffId}`, {
+    role,
+    permissions,
+  });
 };
 
 export const removeTournamentStaff = async (staffId: string) => {
-  const { error } = await supabase
-    .from("tournament_staff")
-    .delete()
-    .eq("id", staffId);
-  if (error) throw error;
+  return apiClient.delete(`/api/tournaments/staff/${staffId}`);
 };
 
 export const fetchPendingStaffInvites = async (
-  userId: string
+  _userId: string
 ): Promise<TournamentStaffInvite[]> => {
-  const { data, error } = await supabase
-    .from("tournament_staff")
-    .select(
-      `
-      *,
-      tournament:tournament_id (
-        id,
-        name,
-        game,
-        start_date
-      ),
-      organizer_profile:profiles!tournament_staff_assigned_by_fkey (
-        full_name,
-        username,
-        email
-      )
-    `
-    )
-    .eq("user_id", userId)
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return (data || []) as TournamentStaffInvite[];
+  return apiClient.get<TournamentStaffInvite[]>(
+    `/api/tournaments/staff/my-invites`
+  );
 };
 
 export const fetchUserStaffAssignments = async (
-  userId: string
+  _userId: string
 ): Promise<TournamentStaffInvite[]> => {
-  const { data, error } = await supabase
-    .from("tournament_staff")
-    .select(
-      `
-      *,
-      tournament:tournament_id(
-        id,
-        name,
-        slug,
-        game,
-        start_date,
-        organizer_id
-      ),
-      organizer_profile:profiles!tournament_staff_assigned_by_fkey(
-        full_name,
-        username,
-        email
-      )
-    `
-    )
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .order("updated_at", { ascending: false });
-
-  if (error) throw error;
-  return (data || []) as TournamentStaffInvite[];
+  return apiClient.get<TournamentStaffInvite[]>(
+    `/api/tournaments/staff/my-assignments`
+  );
 };
 
 export const respondToStaffInvite = async ({
@@ -214,17 +112,7 @@ export const respondToStaffInvite = async ({
   inviteId: string;
   accept: boolean;
 }) => {
-  const now = new Date().toISOString();
-  const updateData = {
-    status: accept ? "active" : "revoked",
-    accepted_at: accept ? now : null,
-    responded_at: now,
-  };
-  const { error } = await supabase
-    .from("tournament_staff")
-    .update(updateData)
-    .eq("id", inviteId)
-    .eq("status", "pending");
-  if (error) throw error;
+  return apiClient.post(`/api/tournaments/staff/${inviteId}/respond`, {
+    accept,
+  });
 };
-

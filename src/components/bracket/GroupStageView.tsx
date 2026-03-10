@@ -8,7 +8,7 @@ import { BracketMatch } from '@/types/bracketTypes';
 import { MatchCard } from '@/pages/tournaments/brackets/MatchCard';
 import { ReadOnlyMatchCard } from './ReadOnlyMatchCard';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Check, Copy, Gamepad2, Swords } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -237,19 +237,14 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
         if (teamIds.length === 0) return;
 
         const fetchTeams = async () => {
-            const { data, error } = await supabase
-                .from('teams')
-                .select('id, name, logo_url')
-                .in('id', teamIds);
-
-            if (error) {
+            try {
+                const data = await apiClient.post('/api/teams/batch', { ids: teamIds });
+                const map = new Map<string, { id: string; name: string; logo_url?: string | null }>();
+                data?.forEach((team: any) => map.set(team.id, team));
+                setLocalTeamsMap(map);
+            } catch (error) {
                 console.error('[GroupStageView] Error fetching teams:', error);
-                return;
             }
-
-            const map = new Map<string, { id: string; name: string; logo_url?: string | null }>();
-            data?.forEach(team => map.set(team.id, team));
-            setLocalTeamsMap(map);
         };
 
         fetchTeams();
@@ -423,29 +418,15 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
         if (!versionId) return;
 
         try {
-            const db = supabase as any;
-            const { data: byeMatches, error: fetchError } = await db
-                .from('brkt_matches')
-                .select('*')
-                .eq('version_id', versionId)
-                .eq('status', 'pending');
+            const byeMatches = await apiClient.get(`/api/brackets/${versionId}/bye-matches`);
 
-            if (fetchError) throw fetchError;
-
-            const actualByeMatches = byeMatches?.filter((m: any) => {
-                const isPending = m.status === 'pending';
-                const t1 = m.team1_id;
-                const t2 = m.team2_id;
-                return isPending && ((t1 && !t2) || (!t1 && t2));
-            }) || [];
-
-            if (actualByeMatches.length === 0) {
+            if (!byeMatches || byeMatches.length === 0) {
                 toast({ title: 'No BYEs', description: 'No PENDING BYE matches to advance' });
                 return;
             }
 
             let advancedCount = 0;
-            for (const match of actualByeMatches) {
+            for (const match of byeMatches) {
                 const isBo1 = (match.best_of || 1) === 1;
                 const winScore = isBo1 ? 13 : Math.ceil((match.best_of || 1) / 2);
 

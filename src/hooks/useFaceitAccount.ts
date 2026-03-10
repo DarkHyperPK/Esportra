@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface FaceitAccountData {
@@ -26,17 +26,11 @@ export function useFaceitAccount() {
         queryKey: ['faceit-account', user?.id],
         queryFn: async () => {
             if (!user?.id) return null;
-            const { data, error } = await supabase
-                .from('faceit_accounts')
-                .select('id, user_id, faceit_id, nickname, avatar_url, linked_at, updated_at')
-                .eq('user_id', user.id)
-                .maybeSingle();
-
-            if (error) {
-                console.error('[useFaceitAccount] Error fetching faceit account:', error);
+            try {
+                return await apiClient.get(`/api/integrations/faceit`);
+            } catch {
                 return null;
             }
-            return data;
         },
         enabled: !!user?.id,
     });
@@ -54,8 +48,7 @@ export function useFaceitAccount() {
 
     /**
      * Redirect user to Faceit OAuth to link their account.
-     * Uses PKCE (S256) — code_verifier stored in sessionStorage and sent
-     * to the edge function for the server-side token exchange.
+     * Uses PKCE (S256).
      */
     const linkFaceitAccount = async () => {
         if (!user?.id) return;
@@ -69,19 +62,16 @@ export function useFaceitAccount() {
             return;
         }
 
-        // Generate PKCE code verifier (random 32-byte base64url string)
         const verifierBytes = new Uint8Array(32);
         crypto.getRandomValues(verifierBytes);
         const codeVerifier = btoa(String.fromCharCode(...verifierBytes))
             .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 
-        // Derive code challenge: base64url(SHA-256(verifier))
         const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier));
         const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
             .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 
         const state = crypto.randomUUID();
-        // Use localStorage so the verifier/state survive across tabs
         localStorage.setItem('faceitOAuthState', state);
         localStorage.setItem('faceitCodeVerifier', codeVerifier);
 
@@ -97,31 +87,11 @@ export function useFaceitAccount() {
     };
 
     /**
-     * Remove the linked Faceit account and clear the cached nickname from profiles.
+     * Remove the linked Faceit account.
      */
     const unlinkFaceitAccount = async () => {
         if (!user?.id) return;
-
-        const { error: unlinkError } = await supabase
-            .from('faceit_accounts')
-            .delete()
-            .eq('user_id', user.id);
-
-        if (unlinkError) {
-            console.error('[useFaceitAccount] Error unlinking faceit account:', unlinkError);
-            throw unlinkError;
-        }
-
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ faceit_nickname: null })
-            .eq('id', user.id);
-
-        if (profileError) {
-            console.error('[useFaceitAccount] Error clearing faceit_nickname from profile:', profileError);
-            throw profileError;
-        }
-
+        await apiClient.delete('/api/integrations/faceit');
         queryClient.invalidateQueries({ queryKey: ['faceit-account', user.id] });
         queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
     };

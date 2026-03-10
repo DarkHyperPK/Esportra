@@ -21,6 +21,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@g-loot/react-tournament-brackets": "^1.0.31-rc",
     "@hookform/resolvers": "^3.9.0",
+    "@microsoft/signalr": "^10.0.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-aspect-ratio": "^1.1.0",

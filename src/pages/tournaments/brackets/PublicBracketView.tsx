@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useGraphBracket } from '@/hooks/useGraphBracket';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useState } from 'react';
 import { BracketSidebarFilter, type FilterState } from '@/components/bracket/BracketSidebarFilter';
 import { BracketRenderer } from '@/components/bracket/BracketRenderer';
@@ -46,11 +46,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         queryKey: ['match-proofs', tournamentId],
         queryFn: async () => {
             if (!tournamentId) return {};
-            const { data } = await supabase
-                .from('tournament_match_results')
-                .select('match_id, image_url')
-                .eq('tournament_id', tournamentId)
-                .not('image_url', 'is', null);
+            const data = await apiClient.get(`/api/tournaments/${tournamentId}/match-proofs`);
 
             const map: Record<string, string[]> = {};
             data?.forEach((r: any) => {
@@ -61,7 +57,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
             return map;
         },
         enabled: !!tournamentId,
-        staleTime: 1000 * 60, // 1 minute
+        staleTime: 1000 * 60,
     });
 
     // Fetch detailed game results (automated reports)
@@ -69,31 +65,13 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         queryKey: ['bracket-match-games', tournamentId],
         queryFn: async () => {
             if (!tournamentId) return {};
-            const { data, error } = await supabase
-                .from('brkt_match_games')
-                .select(`
-                    *,
-                    game_maps (
-                        map_name
-                    )
-                `)
-                .eq('status', 'completed');
-
-            if (error) throw error;
+            const data = await apiClient.get(`/api/tournaments/${tournamentId}/match-games`);
 
             const map: Record<string, any[]> = {};
             data?.forEach((game: any) => {
                 const prefixedId = game.match_id;
                 if (!map[prefixedId]) map[prefixedId] = [];
-
-                const joinedMapName = Array.isArray(game.game_maps)
-                    ? game.game_maps[0]?.map_name
-                    : game.game_maps?.map_name;
-
-                map[prefixedId].push({
-                    ...game,
-                    map_name: joinedMapName || game.map_name
-                });
+                map[prefixedId].push(game);
             });
             return map;
         },
@@ -107,8 +85,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         queryKey: ['teams', teamIds],
         queryFn: async () => {
             if (teamIds.length === 0) return [];
-            const { data } = await supabase.from('teams').select('id, name, logo_url').in('id', teamIds);
-            return data || [];
+            return apiClient.post('/api/teams/batch', { ids: teamIds });
         },
         enabled: teamIds.length > 0
     });

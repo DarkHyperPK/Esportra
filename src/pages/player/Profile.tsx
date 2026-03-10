@@ -10,7 +10,7 @@ import TeamCreationWizard from "@/components/player/TeamCreationWizard";
 import TeamInvites from "@/components/player/TeamInvites";
 import PlayerAchievements from "@/components/player/PlayerAchievements";
 import { Link, useParams } from 'react-router-dom';
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 
 const PlayerProfilePage = () => {
   const { profile: authProfile } = useAuth();
@@ -23,21 +23,13 @@ const PlayerProfilePage = () => {
     const fetchProfile = async () => {
       setLoading(true);
       if (username) {
-        // Fetch public profile by username
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .ilike('username', username)
-          .single();
-
-        if (data) {
+        try {
+          const data = await apiClient.get(`/api/profiles/by-username/${username}`);
           setDisplayedProfile(data);
-        } else {
-          console.error("Profile not found:", error);
-          // Allow fallback or show 404 state? For now, keeps null
+        } catch {
+          console.error("Profile not found");
         }
       } else {
-        // Use authenticated user's profile
         setDisplayedProfile(authProfile);
       }
       setLoading(false);

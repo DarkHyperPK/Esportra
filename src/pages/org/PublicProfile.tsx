@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Trophy, Globe, Twitter, Instagram, Youtube, Link2, Calendar, Users, MapPin, Search, ArrowRight, ImageIcon, Play, Loader2, Award, Zap, CheckCircle2, Building2, Folder, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,13 +24,7 @@ const OrganizationPublicProfile = () => {
     const { data: org, isLoading: orgLoading } = useQuery({
         queryKey: ['org-public-profile', slug],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('organizations')
-                .select('*')
-                .eq('slug', slug)
-                .single();
-            if (error) throw error;
-            return data;
+            return await apiClient.get(`/api/organizations/by-slug/${slug}`);
         },
         enabled: !!slug,
     });
@@ -39,15 +33,7 @@ const OrganizationPublicProfile = () => {
     const { data: tournaments, isLoading: tournamentsLoading } = useQuery({
         queryKey: ['org-tournaments', org?.id],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('v_tournament_details')
-                .select('*')
-                .eq('organization_id', org.id)
-                .is('deleted_at', null)
-                .order('start_date', { ascending: false });
-
-            if (error) throw error;
-            return data || [];
+            return await apiClient.get(`/api/organizations/${org.id}/tournaments`);
         },
         enabled: !!org?.id,
     });
@@ -56,17 +42,7 @@ const OrganizationPublicProfile = () => {
     const { data: albums } = useQuery({
         queryKey: ['org-albums', org?.id],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('organization_albums')
-                .select(`
-                    *,
-                    media:organization_media(url)
-                `)
-                .eq('organization_id', org.id)
-                .order('created_at', { ascending: false });
-            if (error) throw error;
-
-            // Map covers
+            const data: any[] = await apiClient.get(`/api/organizations/${org.id}/albums`);
             return data?.map((album: any) => ({
                 ...album,
                 cover_url: album.media?.[0]?.url || null
@@ -80,14 +56,7 @@ const OrganizationPublicProfile = () => {
     const { data: media, isLoading: mediaLoading } = useQuery({
         queryKey: ['org-media', org?.id],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('organization_media')
-                .select('*')
-                .eq('organization_id', org.id)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            return data || [];
+            return await apiClient.get(`/api/organizations/${org.id}/media`);
         },
         enabled: !!org?.id,
     });

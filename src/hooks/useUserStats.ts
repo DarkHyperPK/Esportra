@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
 
 export interface UserStatistics {
   id: string;
@@ -41,86 +42,73 @@ export interface UserAchievement {
   achievement: Achievement;
 }
 
+interface StatsResponse {
+  statistics: UserStatistics | null;
+  achievements: UserAchievement[];
+}
+
 export const useUserStats = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  
-  const [statistics, setStatistics] = useState<UserStatistics | null>(null);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [userAchievements, setUserAchievements] = useState<UserAchievement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // Fetch user statistics
-  const fetchStatistics = useCallback(async () => {
-    if (!user) return;
+  // Fetch user statistics + earned achievements in one call
+  const { data: statsData, isLoading: statsLoading } = useQuery<StatsResponse>({
+    queryKey: ['profile-stats', user?.id],
+    queryFn: () => apiClient.get<StatsResponse>(`/api/profiles/${user!.id}/stats`),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
 
+  const statistics = statsData?.statistics ?? null;
+  const userAchievements = (statsData?.achievements ?? []) as UserAchievement[];
+
+  // Fetch all available achievements
+  const { data: achievements = [], isLoading: achievementsLoading } = useQuery<Achievement[]>({
+    queryKey: ['achievements-all'],
+    queryFn: () => apiClient.get<Achievement[]>('/api/achievements'),
+    staleTime: 300_000,
+  });
+
+  // Award achievement mutation
+  const awardMutation = useMutation({
+    mutationFn: (achievementId: string) =>
+      apiClient.post(`/api/profiles/me/achievements/${achievementId}`, {}),
+    onSuccess: (data: any) => {
+      if (!data.alreadyAwarded) {
+        queryClient.invalidateQueries({ queryKey: ['profile-stats', user?.id] });
+        const achievement = achievements.find(a => a.id === data.achievement_id);
+        if (achievement) {
+          toast({
+            title: 'Achievement Unlocked!',
+            description: `You earned the "${achievement.name}" achievement!`,
+          });
+        }
+      }
+    },
+  });
+
+  const awardAchievement = async (achievementId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('user_statistics')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      setStatistics(data);
-    } catch (error) {
-      console.error('Error fetching statistics:', error);
+      await awardMutation.mutateAsync(achievementId);
+      return true;
+    } catch {
+      return false;
     }
-  }, [user]);
+  };
 
-  // Fetch all achievements
-  const fetchAchievements = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('achievements')
-        .select('*')
-        .eq('is_active', true)
-        .order('points', { ascending: true });
+  // Auto-check and award achievements when statistics change
+  useEffect(() => {
+    if (!user || !statistics || achievements.length === 0) return;
 
-      if (error) throw error;
-      setAchievements(data || []);
-    } catch (error) {
-      console.error('Error fetching achievements:', error);
-    }
-  }, []);
-
-  // Fetch user achievements
-  const fetchUserAchievements = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('user_achievements')
-        .select(`
-          *,
-          achievement:achievements(*)
-        `)
-        .eq('user_id', user.id)
-        .order('earned_at', { ascending: false });
-
-      if (error) throw error;
-      setUserAchievements(data || []);
-    } catch (error) {
-      console.error('Error fetching user achievements:', error);
-    }
-  }, [user]);
-
-  // Check and award achievements
-  const checkAchievements = useCallback(async () => {
-    if (!user || !statistics) return;
-
-    try {
-      // Check each achievement
+    const check = async () => {
       for (const achievement of achievements) {
         const hasAchievement = userAchievements.some(
           ua => ua.achievement_id === achievement.id
         );
-
         if (hasAchievement) continue;
 
         let shouldAward = false;
-
-        // Check achievement requirements
         switch (achievement.name) {
           case 'First Tournament':
             shouldAward = statistics.tournaments_played >= 1;
@@ -152,80 +140,30 @@ export const useUserStats = () => {
           await awardAchievement(achievement.id);
         }
       }
-    } catch (error) {
-      console.error('Error checking achievements:', error);
-    }
-  }, [user, statistics, achievements, userAchievements]);
 
-  // Award achievement
-  const awardAchievement = async (achievementId: string) => {
-    if (!user) return false;
-
-    try {
-      const { data, error } = await supabase
-        .from('user_achievements')
-        .insert({
-          user_id: user.id,
-          achievement_id: achievementId,
-        })
-        .select(`
-          *,
-          achievement:achievements(*)
-        `)
-        .single();
-
-      if (error) throw error;
-
-      // Show achievement notification
-      toast({
-        title: 'Achievement Unlocked!',
-        description: `You earned the "${data.achievement.name}" achievement!`,
-        variant: 'default',
-      });
-
-      // Refresh user achievements
-      await fetchUserAchievements();
-
-      return true;
-    } catch (error: any) {
-      if (error.code === '23505') {
-        // Achievement already exists, ignore
-        return false;
+      // Auto-update skill level
+      let newSkillLevel: string = 'beginner';
+      if (statistics.tournaments_won >= 10 || statistics.tournaments_played >= 50) {
+        newSkillLevel = 'professional';
+      } else if (statistics.tournaments_won >= 5 || statistics.tournaments_played >= 20) {
+        newSkillLevel = 'advanced';
+      } else if (statistics.tournaments_won >= 2 || statistics.tournaments_played >= 10) {
+        newSkillLevel = 'intermediate';
       }
-      console.error('Error awarding achievement:', error);
-      return false;
-    }
-  };
 
-  // Update skill level based on statistics
-  const updateSkillLevel = useCallback(async () => {
-    if (!user || !statistics) return;
-
-    let newSkillLevel: 'beginner' | 'intermediate' | 'advanced' | 'professional' = 'beginner';
-
-    if (statistics.tournaments_won >= 10 || statistics.tournaments_played >= 50) {
-      newSkillLevel = 'professional';
-    } else if (statistics.tournaments_won >= 5 || statistics.tournaments_played >= 20) {
-      newSkillLevel = 'advanced';
-    } else if (statistics.tournaments_won >= 2 || statistics.tournaments_played >= 10) {
-      newSkillLevel = 'intermediate';
-    }
-
-    if (newSkillLevel !== statistics.skill_level) {
-      try {
-        const { error } = await supabase
-          .from('user_statistics')
-          .update({ skill_level: newSkillLevel })
-          .eq('user_id', user.id);
-
-        if (error) throw error;
-
-        setStatistics(prev => prev ? { ...prev, skill_level: newSkillLevel } : null);
-      } catch (error) {
-        console.error('Error updating skill level:', error);
+      if (newSkillLevel !== statistics.skill_level) {
+        try {
+          await apiClient.put('/api/profiles/me/skill-level', { skillLevel: newSkillLevel });
+          queryClient.invalidateQueries({ queryKey: ['profile-stats', user?.id] });
+        } catch {
+          // Non-critical, silently ignore
+        }
       }
-    }
-  }, [user, statistics]);
+    };
+
+    check();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statistics, achievements.length]);
 
   // Get achievement progress
   const getAchievementProgress = (achievement: Achievement) => {
@@ -253,17 +191,13 @@ export const useUserStats = () => {
     }
   };
 
-  // Get user's total points
   const getTotalPoints = () => {
-    return userAchievements.reduce((total, ua) => total + ua.achievement.points, 0);
+    return userAchievements.reduce((total, ua) => total + (ua.achievement?.points ?? 0), 0);
   };
 
-  // Get user's rank
   const getUserRank = () => {
     if (!statistics) return 'Beginner';
-    
     const totalPoints = getTotalPoints();
-    
     if (totalPoints >= 500) return 'Legend';
     if (totalPoints >= 300) return 'Master';
     if (totalPoints >= 200) return 'Expert';
@@ -272,41 +206,18 @@ export const useUserStats = () => {
     return 'Beginner';
   };
 
-  // Initialize data
-  useEffect(() => {
-    if (user) {
-      Promise.all([
-        fetchStatistics(),
-        fetchAchievements(),
-        fetchUserAchievements(),
-      ]).finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [user, fetchStatistics, fetchAchievements, fetchUserAchievements]);
-
-  // Check achievements when statistics change
-  useEffect(() => {
-    if (statistics && achievements.length > 0) {
-      checkAchievements();
-      updateSkillLevel();
-    }
-  }, [statistics, achievements, checkAchievements, updateSkillLevel]);
-
   return {
     statistics,
     achievements,
     userAchievements,
-    loading,
-    
-    // Computed values
+    loading: statsLoading || achievementsLoading,
+
     totalPoints: getTotalPoints(),
     userRank: getUserRank(),
-    
-    // Functions
-    fetchStatistics,
-    fetchAchievements,
-    fetchUserAchievements,
+
+    fetchStatistics: () => queryClient.invalidateQueries({ queryKey: ['profile-stats', user?.id] }),
+    fetchAchievements: () => queryClient.invalidateQueries({ queryKey: ['achievements-all'] }),
+    fetchUserAchievements: () => queryClient.invalidateQueries({ queryKey: ['profile-stats', user?.id] }),
     awardAchievement,
     getAchievementProgress,
   };

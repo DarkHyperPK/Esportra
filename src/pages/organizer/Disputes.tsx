@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { apiClient } from '@/lib/apiClient';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -106,82 +107,15 @@ const OrganizerDisputesPage: React.FC = () => {
     try {
       setLoading(true);
 
-      // 1. Get all tournament IDs this user organizes or staffs
-      const [{ data: ownedTournaments }, { data: staffTournaments }] = await Promise.all([
-        supabase.from('tournaments').select('id, name').eq('organizer_id', user.id),
-        supabase.from('tournament_staff').select('tournament_id').eq('user_id', user.id).eq('status', 'active'),
-      ]);
+      const data = await apiClient.get<any[]>('/api/organizer/disputes');
 
-      const tourneyMap = new Map<string, string>(); // id → name
-      (ownedTournaments || []).forEach((t: any) => tourneyMap.set(t.id, t.name));
-
-      const staffIds = (staffTournaments || []).map((s: any) => s.tournament_id).filter(Boolean);
-
-      // Fetch names for staff tournaments not already in map
-      const missingIds = staffIds.filter((id: string) => !tourneyMap.has(id));
-      if (missingIds.length > 0) {
-        const { data: staffTourneyNames } = await supabase
-          .from('tournaments')
-          .select('id, name')
-          .in('id', missingIds);
-        (staffTourneyNames || []).forEach((t: any) => tourneyMap.set(t.id, t.name));
-      }
-
-      const allTournamentIds = [...tourneyMap.keys()];
-
-      if (allTournamentIds.length === 0) {
-        setDisputes([]);
-        return;
-      }
-
-      // 2. Fetch disputes for those tournaments
-      const { data: disputesData, error } = await supabase
-        .from('tournament_disputes')
-        .select('id, title, description, status, dispute_reason, resolution_notes, evidence_url, created_at, updated_at, tournament_id, match_id, raised_by_user_id')
-        .in('tournament_id', allTournamentIds)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // 3. Fetch filer names
-      const userIds = [...new Set((disputesData || []).map((d: any) => d.raised_by_user_id))];
-      const profileMap = new Map<string, string>();
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, username')
-          .in('id', userIds);
-        (profiles || []).forEach((p: any) => profileMap.set(p.id, p.full_name || p.username || 'Unknown'));
-      }
-
-      // 4. Fetch match context
-      const matchIds = [...new Set((disputesData || []).filter((d: any) => d.match_id).map((d: any) => d.match_id as string))];
-      const matchMap = new Map<string, any>();
-      if (matchIds.length > 0) {
-        const { data: matches } = await supabase
-          .from('brkt_matches')
-          .select('id, match_number, round_index, best_of, bracket_type, scheduled_time, team1_score, team2_score, team1:teams!team1_id(name), team2:teams!team2_id(name)')
-          .in('id', matchIds);
-        (matches || []).forEach((m: any) => matchMap.set(m.id, m));
-      }
-
-      const enriched: Dispute[] = (disputesData || []).map((d: any) => {
-        const m = d.match_id ? matchMap.get(d.match_id) : null;
+      const enriched: Dispute[] = (data || []).map((d: any) => {
+        const m = typeof d.match === 'string' ? JSON.parse(d.match) : d.match;
         return {
           ...d,
-          tournament_name: tourneyMap.get(d.tournament_id) || 'Unknown Tournament',
-          raised_by_name: profileMap.get(d.raised_by_user_id) || 'Unknown',
-          match: m ? {
-            match_number: m.match_number ?? null,
-            round_index: m.round_index ?? null,
-            best_of: m.best_of ?? null,
-            bracket_type: m.bracket_type ?? null,
-            scheduled_time: m.scheduled_time ?? null,
-            team1_score: m.team1_score ?? null,
-            team2_score: m.team2_score ?? null,
-            team1_name: m.team1?.name ?? null,
-            team2_name: m.team2?.name ?? null,
-          } : null,
+          tournament_name: d.tournament_name || 'Unknown Tournament',
+          raised_by_name: d.raised_by_name || 'Unknown',
+          match: m || null,
         };
       });
 
@@ -196,35 +130,14 @@ const OrganizerDisputesPage: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  // Real-time subscription for dispute status changes
-  useEffect(() => {
-    if (!user?.id) return;
-    const channel = supabase
-      .channel('organizer-disputes-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tournament_disputes' }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user?.id, load]);
+  // Realtime removed — disputes are refreshed on user action (resolve, comment)
 
   // ─── Comments ─────────────────────────────────────────────────────────────
   const fetchComments = useCallback(async (disputeId: string) => {
     try {
       setLoadingComments(true);
-      const { data, error } = await supabase
-        .from('dispute_comments')
-        .select('id, user_id, comment, is_internal, created_at, attachment_url')
-        .eq('dispute_id', disputeId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-
-      const uids = [...new Set((data || []).map((c: any) => c.user_id))];
-      const pm = new Map<string, string>();
-      if (uids.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('id, full_name, username').in('id', uids);
-        (profiles || []).forEach((p: any) => pm.set(p.id, p.full_name || p.username || 'Unknown'));
-      }
-
-      setComments((data || []).map((c: any) => ({ ...c, user_name: pm.get(c.user_id) || 'Unknown' })));
+      const data = await apiClient.get<any[]>(`/api/organizer/disputes/${disputeId}/comments`);
+      setComments((data || []).map((c: any) => ({ ...c, user_name: c.user_name || 'Unknown' })));
     } catch (e: any) {
       console.error('Fetch comments error:', e);
       setComments([]);
@@ -233,15 +146,10 @@ const OrganizerDisputesPage: React.FC = () => {
     }
   }, []);
 
-  // Real-time for comments while dialog open
+  // Fetch comments when a dispute is selected
   useEffect(() => {
     if (!selectedDispute) return;
     fetchComments(selectedDispute.id);
-    const channel = supabase
-      .channel(`org-dispute-comments-${selectedDispute.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dispute_comments', filter: `dispute_id=eq.${selectedDispute.id}` }, () => fetchComments(selectedDispute.id))
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
   }, [selectedDispute, fetchComments]);
 
   const handleAddComment = async () => {
@@ -263,21 +171,13 @@ const OrganizerDisputesPage: React.FC = () => {
         setUploadingAttachment(false);
       }
 
-      const { error: insertError } = await supabase.from('dispute_comments').insert({
-        dispute_id: selectedDispute.id,
-        user_id: user.id,
+      const result = await apiClient.post<{ autoPromoted?: boolean }>(`/api/organizer/disputes/${selectedDispute.id}/comments`, {
         comment: commentText.trim() || '',
-        is_internal: false,
-        attachment_url: attachmentUrl,
+        attachmentUrl,
       });
-      if (insertError) throw insertError;
 
-      // Auto-promote to in_review if still open
-      if (selectedDispute.status === 'open') {
-        await supabase.from('tournament_disputes').update({ status: 'in_review', updated_at: new Date().toISOString() }).eq('id', selectedDispute.id);
+      if (result.autoPromoted) {
         setSelectedDispute(prev => prev ? { ...prev, status: 'in_review' } : null);
-      } else {
-        await supabase.from('tournament_disputes').update({ updated_at: new Date().toISOString() }).eq('id', selectedDispute.id);
       }
 
       setCommentText('');
@@ -298,28 +198,10 @@ const OrganizerDisputesPage: React.FC = () => {
     if (!selectedDispute) return;
     try {
       setResolving(true);
-      const { error } = await supabase.from('tournament_disputes').update({
+      await apiClient.post(`/api/organizer/disputes/${selectedDispute.id}/resolve`, {
         status: newStatus,
-        resolution_notes: resolutionNotes || null,
-        assigned_to_user_id: user?.id,
-        updated_at: new Date().toISOString(),
-      }).eq('id', selectedDispute.id);
-      if (error) throw error;
-
-      // Send notification to filer
-      if (selectedDispute.raised_by_user_id) {
-        await supabase.from('notifications').insert({
-          user_id: selectedDispute.raised_by_user_id,
-          type: newStatus === 'resolved' ? 'dispute_resolved' : 'dispute_rejected',
-          title: newStatus === 'resolved' ? 'Dispute Resolved' : 'Dispute Rejected',
-          message: newStatus === 'resolved'
-            ? `Your dispute "${selectedDispute.title}" has been resolved by the organizer.`
-            : `Your dispute "${selectedDispute.title}" has been rejected by the organizer.`,
-          link: '/user/my-disputes',
-          data: { dispute_id: selectedDispute.id },
-          is_read: false,
-        }).single();
-      }
+        resolutionNotes: resolutionNotes || null,
+      });
 
       toast({ title: newStatus === 'resolved' ? 'Dispute resolved' : 'Dispute rejected' });
       setDialogOpen(false);

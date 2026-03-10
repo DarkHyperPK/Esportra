@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { AdvancementService } from '@/services/bracket/AdvancementService';
 import { BracketNode, BracketEdge } from '@/types/bracket-graph';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
+import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { Loader2, ZoomIn, ZoomOut, FastForward, Trash2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -80,12 +81,7 @@ export const GraphBracket: React.FC<GraphBracketProps> = ({
         queryKey: ['bracket-teams', teamIds.join(',')],
         queryFn: async () => {
             if (teamIds.length === 0) return [];
-            const { data, error } = await supabase
-                .from('teams')
-                .select('id, name, logo_url')
-                .in('id', teamIds);
-            if (error) throw error;
-            return data as Team[];
+            return apiClient.post('/api/teams/batch', { ids: teamIds }) as Promise<Team[]>;
         },
         enabled: teamIds.length > 0,
     });
@@ -99,11 +95,8 @@ export const GraphBracket: React.FC<GraphBracketProps> = ({
     // Handle Go Live
     const handleGoLive = async (node: BracketNode) => {
         try {
-            const { error } = await (supabase as any)
-                .from('brkt_matches')
-                .update({ status: 'in_progress' })
-                .eq('id', node.id);
-            if (error) throw error;
+            const result = await GraphMatchService.goLive(node.id, '');
+            if (!result.success) throw new Error(result.error);
             toast({ title: 'Match is now LIVE' });
             refetch();
             onMatchUpdated?.();
@@ -141,18 +134,12 @@ export const GraphBracket: React.FC<GraphBracketProps> = ({
 
         try {
             setIsProcessing(true);
-            // Use RPC to finalize and trigger advancement
-            const { data: success, error: finalizeError } = await supabase.rpc('finalize_match_locked', {
-                p_match_id: selectedMatch.id,
-                p_expected_version: selectedMatch.version,
-                p_winner_id: winnerId,
-                p_loser_id: loserId,
-                p_team1_score: s1,
-                p_team2_score: s2
-            });
-
-            if (finalizeError) throw finalizeError;
-            if (!success) throw new Error('Failed to record score: Match state has changed.');
+            const result = await GraphMatchService.saveScoreAndAdvance(
+                selectedMatch.id, s1, s2,
+                selectedMatch.team1_id || null,
+                selectedMatch.team2_id || null
+            );
+            if (!result.success) throw new Error(result.error || 'Failed to record score.');
 
             toast({ title: 'Score recorded', description: `Winner: ${winnerId === selectedMatch.team1_id ? teamsMap.get(selectedMatch.team1_id!)?.name : teamsMap.get(selectedMatch.team2_id!)?.name}` });
             setScoreDialogOpen(false);

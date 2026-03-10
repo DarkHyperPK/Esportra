@@ -7,7 +7,7 @@ import { MatchCard } from '@/pages/tournaments/brackets/MatchCard';
 import { ReadOnlyMatchCard } from '@/components/bracket/ReadOnlyMatchCard';
 import { Button } from '@/components/ui/button';
 import { SwissGenerator } from '@/services/bracket/SwissGenerator';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { RefreshCw, Undo2, Check, Copy, Gamepad2, Swords } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -316,30 +316,15 @@ export const SwissView: React.FC<SwissViewProps> = ({
         if (!versionId) return;
 
         try {
-            const db = supabase as any;
-            const { data: byeMatches, error: fetchError } = await db
-                .from('brkt_matches')
-                .select('*')
-                .eq('version_id', versionId)
-                .eq('status', 'pending');
+            const byeMatches = await apiClient.get(`/api/brackets/${versionId}/bye-matches`);
 
-            if (fetchError) throw fetchError;
-
-            // Filter to only PENDING BYE matches (exactly one team)
-            const actualByeMatches = byeMatches?.filter((m: any) => {
-                const isPending = m.status === 'pending';
-                const t1 = m.team1_id;
-                const t2 = m.team2_id;
-                return isPending && ((t1 && !t2) || (!t1 && t2));
-            }) || [];
-
-            if (actualByeMatches.length === 0) {
+            if (!byeMatches || byeMatches.length === 0) {
                 toast({ title: 'No BYEs', description: 'No PENDING BYE matches to advance' });
                 return;
             }
 
             let advancedCount = 0;
-            for (const match of actualByeMatches) {
+            for (const match of byeMatches) {
                 const isBo1 = (match.best_of || 1) === 1;
                 const winScore = isBo1 ? 13 : Math.ceil((match.best_of || 1) / 2);
 

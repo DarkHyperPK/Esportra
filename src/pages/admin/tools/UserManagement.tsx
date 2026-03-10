@@ -22,7 +22,7 @@ import {
     ExternalLink
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import {
     Dialog,
@@ -200,15 +200,9 @@ const UserManagementTool = () => {
             // 'permanent' remains null
 
             // 1. Update Profile securely via RPC
-            const { error: profileError } = await supabase.rpc('admin_suspend_user', {
-                target_user_id: userId,
-                reason: suspensionReason,
-                duration: suspensionDuration,
-                type: suspensionType,
-                until_time: suspensionUntil?.toISOString() || null
+            await apiClient.post(`/api/admin/users/${userId}/suspend`, {
+                reason: `${suspensionReason} [${suspensionType}, ${suspensionDuration}]`,
             });
-
-            if (profileError) throw profileError;
 
             // 2. Log Action
             import('@/lib/auditLog').then(({ auditLog }) => {
@@ -239,11 +233,7 @@ const UserManagementTool = () => {
             setLoading(true);
 
             // 1. Update Profile securely via RPC
-            const { error: profileError } = await supabase.rpc('admin_unsuspend_user', {
-                target_user_id: userId
-            });
-
-            if (profileError) throw profileError;
+            await apiClient.post(`/api/admin/users/${userId}/unsuspend`);
 
             // 2. Log Action
             import('@/lib/auditLog').then(({ auditLog }) => {

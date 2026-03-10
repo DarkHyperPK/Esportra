@@ -14,7 +14,7 @@ import {
   DollarSign
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 
 const AnalyticsTool = () => {
   const [loading, setLoading] = useState(true);
@@ -33,42 +33,17 @@ const AnalyticsTool = () => {
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
 
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-    const [
-      { count: userCount },
-      { count: tournamentCount },
-      { count: venueCount },
-      { data: tournaments },
-      { count: newUsersCount },
-      { count: newTournamentsCount },
-      { count: bookingCount },
-      { count: completedCount },
-    ] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
-      supabase.from('tournaments').select('*', { count: 'exact', head: true }),
-      supabase.from('venues').select('*', { count: 'exact', head: true }),
-      supabase.from('tournaments').select('prize_pool'),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
-      supabase.from('tournaments').select('*', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
-      supabase.from('venue_bookings').select('*', { count: 'exact', head: true }),
-      supabase.from('tournaments').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
-    ]);
-
-    let totalPrizePool = 0;
-    if (tournaments) {
-      totalPrizePool = tournaments.reduce((sum, t) => sum + (parseFloat(t.prize_pool) || 0), 0);
-    }
+    const data = await apiClient.get<any>('/api/admin/analytics');
 
     setStats({
-      totalUsers: userCount || 0,
-      totalTournaments: tournamentCount || 0,
-      totalVenues: venueCount || 0,
-      totalPrizePool,
-      newUsersThisWeek: newUsersCount || 0,
-      newTournamentsThisWeek: newTournamentsCount || 0,
-      totalBookings: bookingCount || 0,
-      completedTournaments: completedCount || 0,
+      totalUsers: data.total_users || 0,
+      totalTournaments: data.total_tournaments || 0,
+      totalVenues: data.total_venues || 0,
+      totalPrizePool: parseFloat(data.total_prize_pool) || 0,
+      newUsersThisWeek: data.new_users_this_week || 0,
+      newTournamentsThisWeek: data.new_tournaments_this_week || 0,
+      totalBookings: data.total_bookings || 0,
+      completedTournaments: data.completed_tournaments || 0,
     });
 
     setLoading(false);

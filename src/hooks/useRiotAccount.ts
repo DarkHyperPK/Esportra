@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface RiotAccountData {
@@ -15,7 +15,7 @@ export interface RiotAccountData {
 
 /**
  * Fetches the current user's linked Riot account.
- * Provides `linkRiotAccount()` to start the OAuth flow and 
+ * Provides `linkRiotAccount()` to start the OAuth flow and
  * `unlinkRiotAccount()` to remove the link.
  */
 export function useRiotAccount() {
@@ -26,25 +26,17 @@ export function useRiotAccount() {
         queryKey: ['riot-account', user?.id],
         queryFn: async () => {
             if (!user?.id) return null;
-            const { data, error } = await supabase
-                .from('riot_accounts')
-                .select('id, user_id, puuid, game_name, tag_line, region, linked_at, updated_at')
-                .eq('user_id', user.id)
-                .maybeSingle();
-
-            if (error) {
-                console.error('[useRiotAccount] Error fetching riot account:', error);
+            try {
+                return await apiClient.get(`/api/integrations/riot`);
+            } catch {
                 return null;
             }
-            return data;
         },
         enabled: !!user?.id,
     });
 
     /**
      * Redirect user to Riot OAuth to link their account.
-     * The `state` parameter carries the Supabase user ID so the Edge Function
-     * can associate the Riot account with the correct user.
      */
     const linkRiotAccount = () => {
         if (!user?.id) return;
@@ -55,7 +47,6 @@ export function useRiotAccount() {
             return;
         }
 
-        // Generate a cryptographically secure random state (CSRF Token)
         const state = crypto.randomUUID();
         sessionStorage.setItem('riotOAuthState', state);
 
@@ -69,32 +60,9 @@ export function useRiotAccount() {
      */
     const unlinkRiotAccount = async () => {
         if (!user?.id) return;
-
-        // 1. Delete from riot_accounts
-        const { error: unlinkError } = await supabase
-            .from('riot_accounts')
-            .delete()
-            .eq('user_id', user.id);
-
-        if (unlinkError) {
-            console.error('[useRiotAccount] Error unlinking riot account:', unlinkError);
-            throw unlinkError;
-        }
-
-        // 2. Clear riot_tag from profiles
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ riot_tag: null })
-            .eq('id', user.id);
-
-        if (profileError) {
-            console.error('[useRiotAccount] Error clearing riot_tag from profile:', profileError);
-            throw profileError;
-        }
-
-        // 3. Invalidate queries to refresh UI
+        await apiClient.delete('/api/integrations/riot');
         queryClient.invalidateQueries({ queryKey: ['riot-account', user.id] });
-        queryClient.invalidateQueries({ queryKey: ['profile', user.id] }); // Usually profiles are keyed like this or similar
+        queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
     };
 
     return {

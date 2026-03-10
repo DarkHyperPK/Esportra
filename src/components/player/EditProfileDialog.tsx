@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,16 +30,13 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
     useEffect(() => {
         const fetchTeam = async () => {
             if (!profile?.id) return;
-            const { data } = await supabase
-                .from('team_members')
-                .select('team:teams(name)')
-                .eq('user_id', profile.id)
-                .eq('is_active', true)
-                .maybeSingle();
-
-            if (data?.team) {
-                // @ts-ignore
-                setTeamName(data.team.name);
+            try {
+                const teams: any[] = await apiClient.get('/api/teams/me');
+                if (teams && teams.length > 0) {
+                    setTeamName(teams[0].name);
+                }
+            } catch {
+                // No team found
             }
         };
         fetchTeam();

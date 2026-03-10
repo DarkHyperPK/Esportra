@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from './AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -142,45 +142,18 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
     try {
       setIsLoading(true);
 
-      // Load all profile data in parallel
-      const [
-        playerData,
-        organizerData,
-        venueData,
-        reputationData,
-        financialData
-      ] = await Promise.all([
-        // Player data
-        supabase
-          .from('player_stats')
-          .select('*')
-          .eq('user_id', user.id)
-          .single(),
-
-        // Organizer data - removed company_profiles
-        Promise.resolve({ data: null, error: null }),
-
-        // Venue data
-        supabase
-          .from('venue_profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single(),
-
-        // Reputation data
-        supabase
-          .from('user_reputation')
-          .select('*')
-          .eq('user_id', user.id)
-          .single(),
-
-        // Financial data
-        supabase
-          .from('user_financials')
-          .select('*')
-          .eq('user_id', user.id)
-          .single()
+      // Load profile + stats from .NET API
+      const [profileData, statsData] = await Promise.all([
+        apiClient.get<any>(`/api/profiles/${user.id}`).catch(() => null),
+        apiClient.get<any>(`/api/profiles/${user.id}/stats`).catch(() => null),
       ]);
+
+      // Alias for backward-compat in the builder below
+      const playerData = statsData;
+      const organizerData = profileData;
+      const venueData = profileData;
+      const reputationData = statsData;
+      const financialData = statsData;
 
       // Build unified profile
       const unifiedProfile: UnifiedProfile = {

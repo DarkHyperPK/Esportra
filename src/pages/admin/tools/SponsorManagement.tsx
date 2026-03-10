@@ -11,6 +11,7 @@ import {
     FileText, ExternalLink, Download, Loader2, ShieldCheck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -159,19 +160,13 @@ const SponsorManagement = () => {
         setLoading(true);
         try {
             // Fetch Applications
-            const { data: appsData } = await supabase
-                .from('partner_applications')
-                .select('*')
-                .order('created_at', { ascending: false });
+            const appsData = await apiClient.get<Application[]>('/api/sponsors/applications');
 
             // Fetch Sponsors
-            const { data: sponsorsData } = await supabase
-                .from('sponsors')
-                .select('*')
-                .order('priority', { ascending: false });
+            const sponsorsData = await apiClient.get<Sponsor[]>('/api/sponsors');
 
-            setApplications((appsData || []) as Application[]);
-            setSponsors((sponsorsData || []) as Sponsor[]);
+            setApplications(appsData || []);
+            setSponsors(sponsorsData || []);
 
             setStats({
                 pendingApps: (appsData || []).filter((a: any) => a.status === 'pending').length,
@@ -189,12 +184,9 @@ const SponsorManagement = () => {
     /* ─── Application Logic ─── */
 
     const handleUpdateAppStatus = async (id: string, status: Application['status']) => {
-        const { error } = await supabase
-            .from('partner_applications')
-            .update({ status })
-            .eq('id', id);
-
-        if (error) {
+        try {
+            await apiClient.put(`/api/sponsors/applications/${id}`, { status });
+        } catch (err: any) {
             toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
             return;
         }
@@ -255,36 +247,27 @@ const SponsorManagement = () => {
         };
 
         let sponsorData;
-        let sponsorError;
 
-        if (sponsorModal.isNew) {
-            const { data, error: insertError } = await supabase.from('sponsors').insert(payload).select().single();
-            sponsorData = data;
-            sponsorError = insertError;
-        } else {
-            const { data, error: updateError } = await supabase.from('sponsors').update(payload).eq('id', s.id!).select().single();
-            sponsorData = data;
-            sponsorError = updateError;
-        }
-
-        if (sponsorError) {
+        try {
+            if (sponsorModal.isNew) {
+                sponsorData = await apiClient.post<any>('/api/sponsors', payload);
+            } else {
+                sponsorData = await apiClient.put<any>(`/api/sponsors/${s.id}`, payload);
+            }
+        } catch (err: any) {
             setLoading(false);
-            toast({ title: 'Error', description: sponsorError.message, variant: 'destructive' });
+            toast({ title: 'Error', description: err.message, variant: 'destructive' });
             return;
         }
 
         // If this was a promotion from an application, mark the app as approved AND invite
         if (sponsorModal.linkedAppId && sponsorModal.linkedAppEmail) {
             try {
-                const { data: inviteData, error: inviteError } = await supabase.functions.invoke('invite-sponsor', {
-                    body: {
-                        email: sponsorModal.linkedAppEmail,
-                        sponsor_id: sponsorData.id,
-                        application_id: sponsorModal.linkedAppId
-                    }
+                const inviteData = await apiClient.post<any>('/api/sponsors/invite', {
+                    email: sponsorModal.linkedAppEmail,
+                    sponsorId: sponsorData.id,
+                    applicationId: sponsorModal.linkedAppId
                 });
-
-                if (inviteError) throw inviteError;
 
                 setInviteResult({
                     open: true,
@@ -308,14 +291,14 @@ const SponsorManagement = () => {
     const handleDeleteSponsor = async (id: string) => {
         if (!confirm('Are you sure you want to delete this sponsor?')) return;
         const sponsor = sponsors.find(s => s.id === id);
-        await supabase.from('sponsors').delete().eq('id', id);
+        await apiClient.delete(`/api/sponsors/${id}`);
         await auditLog.log('delete', 'sponsor', id, sponsor?.name || 'Unknown');
         toast({ title: 'Deleted', description: 'Sponsor removed.' });
         fetchData();
     };
 
     const toggleSponsorActive = async (sponsor: Sponsor) => {
-        await supabase.from('sponsors').update({ is_active: !sponsor.is_active }).eq('id', sponsor.id);
+        await apiClient.put(`/api/sponsors/${sponsor.id}`, { is_active: !sponsor.is_active });
         await auditLog.log('update', 'sponsor', sponsor.id, sponsor.name, { is_active: !sponsor.is_active, toggled: true });
         fetchData();
     };
@@ -326,27 +309,13 @@ const SponsorManagement = () => {
         if (!inviteModal.email || !inviteModal.sponsor) return;
         setLoading(true);
         try {
-            // Get current admin user ID for auditing
-            const { data: { user: adminUser } } = await supabase.auth.getUser();
-
-            const { data, error } = await supabase.functions.invoke('invite-sponsor', {
-                body: {
-                    email: inviteModal.email,
-                    sponsor_id: inviteModal.sponsor.id,
-                    invited_by: adminUser?.id // PASS ADMIN ID FOR SYSTEMATIC AUDITING
-                }
+            const data = await apiClient.post<any>('/api/sponsors/invite', {
+                email: inviteModal.email,
+                sponsorId: inviteModal.sponsor.id,
             });
 
-            if (error) {
-                let message = error.message;
-                try {
-                    // Try to parse JSON error if possible
-                    const errorData = JSON.parse(error.message);
-                    message = errorData.message || errorData.error || message;
-                } catch (e) {
-                    // Fallback to raw message if not JSON
-                    console.warn("Could not parse error as JSON:", error.message);
-                }
+            if (!data?.success) {
+                const message = data?.error || 'Invitation failed';
                 throw new Error(message);
             }
 

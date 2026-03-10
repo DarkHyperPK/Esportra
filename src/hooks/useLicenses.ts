@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 
 export interface License {
   id: string;
@@ -16,14 +16,6 @@ export function useLicenses(userId: string | undefined) {
   return useQuery({
     queryKey: ['licenses', userId],
     enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('licenses')
-        .select('*')
-        .eq('user_id', userId!)
-        .order('issued_at', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as License[];
-    },
+    queryFn: () => apiClient.get<License[]>(`/api/profiles/${userId}/licenses`),
   });
 }

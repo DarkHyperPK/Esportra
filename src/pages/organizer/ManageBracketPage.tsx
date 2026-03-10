@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -75,22 +75,7 @@ const ManageBracketPage = () => {
             console.log('ManageBracketPage: Fetching data for slug:', slug, 'stageId:', stageId);
 
             // Fetch tournament
-            let query = supabase.from('tournaments').select('*, organization:organizations(owner_id)');
-
-            // Check if slug is a valid UUID
-            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
-
-            if (isUuid) {
-                query = query.or(`slug.eq.${slug},id.eq.${slug}`);
-            } else {
-                query = query.eq('slug', slug);
-            }
-
-            const { data: tournamentData, error: tournamentError } = await query.single();
-
-            if (tournamentError) {
-                console.error('ManageBracketPage: Error fetching tournament:', tournamentError);
-            }
+            const tournamentData = await apiClient.get<any>(`/api/tournaments/by-slug/${encodeURIComponent(slug)}`).catch(() => null);
 
             if (!tournamentData) {
                 console.error('ManageBracketPage: Tournament not found for slug:', slug);

@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from '@/hooks/use-toast';
 import { Tournament as TournamentType } from '@/hooks/useTournaments';
 import { TournamentStatus } from '@/types/tournament';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { TypewriterEffect } from '@/components/effects/TypewriterEffect';
 import { FluidButton } from '@/components/effects/FluidButton';
 import { MotionTiles } from '@/components/effects/MotionTiles';
@@ -344,22 +344,14 @@ const TournamentDashboard = () => {
         newEndDate.setDate(newEndDate.getDate() + 1);
 
         try {
-          const { error } = await supabase
-            .from('tournaments')
-            .update({ end_date: newEndDate.toISOString() })
-            .eq('id', tournament.id);
-
-          if (!error) {
-            toast({
-              title: 'Tournament Extended',
-              description: 'Tournament end time has passed with incomplete stages. Extended by 24 hours.',
-              variant: 'default',
-              duration: 6000
-            });
-            refetchDashboard();
-          } else {
-            console.error('Failed to auto-extend tournament:', error);
-          }
+          await apiClient.put(`/api/tournaments/${tournament.id}`, { endDate: newEndDate.toISOString() });
+          toast({
+            title: 'Tournament Extended',
+            description: 'Tournament end time has passed with incomplete stages. Extended by 24 hours.',
+            variant: 'default',
+            duration: 6000
+          });
+          refetchDashboard();
         } catch (err) {
           console.error('Error auto-extending tournament:', err);
         }
@@ -388,44 +380,29 @@ const TournamentDashboard = () => {
       let logoUrl: string | null = participant.team_logo || null;
       if (!teamId) {
         // Try exact name match first
-        const exact = await supabase
-          .from('teams')
-          .select('id, owner_id, logo_url')
-          .eq('name', participant.team_name || '')
-          .maybeSingle();
-        if (exact.data) {
-          teamId = exact.data.id; ownerId = exact.data.owner_id; logoUrl = logoUrl || exact.data.logo_url || null;
-        } else {
-          // Try fuzzy name
-          const fuzzy = await supabase
-            .from('teams')
-            .select('id, owner_id, logo_url')
-            .ilike('name', `%${participant.team_name || ''}%`)
-            .limit(1)
-            .maybeSingle();
-          if (fuzzy.data) {
-            teamId = fuzzy.data.id; ownerId = fuzzy.data.owner_id; logoUrl = logoUrl || fuzzy.data.logo_url || null;
+        try {
+          const results = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(participant.team_name || '')}&type=team`);
+          // Search teams by name — use team search endpoint
+          const teamResults = await apiClient.get<any[]>(`/api/teams?name=${encodeURIComponent(participant.team_name || '')}`).catch(() => []);
+          const exactMatch = (teamResults || []).find((t: any) => t.name === participant.team_name);
+          const fuzzyMatch = (teamResults || [])[0];
+          const match = exactMatch || fuzzyMatch;
+          if (match) {
+            teamId = match.id; ownerId = match.owner_id; logoUrl = logoUrl || match.logo_url || null;
           }
-        }
+        } catch { }
       } else {
-        const byId = await supabase
-          .from('teams')
-          .select('id, owner_id, logo_url')
-          .eq('id', teamId)
-          .maybeSingle();
-        if (byId.data) {
-          ownerId = byId.data.owner_id; logoUrl = logoUrl || byId.data.logo_url || null;
-        }
+        try {
+          const teamData = await apiClient.get<any>(`/api/teams/${teamId}`).catch(() => null);
+          if (teamData) {
+            ownerId = teamData.owner_id; logoUrl = logoUrl || teamData.logo_url || null;
+          }
+        } catch { }
       }
       if (logoUrl && selectedTeam) selectedTeam.team_logo = logoUrl;
       // First, try reading names saved in tournament registration directly
       if (tournament?.id && participant.team_name) {
-        const { data: regRow } = await supabase
-          .from('tournament_participants')
-          .select('team_members')
-          .eq('tournament_id', tournament.id)
-          .eq('team_name', participant.team_name)
-          .maybeSingle();
+        const regRow = await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants?team_name=${encodeURIComponent(participant.team_name)}`).then(r => (Array.isArray(r) ? r[0] : r)).catch(() => null);
         if (regRow?.team_members) {
           const raw = Array.isArray(regRow.team_members)
             ? (regRow.team_members as any[]).map(String)
@@ -441,31 +418,29 @@ const TournamentDashboard = () => {
           }
           if (tokens.length > 0) {
             let namesResolved: string[] = [];
-            if (tokens.every(looksUuid)) {
-              const { data: prows } = await supabase
-                .from('profiles')
-                .select('id, riot_tag, steam_tag, username, full_name')
-                .in('id', tokens);
+            const areUuids = tokens.every(looksUuid);
+            const resolved = await apiClient.post<any[]>('/api/profiles/resolve-players', {
+              tokens: areUuids ? tokens : Array.from(new Set(tokens)),
+              areUuids,
+            });
+            if (areUuids) {
               const mapTok = new Map<string, string>();
               const isVal = tournament?.game?.toLowerCase() === 'valorant';
-              (prows || []).forEach((p: any) => {
+              (resolved || []).forEach((p: any) => {
                 const tag = isVal ? p.riot_tag : (p.riot_tag || p.steam_tag);
                 mapTok.set(p.id, tag || p.username || p.full_name || `player_${String(p.id).substring(0, 8)}`);
               });
               namesResolved = tokens.map(id => mapTok.get(id) || `player_${String(id).substring(0, 8)}`);
             } else {
               const uniq = Array.from(new Set(tokens));
-              const [byRiot, bySteam, byUser, byFull] = await Promise.all([
-                supabase.from('profiles').select('id, riot_tag, username, full_name').in('riot_tag', uniq),
-                supabase.from('profiles').select('id, steam_tag, username, full_name').in('steam_tag', uniq),
-                supabase.from('profiles').select('id, username, full_name').in('username', uniq),
-                supabase.from('profiles').select('id, full_name').in('full_name', uniq),
-              ]);
               const map = new Map<string, string>();
-              (byRiot.data || []).forEach((p: any) => map.set(p.riot_tag!, p.riot_tag || p.username || p.full_name));
-              (bySteam.data || []).forEach((p: any) => map.set(p.steam_tag!, p.steam_tag || p.username || p.full_name));
-              (byUser.data || []).forEach((p: any) => map.set(p.username, p.username || p.full_name));
-              (byFull.data || []).forEach((p: any) => map.set(p.full_name!, p.full_name));
+              (resolved || []).forEach((p: any) => {
+                const key = p.matched_field === 'riot_tag' ? p.riot_tag
+                  : p.matched_field === 'steam_tag' ? p.steam_tag
+                  : p.matched_field === 'username' ? p.username
+                  : p.full_name;
+                if (key) map.set(key, p.riot_tag || p.steam_tag || p.username || p.full_name);
+              });
               namesResolved = uniq.map(t => map.get(t) || t);
             }
             if (namesResolved.length > 0) {
@@ -501,12 +476,7 @@ const TournamentDashboard = () => {
 
   const handleStatusChange = async (newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('tournaments')
-        .update({ status: newStatus })
-        .eq('id', tournament.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: newStatus });
 
       refetchDashboard();
       toast({
@@ -560,12 +530,7 @@ const TournamentDashboard = () => {
       setIsDeleting(true);
 
       // Soft delete: set deleted_at timestamp
-      const { error } = await supabase
-        .from('tournaments')
-        .update({ deleted_at: new Date().toISOString() } as any)
-        .eq('id', tournament?.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${tournament?.id}`, { deletedAt: new Date().toISOString() } as any);
 
       toast({
         title: 'Tournament deleted',
@@ -618,16 +583,8 @@ const TournamentDashboard = () => {
     if (!tournament?.id) return;
     setRemovingUnchecked(true);
     try {
-      const { data, error } = await supabase
-        .from('tournament_participants')
-        .update({ status: 'cancelled' })
-        .eq('tournament_id', tournament.id)
-        .is('checked_in_at', null)
-        .in('status', ['pending', 'approved', 'registered'])
-        .select('id');
-
-      if (error) throw error;
-      const removedCount = data?.length || 0;
+      const data = await apiClient.post<any>(`/api/tournaments/${tournament.id}/remove-unchecked`);
+      const removedCount = data?.removedCount || 0;
 
       toast({
         title: 'Unchecked teams removed',
@@ -661,11 +618,7 @@ const TournamentDashboard = () => {
       let regRosterName: string | null = null;
       let regTeamId: string | null = null;
       try {
-        const { data: regRow } = await supabase
-          .from('tournament_participants')
-          .select('team_members, roster_id, roster_name, team_id, team_captain_id')
-          .eq('id', p.id)
-          .maybeSingle();
+        const regRow = await apiClient.get<any>(`/api/tournaments/${tournament?.id}/participants/${p.id}`).catch(() => null);
         if (regRow) {
           const raw = regRow.team_members;
           regRosterId = regRow.roster_id || null;
@@ -687,10 +640,7 @@ const TournamentDashboard = () => {
                 } else {
                   const ids = items.map((it: any) => it?.user_id).filter(Boolean);
                   if (ids.length > 0) {
-                    const { data: profsTok } = await supabase
-                      .from('profiles')
-                      .select('id, riot_tag, steam_tag, username, full_name')
-                      .in('id', ids);
+                    const profsTok = await apiClient.post<any[]>('/api/profiles/resolve-players', { tokens: ids, areUuids: true }).catch(() => []);
                     const mapTok = new Map<string, string>();
                     const isVal = tournament?.game?.toLowerCase() === 'valorant';
                     (profsTok || []).forEach((p: any) => {
@@ -713,20 +663,16 @@ const TournamentDashboard = () => {
         }
       } catch { }
       if (!teamId && p.team_name) {
-        const { data: teamRow } = await supabase
-          .from('teams')
-          .select('id, logo_url')
-          .ilike('name', p.team_name)
-          .maybeSingle();
-        teamId = teamRow?.id || null;
-        logo = teamRow?.logo_url || logo;
+        try {
+          const teamResults = await apiClient.get<any[]>(`/api/teams?name=${encodeURIComponent(p.team_name)}`).catch(() => []);
+          const match = (teamResults || [])[0];
+          if (match) { teamId = match.id; logo = logo || match.logo_url || null; }
+        } catch { }
       } else if (teamId && !logo) {
-        const { data: teamRow } = await supabase
-          .from('teams')
-          .select('logo_url')
-          .eq('id', teamId)
-          .maybeSingle();
-        logo = teamRow?.logo_url || null;
+        try {
+          const teamData = await apiClient.get<any>(`/api/teams/${teamId}`).catch(() => null);
+          logo = teamData?.logo_url || null;
+        } catch { }
       }
       // Simplified logic: 1) Already resolved names from participants list; 2) roster_id; 3) derive roster by team_id + tournament.game
       let members: string[] = [];
@@ -753,7 +699,8 @@ const TournamentDashboard = () => {
 
       // Step 2: use roster_id on registration if available
       if (members.length === 0 && regRosterId) {
-        const { data: roster, error: rosterError } = await supabase.rpc('get_roster_members', { r_id: regRosterId });
+        const roster = await apiClient.get<any[]>(`/api/rosters/${regRosterId}/members`).catch(() => null);
+        const rosterError = !roster;
         if (rosterError) {
           console.error('Error fetching roster members in modal:', rosterError);
         } else {
@@ -770,10 +717,7 @@ const TournamentDashboard = () => {
         const effectiveTeamId = regTeamId || teamId;
         const game = String(tournament?.game || '').trim().toLowerCase();
         if (effectiveTeamId && game) {
-          const { data: rosters } = await supabase
-            .from('team_rosters')
-            .select('id, name, game, created_at')
-            .eq('team_id', effectiveTeamId);
+          const rosters = await apiClient.get<any[]>(`/api/teams/${effectiveTeamId}/rosters`).catch(() => []);
           const list = rosters || [];
           let pickedId: string | null = null;
           if (list.length === 1) {
@@ -800,7 +744,8 @@ const TournamentDashboard = () => {
             pickedId = sorted[0].id;
           }
           if (pickedId) {
-            const { data: roster, error: rosterError3 } = await supabase.rpc('get_roster_members', { r_id: pickedId });
+            const roster = await apiClient.get<any[]>(`/api/rosters/${pickedId}/members`).catch(() => null);
+            const rosterError3 = !roster;
             if (rosterError3) {
               console.error('Error fetching roster members (Step 3) in modal:', rosterError3);
             } else {
@@ -832,71 +777,14 @@ const TournamentDashboard = () => {
         return;
       }
 
-      // Get participant info to determine if it's a user or team ban (BEFORE deleting)
-      const { data: participant, error: participantError } = await supabase
-        .from('tournament_participants')
-        .select('user_id, team_id')
-        .eq('id', participantId)
-        .maybeSingle();
+      // Server handles: fetch participant → insert ban → delete registration atomically
+      const result = await apiClient.post<any>(`/api/tournaments/${tournament.id}/ban-participant`, {
+        participantId,
+        userId,
+        banReason: banReason.trim(),
+      });
 
-      if (participantError) {
-        console.error('Error fetching participant:', participantError);
-        throw participantError;
-      }
-
-      if (!participant) {
-        toast({ title: 'Error', description: 'Participant not found.', variant: 'destructive' });
-        return;
-      }
-
-      // Prepare ban data
-      const banData: any = {
-        tournament_id: tournament.id,
-        participant_id: participantId,
-        ban_reason: banReason.trim(),
-        banned_by: user?.id,
-        banned_at: new Date().toISOString(),
-        is_active: true,
-      };
-
-      // Determine user_id OR team_id for the ban
-      // Try to set only one (check constraint requires exactly one)
-      // If database schema has user_id as NOT NULL, we'll get an error and need to run migration
-      if (participant.team_id) {
-        // Team ban - set only team_id (correct approach per schema)
-        banData.team_id = participant.team_id;
-        // Do NOT set user_id - this will fail if user_id is NOT NULL, requiring migration
-      } else if (participant.user_id) {
-        // Solo participant ban - set only user_id
-        banData.user_id = participant.user_id;
-      } else {
-        // Fallback: use provided userId
-        if (!userId) {
-          toast({
-            title: 'Error',
-            description: 'Cannot determine user ID for ban.',
-            variant: 'destructive'
-          });
-          return;
-        }
-        banData.user_id = userId;
-      }
-
-      // Insert ban first (in case deletion fails, we still have the ban record)
-      const { error: banError } = await supabase
-        .from('tournament_bans')
-        .insert(banData);
-
-      if (banError) {
-        console.error('Error inserting ban:', banError);
-        throw banError;
-      }
-
-      // Remove registration
-      const { error: deleteError } = await supabase
-        .from('tournament_participants')
-        .delete()
-        .eq('id', participantId);
+      const deleteError = result?.deleteError;
 
       if (deleteError) {
         console.error('Error deleting participant:', deleteError);
@@ -1228,8 +1116,7 @@ const TournamentDashboard = () => {
       // 2. Fetch from RAWG via Edge Function proxy if missing data
       if (!background || !logo) {
         try {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://api.esportra.com';
-          const res = await fetch(`${supabaseUrl}/functions/v1/rawg-proxy?search=${encodeURIComponent(gameName)}`);
+          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5200'}/api/games/search?q=${encodeURIComponent(gameName)}`);
           const data = await res.json();
           if (data && data.results && data.results.length > 0) {
             const game = data.results[0];
@@ -1323,12 +1210,7 @@ const TournamentDashboard = () => {
     if (!tournament) return;
 
     try {
-      const { error } = await supabase
-        .from('tournaments')
-        .update({ status: 'completed' })
-        .eq('id', tournament.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'completed' });
 
       refetchDashboard();
       toast({
@@ -1432,11 +1314,7 @@ const TournamentDashboard = () => {
                   <Button
                     onClick={async () => {
                       try {
-                        const { error } = await supabase
-                          .from('tournaments')
-                          .update({ status: 'open', is_public: true })
-                          .eq('id', tournament.id);
-                        if (error) throw error;
+                        await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
                         refetchDashboard();
                         toast({ title: 'Tournament Published!', description: 'Your tournament is now live and public.' });
                       } catch (err: any) {
