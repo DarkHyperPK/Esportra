@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -46,12 +46,12 @@ const ForgotPassword = () => {
         setError(null);
 
         try {
-            // Call custom Edge Function for branded recovery email
-            const { data: result, error } = await supabase.functions.invoke('send-recovery-email', {
-                body: { email: values.email },
+            // Call .NET backend for branded recovery email
+            const result = await apiClient.post('/api/auth/recovery', {
+                email: values.email,
+                redirectBase: window.location.origin,
             });
 
-            if (error) throw error;
             if (result?.error) throw new Error(result.error);
 
             setSuccess(true);

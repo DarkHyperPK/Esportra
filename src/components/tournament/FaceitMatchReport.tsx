@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
 interface FaceitMatchReportProps {
@@ -35,10 +36,7 @@ export function FaceitMatchReport({
     if (!isCaptain) return null;
 
     const callProxy = async (endpoint: string) => {
-        const { data, error } = await supabase.functions.invoke('faceit-match-proxy', {
-            body: { endpoint },
-        });
-        if (error) throw new Error(error.message || 'Proxy call failed');
+        const data = await apiClient.post('/api/integrations/faceit/proxy', { endpoint });
         if (data?.errors) throw new Error(JSON.stringify(data.errors));
         return data;
     };

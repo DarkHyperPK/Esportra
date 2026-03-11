@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -91,12 +92,11 @@ const ResetPassword = () => {
         setError(null);
 
         try {
-            // Use the set-password Edge Function (admin API) to bypass GoTrue 401 issue
-            const { data, error } = await supabase.functions.invoke('set-password', {
-                body: { password: values.password }
+            // Call .NET backend set-password (uses JWT session established by verifyOtp)
+            const data = await apiClient.post('/api/auth/set-password', {
+                password: values.password,
             });
 
-            if (error) throw error;
             if (data?.error) throw new Error(data.error);
 
             setSuccess(true);

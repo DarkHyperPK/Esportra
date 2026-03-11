@@ -7,6 +7,7 @@ import { Loader2, Trophy, Clock, Swords, CheckCircle2, AlertCircle, Check, X, Sh
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMatchResultReport, MatchResultReport } from '@/hooks/useMatchResultReport';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -101,10 +102,9 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
         setScanStep('scanning');
         setScanError(null);
         try {
-            const { data, error } = await supabase.functions.invoke('scan-recent-matches', {
-                body: { matchId, gameNumber, mapName, scheduledTime }
+            const data = await apiClient.post('/api/matches/scan', {
+                matchId, gameNumber, mapName, scheduledTime,
             });
-            if (error) throw error;
             if (data.error) throw new Error(data.error);
             setCandidates(data.matches || []);
             setScanStep('selecting');
