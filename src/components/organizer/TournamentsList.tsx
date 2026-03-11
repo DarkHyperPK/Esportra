@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from '@/lib/apiClient';
 import { CheckCircle2 } from "lucide-react";
 
 interface Tournament {
@@ -41,19 +41,7 @@ const TournamentsList = () => {
       try {
         console.log('[TournamentsList] Fetching tournaments for user:', user.id);
 
-        const { data: tournamentsData, error: tournamentsError } = await supabase
-          .from('tournaments')
-          .select(`
-            *,
-            participants:tournament_participants(count)
-          `)
-          .eq('organizer_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (tournamentsError) {
-          console.error('[TournamentsList] Error fetching tournaments:', tournamentsError);
-          throw tournamentsError;
-        }
+        const tournamentsData = await apiClient.get<any[]>(`/api/tournaments?organizer_id=${user.id}`);
 
         console.log('[TournamentsList] Found tournaments:', tournamentsData?.length || 0, tournamentsData);
 
@@ -63,14 +51,11 @@ const TournamentsList = () => {
           // Check if user is registered
           let isRegistered = false;
           if (user?.id) {
-            const { data: registrationData, error: regError } = await supabase
-              .from('tournament_participants')
-              .select('id')
-              .eq('tournament_id', tournament.id)
-              .eq('user_id', user.id)
-              .single();
-            if (!regError || regError.code === 'PGRST116') {
-              isRegistered = !!registrationData;
+            try {
+              const participants = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/participants`);
+              isRegistered = (participants || []).some((p: any) => p.user_id === user.id);
+            } catch {
+              isRegistered = false;
             }
           }
 

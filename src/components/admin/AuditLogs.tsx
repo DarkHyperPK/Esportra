@@ -26,7 +26,7 @@ import {
   Calendar,
   Activity
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -64,40 +64,33 @@ const AuditLogs: React.FC = () => {
     try {
       setLoading(true);
 
-      let query = supabase
-        .from('audit_logs')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
+      const params = new URLSearchParams();
+      params.set('page', String(currentPage));
+      params.set('perPage', String(itemsPerPage));
+      params.set('order', 'created_at.desc');
 
-      // Apply filters
       if (filterType !== 'all') {
-        query = query.eq('target_type', filterType);
+        params.set('target_type', filterType);
       }
-
       if (filterSeverity !== 'all') {
-        query = query.eq('severity', filterSeverity);
+        params.set('severity', filterSeverity);
       }
-
       if (searchTerm) {
-        query = query.or(`admin_name.ilike.%${searchTerm}%,target_name.ilike.%${searchTerm}%,action_type.ilike.%${searchTerm}%`);
+        params.set('search', searchTerm);
       }
-
       if (dateFrom) {
-        query = query.gte('created_at', new Date(dateFrom).toISOString());
+        params.set('from', new Date(dateFrom).toISOString());
       }
       if (dateTo) {
         const endDate = new Date(dateTo);
         endDate.setDate(endDate.getDate() + 1);
-        query = query.lt('created_at', endDate.toISOString());
+        params.set('to', endDate.toISOString());
       }
 
-      const { data, error, count } = await query;
+      const result = await apiClient.get<{ data: AuditLog[]; count: number }>(`/api/admin/audit-logs?${params.toString()}`);
 
-      if (error) throw error;
-
-      setLogs(data || []);
-      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
+      setLogs(result.data || []);
+      setTotalPages(Math.ceil((result.count || 0) / itemsPerPage));
 
     } catch (error) {
       console.error('Error fetching audit logs:', error);
@@ -150,12 +143,7 @@ const AuditLogs: React.FC = () => {
 
   const exportLogs = async () => {
     try {
-      const { data, error } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await apiClient.get<AuditLog[]>('/api/admin/audit-logs?export=true&order=created_at.desc');
 
       // Convert to CSV
       const csvContent = [

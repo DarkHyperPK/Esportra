@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -104,11 +104,11 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   useEffect(() => {
     const fetchRosters = async () => {
       if (!selectedTeamId) { setTeamRosters([]); setSelectedRosterId(''); return; }
-      const { data } = await supabase
-        .from('team_rosters' as any)
-        .select('id, name, game, format, team_size')
-        .eq('team_id', selectedTeamId);
-      const filtered = (data || []).filter((r: any) => {
+      try {
+        const data = await apiClient.get<any[]>(
+          `/api/teams/${selectedTeamId}/rosters`
+        );
+        const filtered = (data || []).filter((r: any) => {
         const byGame = !tournament.game || r.game === tournament.game;
         // Roster team_size should be >= coreMembers (filter is lenient, actual validation at registration)
         const bySize = !coreMembers || Number(r.team_size) >= coreMembers;
@@ -116,6 +116,10 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       });
       setTeamRosters(filtered);
       setSelectedRosterId(filtered[0]?.id || '');
+      } catch {
+        setTeamRosters([]);
+        setSelectedRosterId('');
+      }
     };
     fetchRosters();
   }, [selectedTeamId, tournament.game, coreMembers]);
@@ -130,33 +134,23 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
       setFetchingMembers(true);
       try {
-        const { data: members, error: membersError } = await supabase
-          .from('team_roster_members' as any)
-          .select(`
-            user_id,
-            is_starter,
-            profiles:profiles(id, username, full_name, avatar_url, riot_tag)
-          `)
-          .eq('roster_id', selectedRosterId);
-
-        if (membersError) throw membersError;
+        const members = await apiClient.get<any[]>(
+          `/api/teams/${selectedTeamId}/rosters/${selectedRosterId}/members`
+        );
 
         // Also fetch captain's profile
         const team = captainTeams.find(t => t.id === selectedTeamId);
         const captainId = team?.owner_id;
 
-        const { data: captainProfile } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url, riot_tag')
-          .eq('id', captainId)
-          .single();
+        const captainProfile = await apiClient.get<any>(
+          `/api/profiles/${captainId}`
+        );
 
         // Fetch riot accounts for verification status AND IDs
         const allUserIds = [captainId, ...(members || []).map((m: any) => m.user_id)].filter(Boolean);
-        const { data: verifiedAccounts } = await supabase
-          .from('riot_accounts')
-          .select('user_id, game_name, tag_line')
-          .in('user_id', allUserIds);
+        const verifiedAccounts = await apiClient.get<any[]>(
+          `/api/profiles/riot-accounts?userIds=${allUserIds.join(',')}`
+        );
 
         const accountMap = new Map();
         verifiedAccounts?.forEach(a => {
@@ -198,13 +192,12 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const checkExistingRegistration = async () => {
     if (!user) return;
     try {
-      const { data } = await supabase
-        .from('tournament_participants')
-        .select('*')
-        .eq('tournament_id', tournament.id)
-        .eq('team_captain_id', user.id)
-        .eq('participant_type', 'team')
-        .maybeSingle();
+      let data: any = null;
+      try {
+        data = await apiClient.get<any>(
+          `/api/tournaments/me/registration-status?tournamentId=${tournament.id}`
+        );
+      } catch { /* no existing registration */ }
       if (data) {
         // Already registered; simply notify parent so the dialog can close
         onRegistrationComplete?.();
@@ -216,27 +209,22 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     if (!user?.id) return;
     try {
       // Get teams user owns
-      const { data: ownedTeams } = await supabase
-        .from('teams')
-        .select('id,name,games,owner_id')
-        .eq('owner_id', user.id);
+      const ownedTeams = await apiClient.get<TeamRow[]>(
+        `/api/teams?owner=${user.id}`
+      );
 
       // Get teams where user is captain (role = 'captain')
-      const { data: memberTeams } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .eq('role', 'captain')
-        .eq('is_active', true);
+      const memberTeams = await apiClient.get<{ team_id: string }[]>(
+        `/api/teams/me?role=captain`
+      );
 
       const captainTeamIds = (memberTeams || []).map(m => m.team_id).filter(Boolean);
       let teams = [...(ownedTeams || [])];
 
       if (captainTeamIds.length > 0) {
-        const { data: extraTeams } = await supabase
-          .from('teams')
-          .select('id,name,games,owner_id')
-          .in('id', captainTeamIds);
+        const extraTeams = await apiClient.get<TeamRow[]>(
+          `/api/teams?ids=${captainTeamIds.join(',')}`
+        );
 
         // Merge and avoid duplicates
         const ownedIds = new Set(teams.map(t => t.id));
@@ -255,10 +243,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
         // Check if team has a roster for this tournament's game
         // This is the primary check with the new roster system
-        const { data: rosters } = await supabase
-          .from('team_rosters' as any)
-          .select('id, game, team_size')
-          .eq('team_id', team.id);
+        const rosters = await apiClient.get<any[]>(
+          `/api/teams/${team.id}/rosters`
+        );
 
         const normalize = (s: string) => (s || '').toLowerCase().trim();
         const tournamentGameNormalized = normalize(tournament.game || '');
@@ -284,10 +271,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
           if (matchingRoster) {
             // Check roster member count
-            const { data: rosterMembers } = await supabase
-              .from('team_roster_members' as any)
-              .select('user_id')
-              .eq('roster_id', matchingRoster.id);
+            const rosterMembers = await apiClient.get<any[]>(
+              `/api/teams/${team.id}/rosters/${matchingRoster.id}/members`
+            );
             const rosterMemberCount = (rosterMembers || []).length + 1; // +1 for captain/owner
 
             if (rosterMemberCount < coreMembers) {
@@ -296,11 +282,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
           }
         } else {
           // Fallback: check team_members if no roster system
-          const { data: members } = await supabase
-            .from('team_members')
-            .select('user_id, is_active')
-            .eq('team_id', team.id)
-            .eq('is_active', true);
+          const members = await apiClient.get<any[]>(
+            `/api/teams/${team.id}/members?active=true`
+          );
           let activeCount = (members || []).length + 1; // include captain
 
           if (activeCount < coreMembers) {
@@ -366,10 +350,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       const team = captainTeams.find(t => t.id === selectedTeamId)!;
 
       // Fetch roster members with status (include captain in count)
-      const { data: rosterMembers } = await supabase
-        .from('team_roster_members' as any)
-        .select('user_id, is_starter')
-        .eq('roster_id', selectedRosterId);
+      const rosterMembers = await apiClient.get<any[]>(
+        `/api/teams/${selectedTeamId}/rosters/${selectedRosterId}/members`
+      );
 
       const memberStatusMap = new Map<string, boolean>();
       (rosterMembers || []).forEach((r: any) => memberStatusMap.set(r.user_id, r.is_starter ?? true));
@@ -443,10 +426,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         throw new Error('No team members found');
       }
 
-      const { data: profileRows } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', allMemberIds);
+      const profileRows = await apiClient.get<any[]>(
+        `/api/profiles?ids=${allMemberIds.join(',')}`
+      );
 
       // Map to names, ensuring captain is included
       const memberMap = new Map<string, string>();
@@ -469,26 +451,19 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
       const roster = teamRosters.find(r => r.id === selectedRosterId);
 
-      const { data, error } = await supabase
-        .from('tournament_participants')
-        .insert({
-          tournament_id: tournament.id,
-          participant_type: 'team',
-          team_captain_id: user.id,
-          team_id: selectedTeamId,
-          team_name: roster?.name || team.name,
-          team_members: memberNames.join(','),
-          roster_id: selectedRosterId,
-          roster_name: roster?.name || null,
-          team_contact_email: user.email || null,
-          status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'approved',
-          entry_fee_amount: tournament.entry_fee || 0,
-          entry_fee_paid: !tournament.entry_fee || tournament.entry_fee === 0
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await apiClient.post<any>(`/api/tournaments/${tournament.id}/register`, {
+        participant_type: 'team',
+        team_captain_id: user.id,
+        team_id: selectedTeamId,
+        team_name: roster?.name || team.name,
+        team_members: memberNames.join(','),
+        roster_id: selectedRosterId,
+        roster_name: roster?.name || null,
+        team_contact_email: user.email || null,
+        status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'approved',
+        entry_fee_amount: tournament.entry_fee || 0,
+        entry_fee_paid: !tournament.entry_fee || tournament.entry_fee === 0
+      });
 
       toast({ title: 'Registered', description: 'Team registered successfully.' });
 

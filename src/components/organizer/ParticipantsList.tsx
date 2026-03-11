@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Mail, X, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { sendEmail } from "@/hooks/useEmail";
@@ -104,19 +104,7 @@ const ParticipantsList = () => {
         console.log('[ParticipantsList] Fetching for user:', user.id);
 
         // First get the organizer's tournaments with format info
-        const { data: tournaments, error: tournamentError } = await supabase
-          .from('tournaments')
-          .select('id, name, team_size, slug')
-          .eq('organizer_id', user.id);
-
-        console.log('[ParticipantsList] Found tournaments:', tournaments?.length, tournaments);
-
-        if (tournamentError) {
-          console.error('[ParticipantsList] Tournament query error:', tournamentError);
-          setParticipants([]);
-          setLoading(false);
-          return;
-        }
+        const tournaments = await apiClient.get<any[]>(`/api/tournaments?organizer_id=${user.id}`);
 
         if (!tournaments || tournaments.length === 0) {
           console.log('[ParticipantsList] No tournaments found for this organizer');
@@ -135,16 +123,12 @@ const ParticipantsList = () => {
         for (const tournament of tournaments) {
           console.log('[ParticipantsList] Fetching participants for tournament:', tournament.name, tournament.id);
 
-          const { data: registrations, error } = await supabase
-            .from('tournament_participants')
-            .select('id, status, created_at, user_id, tournament_id, team_name, team_id')
-            .eq('tournament_id', tournament.id)
-            .order('created_at', { ascending: false });
+          const registrations = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/participants`).catch(() => null);
 
-          console.log('[ParticipantsList] Registrations for', tournament.name, ':', registrations?.length, error);
+          console.log('[ParticipantsList] Registrations for', tournament.name, ':', registrations?.length);
 
-          if (error) {
-            console.error('[ParticipantsList] Error for', tournament.name, ':', error);
+          if (!registrations) {
+            console.error('[ParticipantsList] Error for', tournament.name);
             continue;
           }
 
@@ -160,21 +144,15 @@ const ParticipantsList = () => {
         // Fetch teams with owner info
         let teamsMap: Record<string, any> = {};
         if (teamIds.length > 0) {
-          const { data: teams, error: teamError } = await supabase
-            .from('teams')
-            .select('id, name, tag, owner_id')
-            .in('id', teamIds);
+          const { data: teams, error: teamError } = { data: await apiClient.get<any[]>(`/api/teams?ids=${teamIds.join(',')}`).catch(() => []), error: null } as any;
 
-          if (!teamError && teams) {
+          if (teams) {
             // Get owner profiles for teams
             const ownerIds = [...new Set(teams.map(t => t.owner_id).filter(Boolean))];
             let ownerProfiles: Record<string, any> = {};
 
             if (ownerIds.length > 0) {
-              const { data: profiles } = await supabase
-                .from('profiles')
-                .select('id, username, email, full_name')
-                .in('id', ownerIds);
+              const profiles = await apiClient.get<any[]>(`/api/profiles/search?ids=${ownerIds.join(',')}`).catch(() => []);
 
               ownerProfiles = Object.fromEntries((profiles || []).map(p => [p.id, p]));
             }
@@ -191,10 +169,7 @@ const ParticipantsList = () => {
         // Fetch individual user profiles (for solo participants)
         let profilesMap: Record<string, any> = {};
         if (userIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, username, email, full_name')
-            .in('id', userIds);
+          const profiles = await apiClient.get<any[]>(`/api/profiles/search?ids=${userIds.join(',')}`).catch(() => []);
 
           profilesMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
         }

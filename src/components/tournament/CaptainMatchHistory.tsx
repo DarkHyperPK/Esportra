@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, ChevronDown, ChevronUp, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { BracketMatch } from '@/types/bracketTypes';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { FullScoreboard, MAP_THEMES } from './FullScoreboard';
 
@@ -53,27 +53,9 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
 
             const rawMatchIds = Object.keys(matchIdMap);
 
-            const { data, error } = await supabase
-                .from('brkt_match_games')
-                .select(`
-                    id,
-                    match_id,
-                    game_number,
-                    team1_score,
-                    team2_score,
-                    riot_match_id,
-                    map_id,
-                    match_details,
-                    reported_by_team_id,
-                    game_maps (
-                        map_name,
-                        map_image_url
-                    )
-                `)
-                .in('match_id', rawMatchIds)
-                .order('game_number', { ascending: true });
-
-            if (error) throw error;
+            const data = await apiClient.get<any[]>(
+                `/api/tournaments/${tournamentId}/match-games?matchIds=${rawMatchIds.join(',')}`
+            );
 
             const grouped: Record<string, GameDetail[]> = {};
             data?.forEach((game: any) => {

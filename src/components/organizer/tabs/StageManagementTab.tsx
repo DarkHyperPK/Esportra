@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Layers, Plus, Users, Trophy, Lock, Unlock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, Eye, RefreshCw, Play, CheckCircle2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import { StageSetupWizard } from '@/components/organizer/wizard/StageSetupWizard';
@@ -63,12 +63,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             try {
                 const stageIds = stages.map(s => s.id);
                 // Optimized: Check all stages in a single query instead of a loop
-                const { data: versions, error } = await (supabase as any)
-                    .from('brkt_versions')
-                    .select('stage_id')
-                    .in('stage_id', stageIds);
-
-                if (error) throw error;
+                const versions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
 
                 const status: Record<string, boolean> = {};
                 // Initialize all to false
@@ -107,34 +102,22 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             try {
                 // Get the bracket version for the last stage
-                const { data: version } = await (supabase as any)
-                    .from('brkt_versions')
-                    .select('id')
-                    .eq('stage_id', lastStage.id)
-                    .order('version_number', { ascending: false })
-                    .limit(1)
-                    .single();
+                const allVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
+                const version = (allVersions || [])
+                    .filter((v: any) => v.stage_id === lastStage.id)
+                    .sort((a: any, b: any) => (b.version_number || 0) - (a.version_number || 0))[0] || null;
 
                 if (!version) return;
 
                 // Get the final match (highest round_index with a winner)
-                const { data: finalMatch } = await (supabase as any)
-                    .from('brkt_matches')
-                    .select('winner_id')
-                    .eq('version_id', version.id)
-                    .eq('status', 'completed')
-                    .not('winner_id', 'is', null)
-                    .order('round_index', { ascending: false })
-                    .limit(1)
-                    .single();
+                const matches = await apiClient.get<any[]>(`/api/stages/${lastStage.id}/matches`).catch(() => []);
+                const finalMatch = (matches || [])
+                    .filter((m: any) => m.status === 'completed' && m.winner_id)
+                    .sort((a: any, b: any) => (b.round_index || 0) - (a.round_index || 0))[0] || null;
 
                 if (finalMatch?.winner_id) {
                     // Get team info
-                    const { data: team } = await (supabase as any)
-                        .from('teams')
-                        .select('id, name, logo_url')
-                        .eq('id', finalMatch.winner_id)
-                        .single();
+                    const team = await apiClient.get<any>(`/api/teams/${finalMatch.winner_id}`).catch(() => null);
 
                     if (team) {
                         setTournamentWinner(team);
@@ -152,9 +135,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         if (!tournamentId || !newStageName) return;
         try {
             const newOrder = stages.length + 1;
-            const { error } = await supabase
-                .from('tournament_stages')
-                .insert({
+            await apiClient.post(`/api/tournaments/${tournamentId}/stages`, {
                     tournament_id: tournamentId,
                     name: newStageName,
                     format: newStageFormat,
@@ -163,8 +144,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     advancement_count: newStageAdvancement === '' ? null : Number(newStageAdvancement),
                     status: 'upcoming'
                 });
-
-            if (error) throw error;
 
             toast({ title: 'Stage added', description: `${newStageName} has been added to the tournament.` });
             setAddStageDialogOpen(false);
@@ -181,43 +160,19 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
     const handleDeleteStage = async (stageId: string) => {
         try {
-            const db = supabase as any;
-
             // First, get all versions for this stage
-            const { data: versions } = await db
-                .from('brkt_versions')
-                .select('id')
-                .eq('stage_id', stageId);
+            const allVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
+            const versions = (allVersions || []).filter((v: any) => v.stage_id === stageId);
 
             if (versions && versions.length > 0) {
-                const versionIds = versions.map((v: any) => v.id);
-
-                // Delete edges for these versions
-                await db
-                    .from('brkt_advancements')
-                    .delete()
-                    .in('version_id', versionIds);
-
-                // Delete nodes for these versions
-                await db
-                    .from('brkt_matches')
-                    .delete()
-                    .in('version_id', versionIds);
-
-                // Delete versions
-                await db
-                    .from('brkt_versions')
-                    .delete()
-                    .eq('stage_id', stageId);
+                // Delete each version (cascades to matches/advancements on backend)
+                for (const v of versions) {
+                    await apiClient.delete(`/api/brackets/${v.id}`);
+                }
             }
 
             // Now delete the stage
-            const { error } = await supabase
-                .from('tournament_stages')
-                .delete()
-                .eq('id', stageId);
-
-            if (error) throw error;
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { delete_ids: [stageId] });
 
             // Fix #7: Reorder remaining stages to close gaps
             const remainingStages = stages
@@ -226,10 +181,10 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             for (let i = 0; i < remainingStages.length; i++) {
                 if (remainingStages[i].stage_order !== i + 1) {
-                    await supabase
-                        .from('tournament_stages')
-                        .update({ stage_order: i + 1 })
-                        .eq('id', remainingStages[i].id);
+                    await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
+                        stage_id: remainingStages[i].id,
+                        stage_order: i + 1
+                    });
                 }
             }
 
@@ -244,33 +199,21 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const handleDeleteAllStages = async () => {
         try {
             setIsDeleting(true);
-            const db = supabase as any;
-
-            // Get all stage IDs
             const stageIds = stages.map(s => s.id);
 
             // Get all versions for these stages
-            const { data: versions } = await db
-                .from('brkt_versions')
-                .select('id')
-                .in('stage_id', stageIds);
+            const allVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
+            const versions = (allVersions || []).filter((v: any) => stageIds.includes(v.stage_id));
 
             if (versions && versions.length > 0) {
-                const versionIds = versions.map((v: any) => v.id);
-
-                // Delete edges, nodes, then versions
-                await db.from('brkt_advancements').delete().in('version_id', versionIds);
-                await db.from('brkt_matches').delete().in('version_id', versionIds);
-                await db.from('brkt_versions').delete().in('stage_id', stageIds);
+                // Delete each version (cascades to matches/advancements on backend)
+                for (const v of versions) {
+                    await apiClient.delete(`/api/brackets/${v.id}`);
+                }
             }
 
             // Delete all stages
-            const { error } = await supabase
-                .from('tournament_stages')
-                .delete()
-                .eq('tournament_id', tournamentId);
-
-            if (error) throw error;
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { delete_ids: stageIds });
 
             toast({ title: 'All stages deleted', description: 'All tournament stages and bracket data have been removed.' });
             setDeleteAllDialogOpen(false);
@@ -290,35 +233,31 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const handleResetAllStages = async () => {
         try {
             setIsResetting(true);
-            const db = supabase as any;
-
             // Get all stage IDs
             const stageIds = stages.map(s => s.id);
 
             // Get all versions for these stages
-            const { data: versions } = await db
-                .from('brkt_versions')
-                .select('id')
-                .in('stage_id', stageIds);
+            const allVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
+            const versions = (allVersions || []).filter((v: any) => stageIds.includes(v.stage_id));
 
             if (versions && versions.length > 0) {
-                const versionIds = versions.map((v: any) => v.id);
-
-                // Delete bracket data: layout, edges, matches, versions
-                await db.from('brkt_layout').delete().in('version_id', versionIds);
-                await db.from('brkt_advancements').delete().in('version_id', versionIds);
-                await db.from('brkt_matches').delete().in('version_id', versionIds);
-                await db.from('brkt_versions').delete().in('stage_id', stageIds);
+                // Reset each version (cascades to layout, edges, matches on backend)
+                for (const v of versions) {
+                    await apiClient.post(`/api/brackets/${v.id}/reset`, {});
+                }
+                // Delete the versions themselves
+                for (const v of versions) {
+                    await apiClient.delete(`/api/brackets/${v.id}`);
+                }
             }
 
-            // Delete stage participants (advanced teams)
-            await db.from('stage_participants').delete().in('stage_id', stageIds);
-
             // Reset all stage statuses to 'upcoming'
-            await supabase
-                .from('tournament_stages')
-                .update({ status: 'upcoming' })
-                .eq('tournament_id', tournamentId);
+            for (const stageId of stageIds) {
+                await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
+                    stage_id: stageId,
+                    status: 'upcoming'
+                });
+            }
 
             // Clear hasBrackets state
             setHasBrackets({});
@@ -336,12 +275,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
     const handleUpdateStage = async (stageId: string, updates: any) => {
         try {
-            const { error } = await supabase
-                .from('tournament_stages')
-                .update(updates)
-                .eq('id', stageId);
-
-            if (error) throw error;
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stage_id: stageId, ...updates });
             toast({ title: 'Stage updated', description: 'The stage configuration has been saved.' });
             onUpdate();
         } catch (error: any) {
@@ -367,17 +301,13 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 console.log('[StageManagement] Fetching teams for stage 1, tournamentId:', tournamentId);
 
                 // Use a simpler join syntax that is more likely to work
-                const { data: participants, error: partError } = await supabase
-                    .from('tournament_participants')
-                    .select('*, teams(id, name, logo_url)')
-                    .eq('tournament_id', tournamentId)
-                    .eq('status', 'checked_in');
+                const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants?status=checked_in`).catch(() => null);
 
-                if (partError) {
-                    console.error('[StageManagement] Error fetching participants:', partError);
+                if (!participants) {
+                    console.error('[StageManagement] Error fetching participants');
                     toast({
                         title: 'Fetch Error',
-                        description: `Failed to fetch participants: ${partError.message}`,
+                        description: 'Failed to fetch participants',
                         variant: 'destructive'
                     });
                     return;
@@ -408,12 +338,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             } else {
                 // Subsequent stages: Get teams from stage_participants (advanced from previous stage)
                 console.log('[StageManagement] Fetching teams for stage >1, stageId:', stageId);
-                const { data: stageParticipants, error: spError } = await (supabase as any)
-                    .from('stage_participants')
-                    .select('*, teams(id, name, logo_url)')
-                    .eq('stage_id', stageId);
+                const stageParticipants = await apiClient.get<any[]>(`/api/stages/${stageId}/participants`).catch(() => null);
 
-                if (spError) throw spError;
+                if (!stageParticipants) throw new Error('Failed to fetch stage participants');
 
                 teams = (stageParticipants || []).map((sp: any) => ({
                     id: sp.team_id,
@@ -432,32 +359,21 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             }
 
             // Clean up any existing bracket for this stage before re-generating
-            const { data: deletedRows, error: deleteError } = await (supabase as any)
-                .from('brkt_versions')
-                .delete()
-                .eq('stage_id', stageId)
-                .eq('tournament_id', tournamentId)
-                .select();
+            const existingVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
+            const stageVersions = (existingVersions || []).filter((v: any) => v.stage_id === stageId);
 
-            if (deleteError) {
-                console.error('[StageManagement] Cleanup error:', deleteError);
-                throw new Error(`Failed to clean up existing bracket: ${deleteError.message}`);
+            for (const v of stageVersions) {
+                await apiClient.delete(`/api/brackets/${v.id}`);
             }
 
-            console.log(`[StageManagement] Deleted ${deletedRows?.length || 0} existing versions for stage ${stageId}`);
+            console.log(`[StageManagement] Deleted ${stageVersions.length} existing versions for stage ${stageId}`);
 
             // Get next version_number across the whole tournament
-            const { data: versions, error: maxError } = await (supabase as any)
-                .from('brkt_versions')
-                .select('version_number')
-                .eq('tournament_id', tournamentId)
-                .order('version_number', { ascending: false });
+            const allTournamentVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
 
-            if (maxError) {
-                console.error('[StageManagement] Error fetching versions:', maxError);
-            }
+            const allTournamentVersionsSorted = (allTournamentVersions || []).sort((a: any, b: any) => (b.version_number || 0) - (a.version_number || 0));
 
-            const maxV = versions && versions.length > 0 ? versions[0].version_number : 0;
+            const maxV = allTournamentVersionsSorted.length > 0 ? allTournamentVersionsSorted[0].version_number : 0;
             const nextVersionNumber = maxV + 1;
             console.log(`[StageManagement] Max version in tournament: ${maxV}, Assigning: ${nextVersionNumber}`);
 
@@ -510,17 +426,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             let enrichedConfig = { ...(stage.config as any) };
             if (format === 'swiss' || format === 'round_robin') {
                 try {
-                    const { data: tournamentData } = await (supabase as any)
-                        .from('tournaments')
-                        .select('start_date')
-                        .eq('id', tournamentId)
-                        .single();
+                    const tournamentData = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
 
-                    const { data: stageScheduling } = await (supabase as any)
-                        .from('tournament_stages')
-                        .select('scheduling_config')
-                        .eq('id', stageId)
-                        .single();
+                    const stageScheduling = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);
 
                     if (tournamentData?.start_date) {
                         enrichedConfig.tournament_start_date = tournamentData.start_date;
@@ -561,23 +469,18 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             if (isComplete) {
                 // If all matches complete (rare case with all Byes), mark as completed
-                const { error: updateError } = await supabase
-                    .from('tournament_stages')
-                    .update({ status: 'completed' })
-                    .eq('id', stageId);
-
-                if (!updateError) {
+                try {
+                    await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stage_id: stageId, status: 'completed' });
                     toast({ title: 'Stage Completed', description: 'Stage automatically completed due to Byes.' });
                     onUpdate();
+                } catch {
+                    // ignore
                 }
             } else {
                 // Otherwise, set stage to 'live' since brackets are now generated
-                const { error: updateError } = await supabase
-                    .from('tournament_stages')
-                    .update({ status: 'live' })
-                    .eq('id', stageId);
-
-                if (updateError) {
+                try {
+                    await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stage_id: stageId, status: 'live' });
+                } catch (updateError) {
                     console.error('[StageManagement] Failed to update stage status to live:', updateError);
                 }
             }
@@ -618,12 +521,11 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         try {
             setIsDeleting(true);
             // Delete all brkt_versions for this stage (cascade will delete matches, edges, etc.)
-            const { error } = await (supabase as any)
-                .from('brkt_versions')
-                .delete()
-                .eq('stage_id', stageToDelete);
-
-            if (error) throw error;
+            const stageVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
+            const toDelete = (stageVersions || []).filter((v: any) => v.stage_id === stageToDelete);
+            for (const v of toDelete) {
+                await apiClient.delete(`/api/brackets/${v.id}`);
+            }
 
             // Update local state
             setHasBrackets(prev => ({ ...prev, [stageToDelete]: false }));
@@ -681,19 +583,15 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         const targetStage = stages[targetIndex];
 
         try {
-            const { error: error1 } = await supabase
-                .from('tournament_stages')
-                .update({ stage_order: targetStage.stage_order })
-                .eq('id', currentStage.id);
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
+                stage_id: currentStage.id,
+                stage_order: targetStage.stage_order
+            });
 
-            if (error1) throw error1;
-
-            const { error: error2 } = await supabase
-                .from('tournament_stages')
-                .update({ stage_order: currentStage.stage_order })
-                .eq('id', targetStage.id);
-
-            if (error2) throw error2;
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
+                stage_id: targetStage.id,
+                stage_order: currentStage.stage_order
+            });
 
             onUpdate();
         } catch (error: any) {

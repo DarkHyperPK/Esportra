@@ -20,7 +20,7 @@ import {
 } from '@/schemas/tournamentSchema';
 import { cn } from '@/lib/utils';
 import esportsGames from '@/data/esportsGames.json';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 
@@ -120,14 +120,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                 const isCS2 = ['cs2', 'counter-strike 2'].includes(data.game.toLowerCase());
                 const dbGameName = isCS2 ? 'Counter-Strike 2' : data.game;
 
-                const { data: maps, error } = await supabase
-                    .from('game_maps')
-                    .select('id, map_name, map_image_url')
-                    .ilike('game', dbGameName)
-                    .eq('is_active', true)
-                    .order('map_name');
-
-                if (error) throw error;
+                const maps = await apiClient.get<{ id: string; map_name: string; map_image_url?: string }[]>(
+                    `/api/games/maps?game=${encodeURIComponent(dbGameName)}`
+                );
 
                 setAvailableMaps(maps || []);
 

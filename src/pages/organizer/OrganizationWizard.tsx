@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -133,10 +134,7 @@ const OrganizationWizard: React.FC = () => {
 
         setSaving(true);
         try {
-            const { error } = await supabase
-                .from('organizations')
-                .insert({
-                    owner_id: user?.id,
+            await apiClient.post('/api/organizations', {
                     name: name.trim(),
                     slug: slug.trim(),
                     description: description.trim() || null,
@@ -144,8 +142,6 @@ const OrganizationWizard: React.FC = () => {
                     banner_url: bannerUrl.trim() || null,
                     social_links: socialLinks,
                 });
-
-            if (error) throw error;
 
             // Notify other components that org was created
             window.dispatchEvent(new Event('organizationCreated'));

@@ -18,7 +18,7 @@ import {
   Building,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -56,13 +56,11 @@ const VenueManagementTool = () => {
 
   const fetchVenues = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('venues')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
+    try {
+      const data = await apiClient.get<Venue[]>('/api/admin/venues?order=created_at.desc');
       setVenues(data);
+    } catch (err) {
+      console.error('Error fetching venues:', err);
     }
     setLoading(false);
     setRefreshing(false);
@@ -78,17 +76,15 @@ const VenueManagementTool = () => {
   };
 
   const handleVerify = async (venueId: string, verified: boolean) => {
-    const { error } = await supabase
-      .from('venues')
-      .update({ is_verified: verified })
-      .eq('id', venueId);
-
-    if (!error) {
+    try {
+      await apiClient.put(`/api/admin/venues/${venueId}`, { is_verified: verified });
       toast({
         title: verified ? 'Venue Verified' : 'Venue Unverified',
         description: `Venue verification status updated`
       });
       fetchVenues();
+    } catch (err) {
+      console.error('Error updating venue verification:', err);
     }
   };
 

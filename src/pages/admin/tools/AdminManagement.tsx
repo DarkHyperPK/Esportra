@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -95,30 +95,8 @@ const AdminRoleManagement: React.FC = () => {
       let adminRoles: any[] = [];
       
       try {
-        const { data: rolesWithKey, error: errorWithKey } = await supabase
-          .from('admin_roles')
-          .select('id, key, name, description')
-          .order('name');
-        
-        if (errorWithKey) {
-          const errorMessage = errorWithKey?.message || String(errorWithKey) || '';
-          const errorCode = errorWithKey?.code || '';
-          const isColumnError = errorMessage.includes('column') && errorMessage.includes('key') 
-            || errorCode === '42703';
-          
-          if (isColumnError) {
-            const { data: rolesWithoutKey } = await supabase
-              .from('admin_roles')
-              .select('id, name, description')
-              .order('name');
-            adminRoles = rolesWithoutKey || [];
-          } else {
-            adminRoles = [];
-          }
-        } else {
-          adminRoles = rolesWithKey || [];
-        }
-      } catch (err) {
+        adminRoles = await apiClient.get<any[]>('/api/admin/roles');
+      } catch {
         adminRoles = [];
       }
       
@@ -157,30 +135,21 @@ const AdminRoleManagement: React.FC = () => {
       setLoading(true);
       
       // Get all admin users
-      const { data: adminProfiles, error } = await supabase
-        .from('profiles')
-        .select('id, email, username, full_name, is_admin, admin_roles, created_at')
-        .eq('is_admin', true)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
+      const adminProfiles = await apiClient.get<any[]>('/api/admin/users?is_admin=true&order=created_at.desc');
       
       // Get role assignments for each admin
       const adminsWithRoles = await Promise.all(
         (adminProfiles || []).map(async (admin) => {
-          const { data: userRoles } = await supabase
-            .from('admin_user_roles')
-            .select(`
-              role_id,
-              assigned_at,
-              assigned_by,
-              admin_roles:role_id(name)
-            `)
-            .eq('user_id', admin.id);
+          let userRoles: any[] = [];
+          try {
+            userRoles = await apiClient.get<any[]>(`/api/admin/admin-user-roles?user_id=${admin.id}`);
+          } catch {
+            userRoles = [];
+          }
           
           const assignedRoles = (userRoles || []).map((ur: any) => ({
             role_id: ur.role_id,
-            role_name: ur.admin_roles?.name || 'Unknown',
+            role_name: ur.admin_roles?.name || ur.role_name || 'Unknown',
             assigned_at: ur.assigned_at,
             assigned_by: ur.assigned_by
           }));
@@ -238,13 +207,14 @@ const AdminRoleManagement: React.FC = () => {
           const rawKey = roleData.roleKey || roleData.name || selectedRole;
           roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
         } else {
-          const { data: adminRoleRecord, error: roleLookupError } = await supabase
-            .from('admin_roles')
-            .select('id, key, name')
-            .or(`id.eq.${selectedRole},key.eq.${selectedRole},name.eq.${selectedRole}`)
-            .maybeSingle();
+          let adminRoleRecord: any = null;
+          try {
+            adminRoleRecord = await apiClient.get<any>(`/api/admin/roles?or=(id.eq.${selectedRole},key.eq.${selectedRole},name.eq.${selectedRole})`);
+          } catch {
+            // not found
+          }
           
-          if (roleLookupError || !adminRoleRecord) {
+          if (!adminRoleRecord) {
             throw new Error(`Admin role '${selectedRole}' not found`);
           }
           
@@ -253,18 +223,19 @@ const AdminRoleManagement: React.FC = () => {
           roleId = adminRoleRecord.id;
         }
         
-        const { data: existingRole } = await supabase
-          .from('admin_user_roles')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('role_id', roleId)
-          .maybeSingle();
+        let existingRole: any = null;
+        try {
+          existingRole = await apiClient.get<any>(`/api/admin/admin-user-roles?user_id=${user.id}&role_id=${roleId}`);
+        } catch {
+          // not found
+        }
         
-        const { data: currentProfile } = await supabase
-          .from('profiles')
-          .select('admin_roles')
-          .eq('id', user.id)
-          .maybeSingle();
+        let currentProfile: any = null;
+        try {
+          currentProfile = await apiClient.get<any>(`/api/profiles/${user.id}`);
+        } catch {
+          // not found
+        }
         
         const currentAdminRoles = (currentProfile?.admin_roles as string[]) || [];
         if (existingRole || currentAdminRoles.includes(roleKey)) {
@@ -273,49 +244,41 @@ const AdminRoleManagement: React.FC = () => {
           return;
         }
         
-        const { error: adminError } = await supabase
-          .from('admin_user_roles')
-          .insert({
+        try {
+          await apiClient.post('/api/admin/admin-user-roles', {
             user_id: user.id,
             role_id: roleId,
             assigned_by: profile?.id,
             assigned_at: new Date().toISOString()
           });
-        
-        if (adminError) {
-          if (adminError.code === '23505') {
+        } catch (err: any) {
+          if (err?.body?.code === '23505' || err?.status === 409) {
             toast({ title: 'Role Already Assigned', description: `${roleDisplayName} is already assigned`, variant: 'default' });
             setActionLoading(false);
             return;
           }
-          throw adminError;
+          throw err;
         }
         
         const updatedAdminRoles = [...currentAdminRoles, roleKey];
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ is_admin: true, admin_roles: updatedAdminRoles })
-          .eq('id', user.id);
-        
-        if (profileError) throw profileError;
+        await apiClient.put(`/api/admin/users/${user.id}`, { is_admin: true, admin_roles: updatedAdminRoles });
       } else {
-        const { error: userRoleError } = await supabase
-          .from('user_roles')
-          .insert({
+        try {
+          await apiClient.post('/api/admin/user-roles', {
             user_id: user.id,
             role: selectedRole,
             is_active: true,
             assigned_by: profile?.id,
             assigned_at: new Date().toISOString()
           });
-        
-        if (userRoleError) {
-          const { error: updateError } = await supabase
-            .from('user_roles')
-            .update({ is_active: true, assigned_by: profile?.id, assigned_at: new Date().toISOString() })
-            .eq('user_id', user.id)
-            .eq('role', selectedRole);
-          if (updateError) throw updateError;
+        } catch {
+          await apiClient.put('/api/admin/user-roles', {
+            user_id: user.id,
+            role: selectedRole,
+            is_active: true,
+            assigned_by: profile?.id,
+            assigned_at: new Date().toISOString()
+          });
         }
       }
       
@@ -367,13 +330,14 @@ const AdminRoleManagement: React.FC = () => {
           const rawKey = roleData.roleKey || roleData.name || selectedRole;
           roleKey = rawKey.toLowerCase().replace(/\s+/g, '_');
         } else {
-          const { data: adminRoleRecord, error: roleLookupError } = await supabase
-            .from('admin_roles')
-            .select('id, key, name')
-            .or(`id.eq.${selectedRole},key.eq.${selectedRole},name.eq.${selectedRole}`)
-            .maybeSingle();
+          let adminRoleRecord: any = null;
+          try {
+            adminRoleRecord = await apiClient.get<any>(`/api/admin/roles?or=(id.eq.${selectedRole},key.eq.${selectedRole},name.eq.${selectedRole})`);
+          } catch {
+            // not found
+          }
           
-          if (roleLookupError || !adminRoleRecord) {
+          if (!adminRoleRecord) {
             throw new Error(`Admin role '${selectedRole}' not found`);
           }
           
@@ -382,12 +346,12 @@ const AdminRoleManagement: React.FC = () => {
           roleId = adminRoleRecord.id;
         }
         
-        const { data: existingAdminRole } = await supabase
-          .from('admin_user_roles')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('role_id', roleId)
-          .maybeSingle();
+        let existingAdminRole: any = null;
+        try {
+          existingAdminRole = await apiClient.get<any>(`/api/admin/admin-user-roles?user_id=${user.id}&role_id=${roleId}`);
+        } catch {
+          // not found
+        }
         
         if (!existingAdminRole) {
           toast({ title: 'Role Not Found', description: `${roleDisplayName} is not assigned to ${user.email}`, variant: 'destructive' });
@@ -395,45 +359,37 @@ const AdminRoleManagement: React.FC = () => {
           return;
         }
         
-        const { error: adminError } = await supabase
-          .from('admin_user_roles')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('role_id', roleId);
+        await apiClient.delete(`/api/admin/admin-user-roles?user_id=${user.id}&role_id=${roleId}`);
         
-        if (adminError) throw adminError;
-        
-        const { data: currentProfile } = await supabase
-          .from('profiles')
-          .select('admin_roles')
-          .eq('id', user.id)
-          .maybeSingle();
+        let currentProfile: any = null;
+        try {
+          currentProfile = await apiClient.get<any>(`/api/profiles/${user.id}`);
+        } catch {
+          // not found
+        }
         
         const currentAdminRoles = (currentProfile?.admin_roles as string[]) || [];
         const updatedAdminRoles = currentAdminRoles.filter(r => r !== roleKey);
         
-        const { data: remainingAdminRoles } = await supabase
-          .from('admin_user_roles')
-          .select('id')
-          .eq('user_id', user.id);
+        let remainingAdminRoles: any[] = [];
+        try {
+          remainingAdminRoles = await apiClient.get<any[]>(`/api/admin/admin-user-roles?user_id=${user.id}`);
+        } catch {
+          remainingAdminRoles = [];
+        }
         
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ 
-            is_admin: remainingAdminRoles && remainingAdminRoles.length > 0,
-            admin_roles: updatedAdminRoles
-          })
-          .eq('id', user.id);
-        
-        if (profileError) throw profileError;
+        await apiClient.put(`/api/admin/users/${user.id}`, { 
+          is_admin: remainingAdminRoles && remainingAdminRoles.length > 0,
+          admin_roles: updatedAdminRoles
+        });
       } else {
-        const { data: existingUserRole } = await supabase
-          .from('user_roles')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('role', selectedRole)
-          .eq('is_active', true)
-          .maybeSingle();
+        let existingUserRole: any = null;
+        try {
+          const results = await apiClient.get<any[]>(`/api/admin/user-roles?user_id=${user.id}&role=${selectedRole}&is_active=true`);
+          existingUserRole = results?.[0] || null;
+        } catch {
+          // not found
+        }
         
         if (!existingUserRole) {
           toast({ title: 'Role Not Found', description: `${roleDisplayName} is not active for ${user.email}`, variant: 'destructive' });
@@ -441,13 +397,11 @@ const AdminRoleManagement: React.FC = () => {
           return;
         }
         
-        const { error: userRoleError } = await supabase
-          .from('user_roles')
-          .update({ is_active: false })
-          .eq('user_id', user.id)
-          .eq('role', selectedRole);
-        
-        if (userRoleError) throw userRoleError;
+        await apiClient.put('/api/admin/user-roles', {
+          user_id: user.id,
+          role: selectedRole,
+          is_active: false
+        });
       }
       
       toast({ title: 'Role Revoked', description: `${roleDisplayName} revoked from ${user.email}` });

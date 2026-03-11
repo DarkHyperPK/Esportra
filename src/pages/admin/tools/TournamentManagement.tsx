@@ -22,7 +22,7 @@ import {
   Ban
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -60,13 +60,11 @@ const TournamentManagementTool = () => {
 
   const fetchTournaments = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('tournaments')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
+    try {
+      const data = await apiClient.get<Tournament[]>('/api/admin/tournaments?order=created_at.desc');
       setTournaments(data);
+    } catch (err) {
+      console.error('Error fetching tournaments:', err);
     }
     setLoading(false);
     setRefreshing(false);
@@ -82,14 +80,12 @@ const TournamentManagementTool = () => {
   };
 
   const handleStatusChange = async (tournamentId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from('tournaments')
-      .update({ status: newStatus })
-      .eq('id', tournamentId);
-
-    if (!error) {
+    try {
+      await apiClient.put(`/api/admin/tournaments/${tournamentId}`, { status: newStatus });
       toast({ title: 'Status Updated', description: `Tournament status changed to ${newStatus}` });
       fetchTournaments();
+    } catch (err) {
+      console.error('Error updating tournament status:', err);
     }
   };
 

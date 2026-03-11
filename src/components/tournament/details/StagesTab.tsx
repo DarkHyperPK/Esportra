@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,14 +36,9 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId }) => {
     const { data: stages, isLoading } = useQuery({
         queryKey: ['tournament-stages-public', tournamentId],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('tournament_stages')
-                .select('*')
-                .eq('tournament_id', tournamentId)
-                .order('stage_order', { ascending: true });
-
-            if (error) throw error;
-            return data as Stage[];
+            return await apiClient.get<Stage[]>(
+                `/api/tournaments/${tournamentId}/stages`
+            );
         }
     });
 

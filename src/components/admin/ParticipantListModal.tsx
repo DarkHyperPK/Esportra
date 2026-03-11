@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Dialog, 
@@ -60,25 +60,11 @@ export function ParticipantListModal({
       setLoading(true);
       
       // Fetch tournament participants with profile information
-      const { data: participantsData, error: participantsError } = await supabase
-        .from('tournament_participants')
-        .select(`
-          id,
-          user_id,
-          tournament_id,
-          registered_at,
-          profile:profiles(username, full_name, email),
-          registration:tournament_participants!inner(id, participant_type, team_name, team_members, team_contact_email, team_contact_phone)
-        `)
-        .eq('tournament_id', tournamentId);
-
-      if (participantsError) {
-        throw participantsError;
-      }
+      type Row = Participant & { registration?: Participant['registration_details'] };
+      const participantsData = await apiClient.get<Row[]>(`/api/tournaments/${tournamentId}/participants`);
 
       // Combine the data
-      type Row = Participant & { registration?: Participant['registration_details'] };
-      const combinedData: Participant[] = (participantsData as Row[]).map((participant) => ({
+      const combinedData: Participant[] = participantsData.map((participant) => ({
         ...participant,
         registration_details: participant.registration || undefined,
       }));
@@ -100,22 +86,11 @@ export function ParticipantListModal({
   const handleRemoveParticipant = async (participantId: string, userId: string) => {
     if (confirm('Are you sure you want to remove this participant?')) {
       try {
-        // Delete from tournament_participants
-        const { error: participantError } = await supabase
-          .from('tournament_participants')
-          .delete()
-          .eq('id', participantId);
-
-        if (participantError) throw participantError;
-
-        // Delete from tournament_participants
-        const { error: registrationError } = await supabase
-          .from('tournament_participants')
-          .delete()
-          .eq('user_id', userId)
-          .eq('tournament_id', tournamentId);
-
-        if (registrationError) throw registrationError;
+        // Remove participant via API
+        await apiClient.post(`/api/tournaments/${tournamentId}/ban-participant`, {
+          participantId,
+          userId,
+        });
 
         toast({
           title: 'Participant removed',

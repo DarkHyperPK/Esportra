@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search } from 'lucide-react';
 import { Tournament } from '@/hooks/useTournaments';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { TournamentCard } from '@/components/TournamentCard';
 
@@ -27,13 +27,7 @@ const TournamentList = () => {
     try {
       setLoading(true);
 
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user?.id)
-        .maybeSingle();
-
-      if (orgError) throw orgError;
+      const orgData = await apiClient.get<any>(`/api/organizations/me`).catch(() => null);
 
       if (!orgData) {
         setTournaments([]);
@@ -41,13 +35,7 @@ const TournamentList = () => {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('organization_id', orgData.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await apiClient.get<any[]>(`/api/organizations/${orgData.id}/tournaments`);
 
       // Transform the data to include status and set current_participants to 0
       const tournamentsWithCounts = (data || []).map((tournament) => {

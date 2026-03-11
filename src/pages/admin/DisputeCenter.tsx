@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -77,24 +78,7 @@ const DisputeCenter: React.FC = () => {
     setLoading(true);
       
       // Fetch all disputes (both tournament and general support)
-      const { data: disputesData, error } = await supabase
-        .from('tournament_disputes')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Supabase error fetching disputes:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        console.error('Error details:', error.details);
-        console.error('Error hint:', error.hint);
-        toast({
-          title: 'Error fetching disputes',
-          description: `${error.message} (Code: ${error.code})`,
-          variant: 'destructive',
-        });
-        throw error;
-      }
+      const disputesData = await apiClient.get<any[]>('/api/admin/disputes?order=created_at.desc');
 
       console.log('Fetched disputes:', disputesData?.length || 0, 'disputes');
       console.log('Disputes data:', disputesData);
@@ -105,23 +89,21 @@ const DisputeCenter: React.FC = () => {
           const dispute: Dispute = { ...d };
           
           // Get user who raised the dispute
-          const { data: user } = await supabase
-            .from('profiles')
-            .select('username, full_name')
-            .eq('id', d.raised_by_user_id)
-            .maybeSingle();
-          
-          dispute.raised_by_name = user?.full_name || user?.username || 'Unknown User';
+          try {
+            const profile = await apiClient.get<{ username?: string; full_name?: string }>(`/api/profiles/${d.raised_by_user_id}`);
+            dispute.raised_by_name = profile?.full_name || profile?.username || 'Unknown User';
+          } catch {
+            dispute.raised_by_name = 'Unknown User';
+          }
           
           // Get tournament name if it's a tournament dispute
           if (d.tournament_id) {
-            const { data: tournament } = await supabase
-              .from('tournaments')
-              .select('name')
-              .eq('id', d.tournament_id)
-              .maybeSingle();
-            
-            dispute.tournament_name = tournament?.name || 'Unknown Tournament';
+            try {
+              const tournament = await apiClient.get<{ name?: string }>(`/api/tournaments/${d.tournament_id}`);
+              dispute.tournament_name = tournament?.name || 'Unknown Tournament';
+            } catch {
+              dispute.tournament_name = 'Unknown Tournament';
+            }
           } else {
             dispute.tournament_name = 'General Support';
           }
@@ -142,36 +124,22 @@ const DisputeCenter: React.FC = () => {
   const fetchComments = useCallback(async (disputeId: string) => {
     try {
       setLoadingComments(true);
-      const { data, error } = await supabase
-        .from('dispute_comments')
-        .select(`
-          id,
-          user_id,
-          comment,
-          is_internal,
-          created_at,
-          attachment_url
-        `)
-        .eq('dispute_id', disputeId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching comments:', error);
-        throw error;
-      }
+      const data = await apiClient.get<any[]>(`/api/admin/disputes/${disputeId}/comments`);
 
       // Manually fetch profile data for each comment
       const enrichedComments = await Promise.all(
         (data || []).map(async (comment) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username, full_name')
-            .eq('id', comment.user_id)
-            .maybeSingle();
+          let userName = 'Unknown User';
+          try {
+            const profile = await apiClient.get<{ username?: string; full_name?: string }>(`/api/profiles/${comment.user_id}`);
+            userName = profile?.full_name || profile?.username || 'Unknown User';
+          } catch {
+            // fallback already set
+          }
           
           return {
             ...comment,
-            user_name: profile?.full_name || profile?.username || 'Unknown User',
+            user_name: userName,
           };
         })
       );
@@ -248,31 +216,20 @@ const DisputeCenter: React.FC = () => {
     try {
       setSubmittingComment(true);
       
-      // Check current dispute status
-      const { data: disputeData } = await supabase
-        .from('tournament_disputes')
-        .select('status')
-        .eq('id', disputeId)
-        .single();
+      // Fetch dispute data (status + reason + tournament_id) in one call
+      const disputeData = await apiClient.get<{ status?: string; dispute_reason?: string; tournament_id?: string | null }>(`/api/admin/disputes/${disputeId}`);
 
       // Upload attachment if provided
       let attachmentUrl: string | null = null;
       if (commentAttachment) {
         setUploadingAttachment(true);
         
-        // Get dispute reason for categorization
-        const { data: disputeInfo } = await supabase
-          .from('tournament_disputes')
-          .select('dispute_reason, tournament_id')
-          .eq('id', disputeId)
-          .single();
-        
-        const disputeReason = disputeInfo?.dispute_reason || 'general';
+        const disputeReason = disputeData?.dispute_reason || 'general';
         const fileExt = commentAttachment.name.split('.').pop();
         
         // Path structure: {dispute_id}/{dispute_reason}/{user_id}-{timestamp}.{ext}
         // For general support: {dispute_id}/general_support/{user_id}-{timestamp}.{ext}
-        const fileName = disputeInfo?.tournament_id
+        const fileName = disputeData?.tournament_id
           ? `${disputeId}/${disputeReason}/${user.id}-${Date.now()}.${fileExt}`
           : `${disputeId}/general_support/${user.id}-${Date.now()}.${fileExt}`;
         
@@ -290,17 +247,12 @@ const DisputeCenter: React.FC = () => {
         setUploadingAttachment(false);
       }
 
-      const { error: insertError } = await supabase
-        .from('dispute_comments')
-        .insert({
-          dispute_id: disputeId,
-          user_id: user.id,
-          comment: commentText.trim() || '', // Empty string if no text (comment column is NOT NULL)
-          is_internal: false,
-          attachment_url: attachmentUrl,
-        });
-
-      if (insertError) throw insertError;
+      await apiClient.post(`/api/admin/disputes/${disputeId}/comments`, {
+        user_id: user.id,
+        comment: commentText.trim() || '',
+        is_internal: false,
+        attachment_url: attachmentUrl,
+      });
 
       // Update dispute: set to in_review if currently open, and update updated_at
       const updateData: { updated_at: string; status?: string } = {
@@ -312,12 +264,7 @@ const DisputeCenter: React.FC = () => {
         updateData.status = 'in_review';
       }
 
-      const { error: updateError } = await supabase
-        .from('tournament_disputes')
-        .update(updateData)
-        .eq('id', disputeId);
-
-      if (updateError) throw updateError;
+      await apiClient.put(`/api/admin/disputes/${disputeId}`, updateData);
 
       setCommentText('');
       setCommentAttachment(null);
@@ -350,16 +297,11 @@ const DisputeCenter: React.FC = () => {
   const resolve = async () => {
     if (!selectedDispute) return;
     try {
-      const { error } = await supabase
-        .from('tournament_disputes')
-        .update({
-          status: resolutionStatus,
-          resolution_notes: resolutionNotes || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', selectedDispute.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/admin/disputes/${selectedDispute.id}`, {
+        status: resolutionStatus,
+        resolution_notes: resolutionNotes || null,
+        updated_at: new Date().toISOString(),
+      });
 
       toast({
         title: 'Updated',

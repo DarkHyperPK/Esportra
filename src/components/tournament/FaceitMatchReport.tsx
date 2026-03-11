@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Zap } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -58,18 +57,12 @@ export function FaceitMatchReport({
             const score1 = parseInt(teams[0]?.team_stats?.['Final Score'] ?? '0', 10);
             const score2 = parseInt(teams[1]?.team_stats?.['Final Score'] ?? '0', 10);
 
-            // Update the match result in the DB
-            const { error: updateError } = await supabase
-                .from('bracket_matches')
-                .update({
-                    team1_score: score1,
-                    team2_score: score2,
-                    status: 'completed',
-                    faceit_match_id: faceitMatchId.trim(),
-                })
-                .eq('id', matchId);
-
-            if (updateError) throw updateError;
+            await apiClient.post(`/api/matches/${matchId}/save-score`, {
+                team1_score: score1,
+                team2_score: score2,
+                status: 'completed',
+                faceit_match_id: faceitMatchId.trim(),
+            });
 
             toast({
                 title: 'Match Auto-Reported',

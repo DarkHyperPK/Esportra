@@ -67,7 +67,7 @@ const TournamentAnnouncementPanel = ({ tournamentId }: TournamentAnnouncementPan
     const handleDelete = async (id: string) => {
         setDeletingId(id);
         try {
-            await deleteAnnouncement(id);
+            await deleteAnnouncement(id, tournamentId);
             setAnnouncements(prev => prev.filter(a => a.id !== id));
             toast({ title: "Announcement deleted" });
         } catch (err: any) {

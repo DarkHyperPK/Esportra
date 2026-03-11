@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Check, Clock, User, Zap, Copy } from 'lucide-react';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { formatDistanceToNow, format, differenceInMinutes } from 'date-fns';
 import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { Countdown } from '@/components/ui/Countdown';
@@ -65,13 +65,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
         try {
             const code = manualCode.trim().toUpperCase();
 
-            // Save to match
-            const { error } = await supabase
-                .from('brkt_matches')
-                .update({ party_code: code, status: 'in_progress' })
-                .eq('id', matchId);
-
-            if (error) throw error;
+            await apiClient.post(`/api/matches/${matchId}/go-live`, { party_code: code });
 
             setPartyCode(code);
             onPartyCodeGenerated?.(code);

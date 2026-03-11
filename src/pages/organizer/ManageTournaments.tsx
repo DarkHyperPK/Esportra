@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -60,26 +60,11 @@ const TournamentList = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .maybeSingle();
+      const orgData = await apiClient.get<any>(`/api/organizations/me`).catch(() => null);
 
       if (!orgData) return [];
 
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select(`
-          id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, entry_fee, is_public, banner_url, logo_url, slug, description, deleted_at, status, team_size,
-          tournament_participants ( count )
-        `)
-        .eq('organization_id', orgData.id)
-        .is('deleted_at', null)
-        .not('status', 'in', '("completed","cancelled")')
-        .order('start_date', { ascending: true });
-
-      if (error) throw error;
+      const data = await apiClient.get<any[]>(`/api/organizations/${orgData.id}/tournaments?exclude_completed=true`);
 
       return (data || []).map((tournament: any) => ({
         id: tournament.id,
@@ -113,22 +98,11 @@ const TournamentList = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .maybeSingle();
+      const orgData = await apiClient.get<any>(`/api/organizations/me`).catch(() => null);
 
       if (!orgData) return [];
 
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('id, name, game, deleted_at')
-        .eq('organization_id', orgData.id)
-        .not('deleted_at', 'is', null)
-        .order('deleted_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await apiClient.get<any[]>(`/api/organizations/${orgData.id}/tournaments?deleted=true`);
 
       return (data || []).map((t: any) => {
         const deletedDate = new Date(t.deleted_at);
@@ -156,10 +130,7 @@ const TournamentList = () => {
       // Query cascade effects
       // Query cascade effects
       const [participantsResult] = await Promise.all([
-        supabase
-          .from('tournament_participants')
-          .select('*', { count: 'exact', head: true })
-          .eq('tournament_id', tournamentId),
+        apiClient.get<any>(`/api/tournaments/${tournamentId}/participants?count_only=true`).catch(() => ({ count: 0 })),
       ]);
 
       const warnings = [];
@@ -191,12 +162,7 @@ const TournamentList = () => {
       setDeleteLoading(true);
 
       // Soft delete: set deleted_at timestamp
-      const { error } = await supabase
-        .from('tournaments')
-        .update({ deleted_at: new Date().toISOString() } as any)
-        .eq('id', tournamentToDelete.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${tournamentToDelete.id}`, { deleted_at: new Date().toISOString() });
 
       toast({
         title: 'Tournament deleted',
@@ -226,12 +192,7 @@ const TournamentList = () => {
     try {
       setRestoring(tournamentId);
 
-      const { error } = await supabase
-        .from('tournaments')
-        .update({ deleted_at: null } as any)
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${tournamentId}`, { deleted_at: null });
 
       toast({
         title: 'Tournament restored',
@@ -262,12 +223,7 @@ const TournamentList = () => {
     try {
       setRestoring(tournamentId);
 
-      const { error } = await supabase
-        .from('tournaments')
-        .delete()
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+      await apiClient.delete(`/api/tournaments/${tournamentId}`);
 
       toast({
         title: 'Tournament permanently deleted',

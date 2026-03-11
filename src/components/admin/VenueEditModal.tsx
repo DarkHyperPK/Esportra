@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -69,24 +69,19 @@ export function VenueEditModal({ venue, isOpen, onClose, onVenueUpdated }: Venue
     try {
       setLoading(true);
 
-      const { error } = await supabase
-        .from('venues')
-        .update({
-          name: data.name,
-          city: data.city,
-          address: data.address,
-          description: data.description,
-          stations: parseInt(data.stations),
-          hours: data.hours,
-          games: data.games,
-          contact_email: data.contact_email,
-          contact_phone: data.contact_phone,
-          price_range: data.price_range,
-          images: images // Save the array
-        })
-        .eq('id', venue.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/admin/venues/${venue.id}`, {
+        name: data.name,
+        city: data.city,
+        address: data.address,
+        description: data.description,
+        stations: parseInt(data.stations),
+        hours: data.hours,
+        games: data.games,
+        contact_email: data.contact_email,
+        contact_phone: data.contact_phone,
+        price_range: data.price_range,
+        images: images
+      });
 
       toast({
         title: 'Venue updated',

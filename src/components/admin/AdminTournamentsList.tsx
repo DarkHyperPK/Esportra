@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from 'framer-motion';
 import { Search, Eye, Edit, Trash2, Trophy, Users, CheckCircle, Clock, Activity, AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { ParticipantListModal } from "./ParticipantListModal";
 
 interface DbTournamentRow {
@@ -45,15 +45,7 @@ const AdminTournamentsList = () => {
       try {
         setLoading(true);
         setError(null);
-        const { data, error } = await supabase
-          .from('tournaments')
-          .select(`
-            id, name, title, game, status, start_date, created_at, max_participants, prize_pool,
-            organizer:profiles!tournaments_user_id_fkey(full_name, username),
-            registrations:tournament_participants(count)
-          `)
-          .order('created_at', { ascending: false });
-        if (error) throw error;
+        const data = await apiClient.get<DbTournamentRow[]>('/api/admin/tournaments?include=organizer,registrations&order=created_at.desc');
 
         const mapped: UITournament[] = (data as DbTournamentRow[]).map((t) => ({
           id: t.id,

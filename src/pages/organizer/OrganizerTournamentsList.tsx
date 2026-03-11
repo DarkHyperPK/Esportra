@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -30,13 +30,7 @@ const OrganizerTournamentsList: React.FC = () => {
     setLoading(true);
     if (!user) return;
     try {
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .maybeSingle();
-
-      if (orgError) throw orgError;
+      const orgData = await apiClient.get<any>(`/api/organizations/me`).catch(() => null);
 
       if (!orgData) {
         setTournaments([]);
@@ -44,13 +38,7 @@ const OrganizerTournamentsList: React.FC = () => {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('id, name, game, date, time, venue, max_participants, team_size, slug')
-        .eq('organization_id', orgData.id)
-        .order('start_date', { ascending: true });
-
-      if (error) throw error;
+      const data = await apiClient.get<any[]>(`/api/organizations/${orgData.id}/tournaments`);
 
       const mappedTournaments: Tournament[] = Array.isArray(data)
         ? (data as any[]).map((t) => ({

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Calendar, Users, Trophy, ChevronDown, ChevronUp, Search, Swords } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -32,17 +32,7 @@ export default function TournamentHistory() {
         setLoading(true);
         try {
             // 1. Fetch tournaments
-            const { data: tData, error: tError } = await supabase
-                .from('tournaments')
-                .select(`
-          id, name, game, start_date, status, format, team_size, 
-          max_teams, prize_pool, logo_url, banner_url,
-          participants:tournament_participants(count)
-        `)
-                .eq('organizer_id', user.id)
-                .order('start_date', { ascending: false });
-
-            if (tError) throw tError;
+            const tData = await apiClient.get<any[]>(`/api/tournaments?organizer_id=${user.id}`);
 
             // Classify status the same way useOrganizerStats does
             const now = new Date();
@@ -98,15 +88,7 @@ export default function TournamentHistory() {
 
         try {
             // 1. Fetch Participants (up to 10 for preview)
-            const { data: participantsData, error: participantsError } = await supabase
-                .from('tournament_participants')
-                .select(`
-          id, participant_type, team_name, status,
-          user:profiles!user_id (username, avatar_url),
-          team:teams!team_id (name, logo_url)
-        `)
-                .eq('tournament_id', tournamentId)
-                .limit(10);
+            const participantsData = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
 
             // Process participant names formatting
             const formattedParticipants = participantsData?.map(p => {
@@ -122,38 +104,18 @@ export default function TournamentHistory() {
 
             // 2. Fetch Match History
             // Since brkt_matches links through brkt_versions, we first need the active version for this tournament
-            const { data: versionData } = await supabase
-                .from('brkt_versions')
-                .select('id')
-                .eq('tournament_id', tournamentId)
-                .eq('status', 'active')
-                .limit(1)
-                .maybeSingle();
+            const versions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
+            const versionData = versions?.find((v: any) => v.status === 'active') || null;
 
             let matchData: any[] = [];
             if (versionData?.id) {
-                const { data: matches } = await supabase
-                    .from('brkt_matches')
-                    .select(`
-            id, round_index, match_number, status, team1_score, team2_score, scheduled_time, bracket_type,
-            team1:teams!team1_id(name),
-            team2:teams!team2_id(name),
-            winner:teams!winner_id(name)
-          `)
-                    .eq('version_id', versionData.id)
-                    .order('round_index', { ascending: false })
-                    .limit(5); // Show latest 5 matches
+                const matches = await apiClient.get<any[]>(`/api/brackets/${versionData.id}/graph`).catch(() => []);
 
-                matchData = matches || [];
+                matchData = (matches || []).slice(0, 5);
             } else {
                 // Fallback for custom tournaments without brkt_versions
-                const { data: fallbackMatches } = await supabase
-                    .from('matches')
-                    .select('*')
-                    .eq('tournament_id', tournamentId)
-                    .order('created_at', { ascending: false })
-                    .limit(5);
-                if (fallbackMatches && fallbackMatches.length > 0) matchData = fallbackMatches;
+                const fallbackMatches = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/match-games`).catch(() => []);
+                if (fallbackMatches && fallbackMatches.length > 0) matchData = fallbackMatches.slice(0, 5);
             }
 
             setTournaments(prev => prev.map(t =>

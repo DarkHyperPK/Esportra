@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { sendEmail } from '@/hooks/useEmail';
 import {
@@ -148,16 +149,14 @@ export const useTournamentRegistration = ({
 
       console.log('[useTournamentRegistration] Saving registration:', registrationData);
 
-      const { error: dbError, data } = await supabase
-        .from('tournament_participants')
-        .upsert(registrationData, {
-          onConflict: 'tournament_id,user_id'
-        })
-        .select()
-        .single();
+      const { data } = await apiClient.post<any>(
+        `/api/tournaments/${tournamentId}/register`,
+        registrationData
+      );
+      const dbError = null;
 
       if (dbError) {
-        console.error('[useTournamentRegistration] Database error:', dbError);
+        console.error('[useTournamentRegistration] Registration error:', dbError);
         throw dbError;
       }
 
@@ -224,16 +223,13 @@ export const useTournamentRegistration = ({
       console.log('[useTournamentRegistration] Starting withdrawal process for tournament:', tournamentId, 'user:', user.id);
 
       // First, check if registration exists - check both user_id (solo) and team_captain_id (team)
-      const { data: existingRegistration, error: fetchError } = await supabase
-        .from('tournament_participants')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('[useTournamentRegistration] Error fetching registration:', fetchError);
-        throw fetchError;
+      let existingRegistration: any = null;
+      try {
+        existingRegistration = await apiClient.get<any>(
+          `/api/tournaments/me/registration-status?tournamentId=${tournamentId}`
+        );
+      } catch {
+        // No registration found
       }
 
       if (!existingRegistration) {
@@ -256,15 +252,7 @@ export const useTournamentRegistration = ({
       }
 
       // Delete the registration
-      const { error } = await supabase
-        .from('tournament_participants')
-        .delete()
-        .eq('id', existingRegistration.id);
-
-      if (error) {
-        console.error('[useTournamentRegistration] Error withdrawing:', error);
-        throw error;
-      }
+      await apiClient.delete(`/api/tournaments/${tournamentId}/register`);
 
       console.log('[useTournamentRegistration] Withdrawal successful');
 

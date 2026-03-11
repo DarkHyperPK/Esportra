@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -95,30 +95,14 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
       setLoading(true);
 
       // Fetch solo registrations
-      const { data: soloRegistrations, error: soloError } = await supabase
-        .from('tournament_participants')
-        .select(`
-          *,
-          user:profiles!tournament_participants_user_id_fkey(username, full_name, avatar_url, riot_tag, steam_tag)
-        `)
-        .eq('tournament_id', tournamentId)
-        .eq('participant_type', 'solo')
-        .order('registration_date', { ascending: false });
-
-      if (soloError) throw soloError;
+      const soloRegistrations = await apiClient.get<any[]>(
+        `/api/tournaments/${tournamentId}/participants?type=solo`
+      );
 
       // Fetch team registrations
-      const { data: teamRegistrations, error: teamError } = await supabase
-        .from('tournament_participants')
-        .select(`
-          *,
-          team_captain:profiles!tournament_participants_team_captain_id_fkey(username, full_name, avatar_url, riot_tag, steam_tag)
-        `)
-        .eq('tournament_id', tournamentId)
-        .eq('participant_type', 'team')
-        .order('registration_date', { ascending: false });
-
-      if (teamError) throw teamError;
+      const teamRegistrations = await apiClient.get<any[]>(
+        `/api/tournaments/${tournamentId}/participants?type=team`
+      );
 
       const allRegistrations = [
         ...(soloRegistrations || []),
@@ -151,12 +135,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
         updateData.rejection_reason = rejectionReason;
       }
 
-      const { error } = await supabase
-        .from('tournament_participants')
-        .update(updateData)
-        .eq('id', registrationId);
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${tournamentId}/participants/${registrationId}`, updateData);
 
       toast({
         title: 'Status Updated',

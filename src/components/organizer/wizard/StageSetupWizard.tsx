@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Map as MapIcon, AlertCircle, Plus, Trash2, Pencil, X, ChevronsUpDown, Book, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 
 import { RECOMMENDED_TEMPLATES } from '@/data/recommended_templates';
 import { StageGuidelineModal } from './StageGuidelineModal';
@@ -214,21 +214,14 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
             // Fetch participants count for validation
             const fetchParticipants = async () => {
-                const { count } = await supabase
-                    .from('tournament_participants')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('tournament_id', tournamentId);
-                if (count !== null) setParticipantsCount(count);
+                const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
+                if (participants) setParticipantsCount(participants.length);
             };
             fetchParticipants();
 
             // Fetch tournament settings (check-in enabled, max participants)
             const fetchTournamentSettings = async () => {
-                const { data } = await supabase
-                    .from('tournaments')
-                    .select('check_in_required, max_teams')
-                    .eq('id', tournamentId)
-                    .single();
+                const data = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
                 if (data) {
                     const d = data as any;
                     setCheckInEnabled(d.check_in_required);
@@ -395,11 +388,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
             // 1. Handle Deletions
             if (deletedStageIds.length > 0) {
-                const { error: deleteError } = await supabase
-                    .from('tournament_stages')
-                    .delete()
-                    .in('id', deletedStageIds);
-                if (deleteError) throw deleteError;
+                await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { delete_ids: deletedStageIds });
             }
 
             // 2. Handle Upserts (Update or Insert)
@@ -431,32 +420,25 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         advancement_count: stageData.advancement_count
                     });
                     const normalizedBestOf = stage.best_of === 3 ? 3 : stage.best_of === 5 ? 5 : 1;
-                    const { error, data } = await supabase
-                        .from('tournament_stages')
-                        .update({
-                            name: stageData.name,
-                            format: stageData.format,
-                            stage_order: stageData.stage_order,
-                            capacity: stageData.capacity,
-                            advancement_count: stageData.advancement_count,
-                            best_of: normalizedBestOf,
-                            config: stage.settings, // Save format specific settings
-                            veto_enabled: true
-                        })
-                        .eq('id', stage.id)
-                        .select();
-                    console.log('[StageWizard] Update result:', { error, data });
-                    if (error) throw error;
+                    const result = await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
+                        stage_id: stage.id,
+                        name: stageData.name,
+                        format: stageData.format,
+                        stage_order: stageData.stage_order,
+                        capacity: stageData.capacity,
+                        advancement_count: stageData.advancement_count,
+                        best_of: normalizedBestOf,
+                        config: stage.settings,
+                        veto_enabled: true
+                    });
+                    console.log('[StageWizard] Update result:', result);
                 } else {
                     // Insert
-                    const { error } = await supabase
-                        .from('tournament_stages')
-                        .insert({
-                            ...stageData,
-                            config: stage.settings,
-                            status: 'upcoming'
-                        });
-                    if (error) throw error;
+                    await apiClient.post(`/api/tournaments/${tournamentId}/stages`, {
+                        ...stageData,
+                        config: stage.settings,
+                        status: 'upcoming'
+                    });
                 }
             }
 
@@ -467,11 +449,9 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     const maxTeams = Number(firstStageCapacity);
                     if (maxTeams > 0) {
                         console.log('[StageWizard] Updating tournament max_teams to:', maxTeams);
-                        const { error: tournamentError } = await supabase
-                            .from('tournaments')
-                            .update({ max_teams: maxTeams } as any)
-                            .eq('id', tournamentId);
-                        if (tournamentError) {
+                        try {
+                            await apiClient.put(`/api/tournaments/${tournamentId}`, { max_teams: maxTeams });
+                        } catch (tournamentError: any) {
                             console.error('Error updating tournament max_teams:', tournamentError);
                             // Don't throw - stage save succeeded, this is secondary
                         }

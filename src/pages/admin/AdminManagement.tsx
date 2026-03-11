@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/contexts/AdminContext";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -102,9 +102,7 @@ const AdminManagement = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
-
-      if (error) throw error;
+      const data = await apiClient.get<any>('/api/admin/stats');
 
       if (data) {
         setStats({
@@ -128,59 +126,55 @@ const AdminManagement = () => {
 
   const fetchAuditLogs = useCallback(async () => {
     setAuditLoading(true);
-    const { data } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
-    setAuditLogs(data || []);
+    try {
+      const data = await apiClient.get<AuditLog[]>('/api/admin/audit-logs?limit=100&order=created_at.desc');
+      setAuditLogs(data || []);
+    } catch (err) {
+      console.error('Error fetching audit logs:', err);
+    }
     setAuditLoading(false);
   }, []);
 
   const fetchRecentActivities = useCallback(async () => {
-    // Fetch recent users
-    const { data: recentUsers } = await supabase
-      .from('profiles')
-      .select('id, username, full_name, created_at')
-      .order('created_at', { ascending: false })
-      .limit(3);
+    try {
+      // Fetch recent users
+      const recentUsers = await apiClient.get<Array<{ id: string; username: string; full_name: string; created_at: string }>>('/api/admin/users?limit=3&order=created_at.desc');
 
-    // Fetch recent tournaments
-    const { data: recentTournaments } = await supabase
-      .from('tournaments')
-      .select('id, name, created_at')
-      .order('created_at', { ascending: false })
-      .limit(3);
+      // Fetch recent tournaments
+      const recentTournaments = await apiClient.get<Array<{ id: string; name: string; created_at: string }>>('/api/admin/tournaments?limit=3&order=created_at.desc');
 
-    const activities: RecentActivity[] = [];
+      const activities: RecentActivity[] = [];
 
-    recentUsers?.forEach(user => {
-      activities.push({
-        id: user.id,
-        type: 'user',
-        title: 'New User Registered',
-        description: user.full_name || user.username || 'Unknown',
-        time: user.created_at,
-        icon: Users,
-        color: 'rose',
+      (recentUsers || []).forEach(user => {
+        activities.push({
+          id: user.id,
+          type: 'user',
+          title: 'New User Registered',
+          description: user.full_name || user.username || 'Unknown',
+          time: user.created_at,
+          icon: Users,
+          color: 'rose',
+        });
       });
-    });
 
-    recentTournaments?.forEach(t => {
-      activities.push({
-        id: t.id,
-        type: 'tournament',
-        title: 'Tournament Created',
-        description: t.name || 'Untitled',
-        time: t.created_at,
-        icon: Trophy,
-        color: 'amber',
+      (recentTournaments || []).forEach(t => {
+        activities.push({
+          id: t.id,
+          type: 'tournament',
+          title: 'Tournament Created',
+          description: t.name || 'Untitled',
+          time: t.created_at,
+          icon: Trophy,
+          color: 'amber',
+        });
       });
-    });
 
-    // Sort by time
-    activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-    setRecentActivities(activities.slice(0, 10));
+      // Sort by time
+      activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+      setRecentActivities(activities.slice(0, 10));
+    } catch (err) {
+      console.error('Error fetching recent activities:', err);
+    }
   }, []);
 
   useEffect(() => {

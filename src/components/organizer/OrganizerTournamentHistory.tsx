@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -20,13 +20,8 @@ const OrganizerTournamentHistory = () => {
       if (!user) return;
       setLoading(true);
       // Get all completed tournaments the organizer hosted
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select('id, name, date, status, finished')
-        .eq('organizer_id', user.id)
-        .or('status.eq.completed,finished.eq.true')
-        .order('start_date', { ascending: false });
-      setTournaments(error ? [] : (data || []));
+      const data = await apiClient.get<any[]>(`/api/tournaments/me/history`);
+      setTournaments(data || []);
       setLoading(false);
     };
     fetchHistory();
@@ -36,20 +31,13 @@ const OrganizerTournamentHistory = () => {
     setBanTournament(tournament);
     setBanModalOpen(true);
     // Fetch banned users for this tournament
-    const { data, error } = await (supabase as any)
-      .from('tournament_bans')
-      .select('user_id, ban_reason, banned_at, profiles:profiles!tournament_bans_user_id_fkey(username, full_name)')
-      .eq('tournament_id', tournament.id);
-    setBanList(error ? [] : (data || []));
+    const data = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/bans`).catch(() => []);
+    setBanList(data || []);
   };
 
   const handleUnban = async (userId: string) => {
     if (!banTournament) return;
-    await (supabase as any)
-      .from('tournament_bans')
-      .delete()
-      .eq('tournament_id', banTournament.id)
-      .eq('user_id', userId);
+    await apiClient.delete(`/api/tournaments/${banTournament.id}/bans/${userId}`);
     setBanList(banList.filter(ban => ban.user_id !== userId));
   };
 

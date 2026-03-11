@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { auditLog } from "@/lib/auditLog";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -85,16 +86,11 @@ const VerificationSystemTool = () => {
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('verification_requests')
-      .select(`
-        *,
-        profiles:user_id (username, full_name, email)
-      `)
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
+    try {
+      const data = await apiClient.get<VerificationRequest[]>('/api/admin/verification-requests?order=created_at.desc');
       setRequests(data);
+    } catch (err) {
+      console.error('Error fetching verification requests:', err);
     }
     setLoading(false);
     setRefreshing(false);
@@ -114,42 +110,36 @@ const VerificationSystemTool = () => {
 
     try {
       // 1. Update the request status
-      const { error: updateError } = await supabase
-        .from('verification_requests')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', requestId);
-
-      if (updateError) throw updateError;
+      await apiClient.put(`/api/admin/verification-requests/${requestId}`, {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      });
 
       // 2. If approved, grant the roles
       if (action === 'approve' && selectedRequest) {
 
         // A. Add to verified_roles (Official Record)
-        const { error: verifiedRoleError } = await supabase
-          .from('verified_roles')
-          .upsert({
+        try {
+          await apiClient.post('/api/admin/verified-roles', {
             user_id: selectedRequest.user_id,
             role: selectedRequest.requested_role,
             status: 'approved',
             is_active: true,
             verified_at: new Date().toISOString()
-          }, { onConflict: 'user_id, role' });
-
-        if (verifiedRoleError) {
+          });
+        } catch (verifiedRoleError) {
           console.error('Error adding to verified_roles:', verifiedRoleError);
           toast({ title: 'Warning', description: 'Request approved but failed to update verified_roles table.', variant: 'destructive' });
         }
 
         // B. Add to user_roles (Functional Permission)
-        const { error: userRoleError } = await supabase
-          .from('user_roles')
-          .upsert({
+        try {
+          await apiClient.post('/api/admin/user-roles', {
             user_id: selectedRequest.user_id,
             role: selectedRequest.requested_role,
             is_active: true
-          }, { onConflict: 'user_id, role' });
-
-        if (userRoleError) {
+          });
+        } catch (userRoleError) {
           console.error('Error adding to user_roles:', userRoleError);
           toast({ title: 'Warning', description: 'Request approved but failed to grant active role permissions.', variant: 'destructive' });
         }

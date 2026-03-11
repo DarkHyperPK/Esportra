@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -68,35 +68,10 @@ const TournamentSchedule = () => {
       // We need to find matches for tournaments OWNED by this user.
       // Join: brkt_matches -> tournament_versions -> tournaments (filter owner_id)
 
-      const { data, error } = await supabase
-        .from('brkt_matches')
-        .select(`
-          id,
-          scheduled_time,
-          round_index,
-          match_number,
-          status,
-          team1:teams!team1_id(name),
-          team2:teams!team2_id(name),
-          version:brkt_versions!inner(
-            tournament:tournaments!inner(
-              id,
-              name,
-              game,
-              organizer_id
-            )
-          )
-        `)
-        .eq('version.tournament.organizer_id', user.id) // Use organizer_id matching profile
-        .gte('scheduled_time', startOfDay.toISOString())
-        .lte('scheduled_time', endOfDay.toISOString())
-        .order('scheduled_time', { ascending: true });
+      const data = await apiClient.get<any[]>(
+        `/api/organizer/schedule?start=${startOfDay.toISOString()}&end=${endOfDay.toISOString()}`
+      ).catch(() => []);
 
-      if (error) {
-        console.error("Error fetching matches:", error);
-        // Don't throw - just return empty array to avoid breaking the page
-        return [];
-      }
       return data as unknown as ScheduledMatch[];
     },
     enabled: !!user?.id && !!date,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
@@ -86,15 +86,11 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('tournament_participants')
-        .select('*')
-        .eq('tournament_id', tournament.id)
-        .eq('user_id', user.id)
-        .eq('participant_type', 'solo')
-        .single();
+      const data = await apiClient.get<any>(
+        `/api/tournaments/me/registration-status?tournamentId=${tournament.id}`
+      );
 
-      if (data && !error) {
+      if (data) {
         setIsRegistered(true);
         setExistingRegistration(data);
         const gamer_tag = data.gamer_tag || profile?.riot_tag || profile?.username || '';
@@ -150,13 +146,9 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
     try {
       // Check if tournament is still open for registration
-      const { data: tournamentData, error: tournamentError } = await supabase
-        .from('tournaments')
-        .select('status, registration_deadline, max_teams')
-        .eq('id', tournament.id)
-        .single();
+      const tournamentData = await apiClient.get<any>(`/api/tournaments/${tournament.id}`);
 
-      if (tournamentError || !tournamentData) {
+      if (!tournamentData) {
         throw new Error('Tournament not found');
       }
 
@@ -173,48 +165,36 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       }
 
       // Check current registration count
-      const { count: currentRegistrations } = await supabase
-        .from('tournament_participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', tournament.id)
-        .in('status', ['pending', 'approved', 'checked_in']);
+      const participants = await apiClient.get<any[]>(
+        `/api/tournaments/${tournament.id}/participants?status=pending,approved,checked_in`
+      );
+      const currentRegistrations = participants?.length ?? 0;
 
       if (currentRegistrations && currentRegistrations >= tournamentData.max_teams) {
         throw new Error('Tournament is full');
       }
 
       // Check if user is already registered
-      const { data: existingReg } = await supabase
-        .from('tournament_participants')
-        .select('id')
-        .eq('tournament_id', tournament.id)
-        .eq('user_id', user.id)
-        .eq('participant_type', 'solo')
-        .single();
+      let existingReg: any = null;
+      try {
+        existingReg = await apiClient.get<any>(
+          `/api/tournaments/me/registration-status?tournamentId=${tournament.id}`
+        );
+      } catch { /* no existing registration */ }
 
       if (existingReg) {
         throw new Error('You are already registered for this tournament');
       }
 
       // Create registration
-      const { data, error } = await supabase
-        .from('tournament_participants')
-        .insert({
-          tournament_id: tournament.id,
-          participant_type: 'solo',
-          user_id: user.id,
-          gamer_tag: registrationData.gamer_tag.trim(),
-          solo_contact_email: user.email, // Use registered email
-          status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'approved',
-          entry_fee_amount: tournament.entry_fee || 0,
-          entry_fee_paid: !tournament.entry_fee || tournament.entry_fee === 0
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
+      const data = await apiClient.post<any>(`/api/tournaments/${tournament.id}/register`, {
+        participant_type: 'solo',
+        gamer_tag: registrationData.gamer_tag.trim(),
+        solo_contact_email: user.email,
+        status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'approved',
+        entry_fee_amount: tournament.entry_fee || 0,
+        entry_fee_paid: !tournament.entry_fee || tournament.entry_fee === 0
+      });
 
       toast({
         title: 'Registration Successful!',
@@ -262,12 +242,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     setLoading(true);
     try {
       // Delete the registration completely instead of just updating status
-      const { error } = await supabase
-        .from('tournament_participants')
-        .delete()
-        .eq('id', existingRegistration.id);
-
-      if (error) throw error;
+      await apiClient.delete(`/api/tournaments/${tournament.id}/register`);
 
       toast({
         title: 'Registration Withdrawn',

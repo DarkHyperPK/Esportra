@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/apiClient';
-import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
 export interface Review {
@@ -218,80 +217,15 @@ export const useReviews = () => {
     }
   };
 
-  // canReview — kept on Supabase (complex multi-table eligibility check)
+  // canReview — check eligibility via API
   const canReview = async (entityType: 'user' | 'venue' | 'tournament', entityId: string): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      const existingReview = await supabase
-        .from('reviews')
-        .select('id')
-        .eq('reviewer_id', user.id)
-        .eq('review_type', entityType);
-
-      let existingQuery;
-      switch (entityType) {
-        case 'user':
-          existingQuery = existingReview.eq('reviewee_id', entityId);
-          break;
-        case 'venue':
-          existingQuery = existingReview.eq('venue_id', entityId);
-          break;
-        case 'tournament':
-          existingQuery = existingReview.eq('tournament_id', entityId);
-          break;
-      }
-
-      const { data: existing } = await existingQuery;
-
-      if (existing && existing.length > 0) {
-        return false;
-      }
-
-      switch (entityType) {
-        case 'venue':
-          const { data: venueBooking } = await supabase
-            .from('venue_bookings')
-            .select('id')
-            .eq('venue_id', entityId)
-            .eq('user_id', user.id)
-            .eq('status', 'completed')
-            .limit(1);
-          return venueBooking && venueBooking.length > 0;
-
-        case 'tournament':
-          const { data: tournamentParticipation } = await supabase
-            .from('tournament_participants')
-            .select('id')
-            .eq('tournament_id', entityId)
-            .eq('user_id', user.id)
-            .eq('status', 'approved')
-            .limit(1);
-          return tournamentParticipation && tournamentParticipation.length > 0;
-
-        case 'user':
-          const { data: teamInteraction } = await supabase
-            .from('team_members')
-            .select('team_id')
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .limit(1);
-          
-          if (teamInteraction && teamInteraction.length > 0) {
-            const { data: sharedTeam } = await supabase
-              .from('team_members')
-              .select('id')
-              .eq('team_id', teamInteraction[0].team_id)
-              .eq('user_id', entityId)
-              .eq('is_active', true)
-              .limit(1);
-            return sharedTeam && sharedTeam.length > 0;
-          }
-          return false;
-
-        default:
-          return false;
-      }
+      const result = await apiClient.get<{ canReview: boolean }>(
+        `/api/reviews/can-review?entityType=${entityType}&entityId=${entityId}`
+      );
+      return result.canReview;
     } catch (error) {
       console.error('Error checking review eligibility:', error);
       return false;

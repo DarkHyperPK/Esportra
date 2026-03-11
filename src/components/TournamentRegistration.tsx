@@ -6,7 +6,7 @@ import SoloTournamentRegistration from '@/components/tournament/SoloTournamentRe
 import { AlertTriangle, Ban as BanIcon } from 'lucide-react';
 import { RegistrationDetails } from '@/types/tournament';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 
 interface TournamentRegistrationProps {
   tournamentId: string;
@@ -48,14 +48,11 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
     const checkBan = async () => {
       if (!user) return;
       try {
-        const { data, error } = await supabase
-          .from('tournament_bans')
-          .select('ban_reason')
-          .eq('tournament_id', tournamentId)
-          .eq('user_id', user.id)
-          .maybeSingle();
+        const data = await apiClient.get<{ ban_reason: string | null } | null>(
+          `/api/tournaments/${tournamentId}/ban-status`
+        );
 
-        if (data && !error) {
+        if (data) {
           setBanned(true);
           setBanReason(data.ban_reason || null);
         } else {

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { 
   CheckCircle, 
   XCircle, 
@@ -79,19 +79,8 @@ const VerificationPanel: React.FC<VerificationPanelProps> = ({ onPendingCountCha
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('verification_requests')
-        .select(`
-          *,
-          profiles:user_id (
-            username,
-            full_name,
-            email
-          )
-        `)
-        .order('created_at', { ascending: false });
+      const data = await apiClient.get<VerificationRequest[]>('/api/admin/verification-requests?order=created_at.desc');
 
-      if (error) throw error;
       setRequests(data || []);
       
       // Update pending count
@@ -115,36 +104,27 @@ const VerificationPanel: React.FC<VerificationPanelProps> = ({ onPendingCountCha
     setProcessing(true);
     try {
       // First approve the verification request
-      const { data, error } = await supabase.rpc('approve_verification_request', {
+      await apiClient.post(`/api/admin/users/${selectedRequest.user_id}/action`, {
+        action: 'approve_verification',
         request_id: selectedRequest.id,
         admin_notes: adminNotes || null
       });
 
-      if (error) throw error;
-
       // If it's an organizer request, create a company profile
       if (selectedRequest.requested_role === 'organizer') {
         try {
-          const { error: companyError } = await supabase
-            .from('company_profiles')
-            .insert({
-              user_id: selectedRequest.user_id,
-              company_name: selectedRequest.business_name,
-              company_description: selectedRequest.business_description,
-              website: selectedRequest.website,
-              contact_email: selectedRequest.contact_email,
-              business_type: selectedRequest.business_type,
-              social_media_links: selectedRequest.social_media_links,
-              is_verified: true
-            });
-
-          if (companyError) {
-            console.error('Error creating company profile:', companyError);
-            // Don't fail the whole process, just log the error
-          }
+          await apiClient.post('/api/admin/company-profiles', {
+            user_id: selectedRequest.user_id,
+            company_name: selectedRequest.business_name,
+            company_description: selectedRequest.business_description,
+            website: selectedRequest.website,
+            contact_email: selectedRequest.contact_email,
+            business_type: selectedRequest.business_type,
+            social_media_links: selectedRequest.social_media_links,
+            is_verified: true
+          });
         } catch (error) {
           console.error('Error creating company profile (table may not exist):', error);
-          // Company profiles table doesn't exist yet, that's okay
         }
       }
 
@@ -174,13 +154,12 @@ const VerificationPanel: React.FC<VerificationPanelProps> = ({ onPendingCountCha
 
     setProcessing(true);
     try {
-      const { data, error } = await supabase.rpc('reject_verification_request', {
+      await apiClient.post(`/api/admin/users/${selectedRequest.user_id}/action`, {
+        action: 'reject_verification',
         request_id: selectedRequest.id,
         rejection_reason: rejectionReason,
         admin_notes: adminNotes || null
       });
-
-      if (error) throw error;
 
       toast({
         title: 'Request Rejected',

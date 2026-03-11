@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Badge } from '@/components/ui/badge';
 import { Map } from 'lucide-react';
 
@@ -13,25 +13,14 @@ export const MapVetoResultBadge: React.FC<MapVetoResultBadgeProps> = ({ matchId 
   useEffect(() => {
     const fetchVetoResult = async () => {
       try {
-        const { data: veto, error } = await supabase
-          .from('match_map_vetos')
-          .select('selected_map_id')
-          .eq('match_id', matchId)
-          .eq('status', 'completed')
-          .maybeSingle();
+        const veto = await apiClient.get<{
+          selected_map_id: string | null;
+          selected_map_name?: string;
+          status: string;
+        }>(`/api/veto/${matchId}`);
 
-        if (error) throw error;
-        if (veto && veto.selected_map_id) {
-          // Fetch map name
-          const { data: mapData, error: mapError } = await supabase
-            .from('game_maps')
-            .select('map_name')
-            .eq('id', veto.selected_map_id)
-            .single();
-
-          if (!mapError && mapData) {
-            setSelectedMap(mapData.map_name);
-          }
+        if (veto?.status === 'completed' && veto.selected_map_name) {
+          setSelectedMap(veto.selected_map_name);
         }
       } catch (error) {
         console.error('Error fetching veto result:', error);

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { auditLog } from '@/lib/auditLog';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -128,13 +129,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     if (!tournamentId) return;
     try {
       setLoading(true);
-      const { data: disputesData, error } = await supabase
-        .from('tournament_disputes')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const disputesData = await apiClient.get<any[]>(`/api/organizer/disputes?tournament_id=${tournamentId}`);
 
       // Enrich with user/team names
       const rows = (disputesData || []) as TournamentDisputeRow[];
@@ -142,28 +137,16 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
         rows.map(async (dispute) => {
           const enrichedDispute: Dispute = { ...dispute };
 
-          const { data: raisedBy } = await supabase
-            .from('profiles')
-            .select('username, full_name')
-            .eq('id', dispute.raised_by_user_id)
-            .maybeSingle();
+          const raisedBy = await apiClient.get<any>(`/api/profiles/${dispute.raised_by_user_id}`).catch(() => null);
           enrichedDispute.raised_by_name = raisedBy?.username || raisedBy?.full_name || 'Unknown User';
 
           if (dispute.team_id) {
-            const { data: team } = await supabase
-              .from('teams')
-              .select('name')
-              .eq('id', dispute.team_id)
-              .maybeSingle();
+            const team = await apiClient.get<any>(`/api/teams/${dispute.team_id}`).catch(() => null);
             enrichedDispute.team_name = team?.name || 'Unknown Team';
           }
 
           if (dispute.assigned_to_user_id) {
-            const { data: assignedTo } = await supabase
-              .from('profiles')
-              .select('username, full_name')
-              .eq('id', dispute.assigned_to_user_id)
-              .maybeSingle();
+            const assignedTo = await apiClient.get<any>(`/api/profiles/${dispute.assigned_to_user_id}`).catch(() => null);
             enrichedDispute.assigned_to_name = assignedTo?.username || assignedTo?.full_name || 'Unassigned';
           }
 
@@ -187,23 +170,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   const fetchComments = useCallback(async (disputeId: string) => {
     try {
       setLoadingComments(true);
-      const { data, error } = await supabase
-        .from('dispute_comments')
-        .select(`
-          id,
-          user_id,
-          comment,
-          is_internal,
-          created_at,
-          attachment_url
-        `)
-        .eq('dispute_id', disputeId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching comments:', error);
-        throw error;
-      }
+      const data = await apiClient.get<any[]>(`/api/organizer/disputes/${disputeId}/comments`);
 
       console.log('Fetched comments data:', data);
 
@@ -212,12 +179,9 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       const profileMap = new Map<string, { full_name?: string; username?: string }>();
 
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, username')
-          .in('id', userIds);
+        const profiles = await apiClient.get<any[]>(`/api/profiles/search?ids=${userIds.join(',')}`).catch(() => []);
 
-        (profiles || []).forEach((profile) => {
+        (profiles || []).forEach((profile: any) => {
           profileMap.set(profile.id, {
             full_name: profile.full_name,
             username: profile.username,
@@ -311,15 +275,10 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   const handleAssignDispute = async (disputeId: string, assigneeId: string) => {
     try {
       setAssignmentLoading(true);
-      const { error } = await supabase
-        .from('tournament_disputes')
-        .update({
+      await apiClient.put(`/api/organizer/disputes/${disputeId}`, {
           assigned_to_user_id: assigneeId,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', disputeId);
-
-      if (error) throw error;
+        });
 
       await logDisputeAudit(disputeId, 'assigned', {
         assigned_to: assigneeId,
@@ -351,25 +310,14 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       setSubmittingComment(true);
 
       // Check current dispute status
-      const { data: disputeData } = await supabase
-        .from('tournament_disputes')
-        .select('status')
-        .eq('id', disputeId)
-        .single();
+      const disputeData = await apiClient.get<any>(`/api/organizer/disputes/${disputeId}`).catch(() => null);
 
       // Upload attachment if provided
       let attachmentUrl: string | null = null;
       if (commentAttachment) {
         setUploadingAttachment(true);
 
-        // Get dispute reason for categorization
-        const { data: disputeInfo } = await supabase
-          .from('tournament_disputes')
-          .select('dispute_reason')
-          .eq('id', disputeId)
-          .single();
-
-        const disputeReason = disputeInfo?.dispute_reason || 'general';
+        const disputeReason = disputeData?.dispute_reason || 'general';
         const fileExt = commentAttachment.name.split('.').pop();
         // Organized path: {dispute_id}/{dispute_reason}/{user_id}-{timestamp}.{ext}
         const fileName = `${disputeId}/${disputeReason}/${actorUserId}-${Date.now()}.${fileExt}`;
@@ -388,17 +336,12 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
         setUploadingAttachment(false);
       }
 
-      const { error: insertError } = await supabase
-        .from('dispute_comments')
-        .insert({
-          dispute_id: disputeId,
+      await apiClient.post(`/api/organizer/disputes/${disputeId}/comments`, {
           user_id: actorUserId,
           comment: commentText.trim() || '', // Empty string if no text (comment column is NOT NULL)
           is_internal: false,
           attachment_url: attachmentUrl,
         });
-
-      if (insertError) throw insertError;
 
       // Update dispute: set to in_review if currently open, and update updated_at
       const updateData: { updated_at: string; status?: string } = {
@@ -410,12 +353,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
         updateData.status = 'in_review';
       }
 
-      const { error: updateError } = await supabase
-        .from('tournament_disputes')
-        .update(updateData)
-        .eq('id', disputeId);
-
-      if (updateError) throw updateError;
+      await apiClient.put(`/api/organizer/disputes/${disputeId}`, updateData);
 
       setCommentText('');
       setCommentAttachment(null);
@@ -457,19 +395,12 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
         updateData.resolution_notes = resolutionNotes || null;
       }
 
-      const { error } = await supabase
-        .from('tournament_disputes')
-        .update(updateData)
-        .eq('id', disputeId);
-
-      if (error) throw error;
+      const { error } = { error: null }; // apiClient throws on error
+      await apiClient.put(`/api/organizer/disputes/${disputeId}`, updateData);
 
       // Add comment if provided when marking as in_review
       if (newStatus === 'in_review' && addComment && commentText.trim()) {
-        await supabase
-          .from('dispute_comments')
-          .insert({
-            dispute_id: disputeId,
+        await apiClient.post(`/api/organizer/disputes/${disputeId}/comments`, {
             user_id: actorUserId,
             comment: commentText.trim(),
             is_internal: false,

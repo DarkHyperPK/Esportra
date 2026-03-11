@@ -4,6 +4,7 @@
  */
 
 import { supabase } from './supabase';
+import { apiClient } from './apiClient';
 
 export type ActionType =
     | 'create' | 'update' | 'delete'
@@ -73,11 +74,12 @@ class AuditLogger {
             }
 
             // Get admin profile name
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('full_name, username')
-                .eq('id', user.id)
-                .single();
+            let profile: { full_name: string | null; username: string | null } | null = null;
+            try {
+                profile = await apiClient.get<{ full_name: string | null; username: string | null }>(`/api/profiles/${user.id}`);
+            } catch {
+                // Profile lookup failed, will use fallback name
+            }
 
             const adminName = profile?.full_name || profile?.username || user.email || 'Unknown Admin';
 
@@ -93,13 +95,11 @@ class AuditLogger {
                 severity: severityOverride || getSeverity(actionType),
             };
 
-            const { error } = await supabase
-                .from('audit_logs')
-                .insert(entry);
-
-            if (error) {
-                console.warn('[AuditLog] INSERT FAILED:', error.message, error.details, error.hint, { entry });
-                return { success: false, error: error.message };
+            try {
+                await apiClient.post('/api/admin/audit-logs', entry);
+            } catch (insertErr) {
+                console.warn('[AuditLog] INSERT FAILED:', insertErr, { entry });
+                return { success: false, error: String(insertErr) };
             }
 
             console.log('[AuditLog] ✅ Successfully logged:', actionType, targetType, targetName);

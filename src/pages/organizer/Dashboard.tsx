@@ -8,7 +8,7 @@ import Footer from "@/components/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, Users, Calendar, BarChart3, Plus, Building2, ChevronRight, ShieldCheck } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from '@/lib/apiClient';
 import TournamentsList from "@/components/organizer/TournamentsList";
 import ParticipantsList from "@/components/organizer/ParticipantsList";
 import TournamentSchedule from "@/components/organizer/TournamentSchedule";
@@ -43,11 +43,7 @@ const OrganizerDashboard = () => {
 
     const fetchOrg = async () => {
       // 1. Try to find an org where user is owner
-      const { data: ownerData } = await supabase
-        .from('organizations')
-        .select('id, name, logo_url')
-        .eq('owner_id', user.id)
-        .maybeSingle();
+      const ownerData = await apiClient.get<any>(`/api/organizations/me`).catch(() => null);
 
       if (ownerData) {
         setOrgId(ownerData.id);
@@ -57,13 +53,7 @@ const OrganizerDashboard = () => {
       }
 
       // 2. If not owner, check if they are active staff
-      const { data: staffData } = await supabase
-        .from('organization_staff')
-        .select('organization_id, organizations!inner(id, name, logo_url)')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .limit(1)
-        .maybeSingle();
+      const staffData = await apiClient.get<any>(`/api/organizations/my-staff`).catch(() => null);
 
       if (staffData && staffData.organizations) {
         const org = Array.isArray(staffData.organizations) ? staffData.organizations[0] : staffData.organizations;

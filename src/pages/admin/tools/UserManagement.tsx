@@ -85,49 +85,35 @@ const UserManagementTool = () => {
 
         try {
             // 1. Fetch profiles
-            const { data: profiles, error: profilesError } = await supabase
-                .from('profiles')
-                .select('id, username, full_name, email, avatar_url, created_at, is_suspended, suspension_until, suspension_reason, suspension_type')
-                .order('created_at', { ascending: false });
-
-            if (profilesError) {
-                console.error('Error fetching profiles:', profilesError);
-                setLoading(false);
-                return;
-            }
+            const profiles = await apiClient.get<Array<{
+                id: string; username: string | null; full_name: string | null; email: string | null;
+                avatar_url: string | null; created_at: string; is_suspended?: boolean;
+                suspension_until?: string | null; suspension_reason?: string | null; suspension_type?: string | null;
+            }>>('/api/admin/users?order=created_at.desc');
 
             // 2. Fetch all regular user roles
-            const { data: roles, error: rolesError } = await supabase
-                .from('user_roles')
-                .select('user_id, role');
-
-            if (rolesError) {
-                console.error('Error fetching roles:', rolesError);
+            let roles: Array<{ user_id: string; role: string }> = [];
+            try {
+                roles = await apiClient.get<Array<{ user_id: string; role: string }>>('/api/admin/user-roles');
+            } catch (err) {
+                console.error('Error fetching roles:', err);
             }
 
             // 3. Fetch admin role definitions
-            const { data: adminRoleDefs, error: adminRoleDefsError } = await supabase
-                .from('admin_roles')
-                .select('id, name');
-
-            if (adminRoleDefsError) {
-                console.warn('Error fetching admin role definitions (might not exist):', adminRoleDefsError);
-                // setAvailableAdminRoles([]); // Don't clear if it fails, maybe static list?
-            } else {
+            let adminRoleDefs: Array<{ id: string; name: string }> = [];
+            try {
+                adminRoleDefs = await apiClient.get<Array<{ id: string; name: string }>>('/api/admin/roles');
                 setAvailableAdminRoles(adminRoleDefs?.map(r => r.name) || []);
+            } catch (err) {
+                console.warn('Error fetching admin role definitions (might not exist):', err);
             }
 
             // 4. Fetch admin user role assignments
-            const { data: adminUserRoles, error: adminUserRolesError } = await supabase
-                .from('admin_user_roles')
-                .select(`
-          user_id,
-          role_id,
-          admin_roles:role_id ( name )
-        `);
-
-            if (adminUserRolesError) {
-                console.warn('Error fetching admin user roles:', adminUserRolesError);
+            let adminUserRoles: Array<any> = [];
+            try {
+                adminUserRoles = await apiClient.get<Array<any>>('/api/admin/admin-user-roles');
+            } catch (err) {
+                console.warn('Error fetching admin user roles:', err);
             }
 
             // Combine everything

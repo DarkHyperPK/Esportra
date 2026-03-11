@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,13 +51,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
   const fetchBans = async () => {
     try {
       setLoading(true);
-      const { data: bansData, error } = await supabase
-        .from('tournament_bans')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('banned_at', { ascending: false });
-
-      if (error) throw error;
+      const bansData = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bans`);
 
       // Enrich with user/team names
       const enriched = await Promise.all(
@@ -65,28 +59,16 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
           const enrichedBan: BanRecord = { ...ban };
 
           if (ban.user_id) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('username, full_name')
-              .eq('id', ban.user_id)
-              .maybeSingle();
+            const profile = await apiClient.get<any>(`/api/profiles/${ban.user_id}`).catch(() => null);
             enrichedBan.user_name = profile?.username || profile?.full_name || 'Unknown User';
           }
 
           if (ban.team_id) {
-            const { data: team } = await supabase
-              .from('teams')
-              .select('name')
-              .eq('id', ban.team_id)
-              .maybeSingle();
+            const team = await apiClient.get<any>(`/api/teams/${ban.team_id}`).catch(() => null);
             enrichedBan.team_name = team?.name || 'Unknown Team';
           }
 
-          const { data: bannedBy } = await supabase
-            .from('profiles')
-            .select('username, full_name')
-            .eq('id', ban.banned_by)
-            .maybeSingle();
+          const bannedBy = await apiClient.get<any>(`/api/profiles/${ban.banned_by}`).catch(() => null);
           enrichedBan.banned_by_name = bannedBy?.username || bannedBy?.full_name || 'Unknown';
 
           return enrichedBan;
@@ -110,12 +92,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
     if (!selectedBan) return;
 
     try {
-      const { error } = await supabase
-        .from('tournament_bans')
-        .update({ is_active: false })
-        .eq('id', selectedBan.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${tournamentId}/bans/${selectedBan.id}`, { is_active: false });
 
       toast({
         title: 'Success',

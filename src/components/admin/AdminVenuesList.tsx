@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { motion } from 'framer-motion';
 import {
   Dialog,
@@ -48,11 +48,7 @@ const AdminVenuesList = () => {
   const fetchVenues = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('venues')
-        .select('*');
-
-      if (error) throw error;
+      const data = await apiClient.get<Venue[]>('/api/admin/venues');
 
       setVenues(data || []);
       setError(null);
@@ -90,23 +86,18 @@ const AdminVenuesList = () => {
     if (!editingVenue) return;
 
     try {
-      const { error } = await supabase
-        .from('venues')
-        .update({
-          name: formData.name,
-          city: formData.city,
-          address: formData.address,
-          description: formData.description,
-          stations: parseInt(String(formData.stations)) || 0,
-          hours: formData.hours,
-          games: formData.games,
-          contact_email: formData.contact_email,
-          contact_phone: formData.contact_phone,
-          price_range: formData.price_range
-        })
-        .eq('id', editingVenue.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/admin/venues/${editingVenue.id}`, {
+        name: formData.name,
+        city: formData.city,
+        address: formData.address,
+        description: formData.description,
+        stations: parseInt(String(formData.stations)) || 0,
+        hours: formData.hours,
+        games: formData.games,
+        contact_email: formData.contact_email,
+        contact_phone: formData.contact_phone,
+        price_range: formData.price_range
+      });
 
       toast({
         title: 'Venue Updated',
@@ -128,12 +119,7 @@ const AdminVenuesList = () => {
   const handleDeleteVenue = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this venue?')) {
       try {
-        const { error } = await supabase
-          .from('venues')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
+        await apiClient.delete(`/api/admin/venues/${id}`);
 
         toast({
           title: 'Venue Deleted',

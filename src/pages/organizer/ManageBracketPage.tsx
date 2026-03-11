@@ -89,23 +89,15 @@ const ManageBracketPage = () => {
             setIsOrganizer(user?.id === tournamentData.organization?.owner_id);
 
             // Fetch stage
-            const { data: stageData } = await supabase
-                .from('tournament_stages')
-                .select('*')
-                .eq('id', stageId)
-                .single();
+            const stageData = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);
 
             setStage(stageData);
 
             // Fetch bracket version for this stage
-            const { data: versionData } = await (supabase as any)
-                .from('brkt_versions')
-                .select('id, status')
-                .eq('stage_id', stageId)
-                .in('status', ['active', 'draft'])
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
+            const versions = await apiClient.get<any[]>(`/api/tournaments/${tournamentData.id}/bracket-versions`).catch(() => []);
+            const versionData = (versions || [])
+                .filter((v: any) => v.stage_id === stageId && ['active', 'draft'].includes(v.status))
+                .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null;
 
             if (versionData) {
                 setVersionId(versionData.id);
@@ -170,16 +162,10 @@ const ManageBracketPage = () => {
     // Handle single BYE advancement
     const handleByeAdvance = async (matchId: string) => {
         try {
-            const db = supabase as any;
-
             // Get the match
-            const { data: match, error: matchError } = await db
-                .from('brkt_matches')
-                .select('*')
-                .eq('id', matchId)
-                .single();
+            const match = await apiClient.get<any>(`/api/brackets/matches/${matchId}`).catch(() => null);
 
-            if (matchError || !match) {
+            if (!match) {
                 toast({ title: 'Error', description: 'Match not found', variant: 'destructive' });
                 return;
             }
@@ -259,18 +245,8 @@ const ManageBracketPage = () => {
         console.log('[AutoAdvance] querying versionId:', versionId);
 
         try {
-            const db = supabase as any;
-
             // Get all pending matches with exactly one team
-            const { data: byeMatches, error: fetchError } = await db
-                .from('brkt_matches')
-                .select('*')
-                .eq('version_id', versionId)
-                .eq('status', 'pending');
-
-            if (fetchError) throw fetchError;
-
-            if (fetchError) throw fetchError;
+            const byeMatches = await apiClient.get<any[]>(`/api/stages/${stageId}/matches?status=pending`).catch(() => []);
 
             console.log('[AutoAdvance] Pending matches count:', byeMatches?.length);
             console.log('[AutoAdvance] Pending matches statuses:', byeMatches?.map((m: any) => `${m.id}: ${m.status}, t1=${m.team1_id}, t2=${m.team2_id}`));
@@ -379,12 +355,7 @@ const ManageBracketPage = () => {
         if (!versionId) return;
         setIsSubmitting(true);
         try {
-            const { error } = await supabase
-                .from('brkt_versions')
-                .update({ status: 'active', activated_at: new Date().toISOString() })
-                .eq('id', versionId);
-
-            if (error) throw error;
+            await apiClient.put(`/api/brackets/${versionId}`, { status: 'active', activated_at: new Date().toISOString() });
 
             setVersionStatus('active');
             toast({

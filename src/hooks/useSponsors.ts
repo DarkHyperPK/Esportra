@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 
 export interface Sponsor {
@@ -27,23 +26,11 @@ export function useSponsors(placement?: string) {
     return useQuery({
         queryKey: ['sponsors', placement],
         queryFn: async () => {
-            let query = supabase
-                .from('sponsors')
-                .select('*')
-                .eq('is_active', true)
-                .order('priority', { ascending: false });
+            const params = new URLSearchParams({ active: 'true' });
+            if (placement) params.set('placement', placement);
+            let sponsors = await apiClient.get<Sponsor[]>(`/api/sponsors?${params}`);
 
-            const { data, error } = await query;
-            if (error) throw error;
-
-            let sponsors = (data || []) as Sponsor[];
-
-            // Filter by placement if specified
-            if (placement) {
-                sponsors = sponsors.filter(s => s.placement?.includes(placement));
-            }
-
-            // Filter by date range
+            // Filter by date range client-side
             const now = new Date().toISOString();
             sponsors = sponsors.filter(s => {
                 if (s.start_date && s.start_date > now) return false;
@@ -53,7 +40,7 @@ export function useSponsors(placement?: string) {
 
             return sponsors;
         },
-        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+        staleTime: 5 * 60 * 1000,
     });
 }
 
@@ -61,67 +48,22 @@ export function useAllSponsors() {
     return useQuery({
         queryKey: ['sponsors', 'all'],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from('sponsors')
-                .select('*')
-                .order('priority', { ascending: false });
-            if (error) throw error;
-            return (data || []) as Sponsor[];
+            return await apiClient.get<Sponsor[]>('/api/sponsors');
         },
     });
 }
 
-// ─── OPTIMIZED STATS: Reads from pre-aggregated daily_sponsor_stats ───
 export function useSponsorStats(sponsorId: string) {
     return useQuery({
         queryKey: ['sponsor-stats', sponsorId],
         queryFn: async () => {
-            // Read from the pre-aggregated summary table (O(1) instead of O(n))
-            const { data, error } = await supabase
-                .from('daily_sponsor_stats')
-                .select('impressions, clicks')
-                .eq('sponsor_id', sponsorId);
-
-            if (error) {
-                // Fallback: read raw table if summary doesn't exist yet
-                console.warn('Falling back to raw impression count:', error.message);
-                const [impressions, clicks] = await Promise.all([
-                    supabase
-                        .from('sponsor_impressions')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('sponsor_id', sponsorId)
-                        .eq('event_type', 'impression'),
-                    supabase
-                        .from('sponsor_impressions')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('sponsor_id', sponsorId)
-                        .eq('event_type', 'click'),
-                ]);
-                return {
-                    impressions: impressions.count || 0,
-                    clicks: clicks.count || 0,
-                    ctr: impressions.count ? ((clicks.count || 0) / impressions.count * 100).toFixed(1) : '0.0',
-                };
-            }
-
-            // Sum across all days
-            const totals = (data || []).reduce(
-                (acc, row) => ({
-                    impressions: acc.impressions + (row.impressions || 0),
-                    clicks: acc.clicks + (row.clicks || 0),
-                }),
-                { impressions: 0, clicks: 0 }
-            );
-
-            return {
-                impressions: totals.impressions,
-                clicks: totals.clicks,
-                ctr: totals.impressions
-                    ? ((totals.clicks / totals.impressions) * 100).toFixed(1)
-                    : '0.0',
-            };
+            return await apiClient.get<{
+                impressions: number;
+                clicks: number;
+                ctr: string;
+            }>(`/api/sponsors/${sponsorId}/stats`);
         },
-        staleTime: 60 * 1000, // 1 minute cache (summary data is already aggregated)
+        staleTime: 60 * 1000,
     });
 }
 

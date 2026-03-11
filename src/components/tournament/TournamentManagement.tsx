@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { toast } from 'react-hot-toast';
 import { Database } from '@/lib/database.types';
 import { Button } from '@/components/ui/button';
@@ -37,17 +37,13 @@ const TournamentManagement: React.FC<Props> = ({ tournament }) => {
     queryKey: ['tournament_registrations', tournament.id, page],
     queryFn: async () => {
       const from = page * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
 
-      const { data, error, count } = await supabase
-        .from('tournament_participants')
-        .select('*, profiles(*)', { count: 'exact' })
-        .eq('tournament_id', tournament.id)
-        .range(from, to)
-        .order('created_at', { ascending: false });
+      const allData = await apiClient.get<ParticipantWithProfile[]>(
+        `/api/tournaments/${tournament.id}/participants?offset=${from}&limit=${PAGE_SIZE}&include=profiles`
+      );
+      const count = Array.isArray(allData) ? allData.length : 0;
 
-      if (error) throw error;
-      return { registrations: data as unknown as ParticipantWithProfile[], totalCount: count || 0 };
+      return { registrations: allData, totalCount: count };
     },
   });
 
@@ -55,35 +51,22 @@ const TournamentManagement: React.FC<Props> = ({ tournament }) => {
   const { data: bans = [] } = useQuery({
     queryKey: ['tournament_bans', tournament.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tournament_bans')
-        .select('*')
-        .eq('tournament_id', tournament.id);
+      const data = await apiClient.get<TournamentBan[]>(
+        `/api/tournaments/${tournament.id}/bans`
+      );
 
-      if (error) throw error;
-      return data as TournamentBan[];
+      return data;
     },
   });
 
   // Mutations for Ban/Unban
   const banMutation = useMutation({
     mutationFn: async ({ userId, reason }: { userId: string; reason: string }) => {
-      const { error: banError } = await supabase
-        .from('tournament_bans')
-        .insert({
-          tournament_id: tournament.id,
-          user_id: userId,
-          ban_reason: reason,
-          banned_by: user?.id || ''
-        });
-      if (banError) throw banError;
-
-      const { error: regError } = await supabase
-        .from('tournament_participants')
-        .delete()
-        .eq('tournament_id', tournament.id)
-        .eq('user_id', userId);
-      if (regError) throw regError;
+      await apiClient.post(`/api/tournaments/${tournament.id}/ban-participant`, {
+        user_id: userId,
+        ban_reason: reason,
+        banned_by: user?.id || ''
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tournament_registrations', tournament.id] });
@@ -101,12 +84,9 @@ const TournamentManagement: React.FC<Props> = ({ tournament }) => {
 
   const unbanMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from('tournament_bans')
-        .delete()
-        .eq('tournament_id', tournament.id)
-        .eq('user_id', userId);
-      if (error) throw error;
+      await apiClient.delete(
+        `/api/tournaments/${tournament.id}/bans/${userId}`
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tournament_registrations', tournament.id] });
