@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { buildHubConnection, startWithRetry, HubPaths } from '@/lib/signalrClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -330,20 +329,14 @@ export const useMapVetoMachine = ({
             // Check if user is captain of either team
             const teamIds = [team1Id, team2Id].filter(Boolean) as string[];
             // Fetch team members and check ownership
-            const { data: teamMembers } = await supabase
-                .from('team_members')
-                .select('team_id, role')
-                .in('team_id', teamIds)
-                .eq('user_id', user.id)
-                .in('role', ['captain', 'owner'])
-                .eq('is_active', true);
+            const teamMembers = await apiClient.get<{ team_id: string; role: string }[]>(
+                `/api/teams/members?team_ids=${teamIds.join(',')}&user_id=${user.id}&roles=captain,owner&is_active=true`
+            );
 
             // Also check if user is the owner in the teams table directly
-            const { data: ownedTeams } = await supabase
-                .from('teams')
-                .select('id')
-                .in('id', teamIds)
-                .eq('owner_id', user.id);
+            const ownedTeams = await apiClient.get<{ id: string }[]>(
+                `/api/teams?ids=${teamIds.join(',')}&owner_id=${user.id}`
+            );
 
             const captainTeamIds = new Set([
                 ...(teamMembers || []).map((tm: any) => tm.team_id),
@@ -399,10 +392,9 @@ export const useMapVetoMachine = ({
             if (!team1Id && !team2Id) return;
 
             const teamIds = [team1Id, team2Id].filter(Boolean) as string[];
-            const { data: teams } = await supabase
-                .from('teams')
-                .select('id, logo_url')
-                .in('id', teamIds);
+            const teams = await apiClient.get<{ id: string; logo_url: string | null }[]>(
+                `/api/teams?ids=${teamIds.join(',')}`
+            );
 
             if (teams) {
                 teams.forEach((team: any) => {
@@ -439,18 +431,15 @@ export const useMapVetoMachine = ({
 
                     console.log('[MapVeto] Auto-init using best_of:', effectiveBestOf);
 
-                    await supabase
-                        .from(valorantTables.match_vetos)
-                        .update({
-                            status: 'in_progress',
-                            best_of: effectiveBestOf,
-                            started_at: new Date().toISOString(),
-                            turn_started_at: new Date().toISOString(),
-                            current_action: firstAction,
-                            current_action_number: 1,
-                            current_team_id: veto.team1_id,
-                        })
-                        .eq('id', veto.id);
+                    await apiClient.put(`/api/veto/${veto.id}/update`, {
+                        status: 'in_progress',
+                        best_of: effectiveBestOf,
+                        started_at: new Date().toISOString(),
+                        turn_started_at: new Date().toISOString(),
+                        current_action: firstAction,
+                        current_action_number: 1,
+                        current_team_id: veto.team1_id,
+                    });
 
                     isInitialLoadRef.current = false;
                     return;
@@ -473,26 +462,21 @@ export const useMapVetoMachine = ({
                         lastResetBestOfRef.current = targetBestOf;
                         const firstAction = localSequences[targetBestOf][0];
 
-                        const { error } = await supabase
-                            .from(valorantTables.match_vetos)
-                            .update({
-                                best_of: targetBestOf,
-                                status: 'in_progress',
-                                current_action: firstAction,
-                                current_action_number: 1,
-                                current_team_id: veto.team1_id,
-                                team1_banned_maps: [],
-                                team2_banned_maps: [],
-                                team1_picked_maps: [],
-                                team2_picked_maps: [],
-                                selected_map_id: null,
-                                completed_at: null,
-                                started_at: new Date().toISOString(),
-                                turn_started_at: new Date().toISOString(),
-                            })
-                            .eq('id', veto.id);
-
-                        if (error) throw error;
+                        await apiClient.put(`/api/veto/${veto.id}/update`, {
+                            best_of: targetBestOf,
+                            status: 'in_progress',
+                            current_action: firstAction,
+                            current_action_number: 1,
+                            current_team_id: veto.team1_id,
+                            team1_banned_maps: [],
+                            team2_banned_maps: [],
+                            team1_picked_maps: [],
+                            team2_picked_maps: [],
+                            selected_map_id: null,
+                            completed_at: null,
+                            started_at: new Date().toISOString(),
+                            turn_started_at: new Date().toISOString(),
+                        });
                     }
                 }
             } catch (error) {
@@ -509,48 +493,34 @@ export const useMapVetoMachine = ({
     const fetchVetoData = useCallback(async () => {
         try {
             // 1. Fetch the veto record
-            const { data: vetoData, error: vetoError } = await supabase
-                .from(valorantTables.match_vetos)
-                .select('*')
-                .eq('match_id', matchId)
-                .maybeSingle();
-
-            if (vetoError) throw vetoError;
+            const vetoData = await apiClient.get<any | null>(`/api/veto/${matchId}`).catch(() => null);
 
             // 2. Fetch the stage's best_of as the ultimate source of truth
             let stageBestOf = bestOf;
             let stageId: string | null = null;
 
             if (matchId) {
-                // Query brkt_matches (graph engine) to get stage_id via version
-                const { data: brktMatch } = await (supabase as any)
-                    .from('brkt_matches')
-                    .select('version_id')
-                    .eq('id', matchId)
-                    .single();
+                try {
+                    // Query brkt_matches (graph engine) to get stage_id via version
+                    const brktMatch = await apiClient.get<{ version_id: string }>(`/api/brackets/matches/${matchId}`);
 
-                if (brktMatch?.version_id) {
-                    // Get stage_id from the bracket version
-                    const { data: versionData } = await (supabase as any)
-                        .from('brkt_versions')
-                        .select('stage_id')
-                        .eq('id', brktMatch.version_id)
-                        .single();
+                    if (brktMatch?.version_id) {
+                        // Get stage_id from the bracket version
+                        const versionData = await apiClient.get<{ stage_id: string }>(`/api/brackets/versions/${brktMatch.version_id}`);
 
-                    if (versionData?.stage_id) {
-                        stageId = versionData.stage_id;
-                        const { data: stageData } = await supabase
-                            .from('tournament_stages')
-                            .select('best_of')
-                            .eq('id', stageId)
-                            .single() as any;
+                        if (versionData?.stage_id) {
+                            stageId = versionData.stage_id;
+                            const stageData = await apiClient.get<{ best_of: number }>(`/api/stages/${stageId}`);
 
-                        if (stageData?.best_of) {
-                            stageBestOf = stageData.best_of;
-                            setDbBestOf(stageBestOf);
-                            console.log('[MapVeto] Synced best_of from stage DB:', stageBestOf);
+                            if (stageData?.best_of) {
+                                stageBestOf = stageData.best_of;
+                                setDbBestOf(stageBestOf);
+                                console.log('[MapVeto] Synced best_of from stage DB:', stageBestOf);
+                            }
                         }
                     }
+                } catch {
+                    // Failed to fetch stage data, use prop best_of
                 }
             }
 
@@ -602,20 +572,9 @@ export const useMapVetoMachine = ({
                         started_at: new Date().toISOString(),
                     };
 
-                    const { data: createdVeto, error: createError } = await supabase
-                        .from(valorantTables.match_vetos)
-                        .insert(newVeto)
-                        .select()
-                        .single();
+                    const createdVeto = await apiClient.post<any>(`/api/veto/${matchId}/init`, newVeto);
 
-                    if (createError) {
-                        if (createError.code === '23505') {
-                            console.log('[MapVeto] Veto created concurrently, refetching...');
-                            fetchVetoData();
-                            return;
-                        }
-                        throw createError;
-                    } else if (createdVeto) {
+                    if (createdVeto) {
                         const typedVeto = {
                             ...createdVeto,
                             team1_banned_maps: Array.isArray(createdVeto.team1_banned_maps) ? createdVeto.team1_banned_maps : [],
@@ -643,10 +602,7 @@ export const useMapVetoMachine = ({
 
             try {
                 // First try to fetch from tournament_map_pools
-                const { data: poolData, error: poolError } = await supabase
-                    .from('tournament_map_pools')
-                    .select('map_id, game_maps(*)')
-                    .eq('tournament_id', tournamentId);
+                const poolData = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/map-pool`);
 
                 if (poolData && poolData.length > 0) {
                     // Extract game_maps from the join
@@ -673,12 +629,9 @@ export const useMapVetoMachine = ({
                     // Fallback: fetch all active maps if no pool selected for tournament
                     console.log(`No tournament map pool found, fetching all active maps for game: ${game}`);
                     const dbGameName = ['cs2', 'counter-strike 2'].includes(game?.toLowerCase() || '') ? 'Counter-Strike 2' : game;
-                    const { data: gameMaps } = await supabase
-                        .from('game_maps')
-                        .select('*')
-                        .ilike('game', dbGameName) // Use ilike for case-insensitive normalization
-                        .eq('is_active', true)
-                        .order('map_name');
+                    const gameMaps = await apiClient.get<GameMap[]>(
+                        `/api/game-maps?game=${encodeURIComponent(dbGameName)}&is_active=true`
+                    );
 
                     if (gameMaps) {
                         setAllAvailableMaps(gameMaps as GameMap[]);
@@ -908,13 +861,9 @@ export const useMapVetoMachine = ({
 
         try {
             // 1. Fetch latest veto to get current_action_number
-            const { data: latestVeto, error: fetchError } = await supabase
-                .from(valorantTables.match_vetos)
-                .select('*')
-                .eq('id', veto.id)
-                .single();
+            const latestVeto = await apiClient.get<any>(`/api/veto/${matchId}`);
 
-            if (fetchError || !latestVeto) throw new Error('Veto not found');
+            if (!latestVeto) throw new Error('Veto not found');
 
             // --- RE-VALIDATION AGAINST DB STATE ---
             // Re-construct state and context from DB data to prevent race conditions
@@ -993,19 +942,14 @@ export const useMapVetoMachine = ({
             // Fire-and-forget veto notifications (non-blocking — don't await)
             if (!isComplete && nextStep && dbVeto.team1_id && dbVeto.team2_id) {
                 const nextTeamId = nextStep.team === 'T1' ? dbVeto.team1_id : dbVeto.team2_id;
-                supabase
-                    .from('team_members')
-                    .select('user_id')
-                    .eq('team_id', nextTeamId)
-                    .eq('role', 'captain')
-                    .eq('is_active', true)
-                    .maybeSingle()
-                    .then(({ data: cap }) => {
+                apiClient
+                    .get<{ user_id: string } | null>(`/api/teams/${nextTeamId}/captain`)
+                    .then((cap) => {
                         if (cap?.user_id) {
                             const actionLabel = nextStep.action === 'ban' ? 'ban'
                                 : nextStep.action === 'pick' ? 'pick'
                                 : 'pick a side for';
-                            supabase.from('notifications').insert({
+                            apiClient.post('/api/notifications', {
                                 user_id: cap.user_id,
                                 type: 'veto_your_turn',
                                 title: 'Your Veto Turn',
@@ -1018,16 +962,12 @@ export const useMapVetoMachine = ({
                     });
             }
             if (isComplete && dbVeto.team1_id && dbVeto.team2_id) {
-                supabase
-                    .from('team_members')
-                    .select('user_id')
-                    .in('team_id', [dbVeto.team1_id, dbVeto.team2_id])
-                    .eq('role', 'captain')
-                    .eq('is_active', true)
-                    .then(({ data: caps }) => {
+                apiClient
+                    .get<{ user_id: string }[]>(`/api/teams/captains?team_ids=${[dbVeto.team1_id, dbVeto.team2_id].join(',')}`)
+                    .then((caps) => {
                         if (caps?.length) {
-                            supabase.from('notifications').insert(
-                                caps.map(c => ({
+                            Promise.all(caps.map(c =>
+                                apiClient.post('/api/notifications', {
                                     user_id: c.user_id,
                                     type: 'veto_completed',
                                     title: 'Map Veto Complete',
@@ -1035,8 +975,8 @@ export const useMapVetoMachine = ({
                                     link: '/tournaments/captain',
                                     data: { match_id: matchId },
                                     is_read: false,
-                                }))
-                            );
+                                })
+                            ));
                         }
                     });
             }

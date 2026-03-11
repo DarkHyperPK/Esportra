@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,42 +35,25 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
         return;
       }
       // Check ban
-      const { data: banData } = await supabase
-        .from('tournament_bans' as any)
-        .select('ban_reason')
-        .eq('tournament_id', tournamentId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (banData && !("error" in banData) && (banData as any).ban_reason !== undefined) {
-        setIsBanned(true);
-        setBanReason((banData as any).ban_reason);
-        setIsRegistered(false);
-        setLoading(false);
-        return;
+      try {
+        const banData = await apiClient.get<{ ban_reason?: string } | null>(`/api/tournaments/${tournamentId}/bans?user_id=${user.id}`);
+        if (banData && banData.ban_reason !== undefined) {
+          setIsBanned(true);
+          setBanReason(banData.ban_reason);
+          setIsRegistered(false);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // No ban found
       }
       // Check for registration
-      // Get teams user is member of (to check for team registration)
-      const { data: userTeams } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-
-      const teamIds = (userTeams || []).map(t => t.team_id);
-
-      let query = supabase
-        .from('tournament_participants')
-        .select('id')
-        .eq('tournament_id', tournamentId);
-
-      if (teamIds.length > 0) {
-        query = query.or(`user_id.eq.${user.id},team_id.in.(${teamIds.join(',')})`);
-      } else {
-        query = query.eq('user_id', user.id);
+      try {
+        const participants = await apiClient.get<{ id: string }[]>(`/api/tournaments/${tournamentId}/participants?user_id=${user.id}`);
+        setIsRegistered(Array.isArray(participants) && participants.length > 0);
+      } catch {
+        setIsRegistered(false);
       }
-
-      const { data: regData } = await query.maybeSingle();
-      setIsRegistered(!!regData);
       setIsBanned(false);
       setBanReason(null);
       setLoading(false);
@@ -80,11 +64,12 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
   // Fetch verified users for team member selection
   useEffect(() => {
     const fetchVerifiedUsers = async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, email')
-        .eq('is_verified', true);
-      if (!error && data) setVerifiedUsers(data);
+      try {
+        const data = await apiClient.get<any[]>('/api/profiles/search?is_verified=true');
+        if (data) setVerifiedUsers(data);
+      } catch {
+        // Failed to load verified users
+      }
     };
     fetchVerifiedUsers();
   }, []);

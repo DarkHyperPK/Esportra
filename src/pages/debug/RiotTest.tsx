@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Search, Activity, Globe, User, Target as TargetIcon } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import MatchHistoryCard from '@/components/debug/MatchHistoryCard';
@@ -23,15 +23,7 @@ const RiotTest = () => {
 
     const callProxy = async (endpoint: string, apiRegion: string = region) => {
         try {
-            const { data, error } = await supabase.functions.invoke('riot-match-proxy', {
-                body: { endpoint, region: apiRegion }
-            });
-
-            if (error) {
-                console.error("[riot-proxy] INVOKE ERROR:", error);
-                throw error;
-            }
-            return data;
+            return await apiClient.post<any>('/api/integrations/riot/proxy', { endpoint, region: apiRegion });
         } catch (err: any) {
             console.error("[riot-proxy] CATCH ERROR:", err);
             return { error: err.message };

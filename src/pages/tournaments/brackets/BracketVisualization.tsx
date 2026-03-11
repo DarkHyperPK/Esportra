@@ -27,7 +27,7 @@ import { MapVeto } from '@/components/tournament/MapVeto';
 import { useGraphBracket } from '@/hooks/useGraphBracket';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 
 // =============================================================================
@@ -93,11 +93,9 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     queryKey: ['match-proofs', tournamentId],
     queryFn: async () => {
       if (!tournamentId) return {};
-      const { data } = await supabase
-        .from('tournament_match_results')
-        .select('match_id, image_url')
-        .eq('tournament_id', tournamentId)
-        .not('image_url', 'is', null);
+      const data = await apiClient.get<{ match_id: string; image_url: string | null }[]>(
+        `/api/tournaments/${tournamentId}/match-reports`
+      );
 
       const map: Record<string, string[]> = {};
       data?.forEach((r: any) => {
@@ -118,17 +116,9 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     queryKey: ['bracket-match-games', tournamentId],
     queryFn: async () => {
       if (!tournamentId) return {};
-      const { data, error } = await supabase
-        .from('brkt_match_games')
-        .select(`
-          *,
-          game_maps (
-            map_name
-          )
-        `)
-        .eq('status', 'completed');
-
-      if (error) throw error;
+      const data = await apiClient.get<any[]>(
+        `/api/brackets/match-games?tournament_id=${tournamentId}&status=completed`
+      );
 
       const map: Record<string, any[]> = {};
       data?.forEach((game: any) => {
@@ -163,8 +153,9 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     queryKey: ['bracket-teams', teamIds.join(',')],
     queryFn: async () => {
       if (teamIds.length === 0) return [];
-      const { data, error } = await supabase.from('teams').select('id, name, logo_url').in('id', teamIds);
-      if (error) throw error;
+      const data = await apiClient.get<{ id: string; name: string; logo_url?: string | null }[]>(
+        `/api/teams?ids=${teamIds.join(',')}`
+      );
       return data;
     },
     enabled: teamIds.length > 0,

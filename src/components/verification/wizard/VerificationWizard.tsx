@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import WizardProgress from '@/components/tournament/wizard/WizardProgress';
 import StepPersonalDetails from './StepPersonalDetails';
 import StepBusinessInfo from './StepBusinessInfo';
@@ -210,28 +211,8 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
                 };
             }
 
-            // Database Insert/Update
-            const { error: insertError } = await supabase.from('verification_requests').insert(payload);
-
-            // Handle Unique Constraint (already exists) - simplified for wizard
-            if (insertError && (insertError.code === '23505' || insertError.message.includes('unique'))) {
-                // Try Update
-                const { data: existing } = await supabase
-                    .from('verification_requests')
-                    .select('id')
-                    .eq('user_id', user.id)
-                    .eq('requested_role', role)
-                    .eq('status', 'pending')
-                    .single();
-
-                if (existing) {
-                    await supabase.from('verification_requests').update(payload).eq('id', existing.id);
-                } else {
-                    throw insertError;
-                }
-            } else if (insertError) {
-                throw insertError;
-            }
+            // Database Insert/Update via API (backend handles upsert logic)
+            await apiClient.post('/api/profiles/me/verification', payload);
 
             toast({
                 title: 'Success!',

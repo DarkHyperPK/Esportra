@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Loader2, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 
@@ -77,14 +78,8 @@ const Login = () => {
         setError('');
 
         try {
-            // Use custom Edge Function instead of GoTrue's built-in (which requires SMTP config)
             const partnerUrl = import.meta.env.VITE_PARTNER_URL || window.location.origin;
-            const { data, error } = await supabase.functions.invoke('send-recovery-email', {
-                body: { email, redirect_url: `${partnerUrl}/set-password` }
-            });
-
-            if (error) throw error;
-            if (data?.error) throw new Error(data.error);
+            await apiClient.post('/api/auth/recovery', { email, redirect_url: `${partnerUrl}/set-password` });
 
             setResetSent(true);
         } catch (err: any) {

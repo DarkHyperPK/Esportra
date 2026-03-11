@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AlertCircle, ArrowRightLeft, Building2, Gamepad2, Trophy } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from "@/hooks/use-toast";
 import VerificationRequestForm from '@/components/VerificationRequestForm';
 
@@ -61,17 +61,17 @@ export const RoleSwitcherDialog: React.FC<{
   const checkVerificationStatus = async () => {
     if (!user) return;
     try {
-      // Fetch user_roles and verified_roles in parallel (profile is already available from useAuth)
-      const [{ data: userRoles }, { data: verifiedRoles }] = await Promise.all([
-        supabase.from('user_roles').select('role').eq('user_id', user.id).eq('is_active', true),
-        supabase.from('verified_roles').select('role, status, is_active').eq('user_id', user.id).eq('status', 'approved').eq('is_active', true),
-      ]);
+      // Fetch roles from the .NET backend — same endpoint RoleContext uses
+      const rolesData = await apiClient.get<{
+        userRoles: Array<{ role: string; is_active: boolean }>;
+        verifiedRoles: Array<{ role: string; status: string; is_active: boolean }>;
+      }>('/api/me/roles');
 
       const isAdmin = profile?.is_admin;
-      const hasOrganizerRole = userRoles?.some(r => r.role === 'organizer') || false;
-      const hasVenueOwnerRole = userRoles?.some(r => r.role === 'venue_owner') || false;
-      const isOrganizerVerified = verifiedRoles?.some(r => r.role === 'organizer') || false;
-      const isVenueOwnerVerified = verifiedRoles?.some(r => r.role === 'venue_owner') || false;
+      const hasOrganizerRole = rolesData.userRoles?.some(r => r.role === 'organizer' && r.is_active) || false;
+      const hasVenueOwnerRole = rolesData.userRoles?.some(r => r.role === 'venue_owner' && r.is_active) || false;
+      const isOrganizerVerified = rolesData.verifiedRoles?.some(r => r.role === 'organizer' && r.status === 'approved' && r.is_active) || false;
+      const isVenueOwnerVerified = rolesData.verifiedRoles?.some(r => r.role === 'venue_owner' && r.status === 'approved' && r.is_active) || false;
 
       setVerificationSystemReady(true);
       setVerificationStatus({

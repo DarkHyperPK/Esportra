@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Edit, Trash2, MapPin, Eye, Copy, Check, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -76,13 +76,7 @@ const ManageVenues = () => {
     const fetchMyVenues = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('venues')
-                .select('*')
-                .eq('owner_id', user?.id)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
+            const data = await apiClient.get<Venue[]>(`/api/venues?owner_id=${user?.id}`);
             setVenues(data || []);
         } catch (error: any) {
             console.error('Error fetching venues:', error);
@@ -100,8 +94,7 @@ const ManageVenues = () => {
         if (!confirm('Are you sure you want to delete this venue? This cannot be undone.')) return;
 
         try {
-            const { error } = await supabase.from('venues').delete().eq('id', id);
-            if (error) throw error;
+            await apiClient.delete(`/api/venues/${id}`);
             toast({ title: 'Venue Deleted', description: 'The venue has been removed.' });
             setVenues(venues.filter(v => v.id !== id));
         } catch (error: any) {
@@ -112,11 +105,10 @@ const ManageVenues = () => {
     const handleSubmitForReview = async (venue: Venue) => {
         setSubmitting(venue.id);
         try {
-            const { error } = await supabase
-                .from('venues')
-                .update({ status: 'pending_review', submitted_at: new Date().toISOString() })
-                .eq('id', venue.id);
-            if (error) throw error;
+            await apiClient.put(`/api/venues/${venue.id}`, {
+                status: 'pending_review',
+                submitted_at: new Date().toISOString(),
+            });
             toast({ title: 'Submitted for Review', description: `${venue.name} is now pending review.` });
             setVenues(prev => prev.map(v => v.id === venue.id ? { ...v, status: 'pending_review' } : v));
         } catch (error: any) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,33 +95,21 @@ const DisputeSubmission: React.FC<DisputeSubmissionProps> = ({
 
       try {
         // Check for enrollment
-        const { data: registration } = await supabase
-          .from('tournament_participants')
-          .select('team_id, team_name, participant_type')
-          .eq('tournament_id', tournamentId)
-          .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`)
-          .maybeSingle();
+        const registration = await apiClient.get<{ team_id?: string; team_name?: string; participant_type?: string } | null>(
+          `/api/tournaments/${tournamentId}/participants/me`
+        ).catch(() => null);
 
         // Check for ban (user or team)
-        const { data: userBan } = await supabase
-          .from('tournament_bans')
-          .select('ban_reason')
-          .eq('tournament_id', tournamentId)
-          .eq('is_active', true)
-          .eq('user_id', user.id)
-          .maybeSingle();
+        const userBan = await apiClient.get<{ ban_reason?: string } | null>(
+          `/api/tournaments/${tournamentId}/bans?user_id=${user.id}`
+        ).catch(() => null);
 
         let teamBan = null;
         if (registration?.team_id || teamId) {
           const teamIdToCheck = registration?.team_id || teamId;
-          const { data: banData } = await supabase
-            .from('tournament_bans')
-            .select('ban_reason')
-            .eq('tournament_id', tournamentId)
-            .eq('is_active', true)
-            .eq('team_id', teamIdToCheck)
-            .maybeSingle();
-          teamBan = banData;
+          teamBan = await apiClient.get<{ ban_reason?: string } | null>(
+            `/api/tournaments/${tournamentId}/bans?team_id=${teamIdToCheck}`
+          ).catch(() => null);
         }
 
         setEnrollmentStatus({
@@ -249,13 +238,7 @@ const DisputeSubmission: React.FC<DisputeSubmissionProps> = ({
         // Column might not exist yet, that's okay
       }
 
-      const { data, error } = await supabase
-        .from('tournament_disputes')
-        .insert(disputeData)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await apiClient.post<any>(`/api/matches/${matchId || 'general'}/disputes`, disputeData);
 
       // Notify organizer or admins based on reason
       try {
@@ -263,23 +246,21 @@ const DisputeSubmission: React.FC<DisputeSubmissionProps> = ({
         if (ADMIN_ROUTED_REASONS.includes(disputeReason)) {
           // Cheating / unsportsmanlike / other → notify all admins/moderators
           if (data?.id) {
-            await supabase.rpc('notify_admins_of_dispute', {
-              p_dispute_id: data.id,
-              p_type: 'dispute_filed',
-              p_title: 'New Dispute Filed',
-              p_message: `A player filed a dispute in "${tournamentName}" — ${reasonLabel}.`,
-              p_link: '/admin/disputes',
+            await apiClient.post('/api/disputes/notify-admins', {
+              dispute_id: data.id,
+              type: 'dispute_filed',
+              title: 'New Dispute Filed',
+              message: `A player filed a dispute in "${tournamentName}" — ${reasonLabel}.`,
+              link: '/admin/disputes',
             });
           }
         } else {
           // Organizer-routed: notify the tournament organizer
-          const { data: tourneyData } = await supabase
-            .from('tournaments')
-            .select('organizer_id, name')
-            .eq('id', tournamentId)
-            .single();
+          const tourneyData = await apiClient.get<{ organizer_id: string; name: string }>(
+            `/api/tournaments/${tournamentId}`
+          ).catch(() => null);
           if (tourneyData?.organizer_id && data?.id) {
-            await supabase.from('notifications').insert({
+            await apiClient.post('/api/notifications', {
               user_id: tourneyData.organizer_id,
               type: 'dispute_filed',
               title: 'New Dispute Filed',

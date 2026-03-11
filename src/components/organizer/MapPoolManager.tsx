@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,23 +40,11 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
         setLoading(true);
         const isCS2Game = ['cs2', 'counter-strike 2'].includes(game?.toLowerCase() || '');
         const dbGameName = isCS2Game ? 'Counter-Strike 2' : game;
-        const { data, error } = await supabase
-          .from('game_maps')
-          .select('*')
-          .eq('game', dbGameName)
-          .eq('is_active', true)
-          .order('map_name');
-
-        if (error) throw error;
-        setAllMaps((data as GameMap[]) || []);
+        const data = await apiClient.get<GameMap[]>(`/api/game-maps?game=${encodeURIComponent(dbGameName)}&is_active=true`);
+        setAllMaps(data || []);
 
         // Fetch current tournament map pool
-        const { data: poolData, error: poolError } = await supabase
-          .from('tournament_map_pools')
-          .select('map_id')
-          .eq('tournament_id', tournamentId);
-
-        if (poolError) throw poolError;
+        const poolData = await apiClient.get<{ map_id: string }[]>(`/api/tournaments/${tournamentId}/map-pool`);
         setPoolMaps((poolData || []).map((p: any) => p.map_id));
       } catch (error: any) {
         console.error('Error fetching maps:', error);
@@ -98,23 +86,15 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
       if (isInPool) {
         // Remove from pool
         console.log('[MapPoolManager] Removing from DB...');
-        const { error } = await supabase
-          .from('tournament_map_pools')
-          .delete()
-          .eq('tournament_id', tournamentId)
-          .eq('map_id', mapId);
-
-        if (error) throw error;
+        await apiClient.delete(`/api/tournaments/${tournamentId}/map-pool/${mapId}`);
         console.log('[MapPoolManager] Removed successfully');
       } else {
         // Add to pool
         console.log('[MapPoolManager] Adding to DB...');
-        const { error } = await supabase.from('tournament_map_pools').insert({
+        await apiClient.post(`/api/tournaments/${tournamentId}/map-pool`, {
           tournament_id: tournamentId,
           map_id: mapId,
         });
-
-        if (error) throw error;
         console.log('[MapPoolManager] Added successfully');
       }
     } catch (error: any) {
@@ -146,27 +126,19 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
 
     try {
       setSaving(true);
-      const { data, error } = await supabase
-        .from('game_maps')
-        .insert({
+      let data: GameMap;
+      try {
+        data = await apiClient.post<GameMap>('/api/game-maps', {
           game: game,
           map_name: newMapName.trim(),
           map_image_url: newMapImageUrl.trim() || null,
           is_active: true,
-        })
-        .select()
-        .single();
-
-      if (error) {
+        });
+      } catch (err: any) {
         // If map already exists, just add it to pool
-        if (error.code === '23505') {
-          const { data: existingMap } = await supabase
-            .from('game_maps')
-            .select('*')
-            .eq('game', game)
-            .eq('map_name', newMapName.trim())
-            .single();
-
+        if (err.status === 409) {
+          const existingMaps = await apiClient.get<GameMap[]>(`/api/game-maps?game=${encodeURIComponent(game)}&map_name=${encodeURIComponent(newMapName.trim())}`);
+          const existingMap = existingMaps?.[0];
           if (existingMap) {
             await toggleMapInPool(existingMap.id, false);
             setShowAddDialog(false);
@@ -175,11 +147,11 @@ export const MapPoolManager: React.FC<MapPoolManagerProps> = ({ tournamentId, ga
             return;
           }
         }
-        throw error;
+        throw err;
       }
 
       // Add to pool
-      await supabase.from('tournament_map_pools').insert({
+      await apiClient.post(`/api/tournaments/${tournamentId}/map-pool`, {
         tournament_id: tournamentId,
         map_id: data.id,
       });

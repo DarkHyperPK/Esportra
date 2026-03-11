@@ -34,7 +34,7 @@ import {
   BarChart3,
   Settings
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { auditLog } from '@/lib/auditLog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -85,59 +85,41 @@ const TournamentManagement: React.FC = () => {
     try {
       setLoading(true);
 
-      // Fetch tournaments without complex joins to avoid relationship errors
-      let query = supabase
-        .from('tournaments')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1);
+      // Build query params for the API
+      const params = new URLSearchParams();
+      params.set('page', currentPage.toString());
+      params.set('pageSize', itemsPerPage.toString());
+      params.set('orderBy', 'created_at');
+      params.set('orderDesc', 'true');
 
-      // Apply filters
       if (filterStatus !== 'all') {
-        query = query.eq('status', filterStatus);
+        params.set('status', filterStatus);
       }
 
       if (filterGame !== 'all') {
-        query = query.eq('game', filterGame);
+        params.set('game', filterGame);
       }
 
       if (searchTerm) {
-        query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+        params.set('search', searchTerm);
       }
 
-      const { data, error, count } = await query;
+      const result = await apiClient.get<any>(`/api/tournaments?${params.toString()}`);
 
-      if (error) throw error;
+      // The API may return { items, totalCount } or just an array
+      const data: any[] = Array.isArray(result) ? result : (result.items || result.data || []);
+      const totalCount: number = Array.isArray(result) ? data.length : (result.totalCount || result.total || data.length);
 
-      // Fetch related data separately
-      const tournamentIds = (data || []).map(t => t.id);
-      const userIds = Array.from(new Set((data || []).map(t => t.user_id).filter(Boolean)));
-      const venueIds = Array.from(new Set((data || []).map(t => t.venue_id).filter(Boolean).filter(Boolean)));
-
-      // Fetch profiles, venues, and registration counts
-      const [profilesResult, venuesResult, registrationsResult] = await Promise.all([
-        userIds.length > 0 ? supabase.from('profiles').select('id, username, full_name').in('id', userIds) : { data: [], error: null },
-        venueIds.length > 0 ? supabase.from('venues').select('id, name').in('id', venueIds) : { data: [], error: null },
-        tournamentIds.length > 0 ? supabase.from('tournament_participants').select('tournament_id').in('tournament_id', tournamentIds) : { data: [], error: null }
-      ]);
-
-      const profilesMap = Object.fromEntries((profilesResult.data || []).map((p: any) => [p.id, p]));
-      const venuesMap = Object.fromEntries((venuesResult.data || []).map((v: any) => [v.id, v]));
-      const registrationCounts = (registrationsResult.data || []).reduce((acc: any, p: any) => {
-        acc[p.tournament_id] = (acc[p.tournament_id] || 0) + 1;
-        return acc;
-      }, {});
-
-      // Transform data
-      const transformedTournaments = (data || []).map(tournament => ({
+      // Transform data — the API may already include organizer/venue/registration data
+      const transformedTournaments = data.map((tournament: any) => ({
         ...tournament,
-        organizer_name: profilesMap[tournament.user_id]?.full_name || profilesMap[tournament.user_id]?.username || 'Unknown',
-        venue_name: venuesMap[tournament.venue_id]?.name,
-        registration_count: registrationCounts[tournament.id] || 0
+        organizer_name: tournament.organizer_name || tournament.organizer?.full_name || tournament.organizer?.username || 'Unknown',
+        venue_name: tournament.venue_name || tournament.venue?.name,
+        registration_count: tournament.registration_count ?? 0
       }));
 
       setTournaments(transformedTournaments);
-      setTotalPages(Math.ceil((count || 0) / itemsPerPage));
+      setTotalPages(Math.ceil(totalCount / itemsPerPage));
 
     } catch (error) {
       console.error('Error fetching tournaments:', error);
@@ -186,12 +168,7 @@ const TournamentManagement: React.FC = () => {
           break;
       }
 
-      const { error } = await supabase
-        .from('tournaments')
-        .update(updateData)
-        .eq('id', selectedTournament.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${selectedTournament.id}`, updateData);
 
       // Log the action
       await auditLog.log(moderationAction as any, 'tournament', selectedTournament.id, selectedTournament.title, {
@@ -229,12 +206,7 @@ const TournamentManagement: React.FC = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('tournaments')
-        .delete()
-        .eq('id', tournamentId);
-
-      if (error) throw error;
+      await apiClient.delete(`/api/tournaments/${tournamentId}`);
 
       // Log the action
       await auditLog.log('delete', 'tournament', tournamentId, tournamentTitle);

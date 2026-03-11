@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import apiClient from "@/lib/api";
+import { apiClient } from '@/lib/apiClient';
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, MapPin, Trophy, BarChart3, CreditCard, Shield, FileText, Settings } from "lucide-react";
@@ -57,16 +57,19 @@ const AdminDashboard = () => {
       try {
         setLoading(true);
 
-        const response = await apiClient.get('/admin/stats');
+        const response = await apiClient.get<{
+          totalUsers: number;
+          activeVenues: number;
+          activeTournaments: number;
+          totalRevenue: number;
+        }>('/api/admin/stats');
         
-        if (response.success) {
-          setStats({
-            totalUsers: response.data.totalUsers || 0,
-            activeVenues: response.data.activeVenues || 0,
-            activeTournaments: response.data.activeTournaments || 0,
-            totalRevenue: response.data.totalRevenue || 0,
-          });
-        }
+        setStats({
+          totalUsers: response.totalUsers || 0,
+          activeVenues: response.activeVenues || 0,
+          activeTournaments: response.activeTournaments || 0,
+          totalRevenue: response.totalRevenue || 0,
+        });
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error('Failed to load admin overview stats', e);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Loader2, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -53,17 +54,11 @@ const SetPassword = () => {
             const token_hash = params.get('token_hash');
             const type = params.get('type');
 
-            // Pass token_hash and type directly to the Edge Function for server-side verification
-            const { data, error } = await supabase.functions.invoke('set-password', {
-                body: {
-                    password,
-                    token_hash,
-                    type: type || 'recovery' // Default to recovery for reset links
-                }
+            const data = await apiClient.post<{ email?: string }>('/api/auth/set-password', {
+                password,
+                token_hash,
+                type: type || 'recovery'
             });
-
-            if (error) throw error;
-            if (data?.error) throw new Error(data.error);
 
             console.log('Password updated successfully for:', data?.email);
 

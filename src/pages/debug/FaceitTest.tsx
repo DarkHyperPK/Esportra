@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Search, ChevronDown, ChevronUp, Trophy, Skull, Map as MapIcon } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 
 const FaceitTest = () => {
@@ -19,10 +19,7 @@ const FaceitTest = () => {
     const { toast } = useToast();
 
     const callProxy = async (endpoint: string) => {
-        const { data, error } = await supabase.functions.invoke('faceit-match-proxy', {
-            body: { endpoint },
-        });
-        if (error) throw new Error(error.message || 'Proxy error');
+        const data = await apiClient.post<any>('/api/integrations/faceit/proxy', { endpoint });
         if (data?.message && !data?.player_id && !data?.items) throw new Error(data.message);
         return data;
     };

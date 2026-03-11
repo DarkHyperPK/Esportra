@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -64,16 +65,15 @@ const MatchResultUpload: React.FC<Props> = ({ tournamentId, matchId, teamId, isC
         imageUrls.push(pub.publicUrl);
       }
 
-      const { error: insErr } = await supabase.from('tournament_match_results').insert({
+      await apiClient.post(`/api/matches/${matchId}/reports`, {
         tournament_id: tournamentId,
         match_id: matchId,
         team_id: teamId,
         reporter_user_id: user.id,
-        image_url: imageUrls.length === 1 ? imageUrls[0] : imageUrls, // Support both single URL and array
+        image_url: imageUrls.length === 1 ? imageUrls[0] : imageUrls,
         comment,
         status: 'pending'
       });
-      if (insErr) throw insErr;
       toast({ title: 'Submitted', description: `${files.length} image(s) uploaded. Awaiting organizer review.` });
       setFiles([]); setComment('');
       // Close the modal by calling onSuccess callback

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { auditLog } from '@/lib/auditLog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,12 +17,17 @@ const SystemSettings: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('system_settings').select('key,value');
-    const map: Record<string, string> = {};
-    (data as Setting[] | null)?.forEach(s => { map[s.key] = s.value; });
-    setSettings(map);
-    setMaintenance(map['maintenance_mode'] === 'true');
-    setLoading(false);
+    try {
+      const data = await apiClient.get<Setting[]>('/api/admin/system-settings');
+      const map: Record<string, string> = {};
+      (data || []).forEach(s => { map[s.key] = s.value; });
+      setSettings(map);
+      setMaintenance(map['maintenance_mode'] === 'true');
+    } catch (e) {
+      console.error('Failed to load system settings:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -32,11 +37,11 @@ const SystemSettings: React.FC = () => {
 
   const save = async () => {
     try {
-      await supabase.from('system_settings').upsert([
+      await apiClient.put('/api/admin/system-settings', [
         { key: 'maintenance_mode', value: maintenance ? 'true' : 'false' },
         { key: 'public_contact_email', value: settings['public_contact_email'] || '' },
         { key: 'support_portal_url', value: settings['support_portal_url'] || '' },
-      ], { onConflict: 'key' });
+      ]);
       await auditLog.settingsUpdated('System Settings', settings);
       toast({ title: 'Saved', description: 'System settings updated' });
     } catch (e: any) {

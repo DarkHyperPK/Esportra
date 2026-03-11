@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Dialog, 
@@ -83,13 +84,8 @@ export function TournamentEditModal({
 
   const fetchVenues = async () => {
     try {
-      const { data, error } = await supabase.from('venues').select('id, name');
-      
-      if (error) {
-        throw error;
-      }
-      
-      setVenues((data as VenueOption[]) || []);
+      const data = await apiClient.get<VenueOption[]>('/api/venues');
+      setVenues(data || []);
     } catch (error: unknown) {
       console.error('Error fetching venues:', error as Error);
     }
@@ -150,24 +146,19 @@ export function TournamentEditModal({
     try {
       setLoading(true);
 
-      const { error } = await supabase
-        .from('tournaments')
-        .update({
-          name: data.name,
-          game: data.game,
-          date: data.date,
-          time: data.time,
-          venue: data.venue,
-          max_participants: parseInt(data.max_participants),
-          prize_pool: data.prize_pool,
-          description: data.description,
-          image_url: imageUrl || tournament.image_url,
-          entry_fee: data.entry_fee,
-          is_online: data.is_online
-        })
-        .eq('id', tournament.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${tournament.id}`, {
+        name: data.name,
+        game: data.game,
+        date: data.date,
+        time: data.time,
+        venue: data.venue,
+        max_participants: parseInt(data.max_participants as string),
+        prize_pool: data.prize_pool,
+        description: data.description,
+        image_url: imageUrl || tournament.image_url,
+        entry_fee: data.entry_fee,
+        is_online: data.is_online
+      });
 
       toast({
         title: 'Tournament updated',

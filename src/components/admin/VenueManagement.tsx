@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash, Plus, CheckCircle, XCircle, Clock, Loader2, AlertCircle } from 'lucide-react';
@@ -42,11 +42,7 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
   const fetchVenues = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('venues')
-        .select('*')
-        .eq('owner_id', userId);
-      if (error) throw error;
+      const data = await apiClient.get<Venue[]>(`/api/venues?owner_id=${userId}`);
       setVenues(data || []);
     } catch (error: any) {
       console.error('Error fetching venues:', error);
@@ -59,12 +55,7 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
   const fetchPendingVenues = async () => {
     try {
       setPendingLoading(true);
-      const { data, error } = await supabase
-        .from('venues')
-        .select('*')
-        .eq('status', 'pending_review')
-        .order('submitted_at', { ascending: true });
-      if (error) throw error;
+      const data = await apiClient.get<PendingVenue[]>('/api/admin/venues?status=pending_review');
       setPendingVenues(data || []);
     } catch (error: any) {
       console.error('Error fetching pending venues:', error);
@@ -93,8 +84,7 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
     if (!confirm('Are you sure you want to delete this venue?')) return;
     try {
       const venue = venues.find(v => v.id === id);
-      const { error } = await supabase.from('venues').delete().eq('id', id);
-      if (error) throw error;
+      await apiClient.delete(`/api/venues/${id}`);
       await auditLog.log('delete', 'venue', id, venue?.name || 'Unknown', { owner_id: userId });
       toast({ title: 'Venue deleted', description: 'The venue has been deleted successfully' });
       fetchVenues();
@@ -107,16 +97,12 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
   const handleApprove = async (venue: PendingVenue) => {
     setActioning(venue.id);
     try {
-      const { error } = await supabase
-        .from('venues')
-        .update({
-          status: 'published',
-          reviewed_by: userId,
-          reviewed_at: new Date().toISOString(),
-          published_at: new Date().toISOString(),
-        })
-        .eq('id', venue.id);
-      if (error) throw error;
+      await apiClient.put(`/api/admin/venues/${venue.id}`, {
+        status: 'published',
+        reviewed_by: userId,
+        reviewed_at: new Date().toISOString(),
+        published_at: new Date().toISOString(),
+      });
       await auditLog.log('approve', 'venue', venue.id, venue.name, { reviewed_by: userId });
       toast({ title: 'Venue Approved', description: `${venue.name} is now published.` });
       setPendingVenues(prev => prev.filter(v => v.id !== venue.id));
@@ -131,16 +117,12 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
     if (!rejectTarget || !rejectReason.trim()) return;
     setActioning(rejectTarget.id);
     try {
-      const { error } = await supabase
-        .from('venues')
-        .update({
-          status: 'rejected',
-          rejection_reason: rejectReason.trim(),
-          reviewed_by: userId,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq('id', rejectTarget.id);
-      if (error) throw error;
+      await apiClient.put(`/api/admin/venues/${rejectTarget.id}`, {
+        status: 'rejected',
+        rejection_reason: rejectReason.trim(),
+        reviewed_by: userId,
+        reviewed_at: new Date().toISOString(),
+      });
       await auditLog.log('reject', 'venue', rejectTarget.id, rejectTarget.name, { reviewed_by: userId, reason: rejectReason });
       toast({ title: 'Venue Rejected', description: `${rejectTarget.name} has been rejected.` });
       setPendingVenues(prev => prev.filter(v => v.id !== rejectTarget.id));

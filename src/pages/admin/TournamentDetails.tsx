@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { auditLog } from '@/lib/auditLog';
@@ -22,18 +22,14 @@ const TournamentDetails = () => {
 
   const fetchTournament = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('tournaments')
-      .select('*')
-      .eq('id', id)
-      .single();
-    if (error) {
+    try {
+      const data = await apiClient.get<any>(`/api/tournaments/${id}`);
+      setTournament(data);
+    } catch (error) {
       toast({ title: 'Error', description: 'Failed to fetch tournament.' });
+    } finally {
       setLoading(false);
-      return;
     }
-    setTournament(data);
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -41,27 +37,31 @@ const TournamentDetails = () => {
   }, [id]);
 
   const handleMarkFinished = async () => {
-    const { error } = await supabase.from('tournaments').update({ finished: true }).eq('id', id);
-    if (error) {
+    try {
+      await apiClient.put(`/api/tournaments/${id}`, { finished: true });
+
+      await auditLog.log('update', 'tournament', id!, tournament?.name || 'Unknown', {
+        action: 'marked_finished',
+        tournament_id: id,
+      });
+
+      toast({ title: 'Tournament marked as finished.' });
+      await fetchTournament();
+    } catch (error) {
       toast({ title: 'Error', description: 'Failed to mark as finished.' });
-      return;
     }
-
-    await auditLog.log('update', 'tournament', id!, tournament?.name || 'Unknown', {
-      action: 'marked_finished',
-      tournament_id: id,
-    });
-
-    toast({ title: 'Tournament marked as finished.' });
-    await fetchTournament();
   };
 
   const handleDelete = async () => {
     const name = tournament?.name || 'Unknown';
-    await supabase.from('tournaments').delete().eq('id', id);
-    await auditLog.log('delete', 'tournament', id!, name, { deleted_from: 'admin_details' });
-    toast({ title: 'Tournament deleted.' });
-    navigate('/admin');
+    try {
+      await apiClient.delete(`/api/tournaments/${id}`);
+      await auditLog.log('delete', 'tournament', id!, name, { deleted_from: 'admin_details' });
+      toast({ title: 'Tournament deleted.' });
+      navigate('/admin');
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete tournament.' });
+    }
   };
 
   if (loading) return <div className="p-8 text-white">Loading...</div>;

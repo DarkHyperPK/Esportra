@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -72,32 +73,23 @@ const RaiseDispute = () => {
       setLoading(true);
 
       // Get tournaments where user is registered
-      const { data: registrations, error: regError } = await supabase
-        .from('tournament_participants')
-        .select('tournament_id')
-        .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`);
-
-      if (regError) throw regError;
+      const registrations = await apiClient.get<{ tournament_id: string }[]>(
+        `/api/tournaments/my-registrations`
+      );
 
       // Get tournaments where user/team is banned
-      const { data: userBans } = await supabase
-        .from('tournament_bans')
-        .select('tournament_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
+      const userBans = await apiClient.get<{ tournament_id: string }[]>(
+        `/api/tournaments/my-bans`
+      ).catch(() => []);
 
       // Get teams user owns or is captain of
-      const { data: ownedTeams } = await supabase
-        .from('teams')
-        .select('id')
-        .eq('owner_id', user.id);
+      const ownedTeams = await apiClient.get<{ id: string }[]>(
+        `/api/teams?owner_id=${user.id}`
+      ).catch(() => []);
 
-      const { data: captainTeams } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .or('role.eq.captain,role.eq.Captain');
+      const captainTeams = await apiClient.get<{ team_id: string }[]>(
+        `/api/teams/my-captain-teams`
+      ).catch(() => []);
 
       const allTeamIds = [
         ...(ownedTeams || []).map(t => t.id),
@@ -107,12 +99,9 @@ const RaiseDispute = () => {
       let teamBans: any[] = [];
       if (allTeamIds.length > 0) {
         const uniqueTeamIds = Array.from(new Set(allTeamIds));
-        const { data: banData } = await supabase
-          .from('tournament_bans')
-          .select('tournament_id')
-          .eq('is_active', true)
-          .in('team_id', uniqueTeamIds);
-        teamBans = banData || [];
+        teamBans = await apiClient.get<{ tournament_id: string }[]>(
+          `/api/tournaments/team-bans?team_ids=${uniqueTeamIds.join(',')}`
+        ).catch(() => []);
       }
 
       // Collect all tournament IDs - include both registered AND banned tournaments
@@ -137,13 +126,9 @@ const RaiseDispute = () => {
       // Fetch tournaments separately to avoid relationship issues
       let tournamentsData: any[] = [];
       if (tournamentIds.size > 0) {
-        const { data: tData, error: tError } = await supabase
-          .from('tournaments')
-          .select('id, name, slug, organizer_id, start_date, created_at')
-          .in('id', Array.from(tournamentIds));
-        
-        if (tError) throw tError;
-        tournamentsData = tData || [];
+        tournamentsData = await apiClient.get<any[]>(
+          `/api/tournaments?ids=${Array.from(tournamentIds).join(',')}`
+        );
       }
 
       // Get organizer user IDs
@@ -155,10 +140,9 @@ const RaiseDispute = () => {
       // Fetch organizer profiles
       const organizerProfilesMap = new Map<string, { full_name?: string; username?: string }>();
       if (organizerUserIds.size > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, username')
-          .in('id', Array.from(organizerUserIds));
+        const profiles = await apiClient.get<any[]>(
+          `/api/profiles?ids=${Array.from(organizerUserIds).join(',')}`
+        ).catch(() => []);
         
         if (profiles) {
           profiles.forEach((profile: any) => {
@@ -382,52 +366,37 @@ const RaiseDispute = () => {
         if (selectedTournamentData) {
           // First, try to get team_id from registration (if registered)
           if (selectedTournamentData.is_registered) {
-            const { data: registration } = await supabase
-              .from('tournament_participants')
-              .select('team_id')
-              .eq('tournament_id', selectedTournament)
-              .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`)
-              .maybeSingle();
-            finalTeamId = (registration as any)?.team_id || null;
+            const registration = await apiClient.get<{ team_id?: string } | null>(
+              `/api/tournaments/${selectedTournament}/participants/me`
+            ).catch(() => null);
+            finalTeamId = registration?.team_id || null;
           }
           
           // If no team_id from registration, check if user owns a team or is captain
           if (!finalTeamId) {
-            const { data: ownedTeam } = await supabase
-              .from('teams')
-              .select('id')
-              .eq('owner_id', user.id)
-              .maybeSingle();
+            const ownedTeamsList = await apiClient.get<{ id: string }[]>(
+              `/api/teams?owner_id=${user.id}`
+            ).catch(() => []);
+            const ownedTeam = ownedTeamsList?.[0] || null;
             
             if (ownedTeam?.id) {
-              const { data: teamBan } = await supabase
-                .from('tournament_bans')
-                .select('team_id')
-                .eq('tournament_id', selectedTournament)
-                .eq('team_id', ownedTeam.id)
-                .eq('is_active', true)
-                .maybeSingle();
+              const teamBan = await apiClient.get<{ team_id: string } | null>(
+                `/api/tournaments/${selectedTournament}/bans?team_id=${ownedTeam.id}`
+              ).catch(() => null);
               
               if (teamBan) {
                 finalTeamId = ownedTeam.id;
               }
             } else {
-              const { data: captainTeam } = await supabase
-                .from('team_members')
-                .select('team_id')
-                .eq('user_id', user.id)
-                .eq('is_active', true)
-                .or('role.eq.captain,role.eq.Captain')
-                .maybeSingle();
+              const captainTeamsList = await apiClient.get<{ team_id: string }[]>(
+                `/api/teams/my-captain-teams`
+              ).catch(() => []);
+              const captainTeam = captainTeamsList?.[0] || null;
               
               if (captainTeam?.team_id) {
-                const { data: teamBan } = await supabase
-                  .from('tournament_bans')
-                  .select('team_id')
-                  .eq('tournament_id', selectedTournament)
-                  .eq('team_id', captainTeam.team_id)
-                  .eq('is_active', true)
-                  .maybeSingle();
+                const teamBan = await apiClient.get<{ team_id: string } | null>(
+                  `/api/tournaments/${selectedTournament}/bans?team_id=${captainTeam.team_id}`
+                ).catch(() => null);
                 
                 if (teamBan) {
                   finalTeamId = captainTeam.team_id;
@@ -454,31 +423,17 @@ const RaiseDispute = () => {
       // Add dispute_reason
       disputeData.dispute_reason = finalDisputeReason || 'other';
 
-      const { data, error } = await supabase
-        .from('tournament_disputes')
-        .insert(disputeData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase error inserting dispute:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        console.error('Error details:', error.details);
-        console.error('Error hint:', error.hint);
-        console.error('Dispute data being inserted:', disputeData);
-        throw error;
-      }
+      const data = await apiClient.post<any>('/api/disputes', disputeData);
 
       if (disputeType === 'general') {
         // General support → notify all admins/moderators
         if (data?.id) {
-          await supabase.rpc('notify_admins_of_dispute', {
-            p_dispute_id: data.id,
-            p_type: 'dispute_filed',
-            p_title: 'New General Support Request',
-            p_message: `A user submitted a general support request: "${title.trim()}"`,
-            p_link: '/admin/disputes',
+          await apiClient.post('/api/disputes/notify-admins', {
+            dispute_id: data.id,
+            type: 'dispute_filed',
+            title: 'New General Support Request',
+            message: `A user submitted a general support request: "${title.trim()}"`,
+            link: '/admin/disputes',
           });
         }
         toast({
@@ -493,7 +448,7 @@ const RaiseDispute = () => {
         if (canResolveWithOrganizer) {
           // Notify tournament organizer
           if (tournament?.organizer_id && data?.id) {
-            await supabase.from('notifications').insert({
+            await apiClient.post('/api/notifications', {
               user_id: tournament.organizer_id,
               type: 'dispute_filed',
               title: 'New Dispute Filed',
@@ -506,12 +461,12 @@ const RaiseDispute = () => {
         } else {
           // Admin-routed (cheating, unsportsmanlike, other) → notify all admins/moderators
           if (data?.id) {
-            await supabase.rpc('notify_admins_of_dispute', {
-              p_dispute_id: data.id,
-              p_type: 'dispute_filed',
-              p_title: 'New Dispute Filed',
-              p_message: `A player filed a dispute in "${tournament?.name ?? 'a tournament'}" — ${reasonLabel}.`,
-              p_link: '/admin/disputes',
+            await apiClient.post('/api/disputes/notify-admins', {
+              dispute_id: data.id,
+              type: 'dispute_filed',
+              title: 'New Dispute Filed',
+              message: `A player filed a dispute in "${tournament?.name ?? 'a tournament'}" — ${reasonLabel}.`,
+              link: '/admin/disputes',
             });
           }
         }

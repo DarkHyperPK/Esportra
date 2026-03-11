@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import React, { useEffect, useMemo, useState } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { BarChart as BarChartIcon } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 
 const COLORS = ['#FF6B6B', '#4ECDC4', '#FFD166', '#6A0572'];
 
@@ -27,81 +27,75 @@ const AdminAnalytics = () => {
     const load = async () => {
       try {
         setLoading(true);
-        // Stats via view or RPC
+        // Stats via admin stats endpoint
         let sys: SystemStats | null = null;
-        const { data: viewData, error: viewErr } = await supabase
-          .from('admin_dashboard_stats')
-          .select('*')
-          .maybeSingle();
-        if (!viewErr && viewData) {
-          sys = {
-            total_users: viewData.total_users,
-            active_users: viewData.active_users,
-            total_tournaments: viewData.total_tournaments,
-            active_tournaments: viewData.active_tournaments,
-            total_venues: viewData.total_venues,
-            total_prize_pool: viewData.total_prize_pool,
-          };
-        } else {
-          const { data: rpcData } = await supabase.rpc('get_system_stats');
-          if (rpcData) sys = rpcData as SystemStats;
+        try {
+          sys = await apiClient.get<SystemStats>('/api/admin/stats');
+        } catch {
+          try {
+            sys = await apiClient.get<SystemStats>('/api/admin/system-stats');
+          } catch {
+            sys = null;
+          }
         }
         if (sys) setStats(sys);
 
         // Popular games from tournaments
-        const { data: tournaments } = await supabase
-          .from('tournaments')
-          .select('game');
-        if (tournaments) {
-          const map = new Map<string, number>();
-          tournaments.forEach(t => {
-            const g = (t.game || 'Unknown').toString().trim();
-            map.set(g, (map.get(g) || 0) + 1);
-          });
-          const sorted = Array.from(map.entries())
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 8);
-          setPopularGames(sorted);
-        }
+        try {
+          const tournaments = await apiClient.get<{ game: string }[]>('/api/tournaments');
+          if (tournaments) {
+            const map = new Map<string, number>();
+            tournaments.forEach(t => {
+              const g = (t.game || 'Unknown').toString().trim();
+              map.set(g, (map.get(g) || 0) + 1);
+            });
+            const sorted = Array.from(map.entries())
+              .map(([name, count]) => ({ name, count }))
+              .sort((a, b) => b.count - a.count)
+              .slice(0, 8);
+            setPopularGames(sorted);
+          }
+        } catch { /* tournaments fetch optional */ }
 
-        // Role distribution from profiles
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('role');
-        if (profiles) {
-          const map = new Map<string, number>();
-          profiles.forEach(p => {
-            const r = (p.role || 'casual').toString();
-            map.set(r, (map.get(r) || 0) + 1);
-          });
-          setRoleDistribution(Array.from(map.entries()).map(([name, value]) => ({ name, value })));
-        }
+        // Role distribution from admin users
+        try {
+          const profiles = await apiClient.get<{ role: string }[]>('/api/admin/users');
+          if (profiles) {
+            const map = new Map<string, number>();
+            profiles.forEach(p => {
+              const r = (p.role || 'casual').toString();
+              map.set(r, (map.get(r) || 0) + 1);
+            });
+            setRoleDistribution(Array.from(map.entries()).map(([name, value]) => ({ name, value })));
+          }
+        } catch { /* role distribution optional */ }
 
         // Growth over last 6 months by created_at
-        const [usersCreated, venues, tourneys] = await Promise.all([
-          supabase.from('profiles').select('created_at'),
-          supabase.from('venues').select('created_at'),
-          supabase.from('tournaments').select('created_at'),
-        ]);
-        const months = [...Array(6)].map((_, i) => {
-          const d = new Date();
-          d.setMonth(d.getMonth() - (5 - i));
-          return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-        });
-        const countByMonth = (rows?: { created_at: string }[]) => {
-          const map = new Map<string, number>(months.map(m => [m, 0]));
-          (rows || []).forEach(r => {
-            const d = new Date(r.created_at);
-            const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-            if (map.has(key)) map.set(key, (map.get(key) || 0) + 1);
+        try {
+          const [usersData, venuesData, tourneysData] = await Promise.all([
+            apiClient.get<{ created_at: string }[]>('/api/admin/users'),
+            apiClient.get<{ created_at: string }[]>('/api/venues'),
+            apiClient.get<{ created_at: string }[]>('/api/tournaments'),
+          ]);
+          const months = [...Array(6)].map((_, i) => {
+            const d = new Date();
+            d.setMonth(d.getMonth() - (5 - i));
+            return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
           });
-          return months.map(m => map.get(m) || 0);
-        };
-        const u = countByMonth((usersCreated?.data as any) || []);
-        const v = countByMonth((venues?.data as any) || []);
-        const t = countByMonth((tourneys?.data as any) || []);
-        setGrowthSeries(months.map((m, idx) => ({ name: m, users: u[idx], venues: v[idx], tournaments: t[idx] })));
+          const countByMonth = (rows?: { created_at: string }[]) => {
+            const map = new Map<string, number>(months.map(m => [m, 0]));
+            (rows || []).forEach(r => {
+              const d = new Date(r.created_at);
+              const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+              if (map.has(key)) map.set(key, (map.get(key) || 0) + 1);
+            });
+            return months.map(m => map.get(m) || 0);
+          };
+          const u = countByMonth(usersData || []);
+          const v = countByMonth(venuesData || []);
+          const t = countByMonth(tourneysData || []);
+          setGrowthSeries(months.map((m, idx) => ({ name: m, users: u[idx], venues: v[idx], tournaments: t[idx] })));
+        } catch { /* growth data optional */ }
       } finally {
         setLoading(false);
       }
