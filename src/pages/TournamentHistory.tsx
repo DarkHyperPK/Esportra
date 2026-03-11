@@ -19,17 +19,11 @@ const TournamentHistoryPage = () => {
     useEffect(() => {
         const fetchHistory = async () => {
             setLoading(true);
-
-            const { data, error } = await supabase
-                .from('tournaments')
-                .select('*, teams:winner_id(name)')
-                .eq('status', 'completed')
-                .order('start_date', { ascending: false });
-
-            if (error) {
-                console.error('Error fetching global history:', error);
-            } else {
+            try {
+                const data = await apiClient.get<any[]>('/api/tournaments?status=completed');
                 setTournaments(data || []);
+            } catch (error) {
+                console.error('Error fetching global history:', error);
             }
             setLoading(false);
         };

@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Building2, Upload, AlertCircle, CheckCircle, X, Trophy, Users, Calendar, Globe, Mail, Phone, MapPin } from 'lucide-react';
 
@@ -182,37 +183,17 @@ const OrganizerVerificationForm: React.FC<OrganizerVerificationFormProps> = ({
 
       // Try insert; on unique violation for pending request, update instead
       let insertError: any | null = null;
-      const insertRes = await supabase
-        .from('verification_requests')
-        .insert(payload)
-        .select()
-        .single();
-
-      if (insertRes.error) {
-        insertError = insertRes.error;
+      try {
+        await apiClient.post('/api/profiles/me/verification-requests', payload);
+      } catch (err: any) {
+        insertError = err;
       }
 
-      if (insertError && (insertError.code === '23505' || (insertError.message && insertError.message.toLowerCase().includes('unique')))) {
-        // Find existing pending request for this user/role
-        const existing = await supabase
-          .from('verification_requests')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('requested_role', 'organizer')
-          .eq('status', 'pending')
-          .single();
-
-        if (!existing.error && existing.data?.id) {
-          const updateRes = await supabase
-            .from('verification_requests')
-            .update(payload)
-            .eq('id', existing.data.id)
-            .select()
-            .single();
-
-          if (updateRes.error) throw updateRes.error;
-        } else {
-          throw insertError; // rethrow if cannot resolve
+      if (insertError && (insertError.status === 409 || (insertError.body && typeof insertError.body === 'object' && (insertError.body as any)?.code === '23505'))) {
+        try {
+          await apiClient.put('/api/profiles/me/verification-requests/organizer', payload);
+        } catch (updateErr: any) {
+          throw updateErr;
         }
       } else if (insertError) {
         throw insertError;

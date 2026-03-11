@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useNavigate } from 'react-router-dom';
@@ -71,48 +71,19 @@ const VerificationStatus: React.FC = () => {
     try {
       setLoading(true);
 
-      // Fetch verification requests
-      const { data: requestsData, error: requestsError } = await supabase
-        .from('verification_requests')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      // Fetch all roles and licenses via the unified roles endpoint
+      const rolesData = await apiClient.get<any>('/api/me/roles');
 
-      if (requestsError) throw requestsError;
-
-      // Fetch verified roles (approved + active)
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('verified_roles')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .eq('status', 'approved');
-
-      if (rolesError) throw rolesError;
-
-      // Fetch assigned roles (active)
-      const { data: assignedData, error: assignedError } = await supabase
-        .from('user_roles')
-        .select('role, is_active')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
-
-      if (assignedError) throw assignedError;
-
-      setRequests(requestsData || []);
-      setVerifiedRoles(rolesData || []);
-      setAssignedRoles((assignedData as any) || []);
+      setRequests(rolesData?.verification_requests || []);
+      setVerifiedRoles(rolesData?.verified_roles || []);
+      setAssignedRoles(rolesData?.user_roles || []);
 
       // Company profiles removed - no longer needed
       setOrgVerifiedByProfile(false);
-      try {
-        const venue = await supabase
-          .from('venue_profiles')
-          .select('verified, is_verified')
-          .eq('owner_id', user.id)
-          .maybeSingle();
-        setVenueVerifiedByProfile(!!(venue.data?.verified || venue.data?.is_verified));
-      } catch { }
+
+      // Check venue verification from licenses
+      const licenses = rolesData?.licenses || [];
+      setVenueVerifiedByProfile(licenses.some((l: any) => l.role === 'venue_owner' && l.is_active));
 
     } catch (error) {
       console.error('Error fetching verification data:', error);

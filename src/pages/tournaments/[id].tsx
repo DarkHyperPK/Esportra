@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Calendar, MapPin, Users, Trophy, GamepadIcon, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Tournament } from '@/hooks/useTournaments';
 import TournamentRegistration from '@/components/TournamentRegistration';
 
@@ -44,13 +44,7 @@ const TournamentDetails = () => {
     const fetchTournament = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('tournaments')
-          .select('*, tournament_participants(count)')
-          .eq('id', id)
-          .single();
-
-        if (error) throw error;
+        const data = await apiClient.get<any>(`/api/tournaments/${id}`);
 
         if (data) {
           const dbTournament = data as DbTournament;

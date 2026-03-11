@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Medal, Star, Swords, Crown, ChevronDown, Users, User, Flame, Target, Award, TrendingUp } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { getCountryFlag, getCountryFlagUrl } from '@/utils/countries';
 import CountrySelector from '@/components/ui/CountrySelector';
@@ -65,58 +65,12 @@ const Leaderboards: React.FC = () => {
 
         const fetchTeams = async () => {
             try {
-                // Get all teams
-                const { data: allTeams, error: teamErr } = await supabase
-                    .from('teams')
-                    .select('id, name, logo_url, game, country_code');
-
-                if (teamErr || !allTeams) { setLoading(false); return; }
-
-                // Filter by game if needed
-                const filteredTeams = allTeams.filter(t => {
-                    const matchesGame = game === 'All Games' || (t as any).game?.toLowerCase() === game.toLowerCase();
-                    const matchesCountry = country === 'All Countries' || t.country_code === country;
-                    return matchesGame && matchesCountry;
-                });
-
-                // Get all completed matches
-                const teamIds = filteredTeams.map(t => t.id);
-                if (teamIds.length === 0) { setTeams([]); setLoading(false); return; }
-
-                const { data: matches } = await supabase
-                    .from('brkt_matches')
-                    .select('team1_id, team2_id, winner_id, status')
-                    .eq('status', 'completed');
-
-                // Get tournament wins
-                const { data: tournamentWins } = await supabase
-                    .from('tournaments')
-                    .select('winner_id')
-                    .not('winner_id', 'is', null);
-
-                const stats: TeamStats[] = filteredTeams.map(team => {
-                    const teamMatches = (matches || []).filter(m => m.team1_id === team.id || m.team2_id === team.id);
-                    const wins = teamMatches.filter(m => m.winner_id === team.id).length;
-                    const losses = teamMatches.length - wins;
-                    const tWins = (tournamentWins || []).filter(t => t.winner_id === team.id).length;
-                    const rp = Math.max(0, (wins * RP_PER_WIN) + (losses * RP_PER_LOSS) + (tWins * RP_PER_TOURNAMENT_WIN));
-
-                    return {
-                        id: team.id,
-                        name: team.name,
-                        logo_url: team.logo_url,
-                        matches_played: teamMatches.length,
-                        wins,
-                        losses,
-                        win_rate: teamMatches.length > 0 ? Math.round((wins / teamMatches.length) * 100) : 0,
-                        tournaments_won: tWins,
-                        rp,
-                        country_code: team.country_code,
-                    };
-                });
-
-                stats.sort((a, b) => b.rp - a.rp);
-                setTeams(stats);
+                const params = new URLSearchParams();
+                if (game !== 'All Games') params.set('game', game);
+                if (country !== 'All Countries') params.set('country', country);
+                const queryStr = params.toString() ? `?${params.toString()}` : '';
+                const stats = await apiClient.get<TeamStats[]>(`/api/leaderboards/teams${queryStr}`);
+                setTeams(stats || []);
             } catch (err) {
                 console.error('Leaderboard fetch error:', err);
             } finally {
@@ -134,75 +88,12 @@ const Leaderboards: React.FC = () => {
 
         const fetchPlayers = async () => {
             try {
-                // Get users who are team members
-                const { data: members } = await supabase
-                    .from('team_members')
-                    .select('user_id, team_id');
-
-                if (!members || members.length === 0) { setPlayers([]); setLoading(false); return; }
-
-                const userIds = [...new Set(members.map(m => m.user_id))];
-
-                // Get profiles
-                const { data: profiles } = await supabase
-                    .from('profiles')
-                    .select('id, username, avatar_url, country_code')
-                    .in('id', userIds);
-
-                if (!profiles) { setLoading(false); return; }
-
-                // Filter by country if needed
-                const filteredProfiles = country === 'All Countries'
-                    ? profiles
-                    : profiles.filter(p => p.country_code === country);
-
-                if (filteredProfiles.length === 0) { setPlayers([]); setLoading(false); return; }
-
-                // Get team IDs per user
-                const userTeams: Record<string, string[]> = {};
-                members.forEach(m => {
-                    if (!userTeams[m.user_id]) userTeams[m.user_id] = [];
-                    userTeams[m.user_id].push(m.team_id);
-                });
-
-                // Get all completed matches
-                const { data: matches } = await supabase
-                    .from('brkt_matches')
-                    .select('team1_id, team2_id, winner_id, status')
-                    .eq('status', 'completed');
-
-                // Get MVPs
-                const { data: mvpGames } = await supabase
-                    .from('brkt_match_games')
-                    .select('mvp_id')
-                    .not('mvp_id', 'is', null);
-
-                const stats: PlayerStats[] = filteredProfiles.map(profile => {
-                    const myTeamIds = userTeams[profile.id] || [];
-                    const playerMatches = (matches || []).filter(m =>
-                        myTeamIds.includes(m.team1_id) || myTeamIds.includes(m.team2_id)
-                    );
-                    const wins = playerMatches.filter(m => myTeamIds.includes(m.winner_id)).length;
-                    const losses = playerMatches.length - wins;
-                    const mvps = (mvpGames || []).filter(g => g.mvp_id === profile.id).length;
-                    const rp = Math.max(0, (wins * RP_PER_WIN) + (losses * RP_PER_LOSS) + (mvps * RP_PER_MVP));
-
-                    return {
-                        id: profile.id,
-                        username: profile.username || 'Unknown',
-                        avatar_url: profile.avatar_url,
-                        matches_played: playerMatches.length,
-                        wins,
-                        losses,
-                        win_rate: playerMatches.length > 0 ? Math.round((wins / playerMatches.length) * 100) : 0,
-                        mvps,
-                        rp,
-                        country_code: profile.country_code,
-                    };
-                });
-
-                stats.sort((a, b) => b.rp - a.rp);
-                setPlayers(stats.filter(p => p.matches_played > 0));
+                const params = new URLSearchParams();
+                if (game !== 'All Games') params.set('game', game);
+                if (country !== 'All Countries') params.set('country', country);
+                const queryStr = params.toString() ? `?${params.toString()}` : '';
+                const stats = await apiClient.get<PlayerStats[]>(`/api/leaderboards/players${queryStr}`);
+                setPlayers((stats || []).filter(p => p.matches_played > 0));
             } catch (err) {
                 console.error('Player leaderboard fetch error:', err);
             } finally {

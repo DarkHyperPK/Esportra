@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Building2, Upload, AlertCircle, Info } from 'lucide-react';
 
@@ -130,34 +131,18 @@ const VenueOwnerVerificationForm: React.FC<VenueOwnerVerificationFormProps> = ({
       };
 
       let insertError: any | null = null;
-      const insertRes = await supabase
-        .from('verification_requests')
-        .insert(payload)
-        .select()
-        .single();
+      try {
+        await apiClient.post('/api/profiles/me/verification-requests', payload);
+      } catch (err: any) {
+        insertError = err;
+      }
 
-      if (insertRes.error) insertError = insertRes.error;
-
-      if (insertError && (insertError.code === '23505' || (insertError.message && insertError.message.toLowerCase().includes('unique')))) {
-        const existing = await supabase
-          .from('verification_requests')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('requested_role', 'venue_owner')
-          .eq('status', 'pending')
-          .single();
-
-        if (!existing.error && existing.data?.id) {
-          const updateRes = await supabase
-            .from('verification_requests')
-            .update(payload)
-            .eq('id', existing.data.id)
-            .select()
-            .single();
-
-          if (updateRes.error) throw updateRes.error;
-        } else {
-          throw insertError;
+      if (insertError && (insertError.status === 409 || (insertError.body && typeof insertError.body === 'object' && (insertError.body as any)?.code === '23505'))) {
+        // Duplicate — try updating existing pending request
+        try {
+          await apiClient.put('/api/profiles/me/verification-requests/venue_owner', payload);
+        } catch (updateErr: any) {
+          throw updateErr;
         }
       } else if (insertError) {
         throw insertError;

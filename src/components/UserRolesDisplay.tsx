@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Trophy, Building2, Gamepad2, Shield, CheckCircle, XCircle } from 'lucide-react';
 
@@ -30,30 +30,14 @@ const UserRolesDisplay: React.FC = () => {
       if (!user) return;
 
       try {
-        // Fetch user's roles
-        const { data: roles, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('role, is_active, assigned_at, assigned_by')
-          .eq('user_id', user.id)
-          .order('assigned_at', { ascending: false });
+        const rolesData = await apiClient.get<any>('/api/me/roles');
 
-        if (rolesError) {
-          console.error('Error fetching user roles:', rolesError);
-        } else {
-          setUserRoles(roles || []);
+        if (rolesData?.user_roles) {
+          setUserRoles(rolesData.user_roles);
         }
 
-        // Fetch verified roles
-        const { data: verified, error: verifiedError } = await supabase
-          .from('verified_roles')
-          .select('role, status, verified_at, verified_by')
-          .eq('user_id', user.id)
-          .order('verified_at', { ascending: false });
-
-        if (verifiedError) {
-          console.error('Error fetching verified roles:', verifiedError);
-        } else {
-          setVerifiedRoles(verified || []);
+        if (rolesData?.verified_roles) {
+          setVerifiedRoles(rolesData.verified_roles);
         }
       } catch (error) {
         console.error('Error fetching roles:', error);

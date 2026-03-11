@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,17 +27,9 @@ const TournamentList = () => {
 
     try {
       console.log('[RegisteredState] Fetching registrations for user:', user.id, typeof user.id);
-      const { data: registrationsData, error: registrationsError } = await supabase
-        .from('tournament_participants')
-        .select('tournament_id, user_id')
-        .eq('user_id', user.id.toString());
+      const data = await apiClient.get<{ tournament_id: string }[]>('/api/tournaments/me/registration-status');
 
-      if (registrationsError) {
-        console.error('[RegisteredState] Error fetching registrations:', registrationsError);
-        throw registrationsError;
-      }
-
-      const userRegistrations = (registrationsData || []).map(reg => reg.tournament_id.toString());
+      const userRegistrations = (data || []).map(reg => reg.tournament_id.toString());
       console.log('[RegisteredState] Found registrations:', userRegistrations);
       setRegisteredTournaments(userRegistrations);
     } catch (error) {
@@ -48,19 +40,7 @@ const TournamentList = () => {
   // Fetch tournaments
   const fetchTournaments = useCallback(async () => {
     try {
-      const { data: tournamentsData, error: tournamentsError } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('is_public', true)
-        .neq('status', 'draft')
-        .neq('status', 'cancelled')
-        .is('deleted_at', null)
-        .order('start_date', { ascending: true });
-
-      if (tournamentsError) {
-        console.error('[TournamentList] Error fetching tournaments:', tournamentsError);
-        throw tournamentsError;
-      }
+      const tournamentsData = await apiClient.get<any[]>('/api/tournaments');
 
       const mappedTournaments = (tournamentsData || []).map(tournament => ({
         ...tournament,

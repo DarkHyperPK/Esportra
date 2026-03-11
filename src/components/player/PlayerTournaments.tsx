@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from '@/lib/apiClient';
 import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
 
 interface TournamentRegistration {
@@ -72,11 +72,7 @@ const PlayerTournaments = () => {
       if (!user) return;
 
       try {
-        const { data, error } = await supabase.rpc('get_user_registered_tournaments', {
-          p_user_id: user.id
-        });
-
-        if (error) throw error;
+        const data = await apiClient.get<any[]>('/api/tournaments/me/history');
 
         // Process status and filter completed
         const processedTournaments = (data || []).map((t: any) => {

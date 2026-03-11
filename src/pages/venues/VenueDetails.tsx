@@ -1,7 +1,6 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTrackImpression } from '@/hooks/useVenueImpressions';
@@ -155,13 +154,7 @@ const VenueDetails = () => {
     const fetchVenue = async () => {
         try {
             if (!slug) return;
-            const { data, error } = await supabase
-                .from('venues')
-                .select('*')
-                .eq('slug', slug)
-                .single();
-
-            if (error) throw error;
+            const data = await apiClient.get<any>(`/api/venues/${slug}`);
 
             // Guard: non-published venues are only visible to their owner
             if (data.status && data.status !== 'published' && user?.id !== data.owner_id) {
@@ -194,26 +187,19 @@ const VenueDetails = () => {
     };
 
     const fetchReviews = async (venueId: string) => {
-        const { data, error } = await supabase
-            .from('venue_reviews')
-            .select(`
-                *,
-                profiles (
-                   username,
-                   avatar_url
-                )
-            `)
-            .eq('venue_id', venueId)
-            .order('created_at', { ascending: false });
-
-        if (!error && data) {
-            setReviews(data);
-            if (data.length > 0) {
-                const total = data.reduce((acc, r) => acc + r.rating, 0);
-                setAverageRating(total / data.length);
-            } else {
-                setAverageRating(0);
+        try {
+            const data = await apiClient.get<any[]>(`/api/reviews/venue/${venueId}`);
+            if (data) {
+                setReviews(data);
+                if (data.length > 0) {
+                    const total = data.reduce((acc: number, r: any) => acc + r.rating, 0);
+                    setAverageRating(total / data.length);
+                } else {
+                    setAverageRating(0);
+                }
             }
+        } catch {
+            // Reviews are non-critical
         }
     };
 
@@ -221,16 +207,12 @@ const VenueDetails = () => {
         if (!user || !venue) return;
         setSubmittingReview(true);
         try {
-            const { error } = await supabase
-                .from('venue_reviews')
-                .insert({
-                    venue_id: venue.id,
-                    user_id: user.id,
-                    rating: newRating,
-                    comment: newComment
-                });
-
-            if (error) throw error;
+            await apiClient.post('/api/reviews', {
+                venueId: venue.id,
+                reviewType: 'venue',
+                rating: newRating,
+                comment: newComment,
+            });
 
             toast({ title: "Review Submitted", description: "Thanks for your feedback!" });
             setIsReviewOpen(false);

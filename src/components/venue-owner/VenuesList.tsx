@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 
 interface Venue {
   id: string;
@@ -30,40 +30,8 @@ const VenuesList = () => {
       if (!user) return;
 
       try {
-        // Fetch venues owned by the user
-        const { data: venuesData, error: venuesError } = await supabase
-          .from('venues')
-          .select(`
-            id,
-            name,
-            city,
-            address,
-            stations,
-            price_range,
-            image_url,
-            open_now
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (venuesError) throw venuesError;
-
-        // For each venue, get the last booking
-        const venuesWithBookings = await Promise.all((venuesData || []).map(async (venue) => {
-          const { data: bookings } = await supabase
-            .from('venue_bookings')
-            .select('created_at')
-            .eq('venue_id', venue.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-          return {
-            ...venue,
-            last_booking: bookings?.[0]?.created_at ? new Date(bookings[0].created_at).toLocaleString() : undefined
-          };
-        }));
-
-        setVenues(venuesWithBookings);
+        const venuesData = await apiClient.get<Venue[]>('/api/venues?owned=true');
+        setVenues(venuesData || []);
       } catch (error) {
         console.error('Error fetching venues:', error);
       } finally {

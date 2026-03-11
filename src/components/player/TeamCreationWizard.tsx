@@ -10,6 +10,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import {
   Users,
   Trophy,
@@ -160,14 +161,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
   const fetchVerifiedUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url, is_verified, email, is_admin')
-        .eq('is_verified', true)
-        .eq('is_admin', false) // Exclude admins from team member selection
-        .order('username');
-
-      if (error) throw error;
+      const data = await apiClient.get<any[]>('/api/profiles/search?verified=true');
       setVerifiedUsers(data || []);
     } catch (error) {
       console.error('Error fetching verified users:', error);
@@ -185,41 +179,20 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
     try {
       setFetchingTeam(true);
 
-      // Get team where user is the creator
-      const { data: createdTeam, error: createdError } = await supabase
-        .from('teams')
-        .select('*')
-        .eq('owner_id', user.id)
-        .maybeSingle();
+      // Get user's teams via API
+      const teams = await apiClient.get<any[]>('/api/teams/me');
+      const ownedTeam = (teams || []).find((t: any) => t.owner_id === user.id);
 
-      if (createdError && createdError.code !== 'PGRST116') throw createdError;
-
-      if (createdTeam) {
-        // Fetch members for the team
-        const { data: members } = await supabase
-          .from('team_members')
-          .select(`
-          user_id,
-          role,
-          profiles (
-            id,
-            username,
-            full_name,
-            avatar_url,
-            is_verified
-          )
-        `)
-          .eq('team_id', createdTeam.id);
-
+      if (ownedTeam) {
         setUserTeam({
-          ...createdTeam,
-          members: (members || []).map(m => ({
-            id: m.user_id,
-            username: Array.isArray(m.profiles) ? m.profiles[0].username : (m.profiles as any).username,
-            full_name: Array.isArray(m.profiles) ? m.profiles[0].full_name : (m.profiles as any).full_name,
-            avatar_url: Array.isArray(m.profiles) ? m.profiles[0].avatar_url : (m.profiles as any).avatar_url,
+          ...ownedTeam,
+          members: (ownedTeam.members || []).map((m: any) => ({
+            id: m.user_id || m.id,
+            username: m.username || m.profiles?.username,
+            full_name: m.full_name || m.profiles?.full_name,
+            avatar_url: m.avatar_url || m.profiles?.avatar_url,
             role: m.role,
-            verified: Array.isArray(m.profiles) ? m.profiles[0].is_verified : (m.profiles as any).is_verified,
+            verified: m.is_verified || m.profiles?.is_verified,
           })),
           tournament_wins: 0,
           total_matches: 0,
@@ -436,38 +409,22 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
       });
 
       // Create team
-      const { data: team, error: teamError } = await supabase
-        .from('teams')
-        .insert({
-          name: teamName,
-          tag: teamTag,
-          game: 'Organization', // default primary game placeholder for multi-game orgs
-          games: [],
-          logo_url: logoUrl,
-          owner_id: user.id,
-          country_code: teamCountryCode || null,
-        })
-        .select()
-        .single();
+      const team = await apiClient.post<any>('/api/teams', {
+        name: teamName,
+        tag: teamTag,
+        game: 'Organization',
+        games: [],
+        logoUrl: logoUrl,
+        countryCode: teamCountryCode || null,
+      });
 
       console.log('Created team:', team);
-      console.log('Team error:', teamError);
       console.log('===========================');
 
-      if (teamError) throw teamError;
+      if (!team?.id) throw new Error('Team creation failed');
 
-      // Add only creator as captain initially; roster flows will invite others
-      const memberRows = [{
-        team_id: team.id,
-        user_id: user.id,
-        role: 'captain',
-      }];
-
-      const { error: memberError } = await supabase
-        .from('team_members')
-        .insert(memberRows);
-
-      if (memberError) throw memberError;
+      // Creator is auto-added as captain by the backend
+      // No need for a separate member insert
 
       // No member notifications needed at creation time
 
@@ -709,16 +666,12 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                 <Button onClick={async () => {
                   if (!userTeam) return;
                   try {
-                    const { error } = await supabase
-                      .from('teams')
-                      .update({
-                        name: editName,
-                        tag: editTag,
-                        country_code: editCountry || null,
-                        updated_at: new Date().toISOString()
-                      })
-                      .eq('id', userTeam.id);
-                    if (error) throw error;
+                    await apiClient.put(`/api/teams/${userTeam.id}`, {
+                      name: editName,
+                      tag: editTag,
+                      country_code: editCountry || null,
+                      updated_at: new Date().toISOString()
+                    });
                     await fetchUserTeam();
                     setShowEditModal(false);
                     toast({ title: 'Team updated', description: 'Your changes have been saved.' });

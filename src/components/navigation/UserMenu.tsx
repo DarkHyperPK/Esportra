@@ -14,7 +14,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import RoleSwitcher, { RoleSwitcherDialog } from "@/components/RoleSwitcher";
 
 // Specialized button component for inside the menu
@@ -83,12 +83,8 @@ const UserMenu = ({
       return;
     }
     try {
-      const { data } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .maybeSingle();
-      setHasOrganization(!!data?.id);
+      const roles = await apiClient.get<any>('/api/me/roles');
+      setHasOrganization(!!roles?.organization_id);
     } catch {
       setHasOrganization(false);
     }
@@ -110,26 +106,8 @@ const UserMenu = ({
         return;
       }
       try {
-        // Fetch both in parallel
-        const [{ data: verifiedRoles }, { data: userRoles }] = await Promise.all([
-          supabase
-            .from('verified_roles')
-            .select('role')
-            .eq('user_id', user.id)
-            .eq('status', 'approved')
-            .eq('is_active', true)
-            .in('role', ['organizer', 'venue_owner']),
-          supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .in('role', ['organizer', 'venue_owner']),
-        ]);
-
-        // User has approved license if they have BOTH verified_role AND user_role for any role
-        const verifiedRoleSet = new Set(verifiedRoles?.map(r => r.role) || []);
-        const hasLicense = userRoles?.some(ur => verifiedRoleSet.has(ur.role)) || false;
+        const roles = await apiClient.get<any>('/api/me/roles');
+        const hasLicense = !!(roles?.verified_roles?.length > 0);
         setHasApprovedLicense(hasLicense);
       } catch {
         setHasApprovedLicense(false);
@@ -142,18 +120,8 @@ const UserMenu = ({
   const checkTeamStatus = useCallback(async () => {
     if (!user) { setHasTeam(false); return; }
     try {
-      const { data: created } = await supabase
-        .from('teams')
-        .select('id')
-        .eq('owner_id', user.id)
-        .maybeSingle();
-      if (created?.id) { setHasTeam(true); return; }
-      const { data: membership } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      setHasTeam(!!membership?.team_id);
+      const teams = await apiClient.get<any[]>('/api/teams/me');
+      setHasTeam(!!(teams && teams.length > 0));
     } catch {
       setHasTeam(false);
     }
@@ -168,13 +136,8 @@ const UserMenu = ({
     const checkInvites = async () => {
       if (!user?.id) { setHasPendingInvite(false); return; }
       try {
-        const { data } = await supabase
-          .from('team_invitations')
-          .select('id')
-          .or(`invited_user_id.eq.${user.id},invited_email.eq.${user.email}`)
-          .eq('status', 'pending')
-          .limit(1);
-        setHasPendingInvite(!!(data && data.length > 0));
+        const invites = await apiClient.get<any[]>('/api/teams/me/invites');
+        setHasPendingInvite(!!(invites && invites.length > 0));
       } catch {
         setHasPendingInvite(false);
       }
@@ -190,20 +153,10 @@ const UserMenu = ({
         return;
       }
       try {
-        const { data } = await supabase
-          .from('organization_staff')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('status', 'pending')
-          .limit(1);
-        setHasStaffInvites(!!(data && data.length > 0));
-        const { data: activeAssignments } = await supabase
-          .from('organization_staff')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .limit(1);
-        setHasStaffAssignments(!!(activeAssignments && activeAssignments.length > 0));
+        const invites = await apiClient.get<any[]>('/api/organizations/staff/invites');
+        setHasStaffInvites(!!(invites && invites.length > 0));
+        const assignments = await apiClient.get<any[]>('/api/organizations/staff/assignments');
+        setHasStaffAssignments(!!(assignments && assignments.length > 0));
       } catch {
         setHasStaffInvites(false);
         setHasStaffAssignments(false);

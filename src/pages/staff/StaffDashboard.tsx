@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { ProfileLoading } from "@/components/profile/ProfileLoading";
 import {
   Shield, Trophy, Building2, ChevronRight,
@@ -68,17 +68,8 @@ const StaffDashboard = () => {
     if (!user) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("organization_staff")
-        .select(`
-                    id, organization_id, role, permissions, status, created_at, accepted_at,
-                    organization:organization_id(id, name, slug, logo_url)
-                `)
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .order("accepted_at", { ascending: false });
+      const data = await apiClient.get<any[]>('/api/organizations/staff/assignments');
 
-      if (error) throw error;
       const mapped = (data || []).map((d: any) => ({
         ...d,
         organization: Array.isArray(d.organization) ? d.organization[0] : d.organization,
@@ -99,13 +90,8 @@ const StaffDashboard = () => {
     try {
       if (selectedOrg.role === "admin") {
         // Admins see ALL org tournaments
-        const { data, error } = await supabase
-          .from("tournaments")
-          .select("id, name, status, slug")
-          .eq("organization_id", selectedOrg.organization_id)
-          .order("created_at", { ascending: false });
+        const data = await apiClient.get<any[]>(`/api/organizations/${selectedOrg.organization_id}/tournaments`);
 
-        if (error) throw error;
         setTournaments((data || []).map((t: any) => ({
           id: `admin-${t.id}`,
           tournament_id: t.id,
@@ -113,16 +99,12 @@ const StaffDashboard = () => {
         })));
       } else {
         // Mods/Co-Hosts see only assigned tournaments
-        const { data, error } = await supabase
-          .from("staff_tournament_assignments")
-          .select(`
-                        id, tournament_id,
-                        tournament:tournament_id(id, name, status, slug)
-                    `)
-          .eq("organization_staff_id", selectedOrg.id);
+        const data = await apiClient.get<any[]>('/api/tournaments/staff/my-assignments');
 
-        if (error) throw error;
-        const mapped = (data || []).map((d: any) => ({
+        const filtered = (data || []).filter((d: any) =>
+          d.organization_staff_id === selectedOrg.id
+        );
+        const mapped = filtered.map((d: any) => ({
           ...d,
           tournament: Array.isArray(d.tournament) ? d.tournament[0] : d.tournament,
         }));

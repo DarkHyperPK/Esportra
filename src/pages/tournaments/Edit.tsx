@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { WizardContainer } from '@/components/tournament/wizard';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA } from '@/types/tournamentWizard';
 import { Loader2 } from 'lucide-react';
@@ -25,61 +25,33 @@ const EditTournament = () => {
     try {
       setLoading(true);
 
-      // 1. Fetch Tournament Details (try slug first, then ID)
-      let tournamentData: any = null;
-
-      const { data: bySlug, error: slugError } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('slug', slug)
-        .single();
-
-      if (bySlug) {
-        tournamentData = bySlug;
-      } else {
-        const { data: byId, error: idError } = await supabase
-          .from('tournaments')
-          .select('*')
-          .eq('id', slug)
-          .single();
-
-        if (byId) {
-          tournamentData = byId;
-        } else {
-          throw new Error('Tournament not found');
-        }
-      }
+      // 1. Fetch Tournament Details (API accepts slug or ID)
+      const tournamentData = await apiClient.get<any>(`/api/tournaments/${slug}`);
+      if (!tournamentData) throw new Error('Tournament not found');
 
       setTournamentId(tournamentData.id);
 
       // 2. Fetch Stages
-      // 2. Fetch Stages
-      const { data: stages, error: stagesError } = await supabase
-        .from('tournament_stages')
-        .select('*')
-        .eq('tournament_id', tournamentData.id)
-        .order('stage_order', { ascending: true });
+      let stages: any[] = [];
+      try {
+        stages = await apiClient.get<any[]>(`/api/tournaments/${tournamentData.id}/stages`) || [];
+      } catch (e) {
+        console.error('Error fetching stages:', e);
+      }
 
-      if (stagesError) throw stagesError;
-
-      // 2.2 Fetch Map Pool
-      const { data: mapPoolData, error: mapPoolError } = await supabase
-        .from('tournament_map_pools')
-        .select('map_id')
-        .eq('tournament_id', tournamentData.id);
-
-      if (mapPoolError) console.error('Error fetching map pool:', mapPoolError);
-      const mapPoolIds = mapPoolData?.map(m => m.map_id) || [];
+      // 2.2 Fetch Map Pool (kept as part of tournament data or separate call)
+      const mapPoolIds: string[] = tournamentData.map_pool_ids || [];
 
       // 2.5 Fetch Participant Count
-      const { count: participantCount, error: countError } = await supabase
-        .from('tournament_participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', tournamentData.id);
+      let participantCountVal = 0;
+      try {
+        const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentData.id}/participants`);
+        participantCountVal = participants?.length || 0;
+      } catch (e) {
+        console.error('Error fetching participant count:', e);
+      }
 
-      if (countError) console.error('Error fetching count:', countError);
-
-      setParticipantCount(participantCount || 0);
+      setParticipantCount(participantCountVal);
 
       // 3. Map to Wizard Data
       const startDate = new Date(tournamentData.start_date);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import { useToast } from '@/hooks/use-toast';
 import VenueBooking from '@/components/VenueBooking';
@@ -44,14 +44,7 @@ const VenueDetails = () => {
       if (!id) return;
       
       try {
-        const { data, error } = await supabase
-          .from('venues')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (error) throw error;
-        
+        const data = await apiClient.get<any>(`/api/venues/${id}`);
         setVenue(data);
       } catch (error: any) {
         console.error('Error fetching venue details:', error);

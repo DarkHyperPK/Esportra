@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 
 // Define the payload structure based on our plan
 export interface EditTeamPayload {
@@ -103,17 +104,7 @@ export const useTeamMutations = () => {
                 updated_at: new Date().toISOString(),
             };
 
-            const { data, error } = await supabase
-                .from('teams')
-                .update(finalUpdateData)
-                .eq('id', teamId)
-                .select()
-                .single();
-
-            if (error) {
-                throw new Error(`Failed to update team details: ${error.message}`);
-            }
-
+            const data = await apiClient.put(`/api/teams/${teamId}`, finalUpdateData);
             return data;
         },
         onSuccess: (data, variables) => {

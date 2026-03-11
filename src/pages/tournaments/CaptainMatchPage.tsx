@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -118,18 +118,10 @@ const CaptainMatchPage = () => {
             console.log('[CaptainMatchPage] Fetching configs for stageIds:', stageIds);
 
             if (stageIds.length > 0) {
-                supabase
-                    .from('tournament_stages')
-                    .select('id, format, scheduling_config')
-                    .in('id', stageIds)
-                    .then(({ data, error }) => {
-                        if (error) {
-                            console.error('Error fetching stage configs:', error);
-                            return;
-                        }
-
+                apiClient.get<any[]>(`/api/tournaments/${stageIds[0]}/stages`)
+                    .then((stages) => {
                         const configs: Record<string, any> = {};
-                        data?.forEach((stage: any) => {
+                        (stages || []).forEach((stage: any) => {
                             configs[stage.id] = {
                                 format: stage.format,
                                 scheduling_config: stage.scheduling_config
@@ -137,9 +129,9 @@ const CaptainMatchPage = () => {
                         });
                         console.log('[CaptainMatchPage] Loaded stage configs:', configs);
                         setStageConfigs(configs);
-
-                        // For backward compatibility (legacy roundDeadline state), maybe just pick the first one's deadline?
-                        // Or better, don't rely on it.
+                    })
+                    .catch((error) => {
+                        console.error('Error fetching stage configs:', error);
                     });
             }
         }
@@ -163,12 +155,10 @@ const CaptainMatchPage = () => {
         queryKey: ['captain-teams', teamIds.join(',')],
         queryFn: async () => {
             if (teamIds.length === 0) return [];
-            const { data, error } = await supabase
-                .from('teams')
-                .select('id, name, logo_url')
-                .in('id', teamIds);
-            if (error) throw error;
-            return data || [];
+            const results = await Promise.all(
+                teamIds.map(id => apiClient.get<any>(`/api/teams/${id}`).catch(() => null))
+            );
+            return results.filter(Boolean);
         },
         enabled: teamIds.length > 0,
     });
@@ -203,41 +193,15 @@ const CaptainMatchPage = () => {
             setLoading(true);
             console.log('[CaptainMatchPage] Fetching tournament data for slug:', slug);
 
-            // Get tournament - Try by slug first, then by ID
+            // Get tournament - Try API (accepts slug or ID)
             let tourney;
-
-            const { data: bySlug, error: slugError } = await supabase
-                .from('tournaments')
-                .select('*')
-                .eq('slug', slug)
-                .maybeSingle(); // Use maybeSingle to avoid 406 error on no rows
-
-            if (bySlug) {
-                tourney = bySlug;
-            } else {
-                // Fallback to checking by ID
-                const { data: byId, error: idError } = await supabase
-                    .from('tournaments')
-                    .select('*')
-                    .eq('id', slug)
-                    .maybeSingle();
-
-                if (byId) {
-                    tourney = byId;
-                } else {
-                    throw slugError || idError || new Error('Tournament not found');
-                }
-            }
+            tourney = await apiClient.get<any>(`/api/tournaments/${slug}`);
+            if (!tourney) throw new Error('Tournament not found');
 
             setTournament(tourney);
 
             // Get participants to identify captain's team
-            const { data: parts, error: partsError } = await supabase
-                .from('tournament_participants')
-                .select('*')
-                .eq('tournament_id', tourney.id);
-
-            if (partsError) throw partsError;
+            const parts = await apiClient.get<any[]>(`/api/tournaments/${tourney.id}/participants`);
             setParticipants(parts || []);
 
         } catch (error: any) {
@@ -272,15 +236,12 @@ const CaptainMatchPage = () => {
             let isOrg = tournament.organizer_id === user.id;
 
             if (!isOrg && tournament.organization_id) {
-                // Check if user owns the organization
-                const { data: orgs } = await supabase
-                    .from('organizations')
-                    .select('id')
-                    .eq('id', tournament.organization_id)
-                    .eq('owner_id', user.id);
-
-                if (orgs && orgs.length > 0) {
+                try {
+                    const orgData = await apiClient.get<any>(`/api/organizations/${tournament.organization_id}/staff`);
+                    // If we can fetch org staff and user owns it, they're an organizer
                     isOrg = true;
+                } catch {
+                    // Not an org owner
                 }
             }
             setIsOrganizer(isOrg);
@@ -383,17 +344,13 @@ const CaptainMatchPage = () => {
         queryFn: async () => {
             if (!activeMatch?.id) return null;
             const cleanedId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
-            const { data, error } = await supabase
-                .from('match_map_vetos')
-                .select('*')
-                .eq('match_id', cleanedId)
-                .maybeSingle();
-
-            if (error) {
+            try {
+                const data = await apiClient.get<any>(`/api/veto/${cleanedId}`);
+                return data;
+            } catch (error) {
                 console.error('[CaptainMatchPage] Error fetching map veto:', error);
                 throw error;
             }
-            return data;
         },
         enabled: !!activeMatch?.id,
     });
@@ -482,17 +439,16 @@ const CaptainMatchPage = () => {
         if (!activeMatch) return;
         const realMatchId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
 
-        const { data } = await supabase
-            .from('brkt_match_games')
-            .select('*')
-            .eq('match_id', realMatchId)
-            .order('game_number');
+        try {
+            const data = await apiClient.get<any[]>(`/api/matches/${realMatchId}/games`);
+            setMatchGames(data || []);
 
-        setMatchGames(data || []);
-
-        // Determine Next Game Number
-        const completed = (data || []).filter((g: any) => g.status === 'completed').length;
-        setNextGameNumber(completed + 1);
+            // Determine Next Game Number
+            const completed = (data || []).filter((g: any) => g.status === 'completed').length;
+            setNextGameNumber(completed + 1);
+        } catch {
+            setMatchGames([]);
+        }
     }, [activeMatch?.id]);
 
     useEffect(() => {
@@ -507,14 +463,12 @@ const CaptainMatchPage = () => {
         console.log('[CaptainMatchPage] Determining map for match:', realMatchId, 'Game:', nextGameNumber, 'BestOf:', bestOfCount);
 
         // Fetch Veto Info
-        const { data: veto } = await supabase
-            .from('match_map_vetos')
-            .select(`
-                *,
-                game_maps!selected_map_id (map_name)
-            `)
-            .eq('match_id', realMatchId)
-            .maybeSingle();
+        let veto: any = null;
+        try {
+            veto = await apiClient.get<any>(`/api/veto/${realMatchId}`);
+        } catch {
+            // No veto data
+        }
 
         if (!veto) {
             console.log('[CaptainMatchPage] No veto data found for match:', realMatchId);
@@ -526,31 +480,24 @@ const CaptainMatchPage = () => {
         const team1Picked = Array.isArray(veto.team1_picked_maps) ? veto.team1_picked_maps : [];
         const team2Picked = Array.isArray(veto.team2_picked_maps) ? veto.team2_picked_maps : [];
 
-        // Reconstruct picks based on standard BO3/BO5 order
-        // Note: This logic assumes T1 picks first, then T2 (Standard)
         const allPicks: { map_id: string }[] = [];
 
         if (bestOfCount >= 3) {
-            // T1 Pick (Map 1)
             if (team1Picked[0]?.map_id) allPicks.push({ map_id: team1Picked[0].map_id });
-            // T2 Pick (Map 2)
             if (team2Picked[0]?.map_id) allPicks.push({ map_id: team2Picked[0].map_id });
 
-            // For BO5:
             if (bestOfCount === 5) {
                 if (team1Picked[1]?.map_id) allPicks.push({ map_id: team1Picked[1].map_id });
                 if (team2Picked[1]?.map_id) allPicks.push({ map_id: team2Picked[1].map_id });
             }
         }
 
-        // Add Decider Map if present (usually Map 3 in BO3, Map 5 in BO5)
         if (veto.selected_map_id) {
             allPicks.push({ map_id: veto.selected_map_id });
         }
 
         console.log('[CaptainMatchPage] Reconstructed map sequence:', allPicks);
 
-        // Select targeted game
         const targetMapEntry = allPicks[nextGameNumber - 1];
         if (!targetMapEntry) {
             console.log('[CaptainMatchPage] No map entry found for game:', nextGameNumber);
@@ -558,19 +505,12 @@ const CaptainMatchPage = () => {
             return;
         }
 
-        // Fetch Map Details
-        const { data: mapData } = await supabase
-            .from('game_maps')
-            .select('map_name')
-            .eq('id', targetMapEntry.map_id)
-            .single();
-
-        if (mapData) {
-            setNextGameMap({
-                id: targetMapEntry.map_id,
-                name: mapData.map_name
-            });
-        }
+        // Use map name from veto data or fetch separately
+        const mapName = veto.game_maps?.map_name || targetMapEntry.map_id;
+        setNextGameMap({
+            id: targetMapEntry.map_id,
+            name: mapName
+        });
     }, [activeMatch?.id, nextGameNumber, activeMatch?.bestOf]);
 
     useEffect(() => {
@@ -686,15 +626,13 @@ const CaptainMatchPage = () => {
                 const winnerScore = bestOf === 1 ? 13 : Math.ceil(bestOf / 2);
 
                 try {
-                    const { error } = await supabase.rpc('forfeit_match', {
-                        p_match_id: rawMatchId,
-                        p_forfeiting_team_id: forfeitingTeamId,
-                        p_winning_team_id: winningTeamId,
-                        p_reason: 'Auto-Forfeit: Missed Check-in Window',
-                        p_winner_score: winnerScore,
-                        p_loser_score: 0
+                    await apiClient.post(`/api/matches/${rawMatchId}/award-walkover`, {
+                        forfeitingTeamId,
+                        winningTeamId,
+                        reason: 'Auto-Forfeit: Missed Check-in Window',
+                        winnerScore,
+                        loserScore: 0,
                     });
-                    if (error) throw error;
                     toast({ title: 'Match Finalized', description: 'Auto-forfeit applied due to missed check-in.' });
                     refetchBracket();
                 } catch (err) {

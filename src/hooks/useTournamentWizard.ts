@@ -13,7 +13,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
@@ -178,9 +177,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
 
             } else {
                 // ── CREATE path ─────────────────────────────────────────────────
-                // Get organization ID (still available from Supabase auth)
-                const { data: orgData } = await supabase
-                    .from('organizations').select('id').eq('owner_id', user.id).maybeSingle();
+                // Get organization ID via roles endpoint
+                const rolesData = await apiClient.get<any>('/api/me/roles');
+                const orgId = rolesData?.organization_id || null;
 
                 const slug = slugify(data.name, { lower: true, strict: true });
 
@@ -198,7 +197,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     registrationDeadline: registrationCloses.toISOString(),
                     bannerUrl:            data.bannerUrl,
                     logoUrl:              data.logoUrl,
-                    organizationId:       orgData?.id || null,
+                    organizationId:       orgId,
                     isPublic:             data.visibility === 'public',
                     checkInRequired:      data.checkInRequired,
                     checkInDeadline:      startDateTime.toISOString(),

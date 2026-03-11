@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { MapVeto } from '@/components/tournament/MapVeto';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -21,24 +21,8 @@ const MapVetoToken: React.FC = () => {
       }
 
       try {
-        // Find veto by team1 or team2 token
-        const { data, error: fetchError } = await supabase
-          .from('match_map_vetos')
-          .select(`
-            *,
-            tournament:tournaments(id, name, game, organizer_id),
-            match:brkt_matches(
-              id,
-              status,
-              best_of
-            ),
-            team1:teams!match_map_vetos_team1_id_fkey(id, name),
-            team2:teams!match_map_vetos_team2_id_fkey(id, name)
-          `)
-          .or(`team1_link_token.eq.${token},team2_link_token.eq.${token}`)
-          .single();
-
-        if (fetchError) throw fetchError;
+        // Fetch veto data by token via API
+        const data = await apiClient.get<any>(`/api/veto/token/${token}`);
 
         if (!data) {
           setError('Veto session not found');

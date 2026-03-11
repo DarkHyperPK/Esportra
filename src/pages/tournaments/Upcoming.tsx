@@ -3,7 +3,7 @@ import Footer from '@/components/Footer';
 import { TournamentCard } from '@/components/TournamentCard';
 import GameFilter from '@/components/GameFilter';
 import { Tournament } from '@/hooks/useTournaments';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { RegistrationDetails } from '@/types/tournament';
 import PremiumBackground from '@/components/ui/PremiumBackground';
@@ -43,134 +43,71 @@ const UpcomingTournaments = () => {
     try {
       console.log('Fetching upcoming tournaments...');
 
-      // First, let's check if we can see any tournaments at all
-      const { data: allTournaments, error: allError } = await supabase
-        .from('tournaments')
-        .select('id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organization_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at')
-        .eq('is_public', true)
-        .is('deleted_at', null);
-
-      console.log('All tournaments in DB:', allTournaments);
-
-      if (allError) {
-        console.error('Error fetching all tournaments:', allError);
-      }
-
-      // Now fetch with ordering
-      const { data, error } = await supabase
-        .from('tournaments')
-        .select(`
-          id, name, game, start_date, end_date, venue_id, max_teams, prize_pool, organization_id, entry_fee, is_public, banner_url, logo_url, slug, description, status, created_at, updated_at,
-          organization:organizations (
-            name, owner_id
-          )
-        `)
-        .eq('is_public', true)
-        .is('deleted_at', null)
-        .not('status', 'in', '("completed","cancelled")')
-        .order('start_date', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching tournaments:', error);
-        throw error;
-      }
+      const data = await apiClient.get<any[]>('/api/tournaments/upcoming');
 
       console.log('Raw tournament data:', data);
 
-      // Get participant counts and registration data
-      const tournamentsWithExtras = await Promise.all(
-        (data || []).map(async (tournament) => {
-          const { count } = await supabase
-            .from('tournament_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('tournament_id', tournament.id);
-          let registrationData = null;
-          if (user?.id) {
-            const { data: regData, error: regError } = await supabase
-              .from('tournament_participants')
-              .select('id, tournament_id, user_id, team_captain_id, participant_type, created_at, updated_at')
-              .eq('tournament_id', tournament.id)
-              .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`)
-              .maybeSingle();
-            console.log('Registration fetch result:', { regData, regError, tournamentId: tournament.id, userId: user.id });
-            if (regData) {
-              const row = regData as any;
-              registrationData = { id: row.id };
-            }
-          }
-          console.log('TournamentCard initialData:', registrationData);
-
-          // Transform tournament data to match expected interface
-          return {
-            id: tournament.id,
-            name: tournament.name,
-            game: tournament.game,
-            date: tournament.start_date ? new Date(tournament.start_date).toLocaleDateString('en-CA') : '',
-            time: tournament.start_date ? new Date(tournament.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
-            venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
-            max_participants: tournament.max_teams,
-            current_participants: count || 0,
-            prize_pool: tournament.prize_pool?.toString() || '0',
-            entry_fee: tournament.entry_fee?.toString() || 'Free',
-            description: tournament.description || '',
-            user_id: (() => {
-              const org = tournament.organization as any;
-              if (org) {
-                if (Array.isArray(org) && org.length > 0) return org[0].owner_id;
-                if (!Array.isArray(org) && org.owner_id) return org.owner_id;
-              }
-              return '';
-            })(),
-            organizer_name: (() => {
-              const org = tournament.organization as any;
-              if (org) {
-                if (Array.isArray(org) && org.length > 0) return org[0].name;
-                if (!Array.isArray(org) && org.name) return org.name;
-              }
-              return 'Unknown Organizer';
-            })(),
-            is_online: !tournament.venue_id,
-            created_at: tournament.created_at,
-            updated_at: tournament.updated_at,
-            image_url: tournament.banner_url || tournament.logo_url,
-            team_size: 1,
-            slug: tournament.slug,
-            status: tournament.status || 'open',
-            registrationData,
-            start_date: tournament.start_date,
-            end_date: tournament.end_date,
-          };
-        })
-      );
-
-      // Filter tournaments to only those whose start date/time is in the future and are not completed/finished
-      const now = new Date();
-      const filteredTournaments = tournamentsWithExtras.filter(t => {
+      // Get registration data for current user
+      let registrationMap: Record<string, any> = {};
+      if (user?.id) {
         try {
-          // Use the original start_date from the database for filtering
-          const originalTournament = data?.find(orig => orig.id === t.id);
-          if (!originalTournament?.start_date) return false;
-
-          const start = new Date(originalTournament.start_date);
-          const isFuture = start > now;
-          const isActive = t.status === 'open' || t.status === 'ongoing';
-          const isCompleted = t.status === 'completed' || t.status === 'cancelled';
-
-          // Show if it's in the future OR if it's currently active (open/ongoing)
-          // This ensures we don't hide tournaments that are "open" but technically started in the past
-          return (isFuture || isActive) && !isCompleted;
-        } catch (error) {
-          console.error('Error processing tournament date:', {
-            tournamentId: t.id,
-            name: t.name,
-            error
+          const regStatus = await apiClient.get<any[]>('/api/tournaments/me/registration-status');
+          (regStatus || []).forEach((reg: any) => {
+            registrationMap[reg.tournament_id] = { id: reg.id };
           });
-          return false;
+        } catch (e) {
+          console.log('Could not fetch registration status:', e);
         }
+      }
+
+      // Transform tournament data to match expected interface
+      const tournamentsWithExtras = (data || []).map((tournament: any) => {
+        const registrationData = registrationMap[tournament.id] || null;
+        console.log('TournamentCard initialData:', registrationData);
+
+        return {
+          id: tournament.id,
+          name: tournament.name,
+          game: tournament.game,
+          date: tournament.start_date ? new Date(tournament.start_date).toLocaleDateString('en-CA') : '',
+          time: tournament.start_date ? new Date(tournament.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
+          venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
+          max_participants: tournament.max_teams,
+          current_participants: tournament.current_participants || 0,
+          prize_pool: tournament.prize_pool?.toString() || '0',
+          entry_fee: tournament.entry_fee?.toString() || 'Free',
+          description: tournament.description || '',
+          user_id: (() => {
+            const org = tournament.organization as any;
+            if (org) {
+              if (Array.isArray(org) && org.length > 0) return org[0].owner_id;
+              if (!Array.isArray(org) && org.owner_id) return org.owner_id;
+            }
+            return '';
+          })(),
+          organizer_name: (() => {
+            const org = tournament.organization as any;
+            if (org) {
+              if (Array.isArray(org) && org.length > 0) return org[0].name;
+              if (!Array.isArray(org) && org.name) return org.name;
+            }
+            return 'Unknown Organizer';
+          })(),
+          is_online: !tournament.venue_id,
+          created_at: tournament.created_at,
+          updated_at: tournament.updated_at,
+          image_url: tournament.banner_url || tournament.logo_url,
+          team_size: 1,
+          slug: tournament.slug,
+          status: tournament.status || 'open',
+          registrationData,
+          start_date: tournament.start_date,
+          end_date: tournament.end_date,
+        };
       });
 
-      console.log('Filtered upcoming tournaments:', filteredTournaments);
-      setTournaments(filteredTournaments);
+      console.log('Filtered upcoming tournaments:', tournamentsWithExtras);
+      setTournaments(tournamentsWithExtras);
     } catch (error) {
       console.error('Error fetching tournaments:', error);
     } finally {

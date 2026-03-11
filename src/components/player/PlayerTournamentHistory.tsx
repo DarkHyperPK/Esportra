@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -15,22 +15,14 @@ const PlayerTournamentHistory = () => {
     const fetchHistory = async () => {
       if (!user) return;
       setLoading(true);
-      // Get all completed tournaments the user participated in
-      const { data: registrations, error } = await supabase
-        .from('tournament_participants')
-        .select('tournament_id, tournaments!inner(id, name, date, status, finished)')
-        .eq('user_id', user.id)
-        .or('status.eq.completed,finished.eq.true')
-        .order('created_at', { ascending: false });
-      if (error) {
+      try {
+        const data = await apiClient.get<any[]>('/api/tournaments/me/history');
+        const completed = (data || []).filter((t: any) =>
+          t.status === 'completed' || t.finished === true
+        );
+        setTournaments(completed);
+      } catch {
         setTournaments([]);
-      } else {
-        // Filter for completed tournaments
-        const completed = (registrations || []).filter((reg: any) => {
-          const t = reg.tournaments;
-          return t && (t.status === 'completed' || t.finished === true);
-        });
-        setTournaments(completed.map((reg: any) => reg.tournaments));
       }
       setLoading(false);
     };

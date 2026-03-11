@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 
 /**
  * Global guard component that monitors the user's suspension status.
@@ -27,17 +27,14 @@ export const SuspensionGuard = ({ children }: { children: React.ReactNode }) => 
     useEffect(() => {
         if (!user) return;
 
-        // Verify if the user session is still valid (Supabase might have revoked it if blocked at DB level)
-        // For now, we rely on our profile flag
         const checkStatus = async () => {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('is_suspended')
-                .eq('id', user.id)
-                .single();
-
-            if (data?.is_suspended && location.pathname !== '/suspended') {
-                navigate('/suspended', { replace: true });
+            try {
+                const data = await apiClient.get<{ is_suspended?: boolean }>('/api/profiles/me');
+                if (data?.is_suspended && location.pathname !== '/suspended') {
+                    navigate('/suspended', { replace: true });
+                }
+            } catch {
+                // Silently ignore — profile check is best-effort
             }
         };
 

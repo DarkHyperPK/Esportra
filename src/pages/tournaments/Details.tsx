@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import slugify from 'slugify';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import {
   TournamentHeader
@@ -185,12 +185,7 @@ const TournamentDetails = () => {
   const fetchPublicParticipants = useCallback(async () => {
     if (!tournament?.id) return;
     try {
-      const { data: participantsData, error } = await supabase
-        .from('tournament_participants')
-        .select('*')
-        .eq('tournament_id', tournament.id);
-
-      if (error) throw error;
+      const participantsData = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/participants`);
       if (!participantsData) return;
 
       const participants = participantsData as any[];
@@ -199,57 +194,33 @@ const TournamentDetails = () => {
         if (p.user_id) allUserIds.add(p.user_id);
       });
 
-      // 1. Resolve Team Logos by ID
+      // Resolve team info and profiles from participant data (API returns enriched data)
       const teamIds = Array.from(new Set(participants.filter(p => p.team_id).map(p => p.team_id)));
       let teamMap: Record<string, { logo_url: string | null, name: string }> = {};
 
       if (teamIds.length > 0) {
-        const { data: teams } = await supabase
-          .from('teams')
-          .select('id, name, logo_url')
-          .in('id', teamIds);
-        (teams || []).forEach((t: any) => {
+        const teamResults = await Promise.all(
+          teamIds.map(id => apiClient.get<any>(`/api/teams/${id}`).catch(() => null))
+        );
+        teamResults.filter(Boolean).forEach((t: any) => {
           teamMap[t.id] = { logo_url: t.logo_url, name: t.name };
         });
       }
 
-      // 2. Resolve Team Logos by Name (Fallback)
-      const participantsWithTeamNameNoId = participants.filter(p => !p.team_id && p.team_name);
-      const teamNamesToCheck = Array.from(new Set(participantsWithTeamNameNoId.map(p => p.team_name)));
-
-      if (teamNamesToCheck.length > 0) {
-        const { data: teamsByName } = await supabase
-          .from('teams')
-          .select('id, name, logo_url')
-          .in('name', teamNamesToCheck);
-
-        (teamsByName || []).forEach((t: any) => {
-          // Create a fake ID or just map by name for now? Logic in Manager was complex.
-          // We will just patch the participants directly.
-          participants.forEach(p => {
-            if (!p.team_id && p.team_name === t.name) {
-              p.team_logo = p.team_logo || t.logo_url;
-            }
-          });
-        });
-      }
-
-      // 3. Resolve Profiles
+      // Resolve profiles
       if (allUserIds.size > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url, riot_tag, steam_tag, faceit_nickname')
-          .in('id', Array.from(allUserIds));
+        const profileResults = await Promise.all(
+          Array.from(allUserIds).map(id => apiClient.get<any>(`/api/profiles/${id}`).catch(() => null))
+        );
 
         const profileMap: Record<string, any> = {};
-        (profiles || []).forEach((p: any) => profileMap[p.id] = p);
+        profileResults.filter(Boolean).forEach((p: any) => profileMap[p.id] = p);
 
         participants.forEach(p => {
           if (p.user_id && profileMap[p.user_id]) {
             const profile = profileMap[p.user_id];
             p.user = profile;
 
-            // Prioritize game-specific IDs for display
             const gameKey = tournament?.game?.toLowerCase();
             const isValorant = gameKey === 'valorant';
             const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';

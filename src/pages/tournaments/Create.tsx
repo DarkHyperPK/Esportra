@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Trophy, Building2, ArrowRight, Loader2 } from 'lucide-react';
@@ -26,12 +25,8 @@ const CreateTournament = () => {
         return;
       }
       try {
-        const { data } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('owner_id', user.id)
-          .maybeSingle();
-        setHasOrganization(!!data?.id);
+        const roles = await apiClient.get<any>('/api/me/roles');
+        setHasOrganization(!!roles?.organization_id);
       } catch {
         setHasOrganization(false);
       } finally {

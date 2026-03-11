@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2,
@@ -167,15 +167,12 @@ const ListVenue = () => {
     try {
       setLoading(true);
 
-      const { error } = await supabase
-        .from('venues')
-        .insert({
-          owner_id: user.id,
+      await apiClient.post('/api/venues', {
           name: formData.name,
           city: formData.city,
           state: formData.state,
           country: formData.country,
-          postal_code: formData.zip,
+          postalCode: formData.zip,
           address: formData.address,
           description: formData.description,
           stations: parseInt(formData.stations) || 0,
@@ -183,17 +180,15 @@ const ListVenue = () => {
           games: formData.games,
           amenities: formData.amenities,
           images: formData.images,
-          card_image: formData.card_image || (formData.images.length > 0 ? formData.images[0] : null),
-          pc_specs: { cpu: formData.cpu, gpu: formData.gpu, ram: formData.ram, monitors: formData.monitors },
+          cardImage: formData.card_image || (formData.images.length > 0 ? formData.images[0] : null),
+          pcSpecs: { cpu: formData.cpu, gpu: formData.gpu, ram: formData.ram, monitors: formData.monitors },
           slug: formData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).substring(2, 7),
-          contact_email: formData.contactEmail,
-          contact_phone: formData.contactPhone,
-          price_per_hour: parseFloat(formData.pricePerHour) || 0,
+          contactEmail: formData.contactEmail,
+          contactPhone: formData.contactPhone,
+          pricePerHour: parseFloat(formData.pricePerHour) || 0,
           status: submitStatus,
-          submitted_at: submitStatus === 'pending_review' ? new Date().toISOString() : null,
+          submittedAt: submitStatus === 'pending_review' ? new Date().toISOString() : null,
         });
-
-      if (error) throw error;
 
       if (submitStatus === 'pending_review') {
         toast({ title: "Submitted for Review!", description: "Your venue is under review. We'll notify you when it's approved." });

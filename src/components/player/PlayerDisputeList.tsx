@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useHub } from '@/contexts/SignalRContext';
 import { HubPaths } from '@/lib/signalrClient';
@@ -41,14 +41,9 @@ const PlayerDisputeList: React.FC<PlayerDisputeListProps> = ({ tournamentId, use
     if (!tournamentId || !userId) return;
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('tournament_disputes')
-        .select('id, title, status, resolution_notes, created_at, updated_at')
-        .eq('tournament_id', tournamentId)
-        .eq('raised_by_user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await apiClient.get<PlayerDispute[]>(
+        `/api/matches/${tournamentId}/dispute?userId=${userId}`
+      );
       const rows = (data || []) as PlayerDispute[];
       setDisputes(rows);
 

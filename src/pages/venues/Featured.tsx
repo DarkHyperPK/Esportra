@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
 import { VenueCard } from '@/components/venues/VenueCard';
 import { Venue } from '@/types/venue';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 
 const FeaturedVenues = () => {
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -11,12 +11,7 @@ const FeaturedVenues = () => {
   useEffect(() => {
     const fetchVenues = async () => {
       try {
-        const { data, error } = await supabase
-          .from('venues')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
+        const data = await apiClient.get<Venue[]>('/api/venues');
         setVenues(data || []);
       } catch (error) {
         console.error('Error fetching venues:', error);
