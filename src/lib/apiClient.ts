@@ -4,17 +4,23 @@
  * Thin HTTP client that talks to the Esportra .NET backend.
  * Automatically attaches the Supabase session JWT as a Bearer token.
  *
+ * Resilience features:
+ *   - Auto-retry on 429 (Too Many Requests) with Retry-After + exponential backoff + jitter
+ *   - GET request deduplication — concurrent identical GETs share a single in-flight promise
+ *
  * Usage:
  *   import { apiClient } from '@/lib/apiClient';
  *   const result = await apiClient.get<UserContext>('/api/me');
  *   const team   = await apiClient.post<Team>('/api/teams', { name: 'Fnatic' });
- *
- * Phase 0 — foundation only. Endpoints are empty until Phase 1 (Edge Function migration).
  */
 
 import { supabase } from '@/lib/supabase';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5200';
+
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1_000;
+const MAX_JITTER_MS = 500;
 
 // ── Response wrapper ──────────────────────────────────────────────────────────
 
@@ -29,9 +35,17 @@ export class ApiError extends Error {
   }
 }
 
-// ── Internal fetch with auth header ──────────────────────────────────────────
+// ── GET request deduplication ─────────────────────────────────────────────────
 
-async function fetchWithAuth(path: string, init: RequestInit = {}): Promise<Response> {
+const inflightGets = new Map<string, Promise<Response>>();
+
+// ── Internal fetch with auth header + 429 retry ─────────────────────────────
+
+async function fetchWithAuth(
+  path: string,
+  init: RequestInit = {},
+  attempt = 0,
+): Promise<Response> {
   const { data: { session } } = await supabase.auth.getSession();
 
   const headers: Record<string, string> = {
@@ -48,6 +62,23 @@ async function fetchWithAuth(path: string, init: RequestInit = {}): Promise<Resp
     headers,
   });
 
+  // Auto-retry on 429 with exponential backoff + jitter
+  if (response.status === 429 && attempt < MAX_RETRIES) {
+    const retryAfterHeader = response.headers.get('Retry-After');
+    const retryAfterMs = retryAfterHeader
+      ? parseInt(retryAfterHeader, 10) * 1_000
+      : BASE_DELAY_MS * Math.pow(2, attempt);
+    const jitter = Math.random() * MAX_JITTER_MS;
+    const delay = retryAfterMs + jitter;
+
+    console.warn(
+      `[apiClient] 429 on ${path}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
+    );
+
+    await new Promise((r) => setTimeout(r, delay));
+    return fetchWithAuth(path, init, attempt + 1);
+  }
+
   if (!response.ok) {
     let body: unknown;
     try { body = await response.json(); } catch { body = await response.text(); }
@@ -57,12 +88,28 @@ async function fetchWithAuth(path: string, init: RequestInit = {}): Promise<Resp
   return response;
 }
 
+/**
+ * Deduplicated GET fetch — if an identical GET is already in-flight,
+ * return a clone of the existing promise instead of firing a new request.
+ */
+function fetchGetDeduped(path: string): Promise<Response> {
+  const existing = inflightGets.get(path);
+  if (existing) return existing.then((res) => res.clone());
+
+  const promise = fetchWithAuth(path).finally(() => {
+    inflightGets.delete(path);
+  });
+
+  inflightGets.set(path, promise);
+  return promise;
+}
+
 // ── Public client ─────────────────────────────────────────────────────────────
 
 export const apiClient = {
-  /** GET /api/{path} → parsed JSON */
+  /** GET /api/{path} → parsed JSON (deduplicated) */
   async get<T>(path: string): Promise<T> {
-    const res = await fetchWithAuth(path);
+    const res = await fetchGetDeduped(path);
     return res.json() as Promise<T>;
   },
 
