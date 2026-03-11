@@ -30,6 +30,9 @@ import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useTimeProposal } from '@/hooks/useTimeProposal';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
+import { useBracketRealtime } from '@/hooks/useBracketRealtime';
+import { useMatchRealtime } from '@/hooks/useMatchRealtime';
+import { useVetoRealtime } from '@/hooks/useVetoRealtime';
 
 const repo = new MatchRepository();
 
@@ -576,77 +579,58 @@ const CaptainMatchPage = () => {
 
 
 
-    // Realtime subscription for active match
-    useEffect(() => {
-        if (!activeMatch?.id) return;
+    // SignalR realtime subscriptions (replaces Supabase postgres_changes)
+    const rawMatchId = activeMatch?.id?.replace(/^(db-|wb-|lb-)/, '') ?? null;
 
-        const rawMatchId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
-        console.log('[CaptainMatchPage] Subscribing to match updates:', rawMatchId);
+    // Bracket updates → invalidate captain-all-matches
+    useBracketRealtime({
+        versionId: bracketVersions?.[0]?.id ?? null,
+        enabled: !!activeMatch?.id,
+        onMatchUpdated: () => {
+            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+        },
+    });
 
-        const channel = supabase
-            .channel(`match-${rawMatchId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'brkt_matches',
-                    filter: `id=eq.${rawMatchId}`
-                },
-                (payload) => {
-                    console.log('[CaptainMatchPage] Match updated via realtime:', payload);
-                    queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'match_map_vetos',
-                    filter: `match_id=eq.${rawMatchId}`
-                },
-                (payload) => {
-                    console.log('[CaptainMatchPage] Veto updated via realtime:', payload);
-                    determineMap();
-                    queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
-                    queryClient.invalidateQueries({ queryKey: ['match-veto', activeMatch?.id] });
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'brkt_match_games',
-                    filter: `match_id=eq.${rawMatchId}`
-                },
-                (payload) => {
-                    console.log('[CaptainMatchPage] Game update via realtime:', payload);
-                    fetchMatchGames();
-                    determineMap();
-                    queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'match_map_veto_actions',
-                    filter: `match_id=eq.${rawMatchId}`
-                },
-                () => {
-                    console.log('[CaptainMatchPage] Veto action added via realtime');
-                    determineMap();
-                }
-            )
-            .subscribe();
+    // Match lifecycle events → invalidate captain-all-matches + refetch games
+    useMatchRealtime({
+        matchId: rawMatchId,
+        enabled: !!rawMatchId,
+        onReportSubmitted: () => {
+            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            fetchMatchGames();
+        },
+        onReportAccepted: () => {
+            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            fetchMatchGames();
+        },
+        onStatusChanged: () => {
+            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            fetchMatchGames();
+            determineMap();
+        },
+        onDisputeResolved: () => {
+            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+        },
+    });
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [activeMatch?.id, refetchBracket, determineMap]);
+    // Veto state updates → determineMap + invalidate veto queries
+    useVetoRealtime({
+        matchId: rawMatchId,
+        enabled: !!rawMatchId,
+        onStateUpdate: () => {
+            determineMap();
+            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            queryClient.invalidateQueries({ queryKey: ['match-veto', activeMatch?.id] });
+        },
+        onComplete: () => {
+            determineMap();
+            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            queryClient.invalidateQueries({ queryKey: ['match-veto', activeMatch?.id] });
+        },
+        onReset: () => {
+            determineMap();
+        },
+    });
 
     // Ref to prevent infinite retry loops on auto-forfeit failures
     const forfeitAttempted = useRef<string | null>(null);

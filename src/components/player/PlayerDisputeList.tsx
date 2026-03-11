@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { useHub } from '@/contexts/SignalRContext';
+import { HubPaths } from '@/lib/signalrClient';
+import { HubConnectionState } from '@microsoft/signalr';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
@@ -30,6 +33,7 @@ const statusMeta: Record<PlayerDispute['status'], { label: string; className: st
 
 const PlayerDisputeList: React.FC<PlayerDisputeListProps> = ({ tournamentId, userId, onStatsChange }) => {
   const { toast } = useToast();
+  const conn = useHub(HubPaths.Match);
   const [disputes, setDisputes] = useState<PlayerDispute[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -69,41 +73,33 @@ const PlayerDisputeList: React.FC<PlayerDisputeListProps> = ({ tournamentId, use
     fetchDisputes();
   }, [tournamentId, userId]);
 
+  // SignalR subscription for dispute events (replaces Supabase realtime)
   useEffect(() => {
     if (!tournamentId || !userId) return;
-    const channel = supabase
-      .channel(`player-disputes-${tournamentId}-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tournament_disputes',
-          filter: `tournament_id=eq.${tournamentId}`,
-        },
-        (payload) => {
-          const newRow: any = payload.new;
-          if (!newRow || newRow.raised_by_user_id !== userId) return;
-          fetchDisputes();
-          if (payload.eventType === 'UPDATE') {
-            toast({
-              title: 'Dispute updated',
-              description: `Your dispute "${newRow.title}" is now ${newRow.status.replace('_', ' ')}.`,
-            });
-          } else if (payload.eventType === 'INSERT') {
-            toast({
-              title: 'Dispute submitted',
-              description: `We received your dispute "${newRow.title}".`,
-            });
-          }
-        }
-      )
-      .subscribe();
+
+    let active = true;
+
+    const handleDisputeResolved = (payload: { matchId?: string; disputeId?: string }) => {
+      if (!active) return;
+      fetchDisputes();
+      toast({ title: 'Dispute updated', description: 'A dispute status has changed.' });
+    };
+
+    const handleReportDisputed = (payload: { matchId?: string }) => {
+      if (!active) return;
+      fetchDisputes();
+      toast({ title: 'Dispute submitted', description: 'A new dispute has been filed.' });
+    };
+
+    conn.on('DisputeResolved', handleDisputeResolved);
+    conn.on('ReportDisputed', handleReportDisputed);
 
     return () => {
-      channel.unsubscribe();
+      active = false;
+      conn.off('DisputeResolved', handleDisputeResolved);
+      conn.off('ReportDisputed', handleReportDisputed);
     };
-  }, [tournamentId, userId]);
+  }, [tournamentId, userId, conn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const statsCard = useMemo(() => {
     if (disputes.length === 0) return null;

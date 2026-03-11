@@ -95,38 +95,6 @@ const TournamentList = () => {
     }
   }, [fetchTournaments, fetchUserRegistrations]);
 
-  // Set up real-time subscription for registration changes
-  useEffect(() => {
-    if (!user) return;
-
-    const subscription = supabase
-      .channel('tournament_participants_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tournament_participants',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('[TournamentList] Registration change detected:', payload);
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const newRegistration = payload.new as { tournament_id: string };
-            setRegisteredTournaments(prev => [...new Set([...prev, newRegistration.tournament_id])]);
-          } else if (payload.eventType === 'DELETE') {
-            const oldRegistration = payload.old as { tournament_id: string };
-            setRegisteredTournaments(prev => prev.filter(id => id !== oldRegistration.tournament_id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [user]);
-
   // Fetch data on mount and when user changes
   useEffect(() => {
     console.log('[TournamentList] User changed:', user?.id);

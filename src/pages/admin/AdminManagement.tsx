@@ -188,16 +188,13 @@ const AdminManagement = () => {
     fetchAuditLogs();
     fetchRecentActivities();
 
-    // Real-time subscription for audit logs
-    const subscription = supabase
-      .channel('audit_logs_realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, (payload) => {
-        setAuditLogs(prev => [payload.new as AuditLog, ...prev.slice(0, 99)]);
-      })
-      .subscribe();
+    // Poll audit logs every 30s (replaces Supabase realtime)
+    const intervalId = setInterval(() => {
+      fetchAuditLogs();
+    }, 30_000);
 
     return () => {
-      subscription.unsubscribe();
+      clearInterval(intervalId);
     };
   }, [fetchStats, fetchAuditLogs, fetchRecentActivities]);
 

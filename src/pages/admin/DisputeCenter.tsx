@@ -11,6 +11,8 @@ import { MessageSquare, AlertCircle, CheckCircle, XCircle, Clock, Image as Image
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
+import { useHub } from '@/contexts/SignalRContext';
+import { HubPaths } from '@/lib/signalrClient';
 
 type Dispute = {
   id: string;
@@ -53,6 +55,7 @@ const DisputeCenter: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { roles } = useAdmin();
+  const conn = useHub(HubPaths.Match);
   const isSuperAdmin = roles.includes('super_admin');
   const canHandleDisputes = roles.includes('moderator') || roles.includes('ops_admin');
   const [disputes, setDisputes] = useState<Dispute[]>([]);
@@ -209,30 +212,26 @@ const DisputeCenter: React.FC = () => {
     }
   }, [selectedDispute, fetchComments]);
 
-  // Real-time subscription for comments
+  // SignalR subscription for dispute comment events (replaces Supabase realtime)
   useEffect(() => {
     if (!selectedDispute) return;
 
-    const channel = supabase
-      .channel(`admin-dispute-comments-${selectedDispute.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'dispute_comments',
-          filter: `dispute_id=eq.${selectedDispute.id}`,
-        },
-        () => {
-          fetchComments(selectedDispute.id);
-        }
-      )
-      .subscribe();
+    let active = true;
+
+    const handleDisputeEvent = () => {
+      if (!active) return;
+      fetchComments(selectedDispute.id);
+    };
+
+    conn.on('DisputeResolved', handleDisputeEvent);
+    conn.on('ReportDisputed', handleDisputeEvent);
 
     return () => {
-      channel.unsubscribe();
+      active = false;
+      conn.off('DisputeResolved', handleDisputeEvent);
+      conn.off('ReportDisputed', handleDisputeEvent);
     };
-  }, [selectedDispute, fetchComments]);
+  }, [selectedDispute, fetchComments, conn]);
 
   const handleAddComment = async (disputeId: string) => {
     if (!user?.id) {

@@ -32,6 +32,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTournamentStaff } from '@/hooks/useTournamentStaff';
 import type { Database } from '@/lib/database.types';
+import { useHub } from '@/contexts/SignalRContext';
+import { HubPaths } from '@/lib/signalrClient';
 
 interface Dispute {
   id: string;
@@ -62,6 +64,7 @@ type TournamentDisputeRow = Database['public']['Tables']['tournament_disputes'][
 
 const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId, currentUserId }) => {
   const { toast } = useToast();
+  const conn = useHub(HubPaths.Match);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
@@ -267,39 +270,36 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     }
   }, [selectedDispute, actorUserId, canAssistDisputes, organizerId, fetchComments]);
 
+  // SignalR subscription for dispute events (replaces Supabase realtime)
   useEffect(() => {
     if (!tournamentId) return;
-    const channel = supabase
-      .channel(`organizer-disputes-${tournamentId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tournament_disputes',
-          filter: `tournament_id=eq.${tournamentId}`,
-        },
-        (payload) => {
-          fetchDisputes();
-          if (payload.eventType === 'INSERT') {
-            toast({
-              title: 'New dispute filed',
-              description: payload.new?.title || 'A participant raised a dispute.',
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            toast({
-              title: 'Dispute updated',
-              description: `Status changed to ${(payload.new?.status || '').replace('_', ' ')}`,
-            });
-          }
-        }
-      )
-      .subscribe();
+
+    let active = true;
+
+    const handleDisputeResolved = () => {
+      if (!active) return;
+      fetchDisputes();
+      toast({ title: 'Dispute updated', description: 'A dispute status has changed.' });
+    };
+
+    const handleReportDisputed = (payload: any) => {
+      if (!active) return;
+      fetchDisputes();
+      toast({
+        title: 'New dispute filed',
+        description: payload?.title || 'A participant raised a dispute.',
+      });
+    };
+
+    conn.on('DisputeResolved', handleDisputeResolved);
+    conn.on('ReportDisputed', handleReportDisputed);
 
     return () => {
-      channel.unsubscribe();
+      active = false;
+      conn.off('DisputeResolved', handleDisputeResolved);
+      conn.off('ReportDisputed', handleReportDisputed);
     };
-  }, [tournamentId, fetchDisputes, toast]);
+  }, [tournamentId, fetchDisputes, toast, conn]);
 
   const logDisputeAudit = async (disputeId: string, action: string, meta?: Record<string, unknown>) => {
     await auditLog.log(action as any, 'dispute', disputeId, String(meta?.title || 'Dispute'), {

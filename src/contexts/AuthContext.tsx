@@ -4,7 +4,6 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { useProfileManagement } from '@/hooks/useProfileManagement';
-import { supabase } from '@/lib/supabase';
 import { detectUserCountry } from '@/utils/countries';
 import React from 'react';
 
@@ -134,35 +133,25 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
 
     handleUserChange();
 
-    // Set up real-time subscription for the user's profile to catch live suspensions
-    let subscription: { unsubscribe: () => void } | null = null;
+    // Poll for suspension status every 60s (replaces Supabase realtime channel)
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
     if (user?.id) {
-      subscription = supabase
-        .channel(`profile:${user.id}`)
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`
-        }, (payload) => {
-          console.log("[AuthContext] Profile update detected via real-time", payload.new);
-          const newProfile = payload.new as UserProfile;
-
-          // If they were just suspended, force redirect
-          if (newProfile.is_suspended && window.location.pathname !== '/suspended') {
-            console.warn("[AuthContext] Real-time suspension detected!");
+      intervalId = setInterval(async () => {
+        try {
+          const result = await fetchProfile(user.id);
+          if (result?.is_suspended && window.location.pathname !== '/suspended') {
+            console.warn("[AuthContext] Polling detected suspension!");
             window.location.href = '/suspended';
           }
-
-          // Update local state
-          fetchProfile(user.id);
-        })
-        .subscribe();
+        } catch {
+          // Silently ignore polling errors
+        }
+      }, 60_000);
     }
 
     return () => {
-      if (subscription) subscription.unsubscribe();
+      if (intervalId) clearInterval(intervalId);
     };
   }, [user?.id, authLoading, isMounted]);
 
