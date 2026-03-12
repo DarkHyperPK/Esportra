@@ -107,7 +107,7 @@ const UserMenu = ({
       }
       try {
         const roles = await apiClient.get<any>('/api/me/roles');
-        const hasLicense = !!(roles?.verified_roles?.length > 0);
+        const hasLicense = !!(roles?.verifiedRoles?.length > 0);
         setHasApprovedLicense(hasLicense);
       } catch {
         setHasApprovedLicense(false);

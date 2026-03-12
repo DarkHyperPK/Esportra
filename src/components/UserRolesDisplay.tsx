@@ -32,12 +32,12 @@ const UserRolesDisplay: React.FC = () => {
       try {
         const rolesData = await apiClient.get<any>('/api/me/roles');
 
-        if (rolesData?.user_roles) {
-          setUserRoles(rolesData.user_roles);
+        if (rolesData?.userRoles) {
+          setUserRoles(rolesData.userRoles);
         }
 
-        if (rolesData?.verified_roles) {
-          setVerifiedRoles(rolesData.verified_roles);
+        if (rolesData?.verifiedRoles) {
+          setVerifiedRoles(rolesData.verifiedRoles);
         }
       } catch (error) {
         console.error('Error fetching roles:', error);

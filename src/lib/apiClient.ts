@@ -37,7 +37,8 @@ export class ApiError extends Error {
 
 // ── GET request deduplication ─────────────────────────────────────────────────
 
-const inflightGets = new Map<string, Promise<Response>>();
+// Cache parsed JSON results (not Response objects — Response.body can only be read once)
+const inflightGets = new Map<string, Promise<unknown>>();
 
 // ── Internal fetch with auth header + 429 retry ─────────────────────────────
 
@@ -81,7 +82,10 @@ async function fetchWithAuth(
 
   if (!response.ok) {
     let body: unknown;
-    try { body = await response.json(); } catch { body = await response.text(); }
+    try {
+      const text = await response.text();
+      try { body = JSON.parse(text); } catch { body = text; }
+    } catch { body = null; }
     throw new ApiError(response.status, body, `API ${response.status}: ${path}`);
   }
 
@@ -90,18 +94,18 @@ async function fetchWithAuth(
 
 /**
  * Deduplicated GET fetch — if an identical GET is already in-flight,
- * return a clone of the existing promise instead of firing a new request.
+ * return the same parsed-JSON promise instead of firing a new request.
  */
-function fetchGetDeduped(path: string): Promise<Response> {
+function fetchGetDeduped<T>(path: string): Promise<T> {
   const existing = inflightGets.get(path);
-  if (existing) return existing.then((res) => res.clone());
+  if (existing) return existing as Promise<T>;
 
-  const promise = fetchWithAuth(path).finally(() => {
-    inflightGets.delete(path);
-  });
+  const promise = fetchWithAuth(path)
+    .then((res) => res.json())
+    .finally(() => inflightGets.delete(path));
 
   inflightGets.set(path, promise);
-  return promise;
+  return promise as Promise<T>;
 }
 
 // ── Public client ─────────────────────────────────────────────────────────────
@@ -109,8 +113,7 @@ function fetchGetDeduped(path: string): Promise<Response> {
 export const apiClient = {
   /** GET /api/{path} → parsed JSON (deduplicated) */
   async get<T>(path: string): Promise<T> {
-    const res = await fetchGetDeduped(path);
-    return res.json() as Promise<T>;
+    return fetchGetDeduped<T>(path);
   },
 
   /** POST /api/{path} with JSON body → parsed JSON */

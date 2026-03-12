@@ -74,9 +74,9 @@ const VerificationStatus: React.FC = () => {
       // Fetch all roles and licenses via the unified roles endpoint
       const rolesData = await apiClient.get<any>('/api/me/roles');
 
-      setRequests(rolesData?.verification_requests || []);
-      setVerifiedRoles(rolesData?.verified_roles || []);
-      setAssignedRoles(rolesData?.user_roles || []);
+      setRequests(rolesData?.verificationRequests || []);
+      setVerifiedRoles(rolesData?.verifiedRoles || []);
+      setAssignedRoles(rolesData?.userRoles || []);
 
       // Company profiles removed - no longer needed
       setOrgVerifiedByProfile(false);
