@@ -32,7 +32,8 @@ export const useGameLogo = (gameName: string | null | undefined): string | null 
           ? 'Counter-Strike 2'
           : gameName;
 
-        const data = await rawgSearchGames(searchName, 1);
+        const raw = await rawgSearchGames(searchName, 1);
+        const data = raw?.data ?? raw;
 
         if (data?.results && data.results.length > 0) {
           const logoUrl = data.results[0].background_image || null;
@@ -85,7 +86,8 @@ export const useGameLogos = (gameNames: (string | null | undefined)[]): Record<s
               ? 'Counter-Strike 2'
               : gameName;
 
-            const data = await rawgSearchGames(searchName, 1);
+            const raw = await rawgSearchGames(searchName, 1);
+            const data = raw?.data ?? raw;
 
             if (data?.results && data.results.length > 0) {
               const logoUrl = data.results[0].background_image || null;

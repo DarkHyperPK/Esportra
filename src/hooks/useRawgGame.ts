@@ -36,7 +36,8 @@ export const useRawgGame = (gameName: string) => {
             try {
                 setData(prev => ({ ...prev, isLoading: true, error: null }));
                 const searchName = getRawgGameName(gameName);
-                const result = await rawgSearchGames(searchName);
+                const raw = await rawgSearchGames(searchName);
+                const result = raw?.data ?? raw;
 
                 if (result && result.results && result.results.length > 0) {
                     const gameData = result.results[0];
