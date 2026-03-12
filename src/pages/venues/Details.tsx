@@ -11,7 +11,6 @@ import {
   Monitor,
   Mail,
   Phone,
-  Star,
   DollarSign
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -27,10 +26,10 @@ interface VenueDetails {
   stations: number;
   contact_email: string;
   contact_phone: string;
-  image_url: string | null;
-  price_range: string;
-  rating: number;
-  open_now: boolean;
+  images: string[] | null;
+  card_image: string | null;
+  price_per_hour: number;
+  status: string;
 }
 
 const VenueDetails = () => {
@@ -42,7 +41,7 @@ const VenueDetails = () => {
   useEffect(() => {
     const fetchVenueDetails = async () => {
       if (!id) return;
-      
+
       try {
         const data = await apiClient.get<any>(`/api/venues/${id}`);
         setVenue(data);
@@ -86,8 +85,8 @@ const VenueDetails = () => {
     );
   }
 
-  // Extract price from price range for booking component
-  const pricePerHour = parseInt(venue.price_range.replace(/[^0-9]/g, '')) || 15;
+  // Use price_per_hour directly
+  const pricePerHour = venue.price_per_hour || 15;
 
   return (
     <div className="min-h-screen bg-esports-dark text-white flex flex-col">
@@ -97,10 +96,10 @@ const VenueDetails = () => {
             {/* Venue Image */}
             <div className="w-full md:w-2/5">
               <div className="bg-gaming-dark rounded-lg overflow-hidden border border-gaming-gray/30">
-                {venue.image_url ? (
-                  <img 
-                    src={venue.image_url} 
-                    alt={venue.name} 
+                {(venue.card_image || venue.images?.[0]) ? (
+                  <img
+                    src={venue.card_image || venue.images![0]}
+                    alt={venue.name}
                     className="w-full h-72 object-cover"
                   />
                 ) : (
@@ -110,40 +109,36 @@ const VenueDetails = () => {
                 )}
               </div>
             </div>
-            
+
             {/* Venue Info */}
             <div className="w-full md:w-3/5">
               <div className="flex flex-wrap justify-between items-start mb-4">
                 <h1 className="text-3xl font-bold">{venue.name}</h1>
-                <div className="flex items-center gap-1 text-yellow-500">
-                  <Star className="fill-yellow-500 stroke-yellow-500 h-5 w-5" />
-                  <span className="font-semibold">{venue.rating}</span>
-                </div>
               </div>
-              
+
               <div className="flex items-center gap-2 mb-3 text-gray-300">
                 <MapPin className="h-4 w-4 text-gaming-purple" />
                 <span>{venue.address}, {venue.city}</span>
               </div>
-              
+
               <div className="flex flex-wrap gap-4 mb-6">
                 <div className="flex items-center gap-1">
-                  <Badge variant={venue.open_now ? 'default' : 'destructive'} className="px-2">
-                    {venue.open_now ? 'Open Now' : 'Closed'}
+                  <Badge variant={venue.status === 'published' ? 'default' : 'secondary'} className="px-2">
+                    {venue.status === 'published' ? 'Published' : venue.status}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-1">
                   <DollarSign className="h-4 w-4 text-gaming-purple" />
-                  <span>{venue.price_range}</span>
+                  <span>${venue.price_per_hour}/hr</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4 text-gaming-purple" />
                   <span>{venue.stations} Stations</span>
                 </div>
               </div>
-              
+
               <p className="mb-6 text-gray-300">{venue.description}</p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="flex items-start gap-2">
                   <Clock className="h-4 w-4 text-gaming-purple mt-1" />
@@ -178,9 +173,9 @@ const VenueDetails = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="mt-8">
-                <VenueBooking 
+                <VenueBooking
                   venueId={venue.id}
                   venueName={venue.name}
                   pricePerHour={pricePerHour}

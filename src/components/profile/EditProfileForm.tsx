@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Edit } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface EditProfileFormProps {
@@ -59,13 +59,11 @@ export const EditProfileForm = ({ profile, onUpdateProfile, loading }: EditProfi
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${profile.id}_${Date.now()}.${fileExt}`;
-      const { data, error } = await supabase.storage.from('users.avatars').upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: true,
-      });
-      if (error) throw error;
-      const { data: publicUrlData } = supabase.storage.from('users.avatars').getPublicUrl(fileName);
-      const publicUrl = publicUrlData?.publicUrl;
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('bucket', 'users.avatars');
+      fd.append('path', fileName);
+      const { url: publicUrl } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
       if (publicUrl) {
         setPreviewUrl(publicUrl);
         form.setValue('avatar_url', publicUrl);

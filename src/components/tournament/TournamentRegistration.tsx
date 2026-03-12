@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -86,16 +85,17 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
     setTeamMembers(updated);
   };
 
-  const uploadTeamLogo = async (file: File, teamName: string): Promise<string | null> => {
+  const uploadTeamLogo = async (file: File, _teamName: string): Promise<string | null> => {
     if (!file) return null;
-    const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
-    const filePath = `${sanitizedTeamName}/${fileName}`;
-    const { error } = await supabase.storage.from('teams.logos').upload(filePath, file);
-    if (error) return null;
-    const { data } = supabase.storage.from('teams.logos').getPublicUrl(filePath);
-    return data.publicUrl;
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('bucket', 'teams.logos');
+      const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+      return url;
+    } catch {
+      return null;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

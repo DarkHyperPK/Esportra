@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Building2, Upload, AlertCircle, CheckCircle, X, Trophy, Users, Calendar, Globe, Mail, Phone, MapPin } from 'lucide-react';
@@ -117,32 +116,24 @@ const OrganizerVerificationForm: React.FC<OrganizerVerificationFormProps> = ({
 
     try {
       // Upload CNIC documents
-      let cnicFrontPath: string | null = null;
-      let cnicBackPath: string | null = null;
-      
+      let cnicFrontUrl: string | null = null;
+      let cnicBackUrl: string | null = null;
+
       if (cnicFront) {
-        const ext = cnicFront.name.split('.').pop() || 'jpg';
-        const path = `${user.id}/cnic_front_${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('users.documents.kyc').upload(path, cnicFront, { upsert: true, contentType: cnicFront.type });
-        if (error) throw error;
-        cnicFrontPath = path;
-      }
-      
-      if (cnicBack) {
-        const ext = cnicBack.name.split('.').pop() || 'jpg';
-        const path = `${user.id}/cnic_back_${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('users.documents.kyc').upload(path, cnicBack, { upsert: true, contentType: cnicBack.type });
-        if (error) throw error;
-        cnicBackPath = path;
+        const fd = new FormData();
+        fd.append('file', cnicFront);
+        fd.append('bucket', 'users.documents.kyc');
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        cnicFrontUrl = url;
       }
 
-      // Derive public URLs (even if bucket is private, this yields a URL string for storage)
-      const cnicFrontUrl = cnicFrontPath
-        ? supabase.storage.from('users.documents.kyc').getPublicUrl(cnicFrontPath).data.publicUrl
-        : null;
-      const cnicBackUrl = cnicBackPath
-        ? supabase.storage.from('users.documents.kyc').getPublicUrl(cnicBackPath).data.publicUrl
-        : null;
+      if (cnicBack) {
+        const fd = new FormData();
+        fd.append('file', cnicBack);
+        fd.append('bucket', 'users.documents.kyc');
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        cnicBackUrl = url;
+      }
 
       // Build robust payload matching enforced columns
       const payload: any = {

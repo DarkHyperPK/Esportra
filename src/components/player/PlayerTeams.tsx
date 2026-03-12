@@ -5,7 +5,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Users, Trophy } from "lucide-react";
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import Select from 'react-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -114,17 +113,17 @@ const PlayerTeams = () => {
     }
   };
 
-  // Storage upload stays with Supabase (intentional)
-  const uploadTeamLogo = async (file: File, teamName: string): Promise<string | null> => {
+  const uploadTeamLogo = async (file: File, _teamName: string): Promise<string | null> => {
     if (!file) return null;
-    const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    const fileExt = file.name.split('.').pop();
-    const fileName = `logo-${Date.now()}.${fileExt}`;
-    const filePath = `${sanitizedTeamName}/${fileName}`;
-    const { error } = await supabase.storage.from('teams.logos').upload(filePath, file);
-    if (error) return null;
-    const { data } = supabase.storage.from('teams.logos').getPublicUrl(filePath);
-    return data.publicUrl;
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('bucket', 'teams.logos');
+      const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+      return url;
+    } catch {
+      return null;
+    }
   };
 
   // Validate usernames via API

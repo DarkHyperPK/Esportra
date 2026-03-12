@@ -148,6 +148,42 @@ export const apiClient = {
     await fetchWithAuth(path, { method: 'DELETE' });
   },
 
+  /** Upload a file via multipart/form-data (no JSON Content-Type) */
+  async upload<T>(path: string, formData: FormData): Promise<T> {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (response.status === 429) {
+      const retryAfterHeader = response.headers.get('Retry-After');
+      const delay = retryAfterHeader
+        ? parseInt(retryAfterHeader, 10) * 1_000
+        : BASE_DELAY_MS;
+      await new Promise((r) => setTimeout(r, delay));
+      return this.upload<T>(path, formData);
+    }
+
+    if (!response.ok) {
+      let body: unknown;
+      try {
+        const text = await response.text();
+        try { body = JSON.parse(text); } catch { body = text; }
+      } catch { body = null; }
+      throw new ApiError(response.status, body, `Upload failed ${response.status}: ${path}`);
+    }
+
+    return response.json() as Promise<T>;
+  },
+
   /** Health check — returns true if the .NET API is reachable */
   async healthCheck(): Promise<boolean> {
     try {

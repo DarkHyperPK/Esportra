@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User, Camera, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import EntityAvatar from '@/components/ui/EntityAvatar';
@@ -51,17 +51,17 @@ const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUplo
             const fileExt = file.name.split('.').pop();
             const fileName = `avatars/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
 
-            const { data, error } = await supabase.storage
-                .from('users.avatars')
-                .upload(uploadPath || fileName, file, { cacheControl: '3600', upsert: false });
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('bucket', 'users.avatars');
+            formData.append('folder', 'avatars');
 
-            if (error) throw error;
+            const result = await apiClient.upload<{ url: string }>(
+                '/api/storage/upload',
+                formData,
+            );
 
-            const { data: urlData } = supabase.storage
-                .from('users.avatars')
-                .getPublicUrl(data.path);
-
-            onChange(urlData.publicUrl);
+            onChange(result.url);
 
             toast({
                 title: 'Avatar updated',

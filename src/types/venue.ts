@@ -10,23 +10,21 @@ export interface Venue {
     country?: string;
     address: string;
     description: string;
+    postal_code?: string;
     stations: number;
     hours: string;
     games: string; // Comma separated string usually
     contact_email: string;
     contact_phone: string;
-    image_url: string | null;
     images?: string[] | null;
     card_image?: string | null;
-    price_range: string;
-    price_per_hour?: number;
-    rating: number;
+    price_per_hour: number;
     slug?: string;
     owner_id?: string;
     amenities?: string[];
-    location?: string;
-    openNow?: boolean;
-    priceRange?: string;
+    pc_specs?: Record<string, string> | null;
+    latitude?: number;
+    longitude?: number;
     // Venue management fields
     venue_id?: string;
     status?: VenueStatus;
@@ -37,7 +35,7 @@ export interface Venue {
     published_at?: string;
     subscription_tier?: VenueSubscriptionTier;
     desktop_pairing_token?: string;
-    // Metadata for DB
+    // Metadata
     created_at?: string;
     updated_at?: string;
 }

@@ -77,22 +77,8 @@ const UpcomingTournaments = () => {
           prize_pool: tournament.prize_pool?.toString() || '0',
           entry_fee: tournament.entry_fee?.toString() || 'Free',
           description: tournament.description || '',
-          user_id: (() => {
-            const org = tournament.organization as any;
-            if (org) {
-              if (Array.isArray(org) && org.length > 0) return org[0].owner_id;
-              if (!Array.isArray(org) && org.owner_id) return org.owner_id;
-            }
-            return '';
-          })(),
-          organizer_name: (() => {
-            const org = tournament.organization as any;
-            if (org) {
-              if (Array.isArray(org) && org.length > 0) return org[0].name;
-              if (!Array.isArray(org) && org.name) return org.name;
-            }
-            return 'Unknown Organizer';
-          })(),
+          user_id: tournament.organizer_id || '',
+          organizer_name: tournament.organizer_name || 'Unknown Organizer',
           is_online: !tournament.venue_id,
           created_at: tournament.created_at,
           updated_at: tournament.updated_at,

@@ -13,9 +13,10 @@ interface Venue {
   city: string;
   address: string;
   stations: number;
-  price_range: string | null;
-  image_url: string | null;
-  open_now: boolean | null;
+  price_per_hour: number;
+  card_image: string | null;
+  images: string[] | null;
+  status: string;
   last_booking?: string;
 }
 
@@ -79,13 +80,13 @@ const VenuesList = () => {
                     <h3 className="text-lg font-semibold">{venue.name}</h3>
                     <p className="text-gray-400">{venue.city}</p>
                   </div>
-                  <Badge className={venue.open_now ? 'bg-green-500' : 'bg-red-500'}>
-                    {venue.open_now ? 'Open' : 'Closed'}
+                  <Badge className={venue.status === 'published' ? 'bg-green-500' : 'bg-yellow-500'}>
+                    {venue.status || 'draft'}
                   </Badge>
                 </div>
                 <div className="flex justify-between text-sm text-gray-400">
                   <span>{venue.stations} stations</span>
-                  <span>{venue.price_range || 'Price not set'}</span>
+                  <span>{venue.price_per_hour ? `$${venue.price_per_hour}/hr` : 'Price not set'}</span>
                 </div>
                 {venue.last_booking && (
                   <div className="mt-2 text-sm text-gray-500">

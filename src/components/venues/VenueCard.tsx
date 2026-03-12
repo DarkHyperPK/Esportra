@@ -2,20 +2,19 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Trophy, CheckCircle, Clock, Star, Monitor, Wifi, Coffee, Gamepad2, Eye } from 'lucide-react';
+import { MapPin, CheckCircle, Clock, Monitor, Wifi, Coffee, Gamepad2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
 import { OptimizedImage } from '@/components/ui/OptimizedImage';
 
 import { Venue, VenueStatus } from '@/types/venue';
 
 const STATUS_BADGE: Record<VenueStatus, { label: string; classes: string }> = {
-    draft:          { label: 'Draft',          classes: 'bg-zinc-700/90 text-zinc-200' },
+    draft: { label: 'Draft', classes: 'bg-zinc-700/90 text-zinc-200' },
     pending_review: { label: 'Pending Review', classes: 'bg-yellow-600/80 text-yellow-100' },
-    published:      { label: 'Published',      classes: 'bg-emerald-600/80 text-emerald-100' },
-    rejected:       { label: 'Rejected',       classes: 'bg-rose-600/80 text-rose-100' },
-    suspended:      { label: 'Suspended',      classes: 'bg-orange-600/80 text-orange-100' },
-    archived:       { label: 'Archived',       classes: 'bg-zinc-800/90 text-zinc-400' },
+    published: { label: 'Published', classes: 'bg-emerald-600/80 text-emerald-100' },
+    rejected: { label: 'Rejected', classes: 'bg-rose-600/80 text-rose-100' },
+    suspended: { label: 'Suspended', classes: 'bg-orange-600/80 text-orange-100' },
+    archived: { label: 'Archived', classes: 'bg-zinc-800/90 text-zinc-400' },
 };
 
 interface VenueCardProps {
@@ -58,7 +57,7 @@ export const VenueCard: React.FC<VenueCardProps> = ({ venue, showStatus = false 
                     className="w-full h-full relative"
                 >
                     <OptimizedImage
-                        src={venue.card_image || venue.image_url || ((venue as any).images && (venue as any).images[0]) || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80'}
+                        src={venue.card_image || (venue.images && venue.images[0]) || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80'}
                         className="w-full h-full object-cover object-center opacity-50 group-hover:opacity-60 transition-opacity"
                         alt={venue.name}
                         width={800}
@@ -71,32 +70,16 @@ export const VenueCard: React.FC<VenueCardProps> = ({ venue, showStatus = false 
 
             {/* 2. Top Bar (Floating) */}
             <div className="absolute top-0 inset-x-0 p-4 flex justify-between items-start z-10">
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* Status badge (owner context only) */}
                     {showStatus && venue.status && STATUS_BADGE[venue.status as VenueStatus] && (
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-md ${STATUS_BADGE[venue.status as VenueStatus].classes}`}>
                             {STATUS_BADGE[venue.status as VenueStatus].label}
                         </span>
                     )}
-                    {venue.openNow !== undefined && (
-                        <Badge className={cn(
-                            "border-none shadow-sm flex items-center gap-1.5 backdrop-blur-md",
-                            venue.openNow
-                                ? "bg-emerald-600/90 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]"
-                                : "bg-red-600/90 text-white shadow-[0_0_10px_rgba(239,68,68,0.3)]"
-                        )}>
-                            <div className={cn("w-1.5 h-1.5 rounded-full", venue.openNow ? "bg-white animate-pulse" : "bg-white/50")} />
-                            {venue.openNow ? 'OPEN NOW' : 'CLOSED'}
-                        </Badge>
-                    )}
                     <Badge variant="outline" className="bg-black/60 border-white/10 backdrop-blur-md text-purple-400">
                         {venue.stations} Stations
                     </Badge>
-                </div>
-
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
-                    <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                    <span className="text-white text-xs font-bold">{venue.rating || 'N/A'}</span>
                 </div>
             </div>
 
@@ -141,7 +124,7 @@ export const VenueCard: React.FC<VenueCardProps> = ({ venue, showStatus = false 
                             <span>{venue.hours}</span>
                         </div>
                         <div className="font-bold text-white">
-                            {venue.price_range}
+                            {venue.price_per_hour ? `$${venue.price_per_hour}/hr` : 'Free'}
                         </div>
                     </div>
                 </div>

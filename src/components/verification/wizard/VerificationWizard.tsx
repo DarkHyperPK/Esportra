@@ -4,7 +4,6 @@ import { ArrowLeft, ArrowRight, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import WizardProgress from '@/components/tournament/wizard/WizardProgress';
 import StepPersonalDetails from './StepPersonalDetails';
@@ -113,14 +112,14 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
         window.scrollTo(0, 0);
     };
 
-    const uploadFile = async (file: File | null, prefix: string): Promise<string | null> => {
+    const uploadFile = async (file: File | null, _prefix: string): Promise<string | null> => {
         if (!file || !user) return null;
         try {
-            const ext = file.name.split('.').pop() || 'jpg';
-            const path = `${user.id}/${prefix}_${Date.now()}.${ext}`;
-            const { error } = await supabase.storage.from('users.documents.kyc').upload(path, file, { upsert: true });
-            if (error) throw error;
-            return path;
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('bucket', 'users.documents.kyc');
+            const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+            return url;
         } catch (err) {
             console.error('Upload failed:', err);
             return null;
@@ -152,9 +151,6 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
             const cnicFrontPath = await uploadFile(data.cnicFront, 'cnic_front');
             const cnicBackPath = await uploadFile(data.cnicBack, 'cnic_back');
 
-            // Get Public URLs
-            const getUrl = (path: string | null) => path ? supabase.storage.from('users.documents.kyc').getPublicUrl(path).data.publicUrl : null;
-
             const payload: any = {
                 user_id: user.id,
                 requested_role: role,
@@ -166,8 +162,8 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
                 business_type: role === 'venue_owner' ? 'gaming_zone' : data.business_type,
                 business_description: data.business_description,
                 experience_description: role === 'organizer' ? (data.previous_tournaments || 'N/A') : (data.business_description || 'N/A'),
-                cnic_front_url: getUrl(cnicFrontPath),
-                cnic_back_url: getUrl(cnicBackPath),
+                cnic_front_url: cnicFrontPath,
+                cnic_back_url: cnicBackPath,
             };
 
             // Extended JSON Data

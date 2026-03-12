@@ -6,7 +6,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Building2, Upload, AlertCircle, Info } from 'lucide-react';
@@ -69,28 +68,21 @@ const VenueOwnerVerificationForm: React.FC<VenueOwnerVerificationFormProps> = ({
     setSubmitting(true);
 
     try {
-      const uploadFile = async (file: File, prefix: string) => {
-        const ext = file.name.split('.').pop();
-        const path = `${user.id}/${prefix}_${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('users.documents.kyc').upload(path, file, { upsert: true });
-        if (error) throw error;
-        return path;
+      const uploadFile = async (file: File, _prefix: string): Promise<string> => {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('bucket', 'users.documents.kyc');
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        return url;
       };
 
-      const [cnicFrontPath, cnicBackPath, exteriorPath, interiorPath, gamingPath] = await Promise.all([
+      const [cnicFrontUrl, cnicBackUrl, exteriorUrl, interiorUrl, gamingUrl] = await Promise.all([
         uploadFile(cnicFront, 'cnic_front'),
         uploadFile(cnicBack, 'cnic_back'),
         uploadFile(venueExterior, 'venue_exterior'),
         uploadFile(venueInterior, 'venue_interior'),
         uploadFile(gamingArea, 'gaming_area')
       ]);
-
-      const cnicFrontUrl = cnicFrontPath
-        ? supabase.storage.from('users.documents.kyc').getPublicUrl(cnicFrontPath).data.publicUrl
-        : null;
-      const cnicBackUrl = cnicBackPath
-        ? supabase.storage.from('users.documents.kyc').getPublicUrl(cnicBackPath).data.publicUrl
-        : null;
 
       const payload: any = {
         user_id: user.id,
@@ -113,17 +105,17 @@ const VenueOwnerVerificationForm: React.FC<VenueOwnerVerificationFormProps> = ({
           contact_email: formData.contact_email,
           contact_phone: formData.contact_phone,
           business_address: formData.business_address,
-          cnic_front_path: cnicFrontPath,
-          cnic_back_path: cnicBackPath,
+          cnic_front_path: cnicFrontUrl,
+          cnic_back_path: cnicBackUrl,
           venue_name: formData.venue_name,
           total_pcs: formData.total_pcs,
           pc_specs: formData.pc_specs,
           operating_hours: formData.operating_hours,
           hourly_rate: formData.hourly_rate,
           venue_images: {
-            exterior: exteriorPath,
-            interior: interiorPath,
-            gaming_area: gamingPath
+            exterior: exteriorUrl,
+            interior: interiorUrl,
+            gaming_area: gamingUrl
           },
           streaming_setup: formData.streaming_setup,
           tournament_capability: formData.tournament_capability

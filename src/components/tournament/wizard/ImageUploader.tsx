@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2, RotateCcw, Check } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -120,32 +120,20 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     const uploadToSupabase = async (file: File) => {
         try {
-            const fileExt = file.name.split('.').pop();
-            const timePart = useTimestamp ? `${Date.now()}-` : '';
-            const randomPart = useTimestamp ? `-${Math.random().toString(36).substr(2, 9)}` : '';
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('bucket', bucket);
+            formData.append('folder', folder);
 
-            const fileName = customFileName
-                ? `${folder}/${customFileName}.${fileExt}`
-                : `${folder}/${timePart}${Math.random().toString(36).substr(2, 9)}${randomPart}.${fileExt}`;
-
-            // Add cache busting query param if replacing
-            const { data, error } = await supabase.storage
-                .from(bucket)
-                .upload(fileName, file, {
-                    cacheControl: '3600',
-                    upsert: !!customFileName || !useTimestamp,
-                });
-
-            if (error) throw error;
-
-            const { data: urlData } = supabase.storage
-                .from(bucket)
-                .getPublicUrl(data.path);
+            const result = await apiClient.upload<{ url: string; path: string }>(
+                '/api/storage/upload',
+                formData,
+            );
 
             // Append timestamp to bust cache if updating same file
             const publicUrl = customFileName
-                ? `${urlData.publicUrl}?t=${Date.now()}`
-                : urlData.publicUrl;
+                ? `${result.url}?t=${Date.now()}`
+                : result.url;
 
             onChange(publicUrl);
 

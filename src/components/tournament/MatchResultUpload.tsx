@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -58,11 +57,11 @@ const MatchResultUpload: React.FC<Props> = ({ tournamentId, matchId, teamId, isC
       // Upload all images to storage bucket `tournament-results`
       const imageUrls: string[] = [];
       for (const file of files) {
-        const path = `${tournamentId}/${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`;
-        const { data: up, error: upErr } = await supabase.storage.from('tournaments.results').upload(path, file, { upsert: false });
-        if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from('tournaments.results').getPublicUrl(path);
-        imageUrls.push(pub.publicUrl);
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('bucket', 'tournaments.results');
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        imageUrls.push(url);
       }
 
       await apiClient.post(`/api/matches/${matchId}/reports`, {

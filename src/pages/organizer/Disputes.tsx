@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
-import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -160,14 +159,11 @@ const OrganizerDisputesPage: React.FC = () => {
 
       if (commentAttachment) {
         setUploadingAttachment(true);
-        const fileExt = commentAttachment.name.split('.').pop();
-        const fileName = `${selectedDispute.id}/organizer/${user.id}-${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('tournaments.disputes.evidence')
-          .upload(fileName, commentAttachment, { upsert: false });
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from('tournaments.disputes.evidence').getPublicUrl(fileName);
-        attachmentUrl = urlData.publicUrl;
+        const fd = new FormData();
+        fd.append('file', commentAttachment);
+        fd.append('bucket', 'tournaments.disputes.evidence');
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        attachmentUrl = url;
         setUploadingAttachment(false);
       }
 

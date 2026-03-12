@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -110,16 +109,13 @@ export const useMatchResultReport = (matchId: string | undefined, gameNumber?: n
     },
   });
 
-  // ── Evidence upload (still uses Supabase Storage CDN directly) ───────────────
-  const uploadDisputeEvidence = async (file: File, disputeId: string): Promise<string> => {
-    const ext  = file.name.split('.').pop() ?? 'jpg';
-    const path = `${disputeId}/result_dispute/${user!.id}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage
-      .from('tournaments.disputes.evidence')
-      .upload(path, file, { upsert: false });
-    if (error) throw error;
-    const { data } = supabase.storage.from('tournaments.disputes.evidence').getPublicUrl(path);
-    return data.publicUrl;
+  // ── Evidence upload via backend storage proxy ────────────────────────────────
+  const uploadDisputeEvidence = async (file: File, _disputeId: string): Promise<string> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('bucket', 'tournaments.disputes.evidence');
+    const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+    return url;
   };
 
   // ── Dispute report ────────────────────────────────────────────────────────────

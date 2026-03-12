@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -216,23 +215,27 @@ const MyDisputes = () => {
         ).catch(() => null);
 
         const disputeReason = disputeInfo?.dispute_reason || 'general';
-        const fileExt = commentAttachment.name.split('.').pop();
-        const fileName = disputeInfo?.tournament_id
-          ? `${disputeId}/${disputeReason}/${user.id}-${Date.now()}.${fileExt}`
-          : `${disputeId}/general_support/${user.id}-${Date.now()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('tournaments.disputes.evidence')
-          .upload(fileName, commentAttachment, { upsert: false });
+        const { error: uploadError } = await apiClient.upload<{ url: string; path: string }>(
+          '/api/storage/upload',
+          (() => {
+            const fd = new FormData();
+            fd.append('file', commentAttachment);
+            fd.append('bucket', 'tournaments.disputes.evidence');
+            fd.append('folder', disputeInfo?.tournament_id
+              ? `${disputeId}/${disputeReason}`
+              : `${disputeId}/general_support`);
+            return fd;
+          })(),
+        ).then(result => {
+          attachmentUrl = result.url;
+          setUploadingAttachment(false);
+          return { error: null as any };
+        }).catch(err => {
+          return { error: err };
+        });
 
         if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from('tournaments.disputes.evidence')
-          .getPublicUrl(fileName);
-
-        attachmentUrl = urlData.publicUrl;
-        setUploadingAttachment(false);
       }
 
       await apiClient.post(`/api/disputes/${disputeId}/comments`, {
