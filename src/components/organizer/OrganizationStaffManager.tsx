@@ -614,7 +614,12 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                 const rolePreset = ROLE_PRESETS[s.role as keyof typeof ROLE_PRESETS];
                                 const RoleIcon = rolePreset?.icon || Shield;
                                 const roleColor = rolePreset?.color || "text-zinc-400";
-                                const assignedTournaments = s.tournament_assignments || [];
+                                const rawAssignments = s.tournament_assignments;
+                                const assignedTournaments: any[] = Array.isArray(rawAssignments)
+                                    ? rawAssignments
+                                    : typeof rawAssignments === 'string'
+                                        ? (() => { try { return JSON.parse(rawAssignments); } catch { return []; } })()
+                                        : [];
 
                                 return (
                                     <div key={s.id} className="rounded-2xl border border-zinc-800/50 bg-[#0a0a0c] overflow-hidden transition-all hover:border-zinc-700/50">
