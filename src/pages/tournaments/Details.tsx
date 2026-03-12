@@ -279,8 +279,6 @@ const TournamentDetails = () => {
 
   const checkInCountdown = timeLeft;
 
-  const sb: any = supabase;
-
   const fetchTournamentData = useCallback(async () => {
     if (!slug || slug === 'undefined') {
       console.error('Invalid slug provided:', slug);
@@ -290,114 +288,51 @@ const TournamentDetails = () => {
     }
     setLoading(true);
     try {
-      // Try by slug first, then fall back to ID to be resilient to bad links
-      let tournamentData: any = null;
-      let tournamentError: any = null;
+      const data = await apiClient.get<any>(`/api/tournaments/${encodeURIComponent(slug)}`);
+      if (!data?.tournament) throw new Error('Tournament not found');
 
-      // Query from the high-performance view (Data Contract)
-      // Use conditional query to avoid UUID type mismatch errors
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug || '');
-
-      let query = sb
-        .from('v_tournament_details')
-        .select('*')
-        .is('deleted_at', null);
-
-      if (isUuid) {
-        query = query.or(`id.eq.${slug},slug.eq.${slug}`);
-      } else {
-        query = query.eq('slug', slug || '');
-      }
-
-      const { data: viewData, error: viewError } = await query.maybeSingle();
-
-      if (viewError) {
-        tournamentError = viewError;
-      } else if (!viewData) {
-        throw new Error('Tournament not found');
-      } else {
-        tournamentData = viewData;
-      }
-
-      if (tournamentError) throw tournamentError;
-      if (!tournamentData) throw new Error('Tournament not found');
-
-      // Get venue name if venue_id exists
-      let venueName = null;
-      if (tournamentData.venue_id) {
-        const { data: venueData } = await sb
-          .from('venues')
-          .select('name')
-          .eq('id', tournamentData.venue_id)
-          .single();
-        venueName = venueData?.name || null;
-      }
+      const t = data.tournament;
+      setCheckInCount(t.checked_in_count || 0);
 
       const baseTournament: BaseTournament = {
-        id: tournamentData.id,
-        name: tournamentData.name,
-        game: tournamentData.game,
-        date: tournamentData.start_date ? new Date(tournamentData.start_date).toLocaleDateString('en-CA') : '',
-        time: tournamentData.start_date ? new Date(tournamentData.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
-        venue: venueName || '',
-        is_online: !tournamentData.venue_id,
-        max_participants: tournamentData.max_teams,
-        team_size: 1, // Default team size for now
-        prize_pool: tournamentData.prize_pool?.toString() || '0',
-        entry_fee: tournamentData.entry_fee?.toString() || '0',
-        description: tournamentData.description || '',
-        user_id: tournamentData.organizer_owner_id || '',
-        rewards: tournamentData.rewards,
-        created_at: tournamentData.created_at,
-        image_url: tournamentData.banner_url || tournamentData.logo_url || null,
-        check_in_required: !!tournamentData.check_in_required,
-        check_in_deadline: tournamentData.check_in_deadline,
-        auto_remove_unchecked: tournamentData.auto_remove_unchecked ?? true,
-        end_date: tournamentData.end_date ? new Date(tournamentData.end_date).toLocaleDateString('en-CA') : undefined,
+        id: t.id,
+        name: t.name,
+        game: t.game,
+        date: t.start_date ? new Date(t.start_date).toLocaleDateString('en-CA') : '',
+        time: t.start_date ? new Date(t.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
+        venue: t.venue_name || '',
+        is_online: !t.venue_id,
+        max_participants: t.max_teams,
+        team_size: 1,
+        prize_pool: t.prize_pool?.toString() || '0',
+        entry_fee: t.entry_fee?.toString() || '0',
+        description: t.description || '',
+        user_id: t.organization_owner_id || t.organizer_id || '',
+        rewards: t.rewards,
+        created_at: t.created_at,
+        image_url: t.banner_url || t.logo_url || null,
+        check_in_required: !!t.check_in_required,
+        check_in_deadline: t.check_in_deadline,
+        auto_remove_unchecked: t.auto_remove_unchecked ?? true,
+        end_date: t.end_date ? new Date(t.end_date).toLocaleDateString('en-CA') : undefined,
         organization: {
-          slug: tournamentData.organization_slug,
-          name: tournamentData.organization_name,
-          logo_url: tournamentData.organization_logo,
-          owner_id: tournamentData.organizer_owner_id
+          slug: t.organization_slug,
+          name: t.organization_name,
+          logo_url: t.organization_logo,
+          owner_id: t.organization_owner_id
         },
-        organization_id: tournamentData.organization_id,
+        organization_id: t.organization_id,
         organizer: {
-          username: tournamentData.organizer_username,
-          avatar_url: tournamentData.organizer_avatar
+          username: t.organizer_username,
+          avatar_url: t.organizer_avatar
         },
-        settings: tournamentData.settings,
+        settings: t.settings,
       };
-
-      const { count, error: countError } = await sb
-        .from('tournament_participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', tournamentData.id);
-      if (countError) throw countError;
-
-      // Fetch check-in count
-      const { count: checkedIn, error: checkInError } = await sb
-        .from('tournament_participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', tournamentData.id)
-        .eq('status', 'checked_in');
-
-      if (!checkInError) {
-        setCheckInCount(checkedIn || 0);
-      }
-
-      // Try RPC for accurate count if RLS limits visibility
-      let participantCount = count || 0;
-      try {
-        const { data: rpcCount } = await (sb as any).rpc('get_tournament_participant_count', { t_id: tournamentData.id });
-        if (typeof rpcCount === 'number' && rpcCount >= 0) {
-          participantCount = rpcCount;
-        }
-      } catch { }
 
       const newTournament: Tournament = {
         ...baseTournament,
-        current_participants: participantCount,
-        status: tournamentData.status === 'draft' ? 'upcoming' : tournamentData.status as any
+        current_participants: t.current_participants || 0,
+        status: t.status === 'draft' ? 'upcoming' : t.status as any
       };
       setTournament(newTournament);
       setError(null);
@@ -419,9 +354,7 @@ const TournamentDetails = () => {
   const checkRegistration = useCallback(async (force = false) => {
     if (!force && hasCheckedRegistration.current) return;
 
-    // Only set loading to false if we have both user and tournament, otherwise keep loading
     if (!user?.id || !tournament?.id) {
-      // Keep loading state true if we don't have required data yet
       setRegistrationLoading(true);
       setIsRegistered(false);
       setRegistrationDetails(null);
@@ -431,295 +364,72 @@ const TournamentDetails = () => {
     }
     setRegistrationLoading(true);
     try {
-      // First check if user/team is banned
-      // Check for user ban (solo participant)
-      const { data: userBan } = await sb
-        .from('tournament_bans')
-        .select('ban_reason')
-        .eq('tournament_id', tournament.id)
-        .eq('is_active', true)
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const status = await apiClient.get<any>(`/api/tournaments/${tournament.id}/my-status`);
 
-      // Check for team ban (if user owns a team or is captain of a team)
-      let teamBan = null;
-
-      // Get teams user owns
-      const { data: ownedTeams } = await sb
-        .from('teams')
-        .select('id')
-        .eq('owner_id', user.id);
-
-      // Get teams where user is captain (from tournament_participants - might be empty if banned)
-      const { data: captainTeams } = await sb
-        .from('tournament_participants')
-        .select('team_id')
-        .eq('tournament_id', tournament.id)
-        .eq('team_captain_id', user.id)
-        .not('team_id', 'is', null);
-
-      // Also check team_members table for teams where user is captain (in case registration was deleted)
-      const { data: captainFromMembers } = await sb
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .eq('role', 'captain');
-
-      const allTeamIds = [
-        ...(ownedTeams || []).map(t => t.id),
-        ...(captainTeams || []).map(t => t.team_id).filter(Boolean),
-        ...(captainFromMembers || []).map(t => t.team_id).filter(Boolean)
-      ];
-
-      if (allTeamIds.length > 0) {
-        const uniqueTeamIds = Array.from(new Set(allTeamIds));
-        const { data: banData } = await sb
-          .from('tournament_bans')
-          .select('ban_reason, team_id')
-          .eq('tournament_id', tournament.id)
-          .eq('is_active', true)
-          .in('team_id', uniqueTeamIds)
-          .maybeSingle();
-        teamBan = banData;
-      }
-
-      // If banned (either user or team), set ban state and return early
-      if ((userBan && !userBan.error) || (teamBan && !teamBan.error)) {
+      // Handle bans
+      if (status.userBan || status.teamBan) {
         setIsBanned(true);
-        setBanReason((userBan?.ban_reason || teamBan?.ban_reason) || null);
+        setBanReason(status.userBan?.banReason || status.teamBan?.banReason || null);
         setIsRegistered(false);
         setRegistrationDetails(null);
+        setIsCaptain(false);
         setRegistrationLoading(false);
+        hasCheckedRegistration.current = true;
         return;
       }
 
       setIsBanned(false);
       setBanReason(null);
 
-      // Check for registration
-      let registrationFilter = `user_id.eq.${user.id},team_captain_id.eq.${user.id}`;
-      const uniqueTeamIds = Array.from(new Set(allTeamIds)).filter(Boolean);
-      if (uniqueTeamIds.length > 0) {
-        registrationFilter += `,team_id.in.(${uniqueTeamIds.join(',')})`;
-      }
-
-      const { data: regData, error } = await sb
-        .from('tournament_participants')
-        .select('*')
-        .eq('tournament_id', tournament.id)
-        .or(registrationFilter)
-        .maybeSingle();
-      if (error) throw error;
-      if (regData) {
-        const dbRegistration = regData as DatabaseRegistration;
-        const teamId = (dbRegistration as any).team_id;
-
-        // If this is a team registration, validate that the team still exists
-        if (teamId && (dbRegistration as any).participant_type === 'team') {
-          console.log('[TournamentDetails] Validating team exists for registration:', teamId);
-          const { data: teamExists, error: teamCheckError } = await sb
-            .from('teams')
-            .select('id')
-            .eq('id', teamId)
-            .maybeSingle();
-
-          if (teamCheckError) {
-            console.error('[TournamentDetails] Error checking team existence:', teamCheckError);
-          }
-
-          // If team doesn't exist, treat as not registered
-          if (!teamExists) {
-            console.warn('[TournamentDetails] Team registration found but team no longer exists, cleaning up registration:', (dbRegistration as any).id);
-            // Clean up the orphaned registration
-            try {
-              const { error: deleteError } = await sb
-                .from('tournament_participants')
-                .delete()
-                .eq('id', (dbRegistration as any).id);
-
-              if (deleteError) {
-                console.error('[TournamentDetails] Failed to clean up orphaned registration:', deleteError);
-              } else {
-                console.log('[TournamentDetails] Successfully cleaned up orphaned registration');
-              }
-            } catch (cleanupError) {
-              console.error('[TournamentDetails] Exception while cleaning up orphaned registration:', cleanupError);
-            }
-            setIsRegistered(false);
-            setRegistrationDetails(null);
-            setError(null);
-            setRegistrationLoading(false);
-            hasCheckedRegistration.current = true;
-            return;
-          } else {
-            console.log('[TournamentDetails] Team exists, registration is valid');
-          }
-        }
-
+      if (status.registration) {
+        const r = status.registration;
         setIsRegistered(true);
-        console.log('Registration data:', dbRegistration);
-
-        // For team registrations, fetch the actual team name from teams table (priority over roster name)
-        let resolvedTeamName = (dbRegistration as any).team_name || null;
-        if (teamId && (dbRegistration as any).participant_type === 'team') {
-          try {
-            const { data: teamData } = await sb
-              .from('teams')
-              .select('name, logo_url')
-              .eq('id', teamId)
-              .maybeSingle();
-
-            if (teamData?.name) {
-              // Use actual team name from teams table as priority
-              resolvedTeamName = teamData.name;
-              console.log('[TournamentDetails] Resolved team name from teams table:', resolvedTeamName);
-            }
-            if (teamData?.logo_url) {
-              (dbRegistration as any).team_logo_url = teamData.logo_url;
-            }
-          } catch (teamNameError) {
-            console.error('[TournamentDetails] Error fetching team name:', teamNameError);
-            // Fall back to registration.team_name if team lookup fails
-          }
-        }
 
         const registration: TournamentRegistration & { team_id?: string; team_captain_id?: string } = {
-          id: (dbRegistration as any).id,
-          tournament_id: (dbRegistration as any).tournament_id,
-          user_id: (dbRegistration as any).user_id,
-          registration_type: (dbRegistration as any).participant_type === 'solo' ? 'solo' : 'team',
-          riot_tag: (dbRegistration as any).riot_tag || null,
-          steam_tag: (dbRegistration as any).steam_tag || null,
-          gamer_tag: (dbRegistration as any).gamer_tag || null,
-          team_name: resolvedTeamName, // Use resolved team name (from teams table) as priority
-          team_logo: (dbRegistration as any).team_logo_url || null,
-          team_members: (dbRegistration as any).team_members || null,
-          status: (dbRegistration as any).status || 'registered',
-          checked_in_at: (dbRegistration as any).checked_in_at || null,
-          registered_at: (dbRegistration as any).registration_date || (dbRegistration as any).created_at,
-          created_at: (dbRegistration as any).created_at,
-          updated_at: (dbRegistration as any).updated_at || (dbRegistration as any).created_at,
-          team_id: (dbRegistration as any).team_id || undefined,
-          team_captain_id: (dbRegistration as any).team_captain_id || undefined
+          id: r.id,
+          tournament_id: r.tournament_id,
+          user_id: r.user_id,
+          registration_type: r.participant_type === 'solo' ? 'solo' : 'team',
+          riot_tag: r.riot_tag || null,
+          steam_tag: r.steam_tag || null,
+          gamer_tag: r.gamer_tag || null,
+          team_name: r.team_name || null,
+          team_logo: r.team_logo || null,
+          team_members: r.team_members || null,
+          status: r.status || 'registered',
+          checked_in_at: r.checked_in_at || null,
+          registered_at: r.registration_date || r.created_at,
+          created_at: r.created_at,
+          updated_at: r.updated_at || r.created_at,
+          team_id: r.team_id || undefined,
+          team_captain_id: r.team_captain_id || undefined
         };
         setRegistrationDetails(registration as TournamentRegistration);
         setShowEditDialog(false);
+
+        // Determine captain status from the consolidated response
+        const isCap = r.participant_type === 'solo' ||
+          r.team_captain_id === user.id ||
+          (status.captainTeams || []).some((t: any) => t.id === r.team_id);
+        setIsCaptain(isCap);
       } else {
         setIsRegistered(false);
         setRegistrationDetails(null);
+        setIsCaptain(false);
       }
       setError(null);
     } catch (error) {
       setIsRegistered(false);
       setRegistrationDetails(null);
+      setIsCaptain(false);
       setError(error instanceof Error ? error.message : 'Error checking registration');
     } finally {
       setRegistrationLoading(false);
+      hasCheckedRegistration.current = true;
     }
   }, [user?.id, tournament?.id]);
 
-  // Check if user is team captain
-  useEffect(() => {
-    const checkCaptain = async () => {
-      if (!user?.id || !registrationDetails) {
-        setIsCaptain(false);
-        return;
-      }
-      // If solo registration, they are their own captain
-      if (registrationDetails.registration_type === 'solo') {
-        setIsCaptain(true);
-        return;
-      }
-
-      // First check: if team_captain_id directly matches user.id
-      const teamCaptainId = (registrationDetails as any)?.team_captain_id;
-      if (teamCaptainId === user.id) {
-        console.log('User is captain (team_captain_id match)');
-        setIsCaptain(true);
-        return;
-      }
-
-      // If team registration, check if user is captain (owner of team OR has captain role in team_members)
-      const teamId = (registrationDetails as any)?.team_id;
-      if (teamId) {
-        try {
-          // First check teams table for owner_id
-          const { data: team, error: teamError } = await sb
-            .from('teams')
-            .select('owner_id')
-            .eq('id', teamId)
-            .single();
-
-          console.log('Checking captain status:', { teamId, userId: user.id, team, teamError });
-
-          if (!teamError && team && team.owner_id === user.id) {
-            console.log('User is team owner (captain)');
-            setIsCaptain(true);
-            return;
-          }
-
-          // Also check team_members table for captain role
-          const { data: member, error: memberError } = await sb
-            .from('team_members')
-            .select('role')
-            .eq('team_id', teamId)
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .maybeSingle();
-
-          console.log('Team member check:', { member, memberError });
-
-          if (!memberError && member && (member.role === 'captain' || member.role === 'Captain')) {
-            console.log('User has captain role in team_members');
-            setIsCaptain(true);
-            return;
-          }
-
-          setIsCaptain(false);
-        } catch (e) {
-          console.error('Error checking captain status:', e);
-          setIsCaptain(false);
-        }
-      } else {
-        // If no team_id, try to find team by team_name from registration
-        const teamName = registrationDetails.team_name;
-        if (teamName) {
-          try {
-            const { data: team, error } = await sb
-              .from('teams')
-              .select('id, owner_id')
-              .eq('name', teamName)
-              .maybeSingle();
-
-            if (!error && team) {
-              if (team.owner_id === user.id) {
-                setIsCaptain(true);
-                return;
-              }
-              // Check team_members
-              const { data: member } = await sb
-                .from('team_members')
-                .select('role')
-                .eq('team_id', team.id)
-                .eq('user_id', user.id)
-                .eq('is_active', true)
-                .maybeSingle();
-
-              if (member && (member.role === 'captain' || member.role === 'Captain')) {
-                setIsCaptain(true);
-                return;
-              }
-            }
-          } catch (e) {
-            console.error('Error checking captain by team name:', e);
-          }
-        }
-        setIsCaptain(false);
-      }
-    };
-    checkCaptain();
-  }, [user?.id, registrationDetails]);
+  // Captain status is set within checkRegistration via my-status response
 
   useEffect(() => {
     let isMounted = true;
@@ -780,55 +490,16 @@ const TournamentDetails = () => {
   const handleRegister = async () => {
     if (!user?.id || !tournament) return;
 
-    try {
-      const { data: existingRegistration, error: checkError } = await sb
-        .from('tournament_participants')
-        .select('*, teams:team_id(name, logo_url)')
-        .eq('tournament_id', tournament.id)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (checkError) throw checkError;
-
-      if (existingRegistration) {
-        console.log('Found existing registration:', existingRegistration);
-        const dbData = existingRegistration as any;
-        const registration: TournamentRegistration = {
-          id: dbData.id,
-          tournament_id: dbData.tournament_id,
-          user_id: dbData.user_id,
-          registration_type: dbData.participant_type === 'solo' ? 'solo' : 'team',
-          riot_tag: dbData.riot_tag || null,
-          steam_tag: dbData.steam_tag || null,
-          gamer_tag: dbData.gamer_tag || null,
-          team_name: (dbData.teams as any)?.name || dbData.team_name || null,
-          team_logo: dbData.team_logo_url || (dbData.teams as any)?.logo_url || null,
-          team_members: dbData.team_members || null,
-          status: dbData.status as RegistrationStatus || 'registered',
-          checked_in_at: dbData.checked_in_at || null,
-          registered_at: dbData.registration_date || dbData.registered_at || dbData.created_at,
-          created_at: dbData.created_at,
-          updated_at: dbData.updated_at || dbData.created_at
-        };
-        setIsRegistered(true);
-        setRegistrationDetails(registration);
-        setShowEditDialog(false);
-        toast({
-          title: "Already Registered",
-          description: "You are already registered for this tournament",
-        });
-        return;
-      }
-
-      setShowEditDialog(true);
-    } catch (error: any) {
-      console.error('Error checking registration:', error);
+    // Already registered — show toast and bail
+    if (isRegistered && registrationDetails) {
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to check registration status',
-        variant: 'destructive',
+        title: "Already Registered",
+        description: "You are already registered for this tournament",
       });
+      return;
     }
+
+    setShowEditDialog(true);
   };
 
   const handleEditRegistration = () => {
@@ -839,57 +510,7 @@ const TournamentDetails = () => {
     if (!user?.id || !tournament) return;
 
     try {
-      console.log('Starting withdrawal process for user:', user.id, 'tournament:', tournament.id);
-
-      // First, try to get the registration - check both user_id (solo) and team_captain_id (team)
-      const { data: existingRegistration, error: fetchError } = await sb
-        .from('tournament_participants')
-        .select('*')
-        .eq('tournament_id', tournament.id)
-        .or(`user_id.eq.${user.id},team_captain_id.eq.${user.id}`)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('Error fetching registration:', fetchError);
-        throw fetchError;
-      }
-
-      if (!existingRegistration) {
-        console.log('No registration found to withdraw');
-        setIsRegistered(false);
-        setRegistrationDetails(null);
-        setShowWithdrawDialog(false);
-        return;
-      }
-
-      console.log('Found registration:', existingRegistration);
-
-      // Verify the user has permission to withdraw (must be the registered user or team captain)
-      const isSoloRegistration = existingRegistration.participant_type === 'solo' && existingRegistration.user_id === user.id;
-      const isTeamCaptain = existingRegistration.participant_type === 'team' && existingRegistration.team_captain_id === user.id;
-
-      if (!isSoloRegistration && !isTeamCaptain) {
-        console.error('User does not have permission to withdraw this registration');
-        toast({
-          title: 'Error',
-          description: 'You do not have permission to withdraw this registration.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Delete from tournament_participants
-      const { error: registrationError } = await sb
-        .from('tournament_participants')
-        .delete()
-        .eq('id', existingRegistration.id);
-
-      if (registrationError) {
-        console.error('Error deleting registration:', registrationError);
-        throw registrationError;
-      }
-
-      console.log('Successfully deleted registration');
+      await apiClient.delete(`/api/tournaments/${tournament.id}/register`);
 
       setIsRegistered(false);
       setRegistrationDetails(null);
@@ -912,25 +533,17 @@ const TournamentDetails = () => {
   };
 
   const handleSelfCheckIn = async () => {
-    if (!registrationDetails) return;
+    if (!registrationDetails || !tournament) return;
     setCheckInSubmitting(true);
     try {
-      const { error } = await sb
-        .from('tournament_participants')
-        .update({
-          status: 'checked_in',
-          checked_in_at: new Date().toISOString()
-        })
-        .eq('id', registrationDetails.id);
-
-      if (error) throw error;
+      await apiClient.post(`/api/tournaments/${tournament.id}/check-in`);
 
       toast({
         title: 'Checked in',
         description: 'Your team is confirmed for this tournament.'
       });
 
-      await checkRegistration();
+      await checkRegistration(true);
     } catch (error: any) {
       console.error('Check-in failed:', error);
       toast({
@@ -947,12 +560,7 @@ const TournamentDetails = () => {
     if (!tournament?.id) return;
 
     try {
-      const { error } = await sb
-        .from('tournaments')
-        .update({ banner_url: url })
-        .eq('id', tournament.id);
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${tournament.id}/banner`, { url });
 
       setTournament(prev => prev ? { ...prev, image_url: url } : null);
       setShowBannerDialog(false);
@@ -1007,7 +615,7 @@ const TournamentDetails = () => {
     (g) => normalize(g.name) === normalize(tournament.game)
   ) : null;
 
-  // Fallback: resolve team members from team if registration has none
+  // Resolve team members from registration data or API
   const [resolvedMembers, setResolvedMembers] = useState<string[] | null>(null);
   useEffect(() => {
     const run = async () => {
@@ -1017,33 +625,21 @@ const TournamentDetails = () => {
         setResolvedMembers(current);
         return;
       }
-      if (!registrationDetails.team_name || !user?.id) return;
+      // If no members in registration, try to resolve via team API
+      const teamId = (registrationDetails as any).team_id;
+      if (!teamId) return;
       try {
-        const { data: teamRow } = await sb
-          .from('teams')
-          .select('id')
-          .eq('owner_id', user.id)
-          .ilike('name', registrationDetails.team_name)
-          .maybeSingle();
-        if (!teamRow?.id) return;
-        const { data: memberRows } = await sb
-          .from('team_members')
-          .select('user_id')
-          .eq('team_id', teamRow.id)
-          .eq('is_active', true);
-        const memberIds = Array.from(new Set([...(memberRows || []).map(m => m.user_id), user.id]));
-        if (memberIds.length === 0) { setResolvedMembers([]); return; }
-        const { data: profiles } = await sb
-          .from('profiles')
-          .select('*')
-          .in('id', memberIds);
-        const names = (profiles || []).map(p => {
-          const gameKey = tournament?.game?.toLowerCase();
-          const isValorant = gameKey === 'valorant';
-          const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
-          return (isValorant && (p as any).riot_tag) || (isCS2 && (p as any).faceit_nickname) || (p as any).username || (p as any).full_name || (p as any).id;
-        }).filter(Boolean) as string[];
-        setResolvedMembers(names);
+        const teamData = await apiClient.get<any>(`/api/teams/${teamId}/members/detailed`);
+        const members = (teamData || [])
+          .filter((m: any) => m.is_active)
+          .map((m: any) => {
+            const gameKey = tournament?.game?.toLowerCase();
+            const isValorant = gameKey === 'valorant';
+            const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
+            return (isValorant && m.riot_tag) || (isCS2 && m.faceit_nickname) || m.username || m.full_name || m.user_id?.substring(0, 8);
+          })
+          .filter(Boolean) as string[];
+        setResolvedMembers(members.length > 0 ? members : null);
       } catch {
         setResolvedMembers(null);
       }
@@ -1051,98 +647,14 @@ const TournamentDetails = () => {
     run();
   }, [registrationDetails, user?.id]);
 
-  // Fetch all registrations if organizer
+  // Fetch all registrations if organizer (via dedicated backend endpoint)
   useEffect(() => {
     const fetchAllRegistrations = async () => {
       if (!isOrganizer || !tournament?.id) return;
       setRegistrationsLoading(true);
       try {
-        const { data, error } = await sb
-          .from('tournament_participants')
-          .select('*')
-          .eq('tournament_id', tournament.id);
-        if (error) throw error;
-        const regs = ((data || []) as unknown as DatabaseRegistration[]);
-        // Simplified enrichment: 1) roster_id -> members; 2) derive by team_id + tournament.game
-        const game = (tournament?.game || '').trim().toLowerCase();
-        for (const r of regs) {
-          const isTeam = (r as any).participant_type === 'team';
-          if (!isTeam) continue;
-          try {
-            let names: string[] = [];
-            const rosterId = (r as any).roster_id as string | null | undefined;
-            // Step 1: roster_id
-            if (rosterId) {
-              const { data: roster } = await sb.rpc('get_roster_members', { r_id: rosterId });
-              const gameKey = tournament?.game?.toLowerCase();
-              const isValorant = gameKey === 'valorant';
-              const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
-              names = (roster || []).map((row: any) => (isValorant && row.riot_tag) || (isCS2 && row.faceit_nickname) || row.username || row.full_name || `player_${String(row.user_id).substring(0, 8)}`);
-            }
-            // Step 2: derive by team_id + game if still empty
-            if ((!names || names.length === 0) && game) {
-              // Resolve team_id from team_name if missing
-              let effectiveTeamId: string | null = (r as any).team_id || null;
-              const teamName = (r as any).team_name as string | null | undefined;
-              if (!effectiveTeamId && teamName) {
-                const exact = await sb
-                  .from('teams')
-                  .select('id')
-                  .eq('name', teamName)
-                  .maybeSingle();
-                effectiveTeamId = exact.data?.id || null;
-                if (!effectiveTeamId) {
-                  const fuzzy = await sb
-                    .from('teams')
-                    .select('id')
-                    .ilike('name', `%${teamName}%`)
-                    .limit(1)
-                    .maybeSingle();
-                  effectiveTeamId = fuzzy.data?.id || null;
-                }
-              }
-              if (!effectiveTeamId) {
-                // Cannot derive without a team reference
-                continue;
-              }
-              const { data: rosters } = await sb
-                .from('team_rosters')
-                .select('id, name, game, created_at')
-                .eq('team_id', effectiveTeamId);
-              const list = rosters || [];
-              let pickedId: string | null = null;
-              if (list.length === 1) {
-                pickedId = list[0].id;
-              } else if (list.length > 1) {
-                const byGame = list.filter((x: any) => String(x.game || '').trim().toLowerCase() === game);
-                if (byGame.length === 1) {
-                  pickedId = byGame[0].id;
-                } else if (byGame.length > 1) {
-                  const sorted = [...byGame].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-                  pickedId = sorted[0].id;
-                } else {
-                  const byName = list.filter((x: any) => String(x.name || '').toLowerCase().includes(game));
-                  if (byName.length > 0) {
-                    const sorted = [...byName].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-                    pickedId = sorted[0].id;
-                  }
-                }
-              }
-              if (!pickedId && list.length > 0) {
-                const sorted = [...list].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-                pickedId = sorted[0].id;
-              }
-              if (pickedId) {
-                const { data: roster } = await sb.rpc('get_roster_members', { r_id: pickedId });
-                names = (roster || []).map((row: any) => row.username || row.full_name || `player_${String(row.user_id).substring(0, 8)}`);
-              }
-            }
-            if (names && names.length > 0) {
-              (r as any).team_members = names;
-            }
-          } catch { }
-        }
-        setAllRegistrations(regs);
+        const data = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/registrations`);
+        setAllRegistrations((data || []) as unknown as DatabaseRegistration[]);
       } catch (err) {
         setAllRegistrations([]);
       } finally {
