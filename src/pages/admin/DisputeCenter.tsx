@@ -99,7 +99,8 @@ const DisputeCenter: React.FC = () => {
           // Get tournament name if it's a tournament dispute
           if (d.tournament_id) {
             try {
-              const tournament = await apiClient.get<{ name?: string }>(`/api/tournaments/${d.tournament_id}`);
+              const response = await apiClient.get<any>(`/api/tournaments/${d.tournament_id}`);
+              const tournament = response?.tournament || response;
               dispute.tournament_name = tournament?.name || 'Unknown Tournament';
             } catch {
               dispute.tournament_name = 'Unknown Tournament';

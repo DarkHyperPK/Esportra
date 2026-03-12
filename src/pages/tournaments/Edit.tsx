@@ -25,31 +25,28 @@ const EditTournament = () => {
     try {
       setLoading(true);
 
-      // 1. Fetch Tournament Details (API accepts slug or ID)
-      const tournamentData = await apiClient.get<any>(`/api/tournaments/${slug}`);
-      if (!tournamentData) throw new Error('Tournament not found');
+      // 1. Fetch Tournament Details — returns wrapped { tournament, participants, stages, ... }
+      const response = await apiClient.get<any>(`/api/tournaments/${slug}`);
+      if (!response?.tournament) throw new Error('Tournament not found');
 
+      const tournamentData = response.tournament;
       setTournamentId(tournamentData.id);
 
-      // 2. Fetch Stages
-      let stages: any[] = [];
-      try {
-        stages = await apiClient.get<any[]>(`/api/tournaments/${tournamentData.id}/stages`) || [];
-      } catch (e) {
-        console.error('Error fetching stages:', e);
+      // 2. Stages from wrapped response, or fetch separately as fallback
+      let stages: any[] = response.stages || [];
+      if (stages.length === 0) {
+        try {
+          stages = await apiClient.get<any[]>(`/api/tournaments/${tournamentData.id}/stages`) || [];
+        } catch (e) {
+          console.error('Error fetching stages:', e);
+        }
       }
 
       // 2.2 Fetch Map Pool (kept as part of tournament data or separate call)
       const mapPoolIds: string[] = tournamentData.map_pool_ids || [];
 
-      // 2.5 Fetch Participant Count
-      let participantCountVal = 0;
-      try {
-        const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentData.id}/participants`);
-        participantCountVal = participants?.length || 0;
-      } catch (e) {
-        console.error('Error fetching participant count:', e);
-      }
+      // 2.5 Participant count from wrapped response
+      const participantCountVal = response.participants?.length || 0;
 
       setParticipantCount(participantCountVal);
 

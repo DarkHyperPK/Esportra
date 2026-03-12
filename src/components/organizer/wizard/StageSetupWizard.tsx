@@ -221,7 +221,8 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
             // Fetch tournament settings (check-in enabled, max participants)
             const fetchTournamentSettings = async () => {
-                const data = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
+                const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
+                const data = response?.tournament || response;
                 if (data) {
                     const d = data as any;
                     setCheckInEnabled(d.check_in_required);

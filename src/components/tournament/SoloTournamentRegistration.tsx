@@ -146,7 +146,8 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
     try {
       // Check if tournament is still open for registration
-      const tournamentData = await apiClient.get<any>(`/api/tournaments/${tournament.id}`);
+      const response = await apiClient.get<any>(`/api/tournaments/${tournament.id}`);
+      const tournamentData = response?.tournament || response;
 
       if (!tournamentData) {
         throw new Error('Tournament not found');

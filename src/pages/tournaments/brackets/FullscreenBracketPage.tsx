@@ -18,9 +18,11 @@ const FullscreenBracketPage = () => {
         try {
             setLoading(true);
 
-            // Fetch tournament (supports slug or id)
-            const tournamentData = await apiClient.get(`/api/tournaments/${slug}`);
-            if (!tournamentData) throw new Error('Tournament not found');
+            // Fetch tournament — returns wrapped { tournament, participants, stages, ... }
+            const response = await apiClient.get<any>(`/api/tournaments/${slug}`);
+            if (!response?.tournament) throw new Error('Tournament not found');
+
+            const tournamentData = response.tournament;
             setTournament(tournamentData);
 
             // Fetch bracket version (active or draft)

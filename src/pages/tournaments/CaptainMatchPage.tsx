@@ -193,16 +193,15 @@ const CaptainMatchPage = () => {
             setLoading(true);
             console.log('[CaptainMatchPage] Fetching tournament data for slug:', slug);
 
-            // Get tournament - Try API (accepts slug or ID)
-            let tourney;
-            tourney = await apiClient.get<any>(`/api/tournaments/${slug}`);
-            if (!tourney) throw new Error('Tournament not found');
+            // Get tournament — returns wrapped { tournament, participants, stages, ... }
+            const response = await apiClient.get<any>(`/api/tournaments/${slug}`);
+            if (!response?.tournament) throw new Error('Tournament not found');
 
+            const tourney = response.tournament;
             setTournament(tourney);
 
-            // Get participants to identify captain's team
-            const parts = await apiClient.get<any[]>(`/api/tournaments/${tourney.id}/participants`);
-            setParticipants(parts || []);
+            // Get participants from wrapped response
+            setParticipants(response.participants || []);
 
         } catch (error: any) {
             console.error('Error fetching tournament:', error);

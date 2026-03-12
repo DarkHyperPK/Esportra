@@ -23,7 +23,8 @@ const TournamentDetails = () => {
   const fetchTournament = async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get<any>(`/api/tournaments/${id}`);
+      const response = await apiClient.get<any>(`/api/tournaments/${id}`);
+      const data = response?.tournament || response;
       setTournament(data);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to fetch tournament.' });

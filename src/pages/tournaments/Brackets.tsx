@@ -35,14 +35,16 @@ const TournamentBrackets = () => {
     try {
       setLoading(true);
 
-      // Fetch tournament (supports slug or id)
-      const tournamentData = await apiClient.get(`/api/tournaments/${slug}`);
-      if (!tournamentData) throw new Error('Tournament not found');
+      // Fetch tournament — returns wrapped { tournament, participants, stages, ... }
+      const response = await apiClient.get<any>(`/api/tournaments/${slug}`);
+      if (!response?.tournament) throw new Error('Tournament not found');
+
+      const tournamentData = response.tournament;
       setTournament(tournamentData);
 
-      // Fetch stages
-      const stagesData = await apiClient.get(`/api/tournaments/${tournamentData.id}/stages`);
-      setStages(stagesData || []);
+      // Use stages from wrapped response, fallback to separate call
+      const stagesData = response.stages || [];
+      setStages(stagesData);
 
       // Default selected stage to the first one if not set
       if (stagesData && stagesData.length > 0 && !selectedStageId) {
@@ -50,7 +52,7 @@ const TournamentBrackets = () => {
       }
 
       // Fetch bracket versions - Organizers see drafts, others only active
-      const isActuallyOrganizer = user?.id && tournamentData.organization?.owner_id === user.id;
+      const isActuallyOrganizer = response.isOrganizer || (user?.id && tournamentData.organization?.owner_id === user.id);
       const statusFilter = isActuallyOrganizer ? 'active,draft' : 'active';
 
       const versionsData = await apiClient.get(`/api/tournaments/${tournamentData.id}/bracket-versions?status=${statusFilter}`);
@@ -75,9 +77,8 @@ const TournamentBrackets = () => {
         if (stagesData && stagesData.length > 0) setSelectedStageId(stagesData[0].id);
       }
 
-      // Fetch participants
-      const parts = await apiClient.get(`/api/tournaments/${tournamentData.id}/participants`);
-      setParticipants(parts || []);
+      // Use participants from wrapped response
+      setParticipants(response.participants || []);
 
     } catch (error: any) {
       console.error('Error fetching tournament:', error);

@@ -44,7 +44,8 @@ const TournamentDetails = () => {
     const fetchTournament = async () => {
       try {
         setLoading(true);
-        const data = await apiClient.get<any>(`/api/tournaments/${id}`);
+        const response = await apiClient.get<any>(`/api/tournaments/${id}`);
+        const data = response?.tournament || response;
 
         if (data) {
           const dbTournament = data as DbTournament;

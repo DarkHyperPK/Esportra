@@ -27,7 +27,8 @@ export const tournamentApi = {
   },
 
   getTournament: async (id: string) => {
-    return await apiClient.get(`/api/tournaments/${id}`);
+    const response = await apiClient.get<any>(`/api/tournaments/${id}`);
+    return response?.tournament || response;
   },
 
   createTournament: async (tournament: Omit<Tournament, 'id' | 'created_at' | 'updated_at'>) => {

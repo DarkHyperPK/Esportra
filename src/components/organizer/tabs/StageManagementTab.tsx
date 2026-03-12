@@ -426,7 +426,8 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             let enrichedConfig = { ...(stage.config as any) };
             if (format === 'swiss' || format === 'round_robin') {
                 try {
-                    const tournamentData = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
+                    const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
+                    const tournamentData = response?.tournament || response;
 
                     const stageScheduling = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);
 
