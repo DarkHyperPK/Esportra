@@ -248,36 +248,22 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
       const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
       const fileExt = file.name.split('.').pop();
       const fileName = `logo-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${sanitizedTeamName}/${fileName}`;
 
-      console.log('Uploading to path:', filePath);
+      console.log('Uploading via backend proxy');
 
-      // Direct upload attempt - this will give us a clearer error if there are permission issues
-      const { error } = await supabase.storage
-        .from('teams.logos')
-        .upload(filePath, file);
+      // Upload through the backend proxy which uses service_role key (bypasses RLS)
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('bucket', 'teams.logos');
+      formData.append('folder', sanitizedTeamName);
 
-      if (error) {
-        console.error('Upload error:', error);
+      const result = await apiClient.upload<{ url: string; path: string }>(
+        '/api/storage/upload',
+        formData,
+      );
 
-        // If it's an RLS policy error, provide helpful message
-        if (error.message.includes('row-level security policy')) {
-          throw new Error('Storage permissions not configured. Please contact support to set up storage policies.');
-        }
-
-        throw error;
-      }
-
-      console.log('File uploaded successfully');
-
-      const { data } = supabase.storage
-        .from('teams.logos')
-        .getPublicUrl(filePath);
-
-      console.log('Public URL:', data.publicUrl);
-      console.log('========================');
-
-      return data.publicUrl;
+      console.log('Upload result:', result);
+      return result.url;
     } catch (error) {
       console.error('Error uploading logo:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
