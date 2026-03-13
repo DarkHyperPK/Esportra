@@ -87,13 +87,13 @@ const RaiseDispute = () => {
         `/api/teams?owner_id=${user.id}`
       ).catch(() => []);
 
-      const captainTeams = await apiClient.get<{ team_id: string }[]>(
+      const captainTeams = await apiClient.get<{ id: string; team_id?: string }[]>(
         `/api/teams/my-captain-teams`
       ).catch(() => []);
 
       const allTeamIds = [
         ...(ownedTeams || []).map(t => t.id),
-        ...(captainTeams || []).map(t => t.team_id).filter(Boolean)
+        ...(captainTeams || []).map(t => t.id || t.team_id).filter(Boolean)
       ];
 
       let teamBans: any[] = [];
