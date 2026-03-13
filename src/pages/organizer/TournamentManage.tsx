@@ -383,7 +383,7 @@ const TournamentDashboard = () => {
         try {
           const results = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(participant.team_name || '')}&type=team`);
           // Search teams by name — use team search endpoint
-          const teamResults = await apiClient.get<any[]>(`/api/teams?name=${encodeURIComponent(participant.team_name || '')}`).catch(() => []);
+          const teamResults = await apiClient.get<any[]>(`/api/teams/search?name=${encodeURIComponent(participant.team_name || '')}`).catch(() => []);
           const exactMatch = (teamResults || []).find((t: any) => t.name === participant.team_name);
           const fuzzyMatch = (teamResults || [])[0];
           const match = exactMatch || fuzzyMatch;
@@ -664,7 +664,7 @@ const TournamentDashboard = () => {
       } catch { }
       if (!teamId && p.team_name) {
         try {
-          const teamResults = await apiClient.get<any[]>(`/api/teams?name=${encodeURIComponent(p.team_name)}`).catch(() => []);
+          const teamResults = await apiClient.get<any[]>(`/api/teams/search?name=${encodeURIComponent(p.team_name)}`).catch(() => []);
           const match = (teamResults || [])[0];
           if (match) { teamId = match.id; logo = logo || match.logo_url || null; }
         } catch { }
