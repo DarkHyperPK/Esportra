@@ -162,7 +162,7 @@ const TournamentList = () => {
       setDeleteLoading(true);
 
       // Soft delete: set deleted_at timestamp
-      await apiClient.put(`/api/tournaments/${tournamentToDelete.id}`, { deleted_at: new Date().toISOString() });
+      await apiClient.put(`/api/tournaments/${tournamentToDelete.id}`, { deletedAt: new Date().toISOString() });
 
       toast({
         title: 'Tournament deleted',
@@ -192,7 +192,7 @@ const TournamentList = () => {
     try {
       setRestoring(tournamentId);
 
-      await apiClient.put(`/api/tournaments/${tournamentId}`, { deleted_at: null });
+      await apiClient.put(`/api/tournaments/${tournamentId}`, { clearDeletedAt: true });
 
       toast({
         title: 'Tournament restored',

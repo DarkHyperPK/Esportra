@@ -65,7 +65,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
         try {
             const code = manualCode.trim().toUpperCase();
 
-            await apiClient.post(`/api/matches/${matchId}/go-live`, { party_code: code });
+            await apiClient.post(`/api/matches/${matchId}/go-live`, { partyCode: code });
 
             setPartyCode(code);
             onPartyCodeGenerated?.(code);

@@ -451,7 +451,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     if (maxTeams > 0) {
                         console.log('[StageWizard] Updating tournament max_teams to:', maxTeams);
                         try {
-                            await apiClient.put(`/api/tournaments/${tournamentId}`, { max_teams: maxTeams });
+                            await apiClient.put(`/api/tournaments/${tournamentId}`, { maxTeams: maxTeams });
                         } catch (tournamentError: any) {
                             console.error('Error updating tournament max_teams:', tournamentError);
                             // Don't throw - stage save succeeded, this is secondary

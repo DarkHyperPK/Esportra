@@ -172,7 +172,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             }
 
             // Now delete the stage
-            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { delete_ids: [stageId] });
+            await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: [stageId] });
 
             // Fix #7: Reorder remaining stages to close gaps
             const remainingStages = stages
@@ -181,9 +181,8 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             for (let i = 0; i < remainingStages.length; i++) {
                 if (remainingStages[i].stage_order !== i + 1) {
-                    await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
-                        stage_id: remainingStages[i].id,
-                        stage_order: i + 1
+                    await apiClient.patch(`/api/stages/${remainingStages[i].id}/order`, {
+                        stageOrder: i + 1
                     });
                 }
             }
@@ -213,7 +212,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             }
 
             // Delete all stages
-            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { delete_ids: stageIds });
+            await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: stageIds });
 
             toast({ title: 'All stages deleted', description: 'All tournament stages and bracket data have been removed.' });
             setDeleteAllDialogOpen(false);
@@ -471,7 +470,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             if (isComplete) {
                 // If all matches complete (rare case with all Byes), mark as completed
                 try {
-                    await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stage_id: stageId, status: 'completed' });
+                    await apiClient.patch(`/api/stages/${stageId}/status`, { status: 'completed' });
                     toast({ title: 'Stage Completed', description: 'Stage automatically completed due to Byes.' });
                     onUpdate();
                 } catch {
@@ -480,7 +479,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             } else {
                 // Otherwise, set stage to 'live' since brackets are now generated
                 try {
-                    await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stage_id: stageId, status: 'live' });
+                    await apiClient.patch(`/api/stages/${stageId}/status`, { status: 'live' });
                 } catch (updateError) {
                     console.error('[StageManagement] Failed to update stage status to live:', updateError);
                 }

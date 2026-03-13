@@ -261,7 +261,7 @@ const AdminRoleManagement: React.FC = () => {
         }
         
         const updatedAdminRoles = [...currentAdminRoles, roleKey];
-        await apiClient.put(`/api/admin/users/${user.id}`, { is_admin: true, admin_roles: updatedAdminRoles });
+        await apiClient.put(`/api/admin/users/${user.id}`, { isAdmin: true, adminRoles: updatedAdminRoles });
       } else {
         try {
           await apiClient.post('/api/admin/user-roles', {
@@ -379,8 +379,8 @@ const AdminRoleManagement: React.FC = () => {
         }
         
         await apiClient.put(`/api/admin/users/${user.id}`, { 
-          is_admin: remainingAdminRoles && remainingAdminRoles.length > 0,
-          admin_roles: updatedAdminRoles
+          isAdmin: remainingAdminRoles && remainingAdminRoles.length > 0,
+          adminRoles: updatedAdminRoles
         });
       } else {
         let existingUserRole: any = null;

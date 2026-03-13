@@ -554,22 +554,11 @@ export const useMapVetoMachine = ({
                     const initialAction = localSequences[initialBestOf][0];
 
                     const newVeto = {
-                        match_id: matchId,
-                        tournament_id: tournamentId,
-                        stage_id: stageId,
-                        team1_id: team1Id,
-                        team2_id: team2Id,
-                        status: initialStatus,
-                        best_of: initialBestOf,
-                        current_team_id: team1Id,
-                        current_action: initialAction,
-                        current_action_number: 1,
-                        team1_banned_maps: [],
-                        team2_banned_maps: [],
-                        team1_picked_maps: [],
-                        team2_picked_maps: [],
-                        turn_started_at: new Date().toISOString(),
-                        started_at: new Date().toISOString(),
+                        tournamentId: tournamentId,
+                        team1Id: team1Id,
+                        team2Id: team2Id,
+                        bestOf: initialBestOf,
+                        game: 'valorant',
                     };
 
                     const createdVeto = await apiClient.post<any>(`/api/veto/${matchId}/init`, newVeto);

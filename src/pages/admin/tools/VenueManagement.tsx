@@ -40,7 +40,7 @@ interface Venue {
   city: string;
   description: string;
   capacity: number;
-  is_verified: boolean;
+  status: string;
   created_at: string;
   owner_id: string;
 }
@@ -77,7 +77,7 @@ const VenueManagementTool = () => {
 
   const handleVerify = async (venueId: string, verified: boolean) => {
     try {
-      await apiClient.put(`/api/admin/venues/${venueId}`, { is_verified: verified });
+      await apiClient.put(`/api/admin/venues/${venueId}`, { status: verified ? 'published' : 'pending_review' });
       toast({
         title: verified ? 'Venue Verified' : 'Venue Unverified',
         description: `Venue verification status updated`
@@ -91,7 +91,7 @@ const VenueManagementTool = () => {
   const exportCSV = () => {
     const csv = [
       ['ID', 'Name', 'City', 'Location', 'Capacity', 'Verified', 'Created At'],
-      ...filteredVenues.map(v => [v.id, v.name, v.city, v.location, v.capacity, v.is_verified, v.created_at])
+      ...filteredVenues.map(v => [v.id, v.name, v.city, v.location, v.capacity, v.status, v.created_at])
     ].map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -109,15 +109,15 @@ const VenueManagementTool = () => {
       v.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.location?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' ||
-      (statusFilter === 'verified' && v.is_verified) ||
-      (statusFilter === 'unverified' && !v.is_verified);
+      (statusFilter === 'verified' && v.status === 'published') ||
+      (statusFilter === 'unverified' && v.status !== 'published');
     return matchesSearch && matchesStatus;
   });
 
   const stats = {
     total: venues.length,
-    verified: venues.filter(v => v.is_verified).length,
-    pending: venues.filter(v => !v.is_verified).length,
+    verified: venues.filter(v => v.status === 'published').length,
+    pending: venues.filter(v => v.status !== 'published').length,
     totalCapacity: venues.reduce((sum, v) => sum + (v.capacity || 0), 0),
   };
 
@@ -286,8 +286,8 @@ const VenueManagementTool = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-zinc-400">{venue.capacity || '-'}</td>
                     <td className="px-6 py-4">
-                      <Badge className={`${venue.is_verified ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'} border text-xs`}>
-                        {venue.is_verified ? 'Verified' : 'Pending'}
+                      <Badge className={`${venue.status === 'published' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'} border text-xs`}>
+                        {venue.status === 'published' ? 'Verified' : venue.status?.replace('_', ' ') || 'Pending'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm text-zinc-500">
@@ -308,7 +308,7 @@ const VenueManagementTool = () => {
                             <Eye className="w-4 h-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
-                          {!venue.is_verified ? (
+                          {venue.status !== 'published' ? (
                             <DropdownMenuItem
                               className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10"
                               onClick={() => handleVerify(venue.id, true)}
@@ -353,7 +353,7 @@ const VenueManagementTool = () => {
                   { label: 'City', value: selectedVenue.city },
                   { label: 'Location', value: selectedVenue.location },
                   { label: 'Capacity', value: selectedVenue.capacity },
-                  { label: 'Status', value: selectedVenue.is_verified ? 'Verified' : 'Pending' },
+                  { label: 'Status', value: selectedVenue.status === 'published' ? 'Verified' : selectedVenue.status?.replace('_', ' ') || 'Pending' },
                   { label: 'Created', value: new Date(selectedVenue.created_at).toLocaleDateString() },
                 ].map((item) => (
                   <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50">
