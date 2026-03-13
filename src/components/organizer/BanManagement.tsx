@@ -92,7 +92,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
     if (!selectedBan) return;
 
     try {
-      await apiClient.put(`/api/tournaments/${tournamentId}/bans/${selectedBan.id}`, { is_active: false });
+      await apiClient.delete(`/api/tournaments/${tournamentId}/bans/${selectedBan.id}`);
 
       toast({
         title: 'Success',

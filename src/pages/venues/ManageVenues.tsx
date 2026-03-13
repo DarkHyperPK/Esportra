@@ -107,7 +107,6 @@ const ManageVenues = () => {
         try {
             await apiClient.put(`/api/venues/${venue.id}`, {
                 status: 'pending_review',
-                submitted_at: new Date().toISOString(),
             });
             toast({ title: 'Submitted for Review', description: `${venue.name} is now pending review.` });
             setVenues(prev => prev.map(v => v.id === venue.id ? { ...v, status: 'pending_review' } : v));

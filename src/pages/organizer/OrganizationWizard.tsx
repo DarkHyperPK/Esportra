@@ -138,9 +138,9 @@ const OrganizationWizard: React.FC = () => {
                     name: name.trim(),
                     slug: slug.trim(),
                     description: description.trim() || null,
-                    logo_url: logoUrl.trim() || null,
-                    banner_url: bannerUrl.trim() || null,
-                    social_links: socialLinks,
+                    logoUrl: logoUrl.trim() || null,
+                    bannerUrl: bannerUrl.trim() || null,
+                    socialLinks: socialLinks,
                 });
 
             // Notify other components that org was created

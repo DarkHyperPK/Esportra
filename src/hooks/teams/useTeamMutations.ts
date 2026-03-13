@@ -99,8 +99,8 @@ export const useTeamMutations = () => {
             // Update the Database Record
             const finalUpdateData = {
                 ...updateData,
-                ...(newLogoUrl !== currentLogoUrl ? { logo_url: newLogoUrl } : {}),
-                ...(newBannerUrl !== currentBannerUrl ? { banner_url: newBannerUrl } : {}),
+                ...(newLogoUrl !== currentLogoUrl ? { logoUrl: newLogoUrl } : {}),
+                ...(newBannerUrl !== currentBannerUrl ? { bannerUrl: newBannerUrl } : {}),
                 updated_at: new Date().toISOString(),
             };
 

@@ -183,13 +183,12 @@ const OrganizationSettings: React.FC = () => {
         setSaving(true);
         try {
             const orgData = {
-                owner_id: user?.id,
                 name: name.trim(),
                 slug: slug.trim(),
                 description: description.trim() || null,
-                logo_url: logoUrl.trim() || null,
-                banner_url: bannerUrl.trim() || null,
-                social_links: socialLinks,
+                logoUrl: logoUrl.trim() || null,
+                bannerUrl: bannerUrl.trim() || null,
+                socialLinks: socialLinks,
             };
 
             if (organization) {

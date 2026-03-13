@@ -387,61 +387,28 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                 }
             }
 
-            // 1. Handle Deletions
+            // 1. Handle Deletions via dedicated delete endpoint
             if (deletedStageIds.length > 0) {
-                await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { delete_ids: deletedStageIds });
+                await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: deletedStageIds });
             }
 
-            // 2. Handle Upserts (Update or Insert)
+            // 2. Batch sync all remaining stages via PUT (upsert)
             console.log('[StageWizard] Saving stages:', stagesConfig.map(s => ({ id: s.id, name: s.name, capacity: s.capacity })));
-            for (let i = 0; i < stagesConfig.length; i++) {
-                const stage = stagesConfig[i];
-
-                // Normalize bestOf to valid values: 1, 3, or 5
+            const stageDtos = stagesConfig.map((stage, i) => {
                 const normalizedBestOf = stage.best_of === 3 ? 3 : stage.best_of === 5 ? 5 : 1;
-
-                const stageData = {
-                    tournament_id: tournamentId,
+                return {
+                    id: stage.id || null,
                     name: stage.name,
                     format: stage.format,
-                    stage_order: i + 1,
+                    stageOrder: i + 1,
                     capacity: stage.capacity === '' ? null : Number(stage.capacity),
-                    advancement_count: stage.advancement_count === '' ? null : Number(stage.advancement_count),
-                    status: 'upcoming',
-                    best_of: normalizedBestOf
+                    advancementCount: stage.advancement_count === '' ? null : Number(stage.advancement_count),
+                    bestOf: normalizedBestOf
                 };
+            });
 
-                if (stage.id) {
-                    // Update
-                    console.log('[StageWizard] Updating stage:', {
-                        id: stage.id,
-                        name: stageData.name,
-                        capacity: stageData.capacity,
-                        capacityType: typeof stageData.capacity,
-                        advancement_count: stageData.advancement_count
-                    });
-                    const normalizedBestOf = stage.best_of === 3 ? 3 : stage.best_of === 5 ? 5 : 1;
-                    const result = await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
-                        stage_id: stage.id,
-                        name: stageData.name,
-                        format: stageData.format,
-                        stage_order: stageData.stage_order,
-                        capacity: stageData.capacity,
-                        advancement_count: stageData.advancement_count,
-                        best_of: normalizedBestOf,
-                        config: stage.settings,
-                        veto_enabled: true
-                    });
-                    console.log('[StageWizard] Update result:', result);
-                } else {
-                    // Insert
-                    await apiClient.post(`/api/tournaments/${tournamentId}/stages`, {
-                        ...stageData,
-                        config: stage.settings,
-                        status: 'upcoming'
-                    });
-                }
-            }
+            console.log('[StageWizard] Batch sync stages:', stageDtos);
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
 
             // 3. Update tournament max_teams from first stage capacity
             if (stagesConfig.length > 0) {
