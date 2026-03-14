@@ -20,13 +20,26 @@ import esportsGames from '@/data/esportsGames.json';
 import slugify from 'slugify';
 
 const STORAGE_KEY = 'tournament_wizard_draft';
+const STEP_KEY = 'tournament_wizard_step';
 
 export const useTournamentWizard = (initialData?: TournamentWizardData, tournamentId?: string) => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
 
-    const [currentStep, setCurrentStep] = useState(1);
+    const [currentStep, setCurrentStepRaw] = useState(() => {
+        if (typeof window !== 'undefined' && !tournamentId) {
+            const saved = parseInt(localStorage.getItem(STEP_KEY) || '1', 10);
+            return saved >= 1 && saved <= 7 ? saved : 1;
+        }
+        return 1;
+    });
+    const setCurrentStep = useCallback((step: number) => {
+        setCurrentStepRaw(step);
+        if (typeof window !== 'undefined' && !tournamentId) {
+            localStorage.setItem(STEP_KEY, String(step));
+        }
+    }, [tournamentId]);
     const [data, setData] = useState<TournamentWizardData>(() => {
         if (initialData) return initialData;
         if (typeof window !== 'undefined') {
@@ -91,8 +104,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
 
     const clearDraft = useCallback(() => {
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STEP_KEY);
         setData(DEFAULT_WIZARD_DATA);
-        setCurrentStep(1);
+        setCurrentStepRaw(1);
         setErrors({});
     }, []);
 

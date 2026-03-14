@@ -107,7 +107,7 @@ Fully doable with existing key. Mirrors the Riot/Valorant auto-scan flow:
 ### B. CS2 Player Stats on Team Cards (Faceit Data API)
 Fully doable with existing key:
 - `GET /players/{faceit_id}/stats/cs2` returns lifetime KD, Win Rate %, HS%
-- Cache in new `cs2_player_stats` table (mirror of `valorant_player_stats`)
+- Cache in `leaderboard` table with `game = 'cs2'` filter (multi-game leaderboard)
 - Show on `PlayerCard` for CS2 rosters alongside existing Valorant stats
 
 **Files to build:**
