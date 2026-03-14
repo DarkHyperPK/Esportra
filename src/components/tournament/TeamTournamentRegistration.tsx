@@ -170,9 +170,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
             is_verified: accountMap.has(captainId),
             riot_tag_fallback: typeof accountMap.get(captainId) === 'string' ? accountMap.get(captainId) : null
           },
-          ...(members || []).map((m: any) => ({
+          ...(members || []).filter((m: any) => m.user_id !== captainId).map((m: any) => ({
             ...m,
-            profile: m.profiles,
+            profile: m.profiles || { username: m.username, full_name: m.full_name, avatar_url: m.avatar_url },
             is_verified: accountMap.has(m.user_id),
             riot_tag_fallback: typeof accountMap.get(m.user_id) === 'string' ? accountMap.get(m.user_id) : null
           }))
