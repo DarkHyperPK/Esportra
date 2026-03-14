@@ -30,9 +30,11 @@ const EditTournament = () => {
       if (!response?.tournament) throw new Error('Tournament not found');
 
       const tournamentData = response.tournament;
+      // Parse jsonb settings from Dapper (returned as string)
       if (typeof tournamentData.settings === 'string') {
         try { tournamentData.settings = JSON.parse(tournamentData.settings); } catch { /* keep as-is */ }
       }
+      console.log('[EditTournament] Parsed settings:', tournamentData.settings);
       setTournamentId(tournamentData.id);
 
       // 2. Stages from wrapped response, or fetch separately as fallback
@@ -115,9 +117,10 @@ const EditTournament = () => {
         waitlistMax: 10, // Default
 
         // Game-specific settings
-        assistedMatchReporting: (tournamentData.settings as any)?.assistedMatchReporting ?? false,
+        assistedMatchReporting: !!(tournamentData.settings as any)?.assistedMatchReporting,
       };
 
+      console.log('[EditTournament] Mapped assistedMatchReporting:', mappedData.assistedMatchReporting);
       setWizardData(mappedData);
 
     } catch (error: any) {
