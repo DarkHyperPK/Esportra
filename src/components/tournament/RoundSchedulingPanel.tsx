@@ -570,8 +570,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                 {roundMatches.map((match) => {
                                                     const matchId = match.id;
                                                     const matchNum = match.match_number;
-                                                    const team1 = (match as any).team1?.name || 'TBD';
-                                                    const team2 = (match as any).team2?.name || 'TBD';
+                                                    const team1 = (match as any).team1_name || (match as any).team1?.name || 'TBD';
+                                                    const team2 = (match as any).team2_name || (match as any).team2?.name || 'TBD';
                                                     const editedTime = matchEdits.get(matchId);
                                                     // The editedTime in state is stored in UTC, so we must convert it back to local for the input display
                                                     const displayTime = editedTime
