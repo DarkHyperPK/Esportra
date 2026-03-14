@@ -216,7 +216,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     try {
       // Get teams user owns
       const ownedTeams = await apiClient.get<TeamRow[]>(
-        `/api/teams?owner=${user.id}`
+        `/api/teams?owner_id=${user.id}`
       );
 
       // Get teams where user is captain (role = 'captain')
