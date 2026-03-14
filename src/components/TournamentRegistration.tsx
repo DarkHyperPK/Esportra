@@ -52,9 +52,9 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           `/api/tournaments/${tournamentId}/ban-status`
         );
 
-        if (data) {
+        if (data && (data as any).isBanned) {
           setBanned(true);
-          setBanReason(data.ban_reason || null);
+          setBanReason((data as any).ban?.ban_reason || null);
         } else {
           setBanned(false);
           setBanReason(null);
