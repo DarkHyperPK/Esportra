@@ -408,12 +408,17 @@ export const useMapVetoMachine = ({
 
     const [dbBestOf, setDbBestOf] = useState<number | null>(null);
     const isInitialLoadRef = useRef(true);
+    const lastAutoInitTimeRef = useRef(0); // B4: cooldown to prevent auto-init loops
 
     // Auto-initialize veto if stuck in pending with best_of set but no current_team_id
     // ALSO: Auto-update best_of if it changes in the tournament settings
     useEffect(() => {
         const autoInitializeOrUpdateVeto = async () => {
             if (!veto) return;
+
+            // B4: Cooldown — skip if last auto-init was within 5 seconds
+            const now = Date.now();
+            if (now - lastAutoInitTimeRef.current < 5000) return;
 
             // CRITICAL: Never auto-reset a completed veto
             if (veto.status === 'completed') {
@@ -425,6 +430,7 @@ export const useMapVetoMachine = ({
                 // Case 1: Stuck in pending
                 if (veto.status === 'pending' && !veto.current_team_id) {
                     console.log('[MapVeto] Auto-initializing stuck veto...');
+                    lastAutoInitTimeRef.current = Date.now(); // B4: mark cooldown
                     // Use DB best_of if available, then veto's existing, then prop
                     const effectiveBestOf = getBestOf(dbBestOf || veto.best_of || bestOf);
                     const firstAction = localSequences[effectiveBestOf][0];
@@ -459,6 +465,7 @@ export const useMapVetoMachine = ({
 
                     if (veto.best_of !== targetBestOf && lastResetBestOfRef.current !== targetBestOf) {
                         console.log(`[MapVeto] Best Of mismatch detected. Target: ${targetBestOf}, Veto best_of: ${veto.best_of}. Resetting veto...`);
+                        lastAutoInitTimeRef.current = Date.now(); // B4: mark cooldown
                         lastResetBestOfRef.current = targetBestOf;
                         const firstAction = localSequences[targetBestOf][0];
 

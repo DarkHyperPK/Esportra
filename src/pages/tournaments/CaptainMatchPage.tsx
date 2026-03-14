@@ -553,9 +553,10 @@ const CaptainMatchPage = () => {
     });
 
     // Veto state updates → determineMap + invalidate veto queries
+    // B1 fix: disable when MapVeto dialog is open (it has its own SignalR connection)
     useVetoRealtime({
         matchId: rawMatchId,
-        enabled: !!rawMatchId,
+        enabled: !!rawMatchId && !mapVetoOpen,
         onStateUpdate: () => {
             determineMap();
             queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
