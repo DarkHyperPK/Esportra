@@ -145,6 +145,10 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         handleResetVeto={handleResetVeto}
         resetting={resetting}
         vetoId={veto.id}
+        team1LinkToken={veto.team1_link_token}
+        team2LinkToken={veto.team2_link_token}
+        team1Name={team1Name}
+        team2Name={team2Name}
       />
 
       <VetoTeamDisplay

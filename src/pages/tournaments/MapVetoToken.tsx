@@ -21,7 +21,6 @@ const MapVetoToken: React.FC = () => {
       }
 
       try {
-        // Fetch veto data by token via API
         const data = await apiClient.get<any>(`/api/veto/token/${token}`);
 
         if (!data) {
@@ -30,30 +29,13 @@ const MapVetoToken: React.FC = () => {
           return;
         }
 
-        // Check if match is live - block veto access until match is in_progress
         const matchData = data.match as any;
-        if (matchData?.status !== 'in_progress') {
-          setError('Match not live yet. Please wait for the organizer to set the match live before starting map veto.');
-          setLoading(false);
-          return;
-        }
 
         // Determine which team this token belongs to
         const isTeam1 = data.team1_link_token === token;
         const teamId = isTeam1 ? data.team1_id : data.team2_id;
 
-        // Fetch stage config to get the correct bestOf
-        let effectiveBestOf = 1;
-        if (matchData?.best_of) {
-          effectiveBestOf = matchData.best_of;
-        } else if (veto.best_of) {
-          effectiveBestOf = veto.best_of;
-        }
-
-        // Robustly check for stage_id and fetch config
-        const stageId = veto.stage_id; // Use stage_id from veto directly if needed, or remove if unused
-        console.log('[MapVetoToken] matchData keys:', matchData ? Object.keys(matchData) : 'null');
-        console.log('[MapVetoToken] stageId from veto:', stageId);
+        const effectiveBestOf = matchData?.best_of || data.best_of || 1;
 
         setVetoData({
           veto: data,
@@ -61,7 +43,6 @@ const MapVetoToken: React.FC = () => {
           tournament: data.tournament,
           teamId,
           isTeam1,
-          stageConfig: null,
         });
       } catch (err: any) {
         console.error('Error fetching veto:', err);
