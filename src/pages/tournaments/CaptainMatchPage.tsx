@@ -947,10 +947,11 @@ const CaptainMatchPage = () => {
                                             </div>
                                         )}
 
-                                        {/* Valorant Auto-Report */}
+                                        {/* Valorant Auto-Report — only when assisted reporting is enabled */}
                                         {(() => {
                                             const isValorant = tournament?.game?.toLowerCase() === 'valorant';
-                                            if (!isValorant) return null;
+                                            const assistedEnabled = tournament?.settings?.assistedMatchReporting === true;
+                                            if (!isValorant || !assistedEnabled) return null;
                                             const bestOf = activeMatch.bestOf || 1;
                                             const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
                                             const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;

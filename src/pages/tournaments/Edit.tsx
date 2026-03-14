@@ -110,6 +110,9 @@ const EditTournament = () => {
         autoRemoveUnchecked: tournamentData.auto_remove_unchecked ?? false,
         waitlistEnabled: false, // Default
         waitlistMax: 10, // Default
+
+        // Game-specific settings
+        assistedMatchReporting: (tournamentData.settings as any)?.assistedMatchReporting ?? false,
       };
 
       setWizardData(mappedData);

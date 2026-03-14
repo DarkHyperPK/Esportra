@@ -44,6 +44,7 @@ import {
   Trophy,
   Unlock,
   Users,
+  Zap,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -314,6 +315,7 @@ const TournamentDashboard = () => {
   );
 
   const [removingUnchecked, setRemovingUnchecked] = useState(false);
+  const [savingAssistedReporting, setSavingAssistedReporting] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [cascadeWarnings, setCascadeWarnings] = useState<Array<{ entity: string; count: number; description?: string }>>([]);
   const [hasStaffAccess, setHasStaffAccess] = useState(false);
@@ -604,6 +606,35 @@ const TournamentDashboard = () => {
       });
     } finally {
       setRemovingUnchecked(false);
+    }
+  };
+
+  const handleToggleAssistedReporting = async (enabled: boolean) => {
+    if (!tournament?.id) return;
+    setSavingAssistedReporting(true);
+    try {
+      const currentSettings = typeof tournament.settings === 'object' && tournament.settings
+        ? tournament.settings
+        : {};
+      await apiClient.put(`/api/tournaments/${tournament.id}`, {
+        settings: { ...currentSettings, assistedMatchReporting: enabled },
+      });
+      toast({
+        title: enabled ? 'Assisted Reporting Enabled' : 'Assisted Reporting Disabled',
+        description: enabled
+          ? 'Players will need linked Riot accounts. Match results can be auto-detected.'
+          : 'Assisted match reporting has been turned off.',
+      });
+      refetchDashboard();
+    } catch (error: any) {
+      console.error('Error toggling assisted reporting:', error);
+      toast({
+        title: 'Failed to update setting',
+        description: error.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingAssistedReporting(false);
     }
   };
 
@@ -1738,6 +1769,7 @@ const TournamentDashboard = () => {
                     {!isOrganizer ? (
                       <PermissionNotice message="Tournament settings are available only to the organizer." />
                     ) : (
+                      <>
                       <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                         <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                           <CardTitle className="text-lg font-semibold text-white">Check-In Requirements</CardTitle>
@@ -1772,6 +1804,47 @@ const TournamentDashboard = () => {
                           </div>
                         </CardContent>
                       </Card>
+
+                      {/* Assisted Match Reporting — Valorant only */}
+                      {tournament?.game?.toLowerCase() === 'valorant' && (
+                        <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                          <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
+                            <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                              <Zap className="w-5 h-5 text-amber-400" />
+                              Assisted Match Reporting
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-0 space-y-4">
+                            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                              <Switch
+                                checked={tournament?.settings?.assistedMatchReporting === true}
+                                onCheckedChange={handleToggleAssistedReporting}
+                                disabled={savingAssistedReporting}
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-white text-sm">
+                                  {savingAssistedReporting ? 'Saving...' : 'Enable Assisted Match Reporting'}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  Automatically detects match results from Riot's API. Captains can scan their recent Valorant matches to report scores instantly.
+                                </p>
+                              </div>
+                            </div>
+                            {tournament?.settings?.assistedMatchReporting && (
+                              <div className="flex items-start gap-2 text-sm text-gray-300 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                                <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="font-medium text-amber-300 mb-1">Riot Account Required</p>
+                                  <p className="text-gray-400 text-xs">
+                                    All participating players must link their Riot account for auto-detection to work. Players without linked accounts will be prompted during registration.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+                      </>
                     )}
                   </TabTransition>
                 </TabsContent>

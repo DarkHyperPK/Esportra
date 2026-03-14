@@ -53,6 +53,9 @@ export interface TournamentWizardData {
     autoRemoveUnchecked: boolean;
     waitlistEnabled: boolean;
     waitlistMax: number;
+
+    // Game-specific settings
+    assistedMatchReporting: boolean;
 }
 
 export interface WizardStepProps {
@@ -121,4 +124,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     autoRemoveUnchecked: true,
     waitlistEnabled: false,
     waitlistMax: 10,
+
+    // Game-specific
+    assistedMatchReporting: false,
 };

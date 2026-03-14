@@ -162,6 +162,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     checkInDeadline:      startDateTime.toISOString(),
                     rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
+                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false },
                 });
 
                 // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
@@ -219,6 +220,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     autoRemoveUnchecked:  data.autoRemoveUnchecked,
                     rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
+                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false },
                     // Backend handles stages + map pool in one transaction
                     stages: data.stages.map((s, i) => ({
                         name:             s.name,
