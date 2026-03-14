@@ -212,7 +212,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       if (user.email) {
         const { sendEmail } = await import('@/hooks/useEmail');
         sendEmail({
-          type: 'TOURNAMENT_REGISTRATION',
+          type: 'TournamentRegistration',
           email: user.email,
           data: {
             tournamentName: tournament.name,

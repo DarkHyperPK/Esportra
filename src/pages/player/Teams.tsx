@@ -808,7 +808,7 @@ const TeamsPage = () => {
       // Send emails for each invitee
       for (const prof of selectedInvitees) {
         sendEmail({
-          type: 'TEAM_INVITE',
+          type: 'TeamInvite',
           email: prof.email,
           data: {
             teamName: currentTeam.name,
@@ -983,7 +983,7 @@ const TeamsPage = () => {
 
       // Dispatch Email
       await sendEmail({
-        type: 'TEAM_INVITE',
+        type: 'TeamInvite',
         email: email,
         data: {
           teamName: currentTeam.name,

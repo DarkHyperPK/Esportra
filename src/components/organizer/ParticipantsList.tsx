@@ -234,7 +234,7 @@ const ParticipantsList = () => {
 
     try {
       const { success, error } = await sendEmail({
-        type: 'CHECKIN_REMINDER',
+        type: 'CheckinReminder',
         email: participant.email,
         data: {
           tournamentName: participant.tournament,

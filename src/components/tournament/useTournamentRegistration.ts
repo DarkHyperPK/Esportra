@@ -170,7 +170,7 @@ export const useTournamentRegistration = ({
       // Send confirmation email (fire-and-forget, don't block registration)
       if (user.email) {
         sendEmail({
-          type: 'TOURNAMENT_REGISTRATION',
+          type: 'TournamentRegistration',
           email: user.email,
           data: {
             tournamentName,

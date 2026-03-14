@@ -5,12 +5,12 @@ import { apiClient, ApiError } from '@/lib/apiClient';
  * Each type maps to a custom HTML template on the server.
  */
 export type EmailType =
-    | 'TOURNAMENT_REGISTRATION'
-    | 'CHECKIN_REMINDER'
-    | 'MATCH_CHECKIN_REMINDER'
-    | 'WELCOME'
-    | 'TEAM_INVITE'
-    | 'STAFF_INVITE';
+    | 'TournamentRegistration'
+    | 'CheckinReminder'
+    | 'MatchCheckinReminder'
+    | 'Welcome'
+    | 'TeamInvite'
+    | 'StaffInvite';
 
 interface SendEmailParams {
     type: EmailType;
@@ -23,7 +23,7 @@ interface SendEmailParams {
  *
  * @example
  * await sendEmail({
- *   type: 'TOURNAMENT_REGISTRATION',
+ *   type: 'TournamentRegistration',
  *   email: user.email,
  *   data: { tournamentName: 'Valorant Cup', gamertag: 'Player1' }
  * });
