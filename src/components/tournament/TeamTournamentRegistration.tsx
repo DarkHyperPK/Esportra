@@ -200,7 +200,13 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       } catch { /* no existing registration */ }
       if (data) {
         // Already registered; simply notify parent so the dialog can close
-        onRegistrationComplete?.();
+        const registrations = Array.isArray(data) ? data : [data];
+        const isRegisteredForThis = registrations.some(
+          (r: any) => r.tournament_id === tournament.id
+        );
+        if (isRegisteredForThis) {
+          onRegistrationComplete?.();
+        }
       }
     } catch { }
   };
