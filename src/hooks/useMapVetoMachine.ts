@@ -507,30 +507,19 @@ export const useMapVetoMachine = ({
 
             // 2. Fetch the stage's best_of as the ultimate source of truth
             let stageBestOf = bestOf;
-            let stageId: string | null = null;
 
             if (matchId) {
                 try {
-                    // Query brkt_matches (graph engine) to get stage_id via version
-                    const brktMatch = await apiClient.get<{ version_id: string }>(`/api/brackets/matches/${matchId}`);
+                    const brktMatch = await apiClient.get<any>(`/api/brackets/matches/${matchId}`);
 
-                    if (brktMatch?.version_id) {
-                        // Get stage_id from the bracket version
-                        const versionData = await apiClient.get<{ stage_id: string }>(`/api/brackets/versions/${brktMatch.version_id}`);
-
-                        if (versionData?.stage_id) {
-                            stageId = versionData.stage_id;
-                            const stageData = await apiClient.get<{ best_of: number }>(`/api/stages/${stageId}`);
-
-                            if (stageData?.best_of) {
-                                stageBestOf = stageData.best_of;
-                                setDbBestOf(stageBestOf);
-                                console.log('[MapVeto] Synced best_of from stage DB:', stageBestOf);
-                            }
-                        }
+                    if (brktMatch?.stage_best_of) {
+                        stageBestOf = brktMatch.stage_best_of;
+                        setDbBestOf(stageBestOf);
+                        console.log('[MapVeto] Synced best_of from stage DB:', stageBestOf);
                     }
                 } catch {
                     // Failed to fetch stage data, use prop best_of
+                    console.warn('[MapVeto] Failed to fetch match/stage best_of, using prop:', bestOf);
                 }
             }
 
