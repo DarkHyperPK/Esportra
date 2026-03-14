@@ -818,8 +818,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                                   <div className="text-xs text-red-300 flex items-center gap-2">
                                     <AlertCircle className="w-3 h-3" />
                                     <span>
-                                      {selectedRoster?.game !== tournament.game && `Game mismatch: ${selectedRoster?.game} ≠ ${tournament.game}`}
-                                      {selectedRoster?.game === tournament.game && Number(selectedRoster?.team_size) < coreMembers &&
+                                      {selectedRoster?.game?.toLowerCase() !== tournament.game?.toLowerCase() && `Game mismatch: ${selectedRoster?.game} ≠ ${tournament.game}`}
+                                      {selectedRoster?.game?.toLowerCase() === tournament.game?.toLowerCase() && Number(selectedRoster?.team_size) < coreMembers &&
                                         `Team size ${selectedRoster?.team_size} is too small (needs ${coreMembers}+)`}
                                     </span>
                                   </div>
