@@ -148,9 +148,12 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
         // Fetch riot accounts for verification status AND IDs
         const allUserIds = [captainId, ...(members || []).map((m: any) => m.user_id)].filter(Boolean);
-        const verifiedAccounts = await apiClient.get<any[]>(
-          `/api/profiles/riot-accounts?userIds=${allUserIds.join(',')}`
-        );
+        let verifiedAccounts: any[] = [];
+        try {
+          verifiedAccounts = await apiClient.get<any[]>(
+            `/api/profiles/riot-accounts?userIds=${allUserIds.join(',')}`
+          ) || [];
+        } catch { /* riot accounts optional */ }
 
         const accountMap = new Map();
         verifiedAccounts?.forEach(a => {
