@@ -27,7 +27,7 @@ export class StandingsService {
             // The backend resolves stageId from brkt_versions, so we pass stageId as versionId
             // and let the endpoint handle it. If needed, we can look up the version first.
             // For now, use a dedicated standings-by-stage endpoint pattern:
-            const url = `/api/brackets/${stageId}/standings${params.toString() ? `?${params}` : ''}`;
+            const url = `/api/stages/${stageId}/standings${params.toString() ? `?${params}` : ''}`;
             return await apiClient.get(url);
         } catch (e) {
             console.error('[StandingsService] Error fetching standings:', e);
