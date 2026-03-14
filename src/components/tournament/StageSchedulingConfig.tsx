@@ -217,7 +217,7 @@ const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, 
                 )}
 
                 {/* Self-Play Mode Info */}
-                {schedulingConfig.self_play_enabled && (
+                {isSelfPlayEnabled && (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -249,7 +249,7 @@ const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, 
                 )}
 
                 {/* Organizer-Controlled Info */}
-                {!schedulingConfig.self_play_enabled && (
+                {!isSelfPlayEnabled && (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
