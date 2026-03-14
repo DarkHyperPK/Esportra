@@ -91,7 +91,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     endDate: '',
     endTime: '',
     venue: '',
-    status: 'draft',
+    status: 'open',
 
     // Step 2
     bracketType: 'single_elimination',

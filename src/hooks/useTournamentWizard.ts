@@ -202,6 +202,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     description:          data.description,
                     slug,
                     game:                 data.game,
+                    status:               data.status || 'open',
                     maxTeams:             data.maxTeams,
                     teamSize:             data.teamSize,
                     entryFee:             toMoney(data.entryFee),
