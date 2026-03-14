@@ -17,6 +17,7 @@ import type { BracketMatch } from '@/types/bracketTypes';
 interface PublicBracketViewProps {
     versionId: string | null; // Allow null to show sidebar even if no bracket
     tournamentId: string;
+    isOrganizer?: boolean;
 
     // Stage Props
     stages?: any[];
@@ -29,6 +30,7 @@ interface PublicBracketViewProps {
 export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     versionId,
     tournamentId,
+    isOrganizer = false,
     stages,
     selectedStageId,
     onStageSelect,
@@ -181,7 +183,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                         stageId={selectedStageId || ''}
                         versionId={versionId || ''}
                         matches={matches}
-                        isOrganizer={false}
+                        isOrganizer={isOrganizer}
                         tournamentId={tournamentId}
                         stage={currentStage}
                         activeFilter={activeFilter}
@@ -223,7 +225,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                         stageId={selectedStageId || ''}
                         versionId={versionId || ''}
                         matches={matches}
-                        isOrganizer={false}
+                        isOrganizer={isOrganizer}
                         advancementCount={perGroupAdvancement}
                         onMatchClick={(m) => {
                             setResultsDialogMatch(m);
