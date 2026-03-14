@@ -396,6 +396,16 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             console.log('[StageWizard] Saving stages:', stagesConfig.map(s => ({ id: s.id, name: s.name, capacity: s.capacity })));
             const stageDtos = stagesConfig.map((stage, i) => {
                 const normalizedBestOf = stage.best_of === 3 ? 3 : stage.best_of === 5 ? 5 : 1;
+                // Build config from settings for format-specific parameters
+                const config = stage.settings ? {
+                    ...(stage.settings.swiss_groups != null && { swiss_groups: stage.settings.swiss_groups }),
+                    ...(stage.settings.swiss_rounds != null && { swiss_rounds: stage.settings.swiss_rounds }),
+                    ...(stage.settings.group_count != null && { group_count: stage.settings.group_count }),
+                    ...(stage.settings.points_per_win != null && { points_per_win: stage.settings.points_per_win }),
+                    ...(stage.settings.points_per_draw != null && { points_per_draw: stage.settings.points_per_draw }),
+                    ...(stage.settings.points_per_loss != null && { points_per_loss: stage.settings.points_per_loss }),
+                } : undefined;
+                const hasConfig = config && Object.keys(config).length > 0;
                 return {
                     id: stage.id || null,
                     name: stage.name,
@@ -403,7 +413,8 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     stageOrder: i + 1,
                     capacity: stage.capacity === '' ? null : Number(stage.capacity),
                     advancementCount: stage.advancement_count === '' ? null : Number(stage.advancement_count),
-                    bestOf: normalizedBestOf
+                    bestOf: normalizedBestOf,
+                    ...(hasConfig && { config }),
                 };
             });
 
