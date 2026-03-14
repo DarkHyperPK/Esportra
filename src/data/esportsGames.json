@@ -11,7 +11,7 @@
         }
       ],
       "defaultFormat": "5v5",
-      "logo": "/games/valorant-logo.svg"
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Valorant_logo_-_pink_color_version.svg"
     },
     {
       "name": "Counter-Strike 2",
@@ -24,7 +24,7 @@
         }
       ],
       "defaultFormat": "5v5",
-      "logo": "/games/cs2-logo.svg"
+      "logo": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Counter-Strike_2_Logo.svg"
     }
   ]
 }
