@@ -100,8 +100,8 @@ const EditTournament = () => {
         rewards: tournamentData.rewards || '',
 
         // Step 4: Registration
-        registrationOpens: regOpensDate.toISOString().split('T')[0],
-        registrationCloses: regDeadline.toISOString().split('T')[0],
+        registrationOpens: regOpensDate.toISOString().slice(0, 16),
+        registrationCloses: regDeadline.toISOString().slice(0, 16),
         checkInRequired: tournamentData.check_in_required ?? false,
         checkInWindowMinutes: (tournamentData.settings as any)?.checkInWindowMinutes ||
           (checkInDeadline

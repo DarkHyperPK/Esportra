@@ -786,6 +786,7 @@ const TournamentDetails = () => {
             tournamentId={tournament.id}
             tournamentName={tournament.name}
             game={tournament.game}
+            settings={tournament.settings}
             onRegisterSuccess={handleRegistrationSuccess}
             onCancel={() => setShowEditDialog(false)}
             initialData={registrationDetails}

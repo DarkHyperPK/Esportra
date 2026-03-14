@@ -14,6 +14,7 @@ interface TournamentRegistrationProps {
   game?: string;
   teamSize?: number;
   structure?: string;
+  settings?: any;
   onSuccess?: (registration: RegistrationDetails | null) => void;
   isEdit?: boolean;
   initialData?: RegistrationDetails | null;
@@ -27,6 +28,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   game = '',
   teamSize = 1,
   structure = 'solo',
+  settings,
   onSuccess,
   isEdit = false,
   initialData,
@@ -107,7 +109,8 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           entry_fee: undefined,
           prize_pool: undefined,
           max_teams: 100,
-          team_size: teamSize, // Pass team_size to registration component
+          team_size: teamSize,
+          settings,
         }}
         onRegistrationComplete={onRegisterSuccess}
         onCancel={onCancel || onRegisterSuccess} // Close dialog on cancel

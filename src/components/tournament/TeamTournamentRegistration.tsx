@@ -39,6 +39,7 @@ interface TeamTournamentRegistrationProps {
     team_size?: number;
     registration_deadline?: string;
     description?: string;
+    settings?: any;
   };
 
   onRegistrationComplete?: () => void;
@@ -414,9 +415,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         throw new Error(`Your team needs at least ${coreMembers} ACTIVE (Starter) players to register. You currently have ${activeCount} active players. Please update player statuses in Team Management.`);
       }
 
-      // ── VALORANT SPECIFIC VALIDATION ──
+      // ── VALORANT SPECIFIC VALIDATION (only when assisted match reporting is enabled) ──
       const isValorant = tournament?.game?.toLowerCase() === 'valorant';
-      if (isValorant) {
+      if (isValorant && tournament?.settings?.assistedMatchReporting) {
         // Only check if the captain (user) is verified
         const captainData = rosterMembersData.find(m => m.is_captain);
         if (captainData && !captainData.is_verified) {
@@ -766,7 +767,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                                               {m.is_captain && <Badge className="bg-[#1a1a1a] text-blue-400 border-blue-500/20 text-[8px] h-3.5 px-1 uppercase">Cap</Badge>}
                                               {!m.is_starter && <Badge variant="outline" className="text-gray-500 border-gray-800 text-[8px] h-3.5 px-1 uppercase">Sub</Badge>}
                                             </span>
-                                            {tournament?.game?.toLowerCase() === 'valorant' && (
+                                            {tournament?.game?.toLowerCase() === 'valorant' && tournament?.settings?.assistedMatchReporting && (
                                               <span className="text-[10px] text-gray-500">
                                                 {m.profile?.riot_tag || m.riot_tag_fallback || 'No Riot ID'}
                                               </span>
@@ -774,7 +775,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                                           </div>
                                         </div>
 
-                                        {tournament?.game?.toLowerCase() === 'valorant' && (
+                                        {tournament?.game?.toLowerCase() === 'valorant' && tournament?.settings?.assistedMatchReporting && (
                                           <div className="flex items-center">
                                             {m.is_verified ? (
                                               <TooltipProvider delayDuration={0}>
