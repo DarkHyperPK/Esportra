@@ -8,7 +8,7 @@ import { apiClient } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Maximize2, Layers, Settings } from 'lucide-react';
+import { Maximize2, Layers } from 'lucide-react';
 import { PublicBracketView } from './brackets/PublicBracketView';
 import { useBracketRealtime } from '@/hooks/useBracketRealtime';
 
@@ -145,17 +145,6 @@ const TournamentBrackets = () => {
                   </span>
                 )}
               </h2>
-              {isOrganizerOwner && selectedStageId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/organizer/tournament/${slug}/manage-bracket/${selectedStageId}`)}
-                  className="bg-rose-500/10 border-rose-500/30 hover:bg-rose-500/20 text-rose-400"
-                >
-                  <Settings className="w-4 h-4 mr-2" />
-                  Manage Bracket
-                </Button>
-              )}
             </div>
 
             {/* 
@@ -166,7 +155,6 @@ const TournamentBrackets = () => {
               <PublicBracketView
                 versionId={activeVersionId}
                 tournamentId={tournament.id}
-                isOrganizer={isOrganizerOwner}
                 stages={stages}
                 selectedStageId={selectedStageId}
                 onStageSelect={setSelectedStageId}
