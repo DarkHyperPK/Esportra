@@ -456,17 +456,18 @@ export const useMapVetoMachine = ({
                     return;
                 }
 
-                // Case 2: Best Of Mismatch — reset + re-init
-                const targetBestOf = getBestOf(dbBestOf || bestOf);
+                // Case 2: Best Of Mismatch — only when we have authoritative data from the DB
+                // Do NOT use the bestOf prop alone — it may be a default value (1)
+                if (dbBestOf && dbBestOf > 0) {
+                    const targetBestOf = getBestOf(dbBestOf);
 
-                if (targetBestOf) {
                     if (isInitialLoadRef.current) {
                         console.log('[MapVeto] Initial load, skipping mismatch check');
                         isInitialLoadRef.current = false;
                         return;
                     }
 
-                    if (veto.best_of !== targetBestOf && lastResetBestOfRef.current !== targetBestOf) {
+                    if (targetBestOf && veto.best_of !== targetBestOf && lastResetBestOfRef.current !== targetBestOf) {
                         console.log(`[MapVeto] Best Of mismatch detected. Target: ${targetBestOf}, Veto best_of: ${veto.best_of}. Resetting veto...`);
                         lastAutoInitTimeRef.current = Date.now();
                         lastResetBestOfRef.current = targetBestOf;
@@ -484,6 +485,9 @@ export const useMapVetoMachine = ({
                         const fresh = await apiClient.get<any>(`/api/veto/${matchId}`).catch(() => null);
                         if (fresh) setVeto(fresh as MatchMapVeto);
                     }
+                } else {
+                    // No authoritative best_of yet — just clear the initial load flag
+                    isInitialLoadRef.current = false;
                 }
             } catch (error) {
                 console.error('[MapVeto] Error in auto-init:', error);
