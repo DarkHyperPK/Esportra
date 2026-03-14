@@ -524,14 +524,7 @@ export const useMapVetoMachine = ({
             }
 
             if (vetoData) {
-                // Cast Json to PickedMap[]
-                const typedData = {
-                    ...vetoData,
-                    team1_banned_maps: Array.isArray(vetoData.team1_banned_maps) ? vetoData.team1_banned_maps : [],
-                    team2_banned_maps: Array.isArray(vetoData.team2_banned_maps) ? vetoData.team2_banned_maps : [],
-                    team1_picked_maps: Array.isArray(vetoData.team1_picked_maps) ? vetoData.team1_picked_maps : [],
-                    team2_picked_maps: Array.isArray(vetoData.team2_picked_maps) ? vetoData.team2_picked_maps : [],
-                } as MatchMapVeto;
+                const typedData = mapApiVetoToLocal(vetoData);
 
                 // If the veto exists but its best_of doesn't match the stage, 
                 // the autoInitializeOrUpdateVeto effect will handle the reset/update
@@ -563,20 +556,12 @@ export const useMapVetoMachine = ({
                         const createdVeto = await apiClient.post<any>(`/api/veto/${matchId}/init`, newVeto);
 
                         if (createdVeto) {
-                            const typedVeto = {
-                                ...createdVeto,
-                                team1_banned_maps: Array.isArray(createdVeto.team1_banned_maps) ? createdVeto.team1_banned_maps : [],
-                                team2_banned_maps: Array.isArray(createdVeto.team2_banned_maps) ? createdVeto.team2_banned_maps : [],
-                                team1_picked_maps: Array.isArray(createdVeto.team1_picked_maps) ? createdVeto.team1_picked_maps : [],
-                                team2_picked_maps: Array.isArray(createdVeto.team2_picked_maps) ? createdVeto.team2_picked_maps : [],
-                            } as MatchMapVeto;
-                            setVeto(typedVeto);
+                            setVeto(mapApiVetoToLocal(createdVeto));
                         }
                     } catch (initErr) {
                         console.error('[MapVeto] Init failed:', initErr);
-                        // Fallback: try fetching again (init endpoint is idempotent, may have been created by race)
                         const retryVeto = await apiClient.get<any>(`/api/veto/${matchId}`).catch(() => null);
-                        if (retryVeto) setVeto(retryVeto as MatchMapVeto);
+                        if (retryVeto) setVeto(mapApiVetoToLocal(retryVeto));
                     } finally {
                         initInProgressRef.current = false;
                     }
@@ -871,13 +856,7 @@ export const useMapVetoMachine = ({
 
             // --- RE-VALIDATION AGAINST DB STATE ---
             // Re-construct state and context from DB data to prevent race conditions
-            const dbVeto = {
-                ...latestVeto,
-                team1_banned_maps: Array.isArray(latestVeto.team1_banned_maps) ? latestVeto.team1_banned_maps : [],
-                team2_banned_maps: Array.isArray(latestVeto.team2_banned_maps) ? latestVeto.team2_banned_maps : [],
-                team1_picked_maps: Array.isArray(latestVeto.team1_picked_maps) ? latestVeto.team1_picked_maps : [],
-                team2_picked_maps: Array.isArray(latestVeto.team2_picked_maps) ? latestVeto.team2_picked_maps : [],
-            } as MatchMapVeto;
+            const dbVeto = mapApiVetoToLocal(latestVeto);
 
             const dbState = deriveState(dbVeto);
             const dbContext: TurnContext = {
