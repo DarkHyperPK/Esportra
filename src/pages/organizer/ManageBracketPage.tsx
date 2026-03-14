@@ -108,9 +108,13 @@ const ManageBracketPage = () => {
                 setStageComplete(completionResult.isComplete);
                 setAdvancingTeams(completionResult.advancingTeams);
 
-                // Get next stage info
-                const nextStageInfo = await stageCompletionService.getNextStage(stageId);
-                setNextStage(nextStageInfo);
+                // Get next stage info (only if current stage is complete)
+                if (completionResult.isComplete) {
+                    const nextStageInfo = await stageCompletionService.getNextStage(stageId);
+                    setNextStage(nextStageInfo);
+                } else {
+                    setNextStage(null);
+                }
             } else {
                 toast({ title: 'No Bracket', description: 'No bracket found for this stage', variant: 'destructive' });
             }
