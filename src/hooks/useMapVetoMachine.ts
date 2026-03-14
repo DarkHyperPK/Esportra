@@ -430,22 +430,26 @@ export const useMapVetoMachine = ({
             try {
                 // Case 1: Stuck in pending — re-init via the idempotent /init endpoint
                 if (veto.status === 'pending' && !veto.current_team_id) {
-                    console.log('[MapVeto] Auto-initializing stuck veto...');
+                    // Wait until we have a reliable best_of from the DB
+                    const effectiveBestOf = getBestOf(dbBestOf || bestOf);
+                    if (!effectiveBestOf || effectiveBestOf < 1) {
+                        console.log('[MapVeto] Waiting for best_of data before auto-init');
+                        return;
+                    }
+
+                    console.log('[MapVeto] Auto-initializing stuck veto with best_of:', effectiveBestOf);
                     lastAutoInitTimeRef.current = Date.now();
-                    const effectiveBestOf = getBestOf(dbBestOf || veto.best_of || bestOf);
 
-                    console.log('[MapVeto] Auto-init using best_of:', effectiveBestOf);
-
-                    await apiClient.post(`/api/veto/${veto.match_id}/init`, {
-                        tournamentId: veto.tournament_id,
-                        team1Id: veto.team1_id,
-                        team2Id: veto.team2_id,
+                    await apiClient.post(`/api/veto/${matchId}/init`, {
+                        tournamentId: veto.tournament_id || tournamentId,
+                        team1Id: veto.team1_id || team1Id,
+                        team2Id: veto.team2_id || team2Id,
                         bestOf: effectiveBestOf,
                         game: 'valorant',
                     });
 
                     // Re-fetch to get the fresh state
-                    const fresh = await apiClient.get<any>(`/api/veto/${veto.match_id}`).catch(() => null);
+                    const fresh = await apiClient.get<any>(`/api/veto/${matchId}`).catch(() => null);
                     if (fresh) setVeto(fresh as MatchMapVeto);
 
                     isInitialLoadRef.current = false;
@@ -468,16 +472,16 @@ export const useMapVetoMachine = ({
                         lastResetBestOfRef.current = targetBestOf;
 
                         // Reset then re-init with correct best_of
-                        await apiClient.post(`/api/veto/${veto.match_id}/reset`).catch(() => {});
-                        await apiClient.post(`/api/veto/${veto.match_id}/init`, {
-                            tournamentId: veto.tournament_id,
-                            team1Id: veto.team1_id,
-                            team2Id: veto.team2_id,
+                        await apiClient.post(`/api/veto/${matchId}/reset`).catch(() => {});
+                        await apiClient.post(`/api/veto/${matchId}/init`, {
+                            tournamentId: veto.tournament_id || tournamentId,
+                            team1Id: veto.team1_id || team1Id,
+                            team2Id: veto.team2_id || team2Id,
                             bestOf: targetBestOf,
                             game: 'valorant',
                         });
 
-                        const fresh = await apiClient.get<any>(`/api/veto/${veto.match_id}`).catch(() => null);
+                        const fresh = await apiClient.get<any>(`/api/veto/${matchId}`).catch(() => null);
                         if (fresh) setVeto(fresh as MatchMapVeto);
                     }
                 }
