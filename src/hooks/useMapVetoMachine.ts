@@ -601,18 +601,26 @@ export const useMapVetoMachine = ({
                 const poolData = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/map-pool`);
 
                 if (poolData && poolData.length > 0) {
-                    // Extract game_maps from the join
+                    // Backend returns flat rows: { id, game, map_name, map_image_url, is_active }
+                    // Handle both flat and nested (game_maps) response formats
                     const maps = poolData.map((item: any) => {
-                        let m = item.game_maps;
-                        // Handle array response if join is interpreted as many-to-one
-                        if (Array.isArray(m)) {
-                            m = m[0];
+                        // If backend returns nested game_maps (Supabase-style)
+                        if (item.game_maps) {
+                            let m = item.game_maps;
+                            if (Array.isArray(m)) m = m[0];
+                            if (m && typeof m.map_image_url === 'string') {
+                                m.map_image_url = m.map_image_url.trim();
+                            }
+                            return m;
                         }
-
-                        if (m && typeof m.map_image_url === 'string') {
-                            m.map_image_url = m.map_image_url.trim();
+                        // Flat row from backend API
+                        if (item.id && item.map_name) {
+                            if (typeof item.map_image_url === 'string') {
+                                item.map_image_url = item.map_image_url.trim();
+                            }
+                            return item;
                         }
-                        return m;
+                        return null;
                     }).filter((m: any) => m && m.is_active !== false);
 
                     // Remove duplicates just in case
