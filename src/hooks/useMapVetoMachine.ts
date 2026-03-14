@@ -450,7 +450,7 @@ export const useMapVetoMachine = ({
 
                     // Re-fetch to get the fresh state
                     const fresh = await apiClient.get<any>(`/api/veto/${matchId}`).catch(() => null);
-                    if (fresh) setVeto(fresh as MatchMapVeto);
+                    if (fresh) setVeto(mapApiVetoToLocal(fresh));
 
                     isInitialLoadRef.current = false;
                     return;
@@ -483,7 +483,7 @@ export const useMapVetoMachine = ({
                         });
 
                         const fresh = await apiClient.get<any>(`/api/veto/${matchId}`).catch(() => null);
-                        if (fresh) setVeto(fresh as MatchMapVeto);
+                        if (fresh) setVeto(mapApiVetoToLocal(fresh));
                     }
                 } else {
                     // No authoritative best_of yet — just clear the initial load flag
