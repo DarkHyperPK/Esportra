@@ -363,9 +363,9 @@ export const useMapVetoMachine = ({
                 setIsCaptain(true); // Token access implies captain rights for that team
                 setUserTeamId(forcedTeamId);
                 setIsOrganizer(false); // Token access is never organizer
-                // Also update specific flags
-                if (forcedTeamId === team1Id) setIsTeam1Captain(true);
-                if (forcedTeamId === team2Id) setIsTeam2Captain(true);
+                // Only grant captain for the forced team, not both
+                setIsTeam1Captain(forcedTeamId === team1Id);
+                setIsTeam2Captain(forcedTeamId === team2Id);
             } else {
                 setIsCaptain(isT1Capt || isT2Capt);
 
