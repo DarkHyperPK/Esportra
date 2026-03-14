@@ -109,7 +109,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
           `/api/teams/${selectedTeamId}/rosters`
         );
         const filtered = (data || []).filter((r: any) => {
-        const byGame = !tournament.game || r.game === tournament.game;
+        const byGame = !tournament.game || r.game?.toLowerCase() === tournament.game?.toLowerCase();
         // Roster team_size should be >= coreMembers (filter is lenient, actual validation at registration)
         const bySize = !coreMembers || Number(r.team_size) >= coreMembers;
         return byGame && bySize;
