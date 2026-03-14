@@ -58,6 +58,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const [loading, setLoading] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [existingRegistration, setExistingRegistration] = useState<any>(null);
+  const [fetchingTeams, setFetchingTeams] = useState(true);
 
   // Team selection flow
   const [captainTeams, setCaptainTeams] = useState<TeamRow[]>([]);
@@ -216,6 +217,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
   const fetchCaptainTeams = async () => {
     if (!user?.id) return;
+    setFetchingTeams(true);
     try {
       // Get teams user owns
       const ownedTeams = await apiClient.get<TeamRow[]>(
@@ -315,6 +317,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     } catch (error) {
       console.error('Error fetching captain teams:', error);
       setCaptainTeams([]);
+    } finally {
+      setFetchingTeams(false);
     }
   };
 
@@ -584,7 +588,12 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         </div>
 
         {/* Captain Teams - Clean Minimal */}
-        {captainTeams.length === 0 ? (
+        {fetchingTeams ? (
+          <div className="flex items-center justify-center py-6 gap-2 text-gray-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Loading your teams...</span>
+          </div>
+        ) : captainTeams.length === 0 ? (
           <Alert className="bg-[#1a0a0a] border border-[#3a1a1a]">
             <AlertCircle className="h-4 w-4 text-red-400" />
             <AlertDescription className="text-red-300 text-sm">
