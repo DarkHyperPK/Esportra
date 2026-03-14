@@ -466,17 +466,17 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       const roster = teamRosters.find(r => r.id === selectedRosterId);
 
       const data = await apiClient.post<any>(`/api/tournaments/${tournament.id}/register`, {
-        participant_type: 'team',
-        team_captain_id: user.id,
-        team_id: selectedTeamId,
-        team_name: roster?.name || team.name,
-        team_members: memberNames.join(','),
-        roster_id: selectedRosterId,
-        roster_name: roster?.name || null,
-        team_contact_email: user.email || null,
+        participantType: 'team',
+        teamCaptainId: user.id,
+        teamId: selectedTeamId,
+        teamName: roster?.name || team.name,
+        teamMembers: memberNames.join(','),
+        rosterId: selectedRosterId,
+        rosterName: roster?.name || null,
+        teamContactEmail: user.email || null,
         status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'approved',
-        entry_fee_amount: tournament.entry_fee || 0,
-        entry_fee_paid: !tournament.entry_fee || tournament.entry_fee === 0
+        entryFeeAmount: tournament.entry_fee || 0,
+        entryFeePaid: !tournament.entry_fee || tournament.entry_fee === 0
       });
 
       toast({ title: 'Registered', description: 'Team registered successfully.' });
