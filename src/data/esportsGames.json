@@ -11,7 +11,7 @@
         }
       ],
       "defaultFormat": "5v5",
-      "logo": "/games/valorant-logo.png"
+      "logo": "/games/valorant-logo.svg"
     },
     {
       "name": "Counter-Strike 2",
@@ -24,7 +24,7 @@
         }
       ],
       "defaultFormat": "5v5",
-      "logo": "/games/cs2-logo.png"
+      "logo": "/games/cs2-logo.svg"
     }
   ]
 }
