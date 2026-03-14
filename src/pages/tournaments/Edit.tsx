@@ -30,6 +30,9 @@ const EditTournament = () => {
       if (!response?.tournament) throw new Error('Tournament not found');
 
       const tournamentData = response.tournament;
+      if (typeof tournamentData.settings === 'string') {
+        try { tournamentData.settings = JSON.parse(tournamentData.settings); } catch { /* keep as-is */ }
+      }
       setTournamentId(tournamentData.id);
 
       // 2. Stages from wrapped response, or fetch separately as fallback

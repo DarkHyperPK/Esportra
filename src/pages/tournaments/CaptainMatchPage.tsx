@@ -198,6 +198,9 @@ const CaptainMatchPage = () => {
             if (!response?.tournament) throw new Error('Tournament not found');
 
             const tourney = response.tournament;
+            if (typeof tourney.settings === 'string') {
+                try { tourney.settings = JSON.parse(tourney.settings); } catch { /* keep as-is */ }
+            }
             setTournament(tourney);
 
             // Get participants from wrapped response

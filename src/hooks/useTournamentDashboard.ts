@@ -117,6 +117,7 @@ export function useTournamentDashboard(slug: string | undefined) {
 
             const mappedTournament: DashboardTournament = {
                 ...t,
+                settings:    typeof t.settings === 'string' ? (() => { try { return JSON.parse(t.settings); } catch { return t.settings; } })() : (t.settings || {}),
                 entry_fee:   t.entry_fee?.toString()  ?? '0',
                 prize_pool:  t.prize_pool?.toString()  ?? '0',
                 // Legacy computed fields
