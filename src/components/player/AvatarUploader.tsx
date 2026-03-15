@@ -49,12 +49,17 @@ const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUplo
         setIsUploading(true);
         try {
             const fileExt = file.name.split('.').pop();
-            const fileName = `avatars/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+
+            // Use uploadPath if provided (e.g. "Player-cards/team_name/userId_card.png")
+            // Otherwise default to avatars folder
+            const folder = uploadPath
+                ? uploadPath.substring(0, uploadPath.lastIndexOf('/'))
+                : 'avatars';
 
             const formData = new FormData();
             formData.append('file', file);
             formData.append('bucket', 'users.avatars');
-            formData.append('folder', 'avatars');
+            formData.append('folder', folder);
 
             const result = await apiClient.upload<{ url: string }>(
                 '/api/storage/upload',
@@ -64,7 +69,7 @@ const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUplo
             onChange(result.url);
 
             toast({
-                title: 'Avatar updated',
+                title: uploadPath ? 'Player card updated' : 'Avatar updated',
                 description: 'Looking good!',
             });
         } catch (error: any) {
