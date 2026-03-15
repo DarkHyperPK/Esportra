@@ -6,7 +6,7 @@ import { Calendar, Clock, Check, X, ArrowRightLeft, AlertCircle } from 'lucide-r
 import { useTimeProposal } from '@/hooks/useTimeProposal';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { getTimezoneAbbr, localInputToUTC } from '@/lib/timeUtils';
+import { getTimezoneAbbr, localInputToUTC, utcToLocalDate } from '@/lib/timeUtils';
 import { Countdown } from '@/components/ui/Countdown';
 
 interface TimeProposalCardProps {
@@ -192,7 +192,7 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                                         type="date"
                                         value={proposedDate}
                                         min={format(new Date(), 'yyyy-MM-dd')}
-                                        max={roundDeadline ? roundDeadline.split('T')[0] : undefined}
+                                        max={roundDeadline ? utcToLocalDate(roundDeadline) : undefined}
                                         onChange={(e) => setProposedDate(e.target.value)}
                                         className="bg-zinc-900 border-zinc-700 text-white"
                                     />
@@ -316,7 +316,7 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                                             type="date"
                                             value={proposedDate}
                                             min={format(new Date(), 'yyyy-MM-dd')}
-                                            max={roundDeadline ? roundDeadline.split('T')[0] : undefined}
+                                            max={roundDeadline ? utcToLocalDate(roundDeadline) : undefined}
                                             onChange={(e) => setProposedDate(e.target.value)}
                                             className="bg-zinc-900 border-zinc-700 text-white"
                                         />

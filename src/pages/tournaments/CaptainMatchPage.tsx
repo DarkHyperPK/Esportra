@@ -900,6 +900,14 @@ const CaptainMatchPage = () => {
                                             const configDeadline = schedulingConfig?.round_deadlines?.[String(roundIndex)];
                                             const defaultDeadline = getDefaultDeadline(roundIndex);
                                             const effectiveDeadline = configDeadline || defaultDeadline || roundDeadline || activeMatch.scheduledTime;
+                                            console.log('[CaptainMatchPage] Deadline debug:', {
+                                                roundIndex,
+                                                configDeadline,
+                                                defaultDeadline,
+                                                roundDeadlineState: roundDeadline,
+                                                effectiveDeadline,
+                                                round_deadlines: schedulingConfig?.round_deadlines,
+                                            });
                                             return (
                                                 <TimeProposalCard
                                                     matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
