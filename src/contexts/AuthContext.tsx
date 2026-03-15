@@ -4,6 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { useProfileManagement } from '@/hooks/useProfileManagement';
+import { apiClient } from '@/lib/apiClient';
 import { detectUserCountry } from '@/utils/countries';
 import React from 'react';
 
@@ -133,13 +134,13 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
 
     handleUserChange();
 
-    // Poll for suspension status every 60s (replaces Supabase realtime channel)
+    // Poll for suspension status every 60s — lightweight check, doesn't update profile state
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     if (user?.id) {
       intervalId = setInterval(async () => {
         try {
-          const result = await fetchProfile(user.id);
+          const result = await apiClient.get<{ is_suspended?: boolean }>(`/api/profiles/${user.id}`);
           if (result?.is_suspended && window.location.pathname !== '/suspended') {
             console.warn("[AuthContext] Polling detected suspension!");
             window.location.href = '/suspended';

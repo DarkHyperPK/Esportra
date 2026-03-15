@@ -935,16 +935,16 @@ export const useMapVetoMachine = ({
                                 : nextStep.action === 'pick' ? 'pick'
                                 : 'pick a side for';
                             apiClient.post('/api/notifications', {
-                                user_id: cap.user_id,
+                                userId: cap.user_id,
                                 type: 'veto_your_turn',
                                 title: 'Your Veto Turn',
                                 message: `It's your turn to ${actionLabel} a map.`,
                                 link: `/tournaments/${tournamentId}/captain-match`,
                                 data: { match_id: matchId },
-                                is_read: false,
-                            });
+                            }).catch(() => {});
                         }
-                    });
+                    })
+                    .catch(() => {});
             }
             if (isComplete && dbVeto.team1_id && dbVeto.team2_id) {
                 apiClient
@@ -953,17 +953,17 @@ export const useMapVetoMachine = ({
                         if (caps?.length) {
                             Promise.all(caps.map(c =>
                                 apiClient.post('/api/notifications', {
-                                    user_id: c.user_id,
+                                    userId: c.user_id,
                                     type: 'veto_completed',
                                     title: 'Map Veto Complete',
                                     message: 'The map veto has finished. Good luck in your match!',
                                     link: `/tournaments/${tournamentId}/captain-match`,
                                     data: { match_id: matchId },
-                                    is_read: false,
-                                })
+                                }).catch(() => {})
                             ));
                         }
-                    });
+                    })
+                    .catch(() => {});
             }
 
             if (isComplete && onComplete) onComplete();
