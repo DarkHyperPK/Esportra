@@ -570,6 +570,9 @@ const CaptainMatchPage = () => {
             debouncedBracketInvalidate();
             fetchMatchGames();
             determineMap();
+            // Also invalidate time-proposals and checkins (needed after match reset)
+            queryClient.invalidateQueries({ queryKey: ['match-time-proposals'] });
+            queryClient.invalidateQueries({ queryKey: ['match-checkins'] });
         },
         onDisputeResolved: () => {
             debouncedBracketInvalidate();
