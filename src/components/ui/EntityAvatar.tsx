@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 type EntityType = 'user' | 'team' | 'org';
@@ -47,6 +47,11 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({
     fallbackClassName,
 }) => {
     const [imgError, setImgError] = useState(false);
+
+    // Reset error state when src changes (e.g. after new upload)
+    useEffect(() => {
+        setImgError(false);
+    }, [src]);
 
     const seed = name || entityId || 'unknown';
     const style = DICEBEAR_STYLE[type];
