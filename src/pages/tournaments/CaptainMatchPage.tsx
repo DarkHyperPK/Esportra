@@ -114,9 +114,13 @@ const CaptainMatchPage = () => {
                     .then((stages) => {
                         const configs: Record<string, any> = {};
                         (stages || []).forEach((stage: any) => {
+                            let sc = stage.scheduling_config;
+                            if (typeof sc === 'string') {
+                                try { sc = JSON.parse(sc); } catch { sc = null; }
+                            }
                             configs[stage.id] = {
                                 format: stage.format,
-                                scheduling_config: stage.scheduling_config
+                                scheduling_config: sc
                             };
                         });
                         console.log('[CaptainMatchPage] Loaded stage configs:', configs);
