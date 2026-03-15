@@ -78,7 +78,9 @@ export const useMatchCheckin = (
     const scheduled   = new Date(scheduledTime);
     const now         = new Date();
     const windowStart = new Date(scheduled.getTime() - windowMinutes * 60_000);
-    return now >= windowStart && now < scheduled;
+    // Grace period: allow check-in until windowMinutes after scheduled time
+    const windowEnd   = new Date(scheduled.getTime() + windowMinutes * 60_000);
+    return now >= windowStart && now < windowEnd;
   };
 
   const getTimeUntilCheckinOpens = (scheduledTime: string | null, windowMinutes = 15): number | null => {
@@ -89,14 +91,20 @@ export const useMatchCheckin = (
     return diff > 0 ? diff : null;
   };
 
-  const isCheckinWindowClosed = (scheduledTime: string | null): boolean => {
+  const isCheckinWindowClosed = (scheduledTime: string | null, windowMinutes = 15): boolean => {
     if (!scheduledTime) return false;
-    return Date.now() >= new Date(scheduledTime).getTime();
+    // Only closed after the grace period (windowMinutes after scheduled time)
+    const scheduled = new Date(scheduledTime);
+    const windowEnd = new Date(scheduled.getTime() + windowMinutes * 60_000);
+    return Date.now() >= windowEnd.getTime();
   };
 
-  const getTimeUntilWindowCloses = (scheduledTime: string | null): number | null => {
+  const getTimeUntilWindowCloses = (scheduledTime: string | null, windowMinutes = 15): number | null => {
     if (!scheduledTime) return null;
-    const diff = new Date(scheduledTime).getTime() - Date.now();
+    const scheduled = new Date(scheduledTime);
+    // Countdown to end of grace period
+    const windowEnd = new Date(scheduled.getTime() + windowMinutes * 60_000);
+    const diff = windowEnd.getTime() - Date.now();
     return diff > 0 ? diff : null;
   };
 
