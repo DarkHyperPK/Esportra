@@ -260,6 +260,17 @@ export const MapPool: React.FC<MapPoolProps> = ({
                     let pickedMap: any = null;
                     let mapToShow: GameMap | null = null;
 
+                    console.log('[MapPool] pick_side debug:', {
+                        currentActionNum,
+                        previousActionType,
+                        isFinalPickSide,
+                        team1Picked: JSON.stringify(team1Picked),
+                        team2Picked: JSON.stringify(team2Picked),
+                        availableMapIds: availableMaps.map(m => m.id),
+                        effectiveTeam1Id,
+                        effectiveTeam2Id,
+                    });
+
                     if (isFinalPickSide) {
                         // For the final map (decider), it's the one that hasn't been banned or picked yet.
                         // It's not in the picked list, so we find it by exclusion.
@@ -304,6 +315,13 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         }
 
                         mapToShow = pickedMap ? availableMaps.find(m => m.id === pickedMap.map_id) || null : null;
+                        console.log('[MapPool] pick_side result:', {
+                            pickedMap: JSON.stringify(pickedMap),
+                            mapToShow: mapToShow?.map_name,
+                            pickActionTeamId,
+                            isTeam1,
+                            teamPicksLength: teamPicks.length,
+                        });
                     }
 
                     if (!mapToShow) {
