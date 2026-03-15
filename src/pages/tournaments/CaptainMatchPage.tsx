@@ -12,6 +12,7 @@ import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import { MapVeto } from '@/components/tournament/MapVeto';
+import { mapApiVetoToLocal } from '@/hooks/useMapVetoMachine';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
@@ -483,10 +484,11 @@ const CaptainMatchPage = () => {
 
         console.log('[CaptainMatchPage] Determining map for match:', realMatchId, 'Game:', nextGameNumber, 'BestOf:', bestOfCount);
 
-        // Fetch Veto Info
+        // Fetch Veto Info and map camelCase API response to snake_case local format
         let veto: any = null;
         try {
-            veto = await apiClient.get<any>(`/api/veto/${realMatchId}`);
+            const raw = await apiClient.get<any>(`/api/veto/${realMatchId}`);
+            if (raw) veto = mapApiVetoToLocal(raw);
         } catch {
             // No veto data
         }

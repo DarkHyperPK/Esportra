@@ -48,7 +48,7 @@ export interface MatchMapVeto {
 }
 
 // Maps camelCase API response to snake_case MatchMapVeto (backend returns C# PascalCase → JSON camelCase)
-function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
+export function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
     return {
         id:                    apiVeto.id,
         match_id:              apiVeto.matchId ?? apiVeto.match_id,
