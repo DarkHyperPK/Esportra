@@ -43,7 +43,7 @@ const repo = new MatchRepository();
 const CaptainMatchPage = () => {
     // ... existing hooks
 
-    const { slug } = useParams<{ slug: string }>();
+    const { slug, matchId: urlMatchId } = useParams<{ slug: string; matchId?: string }>();
     const navigate = useNavigate();
     const { user, profile } = useAuth();
     const { toast } = useToast();
@@ -290,14 +290,25 @@ const CaptainMatchPage = () => {
         checkRoles();
     }, [user, profile, participants, userTeams, teamsLoading, tournament]);
 
-    // Find active match for the team
+    // Find active match for the team (prefer URL matchId from notification links)
     const activeMatch = useMemo(() => {
         if (!userTeamId || !matches.length) {
             console.log('[CaptainMatchPage] No userTeamId or matches found. userTeamId:', userTeamId, 'matchesLength:', matches.length);
             return null;
         }
 
-        console.log('[CaptainMatchPage] Searching for active match for team:', userTeamId);
+        console.log('[CaptainMatchPage] Searching for active match for team:', userTeamId, 'urlMatchId:', urlMatchId);
+
+        // If a matchId was provided via URL (e.g. from notification link), try to find it
+        if (urlMatchId) {
+            const urlMatch = matches.find(m =>
+                m.id === urlMatchId || m.id.replace(/^(db-|wb-|lb-)/, '') === urlMatchId
+            );
+            if (urlMatch) {
+                console.log('[CaptainMatchPage] Found match from URL param:', urlMatch);
+                return urlMatch;
+            }
+        }
 
         // Find matches involving this team
         const teamMatches = matches.filter(m =>
@@ -321,7 +332,7 @@ const CaptainMatchPage = () => {
         console.log('[CaptainMatchPage] Active match found:', nextMatch);
         return nextMatch || null;
 
-    }, [userTeamId, matches]);
+    }, [userTeamId, matches, urlMatchId]);
 
     // Lifted Proposal state for higher-level visibility
     const { acceptedProposal } = useTimeProposal(activeMatch?.id?.replace(/^(db-|wb-|lb-)/, ''));

@@ -493,7 +493,7 @@ const AppContent = React.memo(() => {
                 <Route path="/tournaments/edit/:slug" element={<EditTournament />} />
                 <Route path="/tournaments/:slug/brackets" element={<TournamentBrackets />} />
                 <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />
-                <Route path="/tournaments/:slug/captain-match" element={
+                <Route path="/tournaments/:slug/captain-match/:matchId?" element={
                   <ProtectedRoute>
                     <CaptainMatchPage />
                   </ProtectedRoute>
