@@ -171,7 +171,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                     <p className="text-emerald-400 text-sm font-medium">Check-in is LIVE</p>
                                 </div>
-                                <p className="text-zinc-400 text-xs mb-1 uppercase tracking-wider">Time remaining to check-in:</p>
+                                <p className="text-zinc-400 text-xs mb-1 uppercase tracking-wider">Match starts in:</p>
                                 <div className="text-2xl font-mono font-bold text-white">
                                     <Countdown
                                         targetDate={new Date(scheduledTime)}
