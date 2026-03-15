@@ -468,9 +468,10 @@ const TournamentDashboard = () => {
 
 
   useEffect(() => {
+    if (activeTab !== 'participants') return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [activeTab]);
 
 
 

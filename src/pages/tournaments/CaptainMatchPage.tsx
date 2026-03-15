@@ -71,7 +71,7 @@ const CaptainMatchPage = () => {
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
     const [mapVetoMatchId, setMapVetoMatchId] = useState<string | null>(null);
 
-    // Fetch all active bracket versions for tournament (graph engine)
+    // Fetch all active bracket versions for tournament (via backend API)
     const { data: bracketVersions, isLoading: versionsLoading } = useQuery({
         queryKey: ['captain-bracket-versions', tournament?.id],
         queryFn: async () => {
@@ -79,15 +79,7 @@ const CaptainMatchPage = () => {
             if (!tournament?.id) {
                 return [];
             }
-            const { data, error } = await (supabase as any)
-                .from('brkt_versions')
-                .select('id, tournament_id, stage_id, status')
-                .eq('tournament_id', tournament.id)
-                .in('status', ['published', 'active']);
-            if (error) {
-                console.error('[CaptainMatchPage] Error fetching bracket versions:', error);
-                throw error;
-            }
+            const data = await apiClient.get<any[]>(`/api/brackets/versions/tournament/${tournament.id}`);
             console.log('[CaptainMatchPage] Fetched bracket versions:', data?.length || 0, data);
             return data || [];
         },

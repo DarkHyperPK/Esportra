@@ -937,7 +937,7 @@ export const useMapVetoMachine = ({
                                 type: 'veto_your_turn',
                                 title: 'Your Veto Turn',
                                 message: `It's your turn to ${actionLabel} a map.`,
-                                link: '/tournaments/captain',
+                                link: `/tournaments/${tournamentId}/captain-match`,
                                 data: { match_id: matchId },
                                 is_read: false,
                             });
@@ -955,7 +955,7 @@ export const useMapVetoMachine = ({
                                     type: 'veto_completed',
                                     title: 'Map Veto Complete',
                                     message: 'The map veto has finished. Good luck in your match!',
-                                    link: '/tournaments/captain',
+                                    link: `/tournaments/${tournamentId}/captain-match`,
                                     data: { match_id: matchId },
                                     is_read: false,
                                 })
