@@ -32,12 +32,12 @@ function fromDto(dto: Record<string, any>): MatchMessage {
   return {
     id:           dto.id,
     match_id:     dto.matchId,
-    sender_id:    dto.userId,
-    sender_name:  dto.username ?? null,
-    team_id:      null,
+    sender_id:    dto.senderId,
+    sender_name:  dto.senderName ?? null,
+    team_id:      dto.teamId ?? null,
     content:      dto.content,
-    message_type: 'text',
-    metadata:     null,
+    message_type: dto.messageType ?? 'text',
+    metadata:     dto.metadata ?? null,
     created_at:   dto.createdAt,
   };
 }
