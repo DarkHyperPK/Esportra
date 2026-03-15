@@ -327,21 +327,23 @@ export const useMapVetoMachine = ({
         const checkPermissions = async () => {
             if (!user || !team1Id || !team2Id) return;
 
-            // Check if user is captain of either team
+            // Check if user is captain/owner of either team via team_members table
             const teamIds = [team1Id, team2Id].filter(Boolean) as string[];
-            // Fetch team members and check ownership
             const teamMembers = await apiClient.get<{ team_id: string; role: string }[]>(
                 `/api/teams/members?team_ids=${teamIds.join(',')}&user_id=${user.id}&roles=captain,owner&is_active=true`
             );
 
-            // Also check if user is the owner in the teams table directly
-            const ownedTeams = await apiClient.get<{ id: string }[]>(
-                `/api/teams?ids=${teamIds.join(',')}&owner_id=${user.id}`
+            // Also check team.owner_id directly (in case team_members row is missing)
+            const teams = await apiClient.get<{ id: string; owner_id: string }[]>(
+                `/api/teams?ids=${teamIds.join(',')}`
             );
+            const ownedTeamIds = (teams || [])
+                .filter((t: any) => t.owner_id === user.id)
+                .map((t: any) => t.id);
 
             const captainTeamIds = new Set([
                 ...(teamMembers || []).map((tm: any) => tm.team_id),
-                ...(ownedTeams || []).map((t: any) => t.id)
+                ...ownedTeamIds
             ]);
 
             console.log('[MapVeto] Permission Check:', {
