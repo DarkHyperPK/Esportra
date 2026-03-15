@@ -10,20 +10,25 @@ interface PublicTeamCardProps {
 export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, renderStatusBadge }) => {
     const [isHovered, setIsHovered] = useState(false);
 
-    // Parse members robustly
-    const getMembers = (membersInput: any) => {
+    // Parse members from multiple formats (JSON array string, comma-separated, or actual array)
+    const getMembers = (membersInput: any): string[] => {
         if (!membersInput) return [];
 
-        // If it's already an array, filter and return
         if (Array.isArray(membersInput)) {
             return membersInput
                 .map(m => typeof m === 'string' ? m : (m?.username || m?.name || JSON.stringify(m)))
                 .filter(Boolean);
         }
 
-        // If it's a string, split by comma
         if (typeof membersInput === 'string') {
-            return membersInput.split(',').map(s => s.trim()).filter(Boolean);
+            const trimmed = membersInput.trim();
+            if (trimmed.startsWith('[')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+                } catch { /* fall through to comma split */ }
+            }
+            return trimmed.split(',').map(s => s.trim()).filter(Boolean);
         }
 
         return [];

@@ -488,9 +488,13 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
           type: 'TournamentRegistration',
           email: user.email,
           data: {
+            username: user.user_metadata?.username || user.user_metadata?.full_name || '',
             tournamentName: tournament.name,
             teamName: roster?.name || team.name,
             registrationType: 'team',
+            game: tournament.game,
+            startDate: tournament.start_date ? new Date(tournament.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+            endDate: (tournament as any).end_date ? new Date((tournament as any).end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
             tournamentUrl: `${window.location.origin}/tournaments/${tournament.id}`,
           },
         }).catch((err) => console.warn('[TeamRegistration] Email send failed:', err));

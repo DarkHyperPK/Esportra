@@ -138,7 +138,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 participant_type: p.participant_type,
                 team_name:        p.team_name ?? null,
                 team_logo:        p.team_logo ?? null,
-                team_members:     '',
+                team_members:     p.team_members ?? null,
                 gamer_tag:        p.gamer_tag ?? null,
                 registered_at:    p.registration_date ?? p.created_at,
                 created_at:       p.created_at,

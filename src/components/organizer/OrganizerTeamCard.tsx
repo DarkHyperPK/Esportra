@@ -12,10 +12,28 @@ interface TeamCardProps {
 export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onManage, renderStatusBadge }) => {
     const [isHovered, setIsHovered] = useState(false);
 
-    // Parse members
-    const getMembers = (membersStr: string | null) => {
-        if (!membersStr) return [];
-        return membersStr.split(',').map(s => s.trim()).filter(Boolean);
+    // Parse members from multiple formats (JSON array string, comma-separated, or actual array)
+    const getMembers = (membersInput: any): string[] => {
+        if (!membersInput) return [];
+
+        // If it's already an array, extract string values
+        if (Array.isArray(membersInput)) {
+            return membersInput.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || String(m))).filter(Boolean);
+        }
+
+        // If it's a string, try JSON parse first (JSONB column returns '["a","b"]')
+        if (typeof membersInput === 'string') {
+            const trimmed = membersInput.trim();
+            if (trimmed.startsWith('[')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+                } catch { /* fall through to comma split */ }
+            }
+            return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+        }
+
+        return [];
     };
 
     const isSolo = participant.participant_type === 'solo';

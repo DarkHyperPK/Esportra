@@ -173,9 +173,9 @@ export const useTournamentRegistration = ({
           type: 'TournamentRegistration',
           email: user.email,
           data: {
+            username: user.user_metadata?.username || user.user_metadata?.full_name || '',
             tournamentName,
-            riot_tag: state.type === 'solo' ? state.riot_tag : undefined,
-            steam_tag: state.type === 'solo' ? state.steam_tag : undefined,
+            gamertag: state.type === 'solo' ? (state.riot_tag || state.steam_tag) : undefined,
             teamName: state.type === 'team' ? state.teamName : undefined,
             registrationType: state.type,
             tournamentUrl: `https://esportra.com/tournaments/${tournamentId}`,
