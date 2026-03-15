@@ -91,6 +91,11 @@ const ManageBracketPage = () => {
             // Fetch stage
             const stageData = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);
 
+            // Parse scheduling_config if it's a JSON string (Dapper returns JSONB as string)
+            if (stageData && typeof stageData.scheduling_config === 'string') {
+                try { stageData.scheduling_config = JSON.parse(stageData.scheduling_config); } catch { /* ignore */ }
+            }
+
             setStage(stageData);
 
             // Fetch bracket version for this stage
