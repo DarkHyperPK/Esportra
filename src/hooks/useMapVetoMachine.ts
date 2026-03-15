@@ -47,6 +47,15 @@ export interface MatchMapVeto {
     completed_at: string | null;
 }
 
+// Normalize picked map objects: backend sends { mapId, side }, frontend expects { map_id, side }
+function normalizePickedArray(arr: any): PickedMap[] {
+    if (!Array.isArray(arr)) return [];
+    return arr.map((p: any) => ({
+        map_id: p.map_id ?? p.mapId ?? p,
+        side: p.side ?? null,
+    }));
+}
+
 // Maps camelCase API response to snake_case MatchMapVeto (backend returns C# PascalCase → JSON camelCase)
 export function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
     return {
@@ -66,8 +75,8 @@ export function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
         turn_duration_seconds: apiVeto.turnDurationSeconds ?? apiVeto.turn_duration_seconds ?? 0,
         team1_banned_maps:     Array.isArray(apiVeto.team1BannedMaps ?? apiVeto.team1_banned_maps) ? (apiVeto.team1BannedMaps ?? apiVeto.team1_banned_maps) : [],
         team2_banned_maps:     Array.isArray(apiVeto.team2BannedMaps ?? apiVeto.team2_banned_maps) ? (apiVeto.team2BannedMaps ?? apiVeto.team2_banned_maps) : [],
-        team1_picked_maps:     Array.isArray(apiVeto.team1PickedMaps ?? apiVeto.team1_picked_maps) ? (apiVeto.team1PickedMaps ?? apiVeto.team1_picked_maps) : [],
-        team2_picked_maps:     Array.isArray(apiVeto.team2PickedMaps ?? apiVeto.team2_picked_maps) ? (apiVeto.team2PickedMaps ?? apiVeto.team2_picked_maps) : [],
+        team1_picked_maps:     normalizePickedArray(apiVeto.team1PickedMaps ?? apiVeto.team1_picked_maps),
+        team2_picked_maps:     normalizePickedArray(apiVeto.team2PickedMaps ?? apiVeto.team2_picked_maps),
         selected_map_id:       apiVeto.selectedMapId ?? apiVeto.selected_map_id ?? null,
         started_at:            apiVeto.startedAt ?? apiVeto.started_at ?? null,
         completed_at:          apiVeto.completedAt ?? apiVeto.completed_at ?? null,
