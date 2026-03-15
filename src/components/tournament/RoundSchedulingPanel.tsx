@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Check, AlertCircle, ChevronDown, ChevronUp, Zap, GitBranch, Globe, Info } from 'lucide-react';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { format, addDays, isWithinInterval, parseISO } from 'date-fns';
-import { getTimezoneAbbr, utcToLocalInput, localInputToUTC, utcToLocalDate, dateInputToUTCEndOfDay } from '@/lib/timeUtils';
+import { getTimezoneAbbr, utcToLocalInput, localInputToUTC, utcToLocalDate, utcToLocalTime, localDateTimeToUTC, dateInputToUTCEndOfDay } from '@/lib/timeUtils';
 
 interface RoundSchedulingPanelProps {
     stageId: string;
@@ -532,11 +532,20 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                 </Label>
                                                 <div className="flex gap-2">
                                                     <Input
-                                                        type="datetime-local"
-                                                        value={config?.startTime ? utcToLocalInput(config.startTime).slice(0, 16) : ''}
-                                                        min={tournamentStartDate ? utcToLocalInput(tournamentStartDate).slice(0, 16) : ''}
-                                                        max={tournamentEndDate ? utcToLocalInput(tournamentEndDate).slice(0, 16) : ''}
-                                                        onChange={(e) => updateRoundConfig(roundIndex, 'startTime', e.target.value ? localInputToUTC(e.target.value) : '')}
+                                                        type="time"
+                                                        value={config?.startTime ? utcToLocalTime(config.startTime) : ''}
+                                                        onChange={(e) => {
+                                                            const timeVal = e.target.value;
+                                                            if (!timeVal) {
+                                                                updateRoundConfig(roundIndex, 'startTime', '');
+                                                                return;
+                                                            }
+                                                            // Combine deadline date (or today) with selected time
+                                                            const deadlineDate = config?.deadline
+                                                                ? utcToLocalDate(config.deadline)
+                                                                : (defaultDeadline ? defaultDeadline.split('T')[0] : utcToLocalDate(new Date().toISOString()));
+                                                            updateRoundConfig(roundIndex, 'startTime', localDateTimeToUTC(deadlineDate, timeVal));
+                                                        }}
                                                         className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 flex-1 [color-scheme:dark]"
                                                     />
                                                     <Button

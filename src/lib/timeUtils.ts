@@ -145,3 +145,31 @@ export const utcToLocalDate = (utcIsoStr: string): string => {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 };
+
+/**
+ * Extracts the local time portion from a UTC ISO string.
+ * Useful for populating <input type="time"> from a stored UTC timestamp.
+ * 
+ * @param utcIsoStr - UTC ISO string from DB
+ * @returns Local time string, e.g. "18:00"
+ */
+export const utcToLocalTime = (utcIsoStr: string): string => {
+    if (!utcIsoStr) return '';
+    const date = new Date(utcIsoStr);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+};
+
+/**
+ * Combines a local date string and a local time string into a UTC ISO string.
+ * 
+ * @param dateStr - Local date, e.g. "2026-03-17"
+ * @param timeStr - Local time, e.g. "18:00"
+ * @returns UTC ISO string
+ */
+export const localDateTimeToUTC = (dateStr: string, timeStr: string): string => {
+    if (!dateStr || !timeStr) return '';
+    const date = new Date(`${dateStr}T${timeStr}`);
+    return date.toISOString();
+};
