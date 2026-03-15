@@ -36,22 +36,19 @@ export function useBracketRealtime({
 
     const handleMatchUpdated = (payload: Partial<BracketNode> & { matchId?: string }) => {
       if (!active) return;
-      const id = payload.matchId ?? (payload as any).id;
-      queryClient.setQueriesData<BracketNode[]>(
-        { queryKey: ['bracket', versionId] },
-        (old) => old ? old.map((n) => n.id === id ? { ...n, ...payload } : n) : old,
-      );
+      // Invalidate graph bracket query to refetch full bracket data
+      queryClient.invalidateQueries({ queryKey: ['bracket-graph', versionId] });
       onMatchUpdated?.(payload as Partial<BracketNode> & { matchId: string });
     };
 
     const handleMatchInserted = (payload: { versionId: string }) => {
       if (!active || payload.versionId !== versionId) return;
-      queryClient.invalidateQueries({ queryKey: ['bracket', versionId] });
+      queryClient.invalidateQueries({ queryKey: ['bracket-graph', versionId] });
     };
 
     const handleBracketReset = () => {
       if (!active) return;
-      queryClient.invalidateQueries({ queryKey: ['bracket', versionId] });
+      queryClient.invalidateQueries({ queryKey: ['bracket-graph', versionId] });
       onBracketReset?.();
     };
 
