@@ -352,7 +352,9 @@ const CaptainMatchPage = () => {
             try {
                 const data = await apiClient.get<any>(`/api/veto/${cleanedId}`);
                 return data;
-            } catch (error) {
+            } catch (error: any) {
+                // 404 means no veto exists yet — not an error
+                if (error?.status === 404 || error?.message?.includes('404')) return null;
                 console.error('[CaptainMatchPage] Error fetching map veto:', error);
                 throw error;
             }
