@@ -64,6 +64,16 @@ const CaptainMatchPage = () => {
     // Keep schedulingConfig as a derived value or helper for backward compatibility if needed, 
     // but better to use lookups. We'll leave the state for now but ignore it in favor of the map.
 
+    // Debounced bracket refetch to prevent rapid cascading re-renders from realtime events
+    const bracketRefetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const debouncedBracketInvalidate = useCallback(() => {
+        if (bracketRefetchTimer.current) clearTimeout(bracketRefetchTimer.current);
+        bracketRefetchTimer.current = setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+        }, 1500);
+    }, [queryClient]);
+    useEffect(() => () => { if (bracketRefetchTimer.current) clearTimeout(bracketRefetchTimer.current); }, []);
+
     // Match actions state
     const [uploadOpen, setUploadOpen] = useState(false);
     const [uploadMatchId, setUploadMatchId] = useState<string | undefined>(undefined);
@@ -533,50 +543,48 @@ const CaptainMatchPage = () => {
     // SignalR realtime subscriptions (replaces Supabase postgres_changes)
     const rawMatchId = activeMatch?.id?.replace(/^(db-|wb-|lb-)/, '') ?? null;
 
-    // Bracket updates → invalidate captain-all-matches
+    // Bracket updates → debounced invalidation (structural changes)
     useBracketRealtime({
         versionId: bracketVersions?.[0]?.id ?? null,
         enabled: !!activeMatch?.id,
         onMatchUpdated: () => {
-            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            debouncedBracketInvalidate();
         },
     });
 
-    // Match lifecycle events → invalidate captain-all-matches + refetch games
+    // Match lifecycle events → debounced invalidation + targeted refetches
     useMatchRealtime({
         matchId: rawMatchId,
         enabled: !!rawMatchId,
         onReportSubmitted: () => {
-            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            debouncedBracketInvalidate();
             fetchMatchGames();
         },
         onReportAccepted: () => {
-            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            debouncedBracketInvalidate();
             fetchMatchGames();
         },
         onStatusChanged: () => {
-            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            debouncedBracketInvalidate();
             fetchMatchGames();
             determineMap();
         },
         onDisputeResolved: () => {
-            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            debouncedBracketInvalidate();
         },
     });
 
-    // Veto state updates → determineMap + invalidate veto queries
+    // Veto state updates → only update veto-specific state, no bracket refetch needed
     // B1 fix: disable when MapVeto dialog is open (it has its own SignalR connection)
     useVetoRealtime({
         matchId: rawMatchId,
         enabled: !!rawMatchId && !mapVetoOpen,
         onStateUpdate: () => {
             determineMap();
-            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
             queryClient.invalidateQueries({ queryKey: ['match-veto', activeMatch?.id] });
         },
         onComplete: () => {
             determineMap();
-            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
             queryClient.invalidateQueries({ queryKey: ['match-veto', activeMatch?.id] });
         },
         onReset: () => {
