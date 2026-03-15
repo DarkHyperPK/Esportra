@@ -104,13 +104,13 @@ const CaptainMatchPage = () => {
     });
 
     useEffect(() => {
-        if (bracketVersions && bracketVersions.length > 0) {
+        if (bracketVersions && bracketVersions.length > 0 && tournament?.id) {
             // Get unique stage IDs
             const stageIds = Array.from(new Set(bracketVersions.map((v: any) => v.stage_id).filter(Boolean))) as string[];
             console.log('[CaptainMatchPage] Fetching configs for stageIds:', stageIds);
 
             if (stageIds.length > 0) {
-                apiClient.get<any[]>(`/api/tournaments/${stageIds[0]}/stages`)
+                apiClient.get<any[]>(`/api/tournaments/${tournament.id}/stages`)
                     .then((stages) => {
                         const configs: Record<string, any> = {};
                         (stages || []).forEach((stage: any) => {
@@ -127,7 +127,7 @@ const CaptainMatchPage = () => {
                     });
             }
         }
-    }, [bracketVersions]);
+    }, [bracketVersions, tournament?.id]);
 
     useEffect(() => {
         console.log('[CaptainMatchPage] Tournament:', tournament);
