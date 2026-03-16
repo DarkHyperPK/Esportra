@@ -15,8 +15,7 @@ export interface FaceitAccountData {
 
 /**
  * Fetches the current user's linked Faceit account.
- * Provides `linkFaceitAccount()` to start the OAuth flow and
- * `unlinkFaceitAccount()` to remove the link.
+ * Uses BFF pattern — OAuth + PKCE are entirely server-side.
  */
 export function useFaceitAccount() {
     const { user } = useAuth();
@@ -48,43 +47,19 @@ export function useFaceitAccount() {
     }, [queryClient]);
 
     /**
-     * Redirect user to Faceit OAuth to link their account.
-     * Uses PKCE (S256).
+     * Start Faceit OAuth via BFF — backend generates PKCE + encrypted state.
+     * No secrets, verifiers, or codes touch the frontend.
      */
     const linkFaceitAccount = async () => {
         if (!user?.id) return;
-
-        const clientId = import.meta.env.VITE_FACEIT_CLIENT_ID;
-        const redirectUri = import.meta.env.VITE_FACEIT_REDIRECT_URI
-            || `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/faceit-oauth`;
-
-        if (!clientId) {
-            console.error('[useFaceitAccount] Missing VITE_FACEIT_CLIENT_ID.');
-            return;
+        try {
+            const data = await apiClient.get<{ url: string }>('/api/integrations/faceit/start');
+            if (data?.url) {
+                window.open(data.url, '_blank');
+            }
+        } catch (err) {
+            console.error('[useFaceitAccount] Failed to start OAuth:', err);
         }
-
-        const verifierBytes = new Uint8Array(32);
-        crypto.getRandomValues(verifierBytes);
-        const codeVerifier = btoa(String.fromCharCode(...verifierBytes))
-            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier));
-        const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
-            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-        const state = crypto.randomUUID();
-        localStorage.setItem('faceitOAuthState', state);
-        localStorage.setItem('faceitCodeVerifier', codeVerifier);
-
-        const faceitAuthUrl =
-            `https://accounts.faceit.com/?client_id=${clientId}` +
-            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-            `&response_type=code` +
-            `&state=${state}` +
-            `&code_challenge=${codeChallenge}` +
-            `&code_challenge_method=S256`;
-
-        window.open(faceitAuthUrl, '_blank');
     };
 
     /**

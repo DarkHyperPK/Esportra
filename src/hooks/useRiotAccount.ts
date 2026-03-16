@@ -15,8 +15,7 @@ export interface RiotAccountData {
 
 /**
  * Fetches the current user's linked Riot account.
- * Provides `linkRiotAccount()` to start the OAuth flow and
- * `unlinkRiotAccount()` to remove the link.
+ * Uses BFF pattern — OAuth flow is entirely server-side.
  */
 export function useRiotAccount() {
     const { user } = useAuth();
@@ -37,17 +36,19 @@ export function useRiotAccount() {
     });
 
     /**
-     * Redirect user to Riot OAuth to link their account.
+     * Start Riot OAuth via BFF — backend generates the authorize URL
+     * with encrypted state. No secrets or codes touch the frontend.
      */
-    const linkRiotAccount = () => {
+    const linkRiotAccount = async () => {
         if (!user?.id) return;
-        const clientId = '2c69ea8c-08ad-4e39-a558-dc7f8106a2a2';
-        const state = crypto.randomUUID();
-        sessionStorage.setItem('riotOAuthState', state);
-
-        const redirectUri = `${window.location.origin}/auth/riot/callback`;
-        const riotAuthUrl = `https://auth.riotgames.com/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${clientId}&response_type=code&scope=openid&state=${state}&prompt=login`;
-        window.location.href = riotAuthUrl;
+        try {
+            const data = await apiClient.get<{ url: string }>('/api/integrations/riot/start');
+            if (data?.url) {
+                window.location.href = data.url;
+            }
+        } catch (err) {
+            console.error('[useRiotAccount] Failed to start OAuth:', err);
+        }
     };
 
     /**

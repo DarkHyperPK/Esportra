@@ -1,34 +1,34 @@
-# End-to-End Feature Implementation Guide
+# Esportra Implementation Guide
 
-> **Version 2.0** — Last Updated: January 2026
-> A comprehensive guide for implementing features in the Esportra esports platform.
+> **Version 3.0** — Last Updated: March 2026
+> The end-to-end protocol for building features on the Esportra platform.
 
 ---
 
 ## Table of Contents
 1. [Core Mandate](#1-core-mandate)
 2. [Project Architecture](#2-project-architecture)
-3. [Implementation Protocol](#3-implementation-protocol)
+3. [The 4-Phase Protocol](#3-the-4-phase-protocol)
 4. [Backend Development](#4-backend-development)
 5. [Frontend Development](#5-frontend-development)
 6. [State Management](#6-state-management)
 7. [Storage & Media](#7-storage--media)
 8. [Real-time Features](#8-real-time-features)
-9. [Testing & Verification](#9-testing--verification)
+9. [Verification](#9-verification)
 10. [Common Patterns](#10-common-patterns)
+11. [Rules](#11-rules)
 
 ---
 
 ## 1. Core Mandate
 
-**For every feature request, the implementation must be End-to-End (E2E).** UI-only changes are strict anti-patterns and are not permitted unless explicitly requested for prototyping purposes.
+**Every feature is end-to-end.** UI-only changes are not permitted unless explicitly requested for prototyping.
 
-### Anti-Patterns to Avoid
 | Anti-Pattern | Why It's Bad | Correct Approach |
-|--------------|--------------|------------------|
-| UI-only changes | Data doesn't persist | Implement full backend first |
-| Raw Supabase calls in components | Violates separation of concerns | Use custom hooks |
-| Skipping RLS policies | Security vulnerability | Always define policies |
+|-------------|-------------|-----------------|
+| UI-only changes | Data doesn't persist | Build backend first |
+| Raw Supabase in components | Breaks separation of concerns | Use custom hooks |
+| Skipping RLS | Security vulnerability | Always define policies |
 | Hardcoded data | Not maintainable | Fetch from database |
 
 ---
@@ -39,96 +39,94 @@
 ```
 src/
 ├── components/           # Reusable UI components
-│   ├── ui/              # Base components (Button, Card, Dialog, etc.)
-│   ├── tournament/      # Tournament-specific components
-│   ├── organizer/       # Organizer profile components
-│   ├── player/          # Player-specific components
-│   ├── bracket/         # Bracket visualization components
-│   ├── admin/           # Admin panel components
-│   └── navigation/      # Navbar, sidebar components
+│   ├── ui/              # Base components (shadcn/ui)
+│   ├── tournament/      # Tournament-specific
+│   ├── organizer/       # Organizer-specific
+│   ├── player/          # Player-specific
+│   ├── bracket/         # Bracket visualization
+│   ├── admin/           # Admin panel
+│   └── navigation/      # Navbar, sidebar
 │
 ├── pages/               # Route-level components
-│   ├── tournaments/     # Tournament pages
-│   ├── organizer/       # Organizer pages
-│   ├── admin/           # Admin pages
-│   └── auth/            # Authentication pages
+│   ├── tournaments/
+│   ├── organizer/
+│   ├── admin/
+│   ├── venues/
+│   ├── user/
+│   └── auth/
 │
-├── hooks/               # Custom React hooks (data fetching, mutations)
-│   ├── useTeamManagement.ts
-│   ├── useTournamentWizard.ts
-│   ├── useProfileManagement.ts
-│   └── ... (32+ hooks)
-│
-├── services/            # Business logic & API services
-│   ├── bracket/         # Bracket generation logic
-│   └── vetoService/     # Map veto system
-│
-├── lib/                 # Core utilities
-│   ├── supabase.ts      # Supabase client
-│   ├── imageUtils.ts    # Image manipulation (crop, brightness)
-│   └── queryClient.ts   # TanStack Query client
-│
-├── contexts/            # React contexts
-│   └── AuthContext.tsx  # Authentication state
-│
+├── hooks/               # Custom React hooks (32+)
+├── services/            # Business logic (bracket, veto)
+├── lib/                 # Core utilities (Supabase client, query client)
+├── contexts/            # React context providers
 ├── types/               # TypeScript type definitions
-│
-└── utils/               # Utility functions
+├── schemas/             # Zod validation schemas
+├── config/              # App configuration
+└── utils/               # Helper functions
+
+supabase/
+├── migrations/          # SQL migration files (auto-deployed)
+└── functions/           # Edge Functions (auto-deployed)
 ```
 
-### Key Technologies
+### Tech Stack
 | Category | Technology | Purpose |
-|----------|------------|---------|
+|----------|-----------|---------|
 | **Framework** | React 18 + Vite | UI framework |
 | **Styling** | Tailwind CSS | Utility-first CSS |
-| **Components** | Radix UI + shadcn/ui | Accessible components |
-| **State** | TanStack Query | Server state management |
-| **Backend** | Supabase | Database, Auth, Storage |
+| **Components** | Radix UI + shadcn/ui | Accessible primitives |
+| **State** | TanStack React Query | Server state management |
+| **Forms** | React Hook Form + Zod | Form handling + validation |
+| **Backend** | Supabase | Database, Auth, Storage, Edge Functions |
 | **Animation** | Framer Motion | UI animations |
+| **Routing** | React Router | Client-side routing |
+| **Mobile** | Capacitor | Android/iOS native shell |
 
 ---
 
-## 3. Implementation Protocol
+## 3. The 4-Phase Protocol
 
-When receiving a feature request (e.g., "Add a Like button"), follow this strict checklist:
+When receiving any feature request, follow this order strictly.
 
-### Phase 1: Backend Verification & Implementation
-1. **Database Schema**
-   - Does the table/column exist?
-   - If NO: Create a migration in `supabase/migrations/`
-   
-2. **Security (RLS)**
-   - Can the user perform this action?
-   - If NO: Add RLS policies
+### Phase 1: Database & Security
+```
+1. Does the table/column exist? If NO → write migration
+2. RLS policies defined? If NO → add them (default deny)
+3. Security triggers needed? If YES → add them
+4. Complex logic? If YES → create RPC (SECURITY DEFINER for admin ops)
+5. Test: query as authenticated non-admin user, verify access control
+```
 
-3. **APIs/Functions**
-   - Is a server-side function needed?
-   - If YES: Create an RPC function or Edge Function
+### Phase 2: Logic Layer
+```
+6. Create/update TypeScript types in src/types/
+7. Create/update custom hook(s) in src/hooks/
+8. Add TanStack Query keys (consistent, hierarchical)
+9. Add cache invalidation on mutations
+10. Add Zod schemas for validation (if applicable)
+11. Test: hook returns correct data, mutations persist
+```
 
-### Phase 2: Logic Layer (Frontend)
-1. **Custom Hooks**
-   - Create/update hooks in `src/hooks/`
-   - Handle loading, error, and success states
-   - Implement cache invalidation
-
-2. **Type Definitions**
-   - Update types in `src/types/` to match schema
-
-### Phase 3: UI Implementation
-1. **Component**
-   - Build the interface in `src/components/`
-   - Follow the UI Style Guide
-
-2. **Integration**
-   - Connect UI events to hooks
-   - Implement loading and error feedback
+### Phase 3: UI
+```
+12. Build/update components (follow UI Style Guide)
+13. Add loading states (skeleton or spinner)
+14. Add error states (message + retry action)
+15. Add empty states (message + CTA)
+16. Add toast feedback for mutations
+17. Connect UI to hooks (no raw Supabase calls)
+18. Test: visual review across breakpoints
+```
 
 ### Phase 4: Verification
-1. **Data Integrity**
-   - Perform action → Query DB → Verify persistence
-   
-2. **State Sync**
-   - Refresh page → Verify state persists
+```
+19. Happy path: action → persist → refresh → data still there
+20. Role test: correct users can access, wrong users are blocked
+21. Build: npm run build → zero errors
+22. Console: no errors or warnings on affected pages
+```
+
+**Do not skip phases.** Do not start UI work before the backend is verified.
 
 ---
 
@@ -136,9 +134,8 @@ When receiving a feature request (e.g., "Add a Like button"), follow this strict
 
 ### Creating Migrations
 ```sql
--- File: supabase/migrations/YYYYMMDD_feature_name.sql
+-- File: supabase/migrations/YYYYMMDDHHMMSS_feature_name.sql
 
--- Create table
 CREATE TABLE IF NOT EXISTS public.feature_table (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -146,42 +143,74 @@ CREATE TABLE IF NOT EXISTS public.feature_table (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS
 ALTER TABLE public.feature_table ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
-CREATE POLICY "Users can view own data"
-    ON public.feature_table FOR SELECT
-    USING (auth.uid() = user_id);
+CREATE POLICY "users_read_own" ON public.feature_table
+    FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert own data"
-    ON public.feature_table FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "users_insert_own" ON public.feature_table
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
 ```
 
 ### Common RLS Patterns
 | Pattern | Use Case | Policy |
 |---------|----------|--------|
 | **Owner-only** | Private data | `auth.uid() = user_id` |
-| **Public Read** | Profiles, tournaments | `USING (true)` for SELECT |
-| **Role-based** | Admin features | Check `profiles.role` or `admin_roles` |
+| **Public Read** | Profiles, published tournaments | `USING (true)` for SELECT |
+| **Role-based** | Admin features | Check `profiles.role` or `admin_user_roles` |
 | **Organizer** | Tournament management | `auth.uid() = organizer_id` |
+| **Participant** | Match access | Join through `tournament_participants` |
+
+### RPC functions
+For operations that span multiple tables or need elevated permissions:
+
+```sql
+CREATE OR REPLACE FUNCTION public.admin_resolve_dispute(
+    p_dispute_id UUID,
+    p_resolution TEXT,
+    p_admin_notes TEXT
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    -- Verify caller is admin
+    IF NOT EXISTS (
+        SELECT 1 FROM admin_user_roles
+        WHERE user_id = auth.uid() AND role_id IN (
+            SELECT id FROM admin_roles WHERE role_name = 'super_admin'
+        )
+    ) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+
+    UPDATE disputes
+    SET status = 'resolved', resolution = p_resolution, admin_notes = p_admin_notes
+    WHERE id = p_dispute_id;
+END;
+$$;
+```
 
 ### Storage Buckets
 | Bucket | Purpose | Public |
 |--------|---------|--------|
-| `users.avatars` | User profile pictures | Yes |
-| `organizer-banners` | Organizer profile banners | Yes |
-| `organizer-media` | Organizer media gallery | Yes |
-| `tournaments.banners` | Tournament cover images | Yes |
+| `users.avatars` | Profile pictures | Yes |
+| `organizer-banners` | Organizer banners | Yes |
+| `organizer-media` | Media gallery | Yes |
+| `tournaments.banners` | Tournament covers | Yes |
 | `tournaments.media` | Tournament photos/videos | Yes |
 | `teams.logos` | Team logos | Yes |
+| `system.assets.website` | Platform assets | Yes |
 
 ---
 
 ## 5. Frontend Development
 
-### Creating Custom Hooks
+### Custom Hooks — The Standard Pattern
+
+Every data operation goes through a hook. No exceptions.
 
 ```typescript
 // src/hooks/useFeature.ts
@@ -193,7 +222,6 @@ export const useFeature = (featureId: string) => {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
-    // Query
     const { data, isLoading, error } = useQuery({
         queryKey: ['feature', featureId],
         queryFn: async () => {
@@ -206,10 +234,9 @@ export const useFeature = (featureId: string) => {
             return data;
         },
         enabled: !!featureId,
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 1000 * 60 * 5,
     });
 
-    // Mutation
     const updateFeature = useMutation({
         mutationFn: async (updates: Partial<Feature>) => {
             const { data, error } = await supabase
@@ -223,8 +250,12 @@ export const useFeature = (featureId: string) => {
             queryClient.invalidateQueries({ queryKey: ['feature', featureId] });
             toast({ title: 'Updated!', description: 'Changes saved.' });
         },
-        onError: (error: any) => {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        onError: (error: Error) => {
+            toast({
+                title: 'Update failed',
+                description: error.message,
+                variant: 'destructive',
+            });
         },
     });
 
@@ -232,38 +263,71 @@ export const useFeature = (featureId: string) => {
 };
 ```
 
-### Query Configuration Best Practices
+### Query Configuration
 ```typescript
 {
-    staleTime: 1000 * 60 * 5,   // 5 min - data considered fresh
-    gcTime: 1000 * 60 * 30,     // 30 min - cache garbage collection
-    enabled: !!dependency,      // Conditional fetching
+    staleTime: 1000 * 60 * 5,   // 5 min — data considered fresh
+    gcTime: 1000 * 60 * 30,     // 30 min — cache garbage collection
+    enabled: !!dependency,       // Conditional fetching
     refetchOnWindowFocus: false, // Prevent refetch on tab switch
 }
+```
+
+### Component Integration
+```typescript
+const TournamentPage = ({ tournamentId }: Props) => {
+    const { data, isLoading, error, refetch } = useTournament(tournamentId);
+
+    if (isLoading) return <TournamentSkeleton />;
+    if (error) return <ErrorState message="Failed to load tournament." retry={refetch} />;
+    if (!data) return <EmptyState message="Tournament not found." />;
+
+    return <TournamentContent tournament={data} />;
+};
 ```
 
 ---
 
 ## 6. State Management
 
-### TanStack Query Keys
-Use consistent, hierarchical query keys:
+### TanStack Query Keys — Hierarchical and Consistent
 ```typescript
-['tournaments']                    // All tournaments
-['tournaments', tournamentId]      // Single tournament
+['tournaments']                                // All tournaments
+['tournaments', tournamentId]                  // Single tournament
 ['tournaments', tournamentId, 'participants']  // Tournament participants
-['organizer-profile', slug]        // Organizer profile
-['organizer-media', organizerId]   // Organizer media gallery
+['tournaments', tournamentId, 'bracket']       // Tournament bracket
+['matches', matchId]                           // Single match
+['matches', matchId, 'veto']                   // Match veto state
+['organizer-profile', slug]                    // Organizer profile
+['organizer-media', organizerId]               // Organizer media
+['teams', teamId]                              // Single team
+['notifications', userId]                      // User notifications
+['admin-dashboard-stats']                      // Admin dashboard
 ```
 
 ### Cache Invalidation
 ```typescript
-// After mutation success
+// After mutation — invalidate specific query
 queryClient.invalidateQueries({ queryKey: ['tournaments', tournamentId] });
 
-// Invalidate all related queries
+// After mutation — invalidate all related queries
 queryClient.invalidateQueries({ queryKey: ['tournaments'] });
+
+// Optimistic update for immediate UI feedback
+queryClient.setQueryData(['tournaments', id], (old) => ({
+    ...old,
+    ...optimisticUpdate,
+}));
 ```
+
+### What goes where
+| State Type | Where | Example |
+|-----------|-------|---------|
+| **Server data** | TanStack Query | Tournament list, user profile |
+| **Auth state** | React Context (`AuthContext`) | Current user, session |
+| **UI state** | Component `useState` | Dialog open/closed, selected tab |
+| **Form state** | React Hook Form | Input values, validation errors |
+| **URL state** | React Router (`useSearchParams`) | Filters, pagination, active tab |
 
 ---
 
@@ -287,33 +351,28 @@ const uploadFile = async (file: File, bucket: string, path: string) => {
 ```
 
 ### Image Processing
-Use `src/lib/imageUtils.ts` for:
-- **Cropping**: `getCroppedImg(image, crop, brightness)`
-- **Resizing**: Canvas-based resizing
-- **Brightness adjustment**: CSS filter or canvas manipulation
+Use `src/lib/imageUtils.ts` for cropping, resizing, and brightness adjustment.
 
-### Media Components
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `BannerEditor` | `components/organizer/` | Crop/resize/brightness for banners |
-| `MediaUploadDialog` | `components/organizer/` | Multi-file upload with descriptions |
-| `MediaLightbox` | `components/organizer/` | Instagram-style image viewer |
+### Upload rules
+- Validate file type and size on the frontend before uploading.
+- Max avatar size: 5MB. Max banner size: 10MB.
+- Use `upsert: true` for avatars/banners (replace, don't accumulate).
+- Generate unique paths: `{userId}/{timestamp}-{filename}`.
 
 ---
 
 ## 8. Real-time Features
 
-### Supabase Realtime Subscriptions
+### Supabase Realtime Pattern
 ```typescript
 useEffect(() => {
     const channel = supabase
-        .channel('table-changes')
+        .channel('match-updates')
         .on(
             'postgres_changes',
-            { event: '*', schema: 'public', table: 'matches' },
+            { event: '*', schema: 'public', table: 'brkt_matches', filter: `id=eq.${matchId}` },
             (payload) => {
-                // Handle real-time update
-                queryClient.invalidateQueries({ queryKey: ['matches'] });
+                queryClient.invalidateQueries({ queryKey: ['matches', matchId] });
             }
         )
         .subscribe();
@@ -321,97 +380,68 @@ useEffect(() => {
     return () => {
         supabase.removeChannel(channel);
     };
-}, []);
+}, [matchId]);
 ```
 
 ### Real-time Enabled Tables
-- `brkt_matches` - Bracket match updates
-- `brkt_versions` - Bracket version changes
-- `match_map_vetos` - Map veto state
-- `match_map_veto_actions` - Veto actions
-- `notifications` - User notifications
+| Table | Events | Use Case |
+|-------|--------|----------|
+| `brkt_matches` | UPDATE | Score updates, match status |
+| `brkt_versions` | INSERT | Bracket version changes |
+| `match_map_vetos` | UPDATE | Veto state changes |
+| `match_map_veto_actions` | INSERT | New veto actions |
+| `notifications` | INSERT | User notifications |
+| `tournament_check_ins` | INSERT, UPDATE | Check-in status |
+
+### Real-time rules
+- Always clean up subscriptions in the `useEffect` return function.
+- Use filters (e.g., `filter: 'id=eq.xxx'`) to avoid receiving unrelated events.
+- Invalidate TanStack Query cache on realtime events — don't manually set data from the payload (let the query refetch for consistency).
 
 ---
 
-## 9. Testing & Verification
+## 9. Verification
 
 ### Manual Verification Checklist
 - [ ] Perform action in UI
 - [ ] Check browser console for errors
-- [ ] Query database to verify data persistence
-- [ ] Refresh page to verify state sync
-- [ ] Test with different user roles
-- [ ] Test edge cases (empty states, errors)
+- [ ] Query database to verify data persisted
+- [ ] Refresh page — state is preserved
+- [ ] Test with different user roles (player, organizer, admin)
+- [ ] Test error paths (network off, invalid input, expired session)
+- [ ] Test on mobile viewport
+- [ ] `npm run build` passes
 
-### Common Debugging Steps
-1. **Check Console**: Look for errors in browser DevTools
-2. **Check Network Tab**: Verify API calls succeed
-3. **Check Supabase Logs**: Review database logs
-4. **Check RLS**: Test policies in Supabase SQL editor
+### Common Debugging
+| Symptom | Check |
+|---------|-------|
+| Data doesn't appear | Is the RLS policy blocking SELECT? |
+| Insert/update fails silently | Is the RLS policy blocking the mutation? |
+| Wrong data shape | Is the TypeScript type matching the DB schema? |
+| Stale data after mutation | Is cache invalidation firing? Check query keys. |
+| Component doesn't re-render | Is the query key changing when it should? |
 
 ---
 
 ## 10. Common Patterns
 
-### Example: Profile Picture Upload
-1. **Backend**: 
-   - Verify `users.avatars` bucket exists
-   - Check `profiles.avatar_url` column
-   
-2. **Logic**: 
-   - Use `useProfileManagement` hook
-   - Handle file upload + DB update
-   
-3. **UI**: 
-   - Create Camera Icon overlay component
-   - Trigger file input on click
-   
-4. **Verify**: 
-   - Upload image → Refresh → Verify persistence
+### Profile Picture Upload
+1. **Backend**: Verify `users.avatars` bucket exists, `profiles.avatar_url` column.
+2. **Hook**: `useProfileManagement` — file upload + DB update.
+3. **UI**: Camera icon overlay → file input → crop dialog → upload.
+4. **Verify**: Upload → refresh → image persists.
 
-### Example: Tournament Registration
-1. **Backend**:
-   - Check `tournament_participants` table
-   - Verify RLS allows registration
-   
-2. **Logic**:
-   - Use `useTournamentRegistrationStatus` hook
-   - Handle team selection and submission
-   
-3. **UI**:
-   - Create registration modal
-   - Show loading/success/error states
-   
-4. **Verify**:
-   - Register → Check participants table → Verify count
+### Tournament Registration
+1. **Backend**: `tournament_participants` table, RLS allows INSERT for authenticated users.
+2. **Hook**: `useTournamentRegistrationStatus` — check status, submit, handle full tournament.
+3. **UI**: Registration modal with team selection, loading/error states.
+4. **Verify**: Register → check participants table → count increments.
 
-### Example: Media Gallery
-1. **Backend**:
-   - Create `organizer_media` table with RLS
-   - Create `organizer-media` storage bucket
-   
-2. **Logic**:
-   - Create multi-file upload handler
-   - Handle descriptions and metadata
-   
-3. **UI**:
-   - Create `MediaUploadDialog` for batch uploads
-   - Create `MediaLightbox` for viewing
-   
-4. **Verify**:
-   - Upload multiple files → View in gallery → Click to open lightbox
-
----
-
-## Quick Reference
-
-### File Naming Conventions
-| Type | Convention | Example |
-|------|------------|---------|
-| Components | PascalCase | `MediaUploadDialog.tsx` |
-| Hooks | camelCase with `use` prefix | `useTeamManagement.ts` |
-| Utilities | camelCase | `imageUtils.ts` |
-| Migrations | Date prefix | `20260128_create_media_table.sql` |
+### Dispute Filing
+1. **Backend**: `disputes` table, RLS allows INSERT for match participants. Admin notification RPC.
+2. **Hook**: Mutation for dispute creation, query for user's disputes.
+3. **UI**: Dispute form with reason selection, evidence upload, confirmation.
+4. **Verify**: Submit → appears in "My Disputes" → admin sees it in Dispute Center.
 
 ### Import Aliases
 ```typescript
@@ -419,23 +449,29 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-```
-
-### Toast Notifications
-```typescript
-// Success
-toast({ title: 'Success!', description: 'Action completed.' });
-
-// Error
-toast({ title: 'Error', description: error.message, variant: 'destructive' });
-
-// Warning
-toast({ title: 'Warning', description: 'Please check...', variant: 'warning' });
+import type { TournamentRow } from "@/types/tournament";
 ```
 
 ---
 
+## 11. Rules
+
+1. **E2E or nothing.** Every feature needs backend (schema + RLS) → logic (hooks + types) → UI → verification.
+2. **Follow the 4 phases in order.** Don't start UI before backend is tested.
+3. **No raw Supabase calls in components.** Custom hooks only.
+4. **Every table gets RLS.** Default deny. Explicit allow.
+5. **Types match the schema.** If the DB column is `snake_case`, the TypeScript interface maps it to `camelCase` — but the Supabase query uses `snake_case`.
+6. **TanStack Query for all server state.** No `useState` + `useEffect` for data fetching.
+7. **Realtime subscriptions clean up on unmount.** No orphaned channels.
+8. **Loading, error, and empty states are mandatory.** Every data-dependent component handles all three.
+9. **Verify persistence.** If you can't refresh the page and see the data, the feature isn't done.
+10. **Test with non-admin roles.** Admin service role bypasses RLS — testing as admin proves nothing.
+
+---
+
 ## Related Documents
-- [UI Style Guide](./UI_STYLE_GUIDE.md) - Design system and component styling
-- [Database Schema](./supabase/migrations/) - Migration files
-- [API Documentation](./src/services/) - Service layer documentation
+- [Coding Guidelines](./CODING_GUIDELINES.md) — Code standards and patterns
+- [Code Quality Guidelines](./CODE_QUALITY_GUIDELINES.md) — Quality standards, review checklist
+- [Features Guidelines](./FEATURES_GUIDELINES.md) — Feature scoping and delivery
+- [UI Style Guide](./UI_STYLE_GUIDE.md) — Visual design system
+- [UX Guidelines](./UX_GUIDELINES.md) — User experience patterns

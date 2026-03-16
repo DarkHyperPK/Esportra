@@ -83,41 +83,11 @@ export default function AccountSettings() {
       .catch(() => setOwnsVenues(false));
   }, [user?.id]);
 
-  // Handle Riot / Faceit OAuth callbacks that redirect back to this page
+  // Handle OAuth result redirects from backend BFF endpoints
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
-    // ── Riot secure callback ──
-    const riotCallback = params.get('riot_callback');
-    if (riotCallback === 'true') {
-      setActiveTab('connected_accounts');
-      const code = params.get('code');
-      const state = params.get('state');
-      const storedState = sessionStorage.getItem('riotOAuthState');
-      window.history.replaceState({}, '', window.location.pathname);
-      if (!state || state !== storedState) {
-        toast({ title: 'Security Error', description: 'CSRF mismatch. Request blocked.', variant: 'destructive' });
-        sessionStorage.removeItem('riotOAuthState');
-        return;
-      }
-      sessionStorage.removeItem('riotOAuthState');
-      (async () => {
-        try {
-          const riotRedirectUri = `${window.location.origin}/auth/riot/callback`;
-          const data = await apiClient.post<{ gameName?: string; tagLine?: string }>(
-            '/api/integrations/riot/callback',
-            { code, redirectUri: riotRedirectUri },
-          );
-          toast({ title: 'Riot Account Linked!', description: data.gameName ? `Linked ${data.gameName}#${data.tagLine}` : 'Riot account linked.' });
-          queryClient.invalidateQueries({ queryKey: ['riot-account', user?.id] });
-        } catch (err: any) {
-          toast({ title: 'Riot Linking Failed', description: err.message, variant: 'destructive' });
-        }
-      })();
-      return;
-    }
-
-    // ── Riot old/error redirect ──
+    // ── Riot OAuth result ──
     const riotLinked = params.get('riot_linked');
     if (riotLinked) {
       setActiveTab('connected_accounts');
@@ -130,45 +100,18 @@ export default function AccountSettings() {
       }
     }
 
-    // ── Faceit callback ──
-    const faceitCallback = params.get('faceit_callback');
-    if (faceitCallback === 'true') {
-      setActiveTab('connected_accounts');
-      const code = params.get('code');
-      const state = params.get('state');
-      const storedState = localStorage.getItem('faceitOAuthState');
-      window.history.replaceState({}, '', window.location.pathname);
-      if (!state || state !== storedState) {
-        toast({ title: 'Security Error', description: 'CSRF mismatch. Request blocked.', variant: 'destructive' });
-        localStorage.removeItem('faceitOAuthState');
-        return;
-      }
-      localStorage.removeItem('faceitOAuthState');
-      const codeVerifier = localStorage.getItem('faceitCodeVerifier');
-      localStorage.removeItem('faceitCodeVerifier');
-      (async () => {
-        try {
-          const faceitRedirectUri = import.meta.env.VITE_FACEIT_REDIRECT_URI
-            || `${window.location.origin}/functions/v1/faceit-oauth`;
-          const data = await apiClient.post<{ nickname?: string }>(
-            '/api/integrations/faceit/callback',
-            { code, codeVerifier, redirectUri: faceitRedirectUri },
-          );
-          toast({ title: 'Faceit Account Linked!', description: data.nickname ? `Linked "${data.nickname}"` : 'Faceit account linked.' });
-          localStorage.setItem('faceit_just_linked', Date.now().toString());
-          queryClient.invalidateQueries({ queryKey: ['faceit-account', user?.id] });
-        } catch (err: any) {
-          toast({ title: 'Faceit Linking Failed', description: err.message, variant: 'destructive' });
-        }
-      })();
-    }
-
-    // ── Faceit error redirect ──
+    // ── Faceit OAuth result ──
     const faceitLinked = params.get('faceit_linked');
-    if (faceitLinked === 'error') {
+    if (faceitLinked) {
       setActiveTab('connected_accounts');
       window.history.replaceState({}, '', window.location.pathname);
-      toast({ title: 'Faceit Linking Failed', description: (params.get('reason') || 'unknown').replace(/_/g, ' '), variant: 'destructive' });
+      if (faceitLinked === 'success') {
+        toast({ title: 'Faceit Account Linked!' });
+        localStorage.setItem('faceit_just_linked', Date.now().toString());
+        queryClient.invalidateQueries({ queryKey: ['faceit-account', user?.id] });
+      } else {
+        toast({ title: 'Faceit Linking Failed', description: (params.get('reason') || 'unknown').replace(/_/g, ' '), variant: 'destructive' });
+      }
     }
   }, []);
 

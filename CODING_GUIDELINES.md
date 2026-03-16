@@ -1,50 +1,60 @@
-# Coding guidelines for Esportra
+# Esportra Coding Guidelines
 
-These are the rules for writing code in this codebase. If you're contributing (human or AI), read this first. It's not optional.
-
----
-
-## Why this document exists
-
-We've hit real problems from sloppy code making it to production. Database calls that fire 12 times when once would do. Security holes that let unauthenticated users write to storage buckets. Frontend components that silently swallow errors and show "0" instead of telling anyone something broke.
-
-This document exists because we learned those lessons the hard way. Follow it.
+> **Version 2.0** — Last Updated: March 2026
+> Rules for writing code in this codebase. Not optional.
 
 ---
 
-## Performance
+## Table of Contents
+1. [Why This Document Exists](#1-why-this-document-exists)
+2. [Performance](#2-performance)
+3. [Security](#3-security)
+4. [Database & Migrations](#4-database--migrations)
+5. [Code Style](#5-code-style)
+6. [Component Architecture](#6-component-architecture)
+7. [Writing for Humans](#7-writing-for-humans)
+8. [Pre-push Checklist](#8-pre-push-checklist)
+9. [Production Debugging](#9-production-debugging)
+10. [Rules](#10-rules)
 
-### Write less code, not more
+---
 
-Every line you add is a line someone has to debug later. Before writing a new utility, check if one already exists. Before adding a library, check if the browser API does what you need. A 200-line component that does one thing well beats a 50-line component that imports four libraries to do the same thing.
+## 1. Why This Document Exists
 
-### Database calls are expensive. Treat them that way.
+We've shipped bugs that cost real time to fix. Database calls that fired 12 times when once would do. Security holes that let unauthenticated users write to storage. Components that silently swallowed errors and showed "0" instead of telling anyone something broke.
 
-This is probably the single biggest performance issue we've had. Here's what went wrong and how to avoid it:
+Every rule here exists because we learned the lesson the hard way.
 
-**Consolidate queries.** If you need five counts from five tables, don't make five separate requests. Write a single RPC function that returns all of them in one round trip. We did exactly this with `get_admin_dashboard_stats()` -- one call replaced twelve.
+---
+
+## 2. Performance
+
+### Database calls are expensive — treat them that way
+
+This is the single biggest performance issue we've had.
+
+**Consolidate queries.** If you need five counts from five tables, don't make five requests. Write a single RPC.
 
 ```typescript
-// wrong: fires 5 separate requests
+// WRONG: 5 separate requests
 const users = await supabase.from('profiles').select('*', { count: 'exact' });
 const venues = await supabase.from('venues').select('*', { count: 'exact' });
 const tournaments = await supabase.from('tournaments').select('*', { count: 'exact' });
-// ... and so on
 
-// right: one RPC, one round trip
+// RIGHT: one RPC, one round trip
 const { data } = await supabase.rpc('get_admin_dashboard_stats');
 ```
 
-**Use Supabase joins, not manual lookups.** If you need a tournament with its participants, use the nested select syntax. Don't fetch the tournament, then loop through participant IDs making individual profile requests.
+**Use Supabase joins, not manual lookups.** Don't fetch a tournament then loop through participant IDs making individual profile requests.
 
 ```typescript
-// wrong: N+1 query pattern
+// WRONG: N+1 query pattern
 const { data: tournament } = await supabase.from('tournaments').select('*').eq('id', id).single();
 for (const pid of tournament.participant_ids) {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', pid).single();
 }
 
-// right: let Postgres do the join
+// RIGHT: let Postgres do the join
 const { data } = await supabase
   .from('tournaments')
   .select('*, tournament_participants(*, profiles(username, avatar_url))')
@@ -52,57 +62,49 @@ const { data } = await supabase
   .single();
 ```
 
-**Cache things that don't change often.** Game metadata from external APIs (like RAWG) should be cached. User profiles can be cached for short periods. Tournament brackets mid-match should not be cached.
+**Paginate everything.** Never call `.select('*')` without a `.limit()`. Lists fetch one page at a time.
 
-**Paginate everything.** Never call `.select('*')` without a `.limit()`. If you're displaying a list, fetch one page at a time. The audit logs page fetches 100 rows max and paginates from there.
+**Cache what doesn't change often.** Game metadata from RAWG. User profiles for short periods. Not tournament brackets mid-match.
 
 ### Frontend performance
-
-- Lazy load routes. Not every user visits the admin dashboard. Don't make them download the code for it.
-- Use `React.memo` and `useCallback` where re-renders are measurable, not everywhere. Premature memo-ization makes code harder to read for no gain.
-- Images should be served from Supabase Storage with transforms (resizing, WebP conversion) where supported.
-- Debounce search inputs. A 300ms debounce on the user search saves dozens of unnecessary queries.
+- Lazy load routes. Not every user visits the admin dashboard.
+- Use `React.memo` and `useCallback` where re-renders are measurable, not everywhere.
+- Debounce search inputs (300ms minimum).
+- Images from Supabase Storage should use transforms (resizing, WebP) where supported.
 
 ---
 
-## Security
+## 3. Security
 
-### The rules are simple
+### Core rules
+1. **Never trust the client.**
+2. **Every table has RLS.** No exceptions.
+3. **Default deny.** Add permissions, don't remove restrictions.
+4. **Admin ops go through `SECURITY DEFINER` RPCs**, not direct table updates.
+5. **Edge Functions verify JWT on every request.**
 
-1. Never trust the client.
-2. Every database table has Row Level Security enabled. No exceptions.
-3. Every RLS policy defaults to deny. You add permissions, not remove restrictions.
-4. Admin operations go through `SECURITY DEFINER` RPC functions, not direct table updates. RLS blocks admin updates to other users' rows by design -- that's the point.
-5. Edge Functions verify the JWT on every request. Copy the pattern from `riot-match-proxy/index.ts` if you're writing a new one.
-
-### What we've already locked down
-
-We ran a full security audit and these are the protections in place. Don't remove them, don't weaken them, don't "temporarily disable" them:
-
-- **Tournament organizers** cannot set `is_featured`, `status`, `approved_by`, `approved_at`, or `winner_id` on their own tournaments. There's a trigger (`trg_block_organizer_tournament_updates`) that blocks it.
-- **Team members** can only join if they have an accepted invitation. No more self-inserting into teams.
-- **Match reports** can only be submitted by players who are actually in the match.
-- **Venue bookings** have payment fields protected by a trigger. Users cannot set their own booking to "paid."
-- **Storage buckets** have no anonymous write access. The `Temp Allow Anon ALL` policy was dropped.
-- **Edge Functions** all require JWT auth or service-role verification. The Riot OAuth flow uses PKCE-style state validation.
+### Existing protections — do not remove, weaken, or "temporarily disable"
+- **Tournament organizers** can't set `is_featured`, `status`, `approved_by`, `approved_at`, or `winner_id` on their own tournaments (trigger: `trg_block_organizer_tournament_updates`).
+- **Team members** can only join with an accepted invitation.
+- **Match reports** require being an actual participant in the match.
+- **Venue bookings** have payment fields protected by trigger.
+- **Storage buckets** have no anonymous write access.
+- **Edge Functions** all require JWT auth or service-role verification.
 
 ### Writing new RLS policies
-
 When you add a new table:
-
-1. Enable RLS: `ALTER TABLE your_table ENABLE ROW LEVEL SECURITY;`
-2. Add a SELECT policy for who can read.
-3. Add an INSERT policy with a `WITH CHECK` clause.
-4. Add UPDATE/DELETE policies as needed.
-5. Always include a `service_role` bypass if backend operations need full access.
-6. Test the policy by signing in as a non-admin user and trying to do things you shouldn't be able to.
+1. `ALTER TABLE your_table ENABLE ROW LEVEL SECURITY;`
+2. Add SELECT policy for who can read.
+3. Add INSERT policy with `WITH CHECK`.
+4. Add UPDATE/DELETE as needed.
+5. Include a `service_role` bypass if backend operations need full access.
+6. **Test by signing in as a non-admin user** and trying things you shouldn't be able to do.
 
 ```sql
--- Pattern for a basic RLS policy
-CREATE POLICY "users_can_read_own_data" ON your_table
+CREATE POLICY "users_read_own" ON your_table
   FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "users_can_insert_own_data" ON your_table
+CREATE POLICY "users_insert_own" ON your_table
   FOR INSERT WITH CHECK (
     auth.uid() = user_id
     OR current_setting('request.jwt.claim.role', true) = 'service_role'
@@ -110,81 +112,126 @@ CREATE POLICY "users_can_insert_own_data" ON your_table
 ```
 
 ### Secrets
-
-- Database passwords, API keys, and SSH keys live in GitHub Secrets or Coolify environment variables. Never in code, never in `.env` files committed to git.
-- The `.env.local` file is gitignored. Use it for local development only.
-- If you need a new secret for a GitHub Action, add it in the repo settings under `Secrets and variables > Actions`.
+- Database passwords, API keys, SSH keys: GitHub Secrets or Coolify env vars. Never in code.
+- `.env.local` is gitignored — local development only.
+- New secrets for GitHub Actions: add in repo Settings → Secrets and variables → Actions.
 
 ---
 
-## Database migrations
+## 4. Database & Migrations
 
-All schema changes go through the migration system. This matters because the production database auto-syncs from the `supabase/migrations/` folder via GitHub Actions.
+All schema changes go through the migration system. Production DB auto-syncs from `supabase/migrations/` via GitHub Actions.
 
-### The workflow
-
-1. Make your change on the local Supabase instance (localhost:54322).
-2. Run `supabase db diff -f describe_what_you_changed` to capture it.
-3. Check the generated `.sql` file. Make sure it does what you expect.
-4. Commit the file along with your frontend code.
-5. Push to `main`. The GitHub Action runs `supabase db push` against production automatically.
+### Workflow
+1. Make changes on local Supabase (localhost:54322).
+2. Run `supabase db diff -f describe_what_you_changed`.
+3. Read the generated `.sql` file. Verify it does what you expect.
+4. Commit alongside your frontend code.
+5. Push. GitHub Actions runs `supabase db push` automatically.
 
 ### Do not
-
-- Edit the production database directly through the Supabase Studio UI. Changes made there won't exist in your migration history and will get overwritten or conflict.
+- Edit production DB through Supabase Studio. Changes won't be in migration history and will conflict.
 - Write migrations that drop data without a backup plan.
-- Combine unrelated changes in one migration file. If you're adding a column and also changing an RLS policy, make two separate migration files.
+- Combine unrelated changes in one migration file. One migration per concern.
+
+### Naming
+- Migration files: `YYYYMMDDHHMMSS_descriptive_name.sql`
+- Database columns: `snake_case`
+- Tables: `snake_case`, plural (`tournaments`, `match_scores`, `venue_bookings`)
 
 ---
 
-## Code style
+## 5. Code Style
 
 ### TypeScript
-
-- Use TypeScript for everything. No `.js` files in `src/`.
-- Define interfaces for all data shapes that come from the database. The `UserProfile` interface in `types/auth.ts` is the reference pattern.
-- Don't use `any` unless you genuinely don't know the type and can't figure it out. If you write `as any`, leave a comment explaining why.
-
-### React components
-
-- One component per file. The filename matches the component name.
-- Hooks go in `src/hooks/`. Context providers go in `src/contexts/`.
-- Error states in data-fetching components should be visible, not silent. If a query fails, show a message. Don't render an empty page and hope nobody notices.
+- Everything in `src/` is TypeScript. No `.js` files.
+- Define interfaces for all database-derived data shapes.
+- Don't use `any` unless you genuinely can't determine the type. If you write `as any`, leave a comment.
 
 ### Naming
 
-- Database columns: `snake_case`
-- TypeScript variables and functions: `camelCase`
-- React components: `PascalCase`
-- CSS classes: whatever you're already using in that file (we use a mix of Tailwind and custom classes)
-- Be descriptive. `handleUnsuspendUser` beats `handleClick2`. `fetchTournamentWithParticipants` beats `getData`.
+| Thing | Convention | Example |
+|-------|-----------|---------|
+| Database columns | `snake_case` | `organizer_id`, `created_at` |
+| TypeScript variables/functions | `camelCase` | `fetchTournament`, `isLoading` |
+| React components | `PascalCase` | `TournamentCard`, `PlayerProfile` |
+| Constants | `SCREAMING_SNAKE_CASE` | `MAX_TEAM_SIZE` |
+| Files (components) | PascalCase | `TournamentCard.tsx` |
+| Files (hooks) | camelCase with `use` | `useTeamManagement.ts` |
+| Files (utils) | camelCase | `imageUtils.ts` |
+| Migrations | Timestamped snake_case | `20260315_add_venue_pricing.sql` |
+
+Be descriptive. `handleUnsuspendUser` beats `handleClick2`. `fetchTournamentWithParticipants` beats `getData`.
+
+### Imports
+Use path aliases (`@/`) for all internal imports:
+```typescript
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+```
 
 ---
 
-## Writing for humans
+## 6. Component Architecture
 
-All documentation, user-facing text, error messages, and comments should be written in plain, direct language. We use a humanizer checklist (see `SKILL.md` in the repo root) to catch AI-sounding patterns. Here are the ones that matter most for this codebase:
+### File structure
+- One component per file. Filename matches component name.
+- Hooks in `src/hooks/`. Context providers in `src/contexts/`.
+- No raw Supabase calls in components — always through hooks.
+
+### Component size
+- Keep components under 200 lines. If larger, extract sub-components or hooks.
+- Keep functions under 50 lines. If larger, break into smaller named functions.
+
+### Error states
+Error states are **visible**, not silent. If a query fails, show a message. Don't render an empty page.
+
+```typescript
+// WRONG: silently shows nothing
+if (error) return null;
+
+// RIGHT: tells the user what happened
+if (error) return <ErrorState message="Failed to load tournament." retry={refetch} />;
+```
+
+### Loading states
+Every data-dependent component needs a loading state:
+```typescript
+if (isLoading) return <TournamentSkeleton />;
+```
+
+### Empty states
+Every list needs a designed empty state:
+```typescript
+if (data?.length === 0) return <EmptyState message="No tournaments found." action={<CreateButton />} />;
+```
+
+---
+
+## 7. Writing for Humans
 
 ### Drop the filler
-
-Don't write "in order to" when "to" works. Don't write "it is important to note that" when you can just state the thing. Every word should earn its place.
+Don't write "in order to" when "to" works. Don't write "it is important to note that" — just state the thing.
 
 ### Be specific
-
-"The API returned an error" is useless. "The Supabase RPC `get_admin_dashboard_stats` returned a 42501 permission denied error" is useful. Same goes for comments, commit messages, and toast notifications.
-
-### Don't inflate importance
-
-Code comments don't need to explain that a function "plays a key role in the overall architecture." Just say what it does. "Fetches the user's profile and checks the suspension flag" is enough.
+```
+// BAD: "The API returned an error"
+// GOOD: "Supabase RPC get_admin_dashboard_stats returned 42501 permission denied"
+```
 
 ### Error messages should help
+```
+// BAD:  "Something went wrong"
+// GOOD: "Your session expired. Please sign in again."
+```
 
-A user seeing "Something went wrong" can't do anything with that. A user seeing "Your session expired. Please sign in again." knows exactly what happened and what to do.
+### Don't inflate importance
+Code comments don't need to explain that a function "plays a key role in the overall architecture." Just say what it does: "Fetches the user's profile and checks the suspension flag."
 
 ### Commit messages
-
-Use the conventional commits format: `fix:`, `feat:`, `chore:`, `docs:`. Keep the first line under 72 characters. If you need to explain more, add a blank line and a body paragraph.
-
+Conventional commits: `fix:`, `feat:`, `chore:`, `docs:`. First line under 72 characters.
 ```
 fix(admin): pass correct username to audit log on unsuspend
 
@@ -195,21 +242,47 @@ the user row data.
 
 ---
 
-## Testing before pushing
+## 8. Pre-push Checklist
 
-1. Run `npm run build` locally. If it doesn't build, it won't build on Coolify either.
-2. Check the browser console for errors. Especially after touching auth flows or admin pages.
-3. If you changed a database function or RLS policy, test it with a non-admin user. The admin service role bypasses everything, so testing as admin proves nothing about your policy.
-4. If you changed an Edge Function, test it with `supabase functions serve` before pushing.
+1. **`npm run build`** — if it doesn't build locally, it won't build in production.
+2. **Browser console** — check for errors, especially after touching auth or admin pages.
+3. **Role test** — if you changed RLS or a trigger, test as a non-admin user. Admin service role bypasses everything.
+4. **Edge Function test** — if changed, test with `supabase functions serve` before pushing.
 
 ---
 
-## When something breaks in production but works locally
+## 9. Production Debugging
 
-This has happened to us. Here's the checklist:
+When something breaks in production but works locally:
 
-1. **Missing database objects.** Did you create a new function or trigger locally but forget to run `supabase db diff`? Check if the migration file exists in `supabase/migrations/`.
-2. **RLS blocking legitimate access.** Connect to production via the MCP tool and run the query as the affected user's role. Local Supabase often runs with more permissive defaults.
-3. **Environment variables.** Does the Edge Function expect a secret that exists locally but hasn't been added to the production environment?
-4. **Stale cache.** Coolify sometimes serves old builds. Force a manual redeploy from the dashboard.
-5. **Different data.** Production has real users with real edge cases. A null `username`, a missing `avatar_url`, a profile created before the `suspension_type` column existed. Handle nulls.
+1. **Missing DB objects.** Did you create a function/trigger locally but forget `supabase db diff`? Check `supabase/migrations/`.
+2. **RLS blocking legitimate access.** Query production as the affected user's role.
+3. **Environment variables.** Does the Edge Function expect a secret that's only in your local env?
+4. **Stale cache.** Coolify sometimes serves old builds. Force redeploy.
+5. **Different data.** Production has real users with edge cases: null `username`, missing `avatar_url`, profiles created before a column existed. Handle nulls.
+
+---
+
+## 10. Rules
+
+1. **TypeScript only** in `src/`. No `.js` files.
+2. **No raw Supabase calls in components.** Data access goes through custom hooks.
+3. **Every table gets RLS.** Default deny. Explicit allow.
+4. **Consolidate queries.** Use RPCs and Supabase joins. No N+1 patterns.
+5. **Paginate everything.** Never `.select('*')` without `.limit()`.
+6. **Error states are visible.** Never return `null` on error. Show a message.
+7. **Conventional commits.** `type(scope): description` format.
+8. **One migration per concern.** Don't bundle unrelated schema changes.
+9. **Never weaken existing security.** Don't remove triggers, don't disable RLS policies.
+10. **`npm run build` before pushing.** If it fails locally, fix it first.
+11. **Descriptive names.** If a reviewer has to ask "what does this do?", rename it.
+12. **No secrets in code.** Environment variables only.
+
+---
+
+## Related Documents
+- [Code Quality Guidelines](./CODE_QUALITY_GUIDELINES.md) — Quality standards, review checklist
+- [Implementation Guide](./IMPLEMENTATION_GUIDE.md) — E2E development protocol
+- [Features Guidelines](./FEATURES_GUIDELINES.md) — Feature scoping and delivery
+- [UI Style Guide](./UI_STYLE_GUIDE.md) — Visual design system
+- [UX Guidelines](./UX_GUIDELINES.md) — User experience patterns
