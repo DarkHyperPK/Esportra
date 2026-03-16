@@ -27,7 +27,8 @@ export function useFaceitAccount() {
         queryFn: async () => {
             if (!user?.id) return null;
             try {
-                return await apiClient.get(`/api/integrations/faceit`);
+                const data = await apiClient.get<any>(`/api/integrations/faceit`);
+                return data?.linked ? data : null;
             } catch {
                 return null;
             }
