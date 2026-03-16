@@ -88,27 +88,46 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   const queryClient = useQueryClient();
   const { data: graphData, refetch: refetchGraph } = useGraphBracket(versionId || '', tournamentId || undefined);
 
-  // Fetch match proofs
+  // Fetch match proofs (from both old tournament_match_results and new match_result_reports)
   const { data: proofs } = useQuery({
     queryKey: ['match-proofs', tournamentId],
     queryFn: async () => {
       if (!tournamentId) return {};
-      const data = await apiClient.get<{ match_id: string; image_url: string | null }[]>(
-        `/api/tournaments/${tournamentId}/match-reports`
-      );
-
       const map: Record<string, string[]> = {};
-      data?.forEach((r: any) => {
-        // Handle both raw UUID and db- prefixed ID if necessary
-        // Assuming tournament_match_results uses raw UUID
-        const id = r.match_id;
-        if (!map[id]) map[id] = [];
-        if (r.image_url) map[id].push(r.image_url);
-      });
+
+      // Old system: tournament_match_results
+      try {
+        const data = await apiClient.get<{ match_id: string; image_url: string | null }[]>(
+          `/api/tournaments/${tournamentId}/match-reports`
+        );
+        data?.forEach((r: any) => {
+          const id = r.match_id;
+          if (!map[id]) map[id] = [];
+          if (r.image_url) map[id].push(r.image_url);
+        });
+      } catch { /* old table may not exist */ }
+
+      // New system: match_result_reports with screenshot_urls
+      try {
+        const matchIds = Object.keys(automatedGames || {});
+        // Also fetch from brkt_matches for this tournament
+        const allReports = await apiClient.get<any[]>(
+          `/api/tournaments/${tournamentId}/result-reports`
+        );
+        allReports?.forEach((r: any) => {
+          const id = r.match_id;
+          if (!map[id]) map[id] = [];
+          const urls = r.screenshot_urls ?? r.screenshotUrls;
+          if (Array.isArray(urls)) {
+            urls.forEach((url: string) => { if (url) map[id].push(url); });
+          }
+        });
+      } catch { /* endpoint may not exist yet */ }
+
       return map;
     },
     enabled: !!tournamentId,
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 1000 * 30,
   });
 
   // Fetch detailed game results (automated reports)

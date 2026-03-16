@@ -426,6 +426,32 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                             </div>
                         </div>
 
+                        {/* Screenshots (from manual reports) */}
+                        {activeReport.screenshot_urls && Array.isArray(activeReport.screenshot_urls) && activeReport.screenshot_urls.length > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Evidence Screenshots</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {activeReport.screenshot_urls.map((url: string, i: number) => (
+                                        <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                            className="block relative aspect-video bg-black/40 rounded-lg border border-zinc-800 overflow-hidden group hover:border-zinc-600 transition-colors">
+                                            <img src={url} alt={`Evidence ${i + 1}`} className="w-full h-full object-contain" />
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                <span className="text-white text-xs font-medium">View Full Image</span>
+                                            </div>
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Comment */}
+                        {activeReport.comment && (
+                            <div className="p-3 bg-zinc-900/30 border border-zinc-800 rounded-lg">
+                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Comment</p>
+                                <p className="text-sm text-zinc-300 whitespace-pre-wrap">{activeReport.comment}</p>
+                            </div>
+                        )}
+
                         {/* Waiting / Actions */}
                         {isMyReport ? (
                             <div className="text-center p-3 bg-zinc-800/50 rounded-lg">

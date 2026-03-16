@@ -41,19 +41,36 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
 
     const { data: graphData } = useGraphBracket(versionId || '');
 
-    // Fetch match proofs (manual submissions)
+    // Fetch match proofs (manual submissions + screenshot reports)
     const { data: proofs } = useQuery({
         queryKey: ['match-proofs', tournamentId],
         queryFn: async () => {
             if (!tournamentId) return {};
-            const data = await apiClient.get(`/api/tournaments/${tournamentId}/match-proofs`);
-
             const map: Record<string, string[]> = {};
-            data?.forEach((r: any) => {
-                const id = r.match_id;
-                if (!map[id]) map[id] = [];
-                if (r.image_url) map[id].push(r.image_url);
-            });
+
+            // Old system
+            try {
+                const data = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/match-proofs`);
+                data?.forEach((r: any) => {
+                    const id = r.match_id;
+                    if (!map[id]) map[id] = [];
+                    if (r.image_url) map[id].push(r.image_url);
+                });
+            } catch { /* may not exist */ }
+
+            // New system: match_result_reports with screenshot_urls
+            try {
+                const reports = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/result-reports`);
+                reports?.forEach((r: any) => {
+                    const id = r.match_id;
+                    if (!map[id]) map[id] = [];
+                    const urls = r.screenshot_urls ?? r.screenshotUrls;
+                    if (Array.isArray(urls)) {
+                        urls.forEach((url: string) => { if (url) map[id].push(url); });
+                    }
+                });
+            } catch { /* endpoint may not exist yet */ }
+
             return map;
         },
         enabled: !!tournamentId,

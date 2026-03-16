@@ -48,6 +48,7 @@ These six documents govern all work on this project. Read and follow them:
 - **[UX_GUIDELINES.md](./project-guidelines/UX_GUIDELINES.md)** — Navigation, loading/error/empty states, forms, feedback, real-time interactions, tournament flow UX, responsive/mobile, accessibility UX
 - **[FEATURES_GUIDELINES.md](./project-guidelines/FEATURES_GUIDELINES.md)** — Feature scoping, categories (player/organizer/venue/admin), definition of done, delivery checklist, breaking changes, feature flags
 - **[CODE_QUALITY_GUIDELINES.md](./project-guidelines/CODE_QUALITY_GUIDELINES.md)** — TypeScript standards, error handling, dependency management, code review checklist, performance budgets, testing, git hygiene, security checklist
+- **[FEATURES_DOCUMENTATION.md](./project-guidelines/FEATURES_DOCUMENTATION.md)** — Complete inventory of all platform features, pages, hooks, edge functions, database tables, and SignalR hubs
 
 ## Key rules (summary)
 
