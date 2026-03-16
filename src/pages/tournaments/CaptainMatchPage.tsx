@@ -478,7 +478,7 @@ const CaptainMatchPage = () => {
     }, [fetchMatchGames]);
 
     const determineMap = useCallback(async () => {
-        if (!activeMatch) return;
+        if (!activeMatch || !tournament?.id) return;
         const realMatchId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
         const bestOfCount = activeMatch.bestOf || 1;
 
@@ -528,13 +528,26 @@ const CaptainMatchPage = () => {
             return;
         }
 
-        // Use map name from veto data or fetch separately
-        const mapName = veto.game_maps?.map_name || targetMapEntry.map_id;
+        // Resolve map name from tournament map pool
+        let mapName = targetMapEntry.map_id;
+        try {
+            const mapPool = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/map-pool`);
+            const found = mapPool?.find((m: any) => (m.id ?? m.map_id) === targetMapEntry.map_id);
+            if (found) mapName = found.map_name ?? found.name ?? mapName;
+        } catch {
+            // Fallback: try game-maps endpoint
+            try {
+                const allMaps = await apiClient.get<any[]>('/api/game-maps');
+                const found = allMaps?.find((m: any) => (m.id ?? m.map_id) === targetMapEntry.map_id);
+                if (found) mapName = found.map_name ?? found.name ?? mapName;
+            } catch { /* use map_id as name */ }
+        }
+
         setNextGameMap({
             id: targetMapEntry.map_id,
             name: mapName
         });
-    }, [activeMatch?.id, nextGameNumber, activeMatch?.bestOf]);
+    }, [activeMatch?.id, nextGameNumber, activeMatch?.bestOf, tournament?.id]);
 
     useEffect(() => {
         determineMap();
