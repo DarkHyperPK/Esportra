@@ -1172,15 +1172,20 @@ const CaptainMatchPage = () => {
 
                 <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
                     <DialogContent className="sm:max-w-md bg-[#18181b] border-zinc-800 p-0">
+                        <DialogTitle className="sr-only">Manual Result Report</DialogTitle>
                         <MatchResultUpload
-                            tournamentId={tournament.id}
                             matchId={(uploadMatchId || '').replace(/^(db-|wb-|lb-)/, '')}
                             teamId={userTeamId}
+                            gameNumber={nextGameNumber}
+                            mapName={nextGameMap?.name}
+                            team1Name={activeMatch?.team1?.name || 'Team 1'}
+                            team2Name={activeMatch?.team2?.name || 'Team 2'}
                             isCaptain={isCaptain}
                             onSuccess={() => {
                                 setUploadOpen(false);
+                                fetchMatchGames();
                                 refetchBracket();
-                                toast({ title: "Result Submitted", description: "Match result has been uploaded successfully." });
+                                toast({ title: "Result Submitted", description: "Match result reported. Awaiting opponent confirmation." });
                             }}
                         />
                     </DialogContent>
