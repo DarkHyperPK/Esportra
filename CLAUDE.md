@@ -42,12 +42,12 @@ supabase/
 
 These six documents govern all work on this project. Read and follow them:
 
-- **[CODING_GUIDELINES.md](./CODING_GUIDELINES.md)** — Performance (query consolidation, N+1 prevention, pagination), security (RLS, triggers, secrets), migrations, code style, naming, commit messages
-- **[UI_STYLE_GUIDE.md](./UI_STYLE_GUIDE.md)** — Dark theme (#050505 base, rose-500 accents), typography (Poppins/Inter), glassmorphism, card patterns, animations (Framer Motion), accessibility (4.5:1 contrast, 44px touch targets, reduced motion)
-- **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** — E2E mandate (no UI-only changes), 4-phase protocol (DB+RLS → hooks/types → UI → verify), custom hooks for all data fetching, TanStack Query patterns, storage buckets, realtime subscriptions
-- **[UX_GUIDELINES.md](./UX_GUIDELINES.md)** — Navigation, loading/error/empty states, forms, feedback, real-time interactions, tournament flow UX, responsive/mobile, accessibility UX
-- **[FEATURES_GUIDELINES.md](./FEATURES_GUIDELINES.md)** — Feature scoping, categories (player/organizer/venue/admin), definition of done, delivery checklist, breaking changes, feature flags
-- **[CODE_QUALITY_GUIDELINES.md](./CODE_QUALITY_GUIDELINES.md)** — TypeScript standards, error handling, dependency management, code review checklist, performance budgets, testing, git hygiene, security checklist
+- **[CODING_GUIDELINES.md](./project-guidelines/CODING_GUIDELINES.md)** — Performance (query consolidation, N+1 prevention, pagination), security (RLS, triggers, secrets), migrations, code style, naming, commit messages
+- **[UI_STYLE_GUIDE.md](./project-guidelines/UI_STYLE_GUIDE.md)** — Dark theme (#050505 base, rose-500 accents), typography (Poppins/Inter), glassmorphism, card patterns, animations (Framer Motion), accessibility (4.5:1 contrast, 44px touch targets, reduced motion)
+- **[IMPLEMENTATION_GUIDE.md](./project-guidelines/IMPLEMENTATION_GUIDE.md)** — E2E mandate (no UI-only changes), 4-phase protocol (DB+RLS → hooks/types → UI → verify), custom hooks for all data fetching, TanStack Query patterns, storage buckets, realtime subscriptions
+- **[UX_GUIDELINES.md](./project-guidelines/UX_GUIDELINES.md)** — Navigation, loading/error/empty states, forms, feedback, real-time interactions, tournament flow UX, responsive/mobile, accessibility UX
+- **[FEATURES_GUIDELINES.md](./project-guidelines/FEATURES_GUIDELINES.md)** — Feature scoping, categories (player/organizer/venue/admin), definition of done, delivery checklist, breaking changes, feature flags
+- **[CODE_QUALITY_GUIDELINES.md](./project-guidelines/CODE_QUALITY_GUIDELINES.md)** — TypeScript standards, error handling, dependency management, code review checklist, performance budgets, testing, git hygiene, security checklist
 
 ## Key rules (summary)
 

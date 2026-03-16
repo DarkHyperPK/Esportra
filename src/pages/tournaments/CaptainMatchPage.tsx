@@ -12,7 +12,6 @@ import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import { MapVeto } from '@/components/tournament/MapVeto';
-import { mapApiVetoToLocal } from '@/hooks/useMapVetoMachine';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
@@ -477,77 +476,30 @@ const CaptainMatchPage = () => {
         fetchMatchGames();
     }, [fetchMatchGames]);
 
+    // Determine the map for the next game from brkt_match_games
+    // (created by backend on veto completion — single source of truth)
     const determineMap = useCallback(async () => {
-        if (!activeMatch || !tournament?.id) return;
+        if (!activeMatch) return;
         const realMatchId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
-        const bestOfCount = activeMatch.bestOf || 1;
 
-        console.log('[CaptainMatchPage] Determining map for match:', realMatchId, 'Game:', nextGameNumber, 'BestOf:', bestOfCount);
-
-        // Fetch Veto Info and map camelCase API response to snake_case local format
-        let veto: any = null;
         try {
-            const raw = await apiClient.get<any>(`/api/veto/${realMatchId}`);
-            if (raw) veto = mapApiVetoToLocal(raw);
-        } catch {
-            // No veto data
-        }
-
-        if (!veto) {
-            console.log('[CaptainMatchPage] No veto data found for match:', realMatchId);
-            setNextGameMap(null);
-            return;
-        }
-
-        // --- Sequence Reconstruction Logic (Sync with VetoSelectedMaps.tsx) ---
-        const team1Picked = Array.isArray(veto.team1_picked_maps) ? veto.team1_picked_maps : [];
-        const team2Picked = Array.isArray(veto.team2_picked_maps) ? veto.team2_picked_maps : [];
-
-        const allPicks: { map_id: string }[] = [];
-
-        if (bestOfCount >= 3) {
-            if (team1Picked[0]?.map_id) allPicks.push({ map_id: team1Picked[0].map_id });
-            if (team2Picked[0]?.map_id) allPicks.push({ map_id: team2Picked[0].map_id });
-
-            if (bestOfCount === 5) {
-                if (team1Picked[1]?.map_id) allPicks.push({ map_id: team1Picked[1].map_id });
-                if (team2Picked[1]?.map_id) allPicks.push({ map_id: team2Picked[1].map_id });
+            const games = await apiClient.get<any[]>(`/api/matches/${realMatchId}/games`);
+            if (games && games.length > 0) {
+                const targetGame = games.find((g: any) => g.game_number === nextGameNumber || g.gameNumber === nextGameNumber);
+                if (targetGame) {
+                    setNextGameMap({
+                        id: targetGame.map_id ?? targetGame.mapId ?? '',
+                        name: targetGame.map_name ?? targetGame.mapName ?? 'Unknown Map',
+                    });
+                    return;
+                }
             }
-        }
-
-        if (veto.selected_map_id) {
-            allPicks.push({ map_id: veto.selected_map_id });
-        }
-
-        console.log('[CaptainMatchPage] Reconstructed map sequence:', allPicks);
-
-        const targetMapEntry = allPicks[nextGameNumber - 1];
-        if (!targetMapEntry) {
-            console.log('[CaptainMatchPage] No map entry found for game:', nextGameNumber);
-            setNextGameMap(null);
-            return;
-        }
-
-        // Resolve map name from tournament map pool
-        let mapName = targetMapEntry.map_id;
-        try {
-            const mapPool = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/map-pool`);
-            const found = mapPool?.find((m: any) => (m.id ?? m.map_id) === targetMapEntry.map_id);
-            if (found) mapName = found.map_name ?? found.name ?? mapName;
         } catch {
-            // Fallback: try game-maps endpoint
-            try {
-                const allMaps = await apiClient.get<any[]>('/api/game-maps');
-                const found = allMaps?.find((m: any) => (m.id ?? m.map_id) === targetMapEntry.map_id);
-                if (found) mapName = found.map_name ?? found.name ?? mapName;
-            } catch { /* use map_id as name */ }
+            // Games not yet created (veto still in progress)
         }
 
-        setNextGameMap({
-            id: targetMapEntry.map_id,
-            name: mapName
-        });
-    }, [activeMatch?.id, nextGameNumber, activeMatch?.bestOf, tournament?.id]);
+        setNextGameMap(null);
+    }, [activeMatch?.id, nextGameNumber]);
 
     useEffect(() => {
         determineMap();
