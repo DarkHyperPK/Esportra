@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { FileText, ChevronDown, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { BracketMatch } from '@/types/bracketTypes';
 import { apiClient } from '@/lib/apiClient';
@@ -24,7 +24,7 @@ interface GameDetail {
     map_id: string;
     map_name: string;
     map_image_url: string | null;
-    match_details: any;
+    match_details: any; // Riot API scoreboard data — shape varies per match
     reported_by_team_id?: string;
 }
 
@@ -37,6 +37,7 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
         const theme = MAP_THEMES[key];
         return theme ? getMapSplash(theme.id) : null;
     };
+
     // Filter for completed matches involving this team
     const pastMatches = matches.filter(m =>
         (m.team1?.id === teamId || m.team2?.id === teamId) &&
@@ -62,7 +63,8 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
             );
 
             const grouped: Record<string, GameDetail[]> = {};
-            data?.forEach((game: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data?.forEach((game: any) => { // API returns dynamic jsonb columns
                 const prefixedId = matchIdMap[game.match_id];
                 if (!prefixedId) return;
 
