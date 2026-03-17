@@ -43,6 +43,7 @@ export interface MatchMapVeto {
     team1_picked_maps?: PickedMap[];
     team2_picked_maps?: PickedMap[];
     selected_map_id: string | null;
+    selected_map_pool?: string[];
     started_at: string | null;
     completed_at: string | null;
 }
@@ -78,6 +79,7 @@ export function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
         team1_picked_maps:     normalizePickedArray(apiVeto.team1PickedMaps ?? apiVeto.team1_picked_maps),
         team2_picked_maps:     normalizePickedArray(apiVeto.team2PickedMaps ?? apiVeto.team2_picked_maps),
         selected_map_id:       apiVeto.selectedMapId ?? apiVeto.selected_map_id ?? null,
+        selected_map_pool:     Array.isArray(apiVeto.selectedMapPool ?? apiVeto.selected_map_pool) ? (apiVeto.selectedMapPool ?? apiVeto.selected_map_pool) : [],
         started_at:            apiVeto.startedAt ?? apiVeto.started_at ?? null,
         completed_at:          apiVeto.completedAt ?? apiVeto.completed_at ?? null,
     } as MatchMapVeto;
