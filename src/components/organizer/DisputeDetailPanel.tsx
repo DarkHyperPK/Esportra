@@ -85,7 +85,23 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
 }) => {
   const cfg = statusConfig[dispute.status];
   const StatusIcon = cfg.icon;
-  const riotMatchIds = (dispute.reports || [])
+
+  // Guard against jsonb returning a string instead of a parsed array
+  const safeReports: DisputeReport[] = (() => {
+    let r = dispute.reports;
+    if (!r) return [];
+    if (typeof r === 'string') { try { r = JSON.parse(r); } catch { return []; } }
+    return Array.isArray(r) ? r : [];
+  })();
+
+  const safeRiotAccounts: DisputeRiotAccount[] = (() => {
+    let r = dispute.riot_accounts;
+    if (!r) return [];
+    if (typeof r === 'string') { try { r = JSON.parse(r); } catch { return []; } }
+    return Array.isArray(r) ? r : [];
+  })();
+
+  const riotMatchIds = safeReports
     .map(r => r.riot_match_id)
     .filter((v, i, a) => v && a.indexOf(v) === i) as string[];
 
@@ -160,8 +176,8 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
 
         {/* Reports + Riot Accounts from enriched data */}
         <DisputeEvidencePanel
-          reports={dispute.reports || []}
-          riotAccounts={dispute.riot_accounts || []}
+          reports={safeReports}
+          riotAccounts={safeRiotAccounts}
           matchContext={dispute.match ? {
             team1_name: dispute.match.team1_name,
             team2_name: dispute.match.team2_name,
