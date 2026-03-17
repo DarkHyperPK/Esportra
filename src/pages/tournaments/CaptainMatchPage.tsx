@@ -459,7 +459,8 @@ const CaptainMatchPage = () => {
     const [nextGameNumber, setNextGameNumber] = useState(1);
     const [nextGameMap, setNextGameMap] = useState<{ id: string, name: string } | null>(null);
 
-    // Fetch games AND determine next map in one call to avoid race conditions
+    // Fetch games AND determine next map in one call to avoid race conditions.
+    // brkt_match_games (populated by backend on veto completion) is the single source of truth.
     const fetchMatchGamesAndMap = useCallback(async () => {
         if (!activeMatch) return;
         const realMatchId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
@@ -468,7 +469,7 @@ const CaptainMatchPage = () => {
         try {
             games = await apiClient.get<any[]>(`/api/matches/${realMatchId}/games`) || [];
         } catch {
-            // Games not yet created
+            // Games not yet created (veto still in progress)
         }
         setMatchGames(games);
 
@@ -476,10 +477,11 @@ const CaptainMatchPage = () => {
         const gameNum = completed + 1;
         setNextGameNumber(gameNum);
 
-        // Try to find the target game row
-        const targetGame = games.find((g: any) =>
-            (g.game_number ?? g.gameNumber) === gameNum
-        );
+        // Find the game row for the next game number
+        const targetGame = games.find((g: any) => {
+            const gn = g.game_number ?? g.gameNumber;
+            return gn == gameNum;
+        });
         if (targetGame) {
             setNextGameMap({
                 id: targetGame.map_id ?? targetGame.mapId ?? '',
@@ -488,56 +490,8 @@ const CaptainMatchPage = () => {
             return;
         }
 
-        // Fallback: derive map from veto data when game row doesn't exist yet
-        if (vetoData && (vetoData.status === 'completed' || vetoData.completedAt || vetoData.completed_at)) {
-            const bestOf = vetoData.bestOf ?? vetoData.best_of ?? vetoData.BestOf ?? 1;
-            if (bestOf > 1) {
-                const normPicked = (arr: any): string[] => {
-                    if (!Array.isArray(arr)) return [];
-                    return arr.map((p: any) => p.map_id ?? p.mapId ?? p.MapId ?? p);
-                };
-                const t1Picks = normPicked(vetoData.team1PickedMaps ?? vetoData.team1_picked_maps ?? vetoData.Team1PickedMaps);
-                const t2Picks = normPicked(vetoData.team2PickedMaps ?? vetoData.team2_picked_maps ?? vetoData.Team2PickedMaps);
-
-                // Build play order: T1 pick, T2 pick, [T1 pick, T2 pick,] decider
-                const playOrder: string[] = [];
-                const maxPicks = Math.floor(bestOf / 2);
-                for (let i = 0; i < maxPicks; i++) {
-                    if (t1Picks[i]) playOrder.push(t1Picks[i]);
-                    if (t2Picks[i]) playOrder.push(t2Picks[i]);
-                }
-
-                // Decider = remaining map from pool after removing bans + picks
-                if (playOrder.length < bestOf) {
-                    const pool: string[] = vetoData.selectedMapPool ?? vetoData.selected_map_pool ?? vetoData.SelectedMapPool ?? [];
-                    const bans = [
-                        ...(vetoData.team1BannedMaps ?? vetoData.team1_banned_maps ?? vetoData.Team1BannedMaps ?? []),
-                        ...(vetoData.team2BannedMaps ?? vetoData.team2_banned_maps ?? vetoData.Team2BannedMaps ?? []),
-                    ];
-                    const used = new Set([...bans, ...playOrder]);
-                    const decider = pool.find((id: string) => !used.has(id));
-                    if (decider) playOrder.push(decider);
-                }
-
-                const mapId = playOrder[gameNum - 1];
-                if (mapId) {
-                    try {
-                        const gameMaps = await apiClient.get<any[]>(`/api/games/maps?game=valorant`);
-                        const map = gameMaps?.find((m: any) => m.id === mapId);
-                        if (map) {
-                            setNextGameMap({
-                                id: mapId,
-                                name: map.map_name ?? map.mapName ?? 'Unknown Map',
-                            });
-                            return;
-                        }
-                    } catch { /* ignore */ }
-                }
-            }
-        }
-
         setNextGameMap(null);
-    }, [activeMatch?.id, vetoData]);
+    }, [activeMatch?.id]);
 
     useEffect(() => {
         fetchMatchGamesAndMap();
