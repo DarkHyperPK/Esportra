@@ -378,9 +378,8 @@ const CaptainMatchPage = () => {
 
     const isVetoCompleted = useMemo(() => {
         if (!activeMatch) return false;
-        // If there's no veto record at all, we assume it's not required or not started
-        // but for safety in this enterprise flow, we require it to be completed if it exists.
-        if (!vetoData) return true;
+        // Veto must exist AND be completed — no veto record means veto hasn't started
+        if (!vetoData) return false;
         return vetoData.status === 'completed' || !!vetoData.completed_at;
     }, [activeMatch, vetoData]);
 
