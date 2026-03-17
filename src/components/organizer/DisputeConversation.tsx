@@ -117,7 +117,7 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className={`text-[11px] font-semibold ${isStaff ? 'text-blue-400' : 'text-zinc-400'}`}>
-                    {isStaff ? '⚡ ' : ''}{c.user_name || 'Unknown'}
+                    {c.user_name || 'Unknown'}
                   </span>
                   <span className="text-[10px] text-zinc-600">{formatTime(c.created_at)}</span>
                 </div>
