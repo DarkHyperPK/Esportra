@@ -65,8 +65,8 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                 if (!grouped[prefixedId]) grouped[prefixedId] = [];
                 grouped[prefixedId].push({
                     ...game,
-                    map_name: game.game_maps?.map_name || 'Unknown Map',
-                    map_image_url: game.game_maps?.map_image_url || null,
+                    map_name: game.map_name || 'Unknown Map',
+                    map_image_url: game.map_image_url || null,
                 });
             });
             return grouped;

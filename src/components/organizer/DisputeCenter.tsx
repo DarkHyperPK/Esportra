@@ -52,7 +52,18 @@ interface Dispute {
   updated_at: string;
   raised_by_name?: string;
   team_name?: string;
+  tournament_name?: string;
   assigned_to_name?: string;
+  match?: {
+    match_number?: number;
+    round_index?: number;
+    best_of?: number;
+    bracket_type?: string;
+    team1_score?: number;
+    team2_score?: number;
+    team1_name?: string;
+    team2_name?: string;
+  } | null;
 }
 
 interface DisputeCenterProps {
@@ -585,6 +596,24 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                 </div>
               </div>
 
+              {selectedDispute.match && (
+                <div>
+                  <label className="text-sm font-semibold mb-2 block">Match Context</label>
+                  <div className="p-3 bg-gaming-gray/20 rounded-lg flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-semibold">{selectedDispute.match.team1_name || 'Team 1'}</span>
+                      <span className="text-zinc-400 font-mono">
+                        {selectedDispute.match.team1_score ?? 0} – {selectedDispute.match.team2_score ?? 0}
+                      </span>
+                      <span className="text-white font-semibold">{selectedDispute.match.team2_name || 'Team 2'}</span>
+                    </div>
+                    <Badge variant="outline" className="text-xs border-zinc-700 text-zinc-400">
+                      Match #{selectedDispute.match.match_number} · BO{selectedDispute.match.best_of || 1}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="text-sm font-semibold mb-2 block">Description</label>
                 <div className="p-3 bg-gaming-gray/20 rounded-lg text-gray-300 text-sm">
@@ -974,6 +1003,11 @@ const DisputeCard: React.FC<DisputeCardProps> = ({ dispute, onAction, readonly }
                 <Badge variant="outline" className="border-gray-700 text-gray-200">
                   {dispute.team_name}
                 </Badge>
+              )}
+              {dispute.match && (
+                <span className="text-gray-300 font-medium">
+                  {dispute.match.team1_name} vs {dispute.match.team2_name} · Match #{dispute.match.match_number}
+                </span>
               )}
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
