@@ -1134,6 +1134,7 @@ const CaptainMatchPage = () => {
                             team2Id={activeMatch?.team2?.id}
                             gameNumber={nextGameNumber}
                             mapName={nextGameMap?.name}
+                            mapId={nextGameMap?.id}
                             team1Name={activeMatch?.team1?.name || 'Team 1'}
                             team2Name={activeMatch?.team2?.name || 'Team 2'}
                             isCaptain={isCaptain}

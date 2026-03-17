@@ -14,6 +14,7 @@ interface Props {
   team2Id?: string;
   gameNumber: number;
   mapName?: string;
+  mapId?: string;
   team1Name?: string;
   team2Name?: string;
   isCaptain: boolean;
@@ -21,7 +22,7 @@ interface Props {
 }
 
 const MatchResultUpload: React.FC<Props> = ({
-  matchId, teamId, team1Id, team2Id, gameNumber, mapName, team1Name, team2Name, isCaptain, onSuccess,
+  matchId, teamId, team1Id, team2Id, gameNumber, mapName, mapId, team1Name, team2Name, isCaptain, onSuccess,
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -85,6 +86,8 @@ const MatchResultUpload: React.FC<Props> = ({
         winnerTeamId: t1 !== t2 && team1Id && team2Id
           ? (t1 > t2 ? team1Id : team2Id)
           : undefined,
+        mapName: mapName || undefined,
+        mapId: mapId || undefined,
         screenshotUrls: imageUrls.length > 0 ? imageUrls : undefined,
         comment: comment || undefined,
       });
