@@ -459,59 +459,45 @@ const CaptainMatchPage = () => {
     const [nextGameNumber, setNextGameNumber] = useState(1);
     const [nextGameMap, setNextGameMap] = useState<{ id: string, name: string } | null>(null);
 
-    // Fetch Match Games (Progress)
-    const fetchMatchGames = useCallback(async () => {
+    // Fetch games AND determine next map in one call to avoid race conditions
+    const fetchMatchGamesAndMap = useCallback(async () => {
         if (!activeMatch) return;
         const realMatchId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
 
+        let games: any[] = [];
         try {
-            const data = await apiClient.get<any[]>(`/api/matches/${realMatchId}/games`);
-            setMatchGames(data || []);
-
-            // Determine Next Game Number
-            const completed = (data || []).filter((g: any) => g.status === 'completed').length;
-            setNextGameNumber(completed + 1);
+            games = await apiClient.get<any[]>(`/api/matches/${realMatchId}/games`) || [];
         } catch {
-            setMatchGames([]);
+            // Games not yet created
         }
-    }, [activeMatch?.id]);
+        setMatchGames(games);
 
-    useEffect(() => {
-        fetchMatchGames();
-    }, [fetchMatchGames]);
+        const completed = games.filter((g: any) => g.status === 'completed').length;
+        const gameNum = completed + 1;
+        setNextGameNumber(gameNum);
 
-    // Determine the map for the next game from brkt_match_games
-    // (created by backend on veto completion — single source of truth)
-    const determineMap = useCallback(async () => {
-        if (!activeMatch) return;
-        const realMatchId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
-
-        try {
-            const games = await apiClient.get<any[]>(`/api/matches/${realMatchId}/games`);
-            if (games && games.length > 0) {
-                const targetGame = games.find((g: any) => g.game_number === nextGameNumber || g.gameNumber === nextGameNumber);
-                if (targetGame) {
-                    setNextGameMap({
-                        id: targetGame.map_id ?? targetGame.mapId ?? '',
-                        name: targetGame.map_name ?? targetGame.mapName ?? 'Unknown Map',
-                    });
-                    return;
-                }
-            }
-        } catch {
-            // Games not yet created (veto still in progress)
+        // Try to find the target game row
+        const targetGame = games.find((g: any) =>
+            (g.game_number ?? g.gameNumber) === gameNum
+        );
+        if (targetGame) {
+            setNextGameMap({
+                id: targetGame.map_id ?? targetGame.mapId ?? '',
+                name: targetGame.map_name ?? targetGame.mapName ?? 'Unknown Map',
+            });
+            return;
         }
 
         // Fallback: derive map from veto data when game row doesn't exist yet
         if (vetoData && (vetoData.status === 'completed' || vetoData.completedAt || vetoData.completed_at)) {
-            const bestOf = vetoData.bestOf ?? vetoData.best_of ?? 1;
+            const bestOf = vetoData.bestOf ?? vetoData.best_of ?? vetoData.BestOf ?? 1;
             if (bestOf > 1) {
-                const normPicked = (arr: any) => {
+                const normPicked = (arr: any): string[] => {
                     if (!Array.isArray(arr)) return [];
-                    return arr.map((p: any) => p.map_id ?? p.mapId ?? p);
+                    return arr.map((p: any) => p.map_id ?? p.mapId ?? p.MapId ?? p);
                 };
-                const t1Picks = normPicked(vetoData.team1PickedMaps ?? vetoData.team1_picked_maps);
-                const t2Picks = normPicked(vetoData.team2PickedMaps ?? vetoData.team2_picked_maps);
+                const t1Picks = normPicked(vetoData.team1PickedMaps ?? vetoData.team1_picked_maps ?? vetoData.Team1PickedMaps);
+                const t2Picks = normPicked(vetoData.team2PickedMaps ?? vetoData.team2_picked_maps ?? vetoData.Team2PickedMaps);
 
                 // Build play order: T1 pick, T2 pick, [T1 pick, T2 pick,] decider
                 const playOrder: string[] = [];
@@ -523,17 +509,17 @@ const CaptainMatchPage = () => {
 
                 // Decider = remaining map from pool after removing bans + picks
                 if (playOrder.length < bestOf) {
-                    const pool: string[] = vetoData.selectedMapPool ?? vetoData.selected_map_pool ?? [];
+                    const pool: string[] = vetoData.selectedMapPool ?? vetoData.selected_map_pool ?? vetoData.SelectedMapPool ?? [];
                     const bans = [
-                        ...(vetoData.team1BannedMaps ?? vetoData.team1_banned_maps ?? []),
-                        ...(vetoData.team2BannedMaps ?? vetoData.team2_banned_maps ?? []),
+                        ...(vetoData.team1BannedMaps ?? vetoData.team1_banned_maps ?? vetoData.Team1BannedMaps ?? []),
+                        ...(vetoData.team2BannedMaps ?? vetoData.team2_banned_maps ?? vetoData.Team2BannedMaps ?? []),
                     ];
                     const used = new Set([...bans, ...playOrder]);
                     const decider = pool.find((id: string) => !used.has(id));
                     if (decider) playOrder.push(decider);
                 }
 
-                const mapId = playOrder[nextGameNumber - 1];
+                const mapId = playOrder[gameNum - 1];
                 if (mapId) {
                     try {
                         const gameMaps = await apiClient.get<any[]>(`/api/games/maps?game=valorant`);
@@ -551,11 +537,15 @@ const CaptainMatchPage = () => {
         }
 
         setNextGameMap(null);
-    }, [activeMatch?.id, nextGameNumber, vetoData]);
+    }, [activeMatch?.id, vetoData]);
 
     useEffect(() => {
-        determineMap();
-    }, [determineMap]);
+        fetchMatchGamesAndMap();
+    }, [fetchMatchGamesAndMap]);
+
+    // Legacy aliases for SignalR handlers
+    const fetchMatchGames = fetchMatchGamesAndMap;
+    const determineMap = fetchMatchGamesAndMap;
 
     // SignalR realtime subscriptions (replaces Supabase postgres_changes)
     const rawMatchId = activeMatch?.id?.replace(/^(db-|wb-|lb-)/, '') ?? null;
