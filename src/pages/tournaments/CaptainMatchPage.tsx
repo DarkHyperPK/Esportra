@@ -953,9 +953,7 @@ const CaptainMatchPage = () => {
                                             const bestOf = activeMatch.bestOf || 1;
                                             const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
                                             const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
-                                            const isGameLive = !!activeMatch.partyCode ||
-                                                (vetoData != null && (vetoData.status === 'completed' || !!vetoData.completed_at));
-                                            if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && isGameLive) {
+                                            if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && isVetoCompleted) {
                                                 return (
                                                     <MatchAutoReport
                                                         matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
