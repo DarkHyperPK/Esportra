@@ -333,48 +333,68 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
 
   const handleUpdateStatus = async (disputeId: string, newStatus: 'in_review' | 'resolved' | 'rejected') => {
     try {
-      const updateData: Partial<Database['public']['Tables']['tournament_disputes']['Update']> = {
-        status: newStatus,
-        assigned_to_user_id: selectedAssigneeId || actorUserId,
-        updated_at: new Date().toISOString(),
-      };
-
       if (newStatus === 'resolved' || newStatus === 'rejected') {
-        updateData.resolution_notes = resolutionNotes || null;
+        // Use /resolve endpoint — sends notifications + enforces scores
+        await apiClient.post(`/api/organizer/disputes/${disputeId}/resolve`, {
+          status: newStatus,
+          resolution_notes: resolutionNotes || null,
+        });
+      } else {
+        await apiClient.put(`/api/organizer/disputes/${disputeId}`, {
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        });
       }
 
-      await apiClient.put(`/api/organizer/disputes/${disputeId}`, updateData);
-
       await logDisputeAudit(disputeId, newStatus, {
-        resolution_notes: updateData.resolution_notes,
+        resolution_notes: resolutionNotes || undefined,
         title: selectedDispute?.title,
-        assigned_to: updateData.assigned_to_user_id,
       });
 
       toast({
-        title: 'Success',
-        description: `Dispute ${newStatus === 'resolved' ? 'resolved' : newStatus === 'rejected' ? 'rejected' : 'marked as in review'}.`,
+        title: newStatus === 'resolved' ? 'Dispute resolved' : newStatus === 'rejected' ? 'Dispute rejected' : 'Marked as in review',
+        description: (newStatus === 'resolved' || newStatus === 'rejected')
+          ? 'The dispute filer has been notified.' : undefined,
       });
 
       if (newStatus === 'resolved' || newStatus === 'rejected') {
-        setResolutionDialogOpen(false);
         setResolutionNotes('');
         setSelectedDispute(null);
       } else {
-        // If still in review, refresh comments
         fetchComments(disputeId);
       }
       fetchDisputes();
     } catch (error: unknown) {
-      console.error('Error updating dispute:', error);
-      const errorMessage = error instanceof Error
-        ? error.message
-        : (error as any)?.message || JSON.stringify(error);
-      toast({
-        title: 'Error',
-        description: `Failed to update dispute: ${errorMessage}`,
-        variant: 'destructive',
+      const errorMessage = error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
+      toast({ title: 'Error', description: `Failed to update dispute: ${errorMessage}`, variant: 'destructive' });
+    }
+  };
+
+  /** Accept a specific report — enforces its scores, resolves dispute, notifies both teams */
+  const handleAcceptReport = async (disputeId: string, reportId: string) => {
+    if (!resolutionNotes.trim()) {
+      toast({ title: 'Resolution notes required', description: 'Please add notes before accepting a report.', variant: 'destructive' });
+      return;
+    }
+    try {
+      await apiClient.post(`/api/organizer/disputes/${disputeId}/resolve`, {
+        status: 'resolved',
+        resolution_notes: resolutionNotes,
+        report_id: reportId,
       });
+
+      await logDisputeAudit(disputeId, 'resolved', { resolution_notes: resolutionNotes, title: selectedDispute?.title });
+
+      toast({
+        title: 'Report accepted & dispute resolved',
+        description: 'Match scores have been enforced and both teams notified.',
+      });
+      setResolutionNotes('');
+      setSelectedDispute(null);
+      fetchDisputes();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to accept report';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
     }
   };
 
@@ -528,6 +548,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
               onResolutionNotesChange={setResolutionNotes}
               onMarkInReview={() => handleUpdateStatus(selectedDispute.id, 'in_review')}
               onResolve={() => handleUpdateStatus(selectedDispute.id, resolutionStatus)}
+              onAcceptReport={(reportId) => handleAcceptReport(selectedDispute.id, reportId)}
               onCommentSubmit={(text, attachment) => handleAddCommentDirect(selectedDispute.id, text, attachment)}
               onImageClick={(url) => setViewingImage(url)}
             />

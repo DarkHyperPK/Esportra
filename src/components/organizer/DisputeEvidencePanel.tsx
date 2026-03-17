@@ -41,6 +41,8 @@ interface DisputeEvidencePanelProps {
     team2_id?: string;
     best_of?: number;
   } | null;
+  canAcceptReport?: boolean;
+  onAcceptReport?: (reportId: string) => void;
   onImageClick?: (url: string) => void;
 }
 
@@ -48,6 +50,8 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
   reports: rawReports,
   riotAccounts: rawRiotAccounts,
   matchContext,
+  canAcceptReport,
+  onAcceptReport,
   onImageClick,
 }) => {
   const { toast } = useToast();
@@ -121,6 +125,22 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
                   {/* Expanded detail */}
                   {isExpanded && (
                     <div className="border-t border-zinc-800/50">
+                      {/* Quick Accept banner */}
+                      {canAcceptReport && (
+                        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-emerald-500/5 border-b border-emerald-500/15">
+                          <p className="text-xs text-zinc-400">
+                            Accept this report to enforce these scores and resolve the dispute.
+                          </p>
+                          <Button
+                            size="sm"
+                            className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-7 px-3"
+                            onClick={(e) => { e.stopPropagation(); onAcceptReport?.(report.id); }}
+                          >
+                            ✓ Accept Report
+                          </Button>
+                        </div>
+                      )}
+
                       {/* Riot Match ID */}
                       {report.riot_match_id && (
                         <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900/30">
