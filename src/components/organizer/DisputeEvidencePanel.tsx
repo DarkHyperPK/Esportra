@@ -45,13 +45,20 @@ interface DisputeEvidencePanelProps {
 }
 
 const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
-  reports,
-  riotAccounts,
+  reports: rawReports,
+  riotAccounts: rawRiotAccounts,
   matchContext,
   onImageClick,
 }) => {
   const { toast } = useToast();
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
+
+  const reports = Array.isArray(rawReports) ? rawReports
+    : typeof rawReports === 'string' ? (() => { try { return JSON.parse(rawReports); } catch { return []; } })()
+    : [];
+  const riotAccounts = Array.isArray(rawRiotAccounts) ? rawRiotAccounts
+    : typeof rawRiotAccounts === 'string' ? (() => { try { return JSON.parse(rawRiotAccounts); } catch { return []; } })()
+    : [];
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
