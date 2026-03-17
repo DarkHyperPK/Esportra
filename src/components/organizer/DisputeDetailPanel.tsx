@@ -128,8 +128,8 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
         <DisputeIdStrip disputeId={dispute.id} matchId={dispute.match_id} riotMatchIds={riotMatchIds} />
       </div>
 
-      {/* ─── Scrollable Content ─── */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 scrollbar-thin">
+      {/* ─── Scrollable Evidence/Context ─── */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 scrollbar-thin min-h-0">
         {/* Match Context */}
         {dispute.match && (
           <div className="rounded-xl bg-zinc-900/50 border border-zinc-800/60 p-4">
@@ -196,19 +196,6 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
           </div>
         )}
 
-        {/* Conversation */}
-        <DisputeConversation
-          comments={comments}
-          loading={loadingComments}
-          organizerId={organizerId}
-          staffUserIds={staffUserIds}
-          canComment={canAssist && (dispute.status === 'open' || dispute.status === 'in_review')}
-          submitting={submittingComment}
-          uploading={uploadingAttachment}
-          onSubmit={onCommentSubmit}
-          onImageClick={onImageClick}
-        />
-
         {/* Actions */}
         <DisputeActions
           status={dispute.status}
@@ -225,6 +212,21 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
           onNotesChange={onResolutionNotesChange}
           onMarkInReview={onMarkInReview}
           onResolve={onResolve}
+        />
+      </div>
+
+      {/* ─── Conversation (fixed at bottom with own scroller) ─── */}
+      <div className="shrink-0 border-t border-zinc-800/60 px-5 py-3 flex flex-col max-h-[45%] min-h-[200px]">
+        <DisputeConversation
+          comments={comments}
+          loading={loadingComments}
+          organizerId={organizerId}
+          staffUserIds={staffUserIds}
+          canComment={canAssist && (dispute.status === 'open' || dispute.status === 'in_review')}
+          submitting={submittingComment}
+          uploading={uploadingAttachment}
+          onSubmit={onCommentSubmit}
+          onImageClick={onImageClick}
         />
       </div>
     </div>

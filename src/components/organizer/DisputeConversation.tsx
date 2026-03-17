@@ -56,11 +56,11 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-3">Conversation</h3>
+    <div className="flex flex-col h-full min-h-0">
+      <h3 className="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-2 shrink-0">Conversation</h3>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-2.5 mb-3 min-h-[100px] max-h-[280px] pr-1 scrollbar-thin">
+      {/* Messages — own scroller */}
+      <div className="flex-1 overflow-y-auto space-y-2.5 mb-3 pr-1 scrollbar-thin min-h-0">
         {loading ? (
           <div className="flex items-center justify-center py-8 text-zinc-500 text-sm">
             <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Loading…
@@ -70,6 +70,8 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
         ) : (
           comments.map((c) => {
             const isStaff = c.user_id === organizerId || staffUserIds.includes(c.user_id);
+            const hasText = c.comment?.trim();
+            const hasAttachment = !!c.attachment_url;
             return (
               <div
                 key={c.id}
@@ -85,15 +87,30 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
                   </span>
                   <span className="text-[10px] text-zinc-600">{formatTime(c.created_at)}</span>
                 </div>
-                {c.comment?.trim() && <p className="text-zinc-300 text-[13px] leading-relaxed">{c.comment}</p>}
-                {c.attachment_url && (
-                  <img
-                    src={c.attachment_url}
-                    alt="Attachment"
-                    className="mt-2 max-w-full max-h-40 rounded-lg border border-zinc-700 cursor-pointer hover:opacity-80 transition"
-                    onClick={() => onImageClick?.(c.attachment_url!)}
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
+                {hasText && <p className="text-zinc-300 text-[13px] leading-relaxed">{c.comment}</p>}
+                {hasAttachment && (
+                  <div className={hasText ? 'mt-2' : ''}>
+                    <img
+                      src={c.attachment_url}
+                      alt="Attachment"
+                      className="max-w-full max-h-40 rounded-lg border border-zinc-700 cursor-pointer hover:opacity-80 transition"
+                      onClick={() => onImageClick?.(c.attachment_url!)}
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        img.style.display = 'none';
+                        // Show fallback link
+                        const fallback = document.createElement('a');
+                        fallback.href = c.attachment_url!;
+                        fallback.target = '_blank';
+                        fallback.className = 'text-xs text-blue-400 underline';
+                        fallback.textContent = '📎 View attachment';
+                        img.parentElement?.appendChild(fallback);
+                      }}
+                    />
+                  </div>
+                )}
+                {!hasText && !hasAttachment && (
+                  <p className="text-zinc-500 text-[13px] italic">Empty message</p>
                 )}
               </div>
             );

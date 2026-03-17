@@ -85,14 +85,17 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
               const isAutoFetch = !!report.riot_match_id && !!report.match_data;
               const hasScreenshots = report.screenshot_urls && report.screenshot_urls.length > 0;
               const isExpanded = expandedReport === report.id;
+              const matchData = report.match_data as Record<string, unknown> | null;
+              const hasPlayers = isAutoFetch && matchData?.players;
 
               return (
                 <div key={report.id} className="bg-zinc-900/60 border border-zinc-800 rounded-xl overflow-hidden">
+                  {/* Summary row */}
                   <div
                     className="p-3 flex items-center justify-between cursor-pointer hover:bg-zinc-800/40 transition"
                     onClick={() => setExpandedReport(isExpanded ? null : report.id)}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <Badge variant="outline" className="text-[10px] border-zinc-700">
                         Game {report.game_number}
                       </Badge>
@@ -110,16 +113,17 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
                         {report.status}
                       </Badge>
                       {isAutoFetch && <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px]">Auto-fetch</Badge>}
-                      {hasScreenshots && <Badge className="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 text-[10px]">Manual</Badge>}
+                      {hasScreenshots && !isAutoFetch && <Badge className="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 text-[10px]">Manual</Badge>}
                     </div>
-                    <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
                   </div>
 
+                  {/* Expanded detail */}
                   {isExpanded && (
-                    <div className="px-3 pb-3 space-y-3 border-t border-zinc-800/50">
+                    <div className="border-t border-zinc-800/50">
                       {/* Riot Match ID */}
                       {report.riot_match_id && (
-                        <div className="flex items-center gap-2 pt-2">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900/30">
                           <span className="text-xs text-zinc-500">Riot Match ID:</span>
                           <code className="text-xs text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded font-mono">
                             {report.riot_match_id}
@@ -136,32 +140,32 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
                       )}
 
                       {/* Auto-fetch scoreboard */}
-                      {isAutoFetch && (report.match_data as Record<string, unknown>)?.players && (
-                        <div className="rounded-lg overflow-hidden border border-zinc-800">
+                      {hasPlayers && (
+                        <div className="px-3 pb-3 pt-2">
                           <FullScoreboard
-                            players={(report.match_data as Record<string, unknown>).players as unknown[]}
+                            players={matchData!.players as unknown[]}
                             team1Name={matchContext?.team1_name || 'Team 1'}
                             team2Name={matchContext?.team2_name || 'Team 2'}
                             team1Score={report.team1_score}
                             team2Score={report.team2_score}
                             reportedByTeamId={report.reported_by_team_id}
                             team1Id={matchContext?.team1_id}
-                            t1Side={(report.match_data as Record<string, unknown>)?.t1Side as 'Blue' | 'Red' | undefined}
+                            t1Side={matchData?.t1Side as 'Blue' | 'Red' | undefined}
                           />
                         </div>
                       )}
 
                       {/* Manual report screenshots */}
                       {hasScreenshots && (
-                        <div>
-                          <span className="text-xs text-zinc-500 mb-1 block">Evidence Screenshots</span>
-                          <div className="flex gap-2 flex-wrap">
+                        <div className="px-4 pb-3 pt-2">
+                          <span className="text-xs text-zinc-500 mb-2 block font-medium">Evidence Screenshots</span>
+                          <div className="grid grid-cols-3 gap-2">
                             {report.screenshot_urls!.map((url, i) => (
                               <img
                                 key={i}
                                 src={url}
                                 alt={`Evidence ${i + 1}`}
-                                className="w-32 h-20 object-cover rounded-lg border border-zinc-700 cursor-pointer hover:border-zinc-500 transition"
+                                className="w-full h-24 object-cover rounded-lg border border-zinc-700 cursor-pointer hover:border-zinc-500 hover:brightness-110 transition"
                                 onClick={() => onImageClick?.(url)}
                                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                               />
