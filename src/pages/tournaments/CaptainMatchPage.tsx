@@ -1176,6 +1176,8 @@ const CaptainMatchPage = () => {
                         <MatchResultUpload
                             matchId={(uploadMatchId || '').replace(/^(db-|wb-|lb-)/, '')}
                             teamId={userTeamId}
+                            team1Id={activeMatch?.team1?.id}
+                            team2Id={activeMatch?.team2?.id}
                             gameNumber={nextGameNumber}
                             mapName={nextGameMap?.name}
                             team1Name={activeMatch?.team1?.name || 'Team 1'}

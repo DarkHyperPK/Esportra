@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 interface Props {
   matchId?: string;
   teamId?: string;
+  team1Id?: string;
+  team2Id?: string;
   gameNumber: number;
   mapName?: string;
   team1Name?: string;
@@ -19,7 +21,7 @@ interface Props {
 }
 
 const MatchResultUpload: React.FC<Props> = ({
-  matchId, teamId, gameNumber, mapName, team1Name, team2Name, isCaptain, onSuccess,
+  matchId, teamId, team1Id, team2Id, gameNumber, mapName, team1Name, team2Name, isCaptain, onSuccess,
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -80,6 +82,9 @@ const MatchResultUpload: React.FC<Props> = ({
         reportedByTeamId: teamId,
         team1Score: t1,
         team2Score: t2,
+        winnerTeamId: t1 !== t2 && team1Id && team2Id
+          ? (t1 > t2 ? team1Id : team2Id)
+          : undefined,
         screenshotUrls: imageUrls.length > 0 ? imageUrls : undefined,
         comment: comment || undefined,
       });
