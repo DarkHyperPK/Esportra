@@ -146,6 +146,11 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                 winnerTeamId
             });
 
+            // Determine which Riot side corresponds to Tournament Team 1
+            // Reporter is isTeam1 and on reporterSide → team1 is on that side
+            // Reporter is NOT team1 → team1 is on the opposite side
+            const t1Side = isTeam1 ? reporterSide : (reporterSide === 'Blue' ? 'Red' : 'Blue');
+
             await submitReport.mutateAsync({
                 gameNumber,
                 riotMatchId: candidate.id,
@@ -165,6 +170,8 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                     reporterResult: candidate.result,
                     reporterKda: candidate.kda,
                     reporterSide: reporterSide,
+                    reportedByTeamId: userTeamId,
+                    t1Side: t1Side,
                 },
             });
 
