@@ -258,7 +258,7 @@ const TournamentDashboard = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
   const userId = user?.id;
@@ -289,6 +289,7 @@ const TournamentDashboard = () => {
     setDirection(newIndex > oldIndex ? 1 : -1);
     prevTabRef.current = newIndex;
     setActiveTab(newTab);
+    setSearchParams(prev => { prev.set('tab', newTab); return prev; }, { replace: true });
   };
 
   const loading = dashboardLoading;
