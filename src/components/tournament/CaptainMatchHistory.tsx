@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, ChevronDown, ChevronUp, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { BracketMatch } from '@/types/bracketTypes';
 import { apiClient } from '@/lib/apiClient';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { FullScoreboard, MAP_THEMES } from './FullScoreboard';
+import { FullScoreboard, MAP_THEMES, getMapSplash } from './FullScoreboard';
 
 interface Props {
     tournamentId: string;
@@ -33,6 +32,11 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
     const [expandedMatches, setExpandedMatches] = useState<Record<string, boolean>>({});
     const [expandedGames, setExpandedGames] = useState<Record<string, boolean>>({});
 
+    const resolveMapSplash = (mapName: string) => {
+        const key = mapName.toLowerCase();
+        const theme = MAP_THEMES[key];
+        return theme ? getMapSplash(theme.id) : null;
+    };
     // Filter for completed matches involving this team
     const pastMatches = matches.filter(m =>
         (m.team1?.id === teamId || m.team2?.id === teamId) &&
@@ -121,23 +125,45 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                                     return (
                                         <div key={match.id} className="rounded-2xl bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-all overflow-hidden">
                                             <div
-                                                className="flex items-center justify-between p-4 cursor-pointer group"
+                                                className="relative flex items-center justify-between p-4 cursor-pointer group overflow-hidden"
                                                 onClick={() => toggleMatch(match.id)}
                                             >
-                                                <div className="flex items-center gap-4">
+                                                {/* Map splash background on the match card */}
+                                                {games.length > 0 && (
+                                                    <div className="absolute inset-0 z-0">
+                                                        <img
+                                                            src={resolveMapSplash(games[0].map_name) || ''}
+                                                            alt=""
+                                                            className="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity"
+                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                        />
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-zinc-950/50" />
+                                                    </div>
+                                                )}
+
+                                                <div className="relative z-10 flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${isWin ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'}`}>
+                                                        {isWin ? 'W' : 'L'}
+                                                    </div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-semibold text-zinc-200 group-hover:text-white transition-colors">vs {opponentName || 'TBD'}</span>
-                                                        <span className="text-xs text-zinc-500 font-medium uppercase tracking-widest">Match #{match.matchNumber}</span>
+                                                        <span className="text-sm font-bold text-zinc-100 group-hover:text-white transition-colors">vs {opponentName || 'TBD'}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Match #{match.matchNumber}</span>
+                                                            {games.length > 0 && (
+                                                                <span className="text-[10px] text-zinc-600">
+                                                                    · {games.map(g => g.map_name).join(', ')}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`text-xs font-black tracking-widest px-2 py-1 rounded bg-black/20 ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                        {isWin ? 'WIN' : 'LOSS'}
-                                                    </div>
-                                                    <Badge variant="outline" className="bg-zinc-950 border-zinc-700 text-white font-mono px-3 py-1">
-                                                        {myScore} - {opponentScore}
+                                                <div className="relative z-10 flex items-center gap-3">
+                                                    <Badge variant="outline" className={`border-0 font-mono font-black text-sm px-3 py-1 ${isWin ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                                        {myScore} – {opponentScore}
                                                     </Badge>
-                                                    {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+                                                    <div className={`p-1.5 rounded-lg bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                        <ChevronDown className="w-4 h-4 text-zinc-500" />
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -155,16 +181,19 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                                                                             onClick={() => toggleGame(game.id)}
                                                                         >
                                                                             {/* Map Splash Background */}
-                                                                            {game.map_image_url && (
-                                                                                <div className="absolute inset-0 z-0">
-                                                                                    <img
-                                                                                        src={game.map_image_url}
-                                                                                        alt=""
-                                                                                        className="w-full h-full object-cover opacity-40 group-hover/game:opacity-60 transition-opacity"
-                                                                                    />
-                                                                                    <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/40 to-transparent" />
-                                                                                </div>
-                                                                            )}
+                                                                            {(() => {
+                                                                                const splash = resolveMapSplash(game.map_name);
+                                                                                return splash ? (
+                                                                                    <div className="absolute inset-0 z-0">
+                                                                                        <img
+                                                                                            src={splash}
+                                                                                            alt=""
+                                                                                            className="w-full h-full object-cover opacity-40 group-hover/game:opacity-60 transition-opacity"
+                                                                                        />
+                                                                                        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/40 to-transparent" />
+                                                                                    </div>
+                                                                                ) : null;
+                                                                            })()}
 
                                                                             <div className="relative z-10 flex flex-col p-5">
                                                                                 <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1 drop-shadow-md">
