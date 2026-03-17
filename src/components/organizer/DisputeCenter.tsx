@@ -595,6 +595,16 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                 </div>
               </div>
 
+              <div>
+                <label className="text-sm font-semibold mb-2 block">Dispute ID</label>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs font-mono text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded">{selectedDispute.id}</code>
+                  <Button variant="ghost" size="sm" className="h-5 px-1" onClick={() => { navigator.clipboard.writeText(selectedDispute.id); }}>
+                    <Copy className="w-3 h-3 text-zinc-500" />
+                  </Button>
+                </div>
+              </div>
+
               {selectedDispute.match && (
                 <div>
                   <label className="text-sm font-semibold mb-2 block">Match Context</label>
