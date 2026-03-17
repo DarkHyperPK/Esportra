@@ -74,6 +74,7 @@ import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 
 import BanManagement from '@/components/organizer/BanManagement';
 import DisputeCenter from '@/components/organizer/DisputeCenter';
+import MatchChecker from '@/components/organizer/MatchChecker';
 import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnouncementPanel';
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
 import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
@@ -1718,11 +1719,16 @@ const TournamentDashboard = () => {
                       <PermissionNotice message="Your staff role does not include dispute assistance permissions." />
                     ) : (
                       tournament?.id && user?.id && (
-                        <DisputeCenter
-                          tournamentId={tournament.id}
-                          organizerId={tournament.organizer_id}
-                          currentUserId={user.id}
-                        />
+                        <>
+                          <DisputeCenter
+                            tournamentId={tournament.id}
+                            organizerId={tournament.organizer_id}
+                            currentUserId={user.id}
+                          />
+                          <div className="mt-6">
+                            <MatchChecker tournamentId={tournament.id} />
+                          </div>
+                        </>
                       )
                     )}
                   </TabTransition>

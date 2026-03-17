@@ -446,6 +446,12 @@ const CaptainMatchPage = () => {
     const activeMatchRawId = activeMatch ? activeMatch.id.replace(/^(db-|wb-|lb-)/, '') : undefined;
     const { reports: activeMatchReports } = useMatchResultReport(activeMatchRawId);
     const hasDisputedReport = activeMatchReports?.some((r: { status: string }) => r.status === 'disputed') ?? false;
+    // Track which game numbers are disputed — blocks re-submission for those specific games
+    const disputedGameNumbers = new Set(
+        (activeMatchReports || [])
+            .filter((r: { status: string }) => r.status === 'disputed')
+            .map((r: { game_number: number }) => r.game_number)
+    );
 
     // Auto-Report State
     const [matchGames, setMatchGames] = useState<any[]>([]);
@@ -950,6 +956,15 @@ const CaptainMatchPage = () => {
                                             const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
                                             const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
                                             if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && isVetoCompleted) {
+                                                // Block auto-report for disputed games
+                                                if (disputedGameNumbers.has(nextGameNumber)) {
+                                                    return (
+                                                        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs flex items-center gap-2">
+                                                            <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+                                                            Game {nextGameNumber} is disputed — awaiting organizer resolution.
+                                                        </div>
+                                                    );
+                                                }
                                                 return (
                                                     <MatchAutoReport
                                                         matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
@@ -990,10 +1005,11 @@ const CaptainMatchPage = () => {
                                                 <Button
                                                     onClick={() => handleUploadResult(activeMatch.id)}
                                                     className="bg-rose-500 hover:bg-rose-600 text-white h-10 text-sm font-semibold font-mono tracking-wide disabled:opacity-40"
-                                                    disabled={!isVetoCompleted}
+                                                    disabled={!isVetoCompleted || disputedGameNumbers.has(nextGameNumber)}
                                                 >
                                                     <Trophy className="w-4 h-4 mr-1.5" />
-                                                    {isVetoCompleted ? 'Manual Report' : 'Awaiting Veto'}
+                                                    {disputedGameNumbers.has(nextGameNumber) ? `Game ${nextGameNumber} Disputed`
+                                                        : isVetoCompleted ? 'Manual Report' : 'Awaiting Veto'}
                                                 </Button>
                                             </div>
                                         )}

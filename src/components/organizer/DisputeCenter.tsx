@@ -35,6 +35,7 @@ import { useTournamentStaff } from '@/hooks/useTournamentStaff';
 import type { Database } from '@/lib/database.types';
 import { useHub } from '@/contexts/SignalRContext';
 import { HubPaths } from '@/lib/signalrClient';
+import DisputeEvidencePanel, { type DisputeReport, type DisputeRiotAccount } from './DisputeEvidencePanel';
 
 interface Dispute {
   id: string;
@@ -63,7 +64,11 @@ interface Dispute {
     team2_score?: number;
     team1_name?: string;
     team2_name?: string;
+    team1_id?: string;
+    team2_id?: string;
   } | null;
+  reports?: DisputeReport[];
+  riot_accounts?: DisputeRiotAccount[];
 }
 
 interface DisputeCenterProps {
@@ -140,24 +145,17 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     if (!tournamentId) return;
     try {
       setLoading(true);
-      const disputesData = await apiClient.get<any[]>(`/api/organizer/disputes?tournament_id=${tournamentId}`);
+      const disputesData = await apiClient.get<Dispute[]>(`/api/organizer/disputes?tournament_id=${tournamentId}`);
 
-      // Enrich with user/team names
-      const rows = (disputesData || []) as TournamentDisputeRow[];
+      // Backend now returns raised_by_name, team_name, reports, riot_accounts
+      // Only enrich assigned_to_name if not already present
+      const rows = disputesData || [];
       const enriched = await Promise.all(
         rows.map(async (dispute) => {
           const enrichedDispute: Dispute = { ...dispute };
 
-          const raisedBy = await apiClient.get<any>(`/api/profiles/${dispute.raised_by_user_id}`).catch(() => null);
-          enrichedDispute.raised_by_name = raisedBy?.username || raisedBy?.full_name || 'Unknown User';
-
-          if (dispute.team_id) {
-            const team = await apiClient.get<any>(`/api/teams/${dispute.team_id}`).catch(() => null);
-            enrichedDispute.team_name = team?.name || 'Unknown Team';
-          }
-
-          if (dispute.assigned_to_user_id) {
-            const assignedTo = await apiClient.get<any>(`/api/profiles/${dispute.assigned_to_user_id}`).catch(() => null);
+          if (dispute.assigned_to_user_id && !dispute.assigned_to_name) {
+            const assignedTo = await apiClient.get<Record<string, string>>(`/api/profiles/${dispute.assigned_to_user_id}`).catch(() => null);
             enrichedDispute.assigned_to_name = assignedTo?.username || assignedTo?.full_name || 'Unassigned';
           }
 
@@ -637,6 +635,20 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                   </a>
                 </div>
               )}
+
+              {/* Reports, Scoreboard, Riot Accounts from enriched dispute data */}
+              <DisputeEvidencePanel
+                reports={selectedDispute.reports || []}
+                riotAccounts={selectedDispute.riot_accounts || []}
+                matchContext={selectedDispute.match ? {
+                  team1_name: selectedDispute.match.team1_name,
+                  team2_name: selectedDispute.match.team2_name,
+                  team1_id: selectedDispute.match.team1_id,
+                  team2_id: selectedDispute.match.team2_id,
+                  best_of: selectedDispute.match.best_of,
+                } : null}
+                onImageClick={(url) => setViewingImage(url)}
+              />
 
               <div>
                 <label className="text-sm font-semibold mb-2 block">Assignment</label>
