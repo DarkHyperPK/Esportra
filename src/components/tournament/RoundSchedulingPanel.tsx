@@ -26,6 +26,7 @@ interface RoundConfig {
     matchCount: number;
     deadline: string | null;
     startTime: string | null;
+    bracketKey?: string | null; // 'winners' | 'losers' | 'final' — for DE config key scoping
 }
 
 // Bracket section for Double Elimination grouping
@@ -117,9 +118,13 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const { matches, schedulingConfig, updateConfig, isLoading, updateMatchTime } = useMatchScheduling(stageId);
     const [expandedRound, setExpandedRound] = useState<number | null>(0);
     const [expandedBracket, setExpandedBracket] = useState<string | null>(null);
-    const [roundConfigs, setRoundConfigs] = useState<Map<number, RoundConfig>>(new Map());
+    const [roundConfigs, setRoundConfigs] = useState<Map<string, RoundConfig>>(new Map());
     const [matchEdits, setMatchEdits] = useState<Map<string, string>>(new Map());
     const [saving, setSaving] = useState(false);
+
+    // Config key helper: for DE, scope by bracket type; for others, just roundIndex
+    const configKey = (roundIndex: number, bracketKey?: string | null): string =>
+        stageFormat === 'double_elimination' && bracketKey ? `${bracketKey}_${roundIndex}` : String(roundIndex);
 
     // Optimistic scheduling mode with instant UI
     const [optimisticMode, setOptimisticMode] = useState<'round_based' | 'granular' | null>(null);
@@ -141,7 +146,21 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
         }
     };
 
-    // Group matches by round — for DE, also group by bracket_type
+    // Group matches by config key — for DE, scoped by bracket_type + round_index
+    const matchesByConfigKey = useMemo(() => {
+        if (!matches) return new Map<string, typeof matches>();
+
+        const grouped = new Map<string, typeof matches>();
+        matches.forEach(match => {
+            const bt = stageFormat === 'double_elimination' ? ((match as any).bracket_type || 'winners') : null;
+            const key = configKey(match.round_index, bt);
+            if (!grouped.has(key)) grouped.set(key, []);
+            grouped.get(key)!.push(match);
+        });
+        return grouped;
+    }, [matches, stageFormat]);
+
+    // Legacy flat grouping (used by non-DE rendering)
     const matchesByRound = useMemo(() => {
         if (!matches) return new Map<number, typeof matches>();
 
@@ -186,42 +205,36 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const totalRounds = matchesByRound.size;
 
     // Initialize configs from fetched matches
-    // Initialize configs from fetched matches
     React.useEffect(() => {
-        // Wait for matches AND config (if self-play) to be ready
-        if (matchesByRound.size > 0 && (!selfPlayEnabled || schedulingConfig)) {
-            const newConfigs = new Map<number, RoundConfig>();
-            matchesByRound.forEach((matches, roundIndex) => {
+        if (matchesByConfigKey.size > 0 && (!selfPlayEnabled || schedulingConfig)) {
+            const newConfigs = new Map<string, RoundConfig>();
+            matchesByConfigKey.forEach((matches, key) => {
                 const firstMatch = matches[0];
                 const existingTime = firstMatch?.scheduled_time
                     ? new Date(firstMatch.scheduled_time).toISOString().slice(0, 16)
                     : null;
 
-                // For self-play, prefer config deadline, fallback to existingTime
+                const roundIndex = firstMatch.round_index;
                 const configDeadline = selfPlayEnabled
-                    ? schedulingConfig?.round_deadlines?.[String(roundIndex)] || existingTime
+                    ? schedulingConfig?.round_deadlines?.[key] || existingTime
                     : null;
 
-                newConfigs.set(roundIndex, {
+                newConfigs.set(key, {
                     roundIndex,
                     roundName: getRoundNameForFormat(stageFormat, roundIndex, totalRounds),
                     matchCount: matches.length,
                     deadline: selfPlayEnabled ? configDeadline : null,
                     startTime: !selfPlayEnabled ? existingTime : null,
+                    bracketKey: stageFormat === 'double_elimination' ? ((firstMatch as any).bracket_type || null) : null,
                 });
             });
 
-            // Only update if we don't have local edits or if the remote config changed
-            // This prevents the "reset while typing" issue but ensures data persistence
             setRoundConfigs(prev => {
                 if (prev.size === 0) return newConfigs;
-
-                // If remote config changed, we might want to sync, but typically local state wins in an edit form
-                // unless we force a refresh. For now, let's just initialize once.
                 return prev;
             });
         }
-    }, [matchesByRound, stageFormat, totalRounds, selfPlayEnabled, schedulingConfig]);
+    }, [matchesByConfigKey, stageFormat, totalRounds, selfPlayEnabled, schedulingConfig]);
 
     // Calculate default dates based on format
     const getDefaultDeadline = (roundIndex: number): string => {
@@ -258,33 +271,32 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
         }
     };
 
-    const updateRoundConfig = (roundIndex: number, field: 'deadline' | 'startTime', value: string) => {
+    const updateRoundConfig = (key: string, roundIndex: number, field: 'deadline' | 'startTime', value: string) => {
         setRoundConfigs(prev => {
             const newMap = new Map(prev);
-            const existing = newMap.get(roundIndex) || {
+            const existing = newMap.get(key) || {
                 roundIndex,
                 roundName: getRoundNameForFormat(stageFormat, roundIndex, totalRounds),
-                matchCount: matchesByRound.get(roundIndex)?.length || 0,
+                matchCount: matchesByConfigKey.get(key)?.length || 0,
                 deadline: null,
                 startTime: null,
             };
-            newMap.set(roundIndex, { ...existing, [field]: value });
+            newMap.set(key, { ...existing, [field]: value });
             return newMap;
         });
     };
 
-    const handleSaveRound = async (roundIndex: number) => {
-        const config = roundConfigs.get(roundIndex);
+    const handleSaveRound = async (key: string, roundIndex: number) => {
+        const config = roundConfigs.get(key);
         if (!config) return;
 
         setSaving(true);
         try {
             if (selfPlayEnabled) {
-                // Update specific round deadline in the config
                 const currentDeadlines = schedulingConfig?.round_deadlines || {};
                 const newDeadlines = {
                     ...currentDeadlines,
-                    [String(roundIndex)]: config.deadline || getDefaultDeadline(roundIndex)
+                    [key]: config.deadline || getDefaultDeadline(roundIndex)
                 };
 
                 await updateConfig.mutateAsync({
@@ -292,8 +304,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                     round_deadlines: newDeadlines
                 });
             } else {
-                // Update match times for this specific round
-                const roundMatches = matchesByRound.get(roundIndex) || [];
+                const roundMatches = matchesByConfigKey.get(key) || [];
                 const updates = roundMatches.map(match =>
                     updateMatchTime.mutateAsync({
                         matchId: match.id,
@@ -344,15 +355,14 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
         setSaving(true);
         try {
             if (selfPlayEnabled) {
-                // For self-play, update the STAGE CONFIG with round deadlines
                 const newDeadlines: Record<string, string> = { ...(schedulingConfig?.round_deadlines || {}) };
-                for (const [roundIndex, _] of matchesByRound) {
-                    const config = roundConfigs.get(roundIndex);
+                for (const [key, _] of matchesByConfigKey) {
+                    const config = roundConfigs.get(key);
+                    const roundIndex = config?.roundIndex ?? 0;
                     const deadline = config?.deadline || getDefaultDeadline(roundIndex);
-                    newDeadlines[String(roundIndex)] = deadline;
+                    newDeadlines[key] = deadline;
                 }
 
-                // Update stage config with full object to ensure persistence
                 await updateConfig.mutateAsync({
                     ...(schedulingConfig || {}),
                     round_deadlines: newDeadlines
@@ -361,14 +371,13 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 onScheduleApplied?.();
 
             } else {
-                // For scheduled mode, update MATCH TIMES directly
                 const updates: Promise<void>[] = [];
-                for (const [roundIndex, roundMatches] of matchesByRound) {
-                    const config = roundConfigs.get(roundIndex);
+                for (const [key, keyMatches] of matchesByConfigKey) {
+                    const config = roundConfigs.get(key);
                     const startTime = config?.startTime;
 
                     if (startTime) {
-                        for (const match of roundMatches) {
+                        for (const match of keyMatches) {
                             updates.push(
                                 updateMatchTime.mutateAsync({
                                     matchId: match.id,
@@ -397,7 +406,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
         config: RoundConfig | undefined,
         isExpanded: boolean,
         defaultDeadline: string,
-        bracketKey: string | null
+        bracketKey: string | null,
+        cfgKey: string
     ) => {
         const handleToggle = () => {
             if (isExpanded) {
@@ -474,14 +484,14 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                             onChange={(e) => {
                                                 const dateValue = e.target.value;
                                                 const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
-                                                updateRoundConfig(roundIndex, 'deadline', utcValue);
+                                                updateRoundConfig(cfgKey, roundIndex, 'deadline', utcValue);
                                             }}
                                             className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 flex-1 [color-scheme:dark]"
                                         />
                                         <Button
                                             size="sm"
                                             variant="secondary"
-                                            onClick={() => handleSaveRound(roundIndex)}
+                                            onClick={() => handleSaveRound(cfgKey, roundIndex)}
                                             disabled={saving}
                                             className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"
                                         >
@@ -515,7 +525,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                 onChange={(e) => {
                                                     const dateValue = e.target.value;
                                                     const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
-                                                    updateRoundConfig(roundIndex, 'deadline', utcValue);
+                                                    updateRoundConfig(cfgKey, roundIndex, 'deadline', utcValue);
                                                 }}
                                                 className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 [color-scheme:dark]"
                                             />
@@ -537,21 +547,21 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                         onChange={(e) => {
                                                             const timeVal = e.target.value;
                                                             if (!timeVal) {
-                                                                updateRoundConfig(roundIndex, 'startTime', '');
+                                                                updateRoundConfig(cfgKey, roundIndex, 'startTime', '');
                                                                 return;
                                                             }
                                                             // Combine deadline date (or today) with selected time
                                                             const deadlineDate = config?.deadline
                                                                 ? utcToLocalDate(config.deadline)
                                                                 : (defaultDeadline ? defaultDeadline.split('T')[0] : utcToLocalDate(new Date().toISOString()));
-                                                            updateRoundConfig(roundIndex, 'startTime', localDateTimeToUTC(deadlineDate, timeVal));
+                                                            updateRoundConfig(cfgKey, roundIndex, 'startTime', localDateTimeToUTC(deadlineDate, timeVal));
                                                         }}
                                                         className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 flex-1 [color-scheme:dark]"
                                                     />
                                                     <Button
                                                         size="sm"
                                                         variant="secondary"
-                                                        onClick={() => handleSaveRound(roundIndex)}
+                                                        onClick={() => handleSaveRound(cfgKey, roundIndex)}
                                                         disabled={saving}
                                                         className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"
                                                     >
@@ -784,8 +794,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                     {Array.from(section.rounds.entries())
                                         .sort(([a], [b]) => a - b)
                                         .map(([roundIndex, roundMatches]) => {
-                                            const configKey = `${section.key}_${roundIndex}`;
-                                            const config = roundConfigs.get(roundIndex);
+                                            const cfgK = configKey(roundIndex, section.key);
+                                            const config = roundConfigs.get(cfgK);
                                             const isExpanded = expandedRound === roundIndex && expandedBracket === section.key;
                                             const defaultDeadline = getDefaultDeadline(roundIndex);
                                             const isLosers = section.key === 'losers';
@@ -801,7 +811,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                 config,
                                                 isExpanded,
                                                 defaultDeadline,
-                                                section.key
+                                                section.key,
+                                                cfgK
                                             );
                                         })}
                                 </div>
@@ -811,7 +822,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                             Array.from(matchesByRound.entries())
                                 .sort(([a], [b]) => a - b)
                                 .map(([roundIndex, roundMatches]) => {
-                                    const config = roundConfigs.get(roundIndex);
+                                    const cfgK = configKey(roundIndex, null);
+                                    const config = roundConfigs.get(cfgK);
                                     const isExpanded = expandedRound === roundIndex && expandedBracket === null;
                                     const defaultDeadline = getDefaultDeadline(roundIndex);
                                     const roundName = getRoundNameForFormat(stageFormat, roundIndex, totalRounds);
@@ -823,7 +835,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                         config,
                                         isExpanded,
                                         defaultDeadline,
-                                        null
+                                        null,
+                                        cfgK
                                     );
                                 })
                         )}
@@ -831,7 +844,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 </ScrollArea>
 
                 {/* No Matches Warning */}
-                {matchesByRound.size === 0 && (
+                {matchesByConfigKey.size === 0 && (
                     <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
                         <AlertCircle className="w-5 h-5 text-amber-500" />
                         <p className="text-sm text-amber-400">
@@ -843,7 +856,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 {/* Apply Button */}
                 <Button
                     onClick={handleApplySchedule}
-                    disabled={saving || matchesByRound.size === 0}
+                    disabled={saving || matchesByConfigKey.size === 0}
                     className="w-full h-14 bg-gradient-to-r from-esports-accent to-esports-blue hover:opacity-90 text-white font-semibold rounded-2xl transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
                 >
                     {saving ? (
