@@ -295,14 +295,12 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     if (!text.trim() && !attachment) return;
     try {
       setSubmittingComment(true);
-      const disputeData = await apiClient.get<any>(`/api/organizer/disputes/${disputeId}`).catch(() => null);
 
       let attachmentUrl: string | null = null;
       if (attachment) {
         setUploadingAttachment(true);
-        const disputeReason = disputeData?.dispute_reason || 'general';
         const fileExt = attachment.name.split('.').pop();
-        const fileName = `${disputeId}/${disputeReason}/${actorUserId}-${Date.now()}.${fileExt}`;
+        const fileName = `${disputeId}/${actorUserId}-${Date.now()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
           .from('tournaments.disputes.evidence')
           .upload(fileName, attachment, { upsert: false });
@@ -320,10 +318,6 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
         is_internal: false,
         attachment_url: attachmentUrl,
       });
-
-      const updateData: { updated_at: string; status?: string } = { updated_at: new Date().toISOString() };
-      if (disputeData?.status === 'open') updateData.status = 'in_review';
-      await apiClient.put(`/api/organizer/disputes/${disputeId}`, updateData);
 
       await fetchComments(disputeId);
       await fetchDisputes();
