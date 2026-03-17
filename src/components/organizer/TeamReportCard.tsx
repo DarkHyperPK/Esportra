@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Copy, ExternalLink } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { FullScoreboard } from '@/components/tournament/FullScoreboard';
 import { useToast } from '@/hooks/use-toast';
 
@@ -34,9 +34,6 @@ interface TeamReportCardProps {
   matchTeam2Name: string;
   matchTeam1Id: string;
 }
-
-const trackerUrl = (gameName: string, tagLine: string) =>
-  `https://tracker.gg/valorant/profile/riot/${encodeURIComponent(gameName)}%23${encodeURIComponent(tagLine)}/overview`;
 
 const TeamReportCard: React.FC<TeamReportCardProps> = ({
   teamName, reports, accounts, matchTeam1Name, matchTeam2Name, matchTeam1Id,
@@ -106,11 +103,8 @@ const TeamReportCard: React.FC<TeamReportCardProps> = ({
             <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Riot Accounts</span>
             <div className="mt-1 space-y-1">
               {accounts.map((acct) => (
-                <div key={acct.user_id} className="flex items-center justify-between text-xs">
+                <div key={acct.user_id} className="flex items-center text-xs">
                   <span className="text-zinc-400">{acct.username} · <span className="font-mono text-white">{acct.game_name}#{acct.tag_line}</span></span>
-                  <a href={trackerUrl(acct.game_name, acct.tag_line)} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
                 </div>
               ))}
             </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Copy, ExternalLink, Image as ImageIcon, Shield, ChevronDown } from 'lucide-react';
+import { Copy, Image as ImageIcon, Shield, ChevronDown } from 'lucide-react';
 import { FullScoreboard } from '@/components/tournament/FullScoreboard';
 import { useToast } from '@/hooks/use-toast';
 
@@ -68,9 +68,6 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
   // Group riot accounts by team
   const team1Accounts = riotAccounts.filter(a => a.team_id === matchContext?.team1_id);
   const team2Accounts = riotAccounts.filter(a => a.team_id === matchContext?.team2_id);
-
-  const trackerUrl = (gameName: string, tagLine: string) =>
-    `https://tracker.gg/valorant/profile/riot/${encodeURIComponent(gameName)}%23${encodeURIComponent(tagLine)}/overview`;
 
   if (reports.length === 0 && riotAccounts.length === 0) return null;
 
@@ -204,15 +201,6 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
                             {acct.game_name}#{acct.tag_line}
                           </span>
                         </div>
-                        <a
-                          href={trackerUrl(acct.game_name, acct.tag_line)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 flex-shrink-0"
-                          title="View on tracker.gg"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
                       </div>
                     ))}
                   </div>

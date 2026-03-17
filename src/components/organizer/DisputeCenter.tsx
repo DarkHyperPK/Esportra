@@ -19,7 +19,8 @@ import {
   FileText,
   Image as ImageIcon,
   RefreshCw,
-  UserCheck
+  UserCheck,
+  Copy
 } from 'lucide-react';
 import {
   Dialog,
@@ -609,6 +610,15 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                       Match #{selectedDispute.match.match_number} · BO{selectedDispute.match.best_of || 1}
                     </Badge>
                   </div>
+                  {selectedDispute.match_id && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-zinc-500">Match ID:</span>
+                      <code className="text-xs font-mono text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded">{selectedDispute.match_id}</code>
+                      <Button variant="ghost" size="sm" className="h-5 px-1" onClick={() => { navigator.clipboard.writeText(selectedDispute.match_id!); }}>
+                        <Copy className="w-3 h-3 text-zinc-500" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 
