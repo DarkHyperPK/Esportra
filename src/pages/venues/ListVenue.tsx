@@ -572,7 +572,7 @@ const ListVenue = () => {
               </Button>
 
               {currentStep < 6 ? (
-                <Button onClick={handleNext} className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white px-8 rounded-xl shadow-lg shadow-purple-900/20">
+                <Button onClick={handleNext} className="bg-rose-500 hover:bg-rose-600 transition-all text-white px-8 rounded-xl font-semibold">
                   Next Step <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (

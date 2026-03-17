@@ -3,40 +3,20 @@ import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { auditLog } from '@/lib/auditLog';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import {
-  MessageSquare,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Clock,
-  User,
-  Calendar,
-  FileText,
-  Image as ImageIcon,
-  RefreshCw,
-  UserCheck,
-  Copy
+  AlertCircle, MessageSquare, CheckCircle, XCircle,
+  Clock, User, RefreshCw, Shield,
 } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTournamentStaff } from '@/hooks/useTournamentStaff';
 import type { Database } from '@/lib/database.types';
 import { useHub } from '@/contexts/SignalRContext';
 import { HubPaths } from '@/lib/signalrClient';
-import DisputeEvidencePanel, { type DisputeReport, type DisputeRiotAccount } from './DisputeEvidencePanel';
+import type { DisputeReport, DisputeRiotAccount } from './DisputeEvidencePanel';
+import DisputeDetailPanel from './DisputeDetailPanel';
 
 interface Dispute {
   id: string;
@@ -86,13 +66,10 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
-  const [resolutionDialogOpen, setResolutionDialogOpen] = useState(false);
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [resolutionStatus, setResolutionStatus] = useState<'resolved' | 'rejected' | 'in_review'>('resolved');
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [commentAttachment, setCommentAttachment] = useState<File | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [comments, setComments] = useState<Array<{ id: string; user_id: string; comment: string; created_at: string; user_name?: string; is_internal: boolean; attachment_url?: string }>>([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -313,87 +290,54 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     }
   };
 
-  const handleAddComment = async (disputeId: string) => {
-    if (!commentText.trim() && !commentAttachment) return;
-
+  /** Direct comment submission (called from DisputeConversation sub-component) */
+  const handleAddCommentDirect = async (disputeId: string, text: string, attachment: File | null) => {
+    if (!text.trim() && !attachment) return;
     try {
       setSubmittingComment(true);
-
-      // Check current dispute status
       const disputeData = await apiClient.get<any>(`/api/organizer/disputes/${disputeId}`).catch(() => null);
 
-      // Upload attachment if provided
       let attachmentUrl: string | null = null;
-      if (commentAttachment) {
+      if (attachment) {
         setUploadingAttachment(true);
-
         const disputeReason = disputeData?.dispute_reason || 'general';
-        const fileExt = commentAttachment.name.split('.').pop();
-        // Organized path: {dispute_id}/{dispute_reason}/{user_id}-{timestamp}.{ext}
+        const fileExt = attachment.name.split('.').pop();
         const fileName = `${disputeId}/${disputeReason}/${actorUserId}-${Date.now()}.${fileExt}`;
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('tournaments.disputes.evidence')
-          .upload(fileName, commentAttachment, { upsert: false });
-
+          .upload(fileName, attachment, { upsert: false });
         if (uploadError) throw uploadError;
-
         const { data: urlData } = supabase.storage
           .from('tournaments.disputes.evidence')
           .getPublicUrl(fileName);
-
         attachmentUrl = urlData.publicUrl;
         setUploadingAttachment(false);
       }
 
       await apiClient.post(`/api/organizer/disputes/${disputeId}/comments`, {
-          user_id: actorUserId,
-          comment: commentText.trim() || '', // Empty string if no text (comment column is NOT NULL)
-          is_internal: false,
-          attachment_url: attachmentUrl,
-        });
+        user_id: actorUserId,
+        comment: text.trim() || '',
+        is_internal: false,
+        attachment_url: attachmentUrl,
+      });
 
-      // Update dispute: set to in_review if currently open, and update updated_at
-      const updateData: { updated_at: string; status?: string } = {
-        updated_at: new Date().toISOString(),
-      };
-
-      // Auto-set to in_review if currently open
-      if (disputeData?.status === 'open') {
-        updateData.status = 'in_review';
-      }
-
+      const updateData: { updated_at: string; status?: string } = { updated_at: new Date().toISOString() };
+      if (disputeData?.status === 'open') updateData.status = 'in_review';
       await apiClient.put(`/api/organizer/disputes/${disputeId}`, updateData);
 
-      setCommentText('');
-      setCommentAttachment(null);
-
-      // Refresh comments and disputes
       await fetchComments(disputeId);
       await fetchDisputes();
-
-      toast({
-        title: 'Comment added',
-        description: disputeData?.status === 'open'
-          ? 'Your comment has been posted and dispute marked as in review.'
-          : 'Your comment has been posted.',
-      });
+      toast({ title: 'Comment added' });
     } catch (error: unknown) {
-      console.error('Error adding comment:', error);
-      const errorMessage = error instanceof Error
-        ? error.message
-        : (error as any)?.message || JSON.stringify(error);
-      toast({
-        title: 'Error',
-        description: `Failed to add comment: ${errorMessage}`,
-        variant: 'destructive',
-      });
+      const msg = error instanceof Error ? error.message : 'Failed to add comment';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
     } finally {
       setSubmittingComment(false);
+      setUploadingAttachment(false);
     }
   };
 
-  const handleUpdateStatus = async (disputeId: string, newStatus: 'in_review' | 'resolved' | 'rejected', addComment?: boolean) => {
+  const handleUpdateStatus = async (disputeId: string, newStatus: 'in_review' | 'resolved' | 'rejected') => {
     try {
       const updateData: Partial<Database['public']['Tables']['tournament_disputes']['Update']> = {
         status: newStatus,
@@ -405,18 +349,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
         updateData.resolution_notes = resolutionNotes || null;
       }
 
-      const { error } = { error: null }; // apiClient throws on error
       await apiClient.put(`/api/organizer/disputes/${disputeId}`, updateData);
-
-      // Add comment if provided when marking as in_review
-      if (newStatus === 'in_review' && addComment && commentText.trim()) {
-        await apiClient.post(`/api/organizer/disputes/${disputeId}/comments`, {
-            user_id: actorUserId,
-            comment: commentText.trim(),
-            is_internal: false,
-          });
-        setCommentText('');
-      }
 
       await logDisputeAudit(disputeId, newStatus, {
         resolution_notes: updateData.resolution_notes,
@@ -451,543 +384,177 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'open':
-        return <Badge className="bg-yellow-600/20 text-yellow-400 border-yellow-500/30"><Clock className="h-3 w-3 mr-1" />Open</Badge>;
-      case 'in_review':
-        return <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/30"><MessageSquare className="h-3 w-3 mr-1" />In Review</Badge>;
-      case 'resolved':
-        return <Badge className="bg-green-600/20 text-green-400 border-green-500/30"><CheckCircle className="h-3 w-3 mr-1" />Resolved</Badge>;
-      case 'rejected':
-        return <Badge className="bg-red-600/20 text-red-400 border-red-500/30"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
-
   const openDisputes = disputes.filter(d => d.status === 'open');
   const inReviewDisputes = disputes.filter(d => d.status === 'in_review');
   const resolvedDisputes = disputes.filter(d => d.status === 'resolved' || d.status === 'rejected');
 
+  const [filterTab, setFilterTab] = useState<'open' | 'in_review' | 'resolved'>('open');
+  const filteredDisputes = filterTab === 'open' ? openDisputes
+    : filterTab === 'in_review' ? inReviewDisputes : resolvedDisputes;
+
+  const statusCfg = {
+    open: { icon: AlertCircle, label: 'Open', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30', dot: 'bg-amber-400' },
+    in_review: { icon: MessageSquare, label: 'In Review', cls: 'bg-blue-500/15 text-blue-400 border-blue-500/30', dot: 'bg-blue-400' },
+    resolved: { icon: CheckCircle, label: 'Resolved', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', dot: 'bg-emerald-400' },
+    rejected: { icon: XCircle, label: 'Rejected', cls: 'bg-red-500/15 text-red-400 border-red-500/30', dot: 'bg-red-400' },
+  } as const;
+
+  const tabStyles = {
+    open: { active: 'bg-amber-500/10 border-amber-500/30 text-amber-400', dot: 'bg-amber-400' },
+    in_review: { active: 'bg-blue-500/10 border-blue-500/30 text-blue-400', dot: 'bg-blue-400' },
+    resolved: { active: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400', dot: 'bg-emerald-400' },
+  } as const;
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-3 md:grid-cols-3">
-        <Card className="bg-gray-900 border border-gray-800">
-          <CardContent className="py-4">
-            <p className="text-xs text-gray-400 uppercase">Open</p>
-            <p className="text-2xl font-semibold text-yellow-400">{openDisputes.length}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gray-900 border border-gray-800">
-          <CardContent className="py-4">
-            <p className="text-xs text-gray-400 uppercase">In review</p>
-            <p className="text-2xl font-semibold text-blue-300">{inReviewDisputes.length}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gray-900 border border-gray-800">
-          <CardContent className="py-4">
-            <p className="text-xs text-gray-400 uppercase">Closed</p>
-            <p className="text-2xl font-semibold text-green-300">{resolvedDisputes.length}</p>
-          </CardContent>
-        </Card>
+    <div className="space-y-4">
+      {/* ─── Stats Bar ─── */}
+      <div className="flex items-center gap-3">
+        {([
+          { key: 'open' as const, count: openDisputes.length },
+          { key: 'in_review' as const, count: inReviewDisputes.length },
+          { key: 'resolved' as const, count: resolvedDisputes.length },
+        ]).map(({ key, count }) => (
+          <button
+            key={key}
+            onClick={() => setFilterTab(key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
+              filterTab === key
+                ? tabStyles[key].active
+                : 'bg-zinc-900/40 border-zinc-800/60 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${filterTab === key ? tabStyles[key].dot : 'bg-zinc-700'}`} />
+            {key === 'open' ? 'Open' : key === 'in_review' ? 'In Review' : 'Closed'}
+            <span className="font-mono text-xs">{count}</span>
+          </button>
+        ))}
+        <div className="ml-auto">
+          <button
+            onClick={() => fetchDisputes()}
+            className="p-2 text-zinc-500 hover:text-white rounded-lg hover:bg-zinc-800 transition"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
-      <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
-        <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
-          <CardTitle className="flex items-center gap-2 text-white">
-            <MessageSquare className="h-5 w-5 text-blue-400" />
-            Dispute center
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center gap-2 text-gray-400 text-sm">
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              Loading disputes…
+      {/* ─── Split Panel ─── */}
+      <div className="flex gap-4 min-h-[600px]">
+        {/* Left: Dispute List */}
+        <div className="w-[340px] shrink-0 flex flex-col bg-zinc-950/40 border border-zinc-800/50 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-zinc-800/50">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-blue-400" />
+              <h3 className="text-sm font-heading font-bold text-white">Disputes</h3>
+              <span className="text-xs text-zinc-600 ml-auto">{filteredDisputes.length} items</span>
             </div>
-          ) : (
-            <Tabs defaultValue="open" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-gray-800/60 border border-gray-800">
-                <TabsTrigger value="open">Open ({openDisputes.length})</TabsTrigger>
-                <TabsTrigger value="in_review">In review ({inReviewDisputes.length})</TabsTrigger>
-                <TabsTrigger value="resolved">Resolved ({resolvedDisputes.length})</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="open" className="space-y-4 mt-4">
-                {openDisputes.length === 0 ? (
-                  <div className="text-gray-400 p-4 bg-gray-800/40 rounded-lg text-sm">No open disputes.</div>
-                ) : (
-                  openDisputes.map((dispute) => (
-                    <DisputeCard
-                      key={dispute.id}
-                      dispute={dispute}
-                      onAction={(dispute) => {
-                        setSelectedDispute(dispute);
-                        setResolutionStatus('in_review');
-                        setResolutionDialogOpen(true);
-                      }}
-                    />
-                  ))
-                )}
-              </TabsContent>
-
-              <TabsContent value="in_review" className="space-y-4 mt-4">
-                {inReviewDisputes.length === 0 ? (
-                  <div className="text-gray-400 p-4 bg-gray-800/40 rounded-lg text-sm">No disputes in review.</div>
-                ) : (
-                  inReviewDisputes.map((dispute) => (
-                    <DisputeCard
-                      key={dispute.id}
-                      dispute={dispute}
-                      onAction={(dispute) => {
-                        setSelectedDispute(dispute);
-                        setResolutionStatus('resolved');
-                        setResolutionDialogOpen(true);
-                      }}
-                    />
-                  ))
-                )}
-              </TabsContent>
-
-              <TabsContent value="resolved" className="space-y-4 mt-4">
-                {resolvedDisputes.length === 0 ? (
-                  <div className="text-gray-400 p-4 bg-gray-800/40 rounded-lg text-sm">No resolved disputes.</div>
-                ) : (
-                  resolvedDisputes.map((dispute) => (
-                    <DisputeCard key={dispute.id} dispute={dispute} readonly onAction={() => { }} />
-                  ))
-                )}
-              </TabsContent>
-            </Tabs>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Resolution Dialog */}
-      <Dialog open={resolutionDialogOpen} onOpenChange={(open) => {
-        setResolutionDialogOpen(open);
-        if (open && selectedDispute) {
-          fetchComments(selectedDispute.id);
-        } else {
-          setComments([]);
-          setCommentText('');
-        }
-      }}>
-        <DialogContent className="bg-gaming-dark border-gaming-gray/30 max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Resolve Dispute</DialogTitle>
-            <DialogDescription>
-              Review and resolve the dispute: <strong>{selectedDispute?.title}</strong>
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedDispute && (
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-semibold mb-2 block">Raised By</label>
-                <div className="flex items-center gap-2 text-gray-300">
-                  <User className="h-4 w-4" />
-                  {selectedDispute.raised_by_name}
-                  {selectedDispute.team_name && (
-                    <Badge variant="outline" className="ml-2">{selectedDispute.team_name}</Badge>
-                  )}
-                </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
+            {loading ? (
+              <div className="flex items-center justify-center py-12 text-zinc-500 text-sm">
+                <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Loading…
               </div>
-
-              <div>
-                <label className="text-sm font-semibold mb-2 block">Dispute ID</label>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs font-mono text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded">{selectedDispute.id}</code>
-                  <Button variant="ghost" size="sm" className="h-5 px-1" onClick={() => { navigator.clipboard.writeText(selectedDispute.id); }}>
-                    <Copy className="w-3 h-3 text-zinc-500" />
-                  </Button>
-                </div>
+            ) : filteredDisputes.length === 0 ? (
+              <div className="text-center py-12 text-zinc-600 text-sm">
+                No {filterTab === 'open' ? 'open' : filterTab === 'in_review' ? 'in-review' : 'closed'} disputes
               </div>
-
-              {selectedDispute.match && (
-                <div>
-                  <label className="text-sm font-semibold mb-2 block">Match Context</label>
-                  <div className="p-3 bg-gaming-gray/20 rounded-lg flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-semibold">{selectedDispute.match.team1_name || 'Team 1'}</span>
-                      <span className="text-zinc-400 font-mono">
-                        {selectedDispute.match.team1_score ?? 0} – {selectedDispute.match.team2_score ?? 0}
-                      </span>
-                      <span className="text-white font-semibold">{selectedDispute.match.team2_name || 'Team 2'}</span>
-                    </div>
-                    <Badge variant="outline" className="text-xs border-zinc-700 text-zinc-400">
-                      Match #{selectedDispute.match.match_number} · BO{selectedDispute.match.best_of || 1}
-                    </Badge>
-                  </div>
-                  {selectedDispute.match_id && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-zinc-500">Match ID:</span>
-                      <code className="text-xs font-mono text-zinc-300 bg-zinc-800 px-2 py-0.5 rounded">{selectedDispute.match_id}</code>
-                      <Button variant="ghost" size="sm" className="h-5 px-1" onClick={() => { navigator.clipboard.writeText(selectedDispute.match_id!); }}>
-                        <Copy className="w-3 h-3 text-zinc-500" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <label className="text-sm font-semibold mb-2 block">Description</label>
-                <div className="p-3 bg-gaming-gray/20 rounded-lg text-gray-300 text-sm">
-                  {selectedDispute.description || 'No description provided.'}
-                </div>
-              </div>
-
-              {selectedDispute.evidence_url && (
-                <div>
-                  <label className="text-sm font-semibold mb-2 block flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    Evidence
-                  </label>
-                  <a
-                    href={selectedDispute.evidence_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 underline text-sm"
+            ) : (
+              filteredDisputes.map((dispute) => {
+                const cfg = statusCfg[dispute.status];
+                const StatusIcon = cfg.icon;
+                const isSelected = selectedDispute?.id === dispute.id;
+                return (
+                  <button
+                    key={dispute.id}
+                    onClick={() => {
+                      setSelectedDispute(dispute);
+                      setResolutionStatus(dispute.status === 'open' ? 'in_review' : 'resolved');
+                    }}
+                    className={`w-full text-left p-3 rounded-xl border transition-all duration-150 ${
+                      isSelected
+                        ? 'bg-blue-500/8 border-blue-500/25 ring-1 ring-blue-500/15'
+                        : 'bg-zinc-900/30 border-transparent hover:bg-zinc-800/40 hover:border-zinc-800'
+                    }`}
                   >
-                    View Evidence Image
-                  </a>
-                </div>
-              )}
-
-              {/* Reports, Scoreboard, Riot Accounts from enriched dispute data */}
-              <DisputeEvidencePanel
-                reports={selectedDispute.reports || []}
-                riotAccounts={selectedDispute.riot_accounts || []}
-                matchContext={selectedDispute.match ? {
-                  team1_name: selectedDispute.match.team1_name,
-                  team2_name: selectedDispute.match.team2_name,
-                  team1_id: selectedDispute.match.team1_id,
-                  team2_id: selectedDispute.match.team2_id,
-                  best_of: selectedDispute.match.best_of,
-                } : null}
-                onImageClick={(url) => setViewingImage(url)}
-              />
-
-              <div>
-                <label className="text-sm font-semibold mb-2 block">Assignment</label>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Select
-                    value={selectedAssigneeId || organizerId}
-                    onValueChange={(value) => setSelectedAssigneeId(value)}
-                    disabled={
-                      !selectedDispute ||
-                      assignmentOptions.length === 0 ||
-                      (!canAssignOthers &&
-                        selectedDispute.assigned_to_user_id &&
-                        selectedDispute.assigned_to_user_id !== actorUserId)
-                    }
-                  >
-                    <SelectTrigger className="bg-gray-800 border-gaming-gray/30 text-white">
-                      <SelectValue placeholder="Select staff" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gaming-dark border-gaming-gray/30 text-white">
-                      {assignmentOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {(canAssignOthers ||
-                    !selectedDispute?.assigned_to_user_id ||
-                    selectedDispute?.assigned_to_user_id === actorUserId) && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={
-                          assignmentLoading ||
-                          !selectedDispute ||
-                          !selectedAssigneeId ||
-                          selectedAssigneeId === selectedDispute.assigned_to_user_id
-                        }
-                        onClick={() =>
-                          selectedDispute &&
-                          selectedAssigneeId &&
-                          handleAssignDispute(selectedDispute.id, selectedAssigneeId)
-                        }
-                        className="border-blue-500/40 text-blue-300 hover:bg-blue-500/10"
-                      >
-                        {assignmentLoading ? 'Saving...' : 'Save assignment'}
-                      </Button>
-                    )}
-                </div>
-                {!canAssignOthers && (
-                  <p className="text-xs text-gray-400 mt-2">
-                    Only the lead organizer can reassign disputes to other moderators.
-                  </p>
-                )}
-              </div>
-
-              {/* Comments Section - Always show history, but only allow new comments for open/in_review */}
-              {selectedDispute && (
-                <div className="border-t border-white/10 pt-4">
-                  <label className="text-sm font-semibold mb-2 block">Conversation</label>
-
-                  {/* Comments List - Show for all statuses */}
-                  <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto">
-                    {loadingComments ? (
-                      <div className="text-center text-gray-400 text-sm py-4">
-                        <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2" />
-                        Loading comments...
-                      </div>
-                    ) : comments.length === 0 ? (
-                      <div className="text-gray-400 text-sm text-center py-4 bg-gray-800/40 rounded-lg">
-                        No comments yet. {selectedDispute.status === 'open' || selectedDispute.status === 'in_review' ? 'Start the conversation below.' : 'This dispute has been closed.'}
-                      </div>
-                    ) : (
-                      comments.map((comment) => {
-                        const isOrganizer = comment.user_id === organizerId ||
-                          activeStaff.some(s => s.user_id === comment.user_id);
-                        return (
-                          <div
-                            key={comment.id}
-                            className={`p-3 rounded-lg border ${isOrganizer
-                              ? 'bg-blue-500/10 border-blue-500/30'
-                              : 'bg-gray-800/40 border-gray-700/50'
-                              }`}
-                          >
-                            <div className="flex items-start justify-between mb-1">
-                              <span className="text-xs font-semibold text-white">
-                                {isOrganizer ? 'Organizer' : 'User'}: {comment.user_name}
-                              </span>
-                              <span className="text-xs text-gray-400">
-                                {new Date(comment.created_at).toLocaleString()}
-                              </span>
-                            </div>
-                            {comment.comment && comment.comment.trim() && (
-                              <p className="text-sm text-gray-200 whitespace-pre-wrap mb-2">{comment.comment}</p>
-                            )}
-                            {comment.attachment_url && (
-                              <div className="mt-2">
-                                <img
-                                  src={comment.attachment_url}
-                                  alt="Comment attachment"
-                                  className="max-w-full max-h-64 rounded-lg border border-gray-700/50 cursor-pointer hover:opacity-80 transition"
-                                  onClick={() => setViewingImage(comment.attachment_url || null)}
-                                  onError={(e) => {
-                                    console.error('Failed to load comment image:', comment.attachment_url);
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    const parent = target.parentElement;
-                                    if (parent) {
-                                      parent.innerHTML = `<span class="text-red-400 text-sm">Failed to load image.</span>`;
-                                    }
-                                  }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {/* Add Comment - Only show for open/in_review disputes */}
-                  {canAssistDisputes && (selectedDispute.status === 'open' || selectedDispute.status === 'in_review') && (
-                    <div className="space-y-2">
-                      <Textarea
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="Add a comment or ask a question..."
-                        className="bg-white/5 border-gaming-gray/50 text-white placeholder:text-gray-500 min-h-[80px]"
-                      />
-
-                      {/* File Upload */}
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                          <ImageIcon className="h-4 w-4" />
-                          <span>Attach image (optional)</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                if (file.size > 5 * 1024 * 1024) {
-                                  toast({
-                                    title: 'File too large',
-                                    description: 'Image must be less than 5MB',
-                                    variant: 'destructive',
-                                  });
-                                  return;
-                                }
-                                if (!file.type.startsWith('image/')) {
-                                  toast({
-                                    title: 'Invalid file',
-                                    description: 'Please upload an image file',
-                                    variant: 'destructive',
-                                  });
-                                  return;
-                                }
-                                setCommentAttachment(file);
-                              }
-                            }}
-                          />
-                        </label>
-                        {commentAttachment && (
-                          <div className="flex items-center gap-2 p-2 bg-gray-800/40 rounded-lg">
-                            <ImageIcon className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm text-gray-300 flex-1">{commentAttachment.name}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-300 hover:text-red-100 hover:bg-red-500/10 h-6 px-2"
-                              onClick={() => setCommentAttachment(null)}
-                            >
-                              Remove
-                            </Button>
-                          </div>
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <h4 className="text-sm font-semibold text-white truncate flex-1">{dispute.title}</h4>
+                      <Badge className={`text-[9px] shrink-0 px-1.5 py-0.5 ${cfg.cls}`}>
+                        <StatusIcon className="w-2.5 h-2.5 mr-0.5" />
+                        {cfg.label}
+                      </Badge>
+                    </div>
+                    {dispute.match && (
+                      <div className="text-[11px] text-zinc-400 mb-1 truncate">
+                        {dispute.match.team1_name} vs {dispute.match.team2_name}
+                        {dispute.match.match_number != null && (
+                          <span className="text-zinc-600"> · #{dispute.match.match_number}</span>
                         )}
                       </div>
-
-                      <Button
-                        onClick={() => handleAddComment(selectedDispute.id)}
-                        disabled={(!commentText.trim() && !commentAttachment) || submittingComment || uploadingAttachment}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        {uploadingAttachment ? 'Uploading...' : submittingComment ? 'Posting...' : 'Post Comment'}
-                      </Button>
+                    )}
+                    <div className="flex items-center gap-2 text-[10px] text-zinc-600">
+                      <span className="flex items-center gap-1">
+                        <User className="w-2.5 h-2.5" />
+                        {dispute.raised_by_name}
+                      </span>
+                      {dispute.team_name && <span>({dispute.team_name})</span>}
+                      <span className="ml-auto flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5" />
+                        {getTimeAgo(dispute.created_at)}
+                      </span>
                     </div>
-                  )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
 
-                  {/* Show message for resolved/rejected disputes */}
-                  {(selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && (
-                    <div className="text-gray-400 text-sm text-center py-3 bg-gray-800/40 rounded-lg border border-gray-700/50">
-                      This dispute has been {selectedDispute.status === 'resolved' ? 'resolved' : 'rejected'}. No further comments can be added.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedDispute && selectedDispute.status === 'open' && canAssistDisputes && (
-                <div>
-                  <label className="text-sm font-semibold mb-2 block">Action</label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        if (commentText.trim()) {
-                          handleUpdateStatus(selectedDispute.id, 'in_review', true);
-                        } else {
-                          handleUpdateStatus(selectedDispute.id, 'in_review');
-                        }
-                      }}
-                      className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
-                    >
-                      Mark as In Review {commentText.trim() ? '(with comment)' : '(optional comment)'}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-2">
-                    You can add a comment when marking as "In Review" to start the conversation, or mark it without a comment.
-                  </p>
-                </div>
-              )}
-
-              {canAssistDisputes && selectedDispute && (selectedDispute.status === 'open' || selectedDispute.status === 'in_review') ? (
-                <>
-                  <div>
-                    <label className="text-sm font-semibold mb-2 block">Resolution Status</label>
-                    <div className="flex gap-2 mb-3">
-                      <Button
-                        variant={resolutionStatus === 'resolved' ? 'default' : 'outline'}
-                        onClick={() => setResolutionStatus('resolved')}
-                        className={resolutionStatus === 'resolved' ? 'bg-green-600 hover:bg-green-700' : ''}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Resolve
-                      </Button>
-                      <Button
-                        variant={resolutionStatus === 'rejected' ? 'default' : 'outline'}
-                        onClick={() => setResolutionStatus('rejected')}
-                        className={resolutionStatus === 'rejected' ? 'bg-red-600 hover:bg-red-700' : ''}
-                      >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold mb-2 block">Resolution Notes</label>
-                    <Textarea
-                      value={resolutionNotes}
-                      onChange={(e) => setResolutionNotes(e.target.value)}
-                      placeholder="Enter resolution notes or feedback..."
-                      className="bg-white/5 border-gaming-gray/50 text-white placeholder:text-gray-500 min-h-[100px]"
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 text-sm text-yellow-100 p-4">
-                  You can review the dispute details, but only the lead organizer or assigned moderators can update the
-                  status.
-                </div>
-              )}
+        {/* Right: Detail Panel */}
+        <div className="flex-1 bg-zinc-950/40 border border-zinc-800/50 rounded-2xl overflow-hidden">
+          {selectedDispute ? (
+            <DisputeDetailPanel
+              dispute={selectedDispute}
+              comments={comments}
+              loadingComments={loadingComments}
+              submittingComment={submittingComment}
+              uploadingAttachment={uploadingAttachment}
+              organizerId={organizerId}
+              staffUserIds={activeStaff.map(s => s.user_id)}
+              canAssist={canAssistDisputes}
+              canAssignOthers={canAssignOthers}
+              assigneeId={selectedAssigneeId}
+              assignmentOptions={assignmentOptions}
+              assignmentLoading={assignmentLoading}
+              resolutionNotes={resolutionNotes}
+              resolutionStatus={resolutionStatus}
+              onAssigneeChange={setSelectedAssigneeId}
+              onAssign={() => selectedDispute && selectedAssigneeId && handleAssignDispute(selectedDispute.id, selectedAssigneeId)}
+              onResolutionStatusChange={setResolutionStatus}
+              onResolutionNotesChange={setResolutionNotes}
+              onMarkInReview={() => handleUpdateStatus(selectedDispute.id, 'in_review')}
+              onResolve={() => handleUpdateStatus(selectedDispute.id, resolutionStatus)}
+              onCommentSubmit={(text, attachment) => handleAddCommentDirect(selectedDispute.id, text, attachment)}
+              onImageClick={(url) => setViewingImage(url)}
+            />
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-zinc-600">
+              <Shield className="w-12 h-12 mb-4 opacity-20" />
+              <p className="text-sm font-medium">Select a dispute to review</p>
+              <p className="text-xs text-zinc-700 mt-1">Click on a dispute from the list</p>
             </div>
           )}
+        </div>
+      </div>
 
-          {selectedDispute && canAssistDisputes && (selectedDispute.status === 'open' || selectedDispute.status === 'in_review') ? (
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setResolutionDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => handleUpdateStatus(selectedDispute.id, resolutionStatus)}
-                disabled={!resolutionNotes.trim()}
-                className={
-                  resolutionStatus === 'resolved'
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-red-600 hover:bg-red-700'
-                }
-              >
-                {resolutionStatus === 'resolved' ? 'Resolve' : 'Reject'} Dispute
-              </Button>
-              {selectedDispute.status === 'in_review' && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (commentText.trim()) {
-                      handleAddComment(selectedDispute.id);
-                    }
-                  }}
-                  disabled={!commentText.trim() || submittingComment}
-                  className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
-                >
-                  {submittingComment ? 'Posting...' : 'Add Comment'}
-                </Button>
-              )}
-            </DialogFooter>
-          ) : (
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setResolutionDialogOpen(false)}>
-                {selectedDispute ? 'Close' : 'Cancel'}
-              </Button>
-            </DialogFooter>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Image Preview Dialog */}
+      {/* Image Preview */}
       <Dialog open={!!viewingImage} onOpenChange={() => setViewingImage(null)}>
-        <DialogContent className="bg-black/95 border-gray-800 max-w-4xl p-2">
+        <DialogContent className="bg-black/95 border-zinc-800 max-w-4xl p-2">
           <DialogHeader className="sr-only">
             <DialogTitle>Image Preview</DialogTitle>
           </DialogHeader>
           {viewingImage && (
-            <img
-              src={viewingImage}
-              alt="Full size preview"
-              className="max-w-full max-h-[85vh] object-contain mx-auto rounded-lg"
-            />
+            <img src={viewingImage} alt="Full size" className="max-w-full max-h-[85vh] object-contain mx-auto rounded-lg" />
           )}
         </DialogContent>
       </Dialog>
@@ -995,121 +562,16 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   );
 };
 
-interface DisputeCardProps {
-  dispute: Dispute;
-  onAction: (dispute: Dispute) => void;
-  readonly?: boolean;
+function getTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
 }
 
-const DisputeCard: React.FC<DisputeCardProps> = ({ dispute, onAction, readonly }) => {
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'open':
-        return <Badge className="bg-yellow-600/20 text-yellow-400 border-yellow-500/30"><Clock className="h-3 w-3 mr-1" />Open</Badge>;
-      case 'in_review':
-        return <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/30"><MessageSquare className="h-3 w-3 mr-1" />In Review</Badge>;
-      case 'resolved':
-        return <Badge className="bg-green-600/20 text-green-400 border-green-500/30"><CheckCircle className="h-3 w-3 mr-1" />Resolved</Badge>;
-      case 'rejected':
-        return <Badge className="bg-red-600/20 text-red-400 border-red-500/30"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
-
-  return (
-    <Card className="bg-gray-800/40 border border-gray-800 shadow-lg">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-6">
-          <div className="flex-1 space-y-3">
-            <div className="flex items-center gap-3">
-              <h4 className="text-lg font-semibold text-white">{dispute.title}</h4>
-              {getStatusBadge(dispute.status)}
-            </div>
-            <div className="text-xs text-gray-400 flex items-center gap-3 flex-wrap">
-              <span className="flex items-center gap-1">
-                <User className="h-3 w-3" />
-                {dispute.raised_by_name}
-              </span>
-              {dispute.team_name && (
-                <Badge variant="outline" className="border-gray-700 text-gray-200">
-                  {dispute.team_name}
-                </Badge>
-              )}
-              {dispute.match && (
-                <span className="text-gray-300 font-medium">
-                  {dispute.match.team1_name} vs {dispute.match.team2_name} · Match #{dispute.match.match_number}
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {new Date(dispute.created_at).toLocaleString()}
-              </span>
-              {dispute.assigned_to_name && (
-                <span className="flex items-center gap-1 text-blue-200">
-                  <UserCheck className="h-3 w-3" />
-                  {dispute.assigned_to_name}
-                </span>
-              )}
-              {dispute.evidence_url && (
-                <a
-                  className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                  href={dispute.evidence_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <ImageIcon className="h-3 w-3" />
-                  Evidence
-                </a>
-              )}
-            </div>
-            {dispute.description && (
-              <p className="text-sm text-gray-300 bg-gray-900/60 border border-gray-800 rounded-lg p-3">
-                {dispute.description}
-              </p>
-            )}
-            {dispute.resolution_notes && (
-              <div className="text-sm text-gray-400 bg-gray-900/40 border-l-4 border-blue-500 rounded-r-lg p-3">
-                <span className="font-semibold text-gray-200 block mb-1">Resolution notes</span>
-                {dispute.resolution_notes}
-              </div>
-            )}
-          </div>
-          {!readonly && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onAction(dispute)}
-              className="border-gray-700 text-gray-200 hover:bg-gray-800"
-            >
-              {dispute.status === 'open' ? 'Review' : dispute.status === 'in_review' ? 'Resolve' : 'View'}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
 export default DisputeCenter;
-
-// Image Preview Dialog - placed at end of file for component access
-const ImagePreviewDialog: React.FC<{ imageUrl: string | null; onClose: () => void }> = ({ imageUrl, onClose }) => {
-  if (!imageUrl) return null;
-
-  return (
-    <Dialog open={!!imageUrl} onOpenChange={() => onClose()}>
-      <DialogContent className="bg-black/95 border-gray-800 max-w-4xl p-2">
-        <DialogHeader className="sr-only">
-          <DialogTitle>Image Preview</DialogTitle>
-        </DialogHeader>
-        <img
-          src={imageUrl}
-          alt="Full size preview"
-          className="max-w-full max-h-[85vh] object-contain mx-auto rounded-lg"
-        />
-      </DialogContent>
-    </Dialog>
-  );
-};
 

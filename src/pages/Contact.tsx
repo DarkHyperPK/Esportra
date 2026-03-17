@@ -122,7 +122,7 @@ const ContactStandalone: React.FC = () => {
 
               <Button
                 type="submit"
-                className="w-full h-12 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-lg font-medium transition-all shadow-lg hover:shadow-purple-500/25"
+                className="w-full h-12 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-lg font-semibold transition-all"
                 disabled={loading}
               >
                 {loading ? (

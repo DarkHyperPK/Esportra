@@ -478,7 +478,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
           <Button
             type="submit"
             disabled={loading || !registrationData.gamer_tag.trim()}
-            className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed h-11 font-semibold shadow-lg shadow-blue-500/20"
+            className="flex-1 bg-rose-500 hover:bg-rose-600 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed h-11 font-semibold"
           >
             {loading ? (
               <>

@@ -143,10 +143,10 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
         <Card className="bg-zinc-900/50 border-zinc-800 overflow-hidden">
             <CardContent className="p-0">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 p-4 border-b border-zinc-800">
+                <div className="bg-rose-500/10 p-4 border-b border-zinc-800">
                     <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-white flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-blue-400" />
+                            <Calendar className="w-4 h-4 text-rose-400" />
                             Schedule Match
                         </h3>
                         {/* DEBUG DEADLINE */}
@@ -168,7 +168,7 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                     {!activeProposal && !showPicker && isCaptain && (
                         <Button
                             onClick={() => setShowPicker(true)}
-                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                            className="w-full bg-rose-500 hover:bg-rose-600 transition-all text-white font-semibold"
                         >
                             <Calendar className="w-4 h-4 mr-2" />
                             Propose Match Time

@@ -20,7 +20,7 @@ import { BracketMatch, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
 import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
 import TimeProposalCard from '@/components/tournament/TimeProposalCard';
-import DisputeCard from '@/components/tournament/DisputeCard';
+
 import MatchChat from '@/components/tournament/MatchChat';
 import TournamentEndScreen from '@/components/tournament/TournamentEndScreen';
 import EntityAvatar from '@/components/ui/EntityAvatar';
@@ -286,11 +286,12 @@ const CaptainMatchPage = () => {
         }
 
         // If a matchId was provided via URL (e.g. from notification link), try to find it
+        // Skip completed matches so the view advances to the next match or end screen
         if (urlMatchId) {
             const urlMatch = matches.find(m =>
                 m.id === urlMatchId || m.id.replace(/^(db-|wb-|lb-)/, '') === urlMatchId
             );
-            if (urlMatch) {
+            if (urlMatch && urlMatch.status !== 'completed') {
                 return urlMatch;
             }
         }
@@ -1033,20 +1034,7 @@ const CaptainMatchPage = () => {
                                             </div>
                                         )}
 
-                                        {/* Dispute */}
-                                        {activeMatch.status === 'completed' && (
-                                            <DisputeCard
-                                                matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                userTeamId={userTeamId}
-                                                isCaptain={isCaptain}
-                                                matchStatus={activeMatch.status}
-                                            />
-                                        )}
                                     </div>
-
-                                    {activeMatch.status === 'completed' && (
-                                        <p className="text-center text-sm text-zinc-500 pt-2">Match completed.</p>
-                                    )}
                                 </div>
                             ) : (
                                 <TournamentEndScreen
@@ -1063,6 +1051,8 @@ const CaptainMatchPage = () => {
                                     onNavigate={navigate}
                                 />
                             )}
+
+
                         </div>
 
                         {userTeamId && (

@@ -201,11 +201,11 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
 
                         {/* 5. Show party code (Visible to everyone if match started) */}
                         {partyCode && (
-                            <div className="p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg mb-4">
+                            <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-lg mb-4">
                                 <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Party Code</p>
                                 <div className="flex items-center justify-between">
-                                    <code className="text-2xl font-mono font-bold text-purple-400 tracking-wider">{partyCode}</code>
-                                    <Button size="sm" variant="ghost" onClick={copyCode} className="hover:bg-purple-500/10">
+                                    <code className="text-2xl font-mono font-bold text-rose-400 tracking-wider">{partyCode}</code>
+                                    <Button size="sm" variant="ghost" onClick={copyCode} className="hover:bg-rose-500/10">
                                         <Copy className="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -261,7 +261,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                                             <Button
                                                 onClick={submitPartyCode}
                                                 disabled={isSubmittingCode || !manualCode.trim()}
-                                                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-6"
+                                                className="bg-rose-500 hover:bg-rose-600 transition-all text-white font-semibold px-6"
                                             >
                                                 {isSubmittingCode ? (
                                                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
