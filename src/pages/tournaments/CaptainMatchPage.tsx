@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ArrowLeft, Trophy, AlertCircle, Swords, Copy, Calendar, MessageCircle, Clock, ShieldAlert, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Trophy, AlertCircle, Swords, Copy, MessageCircle, Clock, ShieldAlert, ExternalLink } from 'lucide-react';
 import { MatchCard } from './brackets/MatchCard';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
@@ -22,6 +22,7 @@ import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
 import TimeProposalCard from '@/components/tournament/TimeProposalCard';
 import DisputeCard from '@/components/tournament/DisputeCard';
 import MatchChat from '@/components/tournament/MatchChat';
+import TournamentEndScreen from '@/components/tournament/TournamentEndScreen';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { formatDistanceToNow, format } from 'date-fns';
 import { FullScoreboard, getAgentIcon, getMapSplash, MAP_THEMES } from './FullScoreboard';
@@ -35,8 +36,6 @@ import { useMatchRealtime } from '@/hooks/useMatchRealtime';
 import { useVetoRealtime } from '@/hooks/useVetoRealtime';
 
 const repo = new MatchRepository();
-
-
 
 // ... existing imports
 
@@ -85,12 +84,10 @@ const CaptainMatchPage = () => {
     const { data: bracketVersions, isLoading: versionsLoading } = useQuery({
         queryKey: ['captain-bracket-versions', tournament?.id],
         queryFn: async () => {
-            console.log('[CaptainMatchPage] bracketVersions queryFn called with tournament.id:', tournament?.id);
             if (!tournament?.id) {
                 return [];
             }
             const data = await apiClient.get<any[]>(`/api/brackets/versions/tournament/${tournament.id}`);
-            console.log('[CaptainMatchPage] Fetched bracket versions:', data?.length || 0, data);
             return data || [];
         },
         enabled: !!tournament?.id,
@@ -117,7 +114,6 @@ const CaptainMatchPage = () => {
         if (bracketVersions && bracketVersions.length > 0 && tournament?.id) {
             // Get unique stage IDs
             const stageIds = Array.from(new Set(bracketVersions.map((v: any) => v.stage_id).filter(Boolean))) as string[];
-            console.log('[CaptainMatchPage] Fetching configs for stageIds:', stageIds);
 
             if (stageIds.length > 0) {
                 apiClient.get<any[]>(`/api/tournaments/${tournament.id}/stages`)
@@ -133,7 +129,6 @@ const CaptainMatchPage = () => {
                                 scheduling_config: sc
                             };
                         });
-                        console.log('[CaptainMatchPage] Loaded stage configs:', configs);
                         setStageConfigs(configs);
                     })
                     .catch((error) => {
@@ -144,11 +139,9 @@ const CaptainMatchPage = () => {
     }, [bracketVersions, tournament?.id]);
 
     useEffect(() => {
-        console.log('[CaptainMatchPage] Tournament:', tournament);
     }, [tournament]);
 
     useEffect(() => {
-        console.log('[CaptainMatchPage] All Graph Data:', allGraphData);
     }, [allGraphData]);
 
     // Extract team IDs and fetch team data
@@ -172,14 +165,11 @@ const CaptainMatchPage = () => {
     // Convert graph data to BracketMatch format
     const matches = useMemo<BracketMatch[]>(() => {
         if (!allGraphData?.nodes || !allGraphData?.edges) {
-            console.log('[CaptainMatchPage] No graph data to convert');
             return [];
         }
-        console.log('[CaptainMatchPage] Converting graph data:', { nodes: allGraphData.nodes.length, edges: allGraphData.edges.length });
         const teamsMap = new Map<string, { id: string; name: string; logo_url?: string | null }>();
         teamsData?.forEach((t: any) => teamsMap.set(t.id, t));
         const adapted = adaptGraphToBracketMatches(allGraphData.nodes, allGraphData.edges, teamsMap);
-        console.log('[CaptainMatchPage] Adapted matches:', adapted.length);
         return adapted;
     }, [allGraphData?.nodes, allGraphData?.edges, teamsData]);
 
@@ -197,7 +187,6 @@ const CaptainMatchPage = () => {
         if (!slug) return;
         try {
             setLoading(true);
-            console.log('[CaptainMatchPage] Fetching tournament data for slug:', slug);
 
             // Get tournament — returns wrapped { tournament, participants, stages, ... }
             const response = await apiClient.get<any>(`/api/tournaments/${slug}`);
@@ -233,13 +222,6 @@ const CaptainMatchPage = () => {
         const checkRoles = async () => {
             if (!user || !participants.length || teamsLoading || !tournament) return;
 
-            console.log('[CaptainMatchPage] Checking roles:', {
-                userId: user.id,
-                participantsCount: participants.length,
-                userTeamsCount: userTeams.length,
-                tournamentOrgId: tournament.organization_id
-            });
-
             // 1. Check if user is organizer or belongs to organization
             let isOrg = tournament.organizer_id === user.id;
 
@@ -268,7 +250,6 @@ const CaptainMatchPage = () => {
             }
 
             if (userParticipant) {
-                console.log('[CaptainMatchPage] Found participant:', userParticipant);
 
                 let isCap = false;
                 let teamId = userParticipant.team_id || userParticipant.user_id;
@@ -285,16 +266,10 @@ const CaptainMatchPage = () => {
                     }
                 }
 
-                console.log('[CaptainMatchPage] Is Captain?', isCap, {
-                    teamId,
-                    userId: user.id
-                });
-
                 setIsCaptain(isCap);
                 setUserTeamId(teamId);
                 setParticipantStatus(userParticipant.status);
             } else {
-                console.log('[CaptainMatchPage] User not found in participants');
                 setIsCaptain(false);
                 setUserTeamId(undefined);
                 setParticipantStatus(null);
@@ -307,11 +282,8 @@ const CaptainMatchPage = () => {
     // Find active match for the team (prefer URL matchId from notification links)
     const activeMatch = useMemo(() => {
         if (!userTeamId || !matches.length) {
-            console.log('[CaptainMatchPage] No userTeamId or matches found. userTeamId:', userTeamId, 'matchesLength:', matches.length);
             return null;
         }
-
-        console.log('[CaptainMatchPage] Searching for active match for team:', userTeamId, 'urlMatchId:', urlMatchId);
 
         // If a matchId was provided via URL (e.g. from notification link), try to find it
         if (urlMatchId) {
@@ -319,7 +291,6 @@ const CaptainMatchPage = () => {
                 m.id === urlMatchId || m.id.replace(/^(db-|wb-|lb-)/, '') === urlMatchId
             );
             if (urlMatch) {
-                console.log('[CaptainMatchPage] Found match from URL param:', urlMatch);
                 return urlMatch;
             }
         }
@@ -328,8 +299,6 @@ const CaptainMatchPage = () => {
         const teamMatches = matches.filter(m =>
             m.team1?.id === userTeamId || m.team2?.id === userTeamId
         );
-
-        console.log('[CaptainMatchPage] Found team matches:', teamMatches.length, teamMatches);
 
         // Sort by round/match number to find the earliest upcoming match
         // Priority: earliest pending match > earliest in_progress match > null
@@ -342,8 +311,6 @@ const CaptainMatchPage = () => {
         const nextMatch = sortedTeamMatches.find(m =>
             m.status === 'pending' || m.status === 'in_progress'
         );
-
-        console.log('[CaptainMatchPage] Active match found:', nextMatch);
         return nextMatch || null;
 
     }, [userTeamId, matches, urlMatchId]);
@@ -535,8 +502,6 @@ const CaptainMatchPage = () => {
         determineMap();
     }, [determineMap]);
 
-
-
     // SignalR realtime subscriptions (replaces Supabase postgres_changes)
     const rawMatchId = activeMatch?.id?.replace(/^(db-|wb-|lb-)/, '') ?? null;
 
@@ -639,8 +604,6 @@ const CaptainMatchPage = () => {
                 }
                 forfeitAttempted.current = rawMatchId;
 
-                console.log(`[Auto-Forfeit] Match ${rawMatchId}: Team ${forfeitingTeamId} missed check-in.`);
-
                 // Calculate forfeit score based on Best Of
                 const bestOf = activeMatch.bestOf || 1;
                 const winnerScore = bestOf === 1 ? 13 : Math.ceil(bestOf / 2);
@@ -669,7 +632,6 @@ const CaptainMatchPage = () => {
                 handleForfeit(activeMatch.team1.id, activeMatch.team2.id);
             } else if (!t1In && !t2In) {
                 // Double forfeit - Currently just logged, can be expanded to cancel match
-                console.log('[Auto-Forfeit] Both teams missed check-in.');
             }
         }
     }, [activeMatch, checkinStatus, isCheckinWindowClosed, stageFormat, toast, refetchBracket, schedulingConfig]);
@@ -745,7 +707,6 @@ const CaptainMatchPage = () => {
             });
             return;
         }
-        console.log('[CaptainMatchPage] Opening Veto for match:', match.id, 'BestOf:', match.bestOf);
         setMapVetoMatch(match);
         setMapVetoMatchId(match.id);
         setMapVetoOpen(true);
@@ -782,8 +743,6 @@ const CaptainMatchPage = () => {
             </div>
         );
     }
-
-
 
     // Helper to calculate default deadline (matching Organizer view)
     const getDefaultDeadline = (roundIndex: number): string => {
@@ -1074,105 +1033,19 @@ const CaptainMatchPage = () => {
                                     )}
                                 </div>
                             ) : (
-                                <div className="text-center py-10">
-                                    {isTournamentWinner ? (
-                                        <div className="py-6">
-                                            <div className="relative inline-block mb-5">
-                                                <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
-                                                <div className="relative w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center transform rotate-12 shadow-2xl border border-emerald-400/50">
-                                                    <Trophy className="w-10 h-10 text-white transform -rotate-12" />
-                                                </div>
-                                            </div>
-                                            <h2 className="text-2xl font-black text-white mb-1 uppercase">Tournament Champions!</h2>
-                                            <p className="text-emerald-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">You have claimed the victory</p>
-                                            <p className="text-emerald-100/70 text-sm max-w-xs mx-auto">Your team has emerged victorious across the entire bracket.</p>
-                                        </div>
-                                    ) : isTournamentRunnerUp ? (
-                                        <div className="py-6">
-                                            <div className="relative inline-block mb-5">
-                                                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
-                                                <div className="relative w-20 h-20 bg-gradient-to-br from-slate-400 to-slate-600 rounded-2xl flex items-center justify-center transform rotate-12 shadow-2xl border border-slate-400/50">
-                                                    <Trophy className="w-10 h-10 text-slate-100 transform -rotate-12" />
-                                                </div>
-                                            </div>
-                                            <h2 className="text-2xl font-black text-white mb-1 uppercase">Tournament Runners-Up</h2>
-                                            <p className="text-slate-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">A hard-fought journey</p>
-                                            <p className="text-slate-300/70 text-sm max-w-xs mx-auto">You navigated through the bracket to the very end. An incredible performance.</p>
-                                        </div>
-                                    ) : isEliminated ? (
-                                        <div className="py-8 px-4">
-                                            <div className="relative inline-block mb-6">
-                                                <div className="absolute inset-0 bg-rose-500/10 blur-3xl rounded-full" />
-                                                <div className="relative w-20 h-20 bg-gradient-to-br from-zinc-700 to-zinc-900 rounded-2xl flex items-center justify-center shadow-2xl border border-zinc-600/30">
-                                                    <Swords className="w-10 h-10 text-zinc-400" />
-                                                </div>
-                                            </div>
-                                            <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Eliminated</h2>
-                                            <p className="text-rose-400/80 text-xs font-semibold uppercase tracking-[0.2em] mb-4">Your run has ended</p>
-                                            <div className="max-w-sm mx-auto space-y-3">
-                                                <p className="text-zinc-400 text-sm leading-relaxed">
-                                                    Your team gave it everything. Every match played was a step forward — take pride in the battles fought.
-                                                </p>
-                                                {lastCompletedMatch && (
-                                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-zinc-900/80 rounded-lg border border-zinc-800 text-xs text-zinc-500">
-                                                        <span>Exited at {getRoundName(lastCompletedMatch.round, lastCompletedMatch.bracketSide)}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="mt-6 flex gap-3 justify-center">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="border-zinc-700 hover:bg-zinc-800 text-zinc-400"
-                                                    onClick={() => navigate(`/tournaments/${slug}`)}
-                                                >
-                                                    View Tournament
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-zinc-800 hover:bg-zinc-700 text-white"
-                                                    onClick={() => navigate('/tournaments')}
-                                                >
-                                                    Find More Tournaments
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ) : lastCompletedMatch ? (
-                                        <>
-                                            <div className="w-12 h-12 bg-emerald-900/20 rounded-full flex items-center justify-center mx-auto mb-3 border border-emerald-500/30">
-                                                <Calendar className="w-6 h-6 text-emerald-500" />
-                                            </div>
-                                            <h3 className="text-base font-medium text-white mb-1">Waiting for Next Round</h3>
-                                            <p className="text-sm text-gray-500 max-w-sm mx-auto mb-4">
-                                                Completed {getRoundName(lastCompletedMatch.round, lastCompletedMatch.bracketSide)}. Waiting for next round pairings.
-                                            </p>
-                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-zinc-900 rounded-lg border border-zinc-800 text-xs text-zinc-500">
-                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                Checking for updates…
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="py-12 px-4">
-                                            <Trophy className="w-8 h-8 text-zinc-700 mx-auto mb-4" />
-                                            <h2 className="text-lg font-semibold text-white mb-1">
-                                                {tournament?.status === 'draft' ? 'Bracket in Preparation' : 'No Active Match'}
-                                            </h2>
-                                            <p className="text-sm text-zinc-500 max-w-sm mx-auto mb-5">
-                                                {tournament?.status === 'draft'
-                                                    ? 'The organizer is still finalizing the bracket.'
-                                                    : 'No active matches in this round. Stay tuned!'}
-                                            </p>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="border-zinc-700 hover:bg-zinc-800 text-zinc-400"
-                                                onClick={() => navigate(`/tournaments/${slug}`)}
-                                            >
-                                                Return to Tournament
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
+                                <TournamentEndScreen
+                                    state={
+                                        isTournamentWinner ? 'winner'
+                                        : isTournamentRunnerUp ? 'runner_up'
+                                        : isEliminated ? 'eliminated'
+                                        : lastCompletedMatch ? 'waiting'
+                                        : 'no_match'
+                                    }
+                                    exitRoundName={lastCompletedMatch ? getRoundName(lastCompletedMatch.round, lastCompletedMatch.bracketSide) : undefined}
+                                    tournamentStatus={tournament?.status}
+                                    slug={slug}
+                                    onNavigate={navigate}
+                                />
                             )}
                         </div>
 
