@@ -383,6 +383,11 @@ const CaptainMatchPage = () => {
         return vetoData.status === 'completed' || !!vetoData.completed_at;
     }, [activeMatch, vetoData]);
 
+    // Match is "live" when status is in_progress (party code shared / checkin done)
+    const isMatchLive = useMemo(() => {
+        return activeMatch?.status === 'in_progress';
+    }, [activeMatch?.status]);
+
     // Find the latest completed match for context (e.g. "Waiting for next round")
     const lastCompletedMatch = useMemo(() => {
         if (!userTeamId || !matches.length) return null;
@@ -432,6 +437,32 @@ const CaptainMatchPage = () => {
 
         return isFinalMatch && lastCompletedMatch.winner?.id !== userTeamId;
     }, [activeMatch, lastCompletedMatch, userTeamId, participants.length, isTournamentWinner, isDE]);
+
+    // Check if the team has been eliminated from the tournament
+    const isEliminated = useMemo(() => {
+        if (activeMatch) return false;
+        if (isTournamentWinner || isTournamentRunnerUp) return false;
+        if (!lastCompletedMatch) return false;
+
+        const userLost = lastCompletedMatch.winner?.id !== userTeamId;
+        if (!userLost) return false; // Won last match — waiting for next round
+
+        // In single elimination, any loss = eliminated
+        if (!isDE) return true;
+
+        // In double elimination, check if loss was in losers bracket
+        if (lastCompletedMatch.bracketSide === 'losers') return true;
+
+        // Lost in winners bracket — dropped to losers, check if there's a pending losers match
+        const hasUpcomingLosersMatch = matches.some(m =>
+            (m.team1?.id === userTeamId || m.team2?.id === userTeamId) &&
+            m.bracketSide === 'losers' &&
+            (m.status === 'pending' || m.status === 'in_progress')
+        );
+        // If no upcoming losers match found, might still be waiting for bracket to update
+        // Only mark eliminated if tournament is past draft and no pending match exists
+        return !hasUpcomingLosersMatch && tournament?.status !== 'draft';
+    }, [activeMatch, isTournamentWinner, isTournamentRunnerUp, lastCompletedMatch, userTeamId, isDE, matches, tournament?.status]);
 
     // Derive scheduling config for the current active match
     const activeMatchVersion = useMemo(() =>
@@ -903,7 +934,7 @@ const CaptainMatchPage = () => {
                                         })()
                                     )}
 
-                                    {/* Actions — compact */}
+                                    {/* Actions — progressively unlocked */}
                                     <div className="space-y-2">
                                         {/* CS2 Auto-Report */}
                                         {(() => {
@@ -944,7 +975,22 @@ const CaptainMatchPage = () => {
                                             </div>
                                         )}
 
-                                        {/* Valorant Auto-Report — only when assisted reporting is enabled */}
+                                        {/* Progressive unlock flow indicator */}
+                                        {activeMatch.status !== 'completed' && !isMatchLive && (
+                                            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800/50 text-xs text-zinc-500">
+                                                <Clock className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
+                                                <span>Complete check-in to unlock Map Veto and match actions</span>
+                                            </div>
+                                        )}
+
+                                        {isMatchLive && !isVetoCompleted && activeMatch.status !== 'completed' && (
+                                            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs text-purple-300">
+                                                <Swords className="w-3.5 h-3.5 shrink-0" />
+                                                <span>Complete Map Veto to unlock result reporting</span>
+                                            </div>
+                                        )}
+
+                                        {/* Valorant Auto-Report — only when veto completed */}
                                         {(() => {
                                             const isValorant = tournament?.game?.toLowerCase() === 'valorant';
                                             const assistedEnabled = tournament?.settings?.assistedMatchReporting === true;
@@ -980,24 +1026,26 @@ const CaptainMatchPage = () => {
                                             return null;
                                         })()}
 
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <Button
-                                                onClick={() => handleOpenVeto(activeMatch)}
-                                                className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-white h-10 text-sm font-semibold font-mono tracking-wide"
-                                                disabled={activeMatch.status === 'completed'}
-                                            >
-                                                <Swords className="w-4 h-4 mr-1.5" />
-                                                Map Veto
-                                            </Button>
-                                            <Button
-                                                onClick={() => handleUploadResult(activeMatch.id)}
-                                                className="bg-rose-500 hover:bg-rose-600 text-white h-10 text-sm font-semibold font-mono tracking-wide disabled:opacity-40"
-                                                disabled={activeMatch.status === 'completed' || !isVetoCompleted}
-                                            >
-                                                <Trophy className="w-4 h-4 mr-1.5" />
-                                                {isVetoCompleted ? 'Manual Report' : 'Awaiting Veto'}
-                                            </Button>
-                                        </div>
+                                        {/* Map Veto + Manual Report — only show when match is live */}
+                                        {isMatchLive && activeMatch.status !== 'completed' && (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <Button
+                                                    onClick={() => handleOpenVeto(activeMatch)}
+                                                    className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-white h-10 text-sm font-semibold font-mono tracking-wide"
+                                                >
+                                                    <Swords className="w-4 h-4 mr-1.5" />
+                                                    Map Veto
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleUploadResult(activeMatch.id)}
+                                                    className="bg-rose-500 hover:bg-rose-600 text-white h-10 text-sm font-semibold font-mono tracking-wide disabled:opacity-40"
+                                                    disabled={!isVetoCompleted}
+                                                >
+                                                    <Trophy className="w-4 h-4 mr-1.5" />
+                                                    {isVetoCompleted ? 'Manual Report' : 'Awaiting Veto'}
+                                                </Button>
+                                            </div>
+                                        )}
 
                                         {/* Party Code — inline */}
                                         {activeMatch.partyCode && (
@@ -1058,6 +1106,44 @@ const CaptainMatchPage = () => {
                                             <h2 className="text-2xl font-black text-white mb-1 uppercase">Tournament Runners-Up</h2>
                                             <p className="text-slate-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">A hard-fought journey</p>
                                             <p className="text-slate-300/70 text-sm max-w-xs mx-auto">You navigated through the bracket to the very end. An incredible performance.</p>
+                                        </div>
+                                    ) : isEliminated ? (
+                                        <div className="py-8 px-4">
+                                            <div className="relative inline-block mb-6">
+                                                <div className="absolute inset-0 bg-rose-500/10 blur-3xl rounded-full" />
+                                                <div className="relative w-20 h-20 bg-gradient-to-br from-zinc-700 to-zinc-900 rounded-2xl flex items-center justify-center shadow-2xl border border-zinc-600/30">
+                                                    <Swords className="w-10 h-10 text-zinc-400" />
+                                                </div>
+                                            </div>
+                                            <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Eliminated</h2>
+                                            <p className="text-rose-400/80 text-xs font-semibold uppercase tracking-[0.2em] mb-4">Your run has ended</p>
+                                            <div className="max-w-sm mx-auto space-y-3">
+                                                <p className="text-zinc-400 text-sm leading-relaxed">
+                                                    Your team gave it everything. Every match played was a step forward — take pride in the battles fought.
+                                                </p>
+                                                {lastCompletedMatch && (
+                                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-zinc-900/80 rounded-lg border border-zinc-800 text-xs text-zinc-500">
+                                                        <span>Exited at {getRoundName(lastCompletedMatch.round, lastCompletedMatch.bracketSide)}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="mt-6 flex gap-3 justify-center">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="border-zinc-700 hover:bg-zinc-800 text-zinc-400"
+                                                    onClick={() => navigate(`/tournaments/${slug}`)}
+                                                >
+                                                    View Tournament
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-zinc-800 hover:bg-zinc-700 text-white"
+                                                    onClick={() => navigate('/tournaments')}
+                                                >
+                                                    Find More Tournaments
+                                                </Button>
+                                            </div>
                                         </div>
                                     ) : lastCompletedMatch ? (
                                         <>
