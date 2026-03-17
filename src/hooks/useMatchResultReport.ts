@@ -17,6 +17,8 @@ export interface MatchResultReport {
   team2_score: number;
   winner_team_id: string | null;
   match_data: any;
+  screenshot_urls: string[] | null;
+  comment: string | null;
   status: 'pending' | 'accepted' | 'disputed';
   responded_by: string | null;
   responded_at: string | null;
