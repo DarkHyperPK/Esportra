@@ -320,7 +320,6 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       });
 
       await fetchComments(disputeId);
-      await fetchDisputes();
       toast({ title: 'Comment added' });
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Failed to add comment';
