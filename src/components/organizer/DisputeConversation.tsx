@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Image as ImageIcon, RefreshCw, Send } from 'lucide-react';
+import { Image as ImageIcon, RefreshCw, Send, Paperclip } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Comment {
@@ -26,6 +26,34 @@ interface DisputeConversationProps {
   onImageClick?: (url: string) => void;
 }
 
+/** Image with React-managed error fallback */
+const AttachmentImage: React.FC<{ url: string; onImageClick?: (url: string) => void }> = ({ url, onImageClick }) => {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs text-blue-400 underline hover:text-blue-300"
+      >
+        <Paperclip className="w-3 h-3" /> View attachment
+      </a>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt="Attachment"
+      className="max-w-full max-h-40 rounded-lg border border-zinc-700 cursor-pointer hover:opacity-80 transition block"
+      onClick={() => onImageClick?.(url)}
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
 const DisputeConversation: React.FC<DisputeConversationProps> = ({
   comments, loading, organizerId, staffUserIds, canComment,
   submitting, uploading, onSubmit, onImageClick,
@@ -33,6 +61,12 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
   const { toast } = useToast();
   const [text, setText] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to latest message
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [comments]);
 
   const handleSubmit = () => {
     if (!text.trim() && !attachment) return;
@@ -90,23 +124,7 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
                 {hasText && <p className="text-zinc-300 text-[13px] leading-relaxed">{c.comment}</p>}
                 {hasAttachment && (
                   <div className={hasText ? 'mt-2' : ''}>
-                    <img
-                      src={c.attachment_url}
-                      alt="Attachment"
-                      className="max-w-full max-h-40 rounded-lg border border-zinc-700 cursor-pointer hover:opacity-80 transition"
-                      onClick={() => onImageClick?.(c.attachment_url!)}
-                      onError={(e) => {
-                        const img = e.target as HTMLImageElement;
-                        img.style.display = 'none';
-                        // Show fallback link
-                        const fallback = document.createElement('a');
-                        fallback.href = c.attachment_url!;
-                        fallback.target = '_blank';
-                        fallback.className = 'text-xs text-blue-400 underline';
-                        fallback.textContent = '📎 View attachment';
-                        img.parentElement?.appendChild(fallback);
-                      }}
-                    />
+                    <AttachmentImage url={c.attachment_url!} onImageClick={onImageClick} />
                   </div>
                 )}
                 {!hasText && !hasAttachment && (
@@ -116,6 +134,7 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
             );
           })
         )}
+        <div ref={bottomRef} />
       </div>
 
       {/* Composer */}
