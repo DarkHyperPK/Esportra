@@ -61,11 +61,14 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
   const { toast } = useToast();
   const [text, setText] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to latest message
+  // Auto-scroll to latest message within container only
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, [comments]);
 
   const handleSubmit = () => {
@@ -94,7 +97,7 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
       <h3 className="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-2 shrink-0">Conversation</h3>
 
       {/* Messages — own scroller */}
-      <div className="flex-1 overflow-y-auto space-y-2.5 mb-3 pr-1 scrollbar-thin min-h-0">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-2.5 mb-3 pr-1 scrollbar-thin min-h-0">
         {loading ? (
           <div className="flex items-center justify-center py-8 text-zinc-500 text-sm">
             <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Loading…
@@ -134,7 +137,6 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
             );
           })
         )}
-        <div ref={bottomRef} />
       </div>
 
       {/* Composer */}

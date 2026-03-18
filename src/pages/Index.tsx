@@ -1,29 +1,23 @@
 import React from "react";
 import Footer from "@/components/Footer";
-import HeroSection from "@/components/HeroSection";
-import FeaturesSection from "@/components/landing/FeaturesSection";
+import HeroV2 from "@/components/landing/v2/HeroV2";
+import StatsBar from "@/components/landing/v2/StatsBar";
+import FeaturesV2 from "@/components/landing/v2/FeaturesV2";
+import WhyEsportra from "@/components/landing/v2/WhyEsportra";
+import CTASection from "@/components/landing/v2/CTASection";
 import LogoTicker from "@/components/landing/LogoTicker";
-import TheManifesto from "@/components/landing/TheManifesto";
-import PlatformPromise from "@/components/landing/PlatformPromise";
-import TheHeartbeat from "@/components/landing/TheHeartbeat";
-import Roadmap from "@/components/landing/Roadmap";
-import PremiumBackground from "@/components/ui/PremiumBackground";
 
 const Index = () => {
     return (
-        <PremiumBackground animated intensity={0.12}>
-            <HeroSection />
-
-
-
+        <div className="bg-[#050505]">
+            <HeroV2 />
             <LogoTicker />
-            <TheManifesto />
-            <FeaturesSection />
-            <TheHeartbeat />
-            <PlatformPromise />
-            <Roadmap />
+            <StatsBar />
+            <FeaturesV2 />
+            <WhyEsportra />
+            <CTASection />
             <Footer />
-        </PremiumBackground>
+        </div>
     );
 };
 

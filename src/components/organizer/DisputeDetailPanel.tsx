@@ -135,7 +135,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
       </div>
 
       {/* ─── Scrollable Evidence/Context ─── */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 scrollbar-thin min-h-0">
+      <div className="overflow-y-auto px-5 py-4 space-y-5 scrollbar-thin min-h-0">
         {/* Match Context */}
         {dispute.match && (
           <div className="rounded-xl bg-zinc-900/50 border border-zinc-800/60 p-4">
@@ -221,8 +221,8 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
         />
       </div>
 
-      {/* ─── Conversation (fixed at bottom with own scroller) ─── */}
-      <div className="shrink-0 border-t border-zinc-800/60 px-5 py-3 flex flex-col max-h-[45%] min-h-[200px]">
+      {/* ─── Conversation (fills remaining space) ─── */}
+      <div className="flex-1 border-t border-zinc-800/60 px-5 py-3 flex flex-col min-h-[200px]">
         <DisputeConversation
           comments={comments}
           loading={loadingComments}
