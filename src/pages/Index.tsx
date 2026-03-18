@@ -1,23 +1,24 @@
-import React from "react";
 import Footer from "@/components/Footer";
-import HeroV2 from "@/components/landing/v2/HeroV2";
-import StatsBar from "@/components/landing/v2/StatsBar";
-import FeaturesV2 from "@/components/landing/v2/FeaturesV2";
-import WhyEsportra from "@/components/landing/v2/WhyEsportra";
-import CTASection from "@/components/landing/v2/CTASection";
 import LogoTicker from "@/components/landing/LogoTicker";
-import NavbarV2 from "@/components/landing/v2/NavbarV2";
+import NavbarV3 from "@/components/landing/v3/NavbarV3";
+import HeroV3 from "@/components/landing/v3/HeroV3";
+import LiveTicker from "@/components/landing/v3/LiveTicker";
+import GameShowcase from "@/components/landing/v3/GameShowcase";
+import JourneySection from "@/components/landing/v3/JourneySection";
+import SocialProof from "@/components/landing/v3/SocialProof";
+import CTABanner from "@/components/landing/v3/CTABanner";
 
 const Index = () => {
     return (
         <div className="bg-[#050505]">
-            <NavbarV2 />
-            <HeroV2 />
+            <NavbarV3 />
+            <HeroV3 />
+            <LiveTicker />
             <LogoTicker />
-            <StatsBar />
-            <FeaturesV2 />
-            <WhyEsportra />
-            <CTASection />
+            <GameShowcase />
+            <JourneySection />
+            <SocialProof />
+            <CTABanner />
             <Footer />
         </div>
     );
