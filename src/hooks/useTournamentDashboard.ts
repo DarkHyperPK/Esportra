@@ -148,6 +148,7 @@ export function useTournamentDashboard(slug: string | undefined) {
 
             const mappedStages: DashboardStage[] = result.stages.map((s: any) => ({
                 ...s,
+                config: typeof s.config === 'string' ? (() => { try { return JSON.parse(s.config); } catch { return s.config; } })() : (s.config || null),
                 capacity:          s.capacity ?? 0,
                 advancement_count: s.advancement_count ?? 0,
                 is_locked:         !!s.is_locked,

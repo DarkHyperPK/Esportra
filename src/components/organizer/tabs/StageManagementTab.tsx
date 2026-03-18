@@ -401,7 +401,8 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 generator = new SwissGenerator();
                 // For Swiss, bracketSize is number of rounds.
                 // Check stage.config for swiss_rounds
-                const swissConfig = stage.config as any;
+                const rawConfig = stage.config;
+                const swissConfig = typeof rawConfig === 'string' ? (() => { try { return JSON.parse(rawConfig); } catch { return rawConfig; } })() : rawConfig;
                 console.log('[StageManagement] Swiss config from stage:', swissConfig);
                 if (swissConfig && swissConfig.swiss_rounds) {
                     bracketSize = Number(swissConfig.swiss_rounds);
@@ -410,7 +411,8 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 generator = new RoundRobinGenerator();
                 // For Round Robin, bracketSize is number of groups.
                 // Check stage.config for group_count, else calculate from capacity (fixed 4 teams per group)
-                const rrConfig = stage.config as any;
+                const rawRrConfig = stage.config;
+                const rrConfig = typeof rawRrConfig === 'string' ? (() => { try { return JSON.parse(rawRrConfig); } catch { return rawRrConfig; } })() : rawRrConfig;
                 if (rrConfig && rrConfig.group_count) {
                     bracketSize = Number(rrConfig.group_count);
                 } else if (stage.capacity) {
@@ -428,11 +430,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 return;
             }
 
-            const bestOf = (stage as any).best_of || (stage.config as any)?.best_of || 1;
+            const bestOf = (stage as any).best_of || (typeof stage.config === 'string' ? (() => { try { return JSON.parse(stage.config); } catch { return {}; } })() : (stage.config || {}))?.best_of || 1;
             const advancementCount = stage.advancement_count || undefined;
 
             // Fetch tournament start date and scheduling config for auto-scheduling (Swiss/RR)
-            let enrichedConfig = { ...(stage.config as any) };
+            const parsedConfig = typeof stage.config === 'string' ? (() => { try { return JSON.parse(stage.config); } catch { return {}; } })() : (stage.config || {});
+            let enrichedConfig = { ...parsedConfig };
             if (format === 'swiss' || format === 'round_robin') {
                 try {
                     const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
