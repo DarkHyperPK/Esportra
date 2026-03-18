@@ -21,6 +21,7 @@ import { HubPaths } from '@/lib/signalrClient';
 
 interface Dispute {
   id: string;
+  reference_number?: string | null;
   title: string;
   description: string;
   status: 'open' | 'in_review' | 'resolved' | 'rejected';
@@ -404,6 +405,11 @@ const MyDisputes = () => {
                               <Icon className="w-3 h-3" />
                               {meta.label}
                             </Badge>
+                            {dispute.reference_number && (
+                              <span className="text-xs font-mono text-white/60 shrink-0">
+                                #{dispute.reference_number}
+                              </span>
+                            )}
                             <span className="text-xs text-white/50 truncate">{dispute.tournament_name}</span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
@@ -532,6 +538,9 @@ const MyDisputes = () => {
                             )}
                           </div>
                           <DialogTitle className="text-white text-lg leading-snug">
+                            {selectedDispute.reference_number && (
+                              <span className="text-white/40 font-mono text-sm mr-2">#{selectedDispute.reference_number}</span>
+                            )}
                             {hasMatch
                               ? `${selectedDispute.match_team1_name} vs ${selectedDispute.match_team2_name}`
                               : selectedDispute.title}

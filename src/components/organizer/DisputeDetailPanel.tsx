@@ -15,6 +15,7 @@ const statusConfig = {
 
 interface Dispute {
   id: string;
+  reference_number?: string | null;
   title: string;
   description: string | null;
   status: 'open' | 'in_review' | 'resolved' | 'rejected';
@@ -112,7 +113,12 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
       <div className="shrink-0 px-5 pt-5 pb-4 border-b border-zinc-800/60">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-heading font-bold text-white truncate mb-1">{dispute.title}</h2>
+            <h2 className="text-lg font-heading font-bold text-white truncate mb-1">
+              {dispute.reference_number && (
+                <span className="text-rose-400/70 font-mono text-sm mr-2">{dispute.reference_number}</span>
+              )}
+              {dispute.title}
+            </h2>
             <div className="flex items-center gap-3 text-xs text-zinc-400">
               <span className="flex items-center gap-1"><User className="w-3 h-3" />{dispute.raised_by_name}</span>
               {dispute.team_name && <span className="text-zinc-500">({dispute.team_name})</span>}
@@ -126,7 +132,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
         </div>
 
         {/* IDs strip */}
-        <DisputeIdStrip disputeId={dispute.id} matchId={dispute.match_id} riotMatchIds={riotMatchIds} />
+        <DisputeIdStrip disputeId={dispute.id} referenceNumber={dispute.reference_number} matchId={dispute.match_id} riotMatchIds={riotMatchIds} />
       </div>
 
       {/* ─── Scrollable Evidence/Context ─── */}

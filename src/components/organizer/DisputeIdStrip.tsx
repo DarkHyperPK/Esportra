@@ -4,12 +4,13 @@ import { useToast } from '@/hooks/use-toast';
 
 interface DisputeIdStripProps {
   disputeId: string;
+  referenceNumber?: string | null;
   matchId?: string | null;
   riotMatchIds?: string[];
 }
 
 /** Compact row of all copyable IDs for quick reference */
-const DisputeIdStrip: React.FC<DisputeIdStripProps> = ({ disputeId, matchId, riotMatchIds }) => {
+const DisputeIdStrip: React.FC<DisputeIdStripProps> = ({ disputeId, referenceNumber, matchId, riotMatchIds }) => {
   const { toast } = useToast();
 
   const copy = (text: string, label: string) => {
@@ -19,6 +20,7 @@ const DisputeIdStrip: React.FC<DisputeIdStripProps> = ({ disputeId, matchId, rio
 
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 rounded-lg bg-zinc-900/80 border border-zinc-800/60">
+      {referenceNumber && <IdChip label="Ref" value={referenceNumber} onCopy={() => copy(referenceNumber, 'Reference #')} highlight />}
       <IdChip label="Dispute" value={disputeId} onCopy={() => copy(disputeId, 'Dispute ID')} />
       {matchId && <IdChip label="Match" value={matchId} onCopy={() => copy(matchId, 'Match ID')} />}
       {riotMatchIds?.map((rid, i) => (
@@ -28,10 +30,10 @@ const DisputeIdStrip: React.FC<DisputeIdStripProps> = ({ disputeId, matchId, rio
   );
 };
 
-const IdChip: React.FC<{ label: string; value: string; onCopy: () => void }> = ({ label, value, onCopy }) => (
+const IdChip: React.FC<{ label: string; value: string; onCopy: () => void; highlight?: boolean }> = ({ label, value, onCopy, highlight }) => (
   <div className="flex items-center gap-1.5 group">
-    <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">{label}</span>
-    <code className="text-[11px] font-mono text-zinc-300 bg-zinc-800/80 px-1.5 py-0.5 rounded max-w-[160px] truncate">
+    <span className={`text-[10px] uppercase tracking-wider font-semibold ${highlight ? 'text-rose-400' : 'text-zinc-500'}`}>{label}</span>
+    <code className={`text-[11px] font-mono px-1.5 py-0.5 rounded max-w-[160px] truncate ${highlight ? 'text-rose-300 bg-rose-500/10' : 'text-zinc-300 bg-zinc-800/80'}`}>
       {value}
     </code>
     <button

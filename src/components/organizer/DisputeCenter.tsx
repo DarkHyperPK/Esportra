@@ -20,6 +20,7 @@ import DisputeDetailPanel from './DisputeDetailPanel';
 
 interface Dispute {
   id: string;
+  reference_number?: string | null;
   tournament_id: string;
   match_id: string | null;
   raised_by_user_id: string;
@@ -491,7 +492,12 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <h4 className="text-sm font-semibold text-white truncate flex-1">{dispute.title}</h4>
+                      <h4 className="text-sm font-semibold text-white truncate flex-1">
+                        {dispute.reference_number && (
+                          <span className="text-rose-400/70 font-mono text-[11px] mr-1.5">{dispute.reference_number}</span>
+                        )}
+                        {dispute.title}
+                      </h4>
                       <Badge className={`text-[9px] shrink-0 px-1.5 py-0.5 ${cfg.cls}`}>
                         <StatusIcon className="w-2.5 h-2.5 mr-0.5" />
                         {cfg.label}

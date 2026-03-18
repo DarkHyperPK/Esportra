@@ -473,9 +473,11 @@ const RaiseDispute = () => {
 
         toast({
           title: 'Dispute submitted',
-          description: canResolveWithOrganizer
-            ? `Your dispute has been submitted and will be reviewed by the tournament organizer.`
-            : `Your dispute has been submitted and will be reviewed by administrators.`,
+          description: data?.reference_number
+            ? `Your dispute ${data.reference_number} has been submitted and will be reviewed by ${canResolveWithOrganizer ? 'the tournament organizer' : 'administrators'}.`
+            : canResolveWithOrganizer
+              ? `Your dispute has been submitted and will be reviewed by the tournament organizer.`
+              : `Your dispute has been submitted and will be reviewed by administrators.`,
         });
       }
 
