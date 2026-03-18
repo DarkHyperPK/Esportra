@@ -643,9 +643,9 @@ export interface Database {
       | "battle_royale"
       tournament_status:
       | "draft"
+      | "published"
       | "open"
       | "closed"
-      | "check_in"
       | "ongoing"
       | "completed"
       | "cancelled"

@@ -81,7 +81,7 @@ const TournamentList = () => {
         is_online: !tournament.venue_id,
         image_url: tournament.banner_url || tournament.logo_url,
         slug: tournament.slug,
-        status: (tournament.status || 'open') as 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled',
+        status: (tournament.status || 'draft') as 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled',
         team_size: tournament.team_size || 1, // fallback default
         start_date: tournament.start_date,
         end_date: tournament.end_date,

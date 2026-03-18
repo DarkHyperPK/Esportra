@@ -1166,7 +1166,7 @@ export type Database = {
     Enums: {
       app_role: "casual" | "organizer" | "venue_owner" | "admin"
       verification_status: "unverified" | "pending" | "verified"
-      tournament_status: "draft" | "open" | "closed" | "check_in" | "ongoing" | "completed" | "cancelled"
+      tournament_status: "draft" | "published" | "open" | "closed" | "ongoing" | "completed" | "cancelled"
       tournament_format: "single_elimination" | "double_elimination" | "round_robin" | "swiss" | "custom"
       team_member_role: "owner" | "captain" | "member"
       invite_status: "pending" | "accepted" | "declined" | "expired"
@@ -1289,7 +1289,7 @@ export const Constants = {
     Enums: {
       app_role: ["casual", "organizer", "venue_owner", "admin"],
       verification_status: ["unverified", "pending", "verified"],
-      tournament_status: ["draft", "open", "closed", "check_in", "ongoing", "completed", "cancelled"],
+      tournament_status: ["draft", "published", "open", "closed", "ongoing", "completed", "cancelled"],
       tournament_format: ["single_elimination", "double_elimination", "round_robin", "swiss", "custom"],
       team_member_role: ["owner", "captain", "member"],
       invite_status: ["pending", "accepted", "declined", "expired"],

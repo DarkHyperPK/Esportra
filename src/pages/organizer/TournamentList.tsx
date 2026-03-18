@@ -128,7 +128,7 @@ const TournamentList = () => {
                 venue={tournament.venue}
                 max_participants={tournament.max_participants}
                 current_participants={tournament.current_participants}
-                status={tournament.status as 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled'}
+                status={tournament.status as 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled'}
                 team_size={tournament.team_size}
                 prize_pool={tournament.prize_pool}
                 organizer_id={tournament.organizer_id}

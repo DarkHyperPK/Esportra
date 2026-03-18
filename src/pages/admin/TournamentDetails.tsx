@@ -6,11 +6,18 @@ import { toast } from '@/components/ui/use-toast';
 import { auditLog } from '@/lib/auditLog';
 
 function getTournamentStatus(tournament: any) {
-  if (tournament.finished) return 'Completed';
-  const now = new Date();
-  const start = new Date(`${tournament.date}T${tournament.time}`);
-  if (now < start) return 'Upcoming';
-  return 'Live';
+  // Use the DB status directly
+  const status = tournament.status || 'draft';
+  const labels: Record<string, string> = {
+    draft: 'Draft',
+    published: 'Published',
+    open: 'Open',
+    closed: 'Closed',
+    ongoing: 'Live',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+  };
+  return labels[status] || status;
 }
 
 const TournamentDetails = () => {

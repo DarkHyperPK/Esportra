@@ -49,9 +49,9 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="open">Upcoming / Registration Open</SelectItem>
+                            <SelectItem value="published">Published (Upcoming)</SelectItem>
+                            <SelectItem value="open">Registration Open</SelectItem>
                             <SelectItem value="closed">Registration Closed</SelectItem>
-                            <SelectItem value="check_in">Check-in Phase</SelectItem>
                             <SelectItem value="ongoing">Ongoing (Live)</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>

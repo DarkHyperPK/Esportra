@@ -157,7 +157,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       console.log('Tournament status:', tournamentData.status);
 
       // Check if tournament is open for registration (accept multiple statuses)
-      if (!['open', 'upcoming', 'draft', 'published'].includes(tournamentData.status)) {
+      if (!['open', 'published'].includes(tournamentData.status)) {
         throw new Error(`Tournament registration is not open. Current status: ${tournamentData.status}`);
       }
 

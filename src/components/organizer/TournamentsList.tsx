@@ -14,7 +14,7 @@ interface Tournament {
   date: string;
   time: string;
   venue: string;
-  max_participants: number;
+  max_participants: number | null;
   description: string;
   entry_fee: string | null;
   prize_pool: string;
@@ -23,7 +23,7 @@ interface Tournament {
   user_id: string;
   created_at: string;
   updated_at: string;
-  status: 'upcoming' | 'ongoing' | 'completed';
+  status: 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
   current_participants?: number;
   isRegistered: boolean;
 }
@@ -41,38 +41,27 @@ const TournamentsList = () => {
       try {
         console.log('[TournamentsList] Fetching tournaments for user:', user.id);
 
-        const tournamentsData = await apiClient.get<any[]>(`/api/tournaments?organizer_id=${user.id}`);
+        const raw = await apiClient.get<any>(`/api/tournaments?organizer_id=${user.id}`);
+        const tournamentsData: any[] = Array.isArray(raw) ? raw : (raw?.items || raw?.data || []);
 
-        console.log('[TournamentsList] Found tournaments:', tournamentsData?.length || 0, tournamentsData);
+        console.log('[TournamentsList] Found tournaments:', tournamentsData.length, tournamentsData);
 
-
-        const tournamentsWithStatus = await Promise.all((tournamentsData || []).map(async (tournament: any) => {
+        const tournamentsWithStatus = await Promise.all(tournamentsData.map(async (tournament: any) => {
 
           // Check if user is registered
           let isRegistered = false;
           if (user?.id) {
             try {
-              const participants = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/participants`);
-              isRegistered = (participants || []).some((p: any) => p.user_id === user.id);
+              const rawP = await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants`);
+              const participants: any[] = Array.isArray(rawP) ? rawP : (rawP?.items || rawP?.data || []);
+              isRegistered = participants.some((p: any) => p.user_id === user.id);
             } catch {
               isRegistered = false;
             }
           }
 
-          // Compute status fallback
-          const tournamentDate = new Date(tournament.start_date);
-          const now = new Date();
-          let computedStatus: 'upcoming' | 'ongoing' | 'completed' = (tournament.status as any);
-
-          if (!['upcoming', 'ongoing', 'completed'].includes(computedStatus)) {
-            if (tournamentDate > now) {
-              computedStatus = 'upcoming';
-            } else if (tournamentDate.toDateString() === now.toDateString()) {
-              computedStatus = 'ongoing';
-            } else {
-              computedStatus = 'completed';
-            }
-          }
+          // Use the DB status directly — no date-based inference needed
+          const dbStatus = tournament.status || 'draft';
 
           return {
             id: tournament.id,
@@ -81,7 +70,7 @@ const TournamentsList = () => {
             date: tournament.start_date,
             time: new Date(tournament.start_date).toLocaleTimeString(),
             venue: tournament.venue_id ? 'Venue' : 'Online',
-            max_participants: tournament.max_teams,
+            max_participants: tournament.max_teams || tournament.max_participants || null,
             description: tournament.description,
             entry_fee: tournament.entry_fee,
             prize_pool: tournament.prize_pool,
@@ -90,8 +79,8 @@ const TournamentsList = () => {
             user_id: tournament.organizer_id,
             created_at: tournament.created_at,
             updated_at: tournament.updated_at,
-            status: computedStatus,
-            current_participants: tournament.participants?.[0]?.count || 0,
+            status: dbStatus,
+            current_participants: tournament.registration_count ?? tournament.current_participants ?? tournament.participant_count ?? 0,
             isRegistered
           };
         }));
@@ -113,14 +102,22 @@ const TournamentsList = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'upcoming':
+      case 'draft':
+        return 'bg-zinc-600';
+      case 'published':
         return 'bg-blue-500';
+      case 'open':
+        return 'bg-emerald-500';
+      case 'closed':
+        return 'bg-amber-500';
       case 'ongoing':
-        return 'bg-green-500';
+        return 'bg-red-500';
       case 'completed':
-        return 'bg-gray-500';
+        return 'bg-zinc-600';
+      case 'cancelled':
+        return 'bg-zinc-700';
       default:
-        return 'bg-gray-500';
+        return 'bg-zinc-600';
     }
   };
 
@@ -171,7 +168,7 @@ const TournamentsList = () => {
                     <p>Venue: {tournament.venue}</p>
                   </div>
                   <div className="text-right">
-                    <p>Participants: {tournament.current_participants} / {tournament.max_participants}</p>
+                    <p>Participants: {tournament.current_participants} / {tournament.max_participants || '∞'}</p>
                     {tournament.isRegistered && (
                       <span className="inline-flex items-center gap-1 text-gaming-green font-semibold ml-2">
                         <CheckCircle2 className="h-4 w-4" /> Registered

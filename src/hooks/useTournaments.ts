@@ -28,7 +28,7 @@ export interface Tournament {
   updated_at?: string;
   image_url?: string | null;
   team_size?: number;
-  status?: 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled';
+  status?: 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
   current_participants?: number;
   organizer_id?: string;
   slug?: string;
@@ -37,7 +37,7 @@ export interface Tournament {
   organization_slug?: string;
 }
 
-type TournamentStatus = 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled';
+type TournamentStatus = 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
 
 interface ApiTournamentRow {
   id: string;

@@ -52,7 +52,7 @@ const TournamentDetails = () => {
           setTournament({
             ...dbTournament,
             current_participants: dbTournament.tournament_participants?.[0]?.count || 0,
-            status: (dbTournament.status || 'open') as "open" | "draft" | "completed" | "closed" | "check_in" | "ongoing" | "cancelled",
+            status: (dbTournament.status || 'draft') as "draft" | "published" | "open" | "closed" | "ongoing" | "completed" | "cancelled",
             team_size: dbTournament.team_size || 1,
             updated_at: dbTournament.updated_at || dbTournament.created_at
           });

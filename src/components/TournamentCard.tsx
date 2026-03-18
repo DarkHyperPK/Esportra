@@ -18,7 +18,7 @@ interface TournamentCardProps {
   venue: string;
   max_participants: number;
   current_participants: number;
-  status: 'draft' | 'open' | 'closed' | 'check_in' | 'ongoing' | 'completed' | 'cancelled';
+  status: 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
   team_size: number;
   prize_pool: string;
   user_id?: string;
@@ -105,10 +105,10 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
     }
 
     // Default to Upcoming / Registration Status
-    if (status === 'check_in') {
+    if (status === 'published') {
       return (
-        <Badge className="bg-yellow-500 text-black border-none shadow-[0_0_10px_rgba(234,179,8,0.4)]">
-          CHECK-IN OPEN
+        <Badge className="bg-blue-600 text-white border-none shadow-[0_0_10px_rgba(37,99,235,0.4)]">
+          UPCOMING
         </Badge>
       );
     }

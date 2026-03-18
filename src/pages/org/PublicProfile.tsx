@@ -61,7 +61,7 @@ const OrganizationPublicProfile = () => {
         enabled: !!org?.id,
     });
 
-    const activeTournaments = tournaments?.filter(t => ['open', 'ongoing', 'check_in'].includes(t.status)) || [];
+    const activeTournaments = tournaments?.filter(t => ['open', 'ongoing'].includes(t.status)) || [];
     const pastTournaments = tournaments?.filter(t => ['completed', 'cancelled'].includes(t.status)) || [];
 
     if (orgLoading) {
@@ -139,6 +139,16 @@ const OrganizationPublicProfile = () => {
                                 {org.social_links?.twitter && (
                                     <a href={`https://twitter.com/${org.social_links.twitter.replace('@', '')}`} target="_blank" rel="noreferrer" className="hover:text-blue-400 transition-colors">
                                         <Twitter className="w-4 h-4" />
+                                    </a>
+                                )}
+                                {org.social_links?.instagram && (
+                                    <a href={`https://instagram.com/${org.social_links.instagram.replace('@', '')}`} target="_blank" rel="noreferrer" className="hover:text-pink-400 transition-colors">
+                                        <Instagram className="w-4 h-4" />
+                                    </a>
+                                )}
+                                {org.social_links?.youtube && (
+                                    <a href={`https://youtube.com/@${org.social_links.youtube.replace('@', '')}`} target="_blank" rel="noreferrer" className="hover:text-red-400 transition-colors">
+                                        <Youtube className="w-4 h-4" />
                                     </a>
                                 )}
                                 {org.social_links?.discord && (
@@ -408,22 +418,37 @@ const OrganizationPublicProfile = () => {
                                     <h3 className="text-lg font-bold font-heading mb-4">Connect</h3>
                                     <div className="space-y-4">
                                         {org.social_links?.website && (
-                                            <a href={org.social_links.website} target="_blank" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                                            <a href={org.social_links.website} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
                                                 <span className="flex items-center gap-3 text-gray-300"><Globe className="w-4 h-4" /> Website</span>
                                                 <ArrowRight className="w-4 h-4 text-gray-500" />
                                             </a>
                                         )}
                                         {org.social_links?.twitter && (
-                                            <a href={`https://twitter.com/${org.social_links.twitter.replace('@', '')}`} target="_blank" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
-                                                <span className="flex items-center gap-3 text-gray-300"><Twitter className="w-4 h-4 text-blue-400" /> Twitter</span>
+                                            <a href={`https://twitter.com/${org.social_links.twitter.replace('@', '')}`} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                                                <span className="flex items-center gap-3 text-gray-300"><Twitter className="w-4 h-4 text-blue-400" /> Twitter / X</span>
+                                                <ArrowRight className="w-4 h-4 text-gray-500" />
+                                            </a>
+                                        )}
+                                        {org.social_links?.instagram && (
+                                            <a href={`https://instagram.com/${org.social_links.instagram.replace('@', '')}`} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                                                <span className="flex items-center gap-3 text-gray-300"><Instagram className="w-4 h-4 text-pink-400" /> Instagram</span>
+                                                <ArrowRight className="w-4 h-4 text-gray-500" />
+                                            </a>
+                                        )}
+                                        {org.social_links?.youtube && (
+                                            <a href={`https://youtube.com/@${org.social_links.youtube.replace('@', '')}`} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                                                <span className="flex items-center gap-3 text-gray-300"><Youtube className="w-4 h-4 text-red-400" /> YouTube</span>
                                                 <ArrowRight className="w-4 h-4 text-gray-500" />
                                             </a>
                                         )}
                                         {org.social_links?.discord && (
-                                            <a href={org.social_links.discord} target="_blank" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                                            <a href={org.social_links.discord} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
                                                 <span className="flex items-center gap-3 text-gray-300"><Link2 className="w-4 h-4 text-indigo-400" /> Discord</span>
                                                 <ArrowRight className="w-4 h-4 text-gray-500" />
                                             </a>
+                                        )}
+                                        {!org.social_links?.website && !org.social_links?.twitter && !org.social_links?.instagram && !org.social_links?.youtube && !org.social_links?.discord && (
+                                            <p className="text-sm text-gray-600 italic">No social links added yet.</p>
                                         )}
                                     </div>
                                 </div>

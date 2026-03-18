@@ -96,19 +96,14 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 </span>
                                 <span className={cn(
                                     "px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs font-mono tracking-[0.2em] uppercase backdrop-blur-md",
-                                    tournament.status === 'open' ? "text-blue-400" :
-                                        tournament.status === 'ongoing' ? "text-red-400" :
-                                            tournament.status === 'completed' ? "text-emerald-400" :
-                                                tournament.status === 'check_in' ? "text-yellow-400" :
-                                                    "text-gray-400"
+                                    tournament.status === 'published' ? "text-blue-400" :
+                                        tournament.status === 'open' ? "text-emerald-400" :
+                                            tournament.status === 'closed' ? "text-amber-400" :
+                                                tournament.status === 'ongoing' ? "text-red-400" :
+                                                    tournament.status === 'completed' ? "text-zinc-400" :
+                                                        "text-gray-400"
                                 )}>
-                                    STATUS: {(() => {
-                                        const start = new Date(`${tournament.date}T${tournament.time}`);
-                                        const now = new Date();
-                                        if (tournament.status === 'ongoing' && now < start) return 'Starting Soon';
-                                        if (tournament.status === 'open') return 'Upcoming';
-                                        return tournament.status.replace('_', ' ');
-                                    })()}
+                                    STATUS: {tournament.status}
                                 </span>
                             </div>
 
@@ -150,7 +145,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                     </Button>
                                 ) : (
                                     <>
-                                        {!isRegistered && !hasMissedCheckIn && (tournament.status === 'upcoming' || tournament.status === 'open') && (
+                                        {!isRegistered && !hasMissedCheckIn && (tournament.status === 'published' || tournament.status === 'open') && (
                                             <Button onClick={onRegister} className="h-14 md:h-16 px-8 md:px-12 bg-green-600 hover:bg-green-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(22,163,74,0.3)]">
                                                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
                                                 <span className="relative z-10 flex items-center gap-2">INITIATE REGISTRATION <ChevronRight className="w-5 h-5" /></span>
@@ -161,7 +156,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                 <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/captain-match`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
                                                     <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER MATCH ROOM</span>
                                                 </Button>
-                                                {(tournament.status === 'upcoming' || tournament.status === 'open') && (
+                                                {(tournament.status === 'published' || tournament.status === 'open') && (
                                                     <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
                                                         WITHDRAW
                                                     </Button>
@@ -169,7 +164,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                             </div>
                                         )}
                                         {/* Withdraw button for non-captains or other states */}
-                                        {isRegistered && !isCaptain && (tournament.status === 'upcoming' || tournament.status === 'open') && (
+                                        {isRegistered && !isCaptain && (tournament.status === 'published' || tournament.status === 'open') && (
                                             <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
                                                 WITHDRAW ENTRY
                                             </Button>

@@ -13,12 +13,12 @@ import { Link } from "react-router-dom";
 import { usePublicBracketData } from "@/hooks/usePublicBracketData";
 import { PublicBracketView } from "@/pages/tournaments/brackets/PublicBracketView";
 
-type TournamentStatus = 'active' | 'upcoming' | 'completed' | 'all';
+type TournamentFilterStatus = 'active' | 'upcoming' | 'completed' | 'all';
 
 export default function TournamentHistory() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<TournamentStatus>('all');
+    const [filter, setFilter] = useState<TournamentFilterStatus>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [tournaments, setTournaments] = useState<any[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -32,30 +32,26 @@ export default function TournamentHistory() {
         setLoading(true);
         try {
             // 1. Fetch tournaments
-            const tData = await apiClient.get<any[]>(`/api/tournaments?organizer_id=${user.id}`);
+            const rawData = await apiClient.get<any>(`/api/tournaments?organizer_id=${user.id}`);
+            const tData: any[] = Array.isArray(rawData) ? rawData : (rawData?.items || rawData?.data || []);
 
-            // Classify status the same way useOrganizerStats does
-            const now = new Date();
-            const processedTournaments = tData?.map(t => {
-                let computedStatus: TournamentStatus = 'completed';
-                const startDate = new Date(t.start_date);
+            const processedTournaments = tData.map(t => {
+                // Map DB status to filter groups
+                let computedStatus: TournamentFilterStatus = 'completed';
+                const s = t.status as string;
 
-                if (['open', 'ongoing', 'check_in'].includes(t.status)) {
+                if (s === 'ongoing') {
                     computedStatus = 'active';
-                } else if (t.status === 'upcoming') {
+                } else if (['draft', 'published', 'open', 'closed'].includes(s)) {
                     computedStatus = 'upcoming';
-                } else if (['completed', 'closed'].includes(t.status)) {
+                } else if (['completed', 'cancelled'].includes(s)) {
                     computedStatus = 'completed';
-                } else {
-                    if (startDate > now) computedStatus = 'upcoming';
-                    else if (startDate.toDateString() === now.toDateString()) computedStatus = 'active';
-                    else computedStatus = 'completed';
                 }
 
                 return {
                     ...t,
                     computedStatus,
-                    participantCount: t.registration_count ?? t.participant_count ?? t.participants?.[0]?.count ?? 0,
+                    participantCount: t.registration_count ?? t.participant_count ?? t.current_participants ?? t.participants?.[0]?.count ?? 0,
                     matchHistory: null, // Fetched lazily
                     participantList: null, // Fetched lazily
                     detailsLoading: false
@@ -107,18 +103,20 @@ export default function TournamentHistory() {
 
             // 2. Fetch Match History
             // Since brkt_matches links through brkt_versions, we first need the active version for this tournament
-            const versions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
-            const versionData = versions?.find((v: any) => v.status === 'active') || null;
+            const rawVersions = await apiClient.get<any>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
+            const versionsArr: any[] = Array.isArray(rawVersions) ? rawVersions : (rawVersions?.items || rawVersions?.data || []);
+            const versionData = versionsArr.find((v: any) => v.status === 'active') || null;
 
             let matchData: any[] = [];
             if (versionData?.id) {
-                const matches = await apiClient.get<any[]>(`/api/brackets/${versionData.id}/graph`).catch(() => []);
-
-                matchData = (matches || []).slice(0, 5);
+                const rawMatches = await apiClient.get<any>(`/api/brackets/${versionData.id}/graph`).catch(() => []);
+                const matchesArr: any[] = Array.isArray(rawMatches) ? rawMatches : (rawMatches?.items || rawMatches?.data || rawMatches?.matches || []);
+                matchData = matchesArr.slice(0, 5);
             } else {
                 // Fallback for custom tournaments without brkt_versions
-                const fallbackMatches = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/match-games`).catch(() => []);
-                if (fallbackMatches && fallbackMatches.length > 0) matchData = fallbackMatches.slice(0, 5);
+                const rawFallback = await apiClient.get<any>(`/api/tournaments/${tournamentId}/match-games`).catch(() => []);
+                const fallbackArr: any[] = Array.isArray(rawFallback) ? rawFallback : (rawFallback?.items || rawFallback?.data || []);
+                if (fallbackArr.length > 0) matchData = fallbackArr.slice(0, 5);
             }
 
             setTournaments(prev => prev.map(t =>
@@ -237,7 +235,7 @@ function HistoryBracketView({ tournamentId }: { tournamentId: string }) {
     }
 
     return (
-        <div className="w-full h-[500px] border border-white/10 rounded-xl overflow-hidden bg-[#121214]">
+        <div className="w-full h-[500px] border border-white/10 rounded-xl overflow-auto bg-[#121214]">
             <PublicBracketView
                 versionId={selectedStageId ? activeVersionsMap[selectedStageId] : null}
                 tournamentId={tournamentId}

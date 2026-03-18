@@ -51,7 +51,7 @@ interface Tournament {
   prize_pool: number;
   start_date: string;
   end_date: string;
-  status: 'draft' | 'published' | 'registration_open' | 'registration_closed' | 'ongoing' | 'completed' | 'cancelled';
+  status: 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
   user_id: string;
   organizer_name: string;
   venue_id?: string;
@@ -233,18 +233,18 @@ const TournamentManagement: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const colors = {
-      draft: 'bg-gray-600',
+      draft: 'bg-zinc-600',
       published: 'bg-blue-600',
-      registration_open: 'bg-green-600',
-      registration_closed: 'bg-yellow-600',
-      ongoing: 'bg-purple-600',
-      completed: 'bg-green-600',
-      cancelled: 'bg-red-600'
+      open: 'bg-emerald-600',
+      closed: 'bg-amber-600',
+      ongoing: 'bg-red-600',
+      completed: 'bg-zinc-600',
+      cancelled: 'bg-red-800'
     };
 
     return (
       <Badge className={`${colors[status as keyof typeof colors] || 'bg-gray-600'} text-white`}>
-        {status.replace('_', ' ').toUpperCase()}
+        {status.toUpperCase()}
       </Badge>
     );
   };
@@ -253,8 +253,8 @@ const TournamentManagement: React.FC = () => {
     switch (status) {
       case 'draft': return <Edit className="w-4 h-4" />;
       case 'published': return <CheckCircle className="w-4 h-4" />;
-      case 'registration_open': return <Users className="w-4 h-4" />;
-      case 'registration_closed': return <Clock className="w-4 h-4" />;
+      case 'open': return <Users className="w-4 h-4" />;
+      case 'closed': return <Clock className="w-4 h-4" />;
       case 'ongoing': return <Trophy className="w-4 h-4" />;
       case 'completed': return <CheckCircle className="w-4 h-4" />;
       case 'cancelled': return <XCircle className="w-4 h-4" />;
@@ -329,7 +329,7 @@ const TournamentManagement: React.FC = () => {
               <div>
                 <p className="text-gray-400 text-sm">Active Events</p>
                 <p className="text-white text-2xl font-bold">
-                  {tournaments.filter(t => ['registration_open', 'ongoing'].includes(t.status)).length}
+                  {tournaments.filter(t => ['open', 'ongoing'].includes(t.status)).length}
                 </p>
               </div>
             </div>
@@ -361,8 +361,8 @@ const TournamentManagement: React.FC = () => {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="published">Published</SelectItem>
-                <SelectItem value="registration_open">Registration Open</SelectItem>
-                <SelectItem value="registration_closed">Registration Closed</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
                 <SelectItem value="ongoing">Ongoing</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
