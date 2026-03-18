@@ -20,6 +20,8 @@ const OrganizationPublicProfile = () => {
     const [selectedMediaItem, setSelectedMediaItem] = useState<any | null>(null);
     const [activeAlbum, setActiveAlbum] = useState<any | null>(null);
 
+    const ensureHttps = (url: string) => url.startsWith('http') ? url : `https://${url}`;
+
     // Fetch Organization
     const { data: org, isLoading: orgLoading } = useQuery({
         queryKey: ['org-public-profile', slug],
@@ -132,7 +134,7 @@ const OrganizationPublicProfile = () => {
                                     @{org.slug}
                                 </span>
                                 {org.social_links?.website && (
-                                    <a href={org.social_links.website} target="_blank" rel="noreferrer" className="hover:text-esports-accent transition-colors flex items-center gap-1">
+                                    <a href={ensureHttps(org.social_links.website)} target="_blank" rel="noreferrer" className="hover:text-esports-accent transition-colors flex items-center gap-1">
                                         <Globe className="w-4 h-4" /> Website
                                     </a>
                                 )}
@@ -152,7 +154,7 @@ const OrganizationPublicProfile = () => {
                                     </a>
                                 )}
                                 {org.social_links?.discord && (
-                                    <a href={org.social_links.discord} target="_blank" rel="noreferrer" className="hover:text-indigo-400 transition-colors">
+                                    <a href={ensureHttps(org.social_links.discord)} target="_blank" rel="noreferrer" className="hover:text-indigo-400 transition-colors">
                                         <Link2 className="w-4 h-4" />
                                     </a>
                                 )}
@@ -418,7 +420,7 @@ const OrganizationPublicProfile = () => {
                                     <h3 className="text-lg font-bold font-heading mb-4">Connect</h3>
                                     <div className="space-y-4">
                                         {org.social_links?.website && (
-                                            <a href={org.social_links.website} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                                            <a href={ensureHttps(org.social_links.website)} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
                                                 <span className="flex items-center gap-3 text-gray-300"><Globe className="w-4 h-4" /> Website</span>
                                                 <ArrowRight className="w-4 h-4 text-gray-500" />
                                             </a>
@@ -442,7 +444,7 @@ const OrganizationPublicProfile = () => {
                                             </a>
                                         )}
                                         {org.social_links?.discord && (
-                                            <a href={org.social_links.discord} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                                            <a href={ensureHttps(org.social_links.discord)} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
                                                 <span className="flex items-center gap-3 text-gray-300"><Link2 className="w-4 h-4 text-indigo-400" /> Discord</span>
                                                 <ArrowRight className="w-4 h-4 text-gray-500" />
                                             </a>

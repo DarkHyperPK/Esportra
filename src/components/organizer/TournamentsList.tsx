@@ -60,8 +60,14 @@ const TournamentsList = () => {
             }
           }
 
-          // Use the DB status directly — no date-based inference needed
-          const dbStatus = tournament.status || 'draft';
+          // Use DB status, but infer 'ongoing' if start_date has passed and status is still pre-start
+          let displayStatus = tournament.status || 'draft';
+          if (['open', 'closed'].includes(displayStatus)) {
+            const startDate = new Date(tournament.start_date);
+            if (startDate <= new Date()) {
+              displayStatus = 'ongoing';
+            }
+          }
 
           return {
             id: tournament.id,
@@ -79,7 +85,7 @@ const TournamentsList = () => {
             user_id: tournament.organizer_id,
             created_at: tournament.created_at,
             updated_at: tournament.updated_at,
-            status: dbStatus,
+            status: displayStatus,
             current_participants: tournament.registration_count ?? tournament.current_participants ?? tournament.participant_count ?? 0,
             isRegistered
           };

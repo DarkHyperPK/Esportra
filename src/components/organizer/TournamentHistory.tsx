@@ -36,11 +36,13 @@ export default function TournamentHistory() {
             const tData: any[] = Array.isArray(rawData) ? rawData : (rawData?.items || rawData?.data || []);
 
             const processedTournaments = tData.map(t => {
-                // Map DB status to filter groups
+                // Map DB status to filter groups, inferring 'ongoing' from dates
                 let computedStatus: TournamentFilterStatus = 'completed';
                 const s = t.status as string;
+                const startDate = new Date(t.start_date);
+                const isStarted = startDate <= new Date();
 
-                if (s === 'ongoing') {
+                if (s === 'ongoing' || (['open', 'closed'].includes(s) && isStarted)) {
                     computedStatus = 'active';
                 } else if (['draft', 'published', 'open', 'closed'].includes(s)) {
                     computedStatus = 'upcoming';
