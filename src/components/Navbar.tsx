@@ -15,6 +15,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isManageBracketPage = location.pathname.includes('/manage-bracket/');
+  const isLandingPage = location.pathname === '/';
 
   const handleSignOut = async () => {
     try {
@@ -40,20 +41,15 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const isLandingPage = location.pathname === '/';
-
-  // Landing page uses its own NavbarV2
-  if (isLandingPage) return null;
-
   return (
     <motion.nav
       data-mounted
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-      className={`${isManageBracketPage ? 'relative' : 'relative'} z-[999]`}
+      className={`${isLandingPage ? 'fixed top-0 left-0 right-0' : 'relative'} z-[999]`}
     >
-      <div className="max-w-6xl mx-auto w-full px-4 py-3 sm:px-8">
+      <div className={`max-w-6xl mx-auto w-full px-4 sm:px-8 ${isLandingPage ? 'py-1' : 'py-3'}`}>
         <div
           className={`relative flex w-full items-center justify-between rounded-3xl border border-white/10 shadow-lg transition-all duration-300 ${isScrolled
             ? "bg-[#121212]/90 backdrop-blur-md border-white/5"

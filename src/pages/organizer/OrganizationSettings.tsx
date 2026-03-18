@@ -95,6 +95,16 @@ const OrganizationSettings: React.FC = () => {
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [uploadingBanner, setUploadingBanner] = useState(false);
 
+    // Track whether form fields differ from saved organization data
+    const hasUnsavedChanges = organization ? (
+        name !== organization.name ||
+        slug !== organization.slug ||
+        (description || '') !== (organization.description || '') ||
+        (logoUrl || '') !== (organization.logo_url || '') ||
+        (bannerUrl || '') !== (organization.banner_url || '') ||
+        JSON.stringify(socialLinks) !== JSON.stringify(organization.social_links || {})
+    ) : (name.trim() !== '' || description.trim() !== '');
+
     useEffect(() => {
         if (user?.id) {
             fetchOrganization();
@@ -924,27 +934,6 @@ const OrganizationSettings: React.FC = () => {
                 />
             )}
 
-            {/* Save Button */}
-            <div className="flex justify-end pt-4">
-                <Button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="bg-esports-accent hover:bg-esports-accent/90 text-white min-w-[120px] shadow-lg shadow-esports-accent/20"
-                >
-                    {saving ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Saving...
-                        </>
-                    ) : (
-                        <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Changes
-                        </>
-                    )}
-                </Button>
-            </div>
-
             {/* Danger Zone */}
             {organization && organization.owner_id === user?.id && (
                 <Card className="border-red-900/30 bg-red-950/10 mt-12">
@@ -1017,6 +1006,40 @@ const OrganizationSettings: React.FC = () => {
                         </div>
                     </CardContent>
                 </Card>
+            )}
+
+            {/* Unsaved changes bar — fixed at bottom */}
+            {hasUnsavedChanges && (
+                <motion.div
+                    initial={{ y: 80, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 80, opacity: 0 }}
+                    className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-zinc-950/95 backdrop-blur-lg px-6 py-3"
+                >
+                    <div className="max-w-5xl mx-auto flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-amber-400">
+                            <Save className="w-4 h-4" />
+                            <span>You have unsaved changes</span>
+                        </div>
+                        <Button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="bg-esports-accent hover:bg-esports-accent/90 text-white min-w-[130px] shadow-lg shadow-esports-accent/20"
+                        >
+                            {saving ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="mr-2 h-4 w-4" />
+                                    Save Changes
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </motion.div>
             )}
         </motion.div>
     );
