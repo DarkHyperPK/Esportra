@@ -86,9 +86,142 @@ const OrganizationPublicProfile = () => {
 
     return (
         <div className="min-h-screen bg-[#050507] text-white font-body">
-            {/* Hero Header */}
+
+            {/* ── HERO V2 ───────────────────────────────────────────────── */}
+            <div className="relative overflow-hidden" style={{ minHeight: '520px' }}>
+                {/* Banner */}
+                <div className="absolute inset-0 z-0">
+                    {org.banner_url ? (
+                        <img src={org.banner_url} alt="" className="w-full h-full object-cover scale-105" style={{ filter: 'brightness(0.45) saturate(1.2)' }} />
+                    ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-[#0e0e14] via-[#0a0a0c] to-[#050507]" />
+                    )}
+                    {/* Multi-layer atmospheric gradients */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#050507]/90 via-transparent to-[#050507]/60" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-[#050507]/30 to-transparent" />
+                    {/* Accent glow from top-left */}
+                    <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #f43f5e 0%, transparent 70%)' }} />
+                </div>
+
+                {/* Back button */}
+                <div className="absolute top-6 left-4 md:left-8 z-20">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors px-3 py-1.5 rounded-xl backdrop-blur-sm bg-white/5 border border-white/10"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back
+                    </button>
+                </div>
+
+                {/* Hero content */}
+                <div className="relative z-10 container mx-auto px-4 md:px-8 flex flex-col justify-end" style={{ minHeight: '520px', paddingBottom: '48px' }}>
+                    <div className="flex flex-col md:flex-row md:items-end gap-8 md:gap-10">
+
+                        {/* Logo with glow ring */}
+                        <motion.div
+                            initial={{ scale: 0.85, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ duration: 0.5, ease: 'easeOut' }}
+                            className="flex-shrink-0"
+                        >
+                            <div className="relative w-28 h-28 md:w-36 md:h-36">
+                                {/* Glow ring */}
+                                <div className="absolute -inset-1 rounded-3xl opacity-50" style={{ background: 'linear-gradient(135deg, #f43f5e, #7c3aed)', filter: 'blur(8px)' }} />
+                                <div className="relative w-full h-full rounded-3xl bg-[#0a0a0c] border border-white/10 overflow-hidden shadow-2xl flex items-center justify-center">
+                                    {org.logo_url ? (
+                                        <img src={org.logo_url} alt={org.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <Building2 className="w-12 h-12 text-gray-700" />
+                                    )}
+                                </div>
+                                {org.is_verified && (
+                                    <div className="absolute -bottom-1 -right-1 bg-esports-accent rounded-full p-1 border-2 border-[#050507]">
+                                        <CheckCircle2 className="w-4 h-4 text-white" />
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+
+                        {/* Name, slug, description, stats */}
+                        <motion.div
+                            initial={{ x: -20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: 0.15, duration: 0.5 }}
+                            className="flex-grow space-y-3 md:space-y-4"
+                        >
+                            <div>
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <h1 className="text-4xl md:text-6xl font-heading font-bold leading-none tracking-tight drop-shadow-lg">{org.name}</h1>
+                                    {org.is_verified && (
+                                        <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-esports-accent/15 text-esports-accent border border-esports-accent/30">
+                                            <CheckCircle2 className="w-3 h-3" /> Verified
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-white/40 mt-1 text-sm font-mono">@{org.slug}</p>
+                            </div>
+
+                            {org.description && (
+                                <p className="text-white/60 text-sm md:text-base max-w-xl leading-relaxed line-clamp-2">{org.description}</p>
+                            )}
+
+                            {/* Stat pills */}
+                            <div className="flex flex-wrap gap-3">
+                                <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/8 backdrop-blur-sm">
+                                    <Trophy className="w-4 h-4 text-yellow-400" />
+                                    <span className="text-sm font-semibold">{tournaments?.length || 0}</span>
+                                    <span className="text-xs text-white/40">Tournaments</span>
+                                </div>
+                                <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-esports-accent/10 border border-esports-accent/20 backdrop-blur-sm">
+                                    <Zap className="w-4 h-4 text-esports-accent" />
+                                    <span className="text-sm font-semibold text-esports-accent">{activeTournaments.length}</span>
+                                    <span className="text-xs text-white/40">Active</span>
+                                </div>
+                            </div>
+
+                            {/* Social links */}
+                            <div className="flex items-center flex-wrap gap-2 pt-1">
+                                {org.social_links?.website && (
+                                    <a href={ensureHttps(org.social_links.website)} target="_blank" rel="noreferrer"
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/8 text-white/60 hover:text-white transition-all text-xs font-medium">
+                                        <Globe className="w-3.5 h-3.5" /> Website
+                                    </a>
+                                )}
+                                {org.social_links?.twitter && (
+                                    <a href={`https://twitter.com/${org.social_links.twitter.replace('@', '')}`} target="_blank" rel="noreferrer"
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-400 hover:text-sky-300 transition-all text-xs font-medium">
+                                        <Twitter className="w-3.5 h-3.5" /> Twitter
+                                    </a>
+                                )}
+                                {org.social_links?.instagram && (
+                                    <a href={`https://instagram.com/${org.social_links.instagram.replace('@', '')}`} target="_blank" rel="noreferrer"
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/20 text-pink-400 hover:text-pink-300 transition-all text-xs font-medium">
+                                        <Instagram className="w-3.5 h-3.5" /> Instagram
+                                    </a>
+                                )}
+                                {org.social_links?.youtube && (
+                                    <a href={`https://youtube.com/@${org.social_links.youtube.replace('@', '')}`} target="_blank" rel="noreferrer"
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 transition-all text-xs font-medium">
+                                        <Youtube className="w-3.5 h-3.5" /> YouTube
+                                    </a>
+                                )}
+                                {org.social_links?.discord && (
+                                    <a href={ensureHttps(org.social_links.discord)} target="_blank" rel="noreferrer"
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 transition-all text-xs font-medium">
+                                        <Link2 className="w-3.5 h-3.5" /> Discord
+                                    </a>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                </div>
+            </div>
+            {/* ── END HERO V2 ───────────────────────────────────────────── */}
+
+            {/*
+            ── HERO V1 (backup) ────────────────────────────────────────────
             <div className="relative h-[300px] md:h-[400px]">
-                {/* Banner with Gradient Overlay */}
                 <div className="absolute inset-0 z-0">
                     {org.banner_url ? (
                         <img src={org.banner_url} alt="Banner" className="w-full h-full object-cover" />
@@ -97,89 +230,34 @@ const OrganizationPublicProfile = () => {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-[#050507]/60 to-transparent" />
                 </div>
-
-                {/* Content Container */}
                 <div className="absolute inset-0 container mx-auto px-4 flex flex-col justify-end pb-8 z-10">
                     <div className="flex flex-col md:flex-row items-start md:items-end gap-6 md:gap-8">
-                        {/* Logo */}
-                        <motion.div
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            className="relative"
-                        >
+                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="relative">
                             <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-[#0a0a0c] border-4 border-[#050507] overflow-hidden shadow-2xl flex items-center justify-center">
-                                {org.logo_url ? (
-                                    <img src={org.logo_url} alt={org.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <Building2 className="w-16 h-16 text-gray-700" />
-                                )}
+                                {org.logo_url ? <img src={org.logo_url} alt={org.name} className="w-full h-full object-cover" /> : <Building2 className="w-16 h-16 text-gray-700" />}
                             </div>
-                            {org.is_verified && (
-                                <div className="absolute -bottom-2 -right-2 bg-esports-accent text-black p-1.5 rounded-full border-4 border-[#050507]">
-                                    <CheckCircle2 className="w-5 h-5" />
-                                </div>
-                            )}
+                            {org.is_verified && (<div className="absolute -bottom-2 -right-2 bg-esports-accent text-black p-1.5 rounded-full border-4 border-[#050507]"><CheckCircle2 className="w-5 h-5" /></div>)}
                         </motion.div>
-
-                        {/* Info */}
-                        <motion.div
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.1 }}
-                            className="flex-grow mb-2"
-                        >
+                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="flex-grow mb-2">
                             <h1 className="text-4xl md:text-5xl font-heading font-bold mb-2 tracking-tight">{org.name}</h1>
                             <div className="flex flex-wrap items-center gap-4 text-gray-400 text-sm">
-                                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5">
-                                    @{org.slug}
-                                </span>
-                                {org.social_links?.website && (
-                                    <a href={ensureHttps(org.social_links.website)} target="_blank" rel="noreferrer" className="hover:text-esports-accent transition-colors flex items-center gap-1">
-                                        <Globe className="w-4 h-4" /> Website
-                                    </a>
-                                )}
-                                {org.social_links?.twitter && (
-                                    <a href={`https://twitter.com/${org.social_links.twitter.replace('@', '')}`} target="_blank" rel="noreferrer" className="hover:text-blue-400 transition-colors">
-                                        <Twitter className="w-4 h-4" />
-                                    </a>
-                                )}
-                                {org.social_links?.instagram && (
-                                    <a href={`https://instagram.com/${org.social_links.instagram.replace('@', '')}`} target="_blank" rel="noreferrer" className="hover:text-pink-400 transition-colors">
-                                        <Instagram className="w-4 h-4" />
-                                    </a>
-                                )}
-                                {org.social_links?.youtube && (
-                                    <a href={`https://youtube.com/@${org.social_links.youtube.replace('@', '')}`} target="_blank" rel="noreferrer" className="hover:text-red-400 transition-colors">
-                                        <Youtube className="w-4 h-4" />
-                                    </a>
-                                )}
-                                {org.social_links?.discord && (
-                                    <a href={ensureHttps(org.social_links.discord)} target="_blank" rel="noreferrer" className="hover:text-indigo-400 transition-colors">
-                                        <Link2 className="w-4 h-4" />
-                                    </a>
-                                )}
+                                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5">@{org.slug}</span>
+                                {org.social_links?.website && <a href={ensureHttps(org.social_links.website)} target="_blank" rel="noreferrer" className="hover:text-esports-accent transition-colors flex items-center gap-1"><Globe className="w-4 h-4" /> Website</a>}
+                                {org.social_links?.twitter && <a href={`https://twitter.com/${org.social_links.twitter.replace('@', '')}`} target="_blank" rel="noreferrer" className="hover:text-blue-400 transition-colors"><Twitter className="w-4 h-4" /></a>}
+                                {org.social_links?.instagram && <a href={`https://instagram.com/${org.social_links.instagram.replace('@', '')}`} target="_blank" rel="noreferrer" className="hover:text-pink-400 transition-colors"><Instagram className="w-4 h-4" /></a>}
+                                {org.social_links?.youtube && <a href={`https://youtube.com/@${org.social_links.youtube.replace('@', '')}`} target="_blank" rel="noreferrer" className="hover:text-red-400 transition-colors"><Youtube className="w-4 h-4" /></a>}
+                                {org.social_links?.discord && <a href={ensureHttps(org.social_links.discord)} target="_blank" rel="noreferrer" className="hover:text-indigo-400 transition-colors"><Link2 className="w-4 h-4" /></a>}
                             </div>
                         </motion.div>
-
-                        {/* Stats */}
-                        <motion.div
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                            className="flex gap-6 mb-2"
-                        >
-                            <div className="text-center">
-                                <p className="text-2xl font-bold font-heading">{tournaments?.length || 0}</p>
-                                <p className="text-xs uppercase tracking-wider text-gray-500">Tournaments</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold font-heading text-esports-accent">{activeTournaments.length}</p>
-                                <p className="text-xs uppercase tracking-wider text-gray-500">Active</p>
-                            </div>
+                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="flex gap-6 mb-2">
+                            <div className="text-center"><p className="text-2xl font-bold font-heading">{tournaments?.length || 0}</p><p className="text-xs uppercase tracking-wider text-gray-500">Tournaments</p></div>
+                            <div className="text-center"><p className="text-2xl font-bold font-heading text-esports-accent">{activeTournaments.length}</p><p className="text-xs uppercase tracking-wider text-gray-500">Active</p></div>
                         </motion.div>
                     </div>
                 </div>
             </div>
+            ── END HERO V1 ──────────────────────────────────────────────────
+            */}
 
             {/* Main Content */}
             <div className="container mx-auto px-4 py-12">

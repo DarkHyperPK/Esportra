@@ -28,22 +28,44 @@ export const useOrganizerStats = () => {
     return useQuery({
         queryKey: ['organizer-analytics', user?.id],
         queryFn: async (): Promise<AnalyticsData> => {
-            const stats = await apiClient.get<OrganizerStatsResponse>('/api/organizer/stats');
+            // Fetch both stats and tournaments list so we can infer active/upcoming with date logic
+            const [stats, rawTournaments] = await Promise.all([
+                apiClient.get<OrganizerStatsResponse>('/api/organizer/stats').catch(() => null),
+                apiClient.get<any>(`/api/tournaments?organizer_id=${user!.id}`).catch(() => []),
+            ]);
 
-            // Map server response to existing AnalyticsData shape
+            const tournaments: any[] = Array.isArray(rawTournaments)
+                ? rawTournaments
+                : (rawTournaments?.items || rawTournaments?.data || []);
+
+            // Compute active/upcoming with the same date-inference used in TournamentsList
+            const now = new Date();
+            let active = 0;
+            let upcoming = 0;
+            for (const t of tournaments) {
+                const s = t.status as string;
+                const started = new Date(t.start_date) <= now;
+
+                if (s === 'ongoing' || (['open', 'closed'].includes(s) && started)) {
+                    active++;
+                } else if (['draft', 'published', 'open', 'closed'].includes(s) && !started) {
+                    upcoming++;
+                }
+            }
+
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
             return {
-                totalTournaments:    stats.totalTournaments,
-                totalParticipants:   stats.totalParticipants,
-                activeTournaments:   stats.activeTournaments,
-                upcomingTournaments: stats.upcomingTournaments,
-                totalPrizePool:      stats.totalPrizePool,
-                monthlyParticipation: (stats.monthlyParticipation ?? []).map(m => ({
+                totalTournaments:    stats?.totalTournaments ?? tournaments.length,
+                totalParticipants:   stats?.totalParticipants ?? 0,
+                activeTournaments:   active,
+                upcomingTournaments: upcoming,
+                totalPrizePool:      stats?.totalPrizePool ?? 0,
+                monthlyParticipation: (stats?.monthlyParticipation ?? []).map(m => ({
                     name:         monthNames[parseInt(m.month.split('-')[1], 10) - 1] || m.month,
                     participants: m.participants,
                 })),
-                gameDistribution: (stats.gameDistribution ?? []).map(g => ({
+                gameDistribution: (stats?.gameDistribution ?? []).map(g => ({
                     name:  g.game,
                     value: g.count,
                 })),

@@ -105,37 +105,40 @@ const MyDisputes = () => {
     try {
       setLoading(true);
 
-      const disputesData = await apiClient.get<any[]>('/api/disputes/mine');
+      const disputesRaw = await apiClient.get<any>('/api/disputes/mine');
+      const disputesData: any[] = Array.isArray(disputesRaw) ? disputesRaw : (disputesRaw?.items || disputesRaw?.data || []);
 
       // Fetch tournament names
       const tournamentIds = Array.from(new Set((disputesData || []).map((d: any) => d.tournament_id).filter(Boolean)));
       let tournamentsMap = new Map<string, { name: string; slug: string }>();
       if (tournamentIds.length > 0) {
-        const tournamentsData = await apiClient.get<any[]>(
+        const rawT = await apiClient.get<any>(
           `/api/tournaments?ids=${tournamentIds.join(',')}`
         ).catch(() => []);
-        (tournamentsData || []).forEach((t: any) => tournamentsMap.set(t.id, { name: t.name, slug: t.slug }));
+        const tournamentsData: any[] = Array.isArray(rawT) ? rawT : (rawT?.items || rawT?.data || []);
+        tournamentsData.forEach((t: any) => tournamentsMap.set(t.id, { name: t.name, slug: t.slug }));
       }
 
       // Fetch match context for disputes that have a match_id
       const matchIds = [...new Set((disputesData || []).filter((d: any) => d.match_id).map((d: any) => d.match_id as string))];
       let matchesMap = new Map<string, any>();
       if (matchIds.length > 0) {
-        const matchesData = await apiClient.get<any[]>(
+        const rawM = await apiClient.get<any>(
           `/api/brackets/matches?ids=${matchIds.join(',')}`
         ).catch(() => []);
-        (matchesData || []).forEach((m: any) => matchesMap.set(m.id, m));
+        const matchesData: any[] = Array.isArray(rawM) ? rawM : (rawM?.items || rawM?.data || []);
+        matchesData.forEach((m: any) => matchesMap.set(m.id, m));
       }
 
-      const disputesWithData: Dispute[] = (disputesData || []).map((d: any) => {
+      const disputesWithData: Dispute[] = disputesData.map((d: any) => {
         const tournament = d.tournament_id ? tournamentsMap.get(d.tournament_id) : null;
         const match = d.match_id ? matchesMap.get(d.match_id) : null;
         return {
           ...d,
           tournament_name: tournament?.name || (d.tournament_id ? 'Unknown Tournament' : 'General Support'),
           tournament_slug: tournament?.slug || null,
-          match_team1_name: match?.team1?.name || null,
-          match_team2_name: match?.team2?.name || null,
+          match_team1_name: match?.team1?.name || match?.team1_name || null,
+          match_team2_name: match?.team2?.name || match?.team2_name || null,
           match_team1_score: match?.team1_score ?? null,
           match_team2_score: match?.team2_score ?? null,
           match_number: match?.match_number ?? null,
@@ -419,6 +422,14 @@ const MyDisputes = () => {
                           </div>
                         </div>
 
+                        {/* Dispute title */}
+                        <div className="px-4 pb-2">
+                          <h3 className="text-sm font-semibold text-white truncate">{dispute.title}</h3>
+                          {reasonLabel && (
+                            <p className="text-xs text-red-400/80 font-medium mt-0.5">{reasonLabel}</p>
+                          )}
+                        </div>
+
                         {/* Match context block */}
                         {hasMatch ? (
                           <div className="mx-4 mb-3 rounded-lg border border-white/10 bg-white/[0.03] overflow-hidden">
@@ -464,18 +475,15 @@ const MyDisputes = () => {
                           </div>
                         ) : dispute.match_id ? (
                           <div className="mx-4 mb-3 px-3 py-2 rounded-lg border border-white/10 bg-white/[0.03] text-xs text-white/40">
-                            Match linked (loading...)
+                            Match linked (ID: {dispute.match_id?.slice(0, 8)}…)
                           </div>
                         ) : null}
 
-                        {/* Dispute info */}
+                        {/* Dispute description */}
                         <div className="px-4 pb-3">
                           <div className="flex items-start gap-2">
                             <ShieldAlert className="w-4 h-4 text-red-400/70 mt-0.5 shrink-0" />
                             <div className="min-w-0">
-                              {reasonLabel && (
-                                <p className="text-xs text-red-400/80 font-medium mb-0.5">{reasonLabel}</p>
-                              )}
                               <p className="text-sm text-white/70 line-clamp-2">{dispute.description}</p>
                             </div>
                           </div>

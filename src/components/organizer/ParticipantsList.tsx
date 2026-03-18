@@ -24,12 +24,13 @@ import { useRef } from 'react';
 interface Participant {
   id: string;
   username: string;
-  email: string;
+  captainName: string;
   tournament: string;
   registeredAt: string;
   status: string;
   isTeamFormat: boolean;
   tournamentSlug?: string;
+  email?: string;
 }
 
 // Virtualized Row Component
@@ -63,7 +64,7 @@ const VirtualTableRows = ({ rows, getStatusColor }: { rows: Participant[], getSt
             }}
           >
             <TableCell className="font-medium w-[15%]">{participant.username}</TableCell>
-            <TableCell className="w-[20%]">{participant.email}</TableCell>
+            <TableCell className="w-[20%]">{participant.captainName}</TableCell>
             <TableCell className="w-[20%]">{participant.tournament}</TableCell>
             <TableCell className="w-[15%]">{new Date(participant.registeredAt).toLocaleDateString()}</TableCell>
             <TableCell className="w-[10%]">
@@ -186,6 +187,9 @@ const ParticipantsList = () => {
           return {
             id: reg.id,
             username: isTeamReg ? (team.name || reg.team_name || 'Unknown Team') : (profile.username || profile.full_name || 'Unknown'),
+            captainName: isTeamReg
+              ? (team.owner?.username || team.owner?.full_name || 'Unknown Captain')
+              : (profile.username || profile.full_name || 'Unknown'),
             email: isTeamReg ? (team.owner?.email || '') : (profile.email || ''),
             tournament: tournamentMap[reg.tournament_id] || 'Unknown',
             registeredAt: reg.created_at,
@@ -209,7 +213,7 @@ const ParticipantsList = () => {
 
   const filteredParticipants = participants.filter(
     participant => participant.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      participant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      participant.captainName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       participant.tournament.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -283,7 +287,7 @@ const ParticipantsList = () => {
             <TableHeader>
               <TableRow className="bg-gaming-gray/5 hover:bg-gaming-gray/10">
                 <TableHead>{participants.some(p => p.isTeamFormat) ? 'Team' : 'Username'}</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>Captain</TableHead>
                 <TableHead>Tournament</TableHead>
                 <TableHead>Registered</TableHead>
                 <TableHead>Status</TableHead>
@@ -302,7 +306,7 @@ const ParticipantsList = () => {
                 filteredParticipants.map((participant) => (
                   <TableRow key={participant.id} className="hover:bg-gaming-gray/5">
                     <TableCell className="font-medium">{participant.username}</TableCell>
-                    <TableCell>{participant.email || '-'}</TableCell>
+                    <TableCell>{participant.captainName}</TableCell>
                     <TableCell>{participant.tournament}</TableCell>
                     <TableCell>{new Date(participant.registeredAt).toLocaleDateString()}</TableCell>
                     <TableCell>
