@@ -222,7 +222,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
       </div>
 
       {/* ─── Conversation (fills remaining space) ─── */}
-      <div className="flex-1 border-t border-zinc-800/60 px-5 py-3 flex flex-col min-h-[200px]">
+      <div className="flex-1 border-t border-zinc-800/60 px-5 py-3 flex flex-col overflow-hidden" style={{ minHeight: '200px' }}>
         <DisputeConversation
           comments={comments}
           loading={loadingComments}
