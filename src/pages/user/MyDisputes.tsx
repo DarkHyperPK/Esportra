@@ -255,7 +255,6 @@ const MyDisputes = () => {
       setCommentText('');
       setCommentAttachment(null);
       fetchComments(disputeId);
-      fetchDisputes();
       toast({ title: 'Comment added', description: 'Your comment has been posted.' });
     } catch (error: unknown) {
       console.error('Error adding comment:', error);

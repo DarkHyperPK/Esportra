@@ -6,10 +6,12 @@ import FeaturesV2 from "@/components/landing/v2/FeaturesV2";
 import WhyEsportra from "@/components/landing/v2/WhyEsportra";
 import CTASection from "@/components/landing/v2/CTASection";
 import LogoTicker from "@/components/landing/LogoTicker";
+import NavbarV2 from "@/components/landing/v2/NavbarV2";
 
 const Index = () => {
     return (
         <div className="bg-[#050505]">
+            <NavbarV2 />
             <HeroV2 />
             <LogoTicker />
             <StatsBar />

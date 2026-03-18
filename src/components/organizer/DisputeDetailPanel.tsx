@@ -134,8 +134,8 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
         <DisputeIdStrip disputeId={dispute.id} referenceNumber={dispute.reference_number} matchId={dispute.match_id} riotMatchIds={riotMatchIds} />
       </div>
 
-      {/* ─── Scrollable Evidence/Context ─── */}
-      <div className="overflow-y-auto px-5 py-4 space-y-5 scrollbar-thin min-h-0">
+      {/* ─── Scrollable Evidence/Context — capped at 55% ─── */}
+      <div className="shrink overflow-y-auto px-5 py-4 space-y-5 scrollbar-thin" style={{ maxHeight: '55%' }}>
         {/* Match Context */}
         {dispute.match && (
           <div className="rounded-xl bg-zinc-900/50 border border-zinc-800/60 p-4">
@@ -221,8 +221,8 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
         />
       </div>
 
-      {/* ─── Conversation (fills remaining space) ─── */}
-      <div className="flex-1 border-t border-zinc-800/60 px-5 py-3 flex flex-col overflow-hidden" style={{ minHeight: '200px' }}>
+      {/* ─── Conversation (fills remaining space with own scroller) ─── */}
+      <div className="flex-1 min-h-0 border-t border-zinc-800/60 px-5 py-3 flex flex-col overflow-hidden">
         <DisputeConversation
           comments={comments}
           loading={loadingComments}
