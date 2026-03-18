@@ -55,7 +55,7 @@ export default function TournamentHistory() {
                 return {
                     ...t,
                     computedStatus,
-                    participantCount: t.participants?.[0]?.count || 0,
+                    participantCount: t.registration_count ?? t.participant_count ?? t.participants?.[0]?.count ?? 0,
                     matchHistory: null, // Fetched lazily
                     participantList: null, // Fetched lazily
                     detailsLoading: false
@@ -88,7 +88,8 @@ export default function TournamentHistory() {
 
         try {
             // 1. Fetch Participants (up to 10 for preview)
-            const participantsData = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
+            const rawParticipants = await apiClient.get<any>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
+            const participantsData: any[] = Array.isArray(rawParticipants) ? rawParticipants : (rawParticipants?.items || rawParticipants?.data || []);
 
             // Process participant names formatting
             const formattedParticipants = participantsData?.map(p => {
@@ -96,9 +97,11 @@ export default function TournamentHistory() {
                 const userObj = Array.isArray(p.user) ? p.user[0] : p.user as any;
                 return {
                     id: p.id,
-                    name: p.participant_type === 'team' ? (teamObj?.name || p.team_name || 'Unnamed Team') : (userObj?.username || 'Unknown Player'),
-                    avatar: p.participant_type === 'team' ? teamObj?.logo_url : userObj?.avatar_url,
-                    type: p.participant_type
+                    name: p.participant_type === 'team'
+                        ? (teamObj?.name || p.team_name || p.name || 'Unnamed Team')
+                        : (userObj?.username || p.username || p.name || 'Unknown Player'),
+                    avatar: p.participant_type === 'team' ? (teamObj?.logo_url || p.logo_url) : (userObj?.avatar_url || p.avatar_url),
+                    type: p.participant_type || (p.team_name || teamObj ? 'team' : 'player')
                 };
             }) || [];
 
@@ -308,7 +311,7 @@ function TournamentHistoryCard({ tournament, isExpanded, onToggle }: { tournamen
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-500">
                         <span className="flex items-center"><Calendar className="h-3.5 w-3.5 mr-1.5" /> {format(new Date(tournament.start_date), 'MMM d, yyyy')}</span>
                         <span className="flex items-center"><Swords className="h-3.5 w-3.5 mr-1.5" /> {tournament.game || 'Unknown Game'}</span>
-                        <span className="flex items-center"><Users className="h-3.5 w-3.5 mr-1.5" /> {tournament.participantCount} / {tournament.max_teams || '∞'} Registrations</span>
+                        <span className="flex items-center"><Users className="h-3.5 w-3.5 mr-1.5" /> {tournament.participantCount} / {tournament.max_teams || tournament.max_participants || '∞'} Registrations</span>
                     </div>
                 </div>
 
@@ -357,7 +360,7 @@ function TournamentHistoryCard({ tournament, isExpanded, onToggle }: { tournamen
 
                             {/* Match Tab Content */}
                             {activeTab === 'matches' && (
-                                <div className="w-full">
+                                <div className="w-full max-h-[500px] overflow-y-auto overflow-x-auto rounded-lg scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                                     <HistoryBracketView tournamentId={tournament.id} />
                                 </div>
                             )}

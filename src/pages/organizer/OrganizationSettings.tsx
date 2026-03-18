@@ -212,8 +212,11 @@ const OrganizationSettings: React.FC = () => {
 
             fetchOrganization();
         } catch (error: any) {
-            console.error('Error saving organization:', error);
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+            console.error('Error saving organization:', error, 'Response body:', error?.body);
+            const detail = error?.body?.error || error?.body?.detail || error?.body?.title
+                || (typeof error?.body === 'string' ? error.body : null)
+                || error.message;
+            toast({ title: 'Error', description: String(detail), variant: 'destructive' });
         } finally {
             setSaving(false);
         }
