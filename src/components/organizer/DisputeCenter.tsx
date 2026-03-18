@@ -426,7 +426,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       </div>
 
       {/* ─── Split Panel ─── */}
-      <div className="flex gap-4 min-h-[600px]">
+      <div className="flex gap-4" style={{ height: 'calc(100vh - 10rem)' }}>
         {/* Left: Dispute List */}
         <div className="w-[340px] shrink-0 flex flex-col bg-zinc-950/40 border border-zinc-800/50 rounded-2xl overflow-hidden">
           <div className="px-4 py-3 border-b border-zinc-800/50">
