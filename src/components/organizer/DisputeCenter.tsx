@@ -155,9 +155,9 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     }
   }, [tournamentId, toast]);
 
-  const fetchComments = useCallback(async (disputeId: string) => {
+  const fetchComments = useCallback(async (disputeId: string, silent = false) => {
     try {
-      setLoadingComments(true);
+      if (!silent) setLoadingComments(true);
       const data = await apiClient.get<any[]>(`/api/organizer/disputes/${disputeId}/comments`);
 
       console.log('Fetched comments data:', data);
@@ -320,7 +320,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
         attachment_url: attachmentUrl,
       });
 
-      await fetchComments(disputeId);
+      await fetchComments(disputeId, true);
       toast({ title: 'Comment added' });
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Failed to add comment';

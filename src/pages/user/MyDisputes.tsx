@@ -161,11 +161,11 @@ const MyDisputes = () => {
     fetchDisputes();
   }, [fetchDisputes]);
 
-  const fetchComments = useCallback(async (disputeId: string) => {
+  const fetchComments = useCallback(async (disputeId: string, silent = false) => {
     if (!user?.id) return;
 
     try {
-      setLoadingComments(true);
+      if (!silent) setLoadingComments(true);
       const data = await apiClient.get<any[]>(`/api/disputes/${disputeId}/comments`);
 
       const userIds = [...new Set((data || []).map((c: any) => c.user_id))];
@@ -254,7 +254,7 @@ const MyDisputes = () => {
 
       setCommentText('');
       setCommentAttachment(null);
-      fetchComments(disputeId);
+      fetchComments(disputeId, true);
       toast({ title: 'Comment added', description: 'Your comment has been posted.' });
     } catch (error: unknown) {
       console.error('Error adding comment:', error);
