@@ -508,7 +508,7 @@ const MyDisputes = () => {
               setCommentAttachment(null);
             }
           }}>
-            <DialogContent className="bg-[#12121a] border border-white/10 max-w-3xl max-h-[85vh] overflow-y-auto">
+            <DialogContent className="bg-[#12121a] border border-white/10 max-w-3xl max-h-[85vh] flex flex-col overflow-hidden p-0">
               {selectedDispute && (() => {
                 const meta = statusMeta[selectedDispute.status];
                 const Icon = meta.icon;
@@ -519,7 +519,8 @@ const MyDisputes = () => {
 
                 return (
                   <>
-                    <DialogHeader className="pb-0">
+                    {/* Header — fixed */}
+                    <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b border-white/10">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -527,6 +528,9 @@ const MyDisputes = () => {
                               <Icon className="w-3 h-3" />
                               {meta.label}
                             </Badge>
+                            {selectedDispute.reference_number && (
+                              <span className="text-xs font-mono text-white/40">#{selectedDispute.reference_number}</span>
+                            )}
                             <span className="text-xs text-white/50">{selectedDispute.tournament_name}</span>
                             {selectedDispute.tournament_slug && (
                               <button
@@ -538,9 +542,6 @@ const MyDisputes = () => {
                             )}
                           </div>
                           <DialogTitle className="text-white text-lg leading-snug">
-                            {selectedDispute.reference_number && (
-                              <span className="text-white/40 font-mono text-sm mr-2">#{selectedDispute.reference_number}</span>
-                            )}
                             {hasMatch
                               ? `${selectedDispute.match_team1_name} vs ${selectedDispute.match_team2_name}`
                               : selectedDispute.title}
@@ -554,11 +555,11 @@ const MyDisputes = () => {
                       </div>
                     </DialogHeader>
 
-                    <div className="space-y-4 mt-2">
+                    {/* Scrollable info section */}
+                    <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0">
                       {/* Match context panel */}
                       {hasMatch && (
                         <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
-                          {/* Score */}
                           <div className="px-5 py-4 flex items-center justify-between gap-4">
                             <div className="flex-1 text-left">
                               <p className="text-base font-semibold text-white">{selectedDispute.match_team1_name}</p>
@@ -581,7 +582,6 @@ const MyDisputes = () => {
                               <p className="text-xs text-white/40 mt-0.5">Team 2</p>
                             </div>
                           </div>
-                          {/* Match meta */}
                           <div className="px-5 py-2.5 border-t border-white/[0.07] bg-white/[0.02] flex items-center gap-4 flex-wrap">
                             {selectedDispute.match_number !== null && (
                               <div className="flex items-center gap-1.5 text-xs text-white/50">
@@ -590,24 +590,15 @@ const MyDisputes = () => {
                               </div>
                             )}
                             {selectedDispute.best_of !== null && (
-                              <div className="text-xs text-white/50">
-                                <span className="text-white/30">Series: </span>Best of {selectedDispute.best_of}
-                              </div>
-                            )}
-                            {selectedDispute.round_index !== null && (
-                              <div className="text-xs text-white/50">
-                                <span className="text-white/30">Round: </span>{selectedDispute.round_index + 1}
-                              </div>
+                              <span className="text-xs text-white/50">BO{selectedDispute.best_of}</span>
                             )}
                             {selectedDispute.bracket_type && (
-                              <div className="text-xs text-white/50">
-                                <span className="text-white/30">Stage: </span>{formatBracketType(selectedDispute.bracket_type)}
-                              </div>
+                              <span className="text-xs text-white/50">{formatBracketType(selectedDispute.bracket_type)}</span>
                             )}
                             {selectedDispute.scheduled_time && (
                               <div className="flex items-center gap-1.5 text-xs text-white/50">
                                 <Calendar className="w-3.5 h-3.5" />
-                                <span>{format(new Date(selectedDispute.scheduled_time), 'MMM d, yyyy · HH:mm')}</span>
+                                <span>{format(new Date(selectedDispute.scheduled_time), 'MMM d, HH:mm')}</span>
                               </div>
                             )}
                           </div>
@@ -645,120 +636,143 @@ const MyDisputes = () => {
                           <p className="text-sm text-white/80 whitespace-pre-wrap">{selectedDispute.resolution_notes}</p>
                         </div>
                       )}
+                    </div>
 
-                      {/* Comments section */}
-                      <div className="border-t border-white/10 pt-4">
-                        <label className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3 block">Conversation</label>
+                    {/* Chat section — fixed at bottom */}
+                    <div className="shrink-0 border-t border-white/10 flex flex-col max-h-[45%]">
+                      <div className="px-6 py-2.5 flex items-center gap-2 border-b border-white/[0.05]">
+                        <MessageSquare className="w-3.5 h-3.5 text-white/40" />
+                        <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">Conversation</span>
+                        {comments.length > 0 && (
+                          <span className="text-[10px] bg-white/10 text-white/50 px-1.5 py-0.5 rounded-full">{comments.length}</span>
+                        )}
+                      </div>
 
-                        <div className="space-y-2.5 mb-4 max-h-[280px] overflow-y-auto pr-1">
-                          {loadingComments ? (
-                            <div className="text-center text-white/40 text-sm py-6">
-                              <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2" />
-                              Loading...
-                            </div>
-                          ) : comments.length === 0 ? (
-                            <div className="text-white/40 text-sm text-center py-5 bg-white/[0.02] rounded-lg border border-white/[0.07]">
-                              No messages yet.{' '}
+                      <div className="flex-1 overflow-y-auto px-6 py-3 space-y-3 min-h-[80px] scrollbar-thin">
+                        {loadingComments ? (
+                          <div className="flex items-center justify-center py-6 text-white/40 text-sm">
+                            <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                            Loading...
+                          </div>
+                        ) : comments.length === 0 ? (
+                          <div className="text-center py-6">
+                            <MessageSquare className="w-8 h-8 text-white/10 mx-auto mb-2" />
+                            <p className="text-white/30 text-sm">
                               {selectedDispute.status === 'open' || selectedDispute.status === 'in_review'
-                                ? 'Add a comment below.'
-                                : 'This dispute is closed.'}
-                            </div>
-                          ) : (
-                            comments.map((comment) => {
-                              const isUser = comment.user_id === user?.id;
-                              return (
-                                <div
-                                  key={comment.id}
-                                  className={`p-3 rounded-lg border ${isUser ? 'bg-blue-500/8 border-blue-500/20 ml-6' : 'bg-white/[0.03] border-white/[0.07] mr-6'}`}
-                                >
-                                  <div className="flex items-baseline justify-between mb-1.5 gap-2">
-                                    <span className="text-xs font-semibold text-white">
-                                      {isUser ? 'You' : comment.user_name}
+                                ? 'No messages yet. Start the conversation below.'
+                                : 'No messages were exchanged.'}
+                            </p>
+                          </div>
+                        ) : (
+                          comments.map((comment) => {
+                            const isUser = comment.user_id === user?.id;
+                            return (
+                              <div key={comment.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
+                                  isUser
+                                    ? 'bg-rose-500/15 border border-rose-500/20 rounded-br-md'
+                                    : 'bg-white/[0.06] border border-white/[0.08] rounded-bl-md'
+                                }`}>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`text-[11px] font-semibold ${isUser ? 'text-rose-300' : 'text-blue-300'}`}>
+                                      {isUser ? 'You' : (comment.user_name || 'Staff')}
                                     </span>
-                                    <span className="text-xs text-white/30 shrink-0">
+                                    <span className="text-[10px] text-white/25">
                                       {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                                     </span>
                                   </div>
                                   {comment.comment && comment.comment.trim() && (
-                                    <p className="text-sm text-white/75 whitespace-pre-wrap">{comment.comment}</p>
+                                    <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">{comment.comment}</p>
                                   )}
                                   {comment.attachment_url && (
                                     <div className="mt-2">
                                       <img
                                         src={comment.attachment_url}
                                         alt="Attachment"
-                                        className="max-w-full max-h-48 rounded-lg border border-white/20 cursor-pointer hover:opacity-80 transition-opacity"
+                                        className="max-w-full max-h-40 rounded-lg border border-white/15 cursor-pointer hover:opacity-80 transition-opacity"
                                         onClick={() => setViewingImage(comment.attachment_url || null)}
                                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                       />
                                     </div>
                                   )}
                                 </div>
-                              );
-                            })
-                          )}
-                        </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
 
-                        {/* Comment composer — only for open/in_review */}
-                        {(selectedDispute.status === 'in_review' || selectedDispute.status === 'open') && (
-                          <div className="space-y-2">
-                            <Textarea
-                              value={commentText}
-                              onChange={(e) => setCommentText(e.target.value)}
-                              placeholder="Add a comment or provide additional evidence..."
-                              className="bg-white/5 border-white/20 text-white placeholder:text-white/30 min-h-[80px] text-sm"
-                            />
-                            <div className="flex items-center justify-between gap-2">
-                              <label className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/15 rounded-lg cursor-pointer hover:bg-white/10 transition-colors text-white/60 text-xs">
-                                <ImageIcon className="h-3.5 w-3.5" />
-                                <span>{commentAttachment ? commentAttachment.name : 'Attach image'}</span>
-                                {commentAttachment && (
+                      {/* Composer */}
+                      {(selectedDispute.status === 'in_review' || selectedDispute.status === 'open') ? (
+                        <div className="px-6 py-3 border-t border-white/[0.07] bg-white/[0.02]">
+                          <div className="flex items-end gap-2">
+                            <label className="shrink-0 p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 cursor-pointer transition-colors">
+                              <ImageIcon className="h-4 w-4" />
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    toast({ title: 'File too large', description: 'Max 5MB', variant: 'destructive' });
+                                    return;
+                                  }
+                                  if (!file.type.startsWith('image/')) {
+                                    toast({ title: 'Invalid file type', description: 'Images only', variant: 'destructive' });
+                                    return;
+                                  }
+                                  setCommentAttachment(file);
+                                }}
+                              />
+                            </label>
+                            <div className="flex-1 min-w-0">
+                              {commentAttachment && (
+                                <div className="flex items-center gap-2 mb-1.5 px-2 py-1 bg-white/5 rounded-lg text-xs text-white/50">
+                                  <ImageIcon className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{commentAttachment.name}</span>
                                   <button
                                     type="button"
-                                    onClick={(e) => { e.preventDefault(); setCommentAttachment(null); }}
-                                    className="text-white/40 hover:text-white ml-1"
+                                    onClick={() => setCommentAttachment(null)}
+                                    className="text-white/30 hover:text-white ml-auto shrink-0"
                                   >
                                     <X className="w-3 h-3" />
                                   </button>
-                                )}
-                                <input
-                                  type="file"
-                                  className="hidden"
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    if (file.size > 5 * 1024 * 1024) {
-                                      toast({ title: 'File too large', description: 'Max 5MB', variant: 'destructive' });
-                                      return;
-                                    }
-                                    if (!file.type.startsWith('image/')) {
-                                      toast({ title: 'Invalid file type', description: 'Images only', variant: 'destructive' });
-                                      return;
-                                    }
-                                    setCommentAttachment(file);
-                                  }}
-                                />
-                              </label>
-                              <Button
-                                onClick={() => handleAddComment(selectedDispute.id)}
-                                disabled={submittingComment || uploadingAttachment || (!commentText.trim() && !commentAttachment)}
-                                size="sm"
-                                className="bg-red-600 hover:bg-red-700 text-white"
-                              >
-                                <Send className="w-3.5 h-3.5 mr-1.5" />
-                                {uploadingAttachment ? 'Uploading...' : submittingComment ? 'Posting...' : 'Send'}
-                              </Button>
+                                </div>
+                              )}
+                              <Textarea
+                                value={commentText}
+                                onChange={(e) => setCommentText(e.target.value)}
+                                placeholder="Type a message..."
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/25 min-h-[40px] max-h-[100px] text-sm resize-none rounded-xl"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                    e.preventDefault();
+                                    handleAddComment(selectedDispute.id);
+                                  }
+                                }}
+                              />
                             </div>
+                            <Button
+                              onClick={() => handleAddComment(selectedDispute.id)}
+                              disabled={submittingComment || uploadingAttachment || (!commentText.trim() && !commentAttachment)}
+                              size="sm"
+                              className="shrink-0 bg-rose-600 hover:bg-rose-500 text-white h-10 w-10 p-0 rounded-xl"
+                            >
+                              {(uploadingAttachment || submittingComment)
+                                ? <RefreshCw className="w-4 h-4 animate-spin" />
+                                : <Send className="w-4 h-4" />}
+                            </Button>
                           </div>
-                        )}
-
-                        {(selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && (
-                          <div className="text-white/40 text-xs text-center py-3 bg-white/[0.02] rounded-lg border border-white/[0.07]">
-                            This dispute is {selectedDispute.status}. No further comments can be added.
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="px-6 py-3 border-t border-white/[0.07] bg-white/[0.02]">
+                          <p className="text-white/30 text-xs text-center">
+                            This dispute is {selectedDispute.status}. No further messages can be sent.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </>
                 );

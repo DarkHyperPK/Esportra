@@ -48,7 +48,7 @@ const Navbar = () => {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-      className={`${isManageBracketPage ? 'relative' : (isLandingPage ? 'fixed top-0 w-full' : 'sticky top-0')} z-[999]`}
+      className={`${isManageBracketPage ? 'relative' : (isLandingPage ? 'fixed top-0 w-full' : 'relative')} z-[999]`}
     >
       <div className="max-w-6xl mx-auto w-full px-4 py-3 sm:px-8">
         <div

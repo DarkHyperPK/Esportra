@@ -69,7 +69,7 @@ SEMANTIC
   #ef4444  Red                 text-red-500        Errors, destructive
   #3b82f6  Blue                text-blue-500       Info banners
   #dc2626  Red-600             text-red-600        Live indicators
-  #6366f1  Indigo              bg-indigo-600/5     Secondary accent
+ 
 
 TEXT
   #ffffff  White               text-white          Primary text

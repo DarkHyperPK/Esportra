@@ -72,7 +72,6 @@ interface DisputeDetailPanelProps {
   onResolutionNotesChange: (notes: string) => void;
   onMarkInReview: () => void;
   onResolve: () => void;
-  onAcceptReport: (reportId: string) => void;
   onCommentSubmit: (text: string, attachment: File | null) => void;
   onImageClick: (url: string) => void;
 }
@@ -83,7 +82,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
   assigneeId, assignmentOptions, assignmentLoading,
   resolutionNotes, resolutionStatus,
   onAssigneeChange, onAssign, onResolutionStatusChange, onResolutionNotesChange,
-  onMarkInReview, onResolve, onAcceptReport, onCommentSubmit, onImageClick,
+  onMarkInReview, onResolve, onCommentSubmit, onImageClick,
 }) => {
   const cfg = statusConfig[dispute.status];
   const StatusIcon = cfg.icon;
@@ -192,8 +191,6 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
             team2_id: dispute.match.team2_id,
             best_of: dispute.match.best_of,
           } : null}
-          canAcceptReport={canAssist && (dispute.status === 'open' || dispute.status === 'in_review')}
-          onAcceptReport={onAcceptReport}
           onImageClick={onImageClick}
         />
 

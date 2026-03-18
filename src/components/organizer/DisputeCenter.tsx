@@ -370,34 +370,6 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     }
   };
 
-  /** Accept a specific report — enforces its scores, resolves dispute, notifies both teams */
-  const handleAcceptReport = async (disputeId: string, reportId: string) => {
-    if (!resolutionNotes.trim()) {
-      toast({ title: 'Resolution notes required', description: 'Please add notes before accepting a report.', variant: 'destructive' });
-      return;
-    }
-    try {
-      await apiClient.post(`/api/organizer/disputes/${disputeId}/resolve`, {
-        status: 'resolved',
-        resolution_notes: resolutionNotes,
-        report_id: reportId,
-      });
-
-      await logDisputeAudit(disputeId, 'resolved', { resolution_notes: resolutionNotes, title: selectedDispute?.title });
-
-      toast({
-        title: 'Report accepted & dispute resolved',
-        description: 'Match scores have been enforced and both teams notified.',
-      });
-      setResolutionNotes('');
-      setSelectedDispute(null);
-      fetchDisputes();
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Failed to accept report';
-      toast({ title: 'Error', description: msg, variant: 'destructive' });
-    }
-  };
-
   const openDisputes = disputes.filter(d => d.status === 'open');
   const inReviewDisputes = disputes.filter(d => d.status === 'in_review');
   const resolvedDisputes = disputes.filter(d => d.status === 'resolved' || d.status === 'rejected');
@@ -553,7 +525,6 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
               onResolutionNotesChange={setResolutionNotes}
               onMarkInReview={() => handleUpdateStatus(selectedDispute.id, 'in_review')}
               onResolve={() => handleUpdateStatus(selectedDispute.id, resolutionStatus)}
-              onAcceptReport={(reportId) => handleAcceptReport(selectedDispute.id, reportId)}
               onCommentSubmit={(text, attachment) => handleAddCommentDirect(selectedDispute.id, text, attachment)}
               onImageClick={(url) => setViewingImage(url)}
             />

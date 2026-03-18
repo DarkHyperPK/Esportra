@@ -5,9 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, AlertTriangle, Loader2 } from 'lucide-react';
+import { Search, AlertTriangle, Loader2, X } from 'lucide-react';
 import TeamReportCard from './TeamReportCard';
-import QuickResolvePanel from './QuickResolvePanel';
 
 interface MatchCheckerProps {
   tournamentId: string;
@@ -76,6 +75,11 @@ const MatchChecker: React.FC<MatchCheckerProps> = ({ tournamentId, initialMatchI
     setActiveMatchId(trimmed);
   };
 
+  const handleClear = () => {
+    setMatchIdInput('');
+    setActiveMatchId(null);
+  };
+
   // Group reports by team
   const team1Reports = data?.reports.filter(r => r.reported_by_team_id === data.match.team1_id) || [];
   const team2Reports = data?.reports.filter(r => r.reported_by_team_id === data.match.team2_id) || [];
@@ -86,13 +90,23 @@ const MatchChecker: React.FC<MatchCheckerProps> = ({ tournamentId, initialMatchI
     <div className="space-y-4">
       {/* Search Bar */}
       <div className="flex gap-2">
-        <Input
-          value={matchIdInput}
-          onChange={(e) => setMatchIdInput(e.target.value)}
-          placeholder="Enter Match ID (UUID)"
-          className="bg-zinc-900 border-zinc-800 text-white font-mono text-sm"
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-        />
+        <div className="relative flex-1">
+          <Input
+            value={matchIdInput}
+            onChange={(e) => setMatchIdInput(e.target.value)}
+            placeholder="Enter Match ID (UUID)"
+            className="bg-zinc-900 border-zinc-800 text-white font-mono text-sm pr-8"
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          />
+          {(matchIdInput || activeMatchId) && (
+            <button
+              onClick={handleClear}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
         <Button onClick={handleSearch} disabled={!matchIdInput.trim() || isLoading} className="bg-emerald-600 hover:bg-emerald-700">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
         </Button>
@@ -151,16 +165,6 @@ const MatchChecker: React.FC<MatchCheckerProps> = ({ tournamentId, initialMatchI
               />
             ))}
           </div>
-
-          {/* Quick Resolve Actions */}
-          {data.reports.some(r => r.status === 'disputed') && (
-            <QuickResolvePanel
-              team1Name={data.match.team1_name}
-              team2Name={data.match.team2_name}
-              hasTeam1Reports={team1Reports.length > 0}
-              hasTeam2Reports={team2Reports.length > 0}
-            />
-          )}
         </div>
       )}
 
