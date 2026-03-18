@@ -393,35 +393,30 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             // Bracket Size remains undefined to allow auto-sizing based on participant count
 
+            // Parse config once — API may return it as JSON string
+            const stageConfig: any = typeof stage.config === 'string'
+                ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()
+                : (stage.config || {});
+
             if (format === 'single_elimination') {
                 generator = new SingleEliminationGenerator();
             } else if (format === 'double_elimination') {
                 generator = new DoubleEliminationGenerator();
             } else if (format === 'swiss') {
                 generator = new SwissGenerator();
-                // For Swiss, bracketSize is number of rounds.
-                // Check stage.config for swiss_rounds
-                const rawConfig = stage.config;
-                const swissConfig = typeof rawConfig === 'string' ? (() => { try { return JSON.parse(rawConfig); } catch { return rawConfig; } })() : rawConfig;
-                console.log('[StageManagement] Swiss config from stage:', swissConfig);
-                if (swissConfig && swissConfig.swiss_rounds) {
-                    bracketSize = Number(swissConfig.swiss_rounds);
+                console.log('[StageManagement] Swiss config from stage:', stageConfig);
+                if (stageConfig.swiss_rounds) {
+                    bracketSize = Number(stageConfig.swiss_rounds);
                 }
             } else if (format === 'round_robin') {
                 generator = new RoundRobinGenerator();
-                // For Round Robin, bracketSize is number of groups.
-                // Check stage.config for group_count, else calculate from capacity (fixed 4 teams per group)
-                const rawRrConfig = stage.config;
-                const rrConfig = typeof rawRrConfig === 'string' ? (() => { try { return JSON.parse(rawRrConfig); } catch { return rawRrConfig; } })() : rawRrConfig;
-                if (rrConfig && rrConfig.group_count) {
-                    bracketSize = Number(rrConfig.group_count);
+                if (stageConfig.group_count) {
+                    bracketSize = Number(stageConfig.group_count);
                 } else if (stage.capacity) {
-                    // Auto-calculate groups based on fixed 4-team groups
                     const groupSize = 4;
                     bracketSize = Math.ceil(Number(stage.capacity) / groupSize);
                     console.log('[StageManagement] Auto-calculated RR group_count:', bracketSize, 'from capacity:', stage.capacity);
                 } else {
-                    // Fallback based on team count
                     bracketSize = Math.ceil(teams.length / 4);
                     console.log('[StageManagement] Fallback RR group_count:', bracketSize, 'from teams:', teams.length);
                 }
@@ -430,12 +425,11 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 return;
             }
 
-            const bestOf = (stage as any).best_of || (typeof stage.config === 'string' ? (() => { try { return JSON.parse(stage.config); } catch { return {}; } })() : (stage.config || {}))?.best_of || 1;
+            const bestOf = (stage as any).best_of || stageConfig.best_of || 1;
             const advancementCount = stage.advancement_count || undefined;
 
             // Fetch tournament start date and scheduling config for auto-scheduling (Swiss/RR)
-            const parsedConfig = typeof stage.config === 'string' ? (() => { try { return JSON.parse(stage.config); } catch { return {}; } })() : (stage.config || {});
-            let enrichedConfig = { ...parsedConfig };
+            let enrichedConfig = { ...stageConfig };
             if (format === 'swiss' || format === 'round_robin') {
                 try {
                     const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
