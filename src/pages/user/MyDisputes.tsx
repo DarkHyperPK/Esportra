@@ -515,7 +515,7 @@ const MyDisputes = () => {
               setCommentAttachment(null);
             }
           }}>
-            <DialogContent className="bg-[#12121a] border border-white/10 max-w-3xl max-h-[85vh] flex flex-col overflow-hidden p-0">
+            <DialogContent className="bg-[#12121a] border border-white/10 max-w-3xl h-[92vh] max-h-[92vh] flex flex-col overflow-hidden p-0">
               {selectedDispute && (() => {
                 const meta = statusMeta[selectedDispute.status];
                 const Icon = meta.icon;
@@ -562,8 +562,8 @@ const MyDisputes = () => {
                       </div>
                     </DialogHeader>
 
-                    {/* Scrollable info section */}
-                    <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0">
+                    {/* Scrollable info section — capped so conversation always has room */}
+                    <div className="shrink-0 overflow-y-auto px-6 py-5 space-y-5 max-h-[42%] scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
                       {/* Match context panel */}
                       {hasMatch && (
                         <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
@@ -615,7 +615,7 @@ const MyDisputes = () => {
                       {/* Dispute description */}
                       <div>
                         <label className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2 block">Dispute Details</label>
-                        <div className="p-3 bg-white/[0.03] rounded-lg text-white/80 text-sm border border-white/[0.07]">
+                        <div className="p-4 bg-white/[0.04] rounded-xl text-white/85 text-sm border border-white/[0.08] leading-relaxed whitespace-pre-wrap min-h-[60px]">
                           {selectedDispute.description || 'No description provided.'}
                         </div>
                       </div>
@@ -645,8 +645,8 @@ const MyDisputes = () => {
                       )}
                     </div>
 
-                    {/* Chat section — fixed at bottom */}
-                    <div className="shrink-0 border-t border-white/10 flex flex-col max-h-[45%]">
+                    {/* Chat section — fills all remaining space with proper scroll */}
+                    <div className="flex-1 border-t border-white/10 flex flex-col min-h-0">
                       <div className="px-6 py-2.5 flex items-center gap-2 border-b border-white/[0.05]">
                         <MessageSquare className="w-3.5 h-3.5 text-white/40" />
                         <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">Conversation</span>
@@ -655,7 +655,7 @@ const MyDisputes = () => {
                         )}
                       </div>
 
-                      <div className="flex-1 overflow-y-auto px-6 py-3 space-y-3 min-h-[80px] scrollbar-thin">
+                      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 min-h-0 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
                         {loadingComments ? (
                           <div className="flex items-center justify-center py-6 text-white/40 text-sm">
                             <RefreshCw className="w-4 h-4 animate-spin mr-2" />

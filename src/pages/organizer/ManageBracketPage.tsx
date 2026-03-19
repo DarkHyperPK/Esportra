@@ -95,6 +95,10 @@ const ManageBracketPage = () => {
             if (stageData && typeof stageData.scheduling_config === 'string') {
                 try { stageData.scheduling_config = JSON.parse(stageData.scheduling_config); } catch { /* ignore */ }
             }
+            // Parse config if it's a JSON string
+            if (stageData && typeof stageData.config === 'string') {
+                try { stageData.config = JSON.parse(stageData.config); } catch { /* ignore */ }
+            }
 
             setStage(stageData);
 
@@ -362,6 +366,47 @@ const ManageBracketPage = () => {
     // Handle publishing bracket
     const handlePublishBracket = async () => {
         if (!versionId) return;
+
+        const selfPlayEnabled = stage?.scheduling_config?.self_play_enabled || false;
+
+        // Validate scheduling before publishing
+        try {
+            if (selfPlayEnabled) {
+                // Self-play mode: check that round deadlines are configured
+                const schedulingConfig = queryClient.getQueryData<any>(['stage-scheduling-config', stageId]);
+                const deadlines = schedulingConfig?.round_deadlines || schedulingConfig?.roundDeadlines || {};
+                const hasDeadlines = Object.keys(deadlines).length > 0;
+
+                if (!hasDeadlines) {
+                    toast({
+                        title: 'Round Deadlines Required',
+                        description: 'Self-play mode is enabled. Please configure round deadlines in the "Round Scheduling" tab before publishing.',
+                        variant: 'destructive'
+                    });
+                    return;
+                }
+            } else {
+                // Manual mode: check that matches have scheduled times
+                const graphData = queryClient.getQueryData<{ nodes: any[]; edges: any[] }>(['bracket-graph', versionId]);
+                const nodes = graphData?.nodes || [];
+                const firstRoundMatches = nodes.filter((n: any) =>
+                    n.round_index === 0 && n.team1_id && n.team2_id
+                );
+                const unscheduledCount = firstRoundMatches.filter((n: any) => !n.scheduled_time).length;
+
+                if (firstRoundMatches.length > 0 && unscheduledCount === firstRoundMatches.length) {
+                    toast({
+                        title: 'Match Scheduling Required',
+                        description: 'Please schedule match times in the "Round Scheduling" tab before publishing.',
+                        variant: 'destructive'
+                    });
+                    return;
+                }
+            }
+        } catch {
+            // If we can't check, allow publish (data might not be cached)
+        }
+
         setIsSubmitting(true);
         try {
             await apiClient.put(`/api/brackets/${versionId}`, { status: 'active', activated_at: new Date().toISOString() });

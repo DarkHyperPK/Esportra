@@ -10,7 +10,7 @@ import { ReadOnlyMatchCard } from './ReadOnlyMatchCard';
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Copy, Gamepad2, Swords } from 'lucide-react';
+import { Check, Copy, Gamepad2, Swords, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
@@ -216,6 +216,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     const [isProcessing, setIsProcessing] = useState(false);
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
+    const [isFinalizing, setIsFinalizing] = useState(false);
 
     // Use prop teamsMap if provided (from parent), otherwise use local state
     const teamsMap = propTeamsMap || localTeamsMap;
@@ -414,6 +415,22 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
         }
     }, [toast, onMatchUpdate]);
 
+    const isAllMatchesComplete = matches.length > 0 && matches.every(m => m.status === 'completed');
+
+    const handleFinalizeStage = async () => {
+        setIsFinalizing(true);
+        try {
+            await apiClient.patch(`/api/stages/${stageId}/status`, { status: 'completed' });
+            toast({ title: 'Stage Finalized', description: 'Stage marked as completed. You can now advance teams from the Stages tab.' });
+            onMatchUpdate?.();
+        } catch (error: any) {
+            console.error('[GroupStageView] Error finalizing stage:', error);
+            toast({ title: 'Error', description: error.message || 'Failed to finalize stage', variant: 'destructive' });
+        } finally {
+            setIsFinalizing(false);
+        }
+    };
+
     const handleAutoAdvanceByes = async () => {
         if (!versionId) return;
 
@@ -462,6 +479,25 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                     >
                         Auto Advance Byes
                     </Button>
+                    {isAllMatchesComplete && stage?.status !== 'completed' && (
+                        <Button
+                            onClick={handleFinalizeStage}
+                            disabled={isFinalizing}
+                            className="bg-green-600 hover:bg-green-500 text-white font-semibold"
+                        >
+                            {isFinalizing ? (
+                                <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Finalizing...</>
+                            ) : (
+                                <><Check className="w-4 h-4 mr-2" />Finalize Stage</>
+                            )}
+                        </Button>
+                    )}
+                    {stage?.status === 'completed' && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full">
+                            <Check className="w-4 h-4 text-green-500" />
+                            <span className="text-green-400 font-bold uppercase tracking-wider text-sm">Stage Finalized</span>
+                        </div>
+                    )}
                 </div>
             )}
 

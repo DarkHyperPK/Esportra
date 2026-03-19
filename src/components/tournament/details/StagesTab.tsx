@@ -36,9 +36,17 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId }) => {
     const { data: stages, isLoading } = useQuery({
         queryKey: ['tournament-stages-public', tournamentId],
         queryFn: async () => {
-            return await apiClient.get<Stage[]>(
+            const raw = await apiClient.get<Stage[]>(
                 `/api/tournaments/${tournamentId}/stages`
             );
+            // Parse config if API returns it as JSON string
+            const stages = Array.isArray(raw) ? raw : (raw as any)?.items || [];
+            return stages.map((s: any) => ({
+                ...s,
+                config: typeof s.config === 'string'
+                    ? (() => { try { return JSON.parse(s.config); } catch { return s.config; } })()
+                    : (s.config || null),
+            }));
         }
     });
 

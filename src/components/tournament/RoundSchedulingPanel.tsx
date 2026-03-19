@@ -351,53 +351,6 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
         }
     };
 
-    const handleApplySchedule = async () => {
-        setSaving(true);
-        try {
-            if (selfPlayEnabled) {
-                const newDeadlines: Record<string, string> = { ...(schedulingConfig?.round_deadlines || {}) };
-                for (const [key, _] of matchesByConfigKey) {
-                    const config = roundConfigs.get(key);
-                    const roundIndex = config?.roundIndex ?? 0;
-                    const deadline = config?.deadline || getDefaultDeadline(roundIndex);
-                    newDeadlines[key] = deadline;
-                }
-
-                await updateConfig.mutateAsync({
-                    ...(schedulingConfig || {}),
-                    round_deadlines: newDeadlines
-                } as any);
-
-                onScheduleApplied?.();
-
-            } else {
-                const updates: Promise<void>[] = [];
-                for (const [key, keyMatches] of matchesByConfigKey) {
-                    const config = roundConfigs.get(key);
-                    const startTime = config?.startTime;
-
-                    if (startTime) {
-                        for (const match of keyMatches) {
-                            updates.push(
-                                updateMatchTime.mutateAsync({
-                                    matchId: match.id,
-                                    scheduledTime: startTime
-                                })
-                            );
-                        }
-                    }
-                }
-                await Promise.all(updates);
-                onScheduleApplied?.();
-            }
-
-        } catch (error) {
-            console.error('Failed to apply schedule:', error);
-        } finally {
-            setSaving(false);
-        }
-    };
-
     // Shared render function for a single round row (used by both DE sections and flat list)
     const renderRoundRow = (
         roundIndex: number,
@@ -852,25 +805,6 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                         </p>
                     </div>
                 )}
-
-                {/* Apply Button */}
-                <Button
-                    onClick={handleApplySchedule}
-                    disabled={saving || matchesByConfigKey.size === 0}
-                    className="w-full h-14 bg-gradient-to-r from-esports-accent to-esports-blue hover:opacity-90 text-white font-semibold rounded-2xl transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
-                >
-                    {saving ? (
-                        <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Applying Schedule...
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <Check className="w-5 h-5" />
-                            Apply Schedule to All Rounds
-                        </div>
-                    )}
-                </Button>
             </CardContent>
         </Card>
     );

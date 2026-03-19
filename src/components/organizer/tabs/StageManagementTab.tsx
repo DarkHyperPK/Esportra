@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Layers, Plus, Users, Trophy, Lock, Unlock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, Eye, RefreshCw, Play, CheckCircle2 } from 'lucide-react';
+import { Layers, Plus, Users, Trophy, Lock, Unlock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, Eye, RefreshCw, Play, CheckCircle2, Check } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
@@ -305,12 +305,18 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             // Get teams/participants for this stage
             let teams: Array<{ id: string; name: string; logo_url?: string | null }> = [];
 
+            // Check stage config for check-in filtering
+            const stageConf = typeof stage.config === 'string'
+                ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()
+                : (stage.config || {});
+            const useCheckInOnly = stage.stage_order === 1 && !!stageConf.use_check_in_only;
+
             if (stage.stage_order === 1) {
-                // First stage: Get all registered participants from tournament_participants
+                // First stage: Get participants from tournament_participants
                 console.log('[StageManagement] Fetching teams for stage 1, tournamentId:', tournamentId);
 
-                // Use a simpler join syntax that is more likely to work
-                const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants?status=checked_in`).catch(() => null);
+                const statusFilter = useCheckInOnly ? '?status=checked_in' : '';
+                const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants${statusFilter}`).catch(() => null);
 
                 if (!participants) {
                     console.error('[StageManagement] Error fetching participants');
@@ -360,8 +366,10 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             if (teams.length < 2) {
                 toast({
-                    title: 'Check-in Required',
-                    description: 'Need at least 2 checked-in teams/participants to generate matches for this stage. Please ensure participants have checked in.',
+                    title: 'Not Enough Teams',
+                    description: useCheckInOnly
+                        ? 'Need at least 2 checked-in teams to generate matches. Ensure participants have checked in.'
+                        : 'Need at least 2 registered teams to generate matches.',
                     variant: 'destructive'
                 });
                 return;
@@ -557,7 +565,31 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
     const [advancingStages, setAdvancingStages] = useState<Record<string, boolean>>({});
 
+    // On mount, check which stages have already been advanced
+    // by checking if the next stage has enrolled participants
+    useEffect(() => {
+        const checkAdvancedStages = async () => {
+            const result: Record<string, boolean> = {};
+            for (let i = 0; i < stages.length - 1; i++) {
+                const nextStage = stages[i + 1];
+                if (!nextStage) continue;
+                try {
+                    const participants = await apiClient.get<any[]>(`/api/stages/${nextStage.id}/participants`).catch(() => []);
+                    const list = Array.isArray(participants) ? participants : (participants as any)?.items || [];
+                    result[stages[i].id] = list.length > 0;
+                } catch {
+                    result[stages[i].id] = false;
+                }
+            }
+            setAdvancedStages(prev => ({ ...prev, ...result }));
+        };
+        if (stages.length > 1) {
+            checkAdvancedStages();
+        }
+    }, [stages]);
+
     const handleAdvanceTeams = async (stageId: string) => {
+        if (advancedStages[stageId] || advancingStages[stageId]) return;
         setAdvancingStages(prev => ({ ...prev, [stageId]: true }));
         try {
             const service = new StageCompletionService();
@@ -808,26 +840,33 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                 <span className="text-white font-bold">{tournamentWinner.name}</span>
                                             </div>
                                         )}
-                                        {index < stages.length - 1 && !advancedStages[stage.id] && (
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
-                                                onClick={() => handleAdvanceTeams(stage.id)}
-                                                disabled={stage.status !== 'completed' || advancingStages[stage.id]}
-                                            >
-                                                {advancingStages[stage.id] ? (
-                                                    <>
-                                                        <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
-                                                        Advancing...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <ArrowRight className="w-3.5 h-3.5 mr-2" />
-                                                        Advance Teams
-                                                    </>
-                                                )}
-                                            </Button>
+                                        {index < stages.length - 1 && (
+                                            advancedStages[stage.id] ? (
+                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+                                                    <Check className="w-3.5 h-3.5 text-green-500" />
+                                                    <span className="text-green-400 text-xs font-bold uppercase tracking-wider">Teams Advanced</span>
+                                                </div>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
+                                                    onClick={() => handleAdvanceTeams(stage.id)}
+                                                    disabled={stage.status !== 'completed' || advancingStages[stage.id]}
+                                                >
+                                                    {advancingStages[stage.id] ? (
+                                                        <>
+                                                            <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
+                                                            Advancing...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <ArrowRight className="w-3.5 h-3.5 mr-2" />
+                                                            Advance Teams
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )
                                         )}
 
                                     </div>

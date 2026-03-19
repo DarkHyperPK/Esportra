@@ -195,6 +195,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
     const [isProcessing, setIsProcessing] = useState(false);
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
+    const [isFinalizing, setIsFinalizing] = useState(false);
 
     // Helpers
     const getRawId = (id: string | number) => String(id).replace('db-', '');
@@ -230,7 +231,10 @@ export const SwissView: React.FC<SwissViewProps> = ({
             ...matches.map(m => m.team2?.id).filter(Boolean)
         ] as string[]).size;
 
-    const configuredMaxRounds = stage?.config?.swiss_rounds ? parseInt(stage.config.swiss_rounds) : null;
+    const parsedStageConfig = stage?.config
+        ? (typeof stage.config === 'string' ? (() => { try { return JSON.parse(stage.config); } catch { return stage.config; } })() : stage.config)
+        : null;
+    const configuredMaxRounds = parsedStageConfig?.swiss_rounds ? parseInt(parsedStageConfig.swiss_rounds) : null;
     const maxRounds = configuredMaxRounds || (totalTeams > 0 ? Math.ceil(Math.log2(totalTeams)) : 99);
 
     // Debug logging
@@ -244,6 +248,8 @@ export const SwissView: React.FC<SwissViewProps> = ({
     });
 
     const isMaxRoundsReached = currentRound >= maxRounds;
+    const isAllMatchesComplete = matches.length > 0 && matches.every(m => m.status === 'completed');
+    const canFinalizeStage = isMaxRoundsReached && isAllMatchesComplete;
 
     // Swiss Standard Thresholds
     // Typically: For N rounds, win threshold is ceil(N/2) + 1?
@@ -254,6 +260,21 @@ export const SwissView: React.FC<SwissViewProps> = ({
     // 5 Rounds -> 3 wins qualify, 3 losses elim.
     // Formula: ceil((maxRounds + 1) / 2)
     const threshold = Math.ceil((maxRounds + 1) / 2);
+
+    // Finalize stage — marks stage as 'completed' so advancement button unlocks
+    const handleFinalizeStage = async () => {
+        setIsFinalizing(true);
+        try {
+            await apiClient.patch(`/api/stages/${stageId}/status`, { status: 'completed' });
+            toast({ title: 'Stage Finalized', description: 'Stage marked as completed. You can now advance teams from the Stages tab.' });
+            onMatchUpdate?.();
+        } catch (error: any) {
+            console.error('[SwissView] Error finalizing stage:', error);
+            toast({ title: 'Error', description: error.message || 'Failed to finalize stage', variant: 'destructive' });
+        } finally {
+            setIsFinalizing(false);
+        }
+    };
 
 
     // Handlers
@@ -464,14 +485,14 @@ export const SwissView: React.FC<SwissViewProps> = ({
                     </div>
 
                     {/* Center: Stage Complete Indicator */}
-                    {isMaxRoundsReached && (
-                        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full animate-in fade-in zoom-in duration-300">
-                            <Check className="w-4 h-4 text-green-500" />
-                            <span className="text-green-400 font-bold uppercase tracking-wider text-sm">Stage Completed</span>
+                    {isMaxRoundsReached && !canFinalizeStage && (
+                        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full animate-in fade-in zoom-in duration-300">
+                            <Check className="w-4 h-4 text-amber-500" />
+                            <span className="text-amber-400 font-bold uppercase tracking-wider text-sm">All Rounds Generated</span>
                         </div>
                     )}
 
-                    {/* Right: Generate Round (Hidden if complete) */}
+                    {/* Right: Generate Round or Finalize Stage */}
                     <div>
                         {!isMaxRoundsReached && (
                             <Button
@@ -482,6 +503,25 @@ export const SwissView: React.FC<SwissViewProps> = ({
                                 <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
                                 Generate Round {currentRound + 1}
                             </Button>
+                        )}
+                        {canFinalizeStage && stage?.status !== 'completed' && (
+                            <Button
+                                onClick={handleFinalizeStage}
+                                disabled={isFinalizing}
+                                className="bg-green-600 hover:bg-green-500 text-white font-semibold"
+                            >
+                                {isFinalizing ? (
+                                    <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Finalizing...</>
+                                ) : (
+                                    <><Check className="w-4 h-4 mr-2" />Finalize Stage</>
+                                )}
+                            </Button>
+                        )}
+                        {stage?.status === 'completed' && (
+                            <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full">
+                                <Check className="w-4 h-4 text-green-500" />
+                                <span className="text-green-400 font-bold uppercase tracking-wider text-sm">Stage Finalized</span>
+                            </div>
                         )}
                     </div>
                 </div>
