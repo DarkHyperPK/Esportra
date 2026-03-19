@@ -839,8 +839,16 @@ const CaptainMatchPage = () => {
                                         </div>
                                     </div>
 
+                                    {/* Waiting for opponent */}
+                                    {(!activeMatch.team2?.id) && activeMatch.status === 'pending' && (
+                                        <div className="bg-zinc-900/60 border border-white/5 rounded-2xl p-5 text-center">
+                                            <p className="text-zinc-400 text-sm">⏳ Waiting for your opponent to be determined</p>
+                                            <p className="text-zinc-500 text-xs mt-1">Your next match will begin once the other bracket matches are completed.</p>
+                                        </div>
+                                    )}
+
                                     {/* Check-in Card */}
-                                    {effectiveScheduledTime && activeMatch.status === 'pending' && (
+                                    {effectiveScheduledTime && activeMatch.status === 'pending' && activeMatch.team2?.id && (
                                         <MatchCheckinCard
                                             matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                             team1Id={activeMatch.team1?.id}
@@ -860,7 +868,7 @@ const CaptainMatchPage = () => {
                                     )}
 
                                     {/* Time Proposal Card */}
-                                    {((!effectiveScheduledTime) && (schedulingConfig?.self_play_enabled && activeMatch.status === 'pending')) && (
+                                    {((!effectiveScheduledTime) && (schedulingConfig?.self_play_enabled && activeMatch.status === 'pending') && activeMatch.team2?.id) && (
                                         (() => {
                                             const roundIndex = activeMatch.round - 1;
                                             const configDeadline = schedulingConfig?.round_deadlines?.[String(roundIndex)];

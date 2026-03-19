@@ -121,6 +121,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const [roundConfigs, setRoundConfigs] = useState<Map<string, RoundConfig>>(new Map());
     const [matchEdits, setMatchEdits] = useState<Map<string, string>>(new Map());
     const [saving, setSaving] = useState(false);
+    const [savedRoundKeys, setSavedRoundKeys] = useState<Set<string>>(new Set());
 
     // Config key helper: for DE, scope by bracket type; for others, just roundIndex
     const configKey = (roundIndex: number, bracketKey?: string | null): string =>
@@ -230,7 +231,15 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
             });
 
             setRoundConfigs(prev => {
-                if (prev.size === 0) return newConfigs;
+                if (prev.size === 0) {
+                    // Mark rounds that already have server data as saved
+                    const alreadySaved = new Set<string>();
+                    newConfigs.forEach((cfg, key) => {
+                        if (cfg.deadline || cfg.startTime) alreadySaved.add(key);
+                    });
+                    setSavedRoundKeys(alreadySaved);
+                    return newConfigs;
+                }
                 return prev;
             });
         }
@@ -272,6 +281,12 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     };
 
     const updateRoundConfig = (key: string, roundIndex: number, field: 'deadline' | 'startTime', value: string) => {
+        setSavedRoundKeys(prev => {
+            if (!prev.has(key)) return prev;
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+        });
         setRoundConfigs(prev => {
             const newMap = new Map(prev);
             const existing = newMap.get(key) || {
@@ -313,8 +328,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 );
                 await Promise.all(updates);
             }
+            setSavedRoundKeys(prev => new Set(prev).add(key));
         } catch (error) {
-            console.error('[RoundScheduling] Failed to save round:', error);
         } finally {
             setSaving(false);
         }
@@ -445,10 +460,12 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                             size="sm"
                                             variant="secondary"
                                             onClick={() => handleSaveRound(cfgKey, roundIndex)}
-                                            disabled={saving}
-                                            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"
+                                            disabled={saving || savedRoundKeys.has(cfgKey)}
+                                            className={savedRoundKeys.has(cfgKey)
+                                                ? "bg-emerald-500/5 text-emerald-400/60 border border-emerald-500/10 rounded-xl px-4 cursor-default"
+                                                : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"}
                                         >
-                                            {saving ? '...' : 'Save'}
+                                            {saving ? '...' : savedRoundKeys.has(cfgKey) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
                                         </Button>
                                     </div>
                                     <p className="text-xs text-gray-500">
@@ -515,10 +532,12 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                         size="sm"
                                                         variant="secondary"
                                                         onClick={() => handleSaveRound(cfgKey, roundIndex)}
-                                                        disabled={saving}
-                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"
+                                                        disabled={saving || savedRoundKeys.has(cfgKey)}
+                                                        className={savedRoundKeys.has(cfgKey)
+                                                            ? "bg-emerald-500/5 text-emerald-400/60 border border-emerald-500/10 rounded-xl px-4 cursor-default"
+                                                            : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"}
                                                     >
-                                                        {saving ? '...' : 'Save'}
+                                                        {saving ? '...' : savedRoundKeys.has(cfgKey) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
                                                     </Button>
                                                 </div>
                                             </div>
