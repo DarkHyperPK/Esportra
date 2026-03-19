@@ -298,7 +298,7 @@ const TournamentDetails = () => {
         name: t.name,
         game: t.game,
         date: t.start_date ? new Date(t.start_date).toLocaleDateString('en-CA') : '',
-        time: t.start_date ? new Date(t.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
+        time: t.start_date ? new Date(t.start_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' }) : '',
         venue: t.venue_name || '',
         is_online: !t.venue_id,
         max_participants: t.max_teams,
