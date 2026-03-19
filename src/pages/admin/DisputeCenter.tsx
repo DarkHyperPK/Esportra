@@ -16,6 +16,7 @@ import { HubPaths } from '@/lib/signalrClient';
 
 type Dispute = {
   id: string;
+  reference_number?: string | null;
   tournament_id: string | null;
   title: string;
   description: string | null;
@@ -387,6 +388,9 @@ const DisputeCenter: React.FC = () => {
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
+                        {d.reference_number && (
+                          <span className="text-rose-400/70 font-mono text-[11px] shrink-0">{d.reference_number}</span>
+                        )}
                         <h3 className="text-white text-sm font-medium truncate flex-1">{d.title}</h3>
                         <Badge className={`${statusMeta[d.status].className} text-[10px] px-1.5 py-0`}>
                           <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
@@ -414,6 +418,9 @@ const DisputeCenter: React.FC = () => {
               <>
                 <div className="p-4 border-b border-white/10">
                   <div className="flex items-center gap-2 mb-1">
+                    {selectedDispute.reference_number && (
+                      <span className="text-rose-400/70 font-mono text-sm shrink-0">{selectedDispute.reference_number}</span>
+                    )}
                     <h2 className="text-white text-lg font-semibold flex-1">{selectedDispute.title}</h2>
                     <Badge className={statusMeta[selectedDispute.status].className}>
                       {statusMeta[selectedDispute.status].label}
