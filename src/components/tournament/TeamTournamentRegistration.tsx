@@ -39,14 +39,21 @@ interface TeamTournamentRegistrationProps {
     team_size?: number;
     registration_deadline?: string;
     description?: string;
-    settings?: any;
+    settings?: Record<string, unknown>;
   };
 
   onRegistrationComplete?: () => void;
   onCancel?: () => void;
 }
 
-type TeamRow = { id: string; name: string; games: any; owner_id: string };
+// API response shape from /api/teams — games field is a JSONB column with variable structure
+type TeamRow = { id: string; name: string; games: Record<string, unknown> | null; owner_id: string };
+
+// API response types for roster/member data from .NET endpoints
+interface RosterRow { id: string; game?: string; team_size?: number; name?: string }
+interface RosterMember { user_id: string; username?: string; full_name?: string; avatar_url?: string; is_starter?: boolean; profiles?: Record<string, unknown> }
+interface RiotAccount { user_id: string; game_name?: string; tag_line?: string }
+interface RegistrationStatus { tournament_id: string; [key: string]: unknown }
 
 const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   tournament,
@@ -58,7 +65,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
-  const [existingRegistration, setExistingRegistration] = useState<any>(null);
+  const [existingRegistration, setExistingRegistration] = useState<RegistrationStatus | null>(null);
   const [fetchingTeams, setFetchingTeams] = useState(true);
 
   // Team selection flow
@@ -107,10 +114,10 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     const fetchRosters = async () => {
       if (!selectedTeamId) { setTeamRosters([]); setSelectedRosterId(''); return; }
       try {
-        const data = await apiClient.get<any[]>(
+        const data = await apiClient.get<RosterRow[]>(
           `/api/teams/${selectedTeamId}/rosters`
         );
-        const filtered = (data || []).filter((r: any) => {
+        const filtered = (data || []).filter((r: RosterRow) => {
         const byGame = !tournament.game || r.game?.toLowerCase() === tournament.game?.toLowerCase();
         // Roster team_size should be >= coreMembers (filter is lenient, actual validation at registration)
         const bySize = !coreMembers || Number(r.team_size) >= coreMembers;
@@ -144,15 +151,15 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         const team = captainTeams.find(t => t.id === selectedTeamId);
         const captainId = team?.owner_id;
 
-        const captainProfile = await apiClient.get<any>(
+        const captainProfile = await apiClient.get<Record<string, unknown>>(
           `/api/profiles/${captainId}`
         );
 
         // Fetch riot accounts for verification status AND IDs
-        const allUserIds = [captainId, ...(members || []).map((m: any) => m.user_id)].filter(Boolean);
-        let verifiedAccounts: any[] = [];
+        const allUserIds = [captainId, ...(members || []).map((m: RosterMember) => m.user_id)].filter(Boolean);
+        let verifiedAccounts: RiotAccount[] = [];
         try {
-          verifiedAccounts = await apiClient.get<any[]>(
+          verifiedAccounts = await apiClient.get<RiotAccount[]>(
             `/api/profiles/riot-accounts?userIds=${allUserIds.join(',')}`
           ) || [];
         } catch { /* riot accounts optional */ }
@@ -175,7 +182,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
             is_verified: accountMap.has(captainId),
             riot_tag_fallback: typeof accountMap.get(captainId) === 'string' ? accountMap.get(captainId) : null
           },
-          ...(members || []).filter((m: any) => m.user_id !== captainId).map((m: any) => ({
+          ...(members || []).filter((m: RosterMember) => m.user_id !== captainId).map((m: RosterMember) => ({
             ...m,
             profile: m.profiles || { username: m.username, full_name: m.full_name, avatar_url: m.avatar_url },
             is_verified: accountMap.has(m.user_id),
@@ -197,9 +204,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const checkExistingRegistration = async () => {
     if (!user) return;
     try {
-      let data: any = null;
+      let data: RegistrationStatus | RegistrationStatus[] | null = null;
       try {
-        data = await apiClient.get<any>(
+        data = await apiClient.get<RegistrationStatus | RegistrationStatus[]>(
           `/api/tournaments/me/registration-status?tournamentId=${tournament.id}`
         );
       } catch { /* no existing registration */ }
@@ -207,7 +214,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         // Already registered; simply notify parent so the dialog can close
         const registrations = Array.isArray(data) ? data : [data];
         const isRegisteredForThis = registrations.some(
-          (r: any) => r.tournament_id === tournament.id
+          (r: RegistrationStatus) => r.tournament_id === tournament.id
         );
         if (isRegisteredForThis) {
           onRegistrationComplete?.();
@@ -263,7 +270,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         const tournamentGameNormalized = normalize(tournament.game || '');
 
         // Check if team has a roster matching the tournament's game
-        const hasMatchingRoster = (rosters || []).some((r: any) =>
+        const hasMatchingRoster = (rosters || []).some((r: RosterRow) =>
           normalize(r.game) === tournamentGameNormalized
         );
 
@@ -277,7 +284,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
         // Check if matching roster has enough members
         if (hasMatchingRoster && tournament.game) {
-          const matchingRoster = (rosters || []).find((r: any) =>
+          const matchingRoster = (rosters || []).find((r: RosterRow) =>
             normalize(r.game) === tournamentGameNormalized
           );
 
@@ -323,7 +330,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     }
   };
 
-  const formatDate = (raw: any) => {
+  const formatDate = (raw: string | null | undefined) => {
     try {
       // Prefer ISO datetime
       if (raw) {
@@ -335,9 +342,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         }
       }
       // Fallback: try date + time fields if provided by upstream
-      const anyT = tournament as any;
-      if (anyT?.date) {
-        const combined = anyT.time ? `${anyT.date}T${anyT.time}` : anyT.date;
+      const tObj = tournament as Record<string, unknown>;
+      if (tObj?.date) {
+        const combined = tObj.time ? `${tObj.date}T${tObj.time}` : String(tObj.date);
         const d2 = new Date(combined);
         if (!isNaN(d2.getTime())) {
           const dateStr = d2.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -345,7 +352,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
           return `${dateStr} at ${timeStr}`;
         }
         // If still invalid, show as-is date string
-        return String(anyT.date);
+        return String(tObj.date);
       }
       return '—';
     } catch {
@@ -369,10 +376,10 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       );
 
       const memberStatusMap = new Map<string, boolean>();
-      (rosterMembers || []).forEach((r: any) => memberStatusMap.set(r.user_id, r.is_starter ?? true));
+      (rosterMembers || []).forEach((r: RosterMember) => memberStatusMap.set(r.user_id, r.is_starter ?? true));
 
       // distinct IDs
-      let memberIds = Array.from(new Set(((rosterMembers || []).map((r: any) => r.user_id))));
+      let memberIds = Array.from(new Set(((rosterMembers || []).map((r: RosterMember) => r.user_id))));
 
       // Sort: Starters first, then Bench
       memberIds.sort((a, b) => {
@@ -494,15 +501,16 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
             registrationType: 'team',
             game: tournament.game,
             startDate: tournament.start_date ? new Date(tournament.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
-            endDate: (tournament as any).end_date ? new Date((tournament as any).end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+            endDate: (tournament as Record<string, unknown>).end_date ? new Date(String((tournament as Record<string, unknown>).end_date)).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
             tournamentUrl: `${window.location.origin}/tournaments/${tournament.id}`,
           },
         }).catch((err) => console.warn('[TeamRegistration] Email send failed:', err));
       }
 
       onRegistrationComplete?.();
-    } catch (e: any) {
-      toast({ title: 'Registration Failed', description: e.message || 'Please try again.', variant: 'destructive' });
+    } catch (e: unknown) {
+      const err = e as Error;
+      toast({ title: 'Registration Failed', description: err.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

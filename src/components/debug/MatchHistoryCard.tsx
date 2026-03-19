@@ -19,19 +19,23 @@ import {
     Area
 } from 'recharts';
 
+// External Valorant/Riot API match data — deeply nested, schema varies by game version.
+// Using `any` intentionally as full typing would require 200+ interface definitions
+// for a debug-only component consuming third-party API responses.
 interface MatchHistoryCardProps {
-    matchData: any;
+    matchData: Record<string, unknown>;
     targetPuuid: string;
 }
 
 const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPuuid }) => {
-    const [agentData, setAgentData] = useState<any>(null);
-    const [mapData, setMapData] = useState<any>(null);
+    // Riot API agent/map/weapon metadata — variable structure per game version
+    const [agentData, setAgentData] = useState<Record<string, unknown> | null>(null);
+    const [mapData, setMapData] = useState<Record<string, unknown> | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
     const [activeTab, setActiveTab] = useState<'scoreboard' | 'economy' | 'rounds'>('scoreboard');
     const [selectedRound, setSelectedRound] = useState(0);
-    const [allAgents, setAllAgents] = useState<Record<string, any>>({});
-    const [weapons, setWeapons] = useState<Record<string, any>>({});
+    const [allAgents, setAllAgents] = useState<Record<string, Record<string, unknown>>>({});
+    const [weapons, setWeapons] = useState<Record<string, Record<string, unknown>>>({});
 
     // Parse Core Player Info
     const player = matchData.players.find((p: any) => p.puuid === targetPuuid);
@@ -189,7 +193,13 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
             });
     }, [player?.characterId, matchData.matchInfo.mapId]);
 
-    if (!player) return null;
+    if (!player) {
+        return (
+            <div className="bg-[#0a0a0c] border border-white/5 rounded-xl p-4 text-center">
+                <p className="text-zinc-400 text-sm">Player data not found in this match.</p>
+            </div>
+        );
+    }
 
     // Coordinate Mapping logic
     const mapToPixels = (x: number, y: number) => {
