@@ -19,7 +19,7 @@ const DisputeIdStrip: React.FC<DisputeIdStripProps> = ({ disputeId, referenceNum
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 rounded-lg bg-zinc-900/80 border border-zinc-800/60">
+    <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 rounded-xl bg-[#0a0a0c] border border-white/[0.06]">
       {referenceNumber && <IdChip label="Ref" value={referenceNumber} onCopy={() => copy(referenceNumber, 'Reference #')} highlight />}
       <IdChip label="Dispute" value={disputeId} onCopy={() => copy(disputeId, 'Dispute ID')} />
       {matchId && <IdChip label="Match" value={matchId} onCopy={() => copy(matchId, 'Match ID')} />}
@@ -33,12 +33,12 @@ const DisputeIdStrip: React.FC<DisputeIdStripProps> = ({ disputeId, referenceNum
 const IdChip: React.FC<{ label: string; value: string; onCopy: () => void; highlight?: boolean }> = ({ label, value, onCopy, highlight }) => (
   <div className="flex items-center gap-1.5 group">
     <span className={`text-[10px] uppercase tracking-wider font-semibold ${highlight ? 'text-rose-400' : 'text-zinc-500'}`}>{label}</span>
-    <code className={`text-[11px] font-mono px-1.5 py-0.5 rounded max-w-[160px] truncate ${highlight ? 'text-rose-300 bg-rose-500/10' : 'text-zinc-300 bg-zinc-800/80'}`}>
+    <code className={`text-[11px] font-mono px-1.5 py-0.5 rounded max-w-[160px] truncate ${highlight ? 'text-rose-300 bg-rose-500/10' : 'text-zinc-300 bg-white/[0.04]'}`}>
       {value}
     </code>
     <button
       onClick={onCopy}
-      className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-white text-zinc-500"
+      className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-rose-400 text-zinc-500"
     >
       <Copy className="w-3 h-3" />
     </button>

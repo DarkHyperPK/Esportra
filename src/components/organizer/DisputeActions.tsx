@@ -43,10 +43,10 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
       <div className="flex items-center gap-3">
         <span className="text-xs uppercase tracking-wider text-zinc-500 font-bold shrink-0">Assign to</span>
         <Select value={assigneeId || ''} onValueChange={onAssigneeChange} disabled={isClosed}>
-          <SelectTrigger className="bg-zinc-900/60 border-zinc-800 text-white h-8 text-sm flex-1">
+          <SelectTrigger className="bg-[#0a0a0c] border-white/[0.06] text-white h-8 text-sm flex-1">
             <SelectValue placeholder="Select…" />
           </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+          <SelectContent className="bg-[#121214] border-white/[0.06] text-white">
             {assignmentOptions.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
             ))}
@@ -58,7 +58,7 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
             variant="outline"
             onClick={onAssign}
             disabled={assignmentLoading}
-            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 h-8 text-xs"
+            className="border-white/[0.06] text-zinc-300 hover:bg-white/[0.04] h-8 text-xs"
           >
             {assignmentLoading ? 'Saving…' : 'Save'}
           </Button>
@@ -67,7 +67,7 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
 
       {/* Resolve/Reject for open disputes */}
       {!isClosed && (
-        <div className="space-y-3 pt-2 border-t border-zinc-800/60">
+        <div className="space-y-3 pt-2 border-t border-white/[0.06]">
           <div className="flex gap-2">
             <Button
               size="sm"
@@ -75,7 +75,7 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
               onClick={() => onStatusChange('resolved')}
               className={resolutionStatus === 'resolved'
                 ? 'bg-emerald-600 hover:bg-emerald-500 flex-1 h-9'
-                : 'border-zinc-700 text-zinc-400 hover:bg-zinc-800 flex-1 h-9'}
+                : 'border-white/[0.06] text-zinc-400 hover:bg-white/[0.04] flex-1 h-9'}
             >
               <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Resolve
             </Button>
@@ -84,8 +84,8 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
               variant={resolutionStatus === 'rejected' ? 'default' : 'outline'}
               onClick={() => onStatusChange('rejected')}
               className={resolutionStatus === 'rejected'
-                ? 'bg-red-600 hover:bg-red-500 flex-1 h-9'
-                : 'border-zinc-700 text-zinc-400 hover:bg-zinc-800 flex-1 h-9'}
+                ? 'bg-rose-600 hover:bg-rose-500 flex-1 h-9'
+                : 'border-white/[0.06] text-zinc-400 hover:bg-white/[0.04] flex-1 h-9'}
             >
               <XCircle className="w-3.5 h-3.5 mr-1.5" /> Reject
             </Button>
@@ -94,7 +94,7 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
             value={resolutionNotes}
             onChange={(e) => onNotesChange(e.target.value)}
             placeholder="Resolution notes (required)…"
-            className="bg-zinc-900/60 border-zinc-800 text-white placeholder:text-zinc-600 min-h-[70px] text-sm"
+            className="bg-white/[0.03] border-white/[0.06] text-white placeholder:text-zinc-600 min-h-[70px] text-sm rounded-xl"
           />
           <Button
             onClick={onResolve}
@@ -102,7 +102,7 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
             className={`w-full h-9 text-sm font-semibold ${
               resolutionStatus === 'resolved'
                 ? 'bg-emerald-600 hover:bg-emerald-500'
-                : 'bg-red-600 hover:bg-red-500'
+                : 'bg-rose-600 hover:bg-rose-500'
             }`}
           >
             {resolutionStatus === 'resolved' ? 'Resolve Dispute' : 'Reject Dispute'}
@@ -112,10 +112,10 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
 
       {/* Closed state */}
       {isClosed && (
-        <div className={`rounded-xl p-3 text-sm border ${
+        <div className={`rounded-xl p-3 text-sm border border-white/[0.06] bg-white/[0.02] border-l-[3px] ${
           status === 'resolved'
-            ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-300'
-            : 'bg-red-500/5 border-red-500/20 text-red-300'
+            ? 'border-l-emerald-500 text-emerald-300'
+            : 'border-l-rose-500 text-red-300'
         }`}>
           This dispute has been <strong>{status}</strong>.
         </div>

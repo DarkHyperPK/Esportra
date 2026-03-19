@@ -89,14 +89,14 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
               const hasPlayers = isAutoFetch && matchData?.players;
 
               return (
-                <div key={report.id} className="bg-zinc-900/60 border border-zinc-800 rounded-xl overflow-hidden">
+                <div key={report.id} className="bg-[#0a0a0c] border border-white/[0.06] rounded-xl overflow-hidden">
                   {/* Summary row */}
                   <div
-                    className="p-3 flex items-center justify-between cursor-pointer hover:bg-zinc-800/40 transition"
+                    className="p-3 flex items-center justify-between cursor-pointer hover:bg-white/[0.03] transition"
                     onClick={() => setExpandedReport(isExpanded ? null : report.id)}
                   >
                     <div className="flex items-center gap-3 flex-wrap">
-                      <Badge variant="outline" className="text-[10px] border-zinc-700">
+                      <Badge variant="outline" className="text-[10px] border-white/[0.06]">
                         Game {report.game_number}
                       </Badge>
                       {report.map_name && (
@@ -165,7 +165,7 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
                                 key={i}
                                 src={url}
                                 alt={`Evidence ${i + 1}`}
-                                className="w-full h-24 object-cover rounded-lg border border-zinc-700 cursor-pointer hover:border-zinc-500 hover:brightness-110 transition"
+                                className="w-full h-24 object-cover rounded-lg border border-white/[0.06] cursor-pointer hover:border-rose-500/30 hover:brightness-110 transition"
                                 onClick={() => onImageClick?.(url)}
                                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                               />
@@ -191,7 +191,7 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
               { label: matchContext?.team1_name || 'Team 1', accounts: team1Accounts },
               { label: matchContext?.team2_name || 'Team 2', accounts: team2Accounts },
             ].map(({ label, accounts }) => (
-              <div key={label} className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3">
+              <div key={label} className="bg-[#0a0a0c] border border-white/[0.06] rounded-xl p-3">
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2 block">{label}</span>
                 {accounts.length === 0 ? (
                   <span className="text-xs text-zinc-600 italic">No linked Riot accounts</span>

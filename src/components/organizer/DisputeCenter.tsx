@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertCircle, CheckCircle, XCircle,
-  Clock, User, RefreshCw, Shield,
+  Clock, User, RefreshCw, Shield, Search,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -17,6 +17,7 @@ import { useHub } from '@/contexts/SignalRContext';
 import { HubPaths } from '@/lib/signalrClient';
 import type { DisputeReport, DisputeRiotAccount } from './DisputeEvidencePanel';
 import DisputeDetailPanel from './DisputeDetailPanel';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Dispute {
   id: string;
@@ -76,6 +77,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const actorUserId = currentUserId ?? organizerId;
   const { staff, loading: staffLoading, hasPermission } = useTournamentStaff(tournamentId);
@@ -362,7 +364,16 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   const resolvedDisputes = disputes.filter(d => d.status === 'resolved' || d.status === 'rejected');
 
   const [filterTab, setFilterTab] = useState<'open' | 'resolved'>('open');
-  const filteredDisputes = filterTab === 'open' ? openDisputes : resolvedDisputes;
+  const filteredDisputes = useMemo(() => {
+    const tabFiltered = filterTab === 'open' ? openDisputes : resolvedDisputes;
+    if (!searchQuery.trim()) return tabFiltered;
+    const q = searchQuery.toLowerCase();
+    return tabFiltered.filter(d =>
+      d.title.toLowerCase().includes(q) ||
+      d.raised_by_name?.toLowerCase().includes(q) ||
+      d.reference_number?.toLowerCase().includes(q)
+    );
+  }, [filterTab, openDisputes, resolvedDisputes, searchQuery]);
 
   const statusCfg = {
     open: { icon: AlertCircle, label: 'Open', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30', dot: 'bg-amber-400' },
@@ -386,10 +397,10 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
           <button
             key={key}
             onClick={() => setFilterTab(key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all hover:scale-[1.02] ${
               filterTab === key
                 ? tabStyles[key].active
-                : 'bg-zinc-900/40 border-zinc-800/60 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+                : 'bg-white/[0.02] border-white/[0.06] text-zinc-500 hover:text-zinc-300 hover:border-white/[0.1]'
             }`}
           >
             <span className={`w-2 h-2 rounded-full ${filterTab === key ? tabStyles[key].dot : 'bg-zinc-700'}`} />
@@ -400,7 +411,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
         <div className="ml-auto">
           <button
             onClick={() => fetchDisputes()}
-            className="p-2 text-zinc-500 hover:text-white rounded-lg hover:bg-zinc-800 transition"
+            className="p-2 text-zinc-500 hover:text-white rounded-lg hover:bg-white/[0.04] transition"
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -411,12 +422,22 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       {/* ─── Split Panel ─── */}
       <div className="flex gap-4" style={{ height: 'calc(100vh - 10rem)' }}>
         {/* Left: Dispute List */}
-        <div className="w-[340px] shrink-0 flex flex-col bg-zinc-950/40 border border-zinc-800/50 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-zinc-800/50">
+        <div className="w-[340px] shrink-0 flex flex-col bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-white/[0.06]">
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-blue-400" />
+              <Shield className="w-4 h-4 text-rose-400" />
               <h3 className="text-sm font-heading font-bold text-white">Disputes</h3>
               <span className="text-xs text-zinc-600 ml-auto">{filteredDisputes.length} items</span>
+            </div>
+            <div className="mt-2 relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search disputes…"
+                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg text-xs text-white placeholder:text-zinc-600 pl-8 pr-3 py-1.5 outline-none focus:border-rose-500/30 transition"
+              />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
@@ -440,10 +461,14 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                       setSelectedDispute(dispute);
                       setResolutionStatus('resolved');
                     }}
-                    className={`w-full text-left p-3 rounded-xl border transition-all duration-150 ${
+                    className={`w-full text-left p-3 rounded-xl border transition-all duration-150 border-l-[3px] ${
                       isSelected
-                        ? 'bg-blue-500/8 border-blue-500/25 ring-1 ring-blue-500/15'
-                        : 'bg-zinc-900/30 border-transparent hover:bg-zinc-800/40 hover:border-zinc-800'
+                        ? 'bg-rose-500/10 border-rose-500/50 border-l-rose-500'
+                        : dispute.status === 'open'
+                          ? 'bg-white/[0.02] border-white/[0.06] border-l-amber-500 hover:bg-white/[0.04]'
+                          : dispute.status === 'resolved'
+                            ? 'bg-white/[0.02] border-white/[0.06] border-l-emerald-500 hover:bg-white/[0.04]'
+                            : 'bg-white/[0.02] border-white/[0.06] border-l-red-500 hover:bg-white/[0.04]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -485,9 +510,18 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
         </div>
 
         {/* Right: Detail Panel */}
-        <div className="flex-1 bg-zinc-950/40 border border-zinc-800/50 rounded-2xl overflow-hidden">
+        <div className="flex-1 bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
           {selectedDispute ? (
-            <DisputeDetailPanel
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selectedDispute.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="h-full"
+              >
+                <DisputeDetailPanel
               dispute={selectedDispute}
               comments={comments}
               loadingComments={loadingComments}
@@ -510,11 +544,15 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
               onCommentSubmit={(text, attachment) => handleAddCommentDirect(selectedDispute.id, text, attachment)}
               onImageClick={(url) => setViewingImage(url)}
             />
+              </motion.div>
+            </AnimatePresence>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-zinc-600">
-              <Shield className="w-12 h-12 mb-4 opacity-20" />
-              <p className="text-sm font-medium">Select a dispute to review</p>
-              <p className="text-xs text-zinc-700 mt-1">Click on a dispute from the list</p>
+              <div className="border-2 border-dashed border-white/[0.06] rounded-2xl p-10 flex flex-col items-center">
+                <Shield className="w-12 h-12 mb-4 opacity-20" />
+                <p className="text-sm font-medium text-zinc-500">Select a dispute to review</p>
+                <p className="text-xs text-zinc-700 mt-1">Click on a dispute from the list</p>
+              </div>
             </div>
           )}
         </div>
@@ -522,7 +560,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
 
       {/* Image Preview */}
       <Dialog open={!!viewingImage} onOpenChange={() => setViewingImage(null)}>
-        <DialogContent className="bg-black/95 border-zinc-800 max-w-4xl p-2">
+        <DialogContent className="bg-black/95 border-white/[0.06] max-w-4xl p-2">
           <DialogHeader className="sr-only">
             <DialogTitle>Image Preview</DialogTitle>
           </DialogHeader>

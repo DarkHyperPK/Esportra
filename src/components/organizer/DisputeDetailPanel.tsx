@@ -107,7 +107,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* ─── Header ─── */}
-      <div className="shrink-0 px-5 pt-5 pb-4 border-b border-zinc-800/60">
+      <div className="shrink-0 px-5 pt-5 pb-4 border-b border-white/[0.06] backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-heading font-bold text-white truncate mb-1">
@@ -136,18 +136,18 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
       <div className="shrink overflow-y-auto px-5 py-4 space-y-5 scrollbar-thin" style={{ maxHeight: '40%' }}>
         {/* Match Context */}
         {dispute.match && (
-          <div className="rounded-xl bg-zinc-900/50 border border-zinc-800/60 p-4">
+          <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="text-white font-semibold text-sm">{dispute.match.team1_name || 'Team 1'}</span>
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-800/80">
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[#0a0a0c] border border-white/[0.06]">
                   <span className="text-white font-mono font-bold text-lg">{dispute.match.team1_score ?? 0}</span>
                   <span className="text-zinc-600 text-xs">–</span>
                   <span className="text-white font-mono font-bold text-lg">{dispute.match.team2_score ?? 0}</span>
                 </div>
                 <span className="text-white font-semibold text-sm">{dispute.match.team2_name || 'Team 2'}</span>
               </div>
-              <Badge variant="outline" className="text-[10px] border-zinc-700 text-zinc-500">
+              <Badge variant="outline" className="text-[10px] border-white/[0.06] text-zinc-500">
                 Match #{dispute.match.match_number} · BO{dispute.match.best_of || 1}
               </Badge>
             </div>
@@ -158,7 +158,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
         {dispute.description && (
           <div>
             <h3 className="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-2">Description</h3>
-            <p className="text-sm text-zinc-300 leading-relaxed bg-zinc-900/40 border border-zinc-800/40 rounded-lg p-3">
+            <p className="text-sm text-zinc-300 leading-relaxed bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
               {dispute.description}
             </p>
           </div>
@@ -171,7 +171,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
             <img
               src={dispute.evidence_url}
               alt="Dispute evidence"
-              className="max-w-full max-h-48 rounded-lg border border-zinc-800 cursor-pointer hover:opacity-80 transition"
+              className="max-w-full max-h-48 rounded-lg border border-white/[0.06] cursor-pointer hover:opacity-80 hover:border-rose-500/30 transition group relative"
               onClick={() => onImageClick(dispute.evidence_url!)}
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
@@ -219,7 +219,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
       </div>
 
       {/* ─── Conversation (fills remaining space with own scroller) ─── */}
-      <div className="flex-1 border-t border-zinc-800/60 px-5 py-3 flex flex-col overflow-hidden" style={{ minHeight: '280px' }}>
+      <div className="flex-1 border-t border-white/[0.06] px-5 py-3 flex flex-col overflow-hidden" style={{ minHeight: '280px' }}>
         <DisputeConversation
           comments={comments}
           loading={loadingComments}

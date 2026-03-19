@@ -47,7 +47,7 @@ const AttachmentImage: React.FC<{ url: string; onImageClick?: (url: string) => v
     <img
       src={url}
       alt="Attachment"
-      className="max-w-full max-h-40 rounded-lg border border-zinc-700 cursor-pointer hover:opacity-80 transition block"
+      className="max-w-full max-h-40 rounded-lg border border-white/[0.06] cursor-pointer hover:opacity-80 transition block"
       onClick={() => onImageClick?.(url)}
       onError={() => setFailed(true)}
     />
@@ -97,7 +97,7 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
       <h3 className="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-2 shrink-0">Conversation</h3>
 
       {/* Messages — own scroller */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-2.5 mb-3 pr-1 scrollbar-thin min-h-0">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-3 mb-3 pr-1 scrollbar-thin min-h-0">
         {loading ? (
           <div className="flex items-center justify-center py-8 text-zinc-500 text-sm">
             <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Loading…
@@ -112,27 +112,31 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
             return (
               <div
                 key={c.id}
-                className={`rounded-lg px-3 py-2.5 text-sm border ${
-                  isStaff
-                    ? 'bg-blue-500/8 border-blue-500/20 ml-4'
-                    : 'bg-zinc-800/50 border-zinc-800 mr-4'
-                }`}
+                className={`flex ${isStaff ? 'justify-end' : 'justify-start'}`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className={`text-[11px] font-semibold ${isStaff ? 'text-blue-400' : 'text-zinc-400'}`}>
-                    {c.user_name || 'Unknown'}
-                  </span>
-                  <span className="text-[10px] text-zinc-600">{formatTime(c.created_at)}</span>
-                </div>
-                {hasText && <p className="text-zinc-300 text-[13px] leading-relaxed">{c.comment}</p>}
-                {hasAttachment && (
-                  <div className={hasText ? 'mt-2' : ''}>
-                    <AttachmentImage url={c.attachment_url!} onImageClick={onImageClick} />
+                <div
+                  className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm border ${
+                    isStaff
+                      ? 'bg-rose-500/15 border-rose-500/20 rounded-br-sm ml-6'
+                      : 'bg-white/[0.06] border-white/[0.08] rounded-bl-sm mr-6'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1 gap-3">
+                    <span className={`text-[11px] font-semibold ${isStaff ? 'text-rose-300' : 'text-blue-300'}`}>
+                      {c.user_name || 'Unknown'}
+                    </span>
+                    <span className="text-[10px] text-zinc-600">{formatTime(c.created_at)}</span>
                   </div>
-                )}
-                {!hasText && !hasAttachment && (
-                  <p className="text-zinc-500 text-[13px] italic">Empty message</p>
-                )}
+                  {hasText && <p className="text-zinc-300 text-[13px] leading-relaxed">{c.comment}</p>}
+                  {hasAttachment && (
+                    <div className={hasText ? 'mt-2' : ''}>
+                      <AttachmentImage url={c.attachment_url!} onImageClick={onImageClick} />
+                    </div>
+                  )}
+                  {!hasText && !hasAttachment && (
+                    <p className="text-zinc-500 text-[13px] italic">Empty message</p>
+                  )}
+                </div>
               </div>
             );
           })
@@ -141,18 +145,18 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
 
       {/* Composer */}
       {canComment && (
-        <div className="border-t border-zinc-800/60 pt-3 space-y-2">
+        <div className="border-t border-white/[0.06] pt-3 space-y-2 bg-white/[0.02]">
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Type a message…"
-            className="bg-zinc-900/60 border-zinc-800 text-white placeholder:text-zinc-600 min-h-[60px] text-sm resize-none"
+            className="bg-transparent border-white/[0.06] text-white placeholder:text-zinc-600 min-h-[60px] text-sm resize-none"
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(); }}
           />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <label className="cursor-pointer text-zinc-500 hover:text-zinc-300 transition p-1.5 rounded-md hover:bg-zinc-800">
-                <ImageIcon className="w-4 h-4" />
+              <label className="cursor-pointer text-zinc-500 hover:text-zinc-300 transition p-1.5 rounded-md">
+                <Paperclip className="w-4 h-4" />
                 <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
               </label>
               {attachment && (
@@ -166,7 +170,7 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
               size="sm"
               onClick={handleSubmit}
               disabled={(!text.trim() && !attachment) || submitting || uploading}
-              className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 h-8"
+              className="bg-rose-600 hover:bg-rose-500 text-white text-xs px-3 h-8 rounded-xl"
             >
               <Send className="w-3 h-3 mr-1.5" />
               {uploading ? 'Uploading…' : submitting ? 'Sending…' : 'Send'}
