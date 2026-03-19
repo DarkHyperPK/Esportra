@@ -196,9 +196,19 @@ export const NotificationDropdown = () => {
                     </p>
 
                     {n.type === 'tournament_announcement' && (
-                        <p className="text-[10px] text-emerald-500/70 mt-1 font-medium hover:text-emerald-400 transition-colors">
-                            {expandedAnnouncementId === n.id ? "Show less" : "Read more"}
-                        </p>
+                        <div className="flex items-center gap-3 mt-1.5">
+                            <p className="text-[10px] text-emerald-500/70 font-medium hover:text-emerald-400 transition-colors">
+                                {expandedAnnouncementId === n.id ? "Show less" : "Read more"}
+                            </p>
+                            {expandedAnnouncementId === n.id && n.link && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setIsOpen(false); navigate(n.link); }}
+                                    className="text-[10px] text-blue-400/70 font-medium hover:text-blue-300 transition-colors"
+                                >
+                                    View Tournament →
+                                </button>
+                            )}
+                        </div>
                     )}
 
                     {/* Staff Invite Action Buttons */}
