@@ -126,7 +126,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 <div className="flex flex-col items-center gap-2">
                                     <Calendar className="w-5 h-5 text-blue-500 mb-2" />
                                     <span>Start Date</span>
-                                    <span className="text-white text-lg font-bold font-sans">{new Date(tournament.date).toLocaleDateString()}</span>
+                                    <span className="text-white text-lg font-bold font-sans">{new Date(tournament.date).toLocaleDateString()}{tournament.time && ` • ${tournament.time}`}</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-2">
                                     <Users className="w-5 h-5 text-green-500 mb-2" />

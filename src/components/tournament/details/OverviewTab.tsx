@@ -46,6 +46,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                             <p className="text-xl font-bold flex items-center justify-center gap-2 tracking-tight">
                                 <span className="text-emerald-400">
                                     {new Date(tournament.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    {tournament.time && <span className="text-emerald-400/70 text-sm ml-1">{tournament.time}</span>}
                                 </span>
                                 <span className="text-white/20">-</span>
                                 <span className="text-red-400">
@@ -115,7 +116,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                     <ul className="space-y-4">
                                         <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
                                             <span>Registration Deadline</span>
-                                            <span className="text-white">{new Date(tournament.date).toLocaleDateString()}</span>
+                                            <span className="text-white">{new Date(tournament.date).toLocaleDateString()}{tournament.time && ` • ${tournament.time}`}</span>
                                         </li>
                                         <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
                                             <span>Check-In Window</span>
