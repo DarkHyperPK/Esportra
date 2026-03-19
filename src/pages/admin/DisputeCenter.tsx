@@ -19,7 +19,7 @@ type Dispute = {
   tournament_id: string | null;
   title: string;
   description: string | null;
-  status: 'open' | 'in_review' | 'resolved' | 'rejected';
+  status: 'open' | 'resolved' | 'rejected';
   dispute_reason: string | null;
   raised_by_user_id: string;
   evidence_url: string | null;
@@ -46,9 +46,8 @@ const DISPUTE_REASON_LABELS: Record<string, string> = {
 
 const statusMeta: Record<Dispute['status'], { label: string; className: string; icon: React.ElementType }> = {
   open: { label: 'Open', className: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40', icon: Clock },
-  in_review: { label: 'In Review', className: 'bg-blue-500/15 text-blue-300 border-blue-500/40', icon: MessageSquare },
-  resolved: { label: 'Resolved', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
-  rejected: { label: 'Rejected', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
+  resolved: { label: 'Closed', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
+  rejected: { label: 'Closed', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
 };
 
 const DisputeCenter: React.FC = () => {
@@ -263,17 +262,10 @@ const DisputeCenter: React.FC = () => {
         attachment_url: attachmentUrl,
       });
 
-      // Update dispute: set to in_review if currently open, and update updated_at
-      const updateData: { updated_at: string; status?: string } = {
+      // Update dispute timestamp
+      await apiClient.put(`/api/admin/disputes/${disputeId}`, {
         updated_at: new Date().toISOString(),
-      };
-      
-      // Auto-set to in_review if currently open
-      if (disputeData?.status === 'open') {
-        updateData.status = 'in_review';
-      }
-
-      await apiClient.put(`/api/admin/disputes/${disputeId}`, updateData);
+      });
 
       setCommentText('');
       setCommentAttachment(null);
@@ -284,9 +276,7 @@ const DisputeCenter: React.FC = () => {
       
       toast({
         title: 'Comment added',
-        description: disputeData?.status === 'open' 
-          ? 'Your comment has been posted and dispute marked as in review.'
-          : 'Your comment has been posted.',
+        description: 'Your comment has been posted.',
       });
     } catch (error: unknown) {
       console.error('Error adding comment:', error);
@@ -478,7 +468,7 @@ const DisputeCenter: React.FC = () => {
                   )}
 
                   {/* Resolution Section */}
-                  {canHandleDisputes && (selectedDispute.status === 'open' || selectedDispute.status === 'in_review') && (
+                  {canHandleDisputes && selectedDispute.status === 'open' && (
                     <div className="border-t border-white/10 pt-4">
                       <label className="text-white/50 text-xs uppercase tracking-wider mb-2 block">Resolution</label>
                       <Textarea
@@ -598,7 +588,7 @@ const DisputeCenter: React.FC = () => {
                 </div>
 
                 {/* Input Area */}
-                {(selectedDispute.status === 'open' || selectedDispute.status === 'in_review') ? (
+                {selectedDispute.status === 'open' ? (
                   canHandleDisputes ? (
                     <div className="p-3 border-t border-white/10 space-y-2">
                       {isSuperAdmin && (

@@ -24,7 +24,7 @@ interface Dispute {
   reference_number?: string | null;
   title: string;
   description: string;
-  status: 'open' | 'in_review' | 'resolved' | 'rejected';
+  status: 'open' | 'resolved' | 'rejected';
   resolution_notes?: string | null;
   dispute_reason?: string | null;
   created_at: string;
@@ -48,9 +48,8 @@ interface Dispute {
 
 const statusMeta: Record<Dispute['status'], { label: string; className: string; icon: React.ElementType }> = {
   open: { label: 'Open', className: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40', icon: Clock },
-  in_review: { label: 'In Review', className: 'bg-blue-500/15 text-blue-300 border-blue-500/40', icon: MessageSquare },
-  resolved: { label: 'Resolved', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
-  rejected: { label: 'Rejected', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
+  resolved: { label: 'Closed', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
+  rejected: { label: 'Closed', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
 };
 
 const DISPUTE_REASON_LABELS: Record<string, string> = {
@@ -88,7 +87,7 @@ const MyDisputes = () => {
   const conn = useHub(HubPaths.Match);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'in_review' | 'resolved' | 'rejected'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'resolved' | 'rejected'>('all');
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [comments, setComments] = useState<Array<{ id: string; user_id: string; comment: string; created_at: string; user_name?: string; is_internal: boolean; attachment_url?: string | null }>>([]);
@@ -250,10 +249,7 @@ const MyDisputes = () => {
         attachment_url: attachmentUrl,
       });
 
-      const updateData: { updated_at: string; status?: string } = { updated_at: new Date().toISOString() };
-      if (disputeData?.status === 'open') updateData.status = 'in_review';
-
-      await apiClient.patch(`/api/disputes/${disputeId}`, updateData);
+      await apiClient.patch(`/api/disputes/${disputeId}`, { updated_at: new Date().toISOString() });
 
       setCommentText('');
       setCommentAttachment(null);
@@ -304,14 +300,16 @@ const MyDisputes = () => {
     };
   }, [user?.id, fetchDisputes, fetchComments, selectedDispute?.id, conn]);
 
-  const filteredDisputes = activeTab === 'all' ? disputes : disputes.filter(d => d.status === activeTab);
+  const filteredDisputes = activeTab === 'all'
+    ? disputes
+    : activeTab === 'resolved'
+      ? disputes.filter(d => d.status === 'resolved' || d.status === 'rejected')
+      : disputes.filter(d => d.status === activeTab);
 
   const stats = {
     all: disputes.length,
     open: disputes.filter(d => d.status === 'open').length,
-    in_review: disputes.filter(d => d.status === 'in_review').length,
-    resolved: disputes.filter(d => d.status === 'resolved').length,
-    rejected: disputes.filter(d => d.status === 'rejected').length,
+    closed: disputes.filter(d => d.status === 'resolved' || d.status === 'rejected').length,
   };
 
   if (loading) {
@@ -341,19 +339,18 @@ const MyDisputes = () => {
           </div>
 
           {/* Stats Row */}
-          <div className="grid grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-3 gap-3 mb-6">
             {[
               { key: 'all', label: 'Total', value: stats.all, color: 'text-white' },
               { key: 'open', label: 'Open', value: stats.open, color: 'text-yellow-300' },
-              { key: 'in_review', label: 'In Review', value: stats.in_review, color: 'text-blue-300' },
-              { key: 'resolved', label: 'Resolved', value: stats.resolved, color: 'text-green-300' },
-              { key: 'rejected', label: 'Rejected', value: stats.rejected, color: 'text-red-300' },
+              { key: 'closed', label: 'Closed', value: stats.closed, color: 'text-zinc-300' },
             ].map(s => (
               <button
                 key={s.key}
-                onClick={() => setActiveTab(s.key as any)}
+                onClick={() => setActiveTab(s.key === 'closed' ? 'resolved' : s.key as 'all' | 'open' | 'resolved')}
                 className={`p-3 rounded-xl border transition-all text-center ${
-                  activeTab === s.key
+                  (s.key === 'closed' && (activeTab === 'resolved' || activeTab === 'rejected'))
+                    || activeTab === s.key
                     ? 'bg-white/10 border-white/30'
                     : 'bg-[#12121a] border-white/10 hover:border-white/20'
                 }`}
@@ -365,13 +362,11 @@ const MyDisputes = () => {
           </div>
 
           {/* Filter Tabs */}
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 bg-[#12121a] border border-white/10 mb-5">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'open' | 'resolved')} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-[#12121a] border border-white/10 mb-5">
               <TabsTrigger value="all" className="text-white/60 data-[state=active]:text-white text-xs">All</TabsTrigger>
               <TabsTrigger value="open" className="text-white/60 data-[state=active]:text-white text-xs">Open</TabsTrigger>
-              <TabsTrigger value="in_review" className="text-white/60 data-[state=active]:text-white text-xs">In Review</TabsTrigger>
-              <TabsTrigger value="resolved" className="text-white/60 data-[state=active]:text-white text-xs">Resolved</TabsTrigger>
-              <TabsTrigger value="rejected" className="text-white/60 data-[state=active]:text-white text-xs">Rejected</TabsTrigger>
+              <TabsTrigger value="resolved" className="text-white/60 data-[state=active]:text-white text-xs">Closed</TabsTrigger>
             </TabsList>
 
             <TabsContent value={activeTab}>
@@ -380,7 +375,7 @@ const MyDisputes = () => {
                   <CardContent className="pt-12 pb-12 text-center">
                     <AlertCircle className="h-12 w-12 text-white/20 mx-auto mb-4" />
                     <p className="text-white/60 text-base mb-1">
-                      {activeTab === 'all' ? 'No disputes yet' : `No ${activeTab.replace('_', ' ')} disputes`}
+                      {activeTab === 'all' ? 'No disputes yet' : `No ${activeTab === 'resolved' ? 'closed' : activeTab} disputes`}
                     </p>
                     <p className="text-white/40 text-sm mb-6">
                       {activeTab === 'all'
@@ -674,7 +669,7 @@ const MyDisputes = () => {
                           <div className="text-center py-6">
                             <MessageSquare className="w-8 h-8 text-white/10 mx-auto mb-2" />
                             <p className="text-white/30 text-sm">
-                              {selectedDispute.status === 'open' || selectedDispute.status === 'in_review'
+                              {selectedDispute.status === 'open'
                                 ? 'No messages yet. Start the conversation below.'
                                 : 'No messages were exchanged.'}
                             </p>
@@ -719,7 +714,7 @@ const MyDisputes = () => {
                       </div>
 
                       {/* Composer */}
-                      {(selectedDispute.status === 'in_review' || selectedDispute.status === 'open') ? (
+                      {selectedDispute.status === 'open' ? (
                         <div className="px-6 py-3 border-t border-white/[0.07] bg-white/[0.02]">
                           <div className="flex items-end gap-2">
                             <label className="shrink-0 p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 cursor-pointer transition-colors">

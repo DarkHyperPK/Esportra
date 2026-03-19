@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, MessageSquare, CheckCircle, XCircle, User, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle, XCircle, User, Clock } from 'lucide-react';
 import DisputeIdStrip from './DisputeIdStrip';
 import DisputeEvidencePanel, { type DisputeReport, type DisputeRiotAccount } from './DisputeEvidencePanel';
 import DisputeConversation from './DisputeConversation';
@@ -8,9 +8,8 @@ import DisputeActions from './DisputeActions';
 
 const statusConfig = {
   open: { icon: AlertCircle, label: 'Open', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30', dot: 'bg-amber-400' },
-  in_review: { icon: MessageSquare, label: 'In Review', cls: 'bg-blue-500/15 text-blue-400 border-blue-500/30', dot: 'bg-blue-400' },
-  resolved: { icon: CheckCircle, label: 'Resolved', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', dot: 'bg-emerald-400' },
-  rejected: { icon: XCircle, label: 'Rejected', cls: 'bg-red-500/15 text-red-400 border-red-500/30', dot: 'bg-red-400' },
+  resolved: { icon: CheckCircle, label: 'Closed', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', dot: 'bg-emerald-400' },
+  rejected: { icon: XCircle, label: 'Closed', cls: 'bg-red-500/15 text-red-400 border-red-500/30', dot: 'bg-red-400' },
 } as const;
 
 interface Dispute {
@@ -18,7 +17,7 @@ interface Dispute {
   reference_number?: string | null;
   title: string;
   description: string | null;
-  status: 'open' | 'in_review' | 'resolved' | 'rejected';
+  status: 'open' | 'resolved' | 'rejected';
   match_id: string | null;
   raised_by_name?: string;
   team_name?: string;
@@ -65,12 +64,11 @@ interface DisputeDetailPanelProps {
   assignmentOptions: { value: string; label: string }[];
   assignmentLoading: boolean;
   resolutionNotes: string;
-  resolutionStatus: 'resolved' | 'rejected' | 'in_review';
+  resolutionStatus: 'resolved' | 'rejected';
   onAssigneeChange: (id: string) => void;
   onAssign: () => void;
-  onResolutionStatusChange: (status: 'resolved' | 'rejected' | 'in_review') => void;
+  onResolutionStatusChange: (status: 'resolved' | 'rejected') => void;
   onResolutionNotesChange: (notes: string) => void;
-  onMarkInReview: () => void;
   onResolve: () => void;
   onCommentSubmit: (text: string, attachment: File | null) => void;
   onImageClick: (url: string) => void;
@@ -82,7 +80,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
   assigneeId, assignmentOptions, assignmentLoading,
   resolutionNotes, resolutionStatus,
   onAssigneeChange, onAssign, onResolutionStatusChange, onResolutionNotesChange,
-  onMarkInReview, onResolve, onCommentSubmit, onImageClick,
+  onResolve, onCommentSubmit, onImageClick,
 }) => {
   const cfg = statusConfig[dispute.status];
   const StatusIcon = cfg.icon;
@@ -216,7 +214,6 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
           onAssign={onAssign}
           onStatusChange={onResolutionStatusChange}
           onNotesChange={onResolutionNotesChange}
-          onMarkInReview={onMarkInReview}
           onResolve={onResolve}
         />
       </div>
@@ -228,7 +225,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
           loading={loadingComments}
           organizerId={organizerId}
           staffUserIds={staffUserIds}
-          canComment={canAssist && (dispute.status === 'open' || dispute.status === 'in_review')}
+          canComment={canAssist && dispute.status === 'open'}
           submitting={submittingComment}
           uploading={uploadingAttachment}
           onSubmit={onCommentSubmit}

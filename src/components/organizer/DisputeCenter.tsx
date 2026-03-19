@@ -5,7 +5,7 @@ import { auditLog } from '@/lib/auditLog';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import {
-  AlertCircle, MessageSquare, CheckCircle, XCircle,
+  AlertCircle, CheckCircle, XCircle,
   Clock, User, RefreshCw, Shield,
 } from 'lucide-react';
 import {
@@ -28,7 +28,7 @@ interface Dispute {
   title: string;
   description: string | null;
   evidence_url: string | null;
-  status: 'open' | 'in_review' | 'resolved' | 'rejected';
+  status: 'open' | 'resolved' | 'rejected';
   assigned_to_user_id: string | null;
   resolution_notes: string | null;
   created_at: string;
@@ -68,7 +68,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   const [loading, setLoading] = useState(true);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
-  const [resolutionStatus, setResolutionStatus] = useState<'resolved' | 'rejected' | 'in_review'>('resolved');
+  const [resolutionStatus, setResolutionStatus] = useState<'resolved' | 'rejected'>('resolved');
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -331,20 +331,13 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     }
   };
 
-  const handleUpdateStatus = async (disputeId: string, newStatus: 'in_review' | 'resolved' | 'rejected') => {
+  const handleUpdateStatus = async (disputeId: string, newStatus: 'resolved' | 'rejected') => {
     try {
-      if (newStatus === 'resolved' || newStatus === 'rejected') {
-        // Use /resolve endpoint — sends notifications + enforces scores
-        await apiClient.post(`/api/organizer/disputes/${disputeId}/resolve`, {
-          status: newStatus,
-          resolution_notes: resolutionNotes || null,
-        });
-      } else {
-        await apiClient.put(`/api/organizer/disputes/${disputeId}`, {
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        });
-      }
+      // Use /resolve endpoint — sends notifications + enforces scores
+      await apiClient.post(`/api/organizer/disputes/${disputeId}/resolve`, {
+        status: newStatus,
+        resolution_notes: resolutionNotes || null,
+      });
 
       await logDisputeAudit(disputeId, newStatus, {
         resolution_notes: resolutionNotes || undefined,
@@ -352,17 +345,12 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       });
 
       toast({
-        title: newStatus === 'resolved' ? 'Dispute resolved' : newStatus === 'rejected' ? 'Dispute rejected' : 'Marked as in review',
-        description: (newStatus === 'resolved' || newStatus === 'rejected')
-          ? 'The dispute filer has been notified.' : undefined,
+        title: newStatus === 'resolved' ? 'Dispute resolved' : 'Dispute rejected',
+        description: 'The dispute filer has been notified.',
       });
 
-      if (newStatus === 'resolved' || newStatus === 'rejected') {
-        setResolutionNotes('');
-        setSelectedDispute(null);
-      } else {
-        fetchComments(disputeId);
-      }
+      setResolutionNotes('');
+      setSelectedDispute(null);
       fetchDisputes();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
@@ -371,23 +359,19 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   };
 
   const openDisputes = disputes.filter(d => d.status === 'open');
-  const inReviewDisputes = disputes.filter(d => d.status === 'in_review');
   const resolvedDisputes = disputes.filter(d => d.status === 'resolved' || d.status === 'rejected');
 
-  const [filterTab, setFilterTab] = useState<'open' | 'in_review' | 'resolved'>('open');
-  const filteredDisputes = filterTab === 'open' ? openDisputes
-    : filterTab === 'in_review' ? inReviewDisputes : resolvedDisputes;
+  const [filterTab, setFilterTab] = useState<'open' | 'resolved'>('open');
+  const filteredDisputes = filterTab === 'open' ? openDisputes : resolvedDisputes;
 
   const statusCfg = {
     open: { icon: AlertCircle, label: 'Open', cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30', dot: 'bg-amber-400' },
-    in_review: { icon: MessageSquare, label: 'In Review', cls: 'bg-blue-500/15 text-blue-400 border-blue-500/30', dot: 'bg-blue-400' },
-    resolved: { icon: CheckCircle, label: 'Resolved', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', dot: 'bg-emerald-400' },
-    rejected: { icon: XCircle, label: 'Rejected', cls: 'bg-red-500/15 text-red-400 border-red-500/30', dot: 'bg-red-400' },
+    resolved: { icon: CheckCircle, label: 'Closed', cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', dot: 'bg-emerald-400' },
+    rejected: { icon: XCircle, label: 'Closed', cls: 'bg-red-500/15 text-red-400 border-red-500/30', dot: 'bg-red-400' },
   } as const;
 
   const tabStyles = {
     open: { active: 'bg-amber-500/10 border-amber-500/30 text-amber-400', dot: 'bg-amber-400' },
-    in_review: { active: 'bg-blue-500/10 border-blue-500/30 text-blue-400', dot: 'bg-blue-400' },
     resolved: { active: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400', dot: 'bg-emerald-400' },
   } as const;
 
@@ -397,7 +381,6 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       <div className="flex items-center gap-3">
         {([
           { key: 'open' as const, count: openDisputes.length },
-          { key: 'in_review' as const, count: inReviewDisputes.length },
           { key: 'resolved' as const, count: resolvedDisputes.length },
         ]).map(({ key, count }) => (
           <button
@@ -410,7 +393,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
             }`}
           >
             <span className={`w-2 h-2 rounded-full ${filterTab === key ? tabStyles[key].dot : 'bg-zinc-700'}`} />
-            {key === 'open' ? 'Open' : key === 'in_review' ? 'In Review' : 'Closed'}
+            {key === 'open' ? 'Open' : 'Closed'}
             <span className="font-mono text-xs">{count}</span>
           </button>
         ))}
@@ -443,7 +426,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
               </div>
             ) : filteredDisputes.length === 0 ? (
               <div className="text-center py-12 text-zinc-600 text-sm">
-                No {filterTab === 'open' ? 'open' : filterTab === 'in_review' ? 'in-review' : 'closed'} disputes
+                No {filterTab === 'open' ? 'open' : 'closed'} disputes
               </div>
             ) : (
               filteredDisputes.map((dispute) => {
@@ -455,7 +438,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
                     key={dispute.id}
                     onClick={() => {
                       setSelectedDispute(dispute);
-                      setResolutionStatus(dispute.status === 'open' ? 'in_review' : 'resolved');
+                      setResolutionStatus('resolved');
                     }}
                     className={`w-full text-left p-3 rounded-xl border transition-all duration-150 ${
                       isSelected
@@ -523,7 +506,6 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
               onAssign={() => selectedDispute && selectedAssigneeId && handleAssignDispute(selectedDispute.id, selectedAssigneeId)}
               onResolutionStatusChange={setResolutionStatus}
               onResolutionNotesChange={setResolutionNotes}
-              onMarkInReview={() => handleUpdateStatus(selectedDispute.id, 'in_review')}
               onResolve={() => handleUpdateStatus(selectedDispute.id, resolutionStatus)}
               onCommentSubmit={(text, attachment) => handleAddCommentDirect(selectedDispute.id, text, attachment)}
               onImageClick={(url) => setViewingImage(url)}

@@ -2,22 +2,21 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Eye } from 'lucide-react';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 interface DisputeActionsProps {
-  status: 'open' | 'in_review' | 'resolved' | 'rejected';
+  status: 'open' | 'resolved' | 'rejected';
   canAssist: boolean;
   canAssignOthers: boolean;
   assigneeId: string | null;
   assignmentOptions: { value: string; label: string }[];
   assignmentLoading: boolean;
   resolutionNotes: string;
-  resolutionStatus: 'resolved' | 'rejected' | 'in_review';
+  resolutionStatus: 'resolved' | 'rejected';
   onAssigneeChange: (id: string) => void;
   onAssign: () => void;
-  onStatusChange: (status: 'resolved' | 'rejected' | 'in_review') => void;
+  onStatusChange: (status: 'resolved' | 'rejected') => void;
   onNotesChange: (notes: string) => void;
-  onMarkInReview: () => void;
   onResolve: () => void;
 }
 
@@ -26,7 +25,7 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
   assigneeId, assignmentOptions, assignmentLoading,
   resolutionNotes, resolutionStatus,
   onAssigneeChange, onAssign, onStatusChange, onNotesChange,
-  onMarkInReview, onResolve,
+  onResolve,
 }) => {
   const isClosed = status === 'resolved' || status === 'rejected';
 
@@ -66,17 +65,7 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
         )}
       </div>
 
-      {/* Actions for open disputes */}
-      {status === 'open' && (
-        <Button
-          onClick={onMarkInReview}
-          className="w-full bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/20 h-9"
-        >
-          <Eye className="w-3.5 h-3.5 mr-2" /> Start Reviewing
-        </Button>
-      )}
-
-      {/* Resolve/Reject for open or in_review */}
+      {/* Resolve/Reject for open disputes */}
       {!isClosed && (
         <div className="space-y-3 pt-2 border-t border-zinc-800/60">
           <div className="flex gap-2">

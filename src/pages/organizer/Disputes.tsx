@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Footer from '@/components/Footer';
 import {
-  ShieldAlert, MessageSquare, Clock, CheckCircle, XCircle,
+  ShieldAlert, Clock, CheckCircle, XCircle,
   RefreshCw, AlertCircle, Send, Image as ImageIcon, X,
   Trophy, Calendar, ChevronRight, User,
 } from 'lucide-react';
@@ -32,7 +32,7 @@ interface Dispute {
   id: string;
   title: string;
   description: string | null;
-  status: 'open' | 'in_review' | 'resolved' | 'rejected';
+  status: 'open' | 'resolved' | 'rejected';
   dispute_reason: string | null;
   resolution_notes: string | null;
   evidence_url: string | null;
@@ -48,9 +48,8 @@ interface Dispute {
 
 const statusMeta: Record<Dispute['status'], { label: string; className: string; icon: React.ElementType }> = {
   open: { label: 'Open', className: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40', icon: Clock },
-  in_review: { label: 'In Review', className: 'bg-blue-500/15 text-blue-300 border-blue-500/40', icon: MessageSquare },
-  resolved: { label: 'Resolved', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
-  rejected: { label: 'Rejected', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
+  resolved: { label: 'Closed', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
+  rejected: { label: 'Closed', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
 };
 
 const DISPUTE_REASON_LABELS: Record<string, string> = {
@@ -82,7 +81,7 @@ const OrganizerDisputesPage: React.FC = () => {
 
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeStatus, setActiveStatus] = useState<'all' | 'open' | 'in_review' | 'resolved' | 'rejected'>('all');
+  const [activeStatus, setActiveStatus] = useState<'all' | 'open' | 'resolved' | 'rejected'>('all');
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -172,10 +171,6 @@ const OrganizerDisputesPage: React.FC = () => {
         attachmentUrl,
       });
 
-      if (result.autoPromoted) {
-        setSelectedDispute(prev => prev ? { ...prev, status: 'in_review' } : null);
-      }
-
       setCommentText('');
       setCommentAttachment(null);
       fetchComments(selectedDispute.id);
@@ -224,7 +219,6 @@ const OrganizerDisputesPage: React.FC = () => {
   const stats = {
     all: disputes.length,
     open: disputes.filter(d => d.status === 'open').length,
-    in_review: disputes.filter(d => d.status === 'in_review').length,
     resolved: disputes.filter(d => d.status === 'resolved').length,
     rejected: disputes.filter(d => d.status === 'rejected').length,
   };
@@ -243,11 +237,10 @@ const OrganizerDisputesPage: React.FC = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-4 gap-3 mb-6">
             {[
               { key: 'all', label: 'Total', value: stats.all, color: 'text-white' },
               { key: 'open', label: 'Open', value: stats.open, color: 'text-yellow-300' },
-              { key: 'in_review', label: 'In Review', value: stats.in_review, color: 'text-blue-300' },
               { key: 'resolved', label: 'Resolved', value: stats.resolved, color: 'text-green-300' },
               { key: 'rejected', label: 'Rejected', value: stats.rejected, color: 'text-red-300' },
             ].map(s => (
@@ -264,10 +257,9 @@ const OrganizerDisputesPage: React.FC = () => {
 
           {/* Tabs */}
           <Tabs value={activeStatus} onValueChange={(v) => setActiveStatus(v as any)}>
-            <TabsList className="grid w-full grid-cols-5 bg-[#12121a] border border-white/10 mb-5">
+            <TabsList className="grid w-full grid-cols-4 bg-[#12121a] border border-white/10 mb-5">
               <TabsTrigger value="all" className="text-white/60 data-[state=active]:text-white text-xs">All</TabsTrigger>
               <TabsTrigger value="open" className="text-white/60 data-[state=active]:text-white text-xs">Open</TabsTrigger>
-              <TabsTrigger value="in_review" className="text-white/60 data-[state=active]:text-white text-xs">In Review</TabsTrigger>
               <TabsTrigger value="resolved" className="text-white/60 data-[state=active]:text-white text-xs">Resolved</TabsTrigger>
               <TabsTrigger value="rejected" className="text-white/60 data-[state=active]:text-white text-xs">Rejected</TabsTrigger>
             </TabsList>
@@ -378,7 +370,7 @@ const OrganizerDisputesPage: React.FC = () => {
             const Icon = meta.icon;
             const reasonLabel = selectedDispute.dispute_reason ? DISPUTE_REASON_LABELS[selectedDispute.dispute_reason] || selectedDispute.dispute_reason : null;
             const hasMatch = !!(selectedDispute.match?.team1_name && selectedDispute.match?.team2_name);
-            const canAct = selectedDispute.status === 'open' || selectedDispute.status === 'in_review';
+            const canAct = selectedDispute.status === 'open';
 
             return (
               <>

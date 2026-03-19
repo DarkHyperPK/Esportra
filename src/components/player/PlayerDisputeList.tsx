@@ -12,7 +12,7 @@ import { formatDistanceToNow } from 'date-fns';
 interface PlayerDispute {
   id: string;
   title: string;
-  status: 'open' | 'in_review' | 'resolved' | 'rejected';
+  status: 'open' | 'resolved' | 'rejected';
   resolution_notes?: string | null;
   created_at: string;
   updated_at: string;
@@ -26,9 +26,8 @@ interface PlayerDisputeListProps {
 
 const statusMeta: Record<PlayerDispute['status'], { label: string; className: string; icon: React.ElementType }> = {
   open: { label: 'Open', className: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40', icon: Clock },
-  in_review: { label: 'In review', className: 'bg-blue-500/15 text-blue-300 border-blue-500/40', icon: MessageSquare },
-  resolved: { label: 'Resolved', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
-  rejected: { label: 'Rejected', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
+  resolved: { label: 'Closed', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
+  rejected: { label: 'Closed', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
 };
 
 const PlayerDisputeList: React.FC<PlayerDisputeListProps> = ({ tournamentId, userId, onStatsChange }) => {
@@ -49,8 +48,7 @@ const PlayerDisputeList: React.FC<PlayerDisputeListProps> = ({ tournamentId, use
 
       if (onStatsChange) {
         const openCount = rows.filter((d) => d.status === 'open').length;
-        const awaitingCount = rows.filter((d) => d.status === 'in_review').length;
-        onStatsChange({ total: rows.length, open: openCount, awaiting: awaitingCount });
+        onStatsChange({ total: rows.length, open: openCount, awaiting: 0 });
       }
     } catch (error: any) {
       console.error('Error loading disputes', error);
@@ -99,15 +97,13 @@ const PlayerDisputeList: React.FC<PlayerDisputeListProps> = ({ tournamentId, use
   const statsCard = useMemo(() => {
     if (disputes.length === 0) return null;
     const open = disputes.filter((d) => d.status === 'open').length;
-    const inReview = disputes.filter((d) => d.status === 'in_review').length;
-    const resolved = disputes.filter((d) => d.status === 'resolved' || d.status === 'rejected').length;
+    const closed = disputes.filter((d) => d.status === 'resolved' || d.status === 'rejected').length;
     const statItems = [
       { label: 'Open', value: open, color: 'text-yellow-400' },
-      { label: 'In review', value: inReview, color: 'text-blue-300' },
-      { label: 'Closed', value: resolved, color: 'text-gray-300' },
+      { label: 'Closed', value: closed, color: 'text-gray-300' },
     ];
     return (
-      <div className="grid grid-cols-3 gap-2 text-center mb-4">
+      <div className="grid grid-cols-2 gap-2 text-center mb-4">
         {statItems.map((item) => (
           <div key={item.label} className="bg-gray-800/60 rounded-lg py-2 border border-gray-800">
             <p className={`${item.color} text-lg font-semibold`}>{item.value}</p>
