@@ -21,7 +21,7 @@ type Dispute = {
   tournament_id: string | null;
   title: string;
   description: string | null;
-  status: 'open' | 'resolved' | 'rejected';
+  status: string;
   dispute_reason: string | null;
   raised_by_user_id: string;
   evidence_url: string | null;
@@ -46,10 +46,13 @@ const DISPUTE_REASON_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
-const statusMeta: Record<Dispute['status'], { label: string; className: string; icon: React.ElementType }> = {
+const defaultMeta = { label: 'Unknown', className: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/40', icon: Clock };
+const statusMeta: Record<string, { label: string; className: string; icon: React.ElementType }> = {
   open: { label: 'Open', className: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40', icon: Clock },
+  in_review: { label: 'In Review', className: 'bg-blue-500/15 text-blue-300 border-blue-500/40', icon: Clock },
   resolved: { label: 'Closed', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
   rejected: { label: 'Closed', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
+  closed: { label: 'Closed', className: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/40', icon: CheckCircle },
 };
 
 const DisputeCenter: React.FC = () => {
@@ -341,11 +344,11 @@ const DisputeCenter: React.FC = () => {
   const openCount = disputes.filter(d => d.status === 'open').length;
   const closedCount = disputes.filter(d => d.status !== 'open').length;
 
-  const leftBorderColor = (status: Dispute['status']) =>
-    status === 'open' ? 'border-l-yellow-500' : status === 'resolved' ? 'border-l-green-500' : 'border-l-red-500';
+  const leftBorderColor = (status: string) =>
+    status === 'open' ? 'border-l-yellow-500' : status === 'resolved' ? 'border-l-green-500' : status === 'rejected' ? 'border-l-red-500' : 'border-l-zinc-500';
 
-  const statusDotColor = (status: Dispute['status']) =>
-    status === 'open' ? 'bg-yellow-500' : status === 'resolved' ? 'bg-green-500' : 'bg-red-500';
+  const statusDotColor = (status: string) =>
+    status === 'open' ? 'bg-yellow-500' : status === 'resolved' ? 'bg-green-500' : status === 'rejected' ? 'bg-red-500' : 'bg-zinc-500';
 
   return (
     <div className="min-h-screen bg-[#050505] py-8 px-6">
@@ -430,7 +433,8 @@ const DisputeCenter: React.FC = () => {
                 </div>
               ) : (
                 filteredDisputes.map((d) => {
-                  const StatusIcon = statusMeta[d.status].icon;
+                  const meta = statusMeta[d.status] || defaultMeta;
+                  const StatusIcon = meta.icon;
                   const isSelected = selectedDispute?.id === d.id;
                   return (
                     <button
@@ -452,9 +456,9 @@ const DisputeCenter: React.FC = () => {
                           <span className="text-rose-400/70 font-mono text-[11px] shrink-0">{d.reference_number}</span>
                         )}
                         <h3 className="text-white text-sm font-medium truncate flex-1">{d.title}</h3>
-                        <Badge className={`${statusMeta[d.status].className} text-[10px] px-1.5 py-0 gap-1`}>
+                        <Badge className={`${meta.className} text-[10px] px-1.5 py-0 gap-1`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor(d.status)} inline-block`} />
-                          {statusMeta[d.status].label}
+                          {meta.label}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
@@ -490,9 +494,9 @@ const DisputeCenter: React.FC = () => {
                       <span className="text-rose-400/70 font-mono text-sm shrink-0">{selectedDispute.reference_number}</span>
                     )}
                     <h2 className="text-white text-lg font-semibold flex-1">{selectedDispute.title}</h2>
-                    <Badge className={statusMeta[selectedDispute.status].className}>
+                    <Badge className={(statusMeta[selectedDispute.status] || defaultMeta).className}>
                       <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor(selectedDispute.status)} inline-block mr-1`} />
-                      {statusMeta[selectedDispute.status].label}
+                      {(statusMeta[selectedDispute.status] || defaultMeta).label}
                     </Badge>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">

@@ -11,7 +11,7 @@ import { formatDistanceToNow } from 'date-fns';
 interface PlayerDispute {
   id: string;
   title: string;
-  status: 'open' | 'resolved' | 'rejected';
+  status: string;
   resolution_notes?: string | null;
   created_at: string;
   updated_at: string;
@@ -23,10 +23,13 @@ interface PlayerDisputeListProps {
   onStatsChange?: (stats: { total: number; open: number; awaiting: number }) => void;
 }
 
-const statusMeta: Record<PlayerDispute['status'], { label: string; className: string; icon: React.ElementType; borderColor: string }> = {
+const defaultMeta = { label: 'Unknown', className: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/40', icon: Clock, borderColor: 'border-l-zinc-500' };
+const statusMeta: Record<string, { label: string; className: string; icon: React.ElementType; borderColor: string }> = {
   open: { label: 'Open', className: 'bg-amber-500/15 text-amber-300 border-amber-500/40', icon: Clock, borderColor: 'border-l-amber-500' },
+  in_review: { label: 'In Review', className: 'bg-blue-500/15 text-blue-300 border-blue-500/40', icon: Clock, borderColor: 'border-l-blue-500' },
   resolved: { label: 'Closed', className: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40', icon: CheckCircle, borderColor: 'border-l-emerald-500' },
   rejected: { label: 'Closed', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle, borderColor: 'border-l-red-500' },
+  closed: { label: 'Closed', className: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/40', icon: CheckCircle, borderColor: 'border-l-zinc-500' },
 };
 
 const PlayerDisputeList: React.FC<PlayerDisputeListProps> = ({ tournamentId, userId, onStatsChange }) => {
@@ -129,7 +132,7 @@ const PlayerDisputeList: React.FC<PlayerDisputeListProps> = ({ tournamentId, use
     return (
       <div className="space-y-3">
         {disputes.map((dispute) => {
-          const meta = statusMeta[dispute.status];
+          const meta = statusMeta[dispute.status] || defaultMeta;
           const Icon = meta.icon;
           return (
             <div

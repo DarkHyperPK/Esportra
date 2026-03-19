@@ -24,7 +24,7 @@ interface Dispute {
   reference_number?: string | null;
   title: string;
   description: string;
-  status: 'open' | 'resolved' | 'rejected';
+  status: string;
   resolution_notes?: string | null;
   dispute_reason?: string | null;
   created_at: string;
@@ -46,11 +46,14 @@ interface Dispute {
   scheduled_time?: string | null;
 }
 
-const statusMeta: Record<Dispute['status'], { label: string; className: string; icon: React.ElementType }> = {
+const statusMeta: Record<string, { label: string; className: string; icon: React.ElementType }> = {
   open: { label: 'Open', className: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40', icon: Clock },
+  in_review: { label: 'In Review', className: 'bg-blue-500/15 text-blue-300 border-blue-500/40', icon: Clock },
   resolved: { label: 'Closed', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
   rejected: { label: 'Closed', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
+  closed: { label: 'Closed', className: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/40', icon: CheckCircle },
 };
+const defaultStatusMeta = { label: 'Unknown', className: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/40', icon: Clock };
 
 const DISPUTE_REASON_LABELS: Record<string, string> = {
   'cheating': 'Cheating / Hacking',
@@ -303,13 +306,13 @@ const MyDisputes = () => {
   const filteredDisputes = activeTab === 'all'
     ? disputes
     : activeTab === 'resolved'
-      ? disputes.filter(d => d.status === 'resolved' || d.status === 'rejected')
+      ? disputes.filter(d => d.status === 'resolved' || d.status === 'rejected' || d.status === 'closed')
       : disputes.filter(d => d.status === activeTab);
 
   const stats = {
     all: disputes.length,
-    open: disputes.filter(d => d.status === 'open').length,
-    closed: disputes.filter(d => d.status === 'resolved' || d.status === 'rejected').length,
+    open: disputes.filter(d => d.status === 'open' || d.status === 'in_review').length,
+    closed: disputes.filter(d => d.status === 'resolved' || d.status === 'rejected' || d.status === 'closed').length,
   };
 
   if (loading) {
@@ -401,7 +404,7 @@ const MyDisputes = () => {
                 <div className="space-y-3">
                   <AnimatePresence mode="popLayout">
                   {filteredDisputes.map((dispute, index) => {
-                    const meta = statusMeta[dispute.status];
+                    const meta = statusMeta[dispute.status] || defaultStatusMeta;
                     const Icon = meta.icon;
                     const reasonLabel = dispute.dispute_reason
                       ? DISPUTE_REASON_LABELS[dispute.dispute_reason] || dispute.dispute_reason
@@ -537,7 +540,7 @@ const MyDisputes = () => {
           }}>
             <DialogContent className="bg-[#0a0a0c] backdrop-blur-xl border border-white/[0.06] max-w-3xl h-[92vh] max-h-[92vh] flex flex-col overflow-hidden p-0">
               {selectedDispute && (() => {
-                const meta = statusMeta[selectedDispute.status];
+                const meta = statusMeta[selectedDispute.status] || defaultStatusMeta;
                 const Icon = meta.icon;
                 const reasonLabel = selectedDispute.dispute_reason
                   ? DISPUTE_REASON_LABELS[selectedDispute.dispute_reason] || selectedDispute.dispute_reason
