@@ -274,7 +274,7 @@ const MyDisputes = () => {
     fetchComments(dispute.id);
   };
 
-  // SignalR subscription for dispute events (replaces Supabase realtime)
+  // SignalR subscription for real-time dispute updates
   useEffect(() => {
     if (!user?.id) return;
 
@@ -285,15 +285,24 @@ const MyDisputes = () => {
       fetchDisputes();
     };
 
+    const handleCommentAdded = (payload: { disputeId: string; userId: string }) => {
+      if (!active) return;
+      if (payload?.userId !== user?.id && selectedDispute?.id === payload?.disputeId) {
+        fetchComments(payload.disputeId, true);
+      }
+    };
+
     conn.on('DisputeResolved', handleDisputeEvent);
     conn.on('ReportDisputed', handleDisputeEvent);
+    conn.on('DisputeCommentAdded', handleCommentAdded);
 
     return () => {
       active = false;
       conn.off('DisputeResolved', handleDisputeEvent);
       conn.off('ReportDisputed', handleDisputeEvent);
+      conn.off('DisputeCommentAdded', handleCommentAdded);
     };
-  }, [user?.id, fetchDisputes, conn]);
+  }, [user?.id, fetchDisputes, fetchComments, selectedDispute?.id, conn]);
 
   const filteredDisputes = activeTab === 'all' ? disputes : disputes.filter(d => d.status === activeTab);
 

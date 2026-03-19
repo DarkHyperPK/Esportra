@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -181,7 +180,7 @@ const DisputeCenter: React.FC = () => {
     }
   }, [selectedDispute, fetchComments]);
 
-  // SignalR subscription for dispute comment events (replaces Supabase realtime)
+  // SignalR subscription for real-time dispute updates
   useEffect(() => {
     if (!selectedDispute) return;
 
@@ -192,15 +191,24 @@ const DisputeCenter: React.FC = () => {
       fetchComments(selectedDispute.id);
     };
 
+    const handleCommentAdded = (payload: { disputeId: string; userId: string }) => {
+      if (!active) return;
+      if (payload?.disputeId === selectedDispute.id && payload?.userId !== user?.id) {
+        fetchComments(selectedDispute.id);
+      }
+    };
+
     conn.on('DisputeResolved', handleDisputeEvent);
     conn.on('ReportDisputed', handleDisputeEvent);
+    conn.on('DisputeCommentAdded', handleCommentAdded);
 
     return () => {
       active = false;
       conn.off('DisputeResolved', handleDisputeEvent);
       conn.off('ReportDisputed', handleDisputeEvent);
+      conn.off('DisputeCommentAdded', handleCommentAdded);
     };
-  }, [selectedDispute, fetchComments, conn]);
+  }, [selectedDispute, fetchComments, conn, user?.id]);
 
   const handleAddComment = async (disputeId: string) => {
     if (!user?.id) {
@@ -330,126 +338,134 @@ const DisputeCenter: React.FC = () => {
       : disputes.filter(d => d.tournament_id === null);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        <Card className="bg-[#12121a] border border-white/10">
-          <CardHeader>
-            <CardTitle className="text-white text-2xl flex items-center gap-2">
-              <MessageSquare className="h-6 w-6 text-red-400" />
-              Admin Dispute Center
-            </CardTitle>
-          </CardHeader>
-        <CardContent>
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-white/5">
-                <TabsTrigger value="all" className="text-white data-[state=active]:bg-red-600">
-                  All Disputes ({disputes.length})
-                </TabsTrigger>
-                <TabsTrigger value="tournament" className="text-white data-[state=active]:bg-red-600">
-                  Tournament ({disputes.filter(d => d.tournament_id !== null).length})
-                </TabsTrigger>
-                <TabsTrigger value="general" className="text-white data-[state=active]:bg-red-600">
-                  General Support ({disputes.filter(d => d.tournament_id === null).length})
-                </TabsTrigger>
-              </TabsList>
+    <div className="min-h-screen bg-[#0a0a0f] py-6 px-4">
+      <div className="max-w-[1600px] mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <MessageSquare className="h-6 w-6 text-red-400" />
+          <h1 className="text-white text-2xl font-semibold">Admin Dispute Center</h1>
+        </div>
 
-              <TabsContent value={activeTab} className="mt-6">
-          {loading ? (
-                  <div className="text-white/70 text-center py-8">Loading disputes...</div>
-                ) : filteredDisputes.length === 0 ? (
-                  <div className="text-white/50 text-center py-8">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No disputes found</p>
-                  </div>
-          ) : (
-            <div className="space-y-3">
-                    {filteredDisputes.map((d) => {
-                      const StatusIcon = statusMeta[d.status].icon;
-                      return (
-                        <Card
-                          key={d.id}
-                          className={`bg-white/5 border cursor-pointer transition ${
-                            selectedDispute?.id === d.id
-                              ? 'border-red-500/50 bg-white/10'
-                              : 'border-white/10 hover:border-white/20'
-                          }`}
-                          onClick={() => {
-                            setSelectedDispute(d);
-                            setResolutionNotes(d.resolution_notes || '');
-                            setResolutionStatus(d.status === 'rejected' ? 'rejected' : 'resolved');
-                            fetchComments(d.id);
-                          }}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h3 className="text-white font-semibold">{d.title}</h3>
-                                  <Badge className={statusMeta[d.status].className}>
-                                    <StatusIcon className="h-3 w-3 mr-1" />
-                                    {statusMeta[d.status].label}
-                                  </Badge>
-                                </div>
-                                <p className="text-white/70 text-sm mb-2 line-clamp-2">
-                                  {d.description || 'No description'}
-                                </p>
-                                <div className="flex flex-wrap gap-2 text-xs text-white/50">
-                                  <span>By: {d.raised_by_name}</span>
-                                  <span>•</span>
-                                  <span>{d.tournament_name}</span>
-                                  {d.dispute_reason && (
-                                    <>
-                                      <span>•</span>
-                                      <span>{DISPUTE_REASON_LABELS[d.dispute_reason] || d.dispute_reason}</span>
-                                    </>
-                                  )}
-                                  <span>•</span>
-                                  <span>{formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}</span>
-                                </div>
-                  </div>
-                </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+        {/* 3-Panel Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_380px] gap-4 h-[calc(100vh-140px)]">
+
+          {/* ── Panel 1: Dispute List ─────────────────────────────────── */}
+          <div className="bg-[#12121a] border border-white/10 rounded-2xl flex flex-col overflow-hidden">
+            <div className="p-3 border-b border-white/10">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'tournament' | 'general')} className="w-full">
+                <TabsList className="grid w-full grid-cols-3 bg-white/5 h-8">
+                  <TabsTrigger value="all" className="text-white text-xs data-[state=active]:bg-red-600">
+                    All ({disputes.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="tournament" className="text-white text-xs data-[state=active]:bg-red-600">
+                    Tournament ({disputes.filter(d => d.tournament_id !== null).length})
+                  </TabsTrigger>
+                  <TabsTrigger value="general" className="text-white text-xs data-[state=active]:bg-red-600">
+                    General ({disputes.filter(d => d.tournament_id === null).length})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
-          )}
-              </TabsContent>
-            </Tabs>
-        </CardContent>
-      </Card>
 
-        {selectedDispute && (
-          <Card className="bg-[#12121a] border border-white/10 mt-6">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-red-400" />
-                {selectedDispute.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Dispute Details */}
-              <div className="space-y-3">
-                <div>
-                  <label className="text-white/70 text-sm mb-1 block">Description</label>
-                  <p className="text-white text-sm bg-white/5 p-3 rounded-lg border border-white/10">
-                    {selectedDispute.description || 'No description provided'}
-                  </p>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+              {loading ? (
+                <div className="text-white/70 text-center py-8">
+                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
+                  Loading...
                 </div>
-                {selectedDispute.evidence_url && (
+              ) : filteredDisputes.length === 0 ? (
+                <div className="text-white/50 text-center py-8">
+                  <AlertCircle className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No disputes found</p>
+                </div>
+              ) : (
+                filteredDisputes.map((d) => {
+                  const StatusIcon = statusMeta[d.status].icon;
+                  return (
+                    <button
+                      key={d.id}
+                      onClick={() => {
+                        setSelectedDispute(d);
+                        setResolutionNotes(d.resolution_notes || '');
+                        setResolutionStatus(d.status === 'rejected' ? 'rejected' : 'resolved');
+                        fetchComments(d.id);
+                      }}
+                      className={`w-full text-left p-3 rounded-xl border transition ${
+                        selectedDispute?.id === d.id
+                          ? 'border-red-500/50 bg-red-500/10'
+                          : 'border-white/5 bg-white/[0.02] hover:bg-white/5 hover:border-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-white text-sm font-medium truncate flex-1">{d.title}</h3>
+                        <Badge className={`${statusMeta[d.status].className} text-[10px] px-1.5 py-0`}>
+                          <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
+                          {statusMeta[d.status].label}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-white/40">
+                        <span>{d.raised_by_name}</span>
+                        <span>•</span>
+                        <span className="truncate">{d.tournament_name}</span>
+                      </div>
+                      <div className="text-[11px] text-white/30 mt-0.5">
+                        {formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* ── Panel 2: Evidence & Info ──────────────────────────────── */}
+          <div className="bg-[#12121a] border border-white/10 rounded-2xl flex flex-col overflow-hidden">
+            {selectedDispute ? (
+              <>
+                <div className="p-4 border-b border-white/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="text-white text-lg font-semibold flex-1">{selectedDispute.title}</h2>
+                    <Badge className={statusMeta[selectedDispute.status].className}>
+                      {statusMeta[selectedDispute.status].label}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-white/50">
+                    <span>By: <strong className="text-white/70">{selectedDispute.raised_by_name}</strong></span>
+                    <span>•</span>
+                    <span>{selectedDispute.tournament_name}</span>
+                    {selectedDispute.dispute_reason && (
+                      <>
+                        <span>•</span>
+                        <span className="text-rose-400">{DISPUTE_REASON_LABELS[selectedDispute.dispute_reason] || selectedDispute.dispute_reason}</span>
+                      </>
+                    )}
+                    <span>•</span>
+                    <span>{formatDistanceToNow(new Date(selectedDispute.created_at), { addSuffix: true })}</span>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {/* Description */}
                   <div>
-                    <label className="text-white/70 text-sm mb-1 block flex items-center gap-2">
-                      <ImageIcon className="h-4 w-4" />
-                      Evidence
-                    </label>
-                    <div className="mt-2">
+                    <label className="text-white/50 text-xs uppercase tracking-wider mb-1.5 block">Description</label>
+                    <p className="text-white/90 text-sm bg-white/5 p-3 rounded-xl border border-white/10 leading-relaxed">
+                      {selectedDispute.description || 'No description provided'}
+                    </p>
+                  </div>
+
+                  {/* Evidence */}
+                  {selectedDispute.evidence_url && (
+                    <div>
+                      <label className="text-white/50 text-xs uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                        <ImageIcon className="h-3.5 w-3.5" />
+                        Evidence
+                      </label>
                       <img
                         src={selectedDispute.evidence_url}
                         alt="Dispute evidence"
-                        className="max-w-full max-h-96 rounded-lg border border-white/20 cursor-pointer hover:opacity-80 transition"
+                        className="max-w-full max-h-80 rounded-xl border border-white/20 cursor-pointer hover:opacity-80 transition"
                         onClick={() => setViewingImage(selectedDispute.evidence_url || null)}
                         onError={(e) => {
-                          console.error('Failed to load evidence image:', selectedDispute.evidence_url);
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
                           const parent = target.parentElement;
@@ -459,236 +475,198 @@ const DisputeCenter: React.FC = () => {
                         }}
                       />
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Comments Section - Always show history, but only allow new comments for open/in_review */}
-              {selectedDispute && (
-                <div className="border-t border-white/10 pt-4">
-                  <label className="text-white text-sm font-semibold mb-3 block">Conversation</label>
-                
-                  {/* Comments List - Show for all statuses */}
-                  <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto pr-2">
-                    {loadingComments ? (
-                      <div className="text-center text-white/50 text-sm py-4">
-                        <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2" />
-                        Loading comments...
-                      </div>
-                    ) : comments.length === 0 ? (
-                      <div className="text-white/50 text-sm text-center py-4 bg-white/5 rounded-lg border border-white/10">
-                        No comments yet. {selectedDispute.status === 'open' || selectedDispute.status === 'in_review' ? 'Start the conversation below.' : 'This dispute has been closed.'}
-                      </div>
-                    ) : (
-                      comments.map((comment) => {
-                        const isAdmin = comment.user_id === user?.id;
-                        return (
-                          <div
-                            key={comment.id}
-                            className={`p-3 rounded-lg border ${
-                              isAdmin
-                                ? 'bg-red-500/10 border-red-500/30'
-                                : 'bg-white/5 border-white/10'
-                            }`}
-                          >
-                            <div className="flex items-start justify-between mb-1">
-                              <span className="text-xs font-semibold text-white">
-                                {isAdmin ? 'Admin' : 'User'}: {comment.user_name}
-                              </span>
-                              <span className="text-xs text-white/50">
-                                {new Date(comment.created_at).toLocaleString()}
-                              </span>
-                            </div>
-                            {comment.comment && comment.comment.trim() && (
-                              <p className="text-sm text-white/90 whitespace-pre-wrap mb-2">{comment.comment}</p>
-                            )}
-                            {comment.attachment_url && (
-                              <div className="mt-2">
-                                <img
-                                  src={comment.attachment_url}
-                                  alt="Comment attachment"
-                                  className="max-w-full max-h-64 rounded-lg border border-white/20 cursor-pointer hover:opacity-80 transition"
-                                  onClick={() => setViewingImage(comment.attachment_url || null)}
-                                  onError={(e) => {
-                                    console.error('Failed to load comment image:', comment.attachment_url);
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    const parent = target.parentElement;
-                                    if (parent) {
-                                      parent.innerHTML = `<span class="text-red-400 text-sm">Failed to load image.</span>`;
-                                    }
-                                  }}
-                                  onLoad={() => {
-                                    console.log('Successfully loaded comment image:', comment.attachment_url);
-                                  }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {/* Add Comment - Only show for open/in_review disputes */}
-                  {(selectedDispute.status === 'open' || selectedDispute.status === 'in_review') && (
-                    <>
-                      {isSuperAdmin && (
-                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4">
-                          <p className="text-yellow-300 text-sm">
-                            <strong>View-Only Mode:</strong> As a super admin, you can view all disputes and comments for oversight, but only moderators and ops admins can actively handle disputes (add comments, resolve, reject).
-                          </p>
-                        </div>
-                      )}
-                      {canHandleDisputes && (
-                        <div className="space-y-2">
-                          <Textarea
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            placeholder="Add a comment or ask a question..."
-                            className="bg-white/5 border-white/20 text-white placeholder:text-white/40 min-h-[80px]"
-                            disabled={isSuperAdmin}
-                          />
-                        
-                          {/* File Upload */}
-                          <div className="space-y-2">
-                            <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
-                              <ImageIcon className="h-4 w-4" />
-                              <span>Attach image (optional)</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    if (file.size > 5 * 1024 * 1024) {
-                                      toast({
-                                        title: 'File too large',
-                                        description: 'Image must be less than 5MB',
-                                        variant: 'destructive',
-                                      });
-                                      return;
-                                    }
-                                    if (!file.type.startsWith('image/')) {
-                                      toast({
-                                        title: 'Invalid file',
-                                        description: 'Please upload an image file',
-                                        variant: 'destructive',
-                                      });
-                                      return;
-                                    }
-                                    setCommentAttachment(file);
-                                  }
-                                }}
-                              />
-                            </label>
-                            {commentAttachment && (
-                              <div className="flex items-center gap-2 text-sm text-white/70">
-                                <span>{commentAttachment.name}</span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setCommentAttachment(null)}
-                                  className="text-red-400 hover:text-red-300 h-auto p-1"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-
-                          <Button
-                            onClick={() => handleAddComment(selectedDispute.id)}
-                            disabled={submittingComment || uploadingAttachment || (!commentText.trim() && !commentAttachment) || isSuperAdmin}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            {submittingComment || uploadingAttachment ? (
-                              <>
-                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                {uploadingAttachment ? 'Uploading...' : 'Posting...'}
-                              </>
-                            ) : (
-                              <>
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                Add Comment
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      )}
-                    </>
                   )}
-                  
-                  {/* Show message for resolved/rejected disputes */}
-                  {(selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && (
-                    <div className="text-white/50 text-sm text-center py-3 bg-white/5 rounded-lg border border-white/10">
-                      This dispute has been {selectedDispute.status === 'resolved' ? 'resolved' : 'rejected'}. No further comments can be added.
-                    </div>
-                  )}
-                </div>
-              )}
 
-              {/* Resolution Section - Only show for open/in_review disputes */}
-              {canHandleDisputes && selectedDispute && (selectedDispute.status === 'open' || selectedDispute.status === 'in_review') && (
-                <div className="border-t border-white/10 pt-4">
-                  <label className="text-white text-sm font-semibold mb-2 block">Resolution</label>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-white/70 text-sm">Resolution Notes</label>
+                  {/* Resolution Section */}
+                  {canHandleDisputes && (selectedDispute.status === 'open' || selectedDispute.status === 'in_review') && (
+                    <div className="border-t border-white/10 pt-4">
+                      <label className="text-white/50 text-xs uppercase tracking-wider mb-2 block">Resolution</label>
                       <Textarea
                         value={resolutionNotes}
                         onChange={(e) => setResolutionNotes(e.target.value)}
                         placeholder="Enter resolution notes..."
-                        className="bg-white/5 border-white/20 text-white placeholder:text-white/40 min-h-[120px]"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[100px] rounded-xl mb-3"
                         disabled={isSuperAdmin}
                       />
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => { setResolutionStatus('resolved'); resolve(); }}
+                          className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                          disabled={isSuperAdmin}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1.5" />
+                          Resolve
+                        </Button>
+                        <Button
+                          onClick={() => { setResolutionStatus('rejected'); resolve(); }}
+                          variant="outline"
+                          className="border-red-600 text-red-400 hover:bg-red-600/10 flex-1"
+                          disabled={isSuperAdmin}
+                        >
+                          <XCircle className="h-4 w-4 mr-1.5" />
+                          Reject
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={() => {
-                          setResolutionStatus('resolved');
-                          resolve();
-                        }}
-                        className="bg-green-600 hover:bg-green-700 text-white flex-1"
-                        disabled={isSuperAdmin}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Resolve
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setResolutionStatus('rejected');
-                          resolve();
-                        }}
-                        variant="outline"
-                        className="border-red-600 text-red-400 hover:bg-red-600/10 flex-1"
-                        disabled={isSuperAdmin}
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Reject
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setSelectedDispute(null);
-                          setComments([]);
-                          setCommentText('');
-                          setCommentAttachment(null);
-                        }}
-                        variant="ghost"
-                        className="text-white/70 hover:text-white hover:bg-white/10"
-                      >
-                        Cancel
-                      </Button>
+                  )}
+
+                  {/* Closed dispute notice */}
+                  {(selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && selectedDispute.resolution_notes && (
+                    <div className="border-t border-white/10 pt-4">
+                      <label className="text-white/50 text-xs uppercase tracking-wider mb-1.5 block">Resolution Notes</label>
+                      <p className="text-white/80 text-sm bg-white/5 p-3 rounded-xl border border-white/10">
+                        {selectedDispute.resolution_notes}
+                      </p>
                     </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-white/30">
+                <div className="text-center">
+                  <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Select a dispute to view details</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Panel 3: Conversation ─────────────────────────────────── */}
+          <div className="bg-[#12121a] border border-white/10 rounded-2xl flex flex-col overflow-hidden">
+            <div className="p-3 border-b border-white/10">
+              <h3 className="text-white text-sm font-semibold flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-white/50" />
+                Conversation
+                {comments.length > 0 && (
+                  <span className="text-[11px] text-white/40 bg-white/5 px-1.5 py-0.5 rounded-full">{comments.length}</span>
+                )}
+              </h3>
+            </div>
+
+            {selectedDispute ? (
+              <>
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {loadingComments ? (
+                    <div className="text-center text-white/50 text-sm py-8">
+                      <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2" />
+                      Loading...
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <div className="text-white/30 text-sm text-center py-8">
+                      No messages yet
+                    </div>
+                  ) : (
+                    comments.map((comment) => {
+                      const isAdmin = comment.user_id === user?.id;
+                      return (
+                        <div
+                          key={comment.id}
+                          className={`p-2.5 rounded-xl border ${
+                            isAdmin
+                              ? 'bg-red-500/10 border-red-500/20 ml-4'
+                              : 'bg-white/5 border-white/5 mr-4'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`text-[11px] font-medium ${isAdmin ? 'text-red-400' : 'text-white/60'}`}>
+                              {comment.user_name}
+                            </span>
+                            <span className="text-[10px] text-white/30">
+                              {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                          {comment.comment?.trim() && (
+                            <p className="text-sm text-white/90 whitespace-pre-wrap">{comment.comment}</p>
+                          )}
+                          {comment.attachment_url && (
+                            <img
+                              src={comment.attachment_url}
+                              alt="Attachment"
+                              className="max-w-full max-h-40 rounded-lg border border-white/10 mt-1.5 cursor-pointer hover:opacity-80 transition"
+                              onClick={() => setViewingImage(comment.attachment_url || null)}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Input Area */}
+                {(selectedDispute.status === 'open' || selectedDispute.status === 'in_review') ? (
+                  canHandleDisputes ? (
+                    <div className="p-3 border-t border-white/10 space-y-2">
+                      {isSuperAdmin && (
+                        <p className="text-yellow-400/70 text-[11px]">View-only: moderators/ops handle disputes</p>
+                      )}
+                      <Textarea
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        placeholder="Type a message..."
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30 min-h-[60px] max-h-[120px] rounded-xl text-sm resize-none"
+                        disabled={isSuperAdmin}
+                      />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <label className="cursor-pointer text-white/40 hover:text-white/60 transition">
+                            <ImageIcon className="h-4 w-4" />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    toast({ title: 'File too large', description: 'Max 5MB', variant: 'destructive' });
+                                    return;
+                                  }
+                                  setCommentAttachment(file);
+                                }
+                              }}
+                            />
+                          </label>
+                          {commentAttachment && (
+                            <div className="flex items-center gap-1 text-[11px] text-white/50">
+                              <span className="truncate max-w-[120px]">{commentAttachment.name}</span>
+                              <button onClick={() => setCommentAttachment(null)} className="text-red-400 hover:text-red-300">
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleAddComment(selectedDispute.id)}
+                          disabled={submittingComment || uploadingAttachment || (!commentText.trim() && !commentAttachment) || isSuperAdmin}
+                          className="bg-red-600 hover:bg-red-700 text-white h-8 px-3 text-xs"
+                        >
+                          {submittingComment ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : 'Send'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null
+                ) : (
+                  <div className="p-3 border-t border-white/10">
+                    <p className="text-white/30 text-xs text-center">
+                      Dispute {selectedDispute.status === 'resolved' ? 'resolved' : 'rejected'} — closed
+                    </p>
                   </div>
-            </div>
-          )}
-          </CardContent>
-        </Card>
-      )}
-            </div>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-white/30">
+                <p className="text-sm">No dispute selected</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Image Viewer Modal */}
       <Dialog open={!!viewingImage} onOpenChange={(open) => !open && setViewingImage(null)}>
@@ -707,7 +685,6 @@ const DisputeCenter: React.FC = () => {
                 alt="Full size image"
                 className="max-w-full max-h-[90vh] object-contain"
                 onError={(e) => {
-                  console.error('Failed to load full size image:', viewingImage);
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                   const parent = target.parentElement;

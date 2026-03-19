@@ -446,7 +446,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                     <div className="flex gap-2">
                                         <Input
                                             type="date"
-                                            value={config?.deadline ? utcToLocalDate(config.deadline) : (defaultDeadline ? defaultDeadline.split('T')[0] : '')}
+                                            value={config?.deadline ? utcToLocalDate(config.deadline) : ''}
                                             min={tournamentStartDate ? utcToLocalDate(tournamentStartDate) : ''}
                                             max={tournamentEndDate ? utcToLocalDate(tournamentEndDate) : ''}
                                             onChange={(e) => {
@@ -460,7 +460,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                             size="sm"
                                             variant="secondary"
                                             onClick={() => handleSaveRound(cfgKey, roundIndex)}
-                                            disabled={saving || savedRoundKeys.has(cfgKey)}
+                                            disabled={saving || savedRoundKeys.has(cfgKey) || !config?.deadline}
                                             className={savedRoundKeys.has(cfgKey)
                                                 ? "bg-emerald-500/5 text-emerald-400/60 border border-emerald-500/10 rounded-xl px-4 cursor-default"
                                                 : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"}
@@ -471,7 +471,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                     <p className="text-xs text-gray-500">
                                         Teams have until the end of this day to complete their match
                                     </p>
-                                    {!isValidDate(config?.deadline || defaultDeadline) && (
+                                    {config?.deadline && !isValidDate(config.deadline) && (
                                         <p className="text-xs text-red-400 flex items-center gap-1">
                                             <AlertCircle className="w-3 h-3" />
                                             Date must be within tournament window
@@ -489,7 +489,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                             </Label>
                                             <Input
                                                 type="date"
-                                                value={config?.deadline ? utcToLocalDate(config.deadline) : (defaultDeadline ? defaultDeadline.split('T')[0] : '')}
+                                                value={config?.deadline ? utcToLocalDate(config.deadline) : ''}
                                                 min={tournamentStartDate ? utcToLocalDate(tournamentStartDate) : ''}
                                                 max={tournamentEndDate ? utcToLocalDate(tournamentEndDate) : ''}
                                                 onChange={(e) => {
