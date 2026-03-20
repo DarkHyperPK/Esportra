@@ -283,10 +283,13 @@ const SignUp = () => {
                 {/* Password Strength Indicator */}
                 {passwordValue && (
                   <motion.div
-                    className="mt-3 space-y-2"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
+                    initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                    animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                    transition={{ duration: 0.2 }}
+                    style={{ display: 'grid', overflow: 'hidden' }}
+                    className="mt-3"
                   >
+                  <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-2">
                     {/* Strength Bar */}
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((level) => (
@@ -317,6 +320,7 @@ const SignUp = () => {
                         </div>
                       ))}
                     </div>
+                  </div>
                   </motion.div>
                 )}
               </FormItem>

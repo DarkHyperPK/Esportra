@@ -177,11 +177,13 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
             <AnimatePresence>
                 {!data.isOnline && (
                     <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="space-y-2 overflow-hidden"
+                        initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                        animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                        exit={{ opacity: 0, gridTemplateRows: '0fr' }}
+                        transition={{ duration: 0.2 }}
+                        style={{ display: 'grid', overflow: 'hidden' }}
                     >
+                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-2">
                         <div className="w-full h-px bg-white/5 my-6" />
                         <Label htmlFor="venue" className="text-xs font-bold text-gray-500 uppercase tracking-widest">Venue *</Label>
                         <Input
@@ -192,6 +194,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                             className={cn(errors.venue && 'border-red-500')}
                         />
                         {errors.venue && <p className="text-sm text-red-500">{errors.venue}</p>}
+                    </div>
                     </motion.div>
                 )}
             </AnimatePresence>

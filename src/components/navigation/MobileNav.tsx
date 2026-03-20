@@ -41,12 +41,14 @@ const MobileNav = ({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: "auto", opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
+          initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+          animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+          exit={{ opacity: 0, gridTemplateRows: '0fr' }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          className="lg:hidden fixed top-[88px] left-0 right-0 mx-4 z-[998] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-3xl overflow-hidden shadow-[0_25px_45px_rgba(0,0,0,0.65)] max-h-[80vh] overflow-y-auto"
+          style={{ display: 'grid', overflow: 'hidden' }}
+          className="lg:hidden fixed top-[88px] left-0 right-0 mx-4 z-[998] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-[0_25px_45px_rgba(0,0,0,0.65)]"
         >
+        <div style={{ minHeight: 0, overflow: 'hidden' }} className="max-h-[80vh] overflow-y-auto">
           {/* Background Effects */}
           <MotionTiles />
           <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-transparent to-blue-500/20 opacity-20 pointer-events-none mix-blend-overlay" />
@@ -81,12 +83,14 @@ const MobileNav = ({
                 <AnimatePresence>
                   {expandedMenu === 'venues' && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
+                      initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                      animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                      exit={{ opacity: 0, gridTemplateRows: '0fr' }}
                       transition={{ duration: 0.2 }}
-                      className="overflow-hidden ml-3 mt-1 space-y-0.5 border-l border-white/10 pl-2"
+                      style={{ display: 'grid', overflow: 'hidden' }}
+                      className="ml-3 mt-1 border-l border-white/10 pl-2"
                     >
+                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
                       <Link to="/venues/search" className={subLinkClass} onClick={onClose}>Find Venues</Link>
                       <Link to="/venues/featured" className={subLinkClass} onClick={onClose}>Featured Venues</Link>
                       {(userRole === 'venue_owner' || isSuperAdmin) && (
@@ -95,6 +99,7 @@ const MobileNav = ({
                           <Link to="/venues/manage" className={subLinkClass} onClick={onClose}>Manage Venues</Link>
                         </>
                       )}
+                    </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -118,12 +123,14 @@ const MobileNav = ({
                 <AnimatePresence>
                   {expandedMenu === 'tournaments' && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
+                      initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                      animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                      exit={{ opacity: 0, gridTemplateRows: '0fr' }}
                       transition={{ duration: 0.2 }}
-                      className="overflow-hidden ml-3 mt-1 space-y-0.5 border-l border-white/10 pl-2"
+                      style={{ display: 'grid', overflow: 'hidden' }}
+                      className="ml-3 mt-1 border-l border-white/10 pl-2"
                     >
+                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
                       <Link to="/tournaments/upcoming" className={subLinkClass} onClick={onClose}>Upcoming Tournaments</Link>
                       <Link to="/tournaments/ongoing" className={subLinkClass} onClick={onClose}>Live Tournaments</Link>
                       <Link to="/tournament-history" className={subLinkClass} onClick={onClose}>Tournament History</Link>
@@ -134,6 +141,7 @@ const MobileNav = ({
                           <Link to="/tournaments/create" className={subLinkClass} onClick={onClose}>Create Tournament</Link>
                         </>
                       )}
+                    </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -170,15 +178,18 @@ const MobileNav = ({
                 <AnimatePresence>
                   {expandedMenu === 'about' && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
+                      initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                      animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                      exit={{ opacity: 0, gridTemplateRows: '0fr' }}
                       transition={{ duration: 0.2 }}
-                      className="overflow-hidden ml-3 mt-1 space-y-0.5 border-l border-white/10 pl-2"
+                      style={{ display: 'grid', overflow: 'hidden' }}
+                      className="ml-3 mt-1 border-l border-white/10 pl-2"
                     >
+                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
                       <Link to="/about/company" className={subLinkClass} onClick={onClose}>About Us</Link>
                       <Link to="/about/contact" className={subLinkClass} onClick={onClose}>Contact</Link>
                       <Link to="/about/faq" className={subLinkClass} onClick={onClose}>FAQ</Link>
+                    </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -288,6 +299,7 @@ const MobileNav = ({
               </div>
             )}
           </div>
+        </div>
         </motion.div>
       )
       }

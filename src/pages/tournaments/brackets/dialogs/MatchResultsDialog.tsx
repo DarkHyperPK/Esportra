@@ -204,7 +204,7 @@ export const MatchResultsDialog: React.FC<MatchResultsDialogProps> = ({
                                         <div key={i} className="bg-gaming-gray/20 rounded border border-gaming-gray/30 overflow-hidden group hover:border-gaming-gray/50 transition-colors">
                                             {r.image_url ? (
                                                 <a href={r.image_url} target="_blank" rel="noopener noreferrer" className="block relative aspect-video bg-black/40">
-                                                    <img src={r.image_url} alt="result" className="w-full h-full object-contain" />
+                                                    <img src={r.image_url} loading="lazy" alt="result" className="w-full h-full object-contain" />
                                                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                         <span className="text-white text-xs font-medium">View Full Image</span>
                                                     </div>

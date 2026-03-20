@@ -53,7 +53,7 @@ const HallOfLegends = () => {
                         className="flex-none w-[300px] md:w-[450px] snap-center bg-white/[0.02] border border-white/10 p-8 md:p-12 group hover:border-emerald-400/30 transition-all duration-500"
                     >
                         <div className="relative mb-8 w-20 h-20 overflow-hidden rounded-full grayscale group-hover:grayscale-0 transition-all duration-700">
-                            <img src={item.image} alt={item.name} className="object-cover w-full h-full scale-110 group-hover:scale-100 transition-transform duration-700" />
+                            <img src={item.image} loading="lazy" alt={item.name} className="object-cover w-full h-full scale-110 group-hover:scale-100 transition-transform duration-700" />
                         </div>
                         <p className="text-xl md:text-2xl text-white font-light font-heading leading-relaxed mb-8">
                             "{item.quote}"

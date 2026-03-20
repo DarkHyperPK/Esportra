@@ -466,11 +466,13 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             <AnimatePresence>
                 {showInvitePanel && (
                     <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
+                        initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                        animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                        exit={{ opacity: 0, gridTemplateRows: '0fr' }}
+                        transition={{ duration: 0.2 }}
+                        style={{ display: 'grid', overflow: 'hidden' }}
                     >
+                    <div style={{ minHeight: 0, overflow: 'hidden' }}>
                         <Card className="bg-[#0a0a0c] border-zinc-800/50 rounded-2xl">
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
@@ -580,6 +582,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                 </Button>
                             </CardContent>
                         </Card>
+                    </div>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -631,7 +634,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                             {/* Avatar */}
                                             <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden flex-shrink-0">
                                                 {s.profiles?.avatar_url ? (
-                                                    <img src={s.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                    <img src={s.profiles.avatar_url} loading="lazy" alt="" className="w-full h-full object-cover" />
                                                 ) : (
                                                     <span className="text-sm font-bold text-zinc-500">
                                                         {(s.profiles?.full_name || s.profiles?.username || "?")[0].toUpperCase()}
@@ -683,11 +686,14 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                         <AnimatePresence>
                                             {isExpanded && (
                                                 <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden border-t border-zinc-800/50"
+                                                    initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                                                    animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                                                    exit={{ opacity: 0, gridTemplateRows: '0fr' }}
+                                                    transition={{ duration: 0.2 }}
+                                                    style={{ display: 'grid', overflow: 'hidden' }}
+                                                    className="border-t border-zinc-800/50"
                                                 >
+                                                <div style={{ minHeight: 0, overflow: 'hidden' }}>
                                                     <div className="p-4 space-y-4">
                                                         {/* Activity Timeline */}
                                                         <div>
@@ -798,6 +804,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                             Remove Staff Member
                                                         </Button>
                                                     </div>
+                                                </div>
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>
@@ -828,7 +835,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                     {/* Avatar */}
                                     <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden flex-shrink-0 mt-0.5">
                                         {(log.actor as any)?.avatar_url ? (
-                                            <img src={(log.actor as any).avatar_url} alt="" className="w-full h-full object-cover" />
+                                            <img src={(log.actor as any).avatar_url} loading="lazy" alt="" className="w-full h-full object-cover" />
                                         ) : (
                                             <span className="text-xs font-bold text-zinc-500">
                                                 {((log.actor as any)?.full_name || (log.actor as any)?.username || "?")[0].toUpperCase()}

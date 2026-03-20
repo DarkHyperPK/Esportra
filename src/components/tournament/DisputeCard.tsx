@@ -131,7 +131,7 @@ const DisputeCard: React.FC<DisputeCardProps> = ({
                                         rel="noopener noreferrer"
                                         className="block w-20 h-14 rounded-lg overflow-hidden border border-zinc-700 hover:border-purple-500/50 transition-colors shrink-0"
                                     >
-                                        <img src={url} alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
+                                        <img src={url} loading="lazy" alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
                                     </a>
                                 ))}
                             </div>
@@ -254,7 +254,7 @@ const DisputeCard: React.FC<DisputeCardProps> = ({
                                             key={i}
                                             className="relative w-16 h-12 rounded-lg overflow-hidden border border-zinc-700 shrink-0"
                                         >
-                                            <img src={url} alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
+                                            <img src={url} loading="lazy" alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
                                         </div>
                                     ))}
                                 </div>

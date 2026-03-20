@@ -298,7 +298,7 @@ const OrganizerVerificationForm: React.FC<OrganizerVerificationFormProps> = ({
                   />
                   {cnicFrontPreview && (
                     <div className="mt-2">
-                      <img src={cnicFrontPreview} alt="CNIC Front Preview" className="w-32 h-20 object-cover rounded border" />
+                      <img src={cnicFrontPreview} loading="lazy" alt="CNIC Front Preview" className="w-32 h-20 object-cover rounded border" />
                     </div>
                   )}
                 </div>
@@ -313,7 +313,7 @@ const OrganizerVerificationForm: React.FC<OrganizerVerificationFormProps> = ({
                   />
                   {cnicBackPreview && (
                     <div className="mt-2">
-                      <img src={cnicBackPreview} alt="CNIC Back Preview" className="w-32 h-20 object-cover rounded border" />
+                      <img src={cnicBackPreview} loading="lazy" alt="CNIC Back Preview" className="w-32 h-20 object-cover rounded border" />
                     </div>
                   )}
                 </div>

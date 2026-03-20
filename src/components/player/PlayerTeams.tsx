@@ -257,7 +257,7 @@ const PlayerTeams = () => {
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <div className="h-14 w-14 rounded-lg bg-esports-dark flex items-center justify-center overflow-hidden border-2 border-gaming-purple/40 shadow">
-                    <img src={team.logo} alt={team.name} className="h-full w-full object-cover" />
+                    <img src={team.logo} loading="lazy" alt={team.name} className="h-full w-full object-cover" />
                   </div>
                   <div>
                     <CardTitle className="text-2xl font-bold text-white drop-shadow">{team.name}</CardTitle>
@@ -404,7 +404,7 @@ const PlayerTeams = () => {
               <Label htmlFor="teamLogo">Team Logo (Optional)</Label>
               <Input id="teamLogo" type="file" accept="image/*" onChange={handleLogoChange} />
               {teamLogoUrl && (
-                <img src={teamLogoUrl} alt="Team Logo" className="mt-2 w-16 h-16 object-cover rounded" />
+                <img src={teamLogoUrl} loading="lazy" alt="Team Logo" className="mt-2 w-16 h-16 object-cover rounded" />
               )}
             </div>
             <div>

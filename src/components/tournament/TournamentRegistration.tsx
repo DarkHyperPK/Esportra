@@ -171,7 +171,7 @@ const TournamentRegistration = ({ tournamentId, teamSize = 5, ...props }) => {
         <Label htmlFor="teamLogo">Team Logo (Optional)</Label>
         <Input id="teamLogo" type="file" accept="image/*" onChange={handleLogoChange} />
         {teamLogoUrl && (
-          <img src={teamLogoUrl} alt="Team Logo" className="mt-2 w-16 h-16 object-cover rounded" />
+          <img src={teamLogoUrl} loading="lazy" alt="Team Logo" className="mt-2 w-16 h-16 object-cover rounded" />
         )}
       </div>
       <Button type="submit" className="w-full bg-gaming-purple hover:bg-gaming-purple/80" disabled={submitting}>

@@ -450,7 +450,7 @@ const UserManagementTool = () => {
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center overflow-hidden relative">
                                                     {user.avatar_url ? (
-                                                        <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                        <img src={user.avatar_url} loading="lazy" alt="" className="w-full h-full object-cover" />
                                                     ) : (
                                                         <Users className="w-5 h-5 text-rose-500" />
                                                     )}

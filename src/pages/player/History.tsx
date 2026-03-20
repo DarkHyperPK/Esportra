@@ -65,7 +65,7 @@ const PlayerHistory = () => {
                             {/* Image/Icon */}
                             <div className="h-16 w-16 shrink-0 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden">
                                 {t.banner_url || t.logo_url ? (
-                                    <img src={t.banner_url || t.logo_url} alt={t.game} className="h-full w-full object-cover" />
+                                    <img src={t.banner_url || t.logo_url} loading="lazy" alt={t.game} className="h-full w-full object-cover" />
                                 ) : (
                                     <Trophy className="h-6 w-6 text-zinc-700" />
                                 )}

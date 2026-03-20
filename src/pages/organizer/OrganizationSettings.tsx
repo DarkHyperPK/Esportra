@@ -910,7 +910,7 @@ const OrganizationSettings: React.FC = () => {
                             <div className="columns-1 md:columns-3 gap-4 space-y-4">
                                 {mediaItems.map((item) => (
                                     <div key={item.id} className="break-inside-avoid relative group rounded-xl overflow-hidden bg-black/20">
-                                        <img src={item.url} alt={item.caption} className="w-full h-full object-cover" />
+                                        <img src={item.url} loading="lazy" alt={item.caption} className="w-full h-full object-cover" />
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                             <Button
                                                 size="icon"

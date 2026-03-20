@@ -318,11 +318,13 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                 <AnimatePresence>
                                     {showScoreboard && (
                                         <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className="overflow-hidden"
+                                            initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                                            animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                                            exit={{ opacity: 0, gridTemplateRows: '0fr' }}
+                                            transition={{ duration: 0.2 }}
+                                            style={{ display: 'grid', overflow: 'hidden' }}
                                         >
+                                        <div style={{ minHeight: 0, overflow: 'hidden' }}>
                                             <FullScoreboard
                                                 players={acceptedReport.match_data.players}
                                                 team1Name={team1Name}
@@ -333,6 +335,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                                 reportedByTeamId={acceptedReport.reported_by_team_id}
                                                 team1Id={team1Id}
                                             />
+                                        </div>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
@@ -410,11 +413,14 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                         <AnimatePresence>
                                             {showScoreboard && (
                                                 <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden mt-2"
+                                                    initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                                                    animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                                                    exit={{ opacity: 0, gridTemplateRows: '0fr' }}
+                                                    transition={{ duration: 0.2 }}
+                                                    style={{ display: 'grid', overflow: 'hidden' }}
+                                                    className="mt-2"
                                                 >
+                                                <div style={{ minHeight: 0, overflow: 'hidden' }}>
                                                     <FullScoreboard
                                                         players={activeReport.match_data.players}
                                                         team1Name={team1Name}
@@ -425,6 +431,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                                         reportedByTeamId={activeReport.reported_by_team_id}
                                                         team1Id={team1Id}
                                                     />
+                                                </div>
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>
@@ -441,7 +448,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                     {activeReport.screenshot_urls.map((url: string, i: number) => (
                                         <a key={i} href={url} target="_blank" rel="noopener noreferrer"
                                             className="block relative aspect-video bg-black/40 rounded-lg border border-zinc-800 overflow-hidden group hover:border-zinc-600 transition-colors">
-                                            <img src={url} alt={`Evidence ${i + 1}`} className="w-full h-full object-contain" />
+                                            <img src={url} loading="lazy" alt={`Evidence ${i + 1}`} className="w-full h-full object-contain" />
                                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                 <span className="text-white text-xs font-medium">View Full Image</span>
                                             </div>
@@ -788,7 +795,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                                         <div className="relative flex-shrink-0">
                                                             <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 group-hover:border-indigo-500/30 transition-all duration-500 shadow-2xl shadow-black`}>
                                                                 {match.agent ? (
-                                                                    <img src={getAgentIcon(match.agent)} alt="Agent" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                                                    <img src={getAgentIcon(match.agent)} loading="lazy" alt="Agent" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                                                 ) : (
                                                                     <div className="w-full h-full flex items-center justify-center">
                                                                         <Swords className="w-6 h-6 text-zinc-800" />

@@ -280,7 +280,7 @@ const VerificationSystemTool = () => {
       <div className="space-y-2">
         <p className="text-xs text-zinc-400 font-medium">{label}</p>
         <div className="relative group rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900">
-          <img src={signedUrl} alt={label} className="w-full h-48 object-cover" />
+          <img src={signedUrl} loading="lazy" alt={label} className="w-full h-48 object-cover" />
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer" onClick={() => setPreviewOpen(true)}>
             <div className="text-white bg-black/50 p-2 rounded-full hover:bg-white/20">
               <Eye className="w-5 h-5" />
@@ -295,7 +295,7 @@ const VerificationSystemTool = () => {
               <DialogTitle className="text-white drop-shadow-md bg-black/50 px-3 py-1 rounded-full text-sm">{label}</DialogTitle>
             </DialogHeader>
             <div className="flex-1 flex items-center justify-center overflow-hidden rounded-lg bg-black/50">
-              <img src={signedUrl} alt={label} className="max-w-full max-h-full object-contain" />
+              <img src={signedUrl} loading="lazy" alt={label} className="max-w-full max-h-full object-contain" />
             </div>
           </DialogContent>
         </Dialog>

@@ -152,7 +152,7 @@ const ManageVenues = () => {
                             <div key={venue.id} className="bg-[#0a0a0c] border border-white/5 rounded-xl overflow-hidden group hover:border-purple-500/30 transition-all">
                                 <div className="h-48 bg-gray-900 relative">
                                     {venue.images && venue.images[0] ? (
-                                        <img src={venue.images[0]} alt={venue.name} className="w-full h-full object-cover" />
+                                        <img src={venue.images[0]} loading="lazy" alt={venue.name} className="w-full h-full object-cover" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-600">
                                             No Image

@@ -38,7 +38,7 @@ const PlayerRow = ({ player }: { player: any }) => (
     <div className="flex items-center justify-between py-2 px-3 hover:bg-white/5 transition-colors rounded-lg group/row">
         <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/10 bg-zinc-800">
-                <img src={getAgentIcon(player.characterId)} alt="" className="w-full h-full object-cover" />
+                <img src={getAgentIcon(player.characterId)} loading="lazy" alt="" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col">
                 <span className="text-sm font-bold text-zinc-200 group-hover/row:text-white transition-colors">

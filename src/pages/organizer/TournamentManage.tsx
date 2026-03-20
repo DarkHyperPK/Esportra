@@ -937,7 +937,7 @@ const TournamentDashboard = () => {
                 {/* Home team */}
                 <div className="flex items-center gap-2">
                   {home.logo ? (
-                    <img src={home.logo} alt={getTeamDisplayName(home)} className="w-6 h-6 rounded bg-white border border-gray-300" />
+                    <img src={home.logo} loading="lazy" alt={getTeamDisplayName(home)} className="w-6 h-6 rounded bg-white border border-gray-300" />
                   ) : (
                     <span className="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300">
                       <GamepadIcon className="w-4 h-4 text-emerald-400" />
@@ -949,7 +949,7 @@ const TournamentDashboard = () => {
                 {/* Visitor team */}
                 <div className="flex items-center gap-2">
                   {visitor.logo ? (
-                    <img src={visitor.logo} alt={getTeamDisplayName(visitor)} className="w-6 h-6 rounded bg-white border border-gray-300" />
+                    <img src={visitor.logo} loading="lazy" alt={getTeamDisplayName(visitor)} className="w-6 h-6 rounded bg-white border border-gray-300" />
                   ) : (
                     <span className="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300">
                       <GamepadIcon className="w-4 h-4 text-emerald-400" />
@@ -965,7 +965,7 @@ const TournamentDashboard = () => {
             <div className="mb-1 text-emerald-300 font-bold">{round}</div>
             <div className="flex items-center gap-2 mb-1">
               {home.logo ? (
-                <img src={home.logo} alt={getTeamDisplayName(home)} className="w-5 h-5 rounded bg-white border border-gray-300" />
+                <img src={home.logo} loading="lazy" alt={getTeamDisplayName(home)} className="w-5 h-5 rounded bg-white border border-gray-300" />
               ) : (
                 <GamepadIcon className="w-4 h-4 text-emerald-400" />
               )}
@@ -973,7 +973,7 @@ const TournamentDashboard = () => {
             </div>
             <div className="flex items-center gap-2 mb-1">
               {visitor.logo ? (
-                <img src={visitor.logo} alt={getTeamDisplayName(visitor)} className="w-5 h-5 rounded bg-white border border-gray-300" />
+                <img src={visitor.logo} loading="lazy" alt={getTeamDisplayName(visitor)} className="w-5 h-5 rounded bg-white border border-gray-300" />
               ) : (
                 <GamepadIcon className="w-4 h-4 text-emerald-400" />
               )}

@@ -611,7 +611,7 @@ const UserManagement: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
                           {user.avatar_url ? (
-                            <img src={user.avatar_url} alt={user.username} className="w-10 h-10 rounded-full" />
+                            <img src={user.avatar_url} loading="lazy" alt={user.username} className="w-10 h-10 rounded-full" />
                           ) : (
                             <User className="w-5 h-5 text-gray-300" />
                           )}

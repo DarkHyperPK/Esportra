@@ -249,14 +249,14 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                                 <td className="py-2 pl-4 rounded-l-lg">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded bg-black/40 border border-white/5 overflow-hidden">
-                                            {agent && <img src={agent.displayIcon} className="w-full h-full" />}
+                                            {agent && <img src={agent.displayIcon} loading="lazy" className="w-full h-full" />}
                                         </div>
                                         <div>
                                             <div className="font-bold text-zinc-200 flex items-center gap-1">
                                                 {p.gameName} <span className="text-zinc-500 font-normal">#{p.tagLine}</span>
                                             </div>
                                             <div className="text-[9px] text-zinc-600 flex items-center gap-1 mt-0.5">
-                                                <img src={`https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/${p.competitiveTier}/smallicon.png`} className="w-3 h-3 opacity-80" />
+                                                <img src={`https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/${p.competitiveTier}/smallicon.png`} loading="lazy" className="w-3 h-3 opacity-80" />
                                             </div>
                                         </div>
                                     </div>
@@ -291,7 +291,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                 onClick={() => setIsExpanded(!isExpanded)}
             >
                 <div className="relative w-16 h-16 flex-shrink-0">
-                    <img src={agentData?.displayIcon} className="w-full h-full object-cover rounded-xl bg-zinc-900 border border-zinc-800 shadow-xl group-hover:scale-110 transition-transform duration-500" />
+                    <img src={agentData?.displayIcon} loading="lazy" className="w-full h-full object-cover rounded-xl bg-zinc-900 border border-zinc-800 shadow-xl group-hover:scale-110 transition-transform duration-500" />
                     <div className={`absolute -bottom-2 -right-2 rounded-full p-1.5 border ${isWin ? 'bg-emerald-500 border-emerald-400' : 'bg-rose-500 border-rose-400'}`}>
                         {isWin ? <Trophy className="w-3 h-3 text-white" /> : <Skull className="w-3 h-3 text-white" />}
                     </div>

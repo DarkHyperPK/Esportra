@@ -222,7 +222,7 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
                   {/* Thumbnail */}
                   <div className="w-full md:w-24 h-20 rounded-lg overflow-hidden bg-gray-800 shrink-0">
                     {venue.images?.[0] ? (
-                      <img src={venue.images[0]} alt={venue.name} className="w-full h-full object-cover" />
+                      <img src={venue.images[0]} loading="lazy" alt={venue.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">No image</div>
                     )}

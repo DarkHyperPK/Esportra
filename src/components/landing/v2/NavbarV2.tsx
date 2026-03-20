@@ -119,12 +119,14 @@ const NavbarV2 = () => {
             <AnimatePresence>
                 {mobileOpen && (
                     <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
+                        initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                        animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                        exit={{ opacity: 0, gridTemplateRows: '0fr' }}
                         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                        className="lg:hidden bg-[#050505]/95 backdrop-blur-xl border-b border-white/5 overflow-hidden"
+                        style={{ display: 'grid', overflow: 'hidden' }}
+                        className="lg:hidden bg-[#050505]/95 backdrop-blur-xl border-b border-white/5"
                     >
+                    <div style={{ minHeight: 0, overflow: 'hidden' }}>
                         <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
                             <MobileLink to="/venues/search" onClick={() => setMobileOpen(false)}>Venues</MobileLink>
                             <MobileLink to="/tournaments/upcoming" onClick={() => setMobileOpen(false)}>Tournaments</MobileLink>
@@ -184,6 +186,7 @@ const NavbarV2 = () => {
                                 </>
                             )}
                         </div>
+                    </div>
                     </motion.div>
                 )}
             </AnimatePresence>

@@ -563,7 +563,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
               <div className="relative">
                 <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-white/20 flex items-center justify-center overflow-hidden">
                   {userTeam.logo_url ? (
-                    <img src={userTeam.logo_url} alt={userTeam.name} className="w-full h-full object-cover" />
+                    <img src={userTeam.logo_url} loading="lazy" alt={userTeam.name} className="w-full h-full object-cover" />
                   ) : (
                     <Gamepad2 className="h-12 w-12 text-purple-400" />
                   )}

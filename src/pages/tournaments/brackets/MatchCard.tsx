@@ -353,12 +353,14 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                 <AnimatePresence>
                     {isExp && (
                         <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
+                            initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                            animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                            exit={{ opacity: 0, gridTemplateRows: '0fr' }}
                             transition={{ duration: 0.2, ease: 'easeOut' }}
-                            className="overflow-hidden bg-black/20"
+                            style={{ display: 'grid', overflow: 'hidden' }}
+                            className="bg-black/20"
                         >
+                        <div style={{ minHeight: 0, overflow: 'hidden' }}>
                             <div className="p-3 space-y-3 border-t border-white/5">
 
                                 {/* Action Toolbar - Only show if both teams present */}
@@ -481,7 +483,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                     <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2 overflow-x-auto pb-2 pt-1">
                                         {proofs.map((url, i) => (
                                             <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block w-16 h-12 rounded-lg overflow-hidden border border-white/10 hover:border-purple-500/50 transition-colors shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                <img src={url} alt="Proof" className="w-full h-full object-cover" />
+                                                <img src={url} loading="lazy" alt="Proof" className="w-full h-full object-cover" />
                                             </a>
                                         ))}
                                     </motion.div>
@@ -489,6 +491,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
 
                             </div>
+                        </div>
                         </motion.div>
                     )}
                 </AnimatePresence>

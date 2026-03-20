@@ -103,7 +103,7 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
                     {/* Banner Header inside Dialog */}
                     <div className="relative h-40 bg-zinc-900 group">
                         {bannerPreview ? (
-                            <img src={bannerPreview} alt="Team Banner" className="w-full h-full object-cover" />
+                            <img src={bannerPreview} loading="lazy" alt="Team Banner" className="w-full h-full object-cover" />
                         ) : (
                             <div className="w-full h-full bg-gradient-to-r from-esports-purple/20 to-esports-accent/20" />
                         )}

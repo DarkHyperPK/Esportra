@@ -12,6 +12,7 @@ import { Download, AlertCircle, Maximize2 } from 'lucide-react';
 import { SwissView } from '@/components/bracket/SwissView';
 import { GroupStageView } from '@/components/bracket/GroupStageView';
 import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
+import { cn } from '@/lib/utils';
 import type { BracketMatch } from '@/types/bracketTypes';
 
 interface PublicBracketViewProps {
@@ -254,44 +255,78 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         }
 
         // --- ELIMINATION VIEW (Default) ---
+        const isDoubleElim = Object.keys(losersRounds).length > 0;
+        const roundTabs: { label: string; filter: FilterState }[] = [
+            { label: 'All', filter: { type: 'all' } },
+            ...Object.keys(winnersRounds).map(Number).sort((a, b) => a - b).map(r => ({
+                label: isDoubleElim ? `WB R${r}` : `Round ${r}`,
+                filter: { type: 'winners' as const, round: r },
+            })),
+            ...Object.keys(losersRounds).map(Number).sort((a, b) => a - b).map(r => ({
+                label: `LB R${r}`,
+                filter: { type: 'losers' as const, round: r },
+            })),
+            ...(finalsMatches.length > 0 ? [{ label: 'Grand Final', filter: { type: 'final' as const } }] : []),
+        ];
+
+        const isTabActive = (f: FilterState) => JSON.stringify(f) === JSON.stringify(activeFilter);
+
         return (
             <>
-                <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-                    {onFullscreen && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={onFullscreen}
-                            className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100"
+                {/* Round tabs */}
+                <div className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur border-b border-white/5 flex items-center gap-1 px-4 py-2 overflow-x-auto">
+                    {roundTabs.map(tab => (
+                        <button
+                            key={tab.label}
+                            onClick={() => setActiveFilter(tab.filter)}
+                            className={cn(
+                                'shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap',
+                                isTabActive(tab.filter)
+                                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                            )}
                         >
-                            <Maximize2 className="w-4 h-4 mr-2" />
-                            Fullscreen
-                        </Button>
-                    )}
+                            {tab.label}
+                        </button>
+                    ))}
 
-                    <BracketExporter
-                        matches={matches}
-                        triggerButton={
-                            <Button variant="outline" size="sm" className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100">
-                                <Download className="w-4 h-4 mr-2" />
-                                Export
+                    <div className="ml-auto flex items-center gap-2 pl-4">
+                        {onFullscreen && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onFullscreen}
+                                className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100"
+                            >
+                                <Maximize2 className="w-4 h-4 mr-2" />
+                                Fullscreen
                             </Button>
-                        }
-                    />
+                        )}
+                        <BracketExporter
+                            matches={matches}
+                            triggerButton={
+                                <Button variant="outline" size="sm" className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100">
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Export
+                                </Button>
+                            }
+                        />
+                    </div>
                 </div>
 
-                <BracketRenderer
-                    matches={matches}
-                    edges={graphData?.edges}
-                    activeFilter={activeFilter}
-                    onMatchClick={(m) => {
-                        setResultsDialogMatch(m);
-                        setResultsDialogOpen(true);
-                    }}
-                    hasResultsMap={automatedGames}
-                    hasProofsMap={proofs}
-                    isSingleElimination={currentStage?.format === 'single_elimination'}
-                />
+                <div className="overflow-auto h-[calc(100%-44px)]">
+                    <BracketRenderer
+                        matches={matches}
+                        activeFilter={activeFilter}
+                        onMatchClick={(m) => {
+                            setResultsDialogMatch(m);
+                            setResultsDialogOpen(true);
+                        }}
+                        hasResultsMap={automatedGames}
+                        hasProofsMap={proofs}
+                        isSingleElimination={currentStage?.format === 'single_elimination'}
+                    />
+                </div>
             </>
         );
     };
@@ -317,7 +352,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                 versionsMap={versionsMap}
             />
 
-            <div className="relative flex-1 overflow-auto bg-zinc-950/30">
+            <div className="relative flex-1 overflow-hidden bg-zinc-950/30 flex flex-col">
                 {renderContent()}
             </div>
 

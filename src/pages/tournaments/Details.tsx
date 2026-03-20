@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import slugify from 'slugify';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
@@ -178,82 +179,42 @@ const TournamentDetails = () => {
     }
   }, [stages, selectedStageId]);
 
-  const [enrichedParticipants, setEnrichedParticipants] = useState<any[]>([]); // For public teams display
+  // Fetch robust participant data (logos, rosters, profiles) — single request, no N+1
+  const { data: enrichedParticipants = [] } = useQuery({
+    queryKey: ['tournament-participants', tournament?.id],
+    queryFn: async () => {
+      const participants = await apiClient.get<any[]>(`/api/tournaments/${tournament!.id}/participants`);
+      if (!participants) return [];
 
-  // Fetch robust participant data (Logos, Rosers, etc.) similar to Organizer Dashboard
-  const fetchPublicParticipants = useCallback(async () => {
-    if (!tournament?.id) return;
-    try {
-      const participantsData = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/participants`);
-      if (!participantsData) return;
+      const gameKey = tournament?.game?.toLowerCase();
+      const isValorant = gameKey === 'valorant';
+      const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
 
-      const participants = participantsData as any[];
-      const allUserIds = new Set<string>();
-      participants.forEach(p => {
-        if (p.user_id) allUserIds.add(p.user_id);
+      return participants.map(p => {
+        const display_name = (isValorant && p.solo_riot_tag)
+          ? p.solo_riot_tag
+          : (isCS2 && p.solo_faceit_nickname)
+          ? p.solo_faceit_nickname
+          : p.solo_username || p.solo_full_name || 'Anonymous';
+
+        return {
+          ...p,
+          team_logo: p.team_logo_url,
+          display_name,
+          user: {
+            id: p.user_id,
+            username: p.solo_username,
+            full_name: p.solo_full_name,
+            riot_tag: p.solo_riot_tag,
+            faceit_nickname: p.solo_faceit_nickname,
+            avatar_url: p.solo_avatar_url,
+          },
+        };
       });
-
-      // Resolve team info and profiles from participant data (API returns enriched data)
-      const teamIds = Array.from(new Set(participants.filter(p => p.team_id).map(p => p.team_id)));
-      let teamMap: Record<string, { logo_url: string | null, name: string }> = {};
-
-      if (teamIds.length > 0) {
-        const teamResults = await Promise.all(
-          teamIds.map(id => apiClient.get<any>(`/api/teams/${id}`).catch(() => null))
-        );
-        teamResults.filter(Boolean).forEach((t: any) => {
-          teamMap[t.id] = { logo_url: t.logo_url, name: t.name };
-        });
-      }
-
-      // Resolve profiles
-      if (allUserIds.size > 0) {
-        const profileResults = await Promise.all(
-          Array.from(allUserIds).map(id => apiClient.get<any>(`/api/profiles/${id}`).catch(() => null))
-        );
-
-        const profileMap: Record<string, any> = {};
-        profileResults.filter(Boolean).forEach((p: any) => profileMap[p.id] = p);
-
-        participants.forEach(p => {
-          if (p.user_id && profileMap[p.user_id]) {
-            const profile = profileMap[p.user_id];
-            p.user = profile;
-
-            const gameKey = tournament?.game?.toLowerCase();
-            const isValorant = gameKey === 'valorant';
-            const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
-            if (isValorant && profile.riot_tag) {
-              p.display_name = profile.riot_tag;
-            } else if (isCS2 && profile.faceit_nickname) {
-              p.display_name = profile.faceit_nickname;
-            } else {
-              p.display_name = profile.username || profile.full_name || 'Anonymous';
-            }
-          }
-        });
-      }
-
-      // 4. Attach resolved team info
-      participants.forEach(p => {
-        if (p.team_id && teamMap[p.team_id]) {
-          p.team_logo = p.team_logo || teamMap[p.team_id].logo_url;
-          // Prioritize official team name
-          p.team_name = teamMap[p.team_id].name || p.team_name;
-        }
-      });
-
-      setEnrichedParticipants(participants);
-    } catch (err) {
-      console.error('Error fetching public participants:', err);
-    }
-  }, [tournament?.id]);
-
-  useEffect(() => {
-    if (tournament?.id) {
-      fetchPublicParticipants();
-    }
-  }, [tournament?.id, fetchPublicParticipants]);
+    },
+    enabled: !!tournament?.id,
+    staleTime: 30 * 1000,
+  });
 
   useEffect(() => {
     if (!checkInDeadlineDate || !(checkInDeadlineDate instanceof Date)) return;
@@ -462,7 +423,6 @@ const TournamentDetails = () => {
   // Listen for team disband/delete events to refresh registration status
   useEffect(() => {
     const handleTeamLeft = () => {
-      console.log('[TournamentDetails] Team left event detected, refreshing registration status...');
       // Delay slightly to ensure database changes have propagated
       setTimeout(() => {
         checkRegistration(true);
@@ -577,12 +537,10 @@ const TournamentDetails = () => {
   };
 
   useEffect(() => {
-    console.log('Dialog state changed:', { showEditDialog, slug, userId: user?.id });
     if (!showEditDialog && slug && user?.id) {
-      console.log('Dialog closed, rechecking registration...');
       checkRegistration();
     }
-  }, [showEditDialog]);
+  }, [showEditDialog, slug, user?.id, checkRegistration]);
 
   const normalize = (str) => str?.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 

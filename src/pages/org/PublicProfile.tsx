@@ -91,7 +91,7 @@ const OrganizationPublicProfile = () => {
                 {/* Banner with Gradient Overlay */}
                 <div className="absolute inset-0 z-0">
                     {org.banner_url ? (
-                        <img src={org.banner_url} alt="Banner" className="w-full h-full object-cover" />
+                        <img src={org.banner_url} loading="lazy" alt="Banner" className="w-full h-full object-cover" />
                     ) : (
                         <div className="w-full h-full bg-gradient-to-br from-[#111] to-[#050507]" />
                     )}
@@ -109,7 +109,7 @@ const OrganizationPublicProfile = () => {
                         >
                             <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-[#0a0a0c] border-4 border-[#050507] overflow-hidden shadow-2xl flex items-center justify-center">
                                 {org.logo_url ? (
-                                    <img src={org.logo_url} alt={org.name} className="w-full h-full object-cover" />
+                                    <img src={org.logo_url} loading="lazy" alt={org.name} className="w-full h-full object-cover" />
                                 ) : (
                                     <Building2 className="w-16 h-16 text-gray-700" />
                                 )}
@@ -338,7 +338,7 @@ const OrganizationPublicProfile = () => {
 
                                                     {/* Cover */}
                                                     {album.cover_url ? (
-                                                        <img src={album.cover_url} alt={album.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                                                        <img src={album.cover_url} loading="lazy" alt={album.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                                     ) : (
                                                         <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 group-hover:bg-white/10 transition-colors">
                                                             <Folder className="w-12 h-12 text-gray-700 mb-2 group-hover:text-esports-accent transition-colors" />
@@ -375,7 +375,7 @@ const OrganizationPublicProfile = () => {
                                                         className="break-inside-avoid relative group rounded-2xl overflow-hidden cursor-zoom-in border border-white/5 bg-[#0a0a0c]"
                                                         onClick={() => setSelectedMediaItem(item)}
                                                     >
-                                                        <img src={item.url} alt={item.caption} className="w-full h-auto hover:scale-105 transition-transform duration-500" />
+                                                        <img src={item.url} loading="lazy" alt={item.caption} className="w-full h-auto hover:scale-105 transition-transform duration-500" />
                                                         {item.caption && (
                                                             <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <p className="text-sm font-medium">{item.caption}</p>

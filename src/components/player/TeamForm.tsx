@@ -79,7 +79,7 @@ const TeamForm = ({ mode = 'create', team = null, onClose, onSubmit }) => {
             >
               {teamLogoUrl ? (
                 <div className="relative group">
-                  <img src={teamLogoUrl} alt="Team Logo" className="w-20 h-20 object-cover rounded-xl shadow-lg" />
+                  <img src={teamLogoUrl} loading="lazy" alt="Team Logo" className="w-20 h-20 object-cover rounded-xl shadow-lg" />
                   <button
                     type="button"
                     className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 shadow hover:bg-red-700 transition-all"

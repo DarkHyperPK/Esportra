@@ -73,7 +73,7 @@ const TeamInvites = () => {
               <div className="relative">
                 <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-white/20 flex items-center justify-center overflow-hidden">
                   {invite.team.logo_url ? (
-                    <img src={invite.team.logo_url} alt={invite.team.name} className="w-full h-full object-cover" />
+                    <img src={invite.team.logo_url} loading="lazy" alt={invite.team.name} className="w-full h-full object-cover" />
                   ) : (
                     <Users className="h-8 w-8 text-purple-400" />
                   )}

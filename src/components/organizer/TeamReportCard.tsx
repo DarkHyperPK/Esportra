@@ -90,7 +90,7 @@ const TeamReportCard: React.FC<TeamReportCardProps> = ({
               <div className="flex gap-2 flex-wrap">
                 {report.screenshot_urls.map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                    <img src={url} alt={`Evidence ${i+1}`} className="w-24 h-16 object-cover rounded border border-zinc-700 hover:border-zinc-500" />
+                    <img src={url} loading="lazy" alt={`Evidence ${i+1}`} className="w-24 h-16 object-cover rounded border border-zinc-700 hover:border-zinc-500" />
                   </a>
                 ))}
               </div>

@@ -96,6 +96,7 @@ const TheHeartbeat = () => {
                             className="relative z-20"
                         >
                             <img src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
+                                loading="lazy"
                                 className="h-14 md:h-24 opacity-100"
                                 alt="Core" />
                         </motion.div>

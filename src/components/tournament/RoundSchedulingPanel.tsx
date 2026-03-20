@@ -431,11 +431,14 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 {/* Round Config (Expanded) */}
                 {isExpanded && (
                     <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="px-4 pb-4 border-t border-white/5"
+                        initial={{ opacity: 0, gridTemplateRows: '0fr' }}
+                        animate={{ opacity: 1, gridTemplateRows: '1fr' }}
+                        exit={{ opacity: 0, gridTemplateRows: '0fr' }}
+                        transition={{ duration: 0.2 }}
+                        style={{ display: 'grid', overflow: 'hidden' }}
+                        className="border-t border-white/5"
                     >
+                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="px-4 pb-4">
                         <div className="pt-4 space-y-4">
                             {selfPlayEnabled ? (
                                 <div className="space-y-2">
@@ -617,6 +620,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                 </div>
                             )}
                         </div>
+                    </div>
                     </motion.div>
                 )}
             </motion.div>

@@ -225,7 +225,7 @@ export function VenueEditModal({ venue, isOpen, onClose, onVenueUpdated }: Venue
             <div className="grid grid-cols-2 gap-3 mb-4">
               {images.map((img, idx) => (
                 <div key={idx} className="relative aspect-video group rounded-lg overflow-hidden border border-white/10">
-                  <img src={img} alt={`Venue ${idx}`} className="w-full h-full object-cover" />
+                  <img src={img} loading="lazy" alt={`Venue ${idx}`} className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(idx)}

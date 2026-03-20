@@ -135,7 +135,7 @@ const MediaUploadDialog: React.FC<MediaUploadDialogProps> = ({ open, onClose, on
                                             {media.type === 'video' ? (
                                                 <video src={media.preview} className="w-full h-full object-cover" />
                                             ) : (
-                                                <img src={media.preview} alt="Preview" className="w-full h-full object-cover" />
+                                                <img src={media.preview} loading="lazy" alt="Preview" className="w-full h-full object-cover" />
                                             )}
                                             <div className="absolute top-1 left-1 p-1 rounded bg-black/60">
                                                 {media.type === 'video' ? (

@@ -752,7 +752,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
             <DialogTitle>Image Preview</DialogTitle>
           </DialogHeader>
           {viewingImage && (
-            <img src={viewingImage} alt="Full size" className="max-w-full max-h-[85vh] object-contain mx-auto rounded-lg" />
+            <img src={viewingImage} loading="lazy" alt="Full size" className="max-w-full max-h-[85vh] object-contain mx-auto rounded-lg" />
           )}
         </DialogContent>
       </Dialog>

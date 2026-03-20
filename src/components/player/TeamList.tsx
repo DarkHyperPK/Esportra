@@ -57,7 +57,7 @@ const TeamList = ({ teams, setTeams, onEdit, onDelete, onInvite }) => {
             {/* Header Row */}
             <div className="flex items-center gap-6 mb-4">
               <div className="h-20 w-20 rounded-full bg-esports-dark flex items-center justify-center overflow-hidden border-4 border-gaming-purple/60 shadow-lg">
-                <img src={team.logo} alt={team.name} className="h-full w-full object-cover" />
+                <img src={team.logo} loading="lazy" alt={team.name} className="h-full w-full object-cover" />
               </div>
               <div className="flex-1">
                 <CardTitle className="text-3xl font-extrabold text-white drop-shadow mb-1">{team.name}</CardTitle>

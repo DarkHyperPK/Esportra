@@ -58,7 +58,7 @@ const GameCard: React.FC<{
             >
                 {splash && (
                     <div className="absolute inset-0 z-0">
-                        <img src={splash} alt="" className="w-full h-full object-cover opacity-40 group-hover/game:opacity-60 transition-opacity" />
+                        <img src={splash} loading="lazy" alt="" className="w-full h-full object-cover opacity-40 group-hover/game:opacity-60 transition-opacity" />
                         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/40 to-transparent" />
                     </div>
                 )}
@@ -169,7 +169,7 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                                             <div className="relative flex items-center justify-between p-4 cursor-pointer group overflow-hidden" onClick={() => toggleMatch(match.id)}>
                                                 {games.length > 0 && (
                                                     <div className="absolute inset-0 z-0">
-                                                        <img src={resolveMapSplash(games[0].map_name) || ''} alt="" className="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                        <img src={resolveMapSplash(games[0].map_name) || ''} loading="lazy" alt="" className="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                                         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-zinc-950/50" />
                                                     </div>
                                                 )}

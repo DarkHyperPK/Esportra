@@ -2,8 +2,6 @@ import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReadOnlyMatchCard } from './ReadOnlyMatchCard';
 import { BracketMatch } from '@/types/bracketTypes';
-import type { BracketEdge } from '@/types/bracket-graph';
-
 interface BracketRendererProps {
     matches: BracketMatch[];
     activeFilter: { type: string; round?: number };
@@ -11,7 +9,6 @@ interface BracketRendererProps {
     onMatchClick?: (match: BracketMatch) => void;
     hasResultsMap?: Record<string, any[]>;
     hasProofsMap?: Record<string, string[]>;
-    edges?: BracketEdge[];
     // Optional overrides for layout
     cardWidth?: number;
     cardHeight?: number;
@@ -32,7 +29,6 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     onMatchClick,
     hasResultsMap = {},
     hasProofsMap = {},
-    edges = [],
     cardWidth = 260,
     cardHeight = 86,
     roundGap = 100,
@@ -150,87 +146,6 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
         };
     }, [matches, cardWidth, cardHeight, roundGap, matchGap, leftPadding, headingHeight, headingMargin, bracketSpacing]);
 
-    // Build classic bracket connector paths grouped by target match
-    const connectorPaths = useMemo(() => {
-        const paths: { d: string; type: 'winner' | 'loser' }[] = [];
-        const midH = cardHeight / 2;
-
-        // Key insight: group sources by BOTH target AND source column (X position).
-        // This prevents cross-bracket grouping (e.g. WB Final + LB Final → Grand Final
-        // should NOT share a vertical bar since they are in completely different Y areas).
-        // groupKey = `${targetId}::${roundedSourceX}`
-        const connections = new Map<string, { targetId: string; sourceIds: string[] }>();
-
-        const addConnection = (sourceId: string, targetId: string) => {
-            const srcPos = matchPositions[sourceId];
-            const tgtPos = matchPositions[targetId];
-            if (!srcPos || !tgtPos) return;
-            // Round X to nearest pixel to avoid float grouping mismatches
-            const srcX = Math.round(srcPos.x);
-            const key = `${targetId}::${srcX}`;
-            if (!connections.has(key)) connections.set(key, { targetId, sourceIds: [] });
-            connections.get(key)!.sourceIds.push(sourceId);
-        };
-
-        let hasMatchLevelEdges = false;
-        matches.forEach(m => {
-            if (m.nextMatchId) {
-                addConnection(String(m.id), m.nextMatchId);
-                hasMatchLevelEdges = true;
-            }
-        });
-
-        // Fallback: use graph edges (winner-type only) when matches don't carry nextMatchId
-        if (!hasMatchLevelEdges && edges.length > 0) {
-            edges.forEach(e => {
-                if (e.type !== 'winner') return; // only draw winner advancement lines
-                const srcId = `db-${e.source_match_id}`;
-                const tgtId = `db-${e.target_match_id}`;
-                addConnection(srcId, tgtId);
-            });
-        }
-
-        connections.forEach(({ targetId, sourceIds }) => {
-            const targetPos = matchPositions[targetId];
-            if (!targetPos || sourceIds.length === 0) return;
-
-            const rightEdge = matchPositions[sourceIds[0]].x + cardWidth;
-            const midX = rightEdge + (targetPos.x - rightEdge) / 2;
-            const ys = sourceIds
-                .map(id => matchPositions[id].y + midH)
-                .sort((a, b) => a - b);
-
-            if (sourceIds.length >= 2) {
-                // Classic bracket: stubs → vertical bar → horizontal to target
-                const topY = ys[0];
-                const botY = ys[ys.length - 1];
-
-                sourceIds.forEach(id => {
-                    const srcY = matchPositions[id].y + midH;
-                    paths.push({ d: `M ${rightEdge} ${srcY} H ${midX}`, type: 'winner' });
-                });
-
-                paths.push({ d: `M ${midX} ${topY} V ${botY}`, type: 'winner' });
-
-                const midY = (topY + botY) / 2;
-                paths.push({ d: `M ${midX} ${midY} H ${targetPos.x}`, type: 'winner' });
-            } else {
-                // Single source: horizontal stub → optional vertical jog → horizontal to target
-                const srcY = ys[0];
-                const tgtY = targetPos.y + midH;
-                if (Math.abs(srcY - tgtY) < 1) {
-                    // Same row — straight horizontal
-                    paths.push({ d: `M ${rightEdge} ${srcY} H ${targetPos.x}`, type: 'winner' });
-                } else {
-                    // Different row — elbow connector
-                    paths.push({ d: `M ${rightEdge} ${srcY} H ${midX} V ${tgtY} H ${targetPos.x}`, type: 'winner' });
-                }
-            }
-        });
-
-        return paths;
-    }, [matches, matchPositions, cardWidth, cardHeight, edges]);
-
     // Calculate X offset for filtering
     const filterXOffset = useMemo(() => {
         if (activeFilter.type === 'all') return 0;
@@ -285,26 +200,6 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
             className="relative"
             style={{ width: totalWidth, height: totalHeight, minWidth: '100%' }}
         >
-            {/* Connector Lines - Only show when viewing all matches */}
-            {activeFilter.type === 'all' && connectorPaths.length > 0 && (
-                <svg
-                    className="absolute inset-0 pointer-events-none"
-                    style={{ width: totalWidth, height: totalHeight }}
-                >
-                    {connectorPaths.map((seg, i) => (
-                        <path
-                            key={i}
-                            d={seg.d}
-                            fill="none"
-                            stroke={seg.type === 'loser' ? '#ef4444' : '#475569'}
-                            strokeWidth={1.5}
-                            strokeDasharray={seg.type === 'loser' ? '4 3' : undefined}
-                            className="opacity-40"
-                        />
-                    ))}
-                </svg>
-            )}
-
             {/* Winners Bracket Heading */}
             {(activeFilter.type === 'all' || activeFilter.type === 'winners') &&
                 matches.some(m => m.bracketSide === 'winners') &&

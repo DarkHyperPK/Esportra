@@ -219,7 +219,7 @@ function ConnectedAccountsTab() {
         ? `${riotAccount.game_name}#${riotAccount.tag_line}`
         : 'Required for Valorant tournament registration',
       connected: !!riotAccount, loading: riotLoading,
-      icon: <img src="/riot-logo.svg" alt="Riot" className="w-8 h-8 drop-shadow-md" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
+      icon: <img src="/riot-logo.svg" loading="lazy" alt="Riot" className="w-8 h-8 drop-shadow-md" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
       onConnect: linkRiotAccount, onUnlink: handleUnlinkRiot, unlinking: unlinkingRiot,
       connectClass: 'bg-red-600 hover:bg-red-500',
     },
@@ -229,7 +229,7 @@ function ConnectedAccountsTab() {
         ? faceitAccount.nickname
         : 'Required for CS2 tournament registration',
       connected: !!faceitAccount, loading: faceitLoading,
-      icon: <img src="/faceit-logo.svg" alt="Faceit" className="w-8 h-8 rounded-full drop-shadow-md" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
+      icon: <img src="/faceit-logo.svg" loading="lazy" alt="Faceit" className="w-8 h-8 rounded-full drop-shadow-md" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
       onConnect: linkFaceitAccount, onUnlink: handleUnlinkFaceit, unlinking: unlinkingFaceit,
       connectClass: 'bg-orange-600 hover:bg-orange-500',
     },
