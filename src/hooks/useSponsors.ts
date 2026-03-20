@@ -68,13 +68,13 @@ export function useSponsorStats(sponsorId: string) {
 }
 
 // ─── TRACKING VIA .NET BACKEND ───────────────────────────────────────
-// All tracking now goes through POST /api/sponsors/track (.NET endpoint).
+// All tracking now goes through POST /api/sponsors/impressions (.NET endpoint).
 // This is more secure (no public DB inserts), more reliable (bypasses
 // ad-blockers), and enables server-side GeoIP + age-group resolution.
 
 async function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
     try {
-        await apiClient.post('/api/sponsors/track', {
+        await apiClient.post('/api/sponsors/impressions', {
             sponsorId,
             eventType,
             pageUrl: typeof window !== 'undefined' ? window.location.href : null,
