@@ -54,19 +54,17 @@ const SetPassword = () => {
             const token_hash = params.get('token_hash');
             const type = params.get('type');
 
-            const data = await apiClient.post<{ email?: string }>('/api/auth/set-password', {
+            await apiClient.post<{ email?: string }>('/api/auth/set-password', {
                 password,
                 token_hash,
                 type: type || 'recovery'
             });
 
-            console.log('Password updated successfully for:', data?.email);
-
             // Redirect to login with success message as requested for "manual login" flow
             navigate('/login?success=password_updated');
-        } catch (err: any) {
-            console.error('Password update error:', err);
-            setError(err.message || 'Failed to update password');
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Failed to update password';
+            setError(message);
         } finally {
             setLoading(false);
         }

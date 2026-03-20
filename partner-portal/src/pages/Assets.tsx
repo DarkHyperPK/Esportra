@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { FileImage, Upload, Image as ImageIcon, Loader2, AlertCircle } from 'lucide-react';
 import { usePartnerData } from '@/hooks/usePartnerData';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { getTierFeatures } from '@/utils/permissions';
 import { usePartnerMutations } from '@/hooks/usePartnerMutations';
+import { useToast } from '@/hooks/use-toast';
 
 const Assets = () => {
     const { data, refetch } = usePartnerData();
@@ -12,6 +13,7 @@ const Assets = () => {
     const { updateProfile } = usePartnerMutations(sponsor?.id || '');
 
     const [uploading, setUploading] = useState<'logo' | 'banner' | 'gallery' | null>(null);
+    const { toast } = useToast();
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner' | 'gallery') => {
         if (!event.target.files || event.target.files.length === 0 || !sponsor) return;
@@ -21,14 +23,14 @@ const Assets = () => {
         // Validation
         const limit = 3 * 1024 * 1024; // 3MB
         if (file.size > limit) {
-            alert("File too large. Max size is 3MB.");
+            toast({ title: 'File too large', description: 'Max size is 3MB.', variant: 'destructive' });
             return;
         }
 
         if (type === 'gallery') {
             const currentCount = sponsor.gallery_images?.length || 0;
             if (currentCount >= features.maxShowcaseImages) {
-                alert(`Limit reached. Your tier allows maximum ${features.maxShowcaseImages} images.`);
+                toast({ title: 'Limit reached', description: `Your tier allows maximum ${features.maxShowcaseImages} images.`, variant: 'destructive' });
                 return;
             }
         }
@@ -36,17 +38,14 @@ const Assets = () => {
         setUploading(type);
 
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${sponsor.id}/${type}_${Date.now()}.${fileExt}`;
-            const { error: uploadError } = await supabase.storage
-                .from('system.assets.partners')
-                .upload(fileName, file);
+            // Upload via .NET storage proxy
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('bucket', 'system.assets.partners');
+            formData.append('folder', sponsor.id);
 
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('system.assets.partners')
-                .getPublicUrl(fileName);
+            const uploadResult = await apiClient.upload<{ url: string }>('/api/storage/upload', formData);
+            const publicUrl = uploadResult.url;
 
             if (type === 'logo') {
                 await updateProfile.mutateAsync({ logo_url: publicUrl });
@@ -58,11 +57,11 @@ const Assets = () => {
             }
 
             await refetch();
-            alert('Asset uploaded successfully!');
+            toast({ title: 'Asset uploaded successfully!' });
 
-        } catch (error: any) {
-            console.error('Upload failed:', error);
-            alert(`Upload failed: ${error.message || 'Unknown error'}`);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            toast({ title: 'Upload failed', description: message, variant: 'destructive' });
         } finally {
             setUploading(null);
         }
@@ -75,8 +74,8 @@ const Assets = () => {
             const newGallery = (sponsor.gallery_images || []).filter(url => url !== imageUrl);
             await updateProfile.mutateAsync({ gallery_images: newGallery });
             await refetch();
-        } catch (error: any) {
-            alert('Failed to delete image');
+        } catch (error: unknown) {
+            toast({ title: 'Failed to delete image', variant: 'destructive' });
         }
     };
 
@@ -109,7 +108,7 @@ const Assets = () => {
 
                     <div className="aspect-square rounded-xl bg-black border border-zinc-800 flex items-center justify-center relative group-hover:border-rose-500/30 transition-all duration-300 overflow-hidden shadow-2xl">
                         {sponsor?.logo_url ? (
-                            <img src={sponsor.logo_url} alt="Logo" className="w-3/4 h-3/4 object-contain" />
+                            <img src={sponsor.logo_url} alt="Logo" loading="lazy" className="w-3/4 h-3/4 object-contain" />
                         ) : (
                             <div className="text-zinc-800 text-xs font-mono">NO_ASSET</div>
                         )}
@@ -143,7 +142,7 @@ const Assets = () => {
 
                     <div className="aspect-video rounded-xl bg-black border border-zinc-800 flex items-center justify-center relative group-hover:border-blue-500/30 transition-all duration-300 overflow-hidden shadow-2xl">
                         {sponsor?.banner_image_url ? (
-                            <img src={sponsor.banner_image_url} alt="Banner" className="w-full h-full object-cover" />
+                            <img src={sponsor.banner_image_url} alt="Banner" loading="lazy" className="w-full h-full object-cover" />
                         ) : (
                             <div className="text-zinc-800 text-xs font-mono">
                                 {features.canUploadBanner ? 'NO_ASSET' : 'LOCKED_FEATURE'}
@@ -211,10 +210,11 @@ const Assets = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     {sponsor?.gallery_images?.map((url, idx) => (
                         <div key={idx} className="group relative aspect-square rounded-xl bg-black border border-zinc-800 overflow-hidden hover:border-emerald-500/40 transition-colors">
-                            <img src={url} alt={`Gallery ${idx}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                            <img src={url} alt={`Gallery ${idx}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <button
                                 onClick={() => handleDeleteImage(url)}
+                                aria-label="Delete image"
                                 className="absolute top-2 right-2 p-2 bg-rose-500/20 hover:bg-rose-500 text-rose-500 hover:text-white rounded-lg transition-all opacity-0 group-hover:opacity-100"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

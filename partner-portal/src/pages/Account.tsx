@@ -37,8 +37,8 @@ const Account = () => {
         setIsSaving(true);
         try {
             await updateProfile.mutateAsync(formData);
-        } catch (error) {
-            console.error('Failed to update:', error);
+        } catch {
+            // mutation hook already shows a toast
         } finally {
             setIsSaving(false);
         }

@@ -35,8 +35,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, sp
         try {
             await updateProfile.mutateAsync(formData);
             onClose();
-        } catch (error) {
-            console.error('Failed to update profile:', error);
+        } catch {
+            // Mutation hook already handles error toast
         } finally {
             setIsSaving(false);
         }
@@ -72,6 +72,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, sp
                                 </h3>
                                 <button
                                     onClick={onClose}
+                                    aria-label="Close modal"
                                     className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                                 >
                                     <X className="w-5 h-5" />

@@ -1,7 +1,24 @@
 import { useState } from 'react';
 import { BarChart, MousePointerClick, Eye, TrendingUp, Loader2, Globe, Users, Fingerprint } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { usePartnerData, useDemographics } from '@/hooks/usePartnerData';
 import { useSponsorStats } from '@/hooks/useSponsors';
+
+interface ChartDataPoint {
+    label: string;
+    impressions: number;
+    uniqueImpressions: number;
+    clicks: number;
+}
+
+interface MetricCardProps {
+    label: string;
+    value: string | number;
+    icon: LucideIcon;
+    trend: string;
+    color: string;
+    borderColor: string;
+}
 
 const Analytics = () => {
     const { data: partnerData, isLoading: isPartnerLoading } = usePartnerData();
@@ -27,7 +44,7 @@ const Analytics = () => {
         }
 
         if (range === 'weekly') {
-            const weeks: any[] = [];
+            const weeks: ChartDataPoint[] = [];
             // Chunk history into 7-day blocks
             for (let i = 0; i < historyData.length; i += 7) {
                 const chunk = historyData.slice(i, i + 7);
@@ -46,7 +63,7 @@ const Analytics = () => {
 
         if (range === 'monthly') {
             // Group by month name
-            const monthlyMap = new Map<string, any>();
+            const monthlyMap = new Map<string, ChartDataPoint>();
             historyData.forEach(d => {
                 const date = new Date(d.date);
                 const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
@@ -54,7 +71,7 @@ const Analytics = () => {
                 if (!monthlyMap.has(monthKey)) {
                     monthlyMap.set(monthKey, { label: monthKey, impressions: 0, uniqueImpressions: 0, clicks: 0 });
                 }
-                const current = monthlyMap.get(monthKey);
+                const current = monthlyMap.get(monthKey)!;
                 current.impressions += d.impressions;
                 current.uniqueImpressions += d.uniqueImpressions;
                 current.clicks += d.clicks;
@@ -386,7 +403,7 @@ const Analytics = () => {
 };
 
 // Helper Component for KPI Cards
-const MetricCard = ({ label, value, icon: Icon, trend, color, borderColor }: any) => (
+const MetricCard = ({ label, value, icon: Icon, trend, color, borderColor }: MetricCardProps) => (
     <div className={`p-6 rounded-2xl bg-[#0a0a0c] border border-white/5 group hover:border-opacity-100 transition-all duration-300 ${borderColor}`}>
         <div className="flex justify-between items-start mb-4">
             <div className={`p-3 rounded-xl bg-black/50 ${color.replace('text-', 'bg-')}/10`}>

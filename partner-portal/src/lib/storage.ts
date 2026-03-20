@@ -4,7 +4,8 @@
  * Manages Supabase Storage URLs to ensure domain consistency.
  */
 
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || 'https://api.esportra.com').replace(/\/$/, '');
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '');
+if (!SUPABASE_URL) throw new Error('VITE_SUPABASE_URL environment variable is required');
 export const STORAGE_ROOT = `${SUPABASE_URL}/storage/v1/object/public`;
 
 /**

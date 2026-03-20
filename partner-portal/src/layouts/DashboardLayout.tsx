@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, FileImage, Settings, LogOut, BarChart } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useEffect, useState } from 'react';
 import { useBranding } from '@/hooks/useBranding';
 import { getWebsiteAssetUrl } from '@/lib/storage';
@@ -9,7 +10,7 @@ import { getWebsiteAssetUrl } from '@/lib/storage';
 const DashboardLayout = () => {
     const location = useLocation();
     const [isLoading, setIsLoading] = useState(true);
-    const [session, setSession] = useState<any>(null);
+    const [session, setSession] = useState<{ id: string } | null>(null);
     const [needsOnboarding, setNeedsOnboarding] = useState(false);
     const { data: branding } = useBranding();
 
@@ -27,28 +28,17 @@ const DashboardLayout = () => {
 
             setSession(user);
 
-            // Check onboarding status
+            // Check onboarding status via .NET API
             try {
-                const { data: account } = await (supabase as any)
-                    .from('sponsor_accounts')
-                    .select('onboarding_meta')
-                    .eq('user_id', user.id)
-                    .limit(1)
-                    .maybeSingle();
-
-                if (!account) {
-                    // Critical security check: They have no row. The AuthLayout redirected them too early.
-                    await supabase.auth.signOut();
-                    window.location.href = '/login?error=no_sponsor_linked';
-                    return;
-                }
-
-                const meta = account?.onboarding_meta as any;
-                if (!meta?.completed) {
+                const onboardingData = await apiClient.get<{ sponsorId: string; meta: { completed: boolean } }>('/api/sponsors/me/onboarding');
+                if (!onboardingData?.meta?.completed) {
                     setNeedsOnboarding(true);
                 }
-            } catch (err) {
-                console.error('Failed to verify sponsor account', err);
+            } catch {
+                // No sponsor account linked
+                await supabase.auth.signOut();
+                window.location.href = '/login?error=no_sponsor_linked';
+                return;
             }
 
             setIsLoading(false);
@@ -57,7 +47,7 @@ const DashboardLayout = () => {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
+            setSession(session?.user ? { id: session.user.id } : null);
         });
 
         return () => subscription.unsubscribe();
@@ -137,6 +127,7 @@ const DashboardLayout = () => {
 
                 <button
                     onClick={handleSignOut}
+                    aria-label="Sign out"
                     className="flex items-center gap-4 px-4 py-3 rounded-xl text-zinc-600 hover:text-rose-500 hover:bg-rose-500/5 transition-all mt-auto group"
                 >
                     <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />

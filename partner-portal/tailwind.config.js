@@ -17,6 +17,12 @@ export default {
       }
     },
     extend: {
+      fontFamily: {
+        heading: ['Poppins', 'sans-serif'],
+        body: ['Inter', 'sans-serif'],
+        sans: ['Inter', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -65,7 +71,7 @@ export default {
         esports: {
           'primary': '#ffffff',
           'secondary': '#a0a0a0',
-          'accent': '#00d4ff',
+          'accent': '#f43f5e',
           'dark': '#0a0a0a',
           'card': '#111111',
           'border': '#2a2a2a',
@@ -106,10 +112,10 @@ export default {
         },
         'pulse-glow': {
           '0%, 100%': {
-            boxShadow: '0 0 12px 0 rgba(139, 92, 246, 0.3)'
+            boxShadow: '0 0 12px 0 rgba(244, 63, 94, 0.3)'
           },
           '50%': {
-            boxShadow: '0 0 24px 4px rgba(139, 92, 246, 0.6)'
+            boxShadow: '0 0 24px 4px rgba(244, 63, 94, 0.6)'
           }
         }
       },

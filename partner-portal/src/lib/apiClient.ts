@@ -72,4 +72,24 @@ export const apiClient = {
   async delete(path: string): Promise<void> {
     await fetchWithAuth(path, { method: 'DELETE' });
   },
+
+  async upload<T>(path: string, formData: FormData): Promise<T> {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+    // Don't set Content-Type — browser sets it with boundary for FormData
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      let body: unknown;
+      try { body = await response.json(); } catch { body = await response.text(); }
+      throw new ApiError(response.status, body, `API ${response.status}: ${path}`);
+    }
+    return response.json() as Promise<T>;
+  },
 };

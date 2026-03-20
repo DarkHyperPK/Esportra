@@ -45,19 +45,10 @@ const Login = () => {
             if (error) throw error;
 
             if (user) {
-                // Verify they have a sponsor account
-                const { data: sponsorAccount, error: sponsorError } = await supabase
-                    .from('sponsor_accounts')
-                    .select('sponsor_id')
-                    .eq('user_id', user.id)
-                    .limit(1)
-                    .maybeSingle();
-
-                if (sponsorError) {
-                    console.error('Sponsor check error:', sponsorError);
-                }
-
-                if (!sponsorAccount) {
+                // Verify sponsor account via .NET API
+                try {
+                    await apiClient.get('/api/sponsors/me');
+                } catch {
                     await supabase.auth.signOut();
                     throw new Error('Access denied: Your account is not linked to a sponsor profile.');
                 }
@@ -65,9 +56,8 @@ const Login = () => {
 
             // Redirect to dashboard explicitly
             navigate('/dashboard');
-        } catch (err: any) {
-            console.error('Login error:', err);
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Login failed');
             setLoading(false);
         }
     };
@@ -82,8 +72,8 @@ const Login = () => {
             await apiClient.post('/api/auth/recovery', { email, redirect_url: `${partnerUrl}/set-password` });
 
             setResetSent(true);
-        } catch (err: any) {
-            setError(err.message || 'Failed to send reset email');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to send reset email');
         } finally {
             setLoading(false);
         }
