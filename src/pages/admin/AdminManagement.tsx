@@ -30,7 +30,6 @@ import {
   TrendingUp,
   Calendar,
   Globe,
-  Zap,
   ArrowUpRight,
   ArrowDownRight,
   Home,
@@ -127,8 +126,14 @@ const AdminManagement = () => {
   const fetchAuditLogs = useCallback(async () => {
     setAuditLoading(true);
     try {
-      const data = await apiClient.get<AuditLog[]>('/api/admin/audit-logs?limit=100&order=created_at.desc');
-      setAuditLogs(data || []);
+      const data = await apiClient.get<any[]>('/api/admin/audit-logs?limit=100&order=created_at.desc');
+      const mapped = (data || []).map(log => ({
+        ...log,
+        action_type: log.action_type || log.action,
+        admin_id: log.admin_id || log.actor_id,
+        admin_name: log.admin_name || log.actor_name,
+      }));
+      setAuditLogs(mapped);
     } catch (err) {
       console.error('Error fetching audit logs:', err);
     }
@@ -542,35 +547,6 @@ const AdminManagement = () => {
           </div>
         </motion.section>
       </div>
-
-      {/* System Health */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="mt-6 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-5"
-      >
-        <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-          <Zap className="w-4 h-4 text-emerald-500" />
-          System Health
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'API Status', status: 'Operational', color: 'emerald' },
-            { label: 'Database', status: 'Healthy', color: 'emerald' },
-            { label: 'Auth Service', status: 'Operational', color: 'emerald' },
-            { label: 'Storage', status: 'Operational', color: 'emerald' },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900/50">
-              <div className={`w-2 h-2 rounded-full bg-${item.color}-500 animate-pulse`} />
-              <div>
-                <p className="text-xs text-zinc-500">{item.label}</p>
-                <p className={`text-sm text-${item.color}-400 font-medium`}>{item.status}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.section>
 
       {/* Audit Log Detail Modal */}
       <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>

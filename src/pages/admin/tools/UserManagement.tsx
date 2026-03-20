@@ -84,12 +84,14 @@ const UserManagementTool = () => {
         setLoading(true);
 
         try {
-            // 1. Fetch profiles
-            const profiles = await apiClient.get<Array<{
+            // 1. Fetch profiles — response is { users: [...], total: N }
+            const usersResponse = await apiClient.get<any>('/api/admin/users?order=created_at.desc');
+            const profiles: Array<{
                 id: string; username: string | null; full_name: string | null; email: string | null;
                 avatar_url: string | null; created_at: string; is_suspended?: boolean;
                 suspension_until?: string | null; suspension_reason?: string | null; suspension_type?: string | null;
-            }>>('/api/admin/users?order=created_at.desc');
+                roles?: string[];
+            }> = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.users || []);
 
             // 2. Fetch all regular user roles
             let roles: Array<{ user_id: string; role: string }> = [];
@@ -118,15 +120,17 @@ const UserManagementTool = () => {
 
             // Combine everything
             const usersWithRoles = (profiles || []).map(profile => {
-                // Regular roles
-                const regularRoles = (roles || [])
-                    .filter(r => r.user_id === profile.id)
-                    .map(r => ({ role: r.role }));
+                // Regular roles — prefer embedded roles from /api/admin/users, fallback to separate fetch
+                const regularRoles = (profile.roles && profile.roles.length > 0)
+                    ? profile.roles.map((r: string) => ({ role: r }))
+                    : (roles || [])
+                        .filter(r => r.user_id === profile.id)
+                        .map(r => ({ role: r.role }));
 
                 // Admin roles
                 const userAdminRoles = (adminUserRoles || [])
                     .filter((aur: any) => aur.user_id === profile.id)
-                    .map((aur: any) => aur.admin_roles?.name)
+                    .map((aur: any) => aur.role_name || aur.admin_roles?.name)
                     .filter(Boolean);
 
                 return {

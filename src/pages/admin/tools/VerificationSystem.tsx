@@ -87,8 +87,16 @@ const VerificationSystemTool = () => {
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get<VerificationRequest[]>('/api/admin/verification-requests?order=created_at.desc');
-      setRequests(data);
+      const data = await apiClient.get<any[]>('/api/admin/verification-requests?order=created_at.desc');
+      const mapped: VerificationRequest[] = (data || []).map((r: any) => ({
+        ...r,
+        profiles: r.profiles || {
+          username: r.profile_username || null,
+          full_name: r.profile_full_name || null,
+          email: r.profile_email || null,
+        },
+      }));
+      setRequests(mapped);
     } catch (err) {
       console.error('Error fetching verification requests:', err);
     }
@@ -447,7 +455,7 @@ const VerificationSystemTool = () => {
               ) : (
                 filteredRequests.map((request, idx) => (
                   <motion.tr
-                    key={request.id}
+                    key={request.id || `${request.user_id}-${request.requested_role || idx}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: idx * 0.01 }}

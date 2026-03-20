@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,10 +86,17 @@ const AuditLogs: React.FC = () => {
         params.set('to', endDate.toISOString());
       }
 
-      const result = await apiClient.get<{ data: AuditLog[]; count: number }>(`/api/admin/audit-logs?${params.toString()}`);
-
-      setLogs(result.data || []);
-      setTotalPages(Math.ceil((result.count || 0) / itemsPerPage));
+      const result = await apiClient.get<any>(`/api/admin/audit-logs?${params.toString()}`);
+      const logsArray = Array.isArray(result) ? result : (result?.data || []);
+      const mappedLogs: AuditLog[] = logsArray.map((log: any) => ({
+        ...log,
+        action_type: log.action_type || log.action || '',
+        admin_id: log.admin_id || log.actor_id || '',
+        admin_name: log.admin_name || log.actor_name || 'System',
+      }));
+      setLogs(mappedLogs);
+      const totalCount = result?.count || result?.total || mappedLogs.length;
+      setTotalPages(Math.ceil(totalCount / itemsPerPage));
 
     } catch (error) {
       console.error('Error fetching audit logs:', error);
@@ -143,7 +149,13 @@ const AuditLogs: React.FC = () => {
 
   const exportLogs = async () => {
     try {
-      const data = await apiClient.get<AuditLog[]>('/api/admin/audit-logs?export=true&order=created_at.desc');
+      const result = await apiClient.get<any>('/api/admin/audit-logs?export=true&order=created_at.desc');
+      const data: AuditLog[] = (Array.isArray(result) ? result : (result?.data || [])).map((log: any) => ({
+        ...log,
+        action_type: log.action_type || log.action || '',
+        admin_id: log.admin_id || log.actor_id || '',
+        admin_name: log.admin_name || log.actor_name || 'System',
+      }));
 
       // Convert to CSV
       const csvContent = [
@@ -180,12 +192,12 @@ const AuditLogs: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">Audit Logs</h2>
-          <p className="text-gray-400">Track all administrative actions and system events</p>
+          <p className="text-zinc-500">Track all administrative actions and system events</p>
         </div>
         <Button
           onClick={exportLogs}
           variant="outline"
-          className="border-gray-600 text-gray-300 hover:bg-gray-700"
+          className="border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
         >
           <Download className="w-4 h-4 mr-2" />
           Export CSV
@@ -193,26 +205,25 @@ const AuditLogs: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <Card className="bg-gray-800/50 border-gray-700">
-        <CardContent className="p-4">
+      <div className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500 w-4 h-4" />
                 <Input
                   placeholder="Search logs..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-gray-700 border-gray-600 text-white"
+                  className="pl-10 bg-zinc-900/50 border-zinc-800 text-white focus:border-rose-500"
                 />
               </div>
             </div>
 
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="w-full md:w-48 bg-gray-700 border-gray-600 text-white">
+              <SelectTrigger className="w-full md:w-48 bg-zinc-900/50 border-zinc-800 text-white">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
+              <SelectContent className="bg-zinc-900 border-zinc-800">
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="user">Users</SelectItem>
                 <SelectItem value="tournament">Tournaments</SelectItem>
@@ -227,10 +238,10 @@ const AuditLogs: React.FC = () => {
             </Select>
 
             <Select value={filterSeverity} onValueChange={setFilterSeverity}>
-              <SelectTrigger className="w-full md:w-48 bg-gray-700 border-gray-600 text-white">
+              <SelectTrigger className="w-full md:w-48 bg-zinc-900/50 border-zinc-800 text-white">
                 <SelectValue placeholder="Filter by severity" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-700 border-gray-600">
+              <SelectContent className="bg-zinc-900 border-zinc-800">
                 <SelectItem value="all">All Severities</SelectItem>
                 <SelectItem value="critical">Critical</SelectItem>
                 <SelectItem value="high">High</SelectItem>
@@ -243,21 +254,21 @@ const AuditLogs: React.FC = () => {
           {/* Date Range Row */}
           <div className="flex flex-col md:flex-row gap-4 mt-4">
             <div className="flex-1">
-              <label className="text-xs text-gray-400 mb-1 block">From</label>
+              <label className="text-xs text-zinc-500 mb-1 block">From</label>
               <Input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
-                className="bg-gray-700 border-gray-600 text-white"
+                className="bg-zinc-900/50 border-zinc-800 text-white"
               />
             </div>
             <div className="flex-1">
-              <label className="text-xs text-gray-400 mb-1 block">To</label>
+              <label className="text-xs text-zinc-500 mb-1 block">To</label>
               <Input
                 type="date"
                 value={dateTo}
                 onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
-                className="bg-gray-700 border-gray-600 text-white"
+                className="bg-zinc-900/50 border-zinc-800 text-white"
               />
             </div>
             {(dateFrom || dateTo) && (
@@ -266,87 +277,92 @@ const AuditLogs: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => { setDateFrom(''); setDateTo(''); setCurrentPage(1); }}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                  className="border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
                 >
                   Clear Dates
                 </Button>
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Logs Table */}
-      <Card className="bg-gray-800/50 border-gray-700">
-        <CardContent className="p-0">
+      <div className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="border-gray-700">
-                <TableHead className="text-gray-300">Date & Time</TableHead>
-                <TableHead className="text-gray-300">Admin</TableHead>
-                <TableHead className="text-gray-300">Action</TableHead>
-                <TableHead className="text-gray-300">Target</TableHead>
-                <TableHead className="text-gray-300">Severity</TableHead>
-                <TableHead className="text-gray-300">IP Address</TableHead>
-                <TableHead className="text-gray-300">Actions</TableHead>
+              <TableRow className="border-zinc-800/50 bg-zinc-900/50">
+                <TableHead className="text-xs font-mono text-zinc-500 uppercase">Date & Time</TableHead>
+                <TableHead className="text-xs font-mono text-zinc-500 uppercase">Admin</TableHead>
+                <TableHead className="text-xs font-mono text-zinc-500 uppercase">Action</TableHead>
+                <TableHead className="text-xs font-mono text-zinc-500 uppercase">Target</TableHead>
+                <TableHead className="text-xs font-mono text-zinc-500 uppercase">Severity</TableHead>
+                <TableHead className="text-xs font-mono text-zinc-500 uppercase">IP Address</TableHead>
+                <TableHead className="text-xs font-mono text-zinc-500 uppercase text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-400">
-                    Loading audit logs...
+                  <TableCell colSpan={7} className="text-center py-12">
+                    <div className="flex items-center justify-center gap-2 text-zinc-500">
+                      <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                      Loading audit logs...
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-400">
+                  <TableCell colSpan={7} className="text-center py-12 text-zinc-500">
                     No audit logs found
                   </TableCell>
                 </TableRow>
               ) : (
                 logs.map((log) => (
-                  <TableRow key={log.id} className="border-gray-700 hover:bg-gray-700/30">
+                  <TableRow key={log.id} className="border-zinc-800/50 hover:bg-zinc-900/50">
                     <TableCell className="text-white">
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        {new Date(log.created_at).toLocaleString()}
+                        <Calendar className="w-4 h-4 text-zinc-500" />
+                        <span className="text-sm">{new Date(log.created_at).toLocaleString()}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-white">
                       <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-400" />
-                        {log.admin_name}
+                        <User className="w-4 h-4 text-zinc-500" />
+                        <span className="text-sm">{log.admin_name}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-white">
                       <div className="flex items-center gap-2">
                         {getActionIcon(log.action_type)}
-                        <span className="capitalize">{log.action_type}</span>
+                        <span className="capitalize text-sm">{log.action_type}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-white">
                       <div className="flex items-center gap-2">
                         {getTargetIcon(log.target_type)}
                         <div>
-                          <div className="font-medium">{log.target_name}</div>
-                          <div className="text-xs text-gray-400 capitalize">{log.target_type}</div>
+                          <div className="font-medium text-sm">{log.target_name || log.target_id?.slice(0, 12)}</div>
+                          <div className="text-xs text-zinc-500 capitalize">{log.target_type}</div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={`${getSeverityColor(log.severity)} text-white`}>
-                        {log.severity.toUpperCase()}
-                      </Badge>
+                      {log.severity ? (
+                        <Badge className={`${getSeverityColor(log.severity)} text-white text-xs`}>
+                          {log.severity.toUpperCase()}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-zinc-500">—</span>
+                      )}
                     </TableCell>
-                    <TableCell className="text-gray-400 font-mono text-sm">
-                      {log.ip_address}
+                    <TableCell className="text-zinc-500 font-mono text-xs">
+                      {log.ip_address || '—'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                        className="text-zinc-400 hover:text-white"
                         onClick={() => { setSelectedLog(log); setDetailsOpen(true); }}
                       >
                         <Eye className="w-4 h-4" />
@@ -357,8 +373,7 @@ const AuditLogs: React.FC = () => {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -368,12 +383,12 @@ const AuditLogs: React.FC = () => {
             size="sm"
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className="border-gray-600 text-gray-300 hover:bg-gray-700"
+            className="border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
           >
             Previous
           </Button>
 
-          <span className="text-gray-400">
+          <span className="text-zinc-500 text-sm">
             Page {currentPage} of {totalPages}
           </span>
 
@@ -382,7 +397,7 @@ const AuditLogs: React.FC = () => {
             size="sm"
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
-            className="border-gray-600 text-gray-300 hover:bg-gray-700"
+            className="border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
           >
             Next
           </Button>
@@ -390,30 +405,53 @@ const AuditLogs: React.FC = () => {
       )}
       {/* Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="bg-gray-800 border-gray-700 max-w-3xl text-white">
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-3xl text-white">
           <DialogHeader>
-            <DialogTitle>Log Details</DialogTitle>
-            <DialogDescription className="text-gray-400">
+            <DialogTitle className="text-white">Log Details</DialogTitle>
+            <DialogDescription className="text-zinc-500">
               Full payload for auditing and debugging
             </DialogDescription>
           </DialogHeader>
           {selectedLog && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><span className="text-gray-400">Date:</span> {new Date(selectedLog.created_at).toLocaleString()}</div>
-                <div><span className="text-gray-400">Admin:</span> {selectedLog.admin_name}</div>
-                <div className="capitalize"><span className="text-gray-400">Action:</span> {selectedLog.action_type}</div>
-                <div className="capitalize"><span className="text-gray-400">Target:</span> {selectedLog.target_type} • {selectedLog.target_name}</div>
-                <div><span className="text-gray-400">Severity:</span> {selectedLog.severity}</div>
-                <div><span className="text-gray-400">IP:</span> {selectedLog.ip_address}</div>
+                <div className="p-3 rounded-xl bg-zinc-900/50">
+                  <span className="text-xs text-zinc-500 uppercase">Date</span>
+                  <p className="text-white mt-1">{new Date(selectedLog.created_at).toLocaleString()}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-zinc-900/50">
+                  <span className="text-xs text-zinc-500 uppercase">Admin</span>
+                  <p className="text-white mt-1">{selectedLog.admin_name}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-zinc-900/50">
+                  <span className="text-xs text-zinc-500 uppercase">Action</span>
+                  <p className="text-white capitalize mt-1">{selectedLog.action_type}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-zinc-900/50">
+                  <span className="text-xs text-zinc-500 uppercase">Target</span>
+                  <p className="text-white capitalize mt-1">{selectedLog.target_type} • {selectedLog.target_name || selectedLog.target_id?.slice(0, 12)}</p>
+                </div>
+                {selectedLog.severity && (
+                  <div className="p-3 rounded-xl bg-zinc-900/50">
+                    <span className="text-xs text-zinc-500 uppercase">Severity</span>
+                    <p className="text-white mt-1">{selectedLog.severity}</p>
+                  </div>
+                )}
+                {selectedLog.ip_address && (
+                  <div className="p-3 rounded-xl bg-zinc-900/50">
+                    <span className="text-xs text-zinc-500 uppercase">IP</span>
+                    <p className="text-white font-mono mt-1">{selectedLog.ip_address}</p>
+                  </div>
+                )}
               </div>
-              <div className="bg-gray-900 rounded border border-gray-700 p-3 text-xs overflow-auto max-h-80">
-                <pre className="whitespace-pre-wrap break-words">{JSON.stringify(selectedLog.details, null, 2)}</pre>
+              <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-4">
+                <p className="text-xs text-zinc-500 uppercase mb-2">Details</p>
+                <pre className="text-sm text-zinc-300 overflow-auto max-h-80 whitespace-pre-wrap break-words font-mono">{JSON.stringify(selectedLog.details, null, 2)}</pre>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" className="border-gray-600 text-gray-300" onClick={() => setDetailsOpen(false)}>Close</Button>
+            <Button variant="outline" className="border-zinc-800 text-zinc-400 hover:text-white" onClick={() => setDetailsOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
