@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,32 +11,21 @@ import TeamInvites from "@/components/player/TeamInvites";
 import PlayerAchievements from "@/components/player/PlayerAchievements";
 import { Link, useParams } from 'react-router-dom';
 import { apiClient } from "@/lib/apiClient";
+import { useQuery } from '@tanstack/react-query';
 
 const PlayerProfilePage = () => {
   const { profile: authProfile } = useAuth();
   const { username } = useParams();
   const [activeTab, setActiveTab] = useState("profile");
-  const [displayedProfile, setDisplayedProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      setLoading(true);
-      if (username) {
-        try {
-          const data = await apiClient.get(`/api/profiles/by-username/${username}`);
-          setDisplayedProfile(data);
-        } catch {
-          console.error("Profile not found");
-        }
-      } else {
-        setDisplayedProfile(authProfile);
-      }
-      setLoading(false);
-    };
-
-    fetchProfile();
-  }, [username, authProfile]);
+  const profileQuery = useQuery({
+    queryKey: ['profile', 'by-username', username],
+    queryFn: () => apiClient.get<any>(`/api/profiles/by-username/${username}`),
+    enabled: !!username,
+    staleTime: 1000 * 60 * 5,
+  });
+  const displayedProfile = username ? profileQuery.data ?? null : authProfile;
+  const loading = username ? profileQuery.isLoading : false;
 
   const isOwnProfile = !username || (authProfile && displayedProfile?.id === authProfile.id);
 

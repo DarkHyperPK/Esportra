@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/effects/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { apiClient } from '@/lib/apiClient';
+import { useQuery } from '@tanstack/react-query';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,80 +20,51 @@ const TournamentBrackets = () => {
   const { user, loading: authLoading } = useAuth();
   const { currentRole } = useRole();
 
-  const [tournament, setTournament] = useState<any | null>(null);
-  const [participants, setParticipants] = useState<any[]>([]);
-  const [stages, setStages] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Map of stage_id -> latest version_id
-  const [versionsMap, setVersionsMap] = useState<Record<string, string>>({});
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
-
   const [isClearing, setIsClearing] = useState(false);
 
   // 1. Fetch Tournament & Participants
-  const fetchTournamentData = useCallback(async () => {
-    try {
-      setLoading(true);
+  const tournamentQuery = useQuery({
+    queryKey: ['tournament', 'brackets', slug],
+    queryFn: () => apiClient.get<any>(`/api/tournaments/${slug}`),
+    enabled: !!slug && !authLoading,
+    staleTime: 1000 * 60 * 5,
+  });
 
-      // Fetch tournament — returns wrapped { tournament, participants, stages, ... }
-      const response = await apiClient.get<any>(`/api/tournaments/${slug}`);
-      if (!response?.tournament) throw new Error('Tournament not found');
+  const tournament = tournamentQuery.data?.tournament ?? null;
+  const stages: any[] = tournamentQuery.data?.stages ?? [];
+  const participants: any[] = tournamentQuery.data?.participants ?? [];
+  const loading = tournamentQuery.isLoading;
 
-      const tournamentData = response.tournament;
-      setTournament(tournamentData);
+  // Fetch bracket versions - Organizers see drafts, others only active
+  const isActuallyOrganizer = tournamentQuery.data?.isOrganizer || (user?.id && tournament?.organization?.owner_id === user.id);
+  const statusFilter = isActuallyOrganizer ? 'active,draft' : 'active';
 
-      // Use stages from wrapped response, fallback to separate call
-      const stagesData = response.stages || [];
-      setStages(stagesData);
+  const versionsQuery = useQuery({
+    queryKey: ['bracket-versions', tournament?.id, statusFilter],
+    queryFn: () => apiClient.get<any[]>(`/api/tournaments/${tournament!.id}/bracket-versions?status=${statusFilter}`),
+    enabled: !!tournament?.id,
+  });
 
-      // Default selected stage to the first one if not set
-      if (stagesData && stagesData.length > 0 && !selectedStageId) {
-        setSelectedStageId(stagesData[0].id);
-      }
-
-      // Fetch bracket versions - Organizers see drafts, others only active
-      const isActuallyOrganizer = response.isOrganizer || (user?.id && tournamentData.organization?.owner_id === user.id);
-      const statusFilter = isActuallyOrganizer ? 'active,draft' : 'active';
-
-      const versionsData = await apiClient.get(`/api/tournaments/${tournamentData.id}/bracket-versions?status=${statusFilter}`);
-
-      // Process versions to find latest for each stage
-      const vMap: Record<string, string> = {};
-      if (versionsData) {
-        // Since it's ordered by desc, the first one we encounter for a stage is the latest
-        versionsData.forEach((v: any) => {
-          if (v.stage_id && !vMap[v.stage_id]) {
-            vMap[v.stage_id] = v.id;
-          }
-        });
-      }
-      setVersionsMap(vMap);
-
-      // If we didn't have a selected stage but now we have versions, maybe pick the stage that has a version?
-      if (!selectedStageId && stagesData && stagesData.length > 0) {
-        const stageWithBracket = stagesData.find((s: any) => vMap[s.id]);
-        setSelectedStageId(stageWithBracket ? stageWithBracket.id : stagesData[0].id);
-      } else if (selectedStageId && !stagesData?.find(s => s.id === selectedStageId)) {
-        if (stagesData && stagesData.length > 0) setSelectedStageId(stagesData[0].id);
-      }
-
-      // Use participants from wrapped response
-      setParticipants(response.participants || []);
-
-    } catch (error: any) {
-      console.error('Error fetching tournament:', error);
-      toast({ title: 'Error', description: 'Failed to load tournament data', variant: 'destructive' });
-    } finally {
-      setLoading(false);
+  const versionsMap = useMemo(() => {
+    const vMap: Record<string, string> = {};
+    if (versionsQuery.data) {
+      versionsQuery.data.forEach((v: any) => {
+        if (v.stage_id && !vMap[v.stage_id]) {
+          vMap[v.stage_id] = v.id;
+        }
+      });
     }
-  }, [slug, toast]); // Removed selectedStageId dependency to avoid loop, it's handled inside
+    return vMap;
+  }, [versionsQuery.data]);
 
+  // Auto-select first stage when data loads
   useEffect(() => {
-    if (slug && !authLoading) {
-      fetchTournamentData();
+    if (stages.length > 0 && !selectedStageId) {
+      const stageWithBracket = stages.find((s: any) => versionsMap[s.id]);
+      setSelectedStageId(stageWithBracket ? stageWithBracket.id : stages[0].id);
     }
-  }, [slug, authLoading, fetchTournamentData]);
+  }, [stages, versionsMap, selectedStageId]);
 
   // Derive active version
   const activeVersionId = useMemo(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,9 +25,14 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import { apiClient } from "@/lib/apiClient";
 import { auditLog } from "@/lib/auditLog";
 import { useToast } from "@/hooks/use-toast";
+import {
+  useAdminVerificationRequests,
+  useAdminVerificationAction,
+  useAdminVerifiedRoleCreate,
+  useAdminUserRoleUpdate,
+} from "@/hooks/useAdminQueries";
 import {
   Dialog,
   DialogContent,
@@ -75,8 +80,23 @@ interface VerificationRequest {
 
 const VerificationSystemTool = () => {
   const { toast } = useToast();
-  const [requests, setRequests] = useState<VerificationRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: rawRequests, isLoading: loading, refetch } = useAdminVerificationRequests();
+  const verificationAction = useAdminVerificationAction();
+  const verifiedRoleCreate = useAdminVerifiedRoleCreate();
+  const userRoleUpdate = useAdminUserRoleUpdate();
+
+  const requests = useMemo<VerificationRequest[]>(() =>
+    (rawRequests || []).map((r: any) => ({
+      ...r,
+      profiles: r.profiles || {
+        username: r.profile_username || null,
+        full_name: r.profile_full_name || null,
+        email: r.profile_email || null,
+      },
+    })),
+    [rawRequests]
+  );
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRequest, setSelectedRequest] = useState<VerificationRequest | null>(null);
@@ -84,33 +104,9 @@ const VerificationSystemTool = () => {
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchRequests = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await apiClient.get<any[]>('/api/admin/verification-requests?order=created_at.desc');
-      const mapped: VerificationRequest[] = (data || []).map((r: any) => ({
-        ...r,
-        profiles: r.profiles || {
-          username: r.profile_username || null,
-          full_name: r.profile_full_name || null,
-          email: r.profile_email || null,
-        },
-      }));
-      setRequests(mapped);
-    } catch (err) {
-      console.error('Error fetching verification requests:', err);
-    }
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
-
-  useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
-
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchRequests();
+    refetch().finally(() => setRefreshing(false));
   };
 
   const handleAction = async (requestId: string, action: 'approve' | 'reject') => {
@@ -118,9 +114,9 @@ const VerificationSystemTool = () => {
 
     try {
       // 1. Update the request status
-      await apiClient.put(`/api/admin/verification-requests/${requestId}`, {
-        status: newStatus,
-        updated_at: new Date().toISOString()
+      await verificationAction.mutateAsync({
+        requestId,
+        updates: { status: newStatus, updated_at: new Date().toISOString() }
       });
 
       // 2. If approved, grant the roles
@@ -128,12 +124,10 @@ const VerificationSystemTool = () => {
 
         // A. Add to verified_roles (Official Record)
         try {
-          await apiClient.post('/api/admin/verified-roles', {
+          await verifiedRoleCreate.mutateAsync({
             user_id: selectedRequest.user_id,
             role: selectedRequest.requested_role,
-            status: 'approved',
-            is_active: true,
-            verified_at: new Date().toISOString()
+            verified_by: '',
           });
         } catch (verifiedRoleError) {
           console.error('Error adding to verified_roles:', verifiedRoleError);
@@ -142,10 +136,9 @@ const VerificationSystemTool = () => {
 
         // B. Add to user_roles (Functional Permission)
         try {
-          await apiClient.post('/api/admin/user-roles', {
+          await userRoleUpdate.mutateAsync({
             user_id: selectedRequest.user_id,
             role: selectedRequest.requested_role,
-            is_active: true
           });
         } catch (userRoleError) {
           console.error('Error adding to user_roles:', userRoleError);
@@ -165,8 +158,6 @@ const VerificationSystemTool = () => {
           ? `User has been verified as ${selectedRequest?.requested_role.replace('_', ' ')}.`
           : 'Verification request has been rejected.'
       });
-
-      fetchRequests();
     } catch (error) {
       console.error('Error updating request:', error);
       toast({

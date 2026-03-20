@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
@@ -14,49 +14,27 @@ import {
   DollarSign
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { apiClient } from "@/lib/apiClient";
+import { useAdminAnalytics } from "@/hooks/useAdminQueries";
 
 const AnalyticsTool = () => {
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading, refetch } = useAdminAnalytics();
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalTournaments: 0,
-    totalVenues: 0,
-    totalPrizePool: 0,
-    newUsersThisWeek: 0,
-    newTournamentsThisWeek: 0,
-    totalBookings: 0,
-    completedTournaments: 0,
-  });
 
-  const fetchAnalytics = useCallback(async () => {
-    setLoading(true);
+  const stats = {
+    totalUsers: data?.total_users || 0,
+    totalTournaments: data?.total_tournaments || 0,
+    totalVenues: data?.total_venues || 0,
+    totalPrizePool: parseFloat(data?.total_prize_pool) || 0,
+    newUsersThisWeek: data?.new_users_this_week || 0,
+    newTournamentsThisWeek: data?.new_tournaments_this_week || 0,
+    totalBookings: data?.total_bookings || 0,
+    completedTournaments: data?.completed_tournaments || 0,
+  };
 
-    const data = await apiClient.get<any>('/api/admin/analytics');
-
-    setStats({
-      totalUsers: data.total_users || 0,
-      totalTournaments: data.total_tournaments || 0,
-      totalVenues: data.total_venues || 0,
-      totalPrizePool: parseFloat(data.total_prize_pool) || 0,
-      newUsersThisWeek: data.new_users_this_week || 0,
-      newTournamentsThisWeek: data.new_tournaments_this_week || 0,
-      totalBookings: data.total_bookings || 0,
-      completedTournaments: data.completed_tournaments || 0,
-    });
-
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
-
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    fetchAnalytics();
+    await refetch();
+    setRefreshing(false);
   };
 
   const metricCards = [

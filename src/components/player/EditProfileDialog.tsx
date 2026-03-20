@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { apiClient } from "@/lib/apiClient";
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,23 +25,15 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
     const [detecting, setDetecting] = useState(false);
     const [detectionFailed, setDetectionFailed] = useState(false);
     const [showManualSelector, setShowManualSelector] = useState(false);
-    const [teamName, setTeamName] = useState<string | null>(null);
     const { riotAccount } = useRiotAccount();
 
-    useEffect(() => {
-        const fetchTeam = async () => {
-            if (!profile?.id) return;
-            try {
-                const teams: any[] = await apiClient.get('/api/teams/me');
-                if (teams && teams.length > 0) {
-                    setTeamName(teams[0].name);
-                }
-            } catch {
-                // No team found
-            }
-        };
-        fetchTeam();
-    }, [profile]);
+    const teamQuery = useQuery({
+        queryKey: ['my-teams'],
+        queryFn: () => apiClient.get<any[]>('/api/teams/me'),
+        enabled: !!profile?.id,
+        staleTime: 1000 * 60 * 5,
+    });
+    const teamName = teamQuery.data?.[0]?.name ?? null;
 
 
     // Local State for Form Fields

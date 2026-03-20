@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLicenses } from '@/hooks/useLicenses';
 import { useFaceitAccount } from '@/hooks/useFaceitAccount';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
@@ -75,13 +75,13 @@ export default function AccountSettings() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('connected_accounts');
   // Show Desktop Pairing to anyone who actually owns at least one venue
-  const [ownsVenues, setOwnsVenues] = useState(false);
-  useEffect(() => {
-    if (!user?.id) return;
-    apiClient.get(`/api/venues?owner_id=${user.id}&limit=1`)
-      .then((data: any) => setOwnsVenues(Array.isArray(data) ? data.length > 0 : false))
-      .catch(() => setOwnsVenues(false));
-  }, [user?.id]);
+  const venuesQuery = useQuery({
+    queryKey: ['venues', 'ownership', user?.id],
+    queryFn: () => apiClient.get<any>(`/api/venues?owner_id=${user!.id}&limit=1`),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+  const ownsVenues = Array.isArray(venuesQuery.data) ? venuesQuery.data.length > 0 : false;
 
   // Handle OAuth result redirects from backend BFF endpoints
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,6 +26,7 @@ import {
 import { apiClient } from '@/lib/apiClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminAuditLogs } from '@/hooks/useAdminQueries';
 
 interface AuditLog {
   id: string;
@@ -42,61 +43,36 @@ interface AuditLog {
 
 const AuditLogs: React.FC = () => {
   const { user } = useAuth();
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 20;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  const fetchAuditLogs = async () => {
-    try {
-      setLoading(true);
+  const queryParams = useMemo(() => ({
+    limit: itemsPerPage,
+    offset: (currentPage - 1) * itemsPerPage,
+    search: searchTerm || undefined,
+    target_type: filterType !== 'all' ? filterType : undefined,
+    from: dateFrom ? `${dateFrom}T00:00:00Z` : undefined,
+    to: dateTo ? `${dateTo}T23:59:59Z` : undefined,
+  }), [currentPage, itemsPerPage, searchTerm, filterType, dateFrom, dateTo]);
 
-      const params = new URLSearchParams();
-      params.set('page', String(currentPage));
-      params.set('limit', String(itemsPerPage));
+  const { data, isLoading } = useAdminAuditLogs(queryParams);
 
-      if (filterType !== 'all') {
-        params.set('target_type', filterType);
-      }
-      if (searchTerm) {
-        params.set('search', searchTerm);
-      }
-      if (dateFrom) {
-        params.set('from', `${dateFrom}T00:00:00Z`);
-      }
-      if (dateTo) {
-        params.set('to', `${dateTo}T23:59:59Z`);
-      }
-
-      const result = await apiClient.get<any>(`/api/admin/audit-logs?${params.toString()}`);
-      const logsArray = Array.isArray(result) ? result : (result?.data || []);
-      const mappedLogs: AuditLog[] = logsArray.map((log: any) => ({
-        ...log,
-        action_type: log.action_type || log.action || '',
-        admin_id: log.admin_id || log.actor_id || '',
-        admin_name: log.admin_name || log.actor_name || 'System',
-      }));
-      setLogs(mappedLogs);
-      const totalCount = result?.count || result?.total || mappedLogs.length;
-      setTotalPages(Math.ceil(totalCount / itemsPerPage));
-
-    } catch (error) {
-      console.error('Error fetching audit logs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAuditLogs();
-  }, [currentPage, filterType, searchTerm, dateFrom, dateTo]);
+  const response = data;
+  const logsArray = Array.isArray(response) ? response : (response?.data || []);
+  const logs: AuditLog[] = logsArray.map((log: any) => ({
+    ...log,
+    action_type: log.action_type || log.action || '',
+    admin_id: log.admin_id || log.actor_id || '',
+    admin_name: log.admin_name || log.actor_name || 'System',
+  }));
+  const totalCount = response?.count || response?.total || logs.length;
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   const getActionIcon = (actionType: string) => {
     switch (actionType.toLowerCase()) {
@@ -265,7 +241,7 @@ const AuditLogs: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12">
                     <div className="flex items-center justify-center gap-2 text-zinc-500">

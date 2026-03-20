@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,8 @@ import {
     ExternalLink
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
-import { apiClient } from "@/lib/apiClient";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, adminKeys } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import {
     Dialog,
@@ -68,94 +69,59 @@ const USERS_PER_PAGE = 25;
 const UserManagementTool = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const [users, setUsers] = useState<User[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-    const [availableAdminRoles, setAvailableAdminRoles] = useState<string[]>([]);
     const [page, setPage] = useState(0);
-    const [totalUsers, setTotalUsers] = useState(0);
-    const [roleCounts, setRoleCounts] = useState<Record<string, number>>({});
-    const [adminCount, setAdminCount] = useState(0);
 
     // Suspend Form State
     const [suspensionType, setSuspensionType] = useState<string>('Standard');
     const [suspensionDuration, setSuspensionDuration] = useState<string>('1 week');
     const [suspensionReason, setSuspensionReason] = useState<string>('');
 
-    const fetchUsers = useCallback(async () => {
-        setLoading(true);
+    // ── React Query hooks ─────────────────────────────────────────────
+    const usersQuery = useAdminUsersList({
+        limit: USERS_PER_PAGE,
+        offset: page * USERS_PER_PAGE,
+        search: searchTerm || undefined,
+        role: roleFilter !== 'all' ? roleFilter : undefined,
+    });
+    const rolesQuery = useAdminRoleDefinitions();
+    const adminUserRolesQuery = useAdminUserRoleAssignments();
+    const suspendMutation = useAdminUserSuspend();
+    const unsuspendMutation = useAdminUserUnsuspend();
 
-        try {
-            const params = new URLSearchParams();
-            params.set('limit', String(USERS_PER_PAGE));
-            params.set('offset', String(page * USERS_PER_PAGE));
-            if (searchTerm) params.set('search', searchTerm);
-            if (roleFilter !== 'all') params.set('role', roleFilter);
+    const isLoading = usersQuery.isLoading;
 
-            // 1. Fetch paginated profiles with embedded roles + server counts
-            const usersResponse = await apiClient.get<any>(`/api/admin/users?${params}`);
-            const profiles: Array<{
-                id: string; username: string | null; full_name: string | null; email: string | null;
-                avatar_url: string | null; created_at: string; is_suspended?: boolean;
-                suspension_until?: string | null; suspension_reason?: string | null; suspension_type?: string | null;
-                roles?: string[];
-            }> = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.users || []);
+    // Derive enriched users from the three queries
+    const profiles = usersQuery.data?.users ?? [];
+    const totalUsers = usersQuery.data?.total ?? profiles.length;
+    const roleCounts: Record<string, number> = usersQuery.data?.roleCounts ?? {};
+    const adminCount = usersQuery.data?.adminCount ?? 0;
+    const availableAdminRoles = rolesQuery.data?.map(r => r.name) ?? [];
 
-            setTotalUsers(usersResponse?.total ?? profiles.length);
-            setRoleCounts(usersResponse?.roleCounts ?? {});
-            setAdminCount(usersResponse?.adminCount ?? 0);
+    const users = useMemo(() => {
+        const adminUserRoles = adminUserRolesQuery.data ?? [];
+        return profiles.map((profile: any) => {
+            const embeddedRoles = Array.isArray(profile.roles) ? profile.roles : [];
+            const regularRoles = embeddedRoles.map((r: string) => ({ role: r }));
 
-            // 2. Fetch admin role definitions
-            let adminRoleDefs: Array<{ id: string; name: string }> = [];
-            try {
-                adminRoleDefs = await apiClient.get<Array<{ id: string; name: string }>>('/api/admin/roles');
-                setAvailableAdminRoles(adminRoleDefs?.map(r => r.name) || []);
-            } catch (err) {
-                console.warn('Error fetching admin role definitions:', err);
-            }
+            const userAdminRoles = adminUserRoles
+                .filter((aur: any) => aur.user_id === profile.id)
+                .map((aur: any) => aur.role_name || aur.admin_roles?.name)
+                .filter(Boolean);
 
-            // 3. Fetch admin user role assignments
-            let adminUserRoles: Array<any> = [];
-            try {
-                adminUserRoles = await apiClient.get<Array<any>>('/api/admin/admin-user-roles');
-            } catch (err) {
-                console.warn('Error fetching admin user roles:', err);
-            }
-
-            // Combine profiles with role data
-            const usersWithRoles = (profiles || []).map(profile => {
-                const embeddedRoles = Array.isArray(profile.roles) ? profile.roles : [];
-                const regularRoles = embeddedRoles.map((r: string) => ({ role: r }));
-
-                const userAdminRoles = (adminUserRoles || [])
-                    .filter((aur: any) => aur.user_id === profile.id)
-                    .map((aur: any) => aur.role_name || aur.admin_roles?.name)
-                    .filter(Boolean);
-
-                return {
-                    ...profile,
-                    user_roles: regularRoles,
-                    admin_roles: userAdminRoles
-                };
-            });
-
-            setUsers(usersWithRoles as User[]);
-        } catch (err) {
-            console.error('Error:', err);
-        }
-
-        setLoading(false);
-        setRefreshing(false);
-    }, [page, searchTerm, roleFilter]);
-
-    useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers]);
+            return {
+                ...profile,
+                user_roles: regularRoles,
+                admin_roles: userAdminRoles
+            };
+        }) as User[];
+    }, [profiles, adminUserRolesQuery.data]);
 
     // Debounce search input — triggers server-side search
     useEffect(() => {
@@ -166,9 +132,14 @@ const UserManagementTool = () => {
         return () => clearTimeout(timer);
     }, [searchInput]);
 
-    const handleRefresh = () => {
+    const handleRefresh = async () => {
         setRefreshing(true);
-        fetchUsers();
+        await Promise.all([
+            usersQuery.refetch(),
+            rolesQuery.refetch(),
+            adminUserRolesQuery.refetch(),
+        ]);
+        setRefreshing(false);
     };
 
     const handleViewProfile = (username: string | null) => {
@@ -187,8 +158,6 @@ const UserManagementTool = () => {
         }
 
         try {
-            setLoading(true);
-
             // Calculate suspension_until
             let suspensionUntil: Date | null = null;
             const now = new Date();
@@ -203,7 +172,8 @@ const UserManagementTool = () => {
             // 'permanent' remains null
 
             // 1. Update Profile securely via RPC
-            await apiClient.post(`/api/admin/users/${userId}/suspend`, {
+            await suspendMutation.mutateAsync({
+                userId,
                 reason: `${suspensionReason} [${suspensionType}, ${suspensionDuration}]`,
             });
 
@@ -221,22 +191,18 @@ const UserManagementTool = () => {
             toast({ title: 'User Suspended', description: `The user has been suspended (${suspensionDuration}).` });
             setSuspendDialogOpen(false);
             setSuspensionReason('');
-            fetchUsers();
         } catch (error: any) {
             console.error('Error suspending user:', error);
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } finally {
-            setLoading(false);
             setSelectedUser(null);
         }
     };
 
     const handleUnsuspendUser = async (userId: string, targetName: string) => {
         try {
-            setLoading(true);
-
             // 1. Update Profile securely via RPC
-            await apiClient.post(`/api/admin/users/${userId}/unsuspend`);
+            await unsuspendMutation.mutateAsync(userId);
 
             // 2. Log Action
             import('@/lib/auditLog').then(({ auditLog }) => {
@@ -248,12 +214,10 @@ const UserManagementTool = () => {
             });
 
             toast({ title: 'User Unsuspended', description: 'The user has been unsuspended.' });
-            fetchUsers();
         } catch (error: any) {
             console.error('Error unsuspending user:', error);
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } finally {
-            setLoading(false);
             setSelectedUser(null);
         }
     };
@@ -458,7 +422,7 @@ const UserManagementTool = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-800/50">
-                            {loading ? (
+                            {isLoading ? (
                                 <tr>
                                     <td colSpan={6} className="text-center py-12">
                                         <div className="flex items-center justify-center gap-2 text-zinc-500">
@@ -701,9 +665,9 @@ const UserManagementTool = () => {
                         <Button
                             className="bg-red-500 hover:bg-red-600 px-8"
                             onClick={() => selectedUser && handleSuspendUser(selectedUser.id)}
-                            disabled={loading}
+                            disabled={suspendMutation.isPending}
                         >
-                            {loading ? 'Restricting...' : 'Apply Restriction'}
+                            {suspendMutation.isPending ? 'Restricting...' : 'Apply Restriction'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import JSZip from 'jszip';
 import { auditLog } from '@/lib/auditLog';
 import { saveAs } from 'file-saver';
@@ -24,6 +24,8 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useAdminSponsors, useAdminSponsorApplications, adminKeys } from '@/hooks/useAdminQueries';
 import { Sponsor, useSponsorStats } from '@/hooks/useSponsors';
 import { PartnerApplication } from '@/hooks/usePartnerApplication';
 
@@ -135,9 +137,10 @@ const SponsorCard = ({
 
 const SponsorManagement = () => {
     const [activeTab, setActiveTab] = useState<'applications' | 'sponsors'>('applications');
-    const [applications, setApplications] = useState<Application[]>([]);
-    const [sponsors, setSponsors] = useState<Sponsor[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
+    const { data: applications = [], isLoading: appsLoading } = useAdminSponsorApplications();
+    const { data: sponsors = [], isLoading: sponsorsLoading } = useAdminSponsors();
+
     const [searchTerm, setSearchTerm] = useState('');
 
     // Modals
@@ -145,47 +148,59 @@ const SponsorManagement = () => {
     const [sponsorModal, setSponsorModal] = useState<{ open: boolean; sponsor: Partial<Sponsor> | null; isNew: boolean; linkedAppId?: string; linkedAppEmail?: string }>({ open: false, sponsor: null, isNew: true });
     const [inviteModal, setInviteModal] = useState<{ open: boolean; sponsor: Sponsor | null; email: string }>({ open: false, sponsor: null, email: '' });
 
-    // Stats for Display
-    const [stats, setStats] = useState({
-        pendingApps: 0,
-        activeSponsors: 0,
-        totalRevenue: 0 // Placeholder
+    // Stats derived from query data
+    const stats = {
+        pendingApps: applications.filter((a: any) => a.status === 'pending').length,
+        activeSponsors: sponsors.filter((s: any) => s.is_active).length,
+        totalRevenue: 0
+    };
+
+    // Mutations
+    const updateAppStatusMutation = useMutation({
+        mutationFn: ({ id, status }: { id: string; status: Application['status'] }) =>
+            apiClient.put(`/api/sponsors/applications/${id}`, { status }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: adminKeys.sponsorApplications() });
+        },
     });
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    const saveSponsorMutation = useMutation({
+        mutationFn: ({ id, payload, isNew }: { id?: string; payload: any; isNew: boolean }) =>
+            isNew ? apiClient.post<any>('/api/sponsors', payload) : apiClient.put<any>(`/api/sponsors/${id}`, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
+        },
+    });
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            // Fetch Applications
-            const appsData = await apiClient.get<Application[]>('/api/sponsors/applications');
+    const deleteSponsorMutation = useMutation({
+        mutationFn: (id: string) => apiClient.delete(`/api/sponsors/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
+        },
+    });
 
-            // Fetch Sponsors
-            const sponsorsData = await apiClient.get<Sponsor[]>('/api/sponsors');
+    const toggleActiveMutation = useMutation({
+        mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+            apiClient.put(`/api/sponsors/${id}`, { is_active: isActive }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
+        },
+    });
 
-            setApplications(appsData || []);
-            setSponsors(sponsorsData || []);
-
-            setStats({
-                pendingApps: (appsData || []).filter((a: any) => a.status === 'pending').length,
-                activeSponsors: (sponsorsData || []).filter((s: any) => s.is_active).length,
-                totalRevenue: 0
-            });
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            toast({ title: 'Error', description: 'Failed to load data.', variant: 'destructive' });
-        } finally {
-            setLoading(false);
-        }
-    };
+    const inviteUserMutation = useMutation({
+        mutationFn: (data: { email: string; sponsorId: string; applicationId?: string }) =>
+            apiClient.post<any>('/api/sponsors/invite', data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
+            queryClient.invalidateQueries({ queryKey: adminKeys.sponsorApplications() });
+        },
+    });
 
     /* ─── Application Logic ─── */
 
     const handleUpdateAppStatus = async (id: string, status: Application['status']) => {
         try {
-            await apiClient.put(`/api/sponsors/applications/${id}`, { status });
+            await updateAppStatusMutation.mutateAsync({ id, status });
         } catch (err: any) {
             toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
             return;
@@ -194,7 +209,6 @@ const SponsorManagement = () => {
         const app = applications.find(a => a.id === id);
         await auditLog.log(status === 'approved' ? 'approve' : status === 'rejected' ? 'reject' : 'update', 'sponsor', id, app?.company_name || 'Unknown', { status });
         toast({ title: 'Status Updated', description: `Application marked as ${status}` });
-        fetchData();
         if (appModal.open) setAppModal({ open: false, app: null });
     };
 
@@ -228,7 +242,6 @@ const SponsorManagement = () => {
             return;
         }
 
-        setLoading(true);
         const payload = {
             name: s.name,
             tagline: s.tagline || null,
@@ -249,13 +262,8 @@ const SponsorManagement = () => {
         let sponsorData;
 
         try {
-            if (sponsorModal.isNew) {
-                sponsorData = await apiClient.post<any>('/api/sponsors', payload);
-            } else {
-                sponsorData = await apiClient.put<any>(`/api/sponsors/${s.id}`, payload);
-            }
+            sponsorData = await saveSponsorMutation.mutateAsync({ id: s.id, payload, isNew: sponsorModal.isNew });
         } catch (err: any) {
-            setLoading(false);
             toast({ title: 'Error', description: err.message, variant: 'destructive' });
             return;
         }
@@ -263,7 +271,7 @@ const SponsorManagement = () => {
         // If this was a promotion from an application, mark the app as approved AND invite
         if (sponsorModal.linkedAppId && sponsorModal.linkedAppEmail) {
             try {
-                const inviteData = await apiClient.post<any>('/api/sponsors/invite', {
+                const inviteData = await inviteUserMutation.mutateAsync({
                     email: sponsorModal.linkedAppEmail,
                     sponsorId: sponsorData.id,
                     applicationId: sponsorModal.linkedAppId
@@ -283,33 +291,28 @@ const SponsorManagement = () => {
         }
 
         await auditLog.log(sponsorModal.isNew ? 'create' : 'update', 'sponsor', sponsorData?.id || '', s.name || 'Unknown', { tier: s.tier, is_active: s.is_active });
-        setLoading(false);
         setSponsorModal({ open: false, sponsor: null, isNew: true, linkedAppId: undefined, linkedAppEmail: undefined });
-        fetchData();
     };
 
     const handleDeleteSponsor = async (id: string) => {
         if (!confirm('Are you sure you want to delete this sponsor?')) return;
         const sponsor = sponsors.find(s => s.id === id);
-        await apiClient.delete(`/api/sponsors/${id}`);
+        await deleteSponsorMutation.mutateAsync(id);
         await auditLog.log('delete', 'sponsor', id, sponsor?.name || 'Unknown');
         toast({ title: 'Deleted', description: 'Sponsor removed.' });
-        fetchData();
     };
 
     const toggleSponsorActive = async (sponsor: Sponsor) => {
-        await apiClient.put(`/api/sponsors/${sponsor.id}`, { is_active: !sponsor.is_active });
+        await toggleActiveMutation.mutateAsync({ id: sponsor.id, isActive: !sponsor.is_active });
         await auditLog.log('update', 'sponsor', sponsor.id, sponsor.name, { is_active: !sponsor.is_active, toggled: true });
-        fetchData();
     };
 
     const [inviteResult, setInviteResult] = useState<{ open: boolean; message: string; link?: string }>({ open: false, message: '', link: '' });
 
     const handleInviteUser = async () => {
         if (!inviteModal.email || !inviteModal.sponsor) return;
-        setLoading(true);
         try {
-            const data = await apiClient.post<any>('/api/sponsors/invite', {
+            const data = await inviteUserMutation.mutateAsync({
                 email: inviteModal.email,
                 sponsorId: inviteModal.sponsor.id,
             });
@@ -336,8 +339,6 @@ const SponsorManagement = () => {
         } catch (err: any) {
             console.error("Invite error:", err);
             toast({ title: 'Invite Error', description: err.message || 'Failed to invite user', variant: 'destructive' });
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -781,8 +782,8 @@ const SponsorManagement = () => {
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setInviteModal({ open: false, sponsor: null, email: '' })}>Cancel</Button>
-                        <Button className="bg-rose-500 hover:bg-rose-600" onClick={handleInviteUser} disabled={loading}>
-                            {loading ? 'Sending...' : 'Send Invite'}
+                        <Button className="bg-rose-500 hover:bg-rose-600" onClick={handleInviteUser} disabled={inviteUserMutation.isPending}>
+                            {inviteUserMutation.isPending ? 'Sending...' : 'Send Invite'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

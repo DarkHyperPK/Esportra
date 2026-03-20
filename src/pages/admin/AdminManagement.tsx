@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin } from "@/contexts/AdminContext";
-import { apiClient } from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminStats, useAdminAuditLogs, useAdminUsersList, useAdminTournaments } from "@/hooks/useAdminQueries";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -70,134 +70,95 @@ const AdminManagement = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Stats state
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    activeVenues: 0,
-    activeTournaments: 0,
-    pendingVerifications: 0,
-    totalBookings: 0,
-    newUsersToday: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  // React Query hooks
+  const statsQuery = useAdminStats();
+  const auditQuery = useAdminAuditLogs({ limit: 100 });
+  const usersQuery = useAdminUsersList({ limit: 3 });
+  const tournamentsQuery = useAdminTournaments();
 
-  // Audit logs state
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [auditLoading, setAuditLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [auditSearch, setAuditSearch] = useState('');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-
-  // Active tab state
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'tournaments' | 'venues' | 'audit' | 'analytics'>('overview');
 
-  // Real-time activity feed
-  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  // Derived stats
+  const loading = statsQuery.isLoading;
+  const stats = {
+    totalUsers: statsQuery.data?.totalUsers || 0,
+    activeVenues: statsQuery.data?.activeVenues || 0,
+    activeTournaments: statsQuery.data?.activeTournaments || 0,
+    pendingVerifications: statsQuery.data?.pendingVerifications || 0,
+    totalBookings: statsQuery.data?.totalBookings || 0,
+    newUsersToday: statsQuery.data?.newUsersToday || 0,
+  };
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const data = await apiClient.get<any>('/api/admin/stats');
+  // Derived audit logs with column mapping
+  const auditLoading = auditQuery.isLoading;
+  const auditLogs: AuditLog[] = useMemo(() => {
+    const response = auditQuery.data;
+    const logsArray = Array.isArray(response) ? response : (response?.data || []);
+    return logsArray.map((log: any) => ({
+      ...log,
+      action_type: log.action_type || log.action,
+      admin_id: log.admin_id || log.actor_id,
+      admin_name: log.admin_name || log.actor_name,
+    }));
+  }, [auditQuery.data]);
 
-      if (data) {
-        setStats({
-          totalUsers: data.totalUsers || 0,
-          activeVenues: data.activeVenues || 0,
-          activeTournaments: data.activeTournaments || 0,
-          pendingVerifications: data.pendingVerifications || 0,
-          totalBookings: data.totalBookings || 0,
-          newUsersToday: data.newUsersToday || 0,
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  // Derived recent activities from users + tournaments queries
+  const recentActivities: RecentActivity[] = useMemo(() => {
+    const activities: RecentActivity[] = [];
 
-  const fetchAuditLogs = useCallback(async () => {
-    setAuditLoading(true);
-    try {
-      const response = await apiClient.get<any>('/api/admin/audit-logs?limit=100');
-      const logsArray = Array.isArray(response) ? response : (response?.data || []);
-      const mapped = logsArray.map((log: any) => ({
-        ...log,
-        action_type: log.action_type || log.action,
-        admin_id: log.admin_id || log.actor_id,
-        admin_name: log.admin_name || log.actor_name,
-      }));
-      setAuditLogs(mapped);
-    } catch (err) {
-      console.error('Error fetching audit logs:', err);
-    }
-    setAuditLoading(false);
-  }, []);
+    const usersResponse = usersQuery.data;
+    const recentUsers: Array<{ id: string; username: string; full_name: string; created_at: string }> =
+      Array.isArray(usersResponse) ? usersResponse : ((usersResponse as any)?.users || []);
 
-  const fetchRecentActivities = useCallback(async () => {
-    try {
-      // Fetch recent users
-      const usersResponse = await apiClient.get<any>('/api/admin/users?limit=3&order=created_at.desc');
-      const recentUsers: Array<{ id: string; username: string; full_name: string; created_at: string }> = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.users || []);
-
-      // Fetch recent tournaments
-      const tournamentsResponse = await apiClient.get<any>('/api/admin/tournaments?limit=3&order=created_at.desc');
-      const recentTournaments: Array<{ id: string; name: string; created_at: string }> = Array.isArray(tournamentsResponse) ? tournamentsResponse : (tournamentsResponse?.tournaments || tournamentsResponse?.items || []);
-
-      const activities: RecentActivity[] = [];
-
-      (recentUsers || []).forEach(user => {
-        activities.push({
-          id: user.id,
-          type: 'user',
-          title: 'New User Registered',
-          description: user.full_name || user.username || 'Unknown',
-          time: user.created_at,
-          icon: Users,
-          color: 'rose',
-        });
+    (recentUsers || []).forEach(user => {
+      activities.push({
+        id: user.id,
+        type: 'user',
+        title: 'New User Registered',
+        description: user.full_name || user.username || 'Unknown',
+        time: user.created_at,
+        icon: Users,
+        color: 'rose',
       });
+    });
 
-      (recentTournaments || []).forEach(t => {
-        activities.push({
-          id: t.id,
-          type: 'tournament',
-          title: 'Tournament Created',
-          description: t.name || 'Untitled',
-          time: t.created_at,
-          icon: Trophy,
-          color: 'amber',
-        });
+    const tournamentsResponse = tournamentsQuery.data;
+    const recentTournaments: Array<{ id: string; name: string; created_at: string }> =
+      Array.isArray(tournamentsResponse) ? tournamentsResponse : ((tournamentsResponse as any)?.tournaments || (tournamentsResponse as any)?.items || []);
+
+    (recentTournaments || []).slice(0, 3).forEach(t => {
+      activities.push({
+        id: t.id,
+        type: 'tournament',
+        title: 'Tournament Created',
+        description: t.name || 'Untitled',
+        time: t.created_at,
+        icon: Trophy,
+        color: 'amber',
       });
+    });
 
-      // Sort by time
-      activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-      setRecentActivities(activities.slice(0, 10));
-    } catch (err) {
-      console.error('Error fetching recent activities:', err);
-    }
-  }, []);
+    activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+    return activities.slice(0, 10);
+  }, [usersQuery.data, tournamentsQuery.data]);
 
+  // Poll audit logs every 30s
   useEffect(() => {
-    fetchStats();
-    fetchAuditLogs();
-    fetchRecentActivities();
-
-    // Poll audit logs every 30s (replaces Supabase realtime)
-    const intervalId = setInterval(() => {
-      fetchAuditLogs();
-    }, 30_000);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [fetchStats, fetchAuditLogs, fetchRecentActivities]);
+    const id = setInterval(() => auditQuery.refetch(), 30_000);
+    return () => clearInterval(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchStats();
-    fetchAuditLogs();
-    fetchRecentActivities();
+    Promise.all([
+      statsQuery.refetch(),
+      auditQuery.refetch(),
+      usersQuery.refetch(),
+      tournamentsQuery.refetch(),
+    ]).finally(() => setRefreshing(false));
     toast({ title: 'Data refreshed', description: 'All statistics updated' });
   };
 

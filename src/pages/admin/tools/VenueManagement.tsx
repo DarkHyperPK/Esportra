@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ import {
   Building,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { apiClient } from "@/lib/apiClient";
+import { useAdminVenues, useAdminVenueUpdate } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -47,45 +47,30 @@ interface Venue {
 
 const VenueManagementTool = () => {
   const { toast } = useToast();
-  const [venues, setVenues] = useState<Venue[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, refetch } = useAdminVenues();
+  const venueUpdate = useAdminVenueUpdate();
+  const venues = data ?? [];
+  const loading = isLoading;
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchVenues = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await apiClient.get<Venue[]>('/api/admin/venues?order=created_at.desc');
-      setVenues(data);
-    } catch (err) {
-      console.error('Error fetching venues:', err);
-    }
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
-
-  useEffect(() => {
-    fetchVenues();
-  }, [fetchVenues]);
-
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    fetchVenues();
+    await refetch();
+    setRefreshing(false);
   };
 
   const handleVerify = async (venueId: string, verified: boolean) => {
-    try {
-      await apiClient.put(`/api/admin/venues/${venueId}`, { status: verified ? 'published' : 'pending_review' });
-      toast({
-        title: verified ? 'Venue Verified' : 'Venue Unverified',
-        description: `Venue verification status updated`
-      });
-      fetchVenues();
-    } catch (err) {
-      console.error('Error updating venue verification:', err);
-    }
+    await venueUpdate.mutateAsync({
+      id: venueId,
+      updates: { status: verified ? 'published' : 'pending_review' },
+    });
+    toast({
+      title: verified ? 'Venue Verified' : 'Venue Unverified',
+      description: 'Venue verification status updated',
+    });
   };
 
   const exportCSV = () => {

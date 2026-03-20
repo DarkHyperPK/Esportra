@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,7 @@ import {
   Ban
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { apiClient } from "@/lib/apiClient";
+import { useAdminTournaments, useAdminTournamentUpdate } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -51,42 +51,29 @@ interface Tournament {
 
 const TournamentManagementTool = () => {
   const { toast } = useToast();
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, refetch } = useAdminTournaments();
+  const updateTournament = useAdminTournamentUpdate();
+  const tournaments = (data ?? []) as Tournament[];
+  const loading = isLoading;
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchTournaments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await apiClient.get<Tournament[]>('/api/admin/tournaments?order=created_at.desc');
-      setTournaments(data);
-    } catch (err) {
-      console.error('Error fetching tournaments:', err);
-    }
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
-
-  useEffect(() => {
-    fetchTournaments();
-  }, [fetchTournaments]);
-
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchTournaments();
+    refetch().finally(() => setRefreshing(false));
   };
 
-  const handleStatusChange = async (tournamentId: string, newStatus: string) => {
-    try {
-      await apiClient.put(`/api/admin/tournaments/${tournamentId}`, { status: newStatus });
-      toast({ title: 'Status Updated', description: `Tournament status changed to ${newStatus}` });
-      fetchTournaments();
-    } catch (err) {
-      console.error('Error updating tournament status:', err);
-    }
+  const handleStatusChange = (tournamentId: string, newStatus: string) => {
+    updateTournament.mutate(
+      { id: tournamentId, updates: { status: newStatus } },
+      {
+        onSuccess: () => {
+          toast({ title: 'Status Updated', description: `Tournament status changed to ${newStatus}` });
+        },
+      }
+    );
   };
 
   const exportCSV = () => {

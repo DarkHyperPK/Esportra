@@ -1,30 +1,14 @@
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Settings, ArrowLeft, Users, Trophy, MapPin, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { apiClient } from "@/lib/apiClient";
+import { useAdminSystemStats } from "@/hooks/useAdminQueries";
 
 const SystemStatusTool = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        setLoading(true);
-        const data = await apiClient.get<any>('/api/admin/system-stats');
-        setStats(data);
-      } catch (e) {
-        console.error('Failed to load system stats:', e);
-        setStats({ total_users: 0, total_tournaments: 0, total_venues: 0, total_prize_pool: 0 });
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadStats();
-  }, []);
+  const { data, isLoading } = useAdminSystemStats();
+  const stats = data ?? { total_users: 0, total_tournaments: 0, total_venues: 0, total_prize_pool: 0 };
+  const loading = isLoading;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">

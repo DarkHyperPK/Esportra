@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/apiClient';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from "@/components/ui/badge";
@@ -10,50 +11,39 @@ import { Trophy, Calendar, Clock, MapPin } from 'lucide-react';
 
 const PlayerHistory = () => {
     const { user } = useAuth();
-    const [activeTournaments, setActiveTournaments] = useState<any[]>([]);
-    const [pastTournaments, setPastTournaments] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        const fetchHistory = async () => {
-            if (!user) return;
-            setLoading(true);
+    const historyQuery = useQuery({
+        queryKey: ['tournaments', 'my-history'],
+        queryFn: () => apiClient.get<any[]>('/api/tournaments/me/history'),
+        enabled: !!user,
+        staleTime: 1000 * 60 * 2,
+    });
 
-            try {
-                const allTournaments = await apiClient.get('/api/tournaments/me/history') || [];
+    const { activeTournaments, pastTournaments } = useMemo(() => {
+        const allTournaments = historyQuery.data || [];
+        const active: any[] = [];
+        const past: any[] = [];
 
-                // Split into active and past
-                const active = [];
-                const past = [];
-
-                for (const t of allTournaments) {
-                    // Determine status if not strictly set
-                    let status = t.status;
-                    if (!status) {
-                        const tDate = t.start_date ? new Date(t.start_date) : null;
-                        const now = new Date();
-                        if (tDate && tDate < now) status = 'completed';
-                        else status = 'upcoming';
-                    }
-
-                    if (status === 'completed') {
-                        past.push(t);
-                    } else {
-                        active.push(t);
-                    }
-                }
-
-                setActiveTournaments(active);
-                setPastTournaments(past);
-            } catch (error) {
-                console.error('Error fetching player history:', error);
+        for (const t of allTournaments) {
+            let status = t.status;
+            if (!status) {
+                const tDate = t.start_date ? new Date(t.start_date) : null;
+                const now = new Date();
+                if (tDate && tDate < now) status = 'completed';
+                else status = 'upcoming';
             }
-            setLoading(false);
-        };
 
-        fetchHistory();
-    }, [user]);
+            if (status === 'completed') {
+                past.push(t);
+            } else {
+                active.push(t);
+            }
+        }
+
+        return { activeTournaments: active, pastTournaments: past };
+    }, [historyQuery.data]);
+    const loading = historyQuery.isLoading;
 
     const StatusBadge = ({ status }: { status: string }) => {
         switch (status) {
