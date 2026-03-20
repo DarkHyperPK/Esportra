@@ -138,10 +138,12 @@ const AdminManagement = () => {
   const fetchRecentActivities = useCallback(async () => {
     try {
       // Fetch recent users
-      const recentUsers = await apiClient.get<Array<{ id: string; username: string; full_name: string; created_at: string }>>('/api/admin/users?limit=3&order=created_at.desc');
+      const usersResponse = await apiClient.get<any>('/api/admin/users?limit=3&order=created_at.desc');
+      const recentUsers: Array<{ id: string; username: string; full_name: string; created_at: string }> = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.users || []);
 
       // Fetch recent tournaments
-      const recentTournaments = await apiClient.get<Array<{ id: string; name: string; created_at: string }>>('/api/admin/tournaments?limit=3&order=created_at.desc');
+      const tournamentsResponse = await apiClient.get<any>('/api/admin/tournaments?limit=3&order=created_at.desc');
+      const recentTournaments: Array<{ id: string; name: string; created_at: string }> = Array.isArray(tournamentsResponse) ? tournamentsResponse : (tournamentsResponse?.tournaments || tournamentsResponse?.items || []);
 
       const activities: RecentActivity[] = [];
 
