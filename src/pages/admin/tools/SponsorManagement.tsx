@@ -158,7 +158,7 @@ const SponsorManagement = () => {
     // Mutations
     const updateAppStatusMutation = useMutation({
         mutationFn: ({ id, status }: { id: string; status: Application['status'] }) =>
-            apiClient.put(`/api/sponsors/applications/${id}`, { status }),
+            apiClient.patch(`/api/sponsors/applications/${id}`, { status }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsorApplications() });
         },
@@ -651,8 +651,24 @@ const SponsorManagement = () => {
                                                 {appModal.app.partnership_tier}
                                             </span>
                                         </div>
+                                        <div className="flex justify-between border-b border-white/5 pb-1">
+                                            <span className="text-zinc-500">Budget</span>
+                                            <span className="text-white">{appModal.app.budget_range?.replace(/_/g, ' ') || 'N/A'}</span>
+                                        </div>
                                     </div>
                                 </div>
+                                {appModal.app.partnership_goals && appModal.app.partnership_goals.length > 0 && (
+                                    <div className="mt-6">
+                                        <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-2">Partnership Goals</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {appModal.app.partnership_goals.map((goal: string) => (
+                                                <Badge key={goal} variant="outline" className="text-xs bg-rose-500/10 text-rose-400 border-rose-500/30 capitalize">
+                                                    {goal.replace(/_/g, ' ')}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
