@@ -31,9 +31,11 @@ interface DisputeMatch {
 
 interface Dispute {
   id: string;
+  reference_number?: string | null;
   title: string;
   description: string | null;
-  status: string;  dispute_reason: string | null;
+  status: string;
+  dispute_reason: string | null;
   resolution_notes: string | null;
   evidence_url: string | null;
   created_at: string;
@@ -251,7 +253,8 @@ const OrganizerDisputesPage: React.FC = () => {
     ? statusFiltered.filter(d =>
         d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         d.raised_by_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.tournament_name.toLowerCase().includes(searchQuery.toLowerCase())
+        d.tournament_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (d.reference_number || '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : statusFiltered;
 
@@ -365,6 +368,9 @@ const OrganizerDisputesPage: React.FC = () => {
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1">
+                        {d.reference_number && (
+                          <span className="text-rose-400/70 font-mono text-[11px] shrink-0">{d.reference_number}</span>
+                        )}
                         <h3 className="text-white text-sm font-medium truncate flex-1">{d.title}</h3>
                         <Badge className={`${(statusMeta[d.status] || defaultMeta).className} text-[10px] px-1.5 py-0 gap-1`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor(d.status)} inline-block`} />
@@ -411,6 +417,9 @@ const OrganizerDisputesPage: React.FC = () => {
                 >
                   <div className="p-4 border-b border-white/[0.06]">
                     <div className="flex items-center gap-2 mb-1">
+                      {selectedDispute.reference_number && (
+                        <span className="text-rose-400/70 font-mono text-sm shrink-0">{selectedDispute.reference_number}</span>
+                      )}
                       <h2 className="text-white text-lg font-semibold flex-1">
                         {hasMatch
                           ? `${selectedDispute.match!.team1_name} vs ${selectedDispute.match!.team2_name}`
