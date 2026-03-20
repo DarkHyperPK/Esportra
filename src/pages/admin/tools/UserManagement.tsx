@@ -95,6 +95,7 @@ const UserManagementTool = () => {
             params.set('limit', String(USERS_PER_PAGE));
             params.set('offset', String(page * USERS_PER_PAGE));
             if (searchTerm) params.set('search', searchTerm);
+            if (roleFilter !== 'all') params.set('role', roleFilter);
 
             // 1. Fetch paginated profiles with embedded roles + server counts
             const usersResponse = await apiClient.get<any>(`/api/admin/users?${params}`);
@@ -150,7 +151,7 @@ const UserManagementTool = () => {
 
         setLoading(false);
         setRefreshing(false);
-    }, [page, searchTerm]);
+    }, [page, searchTerm, roleFilter]);
 
     useEffect(() => {
         fetchUsers();
@@ -306,10 +307,7 @@ const UserManagementTool = () => {
         return adminRoles.includes(role);
     };
 
-    const filteredUsers = users.filter(user => {
-        const matchesRole = roleFilter === 'all' || userHasRole(user, roleFilter);
-        return matchesRole;
-    });
+    const filteredUsers = users;
 
     const totalPages = Math.ceil(totalUsers / USERS_PER_PAGE);
 
@@ -431,7 +429,7 @@ const UserManagementTool = () => {
                             key={role}
                             variant="outline"
                             size="sm"
-                            onClick={() => setRoleFilter(role)}
+                            onClick={() => { setRoleFilter(role); setPage(0); }}
                             className={`border-zinc-800 capitalize ${roleFilter === role ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 'text-zinc-400'}`}
                         >
                             {role === 'all' ? 'All Roles' : role === 'venue_owner' ? 'Venue Owner' : role.replace('_', ' ')}
