@@ -11,10 +11,8 @@ import {
   Users,
   MapPin,
   Trophy,
-  CreditCard,
   Shield,
   FileText,
-  Settings,
   BarChart3,
   UserCheck,
   Activity,
@@ -34,8 +32,7 @@ import {
   ArrowDownRight,
   Home,
   LogOut,
-  Megaphone,
-  Handshake
+  Megaphone
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -78,11 +75,9 @@ const AdminManagement = () => {
     totalUsers: 0,
     activeVenues: 0,
     activeTournaments: 0,
-    totalRevenue: 0,
     pendingVerifications: 0,
     totalBookings: 0,
     newUsersToday: 0,
-    pendingPartners: 0,
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -108,11 +103,9 @@ const AdminManagement = () => {
           totalUsers: data.totalUsers || 0,
           activeVenues: data.activeVenues || 0,
           activeTournaments: data.activeTournaments || 0,
-          totalRevenue: data.totalRevenue || 0,
           pendingVerifications: data.pendingVerifications || 0,
           totalBookings: data.totalBookings || 0,
           newUsersToday: data.newUsersToday || 0,
-          pendingPartners: data.pendingPartners || 0,
         });
       }
     } catch (error) {
@@ -265,11 +258,9 @@ const AdminManagement = () => {
     { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'rose' },
     { label: 'Active Venues', value: stats.activeVenues, icon: MapPin, color: 'emerald' },
     { label: 'Tournaments', value: stats.activeTournaments, icon: Trophy, color: 'amber' },
-    { label: 'Prize Pool', value: `$${stats.totalRevenue.toLocaleString()}`, icon: CreditCard, color: 'violet', isString: true },
     { label: 'Bookings', value: stats.totalBookings, icon: Calendar, color: 'blue' },
     { label: 'Pending', value: stats.pendingVerifications, icon: Shield, color: 'red' },
     { label: 'New Today', value: stats.newUsersToday, icon: TrendingUp, color: 'cyan' },
-    { label: 'Partners', value: stats.pendingPartners, icon: Megaphone, color: 'violet' },
   ];
 
   const quickNavLinks = [
@@ -280,7 +271,6 @@ const AdminManagement = () => {
     { label: 'Verification System', href: '/admin/tools/verification-system', icon: Shield, color: 'red', badge: stats.pendingVerifications },
     { label: 'Dispute Center', href: '/admin/disputes', icon: AlertTriangle, color: 'amber' },
     { label: 'Analytics', href: '/admin/tools/analytics', icon: BarChart3, color: 'blue' },
-    { label: 'System Settings', href: '/admin/settings', icon: Settings, color: 'cyan' },
     { label: 'Audit Logs', href: '/admin/audit', icon: FileText, color: 'zinc' },
     { label: 'Admin Access', href: '/admin/access', icon: UserCheck, color: 'rose' },
   ];
