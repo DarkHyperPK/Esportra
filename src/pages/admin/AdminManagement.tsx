@@ -126,8 +126,9 @@ const AdminManagement = () => {
   const fetchAuditLogs = useCallback(async () => {
     setAuditLoading(true);
     try {
-      const data = await apiClient.get<any[]>('/api/admin/audit-logs?limit=100&order=created_at.desc');
-      const mapped = (data || []).map(log => ({
+      const response = await apiClient.get<any>('/api/admin/audit-logs?limit=100');
+      const logsArray = Array.isArray(response) ? response : (response?.data || []);
+      const mapped = logsArray.map((log: any) => ({
         ...log,
         action_type: log.action_type || log.action,
         admin_id: log.admin_id || log.actor_id,

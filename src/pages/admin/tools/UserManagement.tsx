@@ -121,8 +121,10 @@ const UserManagementTool = () => {
             // Combine everything
             const usersWithRoles = (profiles || []).map(profile => {
                 // Regular roles — prefer embedded roles from /api/admin/users, fallback to separate fetch
-                const regularRoles = (profile.roles && profile.roles.length > 0)
-                    ? profile.roles.map((r: string) => ({ role: r }))
+                const embeddedRoles = Array.isArray(profile.roles) ? profile.roles
+                    : (typeof profile.roles === 'string' ? JSON.parse(profile.roles) : null);
+                const regularRoles = (embeddedRoles && embeddedRoles.length > 0)
+                    ? embeddedRoles.map((r: string) => ({ role: r }))
                     : (roles || [])
                         .filter(r => r.user_id === profile.id)
                         .map(r => ({ role: r.role }));

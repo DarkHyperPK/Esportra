@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,7 +12,6 @@ import {
 } from '@/components/ui/table';
 import {
   Search,
-  Filter,
   Download,
   Eye,
   User,
@@ -34,14 +32,12 @@ interface AuditLog {
   admin_id: string;
   admin_name: string;
   action_type: string;
-  target_type: 'user' | 'tournament' | 'venue' | 'payment' | 'system' | 'sponsor' | 'dispute' | 'match' | 'team';
+  target_type: string;
   target_id: string;
   target_name: string;
   details: any;
   ip_address: string;
-  user_agent: string;
   created_at: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
 const AuditLogs: React.FC = () => {
@@ -50,7 +46,6 @@ const AuditLogs: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [filterSeverity, setFilterSeverity] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 20;
@@ -65,14 +60,10 @@ const AuditLogs: React.FC = () => {
 
       const params = new URLSearchParams();
       params.set('page', String(currentPage));
-      params.set('perPage', String(itemsPerPage));
-      params.set('order', 'created_at.desc');
+      params.set('limit', String(itemsPerPage));
 
       if (filterType !== 'all') {
         params.set('target_type', filterType);
-      }
-      if (filterSeverity !== 'all') {
-        params.set('severity', filterSeverity);
       }
       if (searchTerm) {
         params.set('search', searchTerm);
@@ -107,17 +98,7 @@ const AuditLogs: React.FC = () => {
 
   useEffect(() => {
     fetchAuditLogs();
-  }, [currentPage, filterType, filterSeverity, searchTerm, dateFrom, dateTo]);
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return 'bg-red-600';
-      case 'high': return 'bg-orange-600';
-      case 'medium': return 'bg-yellow-600';
-      case 'low': return 'bg-green-600';
-      default: return 'bg-gray-600';
-    }
-  };
+  }, [currentPage, filterType, searchTerm, dateFrom, dateTo]);
 
   const getActionIcon = (actionType: string) => {
     switch (actionType.toLowerCase()) {
@@ -159,14 +140,13 @@ const AuditLogs: React.FC = () => {
 
       // Convert to CSV
       const csvContent = [
-        ['Date', 'Admin', 'Action', 'Target Type', 'Target', 'Severity', 'IP Address', 'Details'],
+        ['Date', 'Admin', 'Action', 'Target Type', 'Target', 'IP Address', 'Details'],
         ...data.map(log => [
           new Date(log.created_at).toLocaleString(),
           log.admin_name,
           log.action_type,
           log.target_type,
           log.target_name,
-          log.severity,
           log.ip_address,
           JSON.stringify(log.details)
         ])
@@ -236,19 +216,6 @@ const AuditLogs: React.FC = () => {
                 <SelectItem value="system">System</SelectItem>
               </SelectContent>
             </Select>
-
-            <Select value={filterSeverity} onValueChange={setFilterSeverity}>
-              <SelectTrigger className="w-full md:w-48 bg-zinc-900/50 border-zinc-800 text-white">
-                <SelectValue placeholder="Filter by severity" />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800">
-                <SelectItem value="all">All Severities</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Date Range Row */}
@@ -295,7 +262,6 @@ const AuditLogs: React.FC = () => {
                 <TableHead className="text-xs font-mono text-zinc-500 uppercase">Admin</TableHead>
                 <TableHead className="text-xs font-mono text-zinc-500 uppercase">Action</TableHead>
                 <TableHead className="text-xs font-mono text-zinc-500 uppercase">Target</TableHead>
-                <TableHead className="text-xs font-mono text-zinc-500 uppercase">Severity</TableHead>
                 <TableHead className="text-xs font-mono text-zinc-500 uppercase">IP Address</TableHead>
                 <TableHead className="text-xs font-mono text-zinc-500 uppercase text-right">Actions</TableHead>
               </TableRow>
@@ -303,7 +269,7 @@ const AuditLogs: React.FC = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
+                  <TableCell colSpan={6} className="text-center py-12">
                     <div className="flex items-center justify-center gap-2 text-zinc-500">
                       <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
                       Loading audit logs...
@@ -312,7 +278,7 @@ const AuditLogs: React.FC = () => {
                 </TableRow>
               ) : logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-zinc-500">
+                  <TableCell colSpan={6} className="text-center py-12 text-zinc-500">
                     No audit logs found
                   </TableCell>
                 </TableRow>
@@ -345,15 +311,6 @@ const AuditLogs: React.FC = () => {
                           <div className="text-xs text-zinc-500 capitalize">{log.target_type}</div>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {log.severity ? (
-                        <Badge className={`${getSeverityColor(log.severity)} text-white text-xs`}>
-                          {log.severity.toUpperCase()}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-zinc-500">—</span>
-                      )}
                     </TableCell>
                     <TableCell className="text-zinc-500 font-mono text-xs">
                       {log.ip_address || '—'}
@@ -431,12 +388,6 @@ const AuditLogs: React.FC = () => {
                   <span className="text-xs text-zinc-500 uppercase">Target</span>
                   <p className="text-white capitalize mt-1">{selectedLog.target_type} • {selectedLog.target_name || selectedLog.target_id?.slice(0, 12)}</p>
                 </div>
-                {selectedLog.severity && (
-                  <div className="p-3 rounded-xl bg-zinc-900/50">
-                    <span className="text-xs text-zinc-500 uppercase">Severity</span>
-                    <p className="text-white mt-1">{selectedLog.severity}</p>
-                  </div>
-                )}
                 {selectedLog.ip_address && (
                   <div className="p-3 rounded-xl bg-zinc-900/50">
                     <span className="text-xs text-zinc-500 uppercase">IP</span>
