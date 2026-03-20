@@ -61,7 +61,7 @@ const DisputeCenter: React.FC = () => {
   const { roles } = useAdmin();
   const conn = useHub(HubPaths.Match);
   const isSuperAdmin = roles.includes('super_admin');
-  const canHandleDisputes = roles.includes('moderator') || roles.includes('ops_admin');
+  const canHandleDisputes = isSuperAdmin || roles.includes('moderator') || roles.includes('ops_admin');
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'tournament' | 'general'>('all');
@@ -567,13 +567,11 @@ const DisputeCenter: React.FC = () => {
                         onChange={(e) => setResolutionNotes(e.target.value)}
                         placeholder="Enter resolution notes..."
                         className="bg-[#121214] border-white/[0.06] text-white placeholder:text-zinc-600 min-h-[100px] rounded-xl mb-3 focus:border-rose-500/40"
-                        disabled={isSuperAdmin}
                       />
                       <div className="flex gap-2">
                         <Button
                           onClick={() => { setResolutionStatus('resolved'); resolve(); }}
                           className="bg-emerald-600 hover:bg-emerald-500 text-white flex-1 transition-colors"
-                          disabled={isSuperAdmin}
                         >
                           <CheckCircle className="h-4 w-4 mr-1.5" />
                           Resolve
@@ -581,7 +579,6 @@ const DisputeCenter: React.FC = () => {
                         <Button
                           onClick={() => { setResolutionStatus('rejected'); resolve(); }}
                           className="bg-rose-600 hover:bg-rose-500 text-white flex-1 transition-colors"
-                          disabled={isSuperAdmin}
                         >
                           <XCircle className="h-4 w-4 mr-1.5" />
                           Reject
@@ -695,9 +692,6 @@ const DisputeCenter: React.FC = () => {
                 {selectedDispute.status === 'open' ? (
                   canHandleDisputes ? (
                     <div className="p-3 border-t border-white/[0.06] space-y-2">
-                      {isSuperAdmin && (
-                        <p className="text-yellow-400/70 text-[11px]">View-only: moderators/ops handle disputes</p>
-                      )}
                       <div className="flex items-end gap-2">
                         <div className="flex-1 bg-[#121214] rounded-xl border border-white/[0.06] focus-within:border-rose-500/30 transition">
                           <Textarea
@@ -705,7 +699,6 @@ const DisputeCenter: React.FC = () => {
                             onChange={(e) => setCommentText(e.target.value)}
                             placeholder="Type a message..."
                             className="bg-transparent border-0 text-white placeholder:text-zinc-600 min-h-[44px] max-h-[120px] rounded-xl text-sm resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                            disabled={isSuperAdmin}
                           />
                           {commentAttachment && (
                             <div className="flex items-center gap-1 px-3 pb-2 text-[11px] text-zinc-400">
@@ -739,7 +732,7 @@ const DisputeCenter: React.FC = () => {
                           <Button
                             size="icon"
                             onClick={() => handleAddComment(selectedDispute.id)}
-                            disabled={submittingComment || uploadingAttachment || (!commentText.trim() && !commentAttachment) || isSuperAdmin}
+                            disabled={submittingComment || uploadingAttachment || (!commentText.trim() && !commentAttachment)}
                             className="bg-rose-600 hover:bg-rose-500 text-white h-9 w-9 rounded-full shrink-0 transition-colors"
                           >
                             {submittingComment ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
