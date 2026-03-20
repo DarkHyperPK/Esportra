@@ -1,33 +1,47 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { UserProfile, UserRole } from '@/types/auth';
 
 export const useProfile = () => {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<Error | null>(null);
+  const queryClient = useQueryClient();
+  const [trackedUserId, setTrackedUserId] = useState<string | null>(null);
 
-  const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
-    if (!userId) return null;
-    try {
-      setLoading(true);
-      setError(null);
-
-      const data = await apiClient.get<UserProfile>(`/api/profiles/${userId}`);
+  const { data: profile = null, isLoading: loading, error: queryError } = useQuery({
+    queryKey: ['profile', trackedUserId],
+    queryFn: async () => {
+      const data = await apiClient.get<UserProfile>(`/api/profiles/${trackedUserId}`);
       const role: UserRole = (data as any).role ?? 'casual';
-      const completeProfile: UserProfile = { ...data, role };
+      return { ...data, role } as UserProfile;
+    },
+    enabled: !!trackedUserId,
+    staleTime: 5 * 60 * 1000,
+  });
 
-      setProfile(completeProfile);
-      return completeProfile;
-    } catch (err) {
-      setError(err as Error);
+  const error = queryError as Error | null;
+
+  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
+    if (!userId) return null;
+    setTrackedUserId(userId);
+    try {
+      return await queryClient.fetchQuery({
+        queryKey: ['profile', userId],
+        queryFn: async () => {
+          const data = await apiClient.get<UserProfile>(`/api/profiles/${userId}`);
+          const role: UserRole = (data as any).role ?? 'casual';
+          return { ...data, role } as UserProfile;
+        },
+        staleTime: 5 * 60 * 1000,
+      });
+    } catch {
       return null;
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [queryClient]);
 
-  const clearProfile = () => { setProfile(null); setError(null); };
+  const clearProfile = useCallback(() => {
+    if (trackedUserId) queryClient.removeQueries({ queryKey: ['profile', trackedUserId] });
+    setTrackedUserId(null);
+  }, [queryClient, trackedUserId]);
 
   return { profile, loading, error, fetchProfile, clearProfile };
 };

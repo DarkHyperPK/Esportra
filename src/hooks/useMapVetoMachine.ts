@@ -357,13 +357,6 @@ export const useMapVetoMachine = ({
                 ...ownedTeamIds
             ]);
 
-            console.log('[MapVeto] Permission Check:', {
-                userId: user.id,
-                team1Id,
-                team2Id,
-                teamMembers,
-                captainTeamIds: Array.from(captainTeamIds)
-            });
 
             const isT1Capt = team1Id ? captainTeamIds.has(team1Id) : false;
             const isT2Capt = team2Id ? captainTeamIds.has(team2Id) : false;
@@ -446,11 +439,11 @@ export const useMapVetoMachine = ({
                     // Wait until we have a reliable best_of from the DB
                     const effectiveBestOf = getBestOf(dbBestOf || bestOf);
                     if (!effectiveBestOf || effectiveBestOf < 1) {
-                        console.log('[MapVeto] Waiting for best_of data before auto-init');
+
                         return;
                     }
 
-                    console.log('[MapVeto] Auto-initializing stuck veto with best_of:', effectiveBestOf);
+
                     lastAutoInitTimeRef.current = Date.now();
 
                     await apiClient.post(`/api/veto/${matchId}/init`, {
@@ -475,13 +468,13 @@ export const useMapVetoMachine = ({
                     const targetBestOf = getBestOf(dbBestOf);
 
                     if (isInitialLoadRef.current) {
-                        console.log('[MapVeto] Initial load, skipping mismatch check');
+
                         isInitialLoadRef.current = false;
                         return;
                     }
 
                     if (targetBestOf && veto.best_of !== targetBestOf && lastResetBestOfRef.current !== targetBestOf) {
-                        console.log(`[MapVeto] Best Of mismatch detected. Target: ${targetBestOf}, Veto best_of: ${veto.best_of}. Resetting veto...`);
+
                         lastAutoInitTimeRef.current = Date.now();
                         lastResetBestOfRef.current = targetBestOf;
 
@@ -528,7 +521,7 @@ export const useMapVetoMachine = ({
                     if (brktMatch?.stage_best_of) {
                         stageBestOf = brktMatch.stage_best_of;
                         setDbBestOf(stageBestOf);
-                        console.log('[MapVeto] Synced best_of from stage DB:', stageBestOf);
+
                     }
                 } catch {
                     // Failed to fetch stage data, use prop best_of
@@ -553,7 +546,7 @@ export const useMapVetoMachine = ({
                 // Create new veto if none exists — guarded against duplicate calls
                 if (matchId && tournamentId && team1Id && team2Id && !initInProgressRef.current) {
                     initInProgressRef.current = true;
-                    console.log('[MapVeto] No veto found, creating new one with best_of:', stageBestOf);
+
 
                     const initialBestOf = getBestOf(stageBestOf || 1);
 
@@ -629,7 +622,7 @@ export const useMapVetoMachine = ({
                     setAvailableMaps(typedMaps); // Set availableMaps too!
                 } else {
                     // Fallback: fetch all active maps if no pool selected for tournament
-                    console.log(`No tournament map pool found, fetching all active maps for game: ${game}`);
+
                     const dbGameName = ['cs2', 'counter-strike 2'].includes(game?.toLowerCase() || '') ? 'Counter-Strike 2' : game;
                     const gameMaps = await apiClient.get<GameMap[]>(
                         `/api/game-maps?game=${encodeURIComponent(dbGameName)}&is_active=true`

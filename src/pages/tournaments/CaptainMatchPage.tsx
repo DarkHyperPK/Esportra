@@ -98,10 +98,12 @@ const CaptainMatchPage = () => {
         queryKey: ['captain-all-matches', bracketVersions?.map((v: any) => v.id).join(',')],
         queryFn: async () => {
             if (!bracketVersions || bracketVersions.length === 0) return { nodes: [], edges: [] };
+            const results = await Promise.all(
+                bracketVersions.map((version: any) => repo.getGraphStructure(version.id))
+            );
             const allNodes: any[] = [];
             const allEdges: any[] = [];
-            for (const version of bracketVersions) {
-                const { nodes, edges } = await repo.getGraphStructure(version.id);
+            for (const { nodes, edges } of results) {
                 allNodes.push(...nodes);
                 allEdges.push(...edges);
             }

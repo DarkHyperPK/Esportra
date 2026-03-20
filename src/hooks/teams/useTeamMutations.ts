@@ -110,7 +110,7 @@ export const useTeamMutations = () => {
         onSuccess: (data, variables) => {
             // Invalidate both individual team and the list of user teams
             queryClient.invalidateQueries({ queryKey: ['team', variables.teamId] });
-            queryClient.invalidateQueries({ queryKey: ['user_teams'] });
+            queryClient.invalidateQueries({ queryKey: ['my-teams'] });
         },
     });
 

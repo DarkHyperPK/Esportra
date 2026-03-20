@@ -26,7 +26,7 @@ interface GraphMatchCardProps {
     scheduledTime?: string | null;
 }
 
-export const GraphMatchCard: React.FC<GraphMatchCardProps> = ({
+const GraphMatchCardInner: React.FC<GraphMatchCardProps> = ({
     node,
     team1,
     team2,
@@ -205,4 +205,5 @@ const TeamRow: React.FC<{
     );
 };
 
+export const GraphMatchCard = React.memo(GraphMatchCardInner);
 export default GraphMatchCard;

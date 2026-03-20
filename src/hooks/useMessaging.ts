@@ -56,6 +56,11 @@ export const useMessaging = () => {
   
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
+  const currentConversationRef = useRef<Conversation | null>(null);
+
+  useEffect(() => {
+    currentConversationRef.current = currentConversation;
+  }, [currentConversation]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -222,7 +227,8 @@ export const useMessaging = () => {
 
     // Event handlers
     connection.on('MessageReceived', (newMessage: Message) => {
-      if (currentConversation && newMessage.conversation_id === currentConversation.id) {
+      const current = currentConversationRef.current;
+      if (current && newMessage.conversation_id === current.id) {
         setMessages(prev => {
           const exists = prev.some(m => m.id === newMessage.id);
           if (exists) return prev;
@@ -231,13 +237,14 @@ export const useMessaging = () => {
       }
 
       setConversations(prev => {
+        const currentId = currentConversationRef.current?.id;
         return prev.map(conv => {
           if (conv.id === newMessage.conversation_id) {
             return {
               ...conv,
               last_message: newMessage,
               updated_at: newMessage.created_at,
-              unread_count: currentConversation?.id === conv.id 
+              unread_count: currentId === conv.id 
                 ? (conv.unread_count || 0) 
                 : (conv.unread_count || 0) + 1,
             };
@@ -268,7 +275,7 @@ export const useMessaging = () => {
       connection.stop();
       connectionRef.current = null;
     };
-  }, [user, conversationIds, currentConversation]);
+  }, [user, conversationIds]);
 
   useEffect(() => {
     if (user) {

@@ -282,6 +282,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
 
                 <BracketRenderer
                     matches={matches}
+                    edges={graphData?.edges}
                     activeFilter={activeFilter}
                     onMatchClick={(m) => {
                         setResultsDialogMatch(m);

@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Venue } from '@/types/venue';
@@ -40,49 +41,47 @@ const transformVenue = (venue: any): Venue => ({
 });
 
 export const useVenueSearch = (options: VenueSearchOptions = {}) => {
-  const [venues, setVenues]           = useState<Venue[]>([]);
-  const [loading, setLoading]         = useState(false);
-  const [error, setError]             = useState<string | null>(null);
-  const { toast }                     = useToast();
   const [searchParams, setSearchParams] = useState<VenueSearchParams>({ page: 1, pageSize: 10 });
+  const { toast } = useToast();
 
-  const searchVenues = async (params: VenueSearchParams = {}) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const updatedParams = { ...searchParams, ...params };
-      setSearchParams(updatedParams);
-
+  const { data: venues = [], isFetching: loading, error: queryError } = useQuery({
+    queryKey: ['venues', searchParams, options.includeOwned],
+    queryFn: async () => {
       let rawData: any[];
 
-      if (updatedParams.nearMe) {
-        const { lat, lng, radiusKm = 50 } = updatedParams.nearMe;
+      if (searchParams.nearMe) {
+        const { lat, lng, radiusKm = 50 } = searchParams.nearMe;
         rawData = await apiClient.get<any[]>(
           `/api/venues/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`
         );
       } else {
         const qs = new URLSearchParams();
-        if (updatedParams.query)        qs.set('q', updatedParams.query);
-        if (updatedParams.city)         qs.set('city', updatedParams.city);
-        if (options.includeOwned)       qs.set('includeOwned', 'true');
-        qs.set('limit',  String(updatedParams.pageSize ?? 20));
-        qs.set('offset', String(((updatedParams.page ?? 1) - 1) * (updatedParams.pageSize ?? 20)));
+        if (searchParams.query)        qs.set('q', searchParams.query);
+        if (searchParams.city)         qs.set('city', searchParams.city);
+        if (options.includeOwned)      qs.set('includeOwned', 'true');
+        qs.set('limit',  String(searchParams.pageSize ?? 20));
+        qs.set('offset', String(((searchParams.page ?? 1) - 1) * (searchParams.pageSize ?? 20)));
 
         rawData = await apiClient.get<any[]>(`/api/venues?${qs}`);
       }
 
-      setVenues((rawData ?? []).map(transformVenue));
-    } catch (err: any) {
-      setError(err.message || 'Failed to search venues');
-      toast({ title: 'Error', description: `Failed to search venues: ${err.message}`, variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
+      return (rawData ?? []).map(transformVenue);
+    },
+    staleTime: 3 * 60 * 1000,
+  });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { searchVenues(); }, []);
+  const error = queryError ? (queryError as Error).message || 'Failed to search venues' : null;
+
+  // Show toast when a query error occurs
+  useEffect(() => {
+    if (queryError) {
+      toast({ title: 'Error', description: `Failed to search venues: ${(queryError as Error).message}`, variant: 'destructive' });
+    }
+  }, [queryError, toast]);
+
+  const searchVenues = async (params: VenueSearchParams = {}) => {
+    setSearchParams(prev => ({ ...prev, ...params }));
+  };
 
   return { venues, loading, error, searchVenues, searchParams };
 };

@@ -33,14 +33,13 @@ export const SeamlessVideoLoop: React.FC<SeamlessVideoLoopProps> = ({
             <video
                 ref={videoRef}
                 src={src}
-                preload="auto"
+                preload="metadata"
                 autoPlay
                 muted
                 playsInline
                 loop
                 crossOrigin="anonymous"
                 className="absolute inset-0 w-full h-full object-cover"
-                onPlay={() => console.log('Video playing:', src)}
                 onError={(e) => console.error('Video error:', src, e)}
             />
         </div>

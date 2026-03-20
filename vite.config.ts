@@ -28,13 +28,16 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Split out truly independent massive libraries
             if (id.includes('recharts')) return 'vendor-charts';
             if (id.includes('framer-motion')) return 'vendor-framer';
             if (id.includes('lucide-react')) return 'vendor-lucide';
             if (id.includes('@supabase')) return 'vendor-supabase';
+            if (id.includes('@radix-ui')) return 'vendor-radix';
+            if (id.includes('@tanstack')) return 'vendor-tanstack';
+            if (id.includes('react-router')) return 'vendor-router';
+            if (id.includes('zod') || id.includes('react-hook-form')) return 'vendor-forms';
+            if (id.includes('@microsoft/signalr')) return 'vendor-signalr';
 
-            // Keep React and all its related component libraries together
             return 'vendor-main';
           }
         },

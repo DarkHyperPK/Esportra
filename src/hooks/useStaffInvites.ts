@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchPendingStaffInvites,
   respondToStaffInvite,
@@ -6,47 +7,40 @@ import {
 } from '@/lib/tournamentStaff';
 
 export function useStaffInvites(userId?: string) {
-  const [invites, setInvites] = useState<TournamentStaffInvite[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const loadInvites = useCallback(async () => {
-    if (!userId) {
-      setInvites([]);
-      return;
-    }
+  const { data: invites = [], isLoading: loading, error: queryError, refetch } = useQuery({
+    queryKey: ['staff-invites'],
+    queryFn: () => fetchPendingStaffInvites(userId!),
+    enabled: !!userId,
+    staleTime: 2 * 60 * 1000,
+  });
 
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await fetchPendingStaffInvites(userId);
-      setInvites(data);
-    } catch (err: unknown) {
-      console.error('Failed to load staff invites', err);
-      setError(err instanceof Error ? err.message : 'Unable to load invites');
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
+  const error = queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null;
 
-  useEffect(() => {
-    loadInvites();
-  }, [loadInvites]);
-
-  const handleRespond = useCallback(
-    async (inviteId: string, accept: boolean) => {
-      await respondToStaffInvite({ inviteId, accept });
-      await loadInvites();
+  const respondMutation = useMutation({
+    mutationFn: ({ inviteId, accept }: { inviteId: string; accept: boolean }) =>
+      respondToStaffInvite({ inviteId, accept }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff-invites'] });
     },
-    [loadInvites]
+  });
+
+  const refresh = useCallback(async () => { await refetch(); }, [refetch]);
+
+  const respond = useCallback(
+    async (inviteId: string, accept: boolean) => {
+      await respondMutation.mutateAsync({ inviteId, accept });
+    },
+    [respondMutation]
   );
 
   return {
     invites,
     loading,
     error,
-    refresh: loadInvites,
-    respond: handleRespond,
+    refresh,
+    respond,
   };
 }
 

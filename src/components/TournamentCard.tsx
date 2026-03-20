@@ -35,7 +35,7 @@ interface TournamentCardProps {
   end_date?: string;
 }
 
-export const TournamentCard: React.FC<TournamentCardProps> = ({
+const TournamentCardInner: React.FC<TournamentCardProps> = ({
   id,
   name,
   game,
@@ -301,3 +301,5 @@ export const TournamentCard: React.FC<TournamentCardProps> = ({
     </motion.div>
   );
 };
+
+export const TournamentCard = React.memo(TournamentCardInner);

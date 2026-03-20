@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from './AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -133,7 +133,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
   const [isLoading, setIsLoading] = useState(true);
 
   // Load unified profile
-  const loadUnifiedProfile = async () => {
+  const loadUnifiedProfile = useCallback(async () => {
     if (!user || !authProfile) {
       setIsLoading(false);
       return;
@@ -261,10 +261,26 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, authProfile, toast]);
+
+  // Check if user can access a specific mode
+  const canAccessMode = useCallback((mode: ProfileMode): boolean => {
+    if (!profile) return false;
+
+    switch (mode) {
+      case 'player':
+        return true; // Everyone can be a player
+      case 'organizer':
+        return authProfile?.role === 'admin' || profile.organizer_profile.verification_status === 'verified';
+      case 'venue_owner':
+        return authProfile?.role === 'admin' || profile.venue_profile.verification_status === 'verified';
+      default:
+        return false;
+    }
+  }, [profile, authProfile]);
 
   // Switch profile mode
-  const switchMode = async (mode: ProfileMode): Promise<boolean> => {
+  const switchMode = useCallback(async (mode: ProfileMode): Promise<boolean> => {
     if (!profile) return false;
 
     if (!canAccessMode(mode)) {
@@ -290,26 +306,10 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
       console.error('Error switching mode:', error);
       return false;
     }
-  };
-
-  // Check if user can access a specific mode
-  const canAccessMode = (mode: ProfileMode): boolean => {
-    if (!profile) return false;
-
-    switch (mode) {
-      case 'player':
-        return true; // Everyone can be a player
-      case 'organizer':
-        return authProfile?.role === 'admin' || profile.organizer_profile.verification_status === 'verified';
-      case 'venue_owner':
-        return authProfile?.role === 'admin' || profile.venue_profile.verification_status === 'verified';
-      default:
-        return false;
-    }
-  };
+  }, [profile, canAccessMode, toast]);
 
   // Update profile
-  const updateProfile = async (updates: Partial<UnifiedProfile>): Promise<boolean> => {
+  const updateProfile = useCallback(async (updates: Partial<UnifiedProfile>): Promise<boolean> => {
     if (!profile) return false;
 
     try {
@@ -323,15 +323,15 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
       console.error('Error updating profile:', error);
       return false;
     }
-  };
+  }, [profile]);
 
   // Refresh profile data
-  const refreshProfile = async (): Promise<void> => {
+  const refreshProfile = useCallback(async (): Promise<void> => {
     await loadUnifiedProfile();
-  };
+  }, [loadUnifiedProfile]);
 
   // Mode-specific getters
-  const getCurrentDisplayName = (): string => {
+  const getCurrentDisplayName = useCallback((): string => {
     if (!profile) return 'User';
 
     switch (currentMode) {
@@ -344,9 +344,9 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
       default:
         return profile.full_name || profile.username;
     }
-  };
+  }, [profile, currentMode]);
 
-  const getCurrentAvatar = (): string | null => {
+  const getCurrentAvatar = useCallback((): string | null => {
     if (!profile) return null;
 
     switch (currentMode) {
@@ -359,9 +359,9 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
       default:
         return profile.avatar_url;
     }
-  };
+  }, [profile, currentMode]);
 
-  const getCurrentEarnings = (): number => {
+  const getCurrentEarnings = useCallback((): number => {
     if (!profile) return 0;
 
     switch (currentMode) {
@@ -374,9 +374,9 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
       default:
         return 0;
     }
-  };
+  }, [profile, currentMode]);
 
-  const getCurrentStats = (): any => {
+  const getCurrentStats = useCallback((): any => {
     if (!profile) return {};
 
     switch (currentMode) {
@@ -389,26 +389,26 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
       default:
         return {};
     }
-  };
+  }, [profile, currentMode]);
 
   // Unified features
-  const getUnifiedRating = (): number => {
+  const getUnifiedRating = useCallback((): number => {
     return profile?.reputation.overall_rating || 0;
-  };
+  }, [profile]);
 
-  const getUnifiedBadges = (): string[] => {
+  const getUnifiedBadges = useCallback((): string[] => {
     return profile?.reputation.badges || [];
-  };
+  }, [profile]);
 
-  const getUnifiedActivity = (): any[] => {
+  const getUnifiedActivity = useCallback((): any[] => {
     return [];
-  };
+  }, []);
 
   useEffect(() => {
     loadUnifiedProfile();
-  }, [user, authProfile]);
+  }, [loadUnifiedProfile]);
 
-  const value: UnifiedProfileContextType = {
+  const value: UnifiedProfileContextType = useMemo(() => ({
     profile,
     currentMode,
     isLoading,
@@ -423,7 +423,7 @@ export const UnifiedProfileProvider: React.FC<UnifiedProfileProviderProps> = ({ 
     getUnifiedRating,
     getUnifiedBadges,
     getUnifiedActivity,
-  };
+  }), [profile, currentMode, isLoading, switchMode, canAccessMode, updateProfile, refreshProfile, getCurrentDisplayName, getCurrentAvatar, getCurrentEarnings, getCurrentStats, getUnifiedRating, getUnifiedBadges, getUnifiedActivity]);
 
   return (
     <UnifiedProfileContext.Provider value={value}>

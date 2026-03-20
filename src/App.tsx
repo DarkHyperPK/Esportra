@@ -17,6 +17,7 @@ import { BackgroundRotator } from "@/components/effects/BackgroundRotator";
 import { AnimatedLiquidBackground } from "@/components/effects/AnimatedLiquidBackground";
 import { TransitionLayout } from "@/components/TransitionLayout";
 import { LoadingSpinner } from "@/components/effects/LoadingSpinner";
+import { SuspensionGuard } from "@/components/auth/SuspensionGuard";
 import { SeamlessVideoLoop } from "@/components/effects/SeamlessVideoLoop";
 import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
 
@@ -40,7 +41,6 @@ const SetPassword = React.lazy(() => import("./pages/auth/SetPassword"));
 const ForgotPassword = React.lazy(() => import("./pages/auth/ForgotPassword"));
 const ResetPassword = React.lazy(() => import("./pages/auth/ResetPassword"));
 const Suspended = React.lazy(() => import("./pages/auth/Suspended"));
-const SuspensionGuard = React.lazy(() => import("./components/auth/SuspensionGuard").then(m => ({ default: m.SuspensionGuard })));
 
 
 // User 
@@ -136,10 +136,6 @@ const RiotTest = React.lazy(() => import("./pages/debug/RiotTest"));
 const FaceitTest = React.lazy(() => import("./pages/debug/FaceitTest"));
 const FaceitOAuthCallback = React.lazy(() => import("./pages/auth/FaceitOAuthCallback"));
 const RiotOAuthCallback   = React.lazy(() => import("./pages/auth/RiotOAuthCallback"));
-
-// Test Supabase connection on app start
-// Test Supabase connection on app start
-import './utils/testSupabase';
 
 import { getWebsiteAssetUrl } from "@/lib/storage";
 

@@ -111,11 +111,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Polling removed — admin roles refresh on-demand via events or page navigation
 
-  const hasPermission = (perm: string): boolean => {
+  const hasPermission = useCallback((perm: string): boolean => {
     if (!isAdmin) return false;
     if (roles.includes('super_admin')) return true;
     return permissions.includes(perm);
-  };
+  }, [isAdmin, roles, permissions]);
 
   const value = useMemo<AdminContextValue>(() => ({
     isAdmin,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 
 export interface Stage {
@@ -21,20 +21,9 @@ interface BracketVersion {
 }
 
 export const usePublicBracketData = (tournamentId: string | undefined) => {
-    const [stages, setStages] = useState<Stage[]>([]);
-    const [activeVersionsMap, setActiveVersionsMap] = useState<Record<string, string>>({});
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
-
-    const fetchBracketData = useCallback(async () => {
-        if (!tournamentId) {
-            setLoading(false);
-            return;
-        }
-
-        try {
-            setLoading(true);
-
+    const { data, isLoading: loading, error: queryError, refetch } = useQuery({
+        queryKey: ['public-bracket', tournamentId],
+        queryFn: async () => {
             const [stagesData, versionsData] = await Promise.all([
                 apiClient.get<Stage[]>(`/api/tournaments/${tournamentId}/stages`),
                 apiClient.get<BracketVersion[]>(
@@ -57,19 +46,17 @@ export const usePublicBracketData = (tournamentId: string | undefined) => {
                 }
             }
 
-            setStages(sortedStages);
-            setActiveVersionsMap(vMap);
-        } catch (err: any) {
-            console.error('Error fetching bracket data:', err);
-            setError(err);
-        } finally {
-            setLoading(false);
-        }
-    }, [tournamentId]);
+            return { stages: sortedStages, activeVersionsMap: vMap };
+        },
+        enabled: !!tournamentId,
+        staleTime: 30 * 1000,
+    });
 
-    useEffect(() => {
-        fetchBracketData();
-    }, [fetchBracketData]);
-
-    return { stages, activeVersionsMap, loading, error, refetch: fetchBracketData };
+    return {
+        stages: data?.stages ?? [],
+        activeVersionsMap: data?.activeVersionsMap ?? {},
+        loading,
+        error: queryError as Error | null,
+        refetch,
+    };
 };

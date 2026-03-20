@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   fetchTournamentStaff,
   StaffPermission,
@@ -15,32 +16,16 @@ interface UseTournamentStaffResult {
 }
 
 export function useTournamentStaff(tournamentId?: string): UseTournamentStaffResult {
-  const [staff, setStaff] = useState<TournamentStaffRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: staff = [], isLoading: loading, error: queryError, refetch } = useQuery({
+    queryKey: ['tournament-staff', tournamentId],
+    queryFn: () => fetchTournamentStaff(tournamentId!),
+    enabled: !!tournamentId,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  const loadStaff = useCallback(async () => {
-    if (!tournamentId) {
-      setStaff([]);
-      return;
-    }
+  const error = queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null;
 
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await fetchTournamentStaff(tournamentId);
-      setStaff(data);
-    } catch (err: unknown) {
-      console.error('Failed to load tournament staff', err);
-      setError(err instanceof Error ? err.message : 'Unable to load staff');
-    } finally {
-      setLoading(false);
-    }
-  }, [tournamentId]);
-
-  useEffect(() => {
-    loadStaff();
-  }, [loadStaff]);
+  const refresh = useCallback(async () => { await refetch(); }, [refetch]);
 
   const permissionIndex = useMemo(() => {
     return staff.reduce<Record<string, Set<StaffPermission>>>((acc, member) => {
@@ -72,7 +57,7 @@ export function useTournamentStaff(tournamentId?: string): UseTournamentStaffRes
     staff,
     loading,
     error,
-    refresh: loadStaff,
+    refresh,
     hasPermission,
     isStaffMember,
   };

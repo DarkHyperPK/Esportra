@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
@@ -55,30 +56,41 @@ export interface ReviewStats {
 export const useReviews = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [userReviews, setUserReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
 
-  const fetchReviews = useCallback(async (entityType: 'user' | 'venue' | 'tournament', entityId: string) => {
-    try {
-      const data = await apiClient.get<Review[]>(`/api/reviews/${entityType}/${entityId}`);
-      setReviews(data ?? []);
-    } catch (error) {
-      console.error('Error fetching reviews:', error);
-    }
-  }, []);
+  // Track which entity's reviews are currently being viewed
+  const [reviewTarget, setReviewTarget] = useState<{
+    entityType: 'user' | 'venue' | 'tournament';
+    entityId: string;
+  } | null>(null);
 
-  const fetchUserReviews = useCallback(async () => {
-    if (!user) return;
-    try {
-      const data = await apiClient.get<Review[]>('/api/reviews/mine');
-      setUserReviews(data ?? []);
-    } catch (error) {
-      console.error('Error fetching user reviews:', error);
-    }
-  }, [user]);
+  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
+    queryKey: ['reviews', reviewTarget?.entityType, reviewTarget?.entityId],
+    queryFn: () =>
+      apiClient
+        .get<Review[]>(`/api/reviews/${reviewTarget!.entityType}/${reviewTarget!.entityId}`)
+        .then(d => d ?? []),
+    enabled: !!reviewTarget,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: userReviews = [], isLoading: userReviewsLoading, refetch: refetchUserReviews } = useQuery({
+    queryKey: ['my-reviews'],
+    queryFn: () => apiClient.get<Review[]>('/api/reviews/mine').then(d => d ?? []),
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const loading = reviewsLoading || userReviewsLoading;
+
+  const fetchReviews = useCallback(async (entityType: 'user' | 'venue' | 'tournament', entityId: string): Promise<void> => {
+    setReviewTarget({ entityType, entityId });
+    await queryClient.invalidateQueries({ queryKey: ['reviews', entityType, entityId] });
+  }, [queryClient]);
+
+  const fetchUserReviews = useCallback(async (): Promise<void> => {
+    await refetchUserReviews();
+  }, [refetchUserReviews]);
 
   const getReviewStats = useCallback(async (entityType: 'user' | 'venue' | 'tournament', entityId: string): Promise<ReviewStats | null> => {
     try {
@@ -105,21 +117,17 @@ export const useReviews = () => {
     }
   }, []);
 
-  const createReview = async (reviewData: {
-    reviewee_id?: string;
-    venue_id?: string;
-    tournament_id?: string;
-    rating: number;
-    title?: string;
-    comment?: string;
-    review_type: 'user' | 'venue' | 'tournament';
-  }) => {
-    if (!user) return null;
-
-    try {
-      setSubmitting(true);
-
-      const data = await apiClient.post<Review>('/api/reviews', {
+  const createMutation = useMutation({
+    mutationFn: (reviewData: {
+      reviewee_id?: string;
+      venue_id?: string;
+      tournament_id?: string;
+      rating: number;
+      title?: string;
+      comment?: string;
+      review_type: 'user' | 'venue' | 'tournament';
+    }) =>
+      apiClient.post<Review>('/api/reviews', {
         reviewType:   reviewData.review_type,
         rating:       reviewData.rating,
         title:        reviewData.title,
@@ -127,100 +135,104 @@ export const useReviews = () => {
         venueId:      reviewData.venue_id,
         revieweeId:   reviewData.reviewee_id,
         tournamentId: reviewData.tournament_id,
-      });
-
+      }),
+    onSuccess: (_, reviewData) => {
       toast({
         title: 'Review Submitted',
         description: 'Your review has been submitted successfully.',
         variant: 'default',
       });
-
       if (reviewData.reviewee_id) {
-        await fetchReviews('user', reviewData.reviewee_id);
+        queryClient.invalidateQueries({ queryKey: ['reviews', 'user', reviewData.reviewee_id] });
       } else if (reviewData.venue_id) {
-        await fetchReviews('venue', reviewData.venue_id);
+        queryClient.invalidateQueries({ queryKey: ['reviews', 'venue', reviewData.venue_id] });
       } else if (reviewData.tournament_id) {
-        await fetchReviews('tournament', reviewData.tournament_id);
+        queryClient.invalidateQueries({ queryKey: ['reviews', 'tournament', reviewData.tournament_id] });
       }
-
-      await fetchUserReviews();
-      return data;
-    } catch (error: any) {
+      queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
+    },
+    onError: (error: any) => {
       console.error('Error creating review:', error);
       const msg = error.status === 409
         ? 'You have already reviewed this item.'
         : error.message || 'Failed to submit review.';
       toast({ title: 'Error', description: msg, variant: 'destructive' });
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    },
+  });
 
-  const updateReview = async (reviewId: string, updates: {
-    rating?: number;
-    title?: string;
-    comment?: string;
-  }) => {
-    if (!user) return null;
-
-    try {
-      setSubmitting(true);
-      const data = await apiClient.put<Review>(`/api/reviews/${reviewId}`, updates);
-
+  const updateMutation = useMutation({
+    mutationFn: ({ reviewId, updates }: { reviewId: string; updates: { rating?: number; title?: string; comment?: string } }) =>
+      apiClient.put<Review>(`/api/reviews/${reviewId}`, updates),
+    onSuccess: () => {
       toast({
         title: 'Review Updated',
         description: 'Your review has been updated successfully.',
         variant: 'default',
       });
-
-      await fetchUserReviews();
-      return data;
-    } catch (error: any) {
+      queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
+    },
+    onError: (error: any) => {
       console.error('Error updating review:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to update review.',
         variant: 'destructive',
       });
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    },
+  });
 
-  const deleteReview = async (reviewId: string) => {
-    if (!user) return false;
-
-    try {
-      setSubmitting(true);
-      await apiClient.delete(`/api/reviews/${reviewId}`);
-
+  const deleteMutation = useMutation({
+    mutationFn: (reviewId: string) => apiClient.delete(`/api/reviews/${reviewId}`),
+    onSuccess: () => {
       toast({
         title: 'Review Deleted',
         description: 'Your review has been deleted successfully.',
         variant: 'default',
       });
-
-      await fetchUserReviews();
-      return true;
-    } catch (error: any) {
+      queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
+    },
+    onError: (error: any) => {
       console.error('Error deleting review:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to delete review.',
         variant: 'destructive',
       });
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    },
+  });
+
+  const submitting = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+
+  const createReview = useCallback(async (reviewData: {
+    reviewee_id?: string;
+    venue_id?: string;
+    tournament_id?: string;
+    rating: number;
+    title?: string;
+    comment?: string;
+    review_type: 'user' | 'venue' | 'tournament';
+  }): Promise<Review | null> => {
+    if (!user) return null;
+    return createMutation.mutateAsync(reviewData).catch(() => null);
+  }, [user, createMutation]);
+
+  const updateReview = useCallback(async (reviewId: string, updates: {
+    rating?: number;
+    title?: string;
+    comment?: string;
+  }): Promise<Review | null> => {
+    if (!user) return null;
+    return updateMutation.mutateAsync({ reviewId, updates }).catch(() => null);
+  }, [user, updateMutation]);
+
+  const deleteReview = useCallback(async (reviewId: string): Promise<boolean> => {
+    if (!user) return false;
+    return deleteMutation.mutateAsync(reviewId).then(() => true).catch(() => false);
+  }, [user, deleteMutation]);
 
   // canReview — check eligibility via API
-  const canReview = async (entityType: 'user' | 'venue' | 'tournament', entityId: string): Promise<boolean> => {
+  const canReview = useCallback(async (entityType: 'user' | 'venue' | 'tournament', entityId: string): Promise<boolean> => {
     if (!user) return false;
-
     try {
       const result = await apiClient.get<{ canReview: boolean }>(
         `/api/reviews/can-review?entityType=${entityType}&entityId=${entityId}`
@@ -230,22 +242,14 @@ export const useReviews = () => {
       console.error('Error checking review eligibility:', error);
       return false;
     }
-  };
-
-  useEffect(() => {
-    if (user) {
-      fetchUserReviews().finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [user, fetchUserReviews]);
+  }, [user]);
 
   return {
     reviews,
     userReviews,
     loading,
     submitting,
-    
+
     fetchReviews,
     fetchUserReviews,
     getReviewStats,

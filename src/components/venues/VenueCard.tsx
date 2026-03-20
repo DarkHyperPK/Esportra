@@ -22,7 +22,7 @@ interface VenueCardProps {
     showStatus?: boolean;
 }
 
-export const VenueCard: React.FC<VenueCardProps> = ({ venue, showStatus = false }) => {
+const VenueCardInner: React.FC<VenueCardProps> = ({ venue, showStatus = false }) => {
     const navigate = useNavigate();
     const [isHovered, setIsHovered] = useState(false);
 
@@ -160,3 +160,5 @@ export const VenueCard: React.FC<VenueCardProps> = ({ venue, showStatus = false 
         </motion.div>
     );
 };
+
+export const VenueCard = React.memo(VenueCardInner);
