@@ -69,12 +69,10 @@ const AuditLogs: React.FC = () => {
         params.set('search', searchTerm);
       }
       if (dateFrom) {
-        params.set('from', new Date(dateFrom).toISOString());
+        params.set('from', `${dateFrom}T00:00:00Z`);
       }
       if (dateTo) {
-        const endDate = new Date(dateTo);
-        endDate.setDate(endDate.getDate() + 1);
-        params.set('to', endDate.toISOString());
+        params.set('to', `${dateTo}T23:59:59Z`);
       }
 
       const result = await apiClient.get<any>(`/api/admin/audit-logs?${params.toString()}`);
