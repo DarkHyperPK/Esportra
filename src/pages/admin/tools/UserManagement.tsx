@@ -63,17 +63,24 @@ interface User {
     admin_roles?: string[]; // Array of role names
 }
 
+const USERS_PER_PAGE = 25;
+
 const UserManagementTool = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [searchInput, setSearchInput] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [availableAdminRoles, setAvailableAdminRoles] = useState<string[]>([]);
+    const [page, setPage] = useState(0);
+    const [totalUsers, setTotalUsers] = useState(0);
+    const [roleCounts, setRoleCounts] = useState<Record<string, number>>({});
+    const [adminCount, setAdminCount] = useState(0);
 
     // Suspend Form State
     const [suspensionType, setSuspensionType] = useState<string>('Standard');
@@ -84,8 +91,13 @@ const UserManagementTool = () => {
         setLoading(true);
 
         try {
-            // 1. Fetch profiles — response is { users: [...], total: N }
-            const usersResponse = await apiClient.get<any>('/api/admin/users?order=created_at.desc');
+            const params = new URLSearchParams();
+            params.set('limit', String(USERS_PER_PAGE));
+            params.set('offset', String(page * USERS_PER_PAGE));
+            if (searchTerm) params.set('search', searchTerm);
+
+            // 1. Fetch paginated profiles with embedded roles + server counts
+            const usersResponse = await apiClient.get<any>(`/api/admin/users?${params}`);
             const profiles: Array<{
                 id: string; username: string | null; full_name: string | null; email: string | null;
                 avatar_url: string | null; created_at: string; is_suspended?: boolean;
@@ -93,24 +105,20 @@ const UserManagementTool = () => {
                 roles?: string[];
             }> = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.users || []);
 
-            // 2. Fetch all regular user roles
-            let roles: Array<{ user_id: string; role: string }> = [];
-            try {
-                roles = await apiClient.get<Array<{ user_id: string; role: string }>>('/api/admin/user-roles');
-            } catch (err) {
-                console.error('Error fetching roles:', err);
-            }
+            setTotalUsers(usersResponse?.total ?? profiles.length);
+            setRoleCounts(usersResponse?.roleCounts ?? {});
+            setAdminCount(usersResponse?.adminCount ?? 0);
 
-            // 3. Fetch admin role definitions
+            // 2. Fetch admin role definitions
             let adminRoleDefs: Array<{ id: string; name: string }> = [];
             try {
                 adminRoleDefs = await apiClient.get<Array<{ id: string; name: string }>>('/api/admin/roles');
                 setAvailableAdminRoles(adminRoleDefs?.map(r => r.name) || []);
             } catch (err) {
-                console.warn('Error fetching admin role definitions (might not exist):', err);
+                console.warn('Error fetching admin role definitions:', err);
             }
 
-            // 4. Fetch admin user role assignments
+            // 3. Fetch admin user role assignments
             let adminUserRoles: Array<any> = [];
             try {
                 adminUserRoles = await apiClient.get<Array<any>>('/api/admin/admin-user-roles');
@@ -118,18 +126,11 @@ const UserManagementTool = () => {
                 console.warn('Error fetching admin user roles:', err);
             }
 
-            // Combine everything
+            // Combine profiles with role data
             const usersWithRoles = (profiles || []).map(profile => {
-                // Regular roles — prefer embedded roles from /api/admin/users, fallback to separate fetch
-                const embeddedRoles = Array.isArray(profile.roles) ? profile.roles
-                    : (typeof profile.roles === 'string' ? JSON.parse(profile.roles) : null);
-                const regularRoles = (embeddedRoles && embeddedRoles.length > 0)
-                    ? embeddedRoles.map((r: string) => ({ role: r }))
-                    : (roles || [])
-                        .filter(r => r.user_id === profile.id)
-                        .map(r => ({ role: r.role }));
+                const embeddedRoles = Array.isArray(profile.roles) ? profile.roles : [];
+                const regularRoles = embeddedRoles.map((r: string) => ({ role: r }));
 
-                // Admin roles
                 const userAdminRoles = (adminUserRoles || [])
                     .filter((aur: any) => aur.user_id === profile.id)
                     .map((aur: any) => aur.role_name || aur.admin_roles?.name)
@@ -149,11 +150,20 @@ const UserManagementTool = () => {
 
         setLoading(false);
         setRefreshing(false);
-    }, []);
+    }, [page, searchTerm]);
 
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);
+
+    // Debounce search input — triggers server-side search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setPage(0);
+            setSearchTerm(searchInput);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchInput]);
 
     const handleRefresh = () => {
         setRefreshing(true);
@@ -297,26 +307,18 @@ const UserManagementTool = () => {
     };
 
     const filteredUsers = users.filter(user => {
-        const matchesSearch = !searchTerm ||
-            user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-
         const matchesRole = roleFilter === 'all' || userHasRole(user, roleFilter);
-
-        return matchesSearch && matchesRole;
+        return matchesRole;
     });
 
+    const totalPages = Math.ceil(totalUsers / USERS_PER_PAGE);
+
     const stats = {
-        total: users.length,
-        admins: users.filter(u => (u.admin_roles && u.admin_roles.length > 0)).length,
-        organizers: users.filter(u => userHasRole(u, 'organizer')).length,
-        venueOwners: users.filter(u => userHasRole(u, 'venue_owner')).length,
-        casual: users.filter(u => {
-            const regularRoles = getUserRoles(u);
-            const adminRoles = u.admin_roles || [];
-            return (regularRoles.length === 0 || (regularRoles.length === 1 && regularRoles[0] === 'casual')) && adminRoles.length === 0;
-        }).length,
+        total: totalUsers,
+        admins: adminCount,
+        organizers: roleCounts['organizer'] ?? 0,
+        venueOwners: roleCounts['venue_owner'] ?? 0,
+        casual: Math.max(0, totalUsers - Object.values(roleCounts).reduce((a, b) => a + b, 0) - adminCount),
     };
 
     const getRoleBadge = (role: string, isAdmin = false) => {
@@ -418,8 +420,8 @@ const UserManagementTool = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                     <Input
                         placeholder="Search users by name, username, or email..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
                         className="pl-9 bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
                     />
                 </div>
@@ -474,7 +476,7 @@ const UserManagementTool = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredUsers.slice(0, 100).map((user, idx) => (
+                                filteredUsers.map((user, idx) => (
                                     <motion.tr
                                         key={user.id}
                                         initial={{ opacity: 0 }}
@@ -593,6 +595,38 @@ const UserManagementTool = () => {
                     </table>
                 </div>
             </motion.div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 px-2">
+                    <p className="text-sm text-zinc-500">
+                        Showing {page * USERS_PER_PAGE + 1}–{Math.min((page + 1) * USERS_PER_PAGE, totalUsers)} of {totalUsers} users
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page === 0}
+                            onClick={() => setPage(p => p - 1)}
+                            className="border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30"
+                        >
+                            Previous
+                        </Button>
+                        <span className="text-sm text-zinc-400 px-2">
+                            Page {page + 1} of {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page >= totalPages - 1}
+                            onClick={() => setPage(p => p + 1)}
+                            className="border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30"
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Suspend Dialog */}
             <Dialog open={suspendDialogOpen} onOpenChange={setSuspendDialogOpen}>
