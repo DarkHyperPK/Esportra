@@ -23,7 +23,21 @@ export const usePartnerApplication = () => {
 
     const submitApplication = useMutation({
         mutationFn: async (application: PartnerApplication) => {
-            return apiClient.post('/api/partners/apply', application);
+            return apiClient.post('/api/partners/apply', {
+                companyName: application.company_name,
+                companyWebsite: application.company_website,
+                companySize: application.company_size,
+                industry: application.industry,
+                contactName: application.contact_name,
+                contactEmail: application.contact_email,
+                contactPhone: application.contact_phone,
+                contactTitle: application.contact_title,
+                partnershipTier: application.partnership_tier,
+                partnershipGoals: application.partnership_goals,
+                budgetRange: application.budget_range,
+                message: application.message,
+                howHeard: application.how_heard,
+            });
         },
         onSuccess: () => {
             toast({
