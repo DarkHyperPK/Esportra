@@ -1344,7 +1344,7 @@ const TournamentDashboard = () => {
             {/* Right: Actions & Status */}
             <div className="flex flex-col items-end gap-3 self-end sm:self-auto">
               <div className="flex flex-wrap items-center justify-end gap-3 mt-auto">
-                {isOrganizer && tournament.status === 'draft' && (
+                {isOrganizer && (tournament.status === 'draft' || !tournament.is_public) && (
                   <Button
                     onClick={async () => {
                       try {
