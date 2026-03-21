@@ -1,3 +1,6 @@
+# Local archive — moved files, not for repo
+_archive/
+
 # Dependencies
 node_modules/
 backend/node_modules/

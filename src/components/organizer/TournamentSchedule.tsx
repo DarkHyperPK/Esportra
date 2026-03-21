@@ -150,8 +150,8 @@ const TournamentSchedule = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-medium text-white">{match.version.tournament.name}</span>
-                              <span className="text-xs text-gray-500">{match.version.tournament.game}</span>
+                              <span className="font-medium text-white">{match.version?.tournament?.name || 'Unknown Tournament'}</span>
+                              <span className="text-xs text-gray-500">{match.version?.tournament?.game || ''}</span>
                             </div>
                           </TableCell>
                           <TableCell>
