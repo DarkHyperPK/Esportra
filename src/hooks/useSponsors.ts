@@ -69,31 +69,20 @@ export function useSponsorStats(sponsorId: string) {
 }
 
 // ─── TRACKING VIA .NET BACKEND ───────────────────────────────────────
-// Uses sendBeacon for clicks and direct fetch for impressions.
-// Does NOT go through apiClient to avoid auth dependency — tracking is public.
+// Uses fetch with keepalive:true — survives page navigation like sendBeacon
+// but properly sets Content-Type: application/json (sendBeacon downgrades to text/plain).
 
 const TRACK_URL = `${import.meta.env.VITE_API_URL ?? 'http://localhost:5200'}/api/sponsors/track`;
 
 function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
-    const payload = JSON.stringify({
-        sponsorId,
-        eventType,
-        pageUrl: typeof window !== 'undefined' ? window.location.href : null,
-    });
-
-    const blob = new Blob([payload], { type: 'application/json' });
-
-    // sendBeacon is fire-and-forget — works even during navigation
-    if (typeof navigator.sendBeacon === 'function') {
-        navigator.sendBeacon(TRACK_URL, blob);
-        return;
-    }
-
-    // Fallback to fetch
     fetch(TRACK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: payload,
+        body: JSON.stringify({
+            sponsorId,
+            eventType,
+            pageUrl: window.location.href,
+        }),
         keepalive: true,
     }).catch(() => {});
 }
