@@ -192,7 +192,7 @@ const TournamentList = () => {
     try {
       setRestoring(tournamentId);
 
-      await apiClient.put(`/api/tournaments/${tournamentId}`, { clearDeletedAt: true });
+      await apiClient.put(`/api/tournaments/${tournamentId}`, { clearDeletedAt: true, status: 'open' });
 
       toast({
         title: 'Tournament restored',
