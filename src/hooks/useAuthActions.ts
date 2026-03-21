@@ -177,6 +177,7 @@ export const useAuthActions = () => {
           localStorage.removeItem(key);
         }
       }
+      localStorage.removeItem('sessionRole');
       setLoading(false);
       toast({
         title: 'Signed out',
