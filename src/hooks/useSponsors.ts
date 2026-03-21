@@ -63,6 +63,7 @@ export function useSponsorStats(sponsorId: string) {
                 ctr: string;
             }>(`/api/sponsors/${sponsorId}/stats`);
         },
+        enabled: !!sponsorId,
         staleTime: 60 * 1000,
     });
 }

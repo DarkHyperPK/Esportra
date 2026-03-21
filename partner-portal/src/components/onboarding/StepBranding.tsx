@@ -22,7 +22,7 @@ const StepBranding = ({ data, sponsorId, onSave, onBack, saving }: StepBrandingP
         try {
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('bucket', 'system.assets.sponsors');
+            formData.append('bucket', 'system.assets.partners');
             formData.append('folder', sponsorId);
 
             const result = await apiClient.upload<{ url: string }>('/api/storage/upload', formData);

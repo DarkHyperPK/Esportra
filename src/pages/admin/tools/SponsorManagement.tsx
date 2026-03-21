@@ -389,18 +389,10 @@ const SponsorManagement = () => {
                 }
             };
 
-            // Download from system.assets.sponsors
-            const { data: sponsorFiles } = await supabase.storage.from('system.assets.sponsors').list(sponsor.id);
-            if (sponsorFiles?.length) {
-                const mediaFolder = rootFolder.folder('media');
-                await Promise.all(sponsorFiles.map(f => downloadFile('system.assets.sponsors', `${sponsor.id}/${f.name}`, mediaFolder)));
-            }
-
-            // Download from system.assets.partners
+            // Download all files from system.assets.partners
             const { data: partnerFiles } = await supabase.storage.from('system.assets.partners').list(sponsor.id);
             if (partnerFiles?.length) {
-                const partnerFolder = rootFolder.folder('partner_uploads');
-                await Promise.all(partnerFiles.map(f => downloadFile('system.assets.partners', `${sponsor.id}/${f.name}`, partnerFolder)));
+                await Promise.all(partnerFiles.map(f => downloadFile('system.assets.partners', `${sponsor.id}/${f.name}`, rootFolder)));
             }
 
             // Generate campaign manifest with all copy + URLs
