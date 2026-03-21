@@ -310,10 +310,10 @@ const Analytics = () => {
                             <Globe className="w-5 h-5 text-blue-400" />
                             AUDIENCE_BY_COUNTRY
                         </h3>
-                        {demographics.countries.length > 0 ? (
+                        {(demographics.countries?.length ?? 0) > 0 ? (
                             <div className="space-y-3">
-                                {demographics.countries.map((c, i) => {
-                                    const maxCount = demographics.countries[0]?.count || 1;
+                                {demographics.countries!.map((c, i) => {
+                                    const maxCount = demographics.countries![0]?.count || 1;
                                     return (
                                         <div key={i} className="group">
                                             <div className="flex justify-between text-xs mb-1">
@@ -343,10 +343,10 @@ const Analytics = () => {
                             <Users className="w-5 h-5 text-purple-400" />
                             AGE_DISTRIBUTION
                         </h3>
-                        {demographics.ageGroups.length > 0 ? (
+                        {(demographics.ageGroups?.length ?? 0) > 0 ? (
                             <div className="space-y-3">
-                                {demographics.ageGroups.map((ag, i) => {
-                                    const total = demographics.ageGroups.reduce((s, a) => s + a.count, 0);
+                                {demographics.ageGroups!.map((ag, i) => {
+                                    const total = demographics.ageGroups!.reduce((s, a) => s + a.count, 0);
                                     const pct = total > 0 ? ((ag.count / total) * 100).toFixed(1) : '0';
                                     const colors = [
                                         'from-purple-500 to-violet-400',
