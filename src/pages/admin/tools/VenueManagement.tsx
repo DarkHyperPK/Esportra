@@ -16,6 +16,21 @@ import {
   Clock,
   Star,
   Building,
+  Monitor,
+  Gamepad2,
+  Mail,
+  Phone,
+  DollarSign,
+  User,
+  Image as ImageIcon,
+  Cpu,
+  Wifi,
+  Coffee,
+  Car,
+  Wind,
+  Zap,
+  Maximize2,
+  ExternalLink,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAdminVenues, useAdminVenueUpdate } from "@/hooks/useAdminQueries";
@@ -33,16 +48,42 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+interface VenuePcSpecs {
+  cpu?: string;
+  gpu?: string;
+  ram?: string;
+  monitors?: string;
+}
+
 interface Venue {
   id: string;
   name: string;
   location: string;
   city: string;
+  state?: string;
+  country?: string;
+  address?: string;
+  postal_code?: string;
   description: string;
   capacity: number;
+  stations?: number;
+  hours?: string;
+  games?: string;
+  amenities?: string[];
+  images?: string[];
+  card_image?: string;
+  pc_specs?: VenuePcSpecs;
+  contact_email?: string;
+  contact_phone?: string;
+  price_per_hour?: number;
+  currency?: string;
   status: string;
   created_at: string;
+  submitted_at?: string;
   owner_id: string;
+  owner_name?: string;
+  owner_email?: string;
+  slug?: string;
 }
 
 const VenueManagementTool = () => {
@@ -323,36 +364,171 @@ const VenueManagementTool = () => {
 
       {/* Venue Detail Modal */}
       <Dialog open={!!selectedVenue} onOpenChange={() => setSelectedVenue(null)}>
-        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl">
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <MapPin className="w-5 h-5 text-emerald-500" />
-              Venue Details
+              Venue Review
             </DialogTitle>
           </DialogHeader>
           {selectedVenue && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: 'Name', value: selectedVenue.name },
-                  { label: 'City', value: selectedVenue.city },
-                  { label: 'Location', value: selectedVenue.location },
-                  { label: 'Capacity', value: selectedVenue.capacity },
-                  { label: 'Status', value: selectedVenue.status === 'published' ? 'Verified' : selectedVenue.status?.replace('_', ' ') || 'Pending' },
-                  { label: 'Created', value: new Date(selectedVenue.created_at).toLocaleDateString() },
-                ].map((item) => (
-                  <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50">
-                    <p className="text-xs text-zinc-500 uppercase">{item.label}</p>
-                    <p className="text-white text-sm mt-1">{item.value || 'N/A'}</p>
-                  </div>
-                ))}
-              </div>
-              {selectedVenue.description && (
-                <div className="p-3 rounded-xl bg-zinc-900/50">
-                  <p className="text-xs text-zinc-500 uppercase mb-2">Description</p>
-                  <p className="text-zinc-300 text-sm">{selectedVenue.description}</p>
+            <div className="space-y-6">
+
+              {/* Card Banner Preview */}
+              {selectedVenue.card_image && (
+                <div className="rounded-xl overflow-hidden border border-white/5">
+                  <img src={selectedVenue.card_image} alt="Card banner" className="w-full h-48 object-cover" />
                 </div>
               )}
+
+              {/* Basic Info */}
+              <div>
+                <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Building className="w-3 h-3" /> Basic Info
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Name', value: selectedVenue.name },
+                    { label: 'Status', value: selectedVenue.status === 'published' ? 'Verified' : selectedVenue.status?.replace('_', ' ') || 'Pending' },
+                    { label: 'Owner', value: selectedVenue.owner_name || 'Unknown' },
+                    { label: 'Owner Email', value: selectedVenue.owner_email || 'N/A' },
+                    { label: 'Created', value: new Date(selectedVenue.created_at).toLocaleDateString() },
+                    { label: 'Submitted', value: selectedVenue.submitted_at ? new Date(selectedVenue.submitted_at).toLocaleDateString() : 'Not submitted' },
+                  ].map((item) => (
+                    <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50 border border-white/5">
+                      <p className="text-[10px] text-zinc-500 uppercase font-mono">{item.label}</p>
+                      <p className="text-white text-sm mt-1">{item.value || 'N/A'}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description */}
+              {selectedVenue.description && (
+                <div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5">
+                  <p className="text-[10px] text-zinc-500 uppercase font-mono mb-2">Description</p>
+                  <p className="text-zinc-300 text-sm leading-relaxed">{selectedVenue.description}</p>
+                </div>
+              )}
+
+              {/* Location */}
+              <div>
+                <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <MapPin className="w-3 h-3" /> Location
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Address', value: selectedVenue.address },
+                    { label: 'City', value: selectedVenue.city },
+                    { label: 'State', value: selectedVenue.state },
+                    { label: 'Country', value: selectedVenue.country },
+                    { label: 'Postal Code', value: selectedVenue.postal_code },
+                    { label: 'Location', value: selectedVenue.location },
+                  ].filter(item => item.value).map((item) => (
+                    <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50 border border-white/5">
+                      <p className="text-[10px] text-zinc-500 uppercase font-mono">{item.label}</p>
+                      <p className="text-white text-sm mt-1">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Specs & Gaming */}
+              <div>
+                <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Gamepad2 className="w-3 h-3" /> Specs & Gaming
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Stations', value: selectedVenue.stations },
+                    { label: 'Operating Hours', value: selectedVenue.hours },
+                    { label: 'Games', value: selectedVenue.games },
+                    { label: 'Capacity', value: selectedVenue.capacity },
+                  ].filter(item => item.value).map((item) => (
+                    <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50 border border-white/5">
+                      <p className="text-[10px] text-zinc-500 uppercase font-mono">{item.label}</p>
+                      <p className="text-white text-sm mt-1">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* PC Specs */}
+                {selectedVenue.pc_specs && Object.values(selectedVenue.pc_specs).some(Boolean) && (
+                  <div className="mt-3 p-4 rounded-xl bg-zinc-900/50 border border-white/5">
+                    <p className="text-[10px] text-zinc-500 uppercase font-mono mb-3 flex items-center gap-1.5">
+                      <Cpu className="w-3 h-3" /> PC Specifications
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: 'CPU', value: selectedVenue.pc_specs.cpu },
+                        { label: 'GPU', value: selectedVenue.pc_specs.gpu },
+                        { label: 'RAM', value: selectedVenue.pc_specs.ram },
+                        { label: 'Monitors', value: selectedVenue.pc_specs.monitors },
+                      ].filter(item => item.value).map((item) => (
+                        <div key={item.label} className="flex items-center gap-2">
+                          <span className="text-[10px] text-zinc-500 font-mono w-16 shrink-0">{item.label}</span>
+                          <span className="text-sm text-white">{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Amenities */}
+              {selectedVenue.amenities && selectedVenue.amenities.length > 0 && (
+                <div>
+                  <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <Coffee className="w-3 h-3" /> Amenities
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedVenue.amenities.map((amenity) => (
+                      <span key={amenity} className="px-3 py-1.5 text-xs font-medium bg-zinc-900 border border-white/5 rounded-lg text-zinc-300 capitalize">
+                        {amenity.replace('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact & Pricing */}
+              <div>
+                <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Phone className="w-3 h-3" /> Contact & Pricing
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Email', value: selectedVenue.contact_email },
+                    { label: 'Phone', value: selectedVenue.contact_phone },
+                    { label: 'Price / Hour', value: selectedVenue.price_per_hour != null ? `${selectedVenue.currency || 'USD'} ${selectedVenue.price_per_hour}` : undefined },
+                  ].filter(item => item.value).map((item) => (
+                    <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50 border border-white/5">
+                      <p className="text-[10px] text-zinc-500 uppercase font-mono">{item.label}</p>
+                      <p className="text-white text-sm mt-1">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Gallery */}
+              {selectedVenue.images && selectedVenue.images.length > 0 && (
+                <div>
+                  <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <ImageIcon className="w-3 h-3" /> Gallery ({selectedVenue.images.length} images)
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    {selectedVenue.images.map((url, idx) => (
+                      <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="group relative aspect-video rounded-xl overflow-hidden border border-white/5 hover:border-emerald-500/30 transition-colors">
+                        <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <ExternalLink className="w-4 h-4 text-white" />
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
         </DialogContent>
