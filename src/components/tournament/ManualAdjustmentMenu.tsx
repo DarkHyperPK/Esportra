@@ -102,8 +102,10 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
                     const winnerName = pendingAction === 'walkover_team1' ? team1Name : team2Name;
                     const rawMatchId = matchId.replace(/^(db-|wb-|lb-)/, '');
 
-                    const team1Score = pendingAction === 'walkover_team1' ? ((bestOf === 1 ? 13 : Math.ceil((bestOf || 1) / 2))) : 0;
-                    const team2Score = pendingAction === 'walkover_team2' ? ((bestOf === 1 ? 13 : Math.ceil((bestOf || 1) / 2))) : 0;
+                    // Series score: maps won (1-0 for BO1, 2-1 for BO3, etc.)
+                    const seriesWinScore = Math.ceil((bestOf || 1) / 2);
+                    const team1Score = pendingAction === 'walkover_team1' ? seriesWinScore : 0;
+                    const team2Score = pendingAction === 'walkover_team2' ? seriesWinScore : 0;
 
                     // --- OPTIMISTIC APPLY WALKOVER ---
                     if (previousGraphData && versionId) {

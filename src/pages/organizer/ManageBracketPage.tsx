@@ -190,9 +190,8 @@ const ManageBracketPage = () => {
                 return;
             }
 
-            // Determine which team to advance
-            const isBo1 = (match.best_of || 1) === 1;
-            const winScore = isBo1 ? 13 : 1;
+            // Series score: maps won (1-0 for BO1, 2-0/2-1 for BO3, etc.)
+            const winScore = Math.ceil((match.best_of || 1) / 2);
 
             // --- OPTIMISTIC UPDATE ---
             const queryKey = ['bracket-graph', versionId];
@@ -226,8 +225,8 @@ const ManageBracketPage = () => {
             // Use GraphMatchService to save score AND propagate winner to next match
             const result = await GraphMatchService.saveScoreAndAdvance(
                 matchId,
-                match.team1_id ? winScore : 0, // Winner gets 13 (BO1) or 1
-                match.team2_id ? winScore : 0, // Winner gets 13 (BO1) or 1
+                match.team1_id ? winScore : 0,
+                match.team2_id ? winScore : 0,
                 match.team1_id,
                 match.team2_id
             );

@@ -57,11 +57,13 @@ export function FaceitMatchReport({
             const score1 = parseInt(teams[0]?.team_stats?.['Final Score'] ?? '0', 10);
             const score2 = parseInt(teams[1]?.team_stats?.['Final Score'] ?? '0', 10);
 
+            // Bracket uses series score (maps won), not map score
+            const team1SeriesScore = score1 > score2 ? 1 : 0;
+            const team2SeriesScore = score2 > score1 ? 1 : 0;
+
             await apiClient.post(`/api/matches/${matchId}/save-score`, {
-                team1_score: score1,
-                team2_score: score2,
-                status: 'completed',
-                faceit_match_id: faceitMatchId.trim(),
+                team1Score: team1SeriesScore,
+                team2Score: team2SeriesScore,
             });
 
             toast({

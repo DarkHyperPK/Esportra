@@ -346,8 +346,8 @@ export const SwissView: React.FC<SwissViewProps> = ({
 
             let advancedCount = 0;
             for (const match of byeMatches) {
-                const isBo1 = (match.best_of || 1) === 1;
-                const winScore = isBo1 ? 13 : Math.ceil((match.best_of || 1) / 2);
+                // Series score: maps won (1-0 for BO1, 2-0/2-1 for BO3, etc.)
+                const winScore = Math.ceil((match.best_of || 1) / 2);
 
                 const result = await GraphMatchService.saveScoreAndAdvance(
                     match.id,
