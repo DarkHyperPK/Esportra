@@ -69,20 +69,27 @@ export function useSponsorStats(sponsorId: string) {
 }
 
 // ─── TRACKING VIA .NET BACKEND ───────────────────────────────────────
-// All tracking now goes through POST /api/sponsors/track (.NET endpoint).
-// This is more secure (no public DB inserts), more reliable (bypasses
-// ad-blockers), and enables server-side GeoIP + age-group resolution.
+// Uses sendBeacon for clicks (survives navigation) and fetch for impressions.
 
-async function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
-    try {
-        await apiClient.post('/api/sponsors/track', {
-            sponsorId,
-            eventType,
-            pageUrl: typeof window !== 'undefined' ? window.location.href : null,
-        });
-    } catch (err) {
-        console.warn('[Tracking] API call failed:', err);
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5200';
+
+function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
+    const payload = JSON.stringify({
+        sponsorId,
+        eventType,
+        pageUrl: typeof window !== 'undefined' ? window.location.href : null,
+    });
+
+    // sendBeacon is fire-and-forget — guaranteed to complete even during navigation
+    if (eventType === 'click' && typeof navigator.sendBeacon === 'function') {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon(`${API_BASE}/api/sponsors/track`, blob);
+        return;
     }
+
+    // Impressions use regular fetch (page isn't navigating away)
+    apiClient.post('/api/sponsors/track', { sponsorId, eventType, pageUrl: window.location.href })
+        .catch(err => console.warn('[Tracking] API call failed:', err));
 }
 
 // ─── PUBLIC API (drop-in replacement) ────────────────────────────────
