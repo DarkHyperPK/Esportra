@@ -13,6 +13,7 @@ interface TeamStats {
     id: string;
     name: string;
     logo_url: string | null;
+    country_code: string | null;
     matches_played: number;
     wins: number;
     losses: number;
@@ -25,6 +26,7 @@ interface PlayerStats {
     id: string;
     username: string;
     avatar_url: string | null;
+    country_code: string | null;
     matches_played: number;
     wins: number;
     losses: number;
