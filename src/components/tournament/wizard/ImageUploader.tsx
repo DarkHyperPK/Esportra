@@ -175,7 +175,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
             {value ? (
                 // Preview
                 <div className={cn(
-                    "relative rounded-lg overflow-hidden border border-gray-700 bg-black/20",
+                    "relative rounded-lg overflow-hidden border border-zinc-700 bg-black/20",
                     aspectRatio === 'banner' ? "aspect-video" : "aspect-square w-32"
                 )}>
                     <img
@@ -211,8 +211,8 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                         "border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer relative",
                         aspectRatio === 'banner' ? "aspect-video" : "aspect-square w-32",
                         isDragging
-                            ? "border-gaming-purple bg-gaming-purple/10"
-                            : "border-gray-600 hover:border-gray-500 hover:bg-gray-800/50",
+                            ? "border-rose-500/50 bg-rose-500/5"
+                            : "border-zinc-700 hover:border-zinc-500 hover:bg-zinc-900/50",
                         isUploading && "pointer-events-none"
                     )}
                     onDrop={handleDrop}
@@ -222,24 +222,24 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                 >
                     {isUploading ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-10 rounded-lg">
-                            <Loader2 className="w-8 h-8 text-gaming-purple animate-spin mb-2" />
+                            <Loader2 className="w-8 h-8 text-rose-500 animate-spin mb-2" />
                             <span className="text-sm font-medium text-white">Uploading...</span>
                         </div>
                     ) : null}
 
                     <div className="flex flex-col items-center justify-center h-full">
-                        <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center mb-3">
+                        <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-3">
                             {aspectRatio === 'banner' ? (
-                                <Upload className="w-6 h-6 text-gray-400" />
+                                <Upload className="w-6 h-6 text-zinc-400" />
                             ) : (
-                                <ImageIcon className="w-6 h-6 text-gray-400" />
+                                <ImageIcon className="w-6 h-6 text-zinc-400" />
                             )}
                         </div>
-                        <p className="text-sm text-gray-400 mb-1">
-                            <span className="text-gaming-purple font-medium">Click to upload</span>
+                        <p className="text-sm text-zinc-400 mb-1">
+                            <span className="text-rose-400 font-medium">Click to upload</span>
                             {' '}or drag and drop
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-zinc-500">
                             Recommended: {dimensions.width}×{dimensions.height} ({dimensions.display})
                         </p>
                     </div>
@@ -283,7 +283,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                                 onZoomChange={setZoom}
                                 style={{
                                     containerStyle: { background: '#000' },
-                                    cropAreaStyle: { border: '2px solid #a855f7' },
+                                    cropAreaStyle: { border: '2px solid #f43f5e' },
                                 }}
                             />
                         )}
@@ -305,7 +305,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                             <Button variant="ghost" onClick={() => setImageSrc(null)} disabled={isUploading}>
                                 Cancel
                             </Button>
-                            <Button onClick={handleCropSave} disabled={isUploading} className="bg-gaming-purple hover:bg-gaming-purple/80 text-white min-w-[100px]">
+                            <Button onClick={handleCropSave} disabled={isUploading} className="bg-rose-500 hover:bg-rose-600 text-white min-w-[100px]">
                                 {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Save Image</>}
                             </Button>
                         </DialogFooter>

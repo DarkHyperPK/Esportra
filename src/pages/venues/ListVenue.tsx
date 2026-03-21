@@ -475,44 +475,67 @@ const ListVenue = () => {
                 {/* STEP 5: MEDIA */}
                 {currentStep === 5 && (
                   <>
-                    <div className="mb-6">
+                    <div className="mb-8">
                       <h2 className="text-2xl font-bold text-white mb-1">Venue Gallery</h2>
-                      <p className="text-gray-400">Upload images to showcase your venue.</p>
+                      <p className="text-zinc-400 text-sm">Upload images to showcase your venue to potential customers.</p>
                     </div>
 
                     {/* Card Banner Upload */}
-                    <div className="mb-8">
-                      <label className="text-sm font-medium text-gray-300 mb-2 block uppercase tracking-wider">Venue Card Banner</label>
-                      <p className="text-xs text-gray-500 mb-3">This image will be displayed on the search page cards. (16:9 aspect ratio recommended)</p>
-                      <div className="max-w-md">
+                    <div className="p-6 rounded-2xl bg-[#0a0a0c] border border-white/5 mb-8">
+                      <div className="flex items-center gap-3 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                          <ImageIcon className="w-4 h-4 text-rose-500" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white">Card Banner</h3>
+                          <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Displayed on search results • 16:9 aspect</p>
+                        </div>
+                      </div>
+                      <div className="max-w-lg mt-4">
                         <ImageUploader
                           value={formData.card_image || null}
                           onChange={(url) => setFormData(prev => ({ ...prev, card_image: url || '' }))}
                           bucket="venue-images"
                           folder={`uploads/${user?.id}/cards`}
                           aspectRatio="video"
-                          label="Upload Card Banner"
+                          label=""
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {[0, 1, 2].map((idx) => (
-                        <div key={idx} className="space-y-2">
-                          <span className="text-xs text-gray-500 uppercase font-medium ml-1">
-                            {idx === 0 ? "Main Cover" : `Image ${idx + 1}`}
-                          </span>
-                          <ImageUploader
-                            value={formData.images?.[idx] || null}
-                            onChange={(url) => handleImageChange(idx, url)}
-                            bucket="venue-images"
-                            folder={`uploads/${user?.id}`}
-                            aspectRatio="banner"
-                            label=""
-                            helperText={idx === 0 ? "This will be your main cover." : ""}
-                          />
+                    {/* Gallery Images */}
+                    <div className="p-6 rounded-2xl bg-[#0a0a0c] border border-white/5">
+                      <div className="flex items-center gap-3 mb-5">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                          <ImageIcon className="w-4 h-4 text-emerald-500" />
                         </div>
-                      ))}
+                        <div>
+                          <h3 className="text-sm font-bold text-white">Showcase Gallery</h3>
+                          <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Up to 3 images • The first image is your main cover</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {[0, 1, 2].map((idx) => (
+                          <div key={idx} className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+                                {idx === 0 ? "Main Cover" : `Image ${idx + 1}`}
+                              </span>
+                              {idx === 0 && (
+                                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Primary</span>
+                              )}
+                            </div>
+                            <ImageUploader
+                              value={formData.images?.[idx] || null}
+                              onChange={(url) => handleImageChange(idx, url)}
+                              bucket="venue-images"
+                              folder={`uploads/${user?.id}`}
+                              aspectRatio="banner"
+                              label=""
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </>
                 )}
