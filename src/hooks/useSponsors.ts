@@ -84,7 +84,11 @@ function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
             pageUrl: window.location.href,
         }),
         keepalive: true,
-    }).catch(() => {});
+    })
+    .then(r => {
+        if (!r.ok) console.error(`[Tracking] ${eventType} failed: HTTP ${r.status}`);
+    })
+    .catch(err => console.error(`[Tracking] ${eventType} network error:`, err));
 }
 
 // ─── PUBLIC API (drop-in replacement) ────────────────────────────────

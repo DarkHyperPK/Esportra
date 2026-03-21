@@ -227,7 +227,7 @@ const Partners = () => {
     // Sort Sponsors: Platinum -> Gold -> Others
     const sponsors = React.useMemo(() => {
         const hardcodedSystemOptiX: Sponsor = {
-            id: 'cdf07085-be07-47ce-9fe5-67bee44ee023',
+            id: '41081b79-4631-4123-bf27-a88cc89eae65',
             name: 'SystemOptiX',
             tagline: "DOMINATE WITH ZERO LATENCY",
             description: "Unleash Your PC's True Potential. Maximize your framerates and minimize latency with SystemOptix. Our premium PC optimization services tune your rig for peak esports performance, ensuring every millisecond counts.",

@@ -6,7 +6,7 @@ const LogoTicker = () => {
     const { data: sponsors = [], isLoading } = useSponsors();
     const sponsorsWithLogos = [
         {
-            id: 'cdf07085-be07-47ce-9fe5-67bee44ee023',
+            id: '41081b79-4631-4123-bf27-a88cc89eae65',
             name: 'SystemOptiX',
             logo_url: getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
             website_url: 'https://systemoptix.net/',
