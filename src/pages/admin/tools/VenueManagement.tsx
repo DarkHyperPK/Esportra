@@ -94,6 +94,7 @@ const VenueManagementTool = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -375,8 +376,8 @@ const VenueManagementTool = () => {
 
               {/* Card Banner Preview */}
               {selectedVenue.card_image && (
-                <div className="rounded-xl overflow-hidden border border-white/5">
-                  <img src={selectedVenue.card_image} alt="Card banner" className="w-full h-48 object-cover" />
+                <div className="rounded-xl overflow-hidden border border-white/5 cursor-pointer" onClick={() => setLightboxImage(selectedVenue.card_image!)}>
+                  <img src={selectedVenue.card_image} alt="Card banner" className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300" />
                 </div>
               )}
 
@@ -517,8 +518,8 @@ const VenueManagementTool = () => {
                   </h4>
                   <div className="grid grid-cols-3 gap-3">
                     {selectedVenue.images.map((url, idx) => (
-                      <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-white/5">
-                        <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                      <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-white/5 cursor-pointer hover:border-emerald-500/30 transition-colors" onClick={() => setLightboxImage(url)}>
+                        <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
                       </div>
                     ))}
                   </div>
@@ -526,6 +527,15 @@ const VenueManagementTool = () => {
               )}
 
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Lightbox */}
+      <Dialog open={!!lightboxImage} onOpenChange={() => setLightboxImage(null)}>
+        <DialogContent className="bg-transparent border-none shadow-none max-w-4xl p-0">
+          {lightboxImage && (
+            <img src={lightboxImage} alt="Preview" className="w-full h-auto max-h-[80vh] object-contain rounded-xl" />
           )}
         </DialogContent>
       </Dialog>
