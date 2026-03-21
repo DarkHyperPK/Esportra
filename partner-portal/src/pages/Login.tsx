@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { Loader2, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { getWebsiteAssetUrl } from '@/lib/storage';
+import { useLoginVerify } from '@/layouts/AuthLayout';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -15,6 +16,7 @@ const Login = () => {
     const [resetSent, setResetSent] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const navigate = useNavigate();
+    const { setIsVerifying } = useLoginVerify();
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -32,6 +34,7 @@ const Login = () => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setIsVerifying(true);
 
         const cleanEmail = email.trim();
         const cleanPassword = password.trim();
@@ -48,15 +51,27 @@ const Login = () => {
                 // Verify sponsor account via .NET API
                 try {
                     await apiClient.get('/api/sponsors/me');
-                } catch {
-                    await supabase.auth.signOut();
-                    throw new Error('Access denied: Your account is not linked to a sponsor profile.');
+                } catch (apiErr: unknown) {
+                    // Sign out without triggering navigation — just clear the session
+                    await supabase.auth.signOut({ scope: 'local' });
+                    for (const key of Object.keys(localStorage)) {
+                        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                            localStorage.removeItem(key);
+                        }
+                    }
+                    const detail = apiErr instanceof Error ? apiErr.message : String(apiErr);
+                    setError(`Sponsor verification failed: ${detail}`);
+                    setLoading(false);
+                    setIsVerifying(false);
+                    return;
                 }
             }
 
+            setIsVerifying(false);
             // Redirect to dashboard explicitly
             navigate('/dashboard');
         } catch (err: unknown) {
+            setIsVerifying(false);
             setError(err instanceof Error ? err.message : 'Login failed');
             setLoading(false);
         }

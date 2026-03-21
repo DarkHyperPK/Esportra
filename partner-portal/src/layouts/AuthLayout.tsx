@@ -1,17 +1,24 @@
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, createContext, useContext } from 'react';
+
+// Flag to prevent AuthLayout from redirecting during login verification
+export const LoginVerifyContext = createContext<{
+    isVerifying: boolean;
+    setIsVerifying: (v: boolean) => void;
+}>({ isVerifying: false, setIsVerifying: () => {} });
+
+export const useLoginVerify = () => useContext(LoginVerifyContext);
 
 const AuthLayout = () => {
     const [session, setSession] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [isVerifying, setIsVerifying] = useState(false);
     const location = useLocation();
 
     useEffect(() => {
-        // Use getUser() to verify the session with the server
         supabase.auth.getUser().then(({ data: { user }, error }) => {
             if (error || !user) {
-                // If there's an error or no user, clear any stale state
                 if (user || error) supabase.auth.signOut();
                 setSession(null);
             } else {
@@ -35,17 +42,19 @@ const AuthLayout = () => {
         );
     }
 
-    // Don't redirect away from /set-password — the user needs a session to update their password
-    if (session && location.pathname !== '/set-password') {
+    // Don't redirect while Login is verifying sponsor account
+    if (session && location.pathname !== '/set-password' && !isVerifying) {
         return <Navigate to="/dashboard" replace />;
     }
 
     return (
-        <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
-                <Outlet />
+        <LoginVerifyContext.Provider value={{ isVerifying, setIsVerifying }}>
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
+                <div className="w-full max-w-md">
+                    <Outlet />
+                </div>
             </div>
-        </div>
+        </LoginVerifyContext.Provider>
     );
 };
 
