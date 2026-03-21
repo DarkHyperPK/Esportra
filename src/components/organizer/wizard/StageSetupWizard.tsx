@@ -1338,7 +1338,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col bg-gaming-dark border-gaming-gray/30">
+                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col bg-gaming-dark border-gaming-gray/30">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-white flex items-center justify-between">
                             <span className="flex items-center gap-2">
