@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -148,7 +149,7 @@ const VenueManagementTool = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
+    <div className="relative min-h-screen p-4 lg:p-8">
       {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
@@ -370,6 +371,7 @@ const VenueManagementTool = () => {
               <MapPin className="w-5 h-5 text-emerald-500" />
               Venue Review
             </DialogTitle>
+            <DialogDescription className="sr-only">Complete venue details for admin review</DialogDescription>
           </DialogHeader>
           {selectedVenue && (
             <div className="space-y-6">
@@ -540,7 +542,7 @@ const VenueManagementTool = () => {
 
       {/* Image Lightbox */}
       <Dialog open={!!lightboxImage} onOpenChange={() => setLightboxImage(null)}>
-        <DialogContent className="bg-transparent border-none shadow-none max-w-4xl p-0">
+        <DialogContent className="bg-transparent border-none shadow-none max-w-4xl p-0" aria-describedby={undefined}>
           {lightboxImage && (
             <img src={lightboxImage} alt="Preview" className="w-full h-auto max-h-[80vh] object-contain rounded-xl" />
           )}
