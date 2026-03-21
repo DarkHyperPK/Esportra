@@ -168,23 +168,21 @@ export const useAuthActions = () => {
       if (error && error.name !== 'AuthSessionMissingError' && !error.message?.includes('403')) {
         throw error;
       }
-
+    } catch (error: unknown) {
+      console.error('Error signing out:', error);
+    } finally {
+      // Force-clear any stale Supabase session from localStorage
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          localStorage.removeItem(key);
+        }
+      }
+      setLoading(false);
       toast({
         title: 'Signed out',
         description: 'You have been successfully signed out.',
       });
-
       navigate('/');
-    } catch (error: any) {
-      console.error('Error signing out:', error);
-      // Even on error, navigate home to clear the UI state
-      navigate('/');
-      toast({
-        title: 'Signed out',
-        description: 'Your session has ended.',
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
