@@ -241,7 +241,10 @@ const ManageBracketPage = () => {
             }
 
             toast({ title: 'BYE Advanced', description: 'Team has been advanced!' });
-            // Remove fetchData(true) to preserve optimistic state
+
+            // Invalidate to sync with server truth
+            await queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
+            await queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
         } catch (error: any) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         }

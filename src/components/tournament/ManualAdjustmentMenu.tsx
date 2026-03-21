@@ -138,6 +138,11 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
                         team2Score,
                     });
 
+                    // Invalidate to sync with server truth
+                    await queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
+                    await queryClient.invalidateQueries({ queryKey: ['match-result-reports', rawMatchId] });
+                    await queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+
                     toast({ title: 'Walkover Applied', description: `${winnerName} wins by walkover.` });
                     break;
                 }
@@ -159,6 +164,10 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
                     // -------------------------------
 
                     await apiClient.post(`/api/matches/${rawMatchId}/swap-teams`);
+
+                    // Invalidate to sync with server truth
+                    await queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
+                    await queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
 
                     toast({ title: 'Teams Swapped', description: 'Team positions have been exchanged.' });
                     break;
