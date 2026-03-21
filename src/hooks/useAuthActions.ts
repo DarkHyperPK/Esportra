@@ -164,8 +164,8 @@ export const useAuthActions = () => {
     try {
       const { error } = await supabase.auth.signOut({ scope: 'local' });
 
-      // If the session was already missing, that's fine — we still sign out locally
-      if (error && error.name !== 'AuthSessionMissingError') {
+      // If the session was already missing or expired (403), that's fine — we still sign out locally
+      if (error && error.name !== 'AuthSessionMissingError' && !error.message?.includes('403')) {
         throw error;
       }
 
