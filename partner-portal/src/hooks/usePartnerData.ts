@@ -18,6 +18,7 @@ export interface PartnerData {
         is_active: boolean;
         priority: number;
         gallery_images: string[];
+        detail_deck_url: string | null;
         created_at: string;
     };
     account: { sponsor_id: string; role: string; onboarding_meta?: OnboardingMeta };

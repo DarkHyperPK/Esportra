@@ -368,52 +368,75 @@ const SponsorManagement = () => {
     };
 
     const handleDownloadAssets = async (sponsor: Sponsor) => {
-        const toastId = toast({ title: 'Preparing Download', description: 'Gathering assets from storage...', duration: 10000 });
+        toast({ title: 'Preparing Download', description: 'Gathering assets from storage...', duration: 10000 });
 
         try {
             const zip = new JSZip();
-            const rootFolder = zip.folder(`${sponsor.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_assets`);
+            const folderName = sponsor.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const rootFolder = zip.folder(`${folderName}_campaign_kit`);
             if (!rootFolder) throw new Error('Failed to create zip folder');
 
-            // List all files in the sponsor's folder
-            const { data: files, error: listError } = await supabase.storage
-                .from('system.assets.sponsors')
-                .list(sponsor.id);
-
-            if (listError) {
-                console.error('List error:', listError);
-                throw new Error('Failed to list sponsor assets.');
-            }
-
-            if (!files || files.length === 0) {
-                toast({ title: 'No Assets Found', description: 'This sponsor folder is empty.', variant: 'destructive' });
-                return;
-            }
-
-            const downloadFile = async (fileName: string) => {
+            const downloadFile = async (bucket: string, filePath: string, zipFolder: ReturnType<typeof zip.folder>) => {
                 try {
-                    const { data: blob, error: downloadError } = await supabase.storage
-                        .from('system.assets.sponsors')
-                        .download(`${sponsor.id}/${fileName}`);
-
-                    if (downloadError) throw downloadError;
-                    if (blob) {
-                        rootFolder.file(fileName, blob);
+                    const { data: blob, error } = await supabase.storage.from(bucket).download(filePath);
+                    if (error) throw error;
+                    if (blob && zipFolder) {
+                        const fileName = filePath.split('/').pop() || filePath;
+                        zipFolder.file(fileName, blob);
                     }
                 } catch (err) {
-                    console.error(`Failed to download ${fileName}:`, err);
+                    console.error(`Failed to download ${bucket}/${filePath}:`, err);
                 }
             };
 
-            await Promise.all(files.map(f => downloadFile(f.name)));
+            // Download from system.assets.sponsors
+            const { data: sponsorFiles } = await supabase.storage.from('system.assets.sponsors').list(sponsor.id);
+            if (sponsorFiles?.length) {
+                const mediaFolder = rootFolder.folder('media');
+                await Promise.all(sponsorFiles.map(f => downloadFile('system.assets.sponsors', `${sponsor.id}/${f.name}`, mediaFolder)));
+            }
+
+            // Download from system.assets.partners
+            const { data: partnerFiles } = await supabase.storage.from('system.assets.partners').list(sponsor.id);
+            if (partnerFiles?.length) {
+                const partnerFolder = rootFolder.folder('partner_uploads');
+                await Promise.all(partnerFiles.map(f => downloadFile('system.assets.partners', `${sponsor.id}/${f.name}`, partnerFolder)));
+            }
+
+            // Generate campaign manifest with all copy + URLs
+            const manifest = [
+                `# ${sponsor.name} — Campaign Kit`,
+                `Generated: ${new Date().toISOString()}`,
+                '',
+                '## Company Info',
+                `Name: ${sponsor.name}`,
+                `Website: ${sponsor.website_url || 'N/A'}`,
+                `Tier: ${sponsor.tier}`,
+                '',
+                '## Campaign Copy',
+                `Tagline: ${sponsor.tagline || 'N/A'}`,
+                `CTA: ${sponsor.cta_text || 'N/A'}`,
+                `Discount: ${sponsor.discount_text || 'N/A'}`,
+                `Description: ${sponsor.description || 'N/A'}`,
+                '',
+                '## Asset URLs',
+                `Logo: ${sponsor.logo_url || 'N/A'}`,
+                `Banner: ${sponsor.banner_image_url || 'N/A'}`,
+                `Detail Deck: ${(sponsor as Record<string, unknown>).detail_deck_url || 'N/A'}`,
+                '',
+                '## Gallery Images',
+                ...(sponsor.gallery_images?.map((url, i) => `  ${i + 1}. ${url}`) || ['  None']),
+            ].join('\n');
+
+            rootFolder.file('CAMPAIGN_MANIFEST.md', manifest);
 
             const content = await zip.generateAsync({ type: 'blob' });
-            saveAs(content, `${sponsor.name.replace(/[^a-z0-9]/gi, '_')}_assets.zip`);
+            saveAs(content, `${folderName}_campaign_kit.zip`);
 
-            toast({ title: 'Download Complete', description: 'All assets have been downloaded.' });
-        } catch (error: any) {
-            console.error('Download error:', error);
-            toast({ title: 'Download Failed', description: error.message || 'Could not generate asset package.', variant: 'destructive' });
+            toast({ title: 'Download Complete', description: 'Campaign kit downloaded with all assets and manifest.' });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Could not generate campaign kit.';
+            toast({ title: 'Download Failed', description: message, variant: 'destructive' });
         }
     };
 

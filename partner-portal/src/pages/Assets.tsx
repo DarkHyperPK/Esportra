@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileImage, Upload, Image as ImageIcon, Loader2, AlertCircle } from 'lucide-react';
+import { FileImage, Upload, Image as ImageIcon, Loader2, AlertCircle, FileText, Save, X } from 'lucide-react';
 import { usePartnerData } from '@/hooks/usePartnerData';
 import { apiClient } from '@/lib/apiClient';
 import { getTierFeatures } from '@/utils/permissions';
@@ -12,19 +12,45 @@ const Assets = () => {
     const features = getTierFeatures(sponsor?.tier);
     const { updateProfile } = usePartnerMutations(sponsor?.id || '');
 
-    const [uploading, setUploading] = useState<'logo' | 'banner' | 'gallery' | null>(null);
+    const [uploading, setUploading] = useState<'logo' | 'banner' | 'gallery' | 'deck' | null>(null);
+    const [copyData, setCopyData] = useState({
+        tagline: sponsor?.tagline || '',
+        cta_text: sponsor?.cta_text || '',
+        description: sponsor?.description || '',
+        discount_text: sponsor?.discount_text || '',
+    });
+    const [isSavingCopy, setIsSavingCopy] = useState(false);
     const { toast } = useToast();
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner' | 'gallery') => {
+    // Sync copyData when sponsor loads
+    React.useEffect(() => {
+        if (sponsor) {
+            setCopyData({
+                tagline: sponsor.tagline || '',
+                cta_text: sponsor.cta_text || '',
+                description: sponsor.description || '',
+                discount_text: sponsor.discount_text || '',
+            });
+        }
+    }, [sponsor]);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner' | 'gallery' | 'deck') => {
         if (!event.target.files || event.target.files.length === 0 || !sponsor) return;
 
         const file = event.target.files[0];
+        const limit = type === 'deck' ? 10 * 1024 * 1024 : 3 * 1024 * 1024; // 10MB for deck, 3MB for images
 
-        // Validation
-        const limit = 3 * 1024 * 1024; // 3MB
         if (file.size > limit) {
-            toast({ title: 'File too large', description: 'Max size is 3MB.', variant: 'destructive' });
+            toast({ title: 'File too large', description: `Max size is ${type === 'deck' ? '10MB' : '3MB'}.`, variant: 'destructive' });
             return;
+        }
+
+        if (type === 'deck') {
+            const allowed = ['application/pdf', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint'];
+            if (!allowed.includes(file.type)) {
+                toast({ title: 'Invalid file type', description: 'Please upload a PDF or PowerPoint file.', variant: 'destructive' });
+                return;
+            }
         }
 
         if (type === 'gallery') {
@@ -38,7 +64,6 @@ const Assets = () => {
         setUploading(type);
 
         try {
-            // Upload via .NET storage proxy
             const formData = new FormData();
             formData.append('file', file);
             formData.append('bucket', 'system.assets.partners');
@@ -51,14 +76,15 @@ const Assets = () => {
                 await updateProfile.mutateAsync({ logo_url: publicUrl });
             } else if (type === 'banner') {
                 await updateProfile.mutateAsync({ banner_image_url: publicUrl });
+            } else if (type === 'deck') {
+                await updateProfile.mutateAsync({ detail_deck_url: publicUrl });
             } else if (type === 'gallery') {
                 const newGallery = [...(sponsor.gallery_images || []), publicUrl];
                 await updateProfile.mutateAsync({ gallery_images: newGallery });
             }
 
             await refetch();
-            toast({ title: 'Asset uploaded successfully!' });
-
+            toast({ title: type === 'deck' ? 'Detail deck uploaded!' : 'Asset uploaded successfully!' });
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error';
             toast({ title: 'Upload failed', description: message, variant: 'destructive' });
@@ -74,26 +100,49 @@ const Assets = () => {
             const newGallery = (sponsor.gallery_images || []).filter(url => url !== imageUrl);
             await updateProfile.mutateAsync({ gallery_images: newGallery });
             await refetch();
-        } catch (error: unknown) {
+        } catch {
             toast({ title: 'Failed to delete image', variant: 'destructive' });
         }
     };
 
+    const handleRemoveDeck = async () => {
+        if (!sponsor || !confirm('Remove the detail deck?')) return;
+        try {
+            await updateProfile.mutateAsync({ detail_deck_url: '' });
+            await refetch();
+        } catch {
+            toast({ title: 'Failed to remove deck', variant: 'destructive' });
+        }
+    };
+
+    const handleSaveCopy = async () => {
+        setIsSavingCopy(true);
+        try {
+            await updateProfile.mutateAsync(copyData);
+        } catch {
+            // hook shows toast
+        } finally {
+            setIsSavingCopy(false);
+        }
+    };
+
+    const deckFilename = sponsor?.detail_deck_url ? decodeURIComponent(sponsor.detail_deck_url.split('/').pop() || 'document') : null;
+
     return (
         <div className="space-y-12">
             <div className="border-l-2 border-rose-500 pl-6">
-                <h2 className="text-3xl font-black font-heading tracking-tighter mb-2 uppercase italic">Asset_Management</h2>
+                <h2 className="text-3xl font-black font-heading tracking-tighter mb-2 uppercase italic">Campaign_Kit</h2>
                 <div className="flex items-center gap-3">
-                    <p className="text-zinc-500 font-mono text-sm uppercase tracking-widest">Media_Resources</p>
+                    <p className="text-zinc-500 font-mono text-sm uppercase tracking-widest">Media, Copy & Detail Deck</p>
                     <span className={`text-[10px] font-mono px-2 py-0.5 rounded border border-white/10 bg-white/5 ${features.color}`}>
                         {features.label}
                     </span>
                 </div>
             </div>
 
-            {/* Main Branding Section */}
+            {/* ─── SECTION 1: Brand Assets ─── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Logo Section */}
+                {/* Logo */}
                 <div className="p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-6 group">
                     <div className="flex items-center justify-between">
                         <div>
@@ -127,7 +176,7 @@ const Assets = () => {
                     </div>
                 </div>
 
-                {/* Banner Section */}
+                {/* Banner */}
                 <div className={`p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-6 relative overflow-hidden ${!features.canUploadBanner ? 'opacity-40 grayscale' : 'group'}`}>
                     <div className="flex items-center justify-between">
                         <div>
@@ -170,7 +219,130 @@ const Assets = () => {
                 </div>
             </div>
 
-            {/* Gallery Section - THE NEW MULTI-IMAGE GALLERY */}
+            {/* ─── SECTION 2: Detail Deck ─── */}
+            <div className="p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                            <FileText className="w-5 h-5 text-amber-500" />
+                            Detail_Deck
+                        </h3>
+                        <p className="text-zinc-500 text-sm mt-2 max-w-lg">
+                            Upload your campaign brief, ad copy specifications, and brand guidelines. Our team uses this to place your ads across the platform.
+                        </p>
+                    </div>
+                    <span className="text-[10px] font-mono bg-zinc-900 px-2 py-1 rounded text-zinc-500 shrink-0">PDF / PPTX • MAX 10MB</span>
+                </div>
+
+                {sponsor?.detail_deck_url ? (
+                    <div className="flex items-center gap-4 p-4 bg-zinc-950 border border-zinc-800 rounded-xl">
+                        <div className="w-12 h-12 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                            <FileText className="w-6 h-6 text-amber-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-white truncate">{deckFilename}</p>
+                            <a href={sponsor.detail_deck_url} target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-500 hover:text-amber-500 transition-colors">
+                                View Document →
+                            </a>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+                                {uploading === 'deck' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                                Replace
+                                <input type="file" className="hidden" accept=".pdf,.pptx,.ppt" onChange={(e) => handleFileUpload(e, 'deck')} />
+                            </label>
+                            <button onClick={handleRemoveDeck} className="p-2 text-zinc-600 hover:text-rose-500 transition-colors" aria-label="Remove deck">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <label className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-zinc-800 rounded-xl hover:border-amber-500/30 transition-all cursor-pointer group/deck">
+                        {uploading === 'deck' ? (
+                            <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
+                        ) : (
+                            <>
+                                <div className="w-16 h-16 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 group-hover/deck:scale-110 transition-transform">
+                                    <Upload className="w-7 h-7 text-amber-500" />
+                                </div>
+                                <p className="text-sm font-bold text-white mb-1">Upload Detail Deck</p>
+                                <p className="text-xs text-zinc-500 font-mono">PDF or PowerPoint • Campaign brief, ad copy, brand guidelines</p>
+                            </>
+                        )}
+                        <input type="file" className="hidden" accept=".pdf,.pptx,.ppt" onChange={(e) => handleFileUpload(e, 'deck')} />
+                    </label>
+                )}
+            </div>
+
+            {/* ─── SECTION 3: Campaign Copy ─── */}
+            <div className="p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-6">
+                <div>
+                    <h3 className="text-xl font-bold text-white flex items-center gap-3 mb-2">
+                        <FileText className="w-5 h-5 text-rose-500" />
+                        Campaign_Copy
+                    </h3>
+                    <p className="text-zinc-500 text-sm max-w-lg">
+                        Text displayed alongside your ads on the platform. Keep it concise and impactful.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <label className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Tagline</label>
+                        <input
+                            type="text"
+                            value={copyData.tagline}
+                            onChange={(e) => setCopyData({ ...copyData, tagline: e.target.value })}
+                            placeholder="e.g. Unleash Your PC's True Potential"
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-colors outline-none text-sm"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Call to Action</label>
+                        <input
+                            type="text"
+                            value={copyData.cta_text}
+                            onChange={(e) => setCopyData({ ...copyData, cta_text: e.target.value })}
+                            placeholder="e.g. Optimize Now"
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-colors outline-none text-sm"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Discount / Promo Code</label>
+                    <input
+                        type="text"
+                        value={copyData.discount_text}
+                        onChange={(e) => setCopyData({ ...copyData, discount_text: e.target.value })}
+                        placeholder="e.g. Use code ESPORTRA20 for 20% off"
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-colors outline-none text-sm"
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Public Description</label>
+                    <textarea
+                        value={copyData.description}
+                        onChange={(e) => setCopyData({ ...copyData, description: e.target.value })}
+                        rows={3}
+                        placeholder="Brief description shown on your partner profile page"
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-colors outline-none resize-none text-sm"
+                    />
+                </div>
+
+                <div className="pt-4 border-t border-white/5 flex justify-end">
+                    <button
+                        onClick={handleSaveCopy}
+                        disabled={isSavingCopy}
+                        className="px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isSavingCopy ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Copy</>}
+                    </button>
+                </div>
+            </div>
+
+            {/* ─── SECTION 4: Gallery ─── */}
             <div className="p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-8">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
@@ -217,14 +389,11 @@ const Assets = () => {
                                 aria-label="Delete image"
                                 className="absolute top-2 right-2 p-2 bg-rose-500/20 hover:bg-rose-500 text-rose-500 hover:text-white rounded-lg transition-all opacity-0 group-hover:opacity-100"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
                     ))}
 
-                    {/* Empty Slots */}
                     {Array.from({ length: Math.max(0, features.maxShowcaseImages - (sponsor?.gallery_images?.length || 0)) }).map((_, idx) => (
                         <div key={`empty-${idx}`} className="aspect-square rounded-xl border border-dashed border-zinc-800 flex items-center justify-center text-zinc-800 text-[10px] font-mono uppercase">
                             Slot_{(sponsor?.gallery_images?.length || 0) + idx + 1}

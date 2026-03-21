@@ -8,9 +8,11 @@ interface SponsorUpdate {
     description?: string;
     website_url?: string;
     cta_text?: string;
+    discount_text?: string;
     logo_url?: string;
     banner_image_url?: string;
     gallery_images?: string[];
+    detail_deck_url?: string;
 }
 
 export const usePartnerMutations = (_sponsorId: string) => {

@@ -73,7 +73,7 @@ const DashboardLayout = () => {
     const navItems = [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
         { label: 'Analytics', icon: BarChart, path: '/analytics' },
-        { label: 'Assets', icon: FileImage, path: '/assets' },
+        { label: 'Campaign Kit', icon: FileImage, path: '/assets' },
         { label: 'Account', icon: Settings, path: '/account' },
     ];
 
