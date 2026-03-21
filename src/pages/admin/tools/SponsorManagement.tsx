@@ -196,6 +196,15 @@ const SponsorManagement = () => {
         },
     });
 
+    const approveAppMutation = useMutation({
+        mutationFn: (id: string) =>
+            apiClient.post<{ success: boolean; sponsorId: string; isNewUser: boolean; companyName: string; contactEmail: string }>(`/api/sponsors/applications/${id}/approve`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
+            queryClient.invalidateQueries({ queryKey: adminKeys.sponsorApplications() });
+        },
+    });
+
     /* ─── Application Logic ─── */
 
     const handleUpdateAppStatus = async (id: string, status: Application['status']) => {
@@ -210,6 +219,22 @@ const SponsorManagement = () => {
         await auditLog.log(status === 'approved' ? 'approve' : status === 'rejected' ? 'reject' : 'update', 'sponsor', id, app?.company_name || 'Unknown', { status });
         toast({ title: 'Status Updated', description: `Application marked as ${status}` });
         if (appModal.open) setAppModal({ open: false, app: null });
+    };
+
+    const handleApproveApplication = async (app: Application) => {
+        try {
+            const result = await approveAppMutation.mutateAsync(app.id);
+            setAppModal({ open: false, app: null });
+
+            const message = result.isNewUser
+                ? `Partner approved! A new account was created for ${result.contactEmail} and an invite email was sent.`
+                : `Partner approved! ${result.contactEmail} already has an account and has been linked. A welcome email was sent.`;
+
+            toast({ title: 'Partner Approved', description: message });
+            await auditLog.log('approve', 'sponsor', result.sponsorId, result.companyName, { applicationId: app.id, isNewUser: result.isNewUser });
+        } catch (err: any) {
+            toast({ title: 'Approval Failed', description: err.message || 'Could not approve application.', variant: 'destructive' });
+        }
     };
 
     const handlePromoteToSponsor = async (app: Application) => {
@@ -532,9 +557,10 @@ const SponsorManagement = () => {
                                                     <Button
                                                         size="sm"
                                                         className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                                        onClick={() => handlePromoteToSponsor(app)}
+                                                        onClick={() => handleApproveApplication(app)}
+                                                        disabled={approveAppMutation.isPending}
                                                     >
-                                                        Promote to Partner
+                                                        {approveAppMutation.isPending ? 'Approving...' : 'Approve'}
                                                     </Button>
                                                 )}
                                                 {app.status === 'pending' && (
@@ -674,7 +700,14 @@ const SponsorManagement = () => {
                     )}
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setAppModal({ open: false, app: null })}>Close</Button>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => appModal.app && handlePromoteToSponsor(appModal.app)}>Promote to Partner</Button>
+                        {appModal.app?.status !== 'approved' && (
+                            <>
+                                <Button variant="outline" className="border-red-800 text-red-400 hover:bg-red-900/20" onClick={() => appModal.app && handleUpdateAppStatus(appModal.app.id, 'rejected')}>Reject</Button>
+                                <Button className="bg-emerald-600 hover:bg-emerald-700" disabled={approveAppMutation.isPending} onClick={() => appModal.app && handleApproveApplication(appModal.app)}>
+                                    {approveAppMutation.isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Approving...</> : <><CheckCircle className="w-4 h-4 mr-2" /> Approve & Onboard</>}
+                                </Button>
+                            </>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

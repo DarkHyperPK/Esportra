@@ -2,16 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
-import { apiClient } from '@/lib/apiClient';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useBranding } from '@/hooks/useBranding';
 import { getWebsiteAssetUrl } from '@/lib/storage';
-import StepIdentity from '@/components/onboarding/StepIdentity';
 import StepBranding from '@/components/onboarding/StepBranding';
 import StepLegal from '@/components/onboarding/StepLegal';
 
 const STEPS = [
-    { id: 'identity', label: 'Identity', description: 'Confirm your company details' },
     { id: 'branding', label: 'Branding', description: 'Upload your brand assets' },
     { id: 'legal', label: 'Agreement', description: 'Accept partnership terms' },
 ];
@@ -52,14 +49,6 @@ const OnboardingWizard = () => {
 
     const handleSaveStep = async (stepName: string, stepData: Record<string, string | boolean | null>, nextStep: number) => {
         await saveStep.mutateAsync({ stepName, stepData, nextStep });
-
-        if (stepName === 'identity' && sponsorId) {
-            await apiClient.put('/api/sponsors/me', {
-                name: stepData.company_name,
-                tagline: stepData.tagline || null,
-            });
-        }
-
         setActiveStep(nextStep);
     };
 
@@ -155,26 +144,17 @@ const OnboardingWizard = () => {
                             transition={{ duration: 0.3 }}
                         >
                             {activeStep === 0 && (
-                                <StepIdentity
-                                    data={meta.steps.identity}
+                                <StepBranding
+                                    data={meta.steps.branding}
                                     sponsorId={sponsorId || ''}
-                                    onSave={(d) => handleSaveStep('identity', d, 1)}
+                                    onSave={(d) => handleSaveStep('branding', d, 1)}
                                     saving={saveStep.isPending}
                                 />
                             )}
                             {activeStep === 1 && (
-                                <StepBranding
-                                    data={meta.steps.branding}
-                                    sponsorId={sponsorId || ''}
-                                    onSave={(d) => handleSaveStep('branding', d, 2)}
-                                    onBack={() => setActiveStep(0)}
-                                    saving={saveStep.isPending}
-                                />
-                            )}
-                            {activeStep === 2 && (
                                 <StepLegal
                                     onComplete={handleComplete}
-                                    onBack={() => setActiveStep(1)}
+                                    onBack={() => setActiveStep(0)}
                                     saving={completeOnboarding.isPending}
                                 />
                             )}

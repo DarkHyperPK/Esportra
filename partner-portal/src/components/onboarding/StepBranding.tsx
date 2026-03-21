@@ -6,7 +6,7 @@ export interface StepBrandingProps {
     data: Record<string, string | null> | undefined;
     sponsorId: string;
     onSave: (d: Record<string, string | null>) => void;
-    onBack: () => void;
+    onBack?: () => void;
     saving: boolean;
 }
 
@@ -105,16 +105,18 @@ const StepBranding = ({ data, sponsorId, onSave, onBack, saving }: StepBrandingP
             </div>
 
             <div className="flex gap-3">
-                <button
-                    onClick={onBack}
-                    className="flex-1 py-4 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 font-bold rounded-xl transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-wider"
-                >
-                    <ArrowLeft className="w-5 h-5" /> Back
-                </button>
+                {onBack && (
+                    <button
+                        onClick={onBack}
+                        className="flex-1 py-4 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 font-bold rounded-xl transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-wider"
+                    >
+                        <ArrowLeft className="w-5 h-5" /> Back
+                    </button>
+                )}
                 <button
                     onClick={() => onSave({ logo_url: logoUrl })}
                     disabled={saving}
-                    className="flex-[2] py-4 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-wider"
+                    className={`${onBack ? 'flex-[2]' : 'flex-1'} py-4 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-wider`}
                 >
                     {saving ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
