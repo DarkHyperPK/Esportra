@@ -29,7 +29,7 @@ export const VerticalAdPlacement = () => {
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
-                    trackImpression('cdf07085-be07-47ce-9fe5-67bee44ee023');
+                    trackImpression('41081b79-4631-4123-bf27-a88cc89eae65');
                     observer.disconnect();
                 }
             },
@@ -80,7 +80,7 @@ export const VerticalAdPlacement = () => {
                             href="https://systemoptix.net/"
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => trackClick('cdf07085-be07-47ce-9fe5-67bee44ee023')}
+                            onClick={() => trackClick('41081b79-4631-4123-bf27-a88cc89eae65')}
                             className="text-[10px] font-mono text-white flex items-center gap-2 hover:text-emerald-400 transition-colors group/btn"
                         >
                             OPTIMIZE_NOW <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
