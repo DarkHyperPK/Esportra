@@ -50,12 +50,13 @@ export function useSponsorStats(sponsorId: string) {
     return useQuery<SponsorStats>({
         queryKey: ['sponsor-stats', sponsorId],
         queryFn: () => apiClient.get<SponsorStats>(`/api/sponsors/${sponsorId}/stats`),
+        enabled: !!sponsorId,
         staleTime: 60 * 1000,
     });
 }
 
 export async function trackImpression(sponsorId: string) {
-    await apiClient.post('/api/sponsors/impressions', { sponsorId, eventType: 'impression' });
+    await apiClient.post('/api/sponsors/track', { sponsorId, eventType: 'impression' });
 }
 
 export async function trackClick(sponsorId: string) {
