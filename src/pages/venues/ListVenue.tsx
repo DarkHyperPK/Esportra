@@ -41,6 +41,31 @@ const AMENITIES_LIST = [
   { id: 'power', label: 'Backup Power', icon: Zap },
 ];
 
+const CURRENCIES = [
+  { code: 'USD', symbol: '$' },
+  { code: 'EUR', symbol: '€' },
+  { code: 'GBP', symbol: '£' },
+  { code: 'AED', symbol: 'د.إ' },
+  { code: 'SAR', symbol: '﷼' },
+  { code: 'INR', symbol: '₹' },
+  { code: 'PKR', symbol: '₨' },
+  { code: 'TRY', symbol: '₺' },
+  { code: 'BRL', symbol: 'R$' },
+  { code: 'CAD', symbol: 'C$' },
+  { code: 'AUD', symbol: 'A$' },
+  { code: 'JPY', symbol: '¥' },
+  { code: 'KRW', symbol: '₩' },
+  { code: 'SGD', symbol: 'S$' },
+  { code: 'MYR', symbol: 'RM' },
+  { code: 'PHP', symbol: '₱' },
+  { code: 'THB', symbol: '฿' },
+  { code: 'IDR', symbol: 'Rp' },
+  { code: 'SEK', symbol: 'kr' },
+  { code: 'PLN', symbol: 'zł' },
+  { code: 'EGP', symbol: 'E£' },
+  { code: 'ZAR', symbol: 'R' },
+];
+
 const STEPS = [
   { id: 1, title: "The Basics", icon: Building2, description: "Tell us about your venue" },
   { id: 2, title: "Location", icon: MapPin, description: "Where can players find you?" },
@@ -88,7 +113,8 @@ const ListVenue = () => {
       monitors: '',
       // Amenities
       amenities: [] as string[],
-      pricePerHour: ''
+      pricePerHour: '',
+      currency: 'USD'
     };
   });
 
@@ -186,6 +212,7 @@ const ListVenue = () => {
           contactEmail: formData.contactEmail,
           contactPhone: formData.contactPhone,
           pricePerHour: parseFloat(formData.pricePerHour) || 0,
+          currency: formData.currency,
           status: submitStatus,
           submittedAt: submitStatus === 'pending_review' ? new Date().toISOString() : null,
         });
@@ -570,17 +597,30 @@ const ListVenue = () => {
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-300 mb-1.5 block">Price Per Hour (USD)</label>
-                        <Input
-                          name="pricePerHour"
-                          type="number"
-                          min="0"
-                          step="0.50"
-                          value={formData.pricePerHour}
-                          onChange={handleChange}
-                          placeholder="e.g. 5.00"
-                          className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
-                        />
+                        <label className="text-sm font-medium text-gray-300 mb-1.5 block">Price Per Hour</label>
+                        <div className="flex gap-3">
+                          <select
+                            value={formData.currency}
+                            onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                            className="bg-black/20 border border-white/10 focus:border-rose-500/50 h-12 rounded-xl backdrop-blur-sm text-white text-sm px-3 w-28 outline-none appearance-none cursor-pointer"
+                          >
+                            {CURRENCIES.map(c => (
+                              <option key={c.code} value={c.code} className="bg-zinc-900 text-white">
+                                {c.code} ({c.symbol})
+                              </option>
+                            ))}
+                          </select>
+                          <Input
+                            name="pricePerHour"
+                            type="number"
+                            min="0"
+                            step="0.50"
+                            value={formData.pricePerHour}
+                            onChange={handleChange}
+                            placeholder="e.g. 5.00"
+                            className="bg-black/20 border-white/10 focus:border-rose-500/50 h-12 rounded-xl backdrop-blur-sm flex-1"
+                          />
+                        </div>
                       </div>
                     </div>
                   </>
