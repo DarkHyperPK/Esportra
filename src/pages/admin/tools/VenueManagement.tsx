@@ -30,7 +30,6 @@ import {
   Wind,
   Zap,
   Maximize2,
-  ExternalLink,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAdminVenues, useAdminVenueUpdate } from "@/hooks/useAdminQueries";
@@ -518,12 +517,9 @@ const VenueManagementTool = () => {
                   </h4>
                   <div className="grid grid-cols-3 gap-3">
                     {selectedVenue.images.map((url, idx) => (
-                      <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="group relative aspect-video rounded-xl overflow-hidden border border-white/5 hover:border-emerald-500/30 transition-colors">
-                        <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <ExternalLink className="w-4 h-4 text-white" />
-                        </div>
-                      </a>
+                      <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-white/5">
+                        <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                      </div>
                     ))}
                   </div>
                 </div>
