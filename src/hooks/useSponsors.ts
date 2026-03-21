@@ -69,9 +69,10 @@ export function useSponsorStats(sponsorId: string) {
 }
 
 // ─── TRACKING VIA .NET BACKEND ───────────────────────────────────────
-// Uses sendBeacon for clicks (survives navigation) and fetch for impressions.
+// Uses sendBeacon for clicks and direct fetch for impressions.
+// Does NOT go through apiClient to avoid auth dependency — tracking is public.
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5200';
+const TRACK_URL = `${import.meta.env.VITE_API_URL ?? 'http://localhost:5200'}/api/sponsors/track`;
 
 function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
     const payload = JSON.stringify({
@@ -80,16 +81,21 @@ function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
         pageUrl: typeof window !== 'undefined' ? window.location.href : null,
     });
 
-    // sendBeacon is fire-and-forget — guaranteed to complete even during navigation
-    if (eventType === 'click' && typeof navigator.sendBeacon === 'function') {
-        const blob = new Blob([payload], { type: 'application/json' });
-        navigator.sendBeacon(`${API_BASE}/api/sponsors/track`, blob);
+    const blob = new Blob([payload], { type: 'application/json' });
+
+    // sendBeacon is fire-and-forget — works even during navigation
+    if (typeof navigator.sendBeacon === 'function') {
+        navigator.sendBeacon(TRACK_URL, blob);
         return;
     }
 
-    // Impressions use regular fetch (page isn't navigating away)
-    apiClient.post('/api/sponsors/track', { sponsorId, eventType, pageUrl: window.location.href })
-        .catch(err => console.warn('[Tracking] API call failed:', err));
+    // Fallback to fetch
+    fetch(TRACK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true,
+    }).catch(() => {});
 }
 
 // ─── PUBLIC API (drop-in replacement) ────────────────────────────────
