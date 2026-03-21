@@ -2,24 +2,29 @@ name: 🔄 Deploy DB Migrations
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'supabase/migrations/**'
+    branches: [main, staging]
+    paths: ['supabase/migrations/**']
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [staging, production]
 
 concurrency:
-  group: db-migrations-prod
+  group: db-migrations-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  deploy-migrations:
-    name: 🚀 Deploy Migrations to Production
+  deploy:
+    name: 🚀 Deploy to ${{ github.ref_name == 'main' && 'Production' || 'Staging' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
 
     steps:
-      - name: 📥 Checkout repository
+      - name: 📥 Checkout
         uses: actions/checkout@v4
 
       - name: 🔧 Setup Supabase CLI
@@ -32,46 +37,78 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: 🚀 Push Migrations via SSH Tunnel
+      - name: 🔗 Open SSH tunnel
         env:
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_IP: ${{ secrets.SERVER_IP }}
-          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
         run: |
-          # 1. Trust the host
-          ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts 2>/dev/null
 
-          # 2. Open SSH tunnel: local 5432 → server's Postgres 5432
-          ssh -o StrictHostKeyChecking=no -f -N -L 5432:127.0.0.1:5432 $SERVER_USER@$SERVER_IP
+          # Staging uses port 5433, production uses 5432
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            REMOTE_PORT=5432
+          else
+            REMOTE_PORT=5433
+          fi
 
-          # 3. Rewrite DB URL to point through the tunnel
-          TUNNELED_DB_URL="${PROD_DB_URL/$SERVER_IP/127.0.0.1}"
+          ssh -o StrictHostKeyChecking=no -f -N \
+            -L "${REMOTE_PORT}:127.0.0.1:${REMOTE_PORT}" \
+            "$SERVER_USER@$SERVER_IP"
 
-          # 4. Push migrations — auto-repair history drift if detected, then retry
-          echo "Pushing migrations through secure SSH tunnel..."
+          echo "✅ SSH tunnel open (local:${REMOTE_PORT} → remote:${REMOTE_PORT})"
+
+      - name: 🚀 Push migrations
+        env:
+          DB_URL: ${{ github.ref_name == 'main' && secrets.PROD_DB_URL || secrets.STAGING_DB_URL }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+        run: |
+          # Rewrite DB URL to route through SSH tunnel
+          TUNNELED_DB_URL="${DB_URL/$SERVER_IP/127.0.0.1}"
+
+          echo "Pushing migrations..."
           set +e
-          PUSH_OUTPUT=$(PGSSLMODE=disable supabase db push --db-url "$TUNNELED_DB_URL" 2>&1)
-          PUSH_EXIT=$?
+          OUTPUT=$(PGSSLMODE=disable supabase db push --db-url "$TUNNELED_DB_URL" 2>&1)
+          EXIT_CODE=$?
           set -e
 
-          if [ $PUSH_EXIT -ne 0 ]; then
-            if echo "$PUSH_OUTPUT" | grep -q "Remote migration versions not found"; then
-              echo "⚠️  Migration history drift detected. Auto-repairing..."
-              # supabase CLI prints the exact repair command in the error — extract the IDs from it
-              REPAIR_IDS=$(echo "$PUSH_OUTPUT" | grep -oP '(?<=repair --status reverted )[0-9 ]+' | head -1)
-              if [ -n "$REPAIR_IDS" ]; then
-                echo "Repairing remote-only IDs: $REPAIR_IDS"
-                PGSSLMODE=disable supabase migration repair --status reverted $REPAIR_IDS --db-url "$TUNNELED_DB_URL"
-                echo "Retrying push after repair..."
-                PGSSLMODE=disable supabase db push --db-url "$TUNNELED_DB_URL"
-              else
-                echo "$PUSH_OUTPUT"
-                exit 1
-              fi
-            else
-              echo "$PUSH_OUTPUT"
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "$OUTPUT"
+            echo "✅ Migrations applied successfully"
+            exit 0
+          fi
+
+          # Auto-repair migration history drift (remote-only migrations from manual runs)
+          if echo "$OUTPUT" | grep -q "Remote migration versions not found"; then
+            echo "⚠️  Migration history drift detected — auto-repairing..."
+            REPAIR_IDS=$(echo "$OUTPUT" | grep -oP '(?<=repair --status reverted )[0-9 ]+' | head -1)
+
+            if [ -z "$REPAIR_IDS" ]; then
+              echo "❌ Could not extract repair IDs from output:"
+              echo "$OUTPUT"
               exit 1
             fi
+
+            echo "Repairing: $REPAIR_IDS"
+            PGSSLMODE=disable supabase migration repair --status reverted $REPAIR_IDS --db-url "$TUNNELED_DB_URL"
+
+            echo "Retrying push..."
+            PGSSLMODE=disable supabase db push --db-url "$TUNNELED_DB_URL"
+            echo "✅ Migrations applied after repair"
           else
-            echo "$PUSH_OUTPUT"
+            echo "❌ Migration push failed:"
+            echo "$OUTPUT"
+            exit 1
           fi
+
+      - name: 📋 Summary
+        if: always()
+        run: |
+          ENV="${{ github.ref_name == 'main' && 'Production' || 'Staging' }}"
+          echo "## 🔄 DB Migration Deploy — ${ENV}" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | ${ENV} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Triggered by** | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
