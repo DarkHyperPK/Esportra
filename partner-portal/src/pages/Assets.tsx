@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
-import { FileImage, Upload, Image as ImageIcon, Loader2, AlertCircle, FileText, Save, X } from 'lucide-react';
+import { FileImage, Upload, Image as ImageIcon, Loader2, AlertCircle, FileText, Save, X, Trash2 } from 'lucide-react';
 import { usePartnerData } from '@/hooks/usePartnerData';
 import { apiClient } from '@/lib/apiClient';
 import { getTierFeatures } from '@/utils/permissions';
 import { usePartnerMutations } from '@/hooks/usePartnerMutations';
 import { useToast } from '@/hooks/use-toast';
+
+/** Extract storage path from a Supabase public URL for deletion */
+const extractStoragePath = (publicUrl: string): { bucket: string; path: string } | null => {
+    const match = publicUrl.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+    if (!match) return null;
+    return { bucket: match[1], path: match[2] };
+};
 
 const Assets = () => {
     const { data, refetch } = usePartnerData();
@@ -13,6 +20,7 @@ const Assets = () => {
     const { updateProfile } = usePartnerMutations(sponsor?.id || '');
 
     const [uploading, setUploading] = useState<'logo' | 'banner' | 'gallery' | 'deck' | null>(null);
+    const [deleting, setDeleting] = useState<string | null>(null);
     const [copyData, setCopyData] = useState({
         tagline: sponsor?.tagline || '',
         cta_text: sponsor?.cta_text || '',
@@ -21,6 +29,34 @@ const Assets = () => {
     });
     const [isSavingCopy, setIsSavingCopy] = useState(false);
     const { toast } = useToast();
+
+    /** Delete a file from Supabase storage (best-effort, non-blocking) */
+    const deleteStorageFile = async (url: string) => {
+        const info = extractStoragePath(url);
+        if (!info) return;
+        try {
+            await apiClient.delete(`/api/storage/delete?bucket=${encodeURIComponent(info.bucket)}&path=${encodeURIComponent(info.path)}`);
+        } catch {
+            // Non-fatal — file may already be gone
+        }
+    };
+
+    /** Delete logo or banner */
+    const handleDeleteAsset = async (type: 'logo' | 'banner') => {
+        if (!sponsor || !confirm(`Remove the ${type === 'logo' ? 'logo' : 'banner'}?`)) return;
+        const url = type === 'logo' ? sponsor.logo_url : sponsor.banner_image_url;
+        setDeleting(type);
+        try {
+            if (url) await deleteStorageFile(url);
+            await updateProfile.mutateAsync(type === 'logo' ? { logo_url: '' } : { banner_image_url: '' });
+            await refetch();
+            toast({ title: `${type === 'logo' ? 'Logo' : 'Banner'} removed.` });
+        } catch {
+            toast({ title: `Failed to remove ${type}`, variant: 'destructive' });
+        } finally {
+            setDeleting(null);
+        }
+    };
 
     // Sync copyData when sponsor loads
     React.useEffect(() => {
@@ -97,6 +133,7 @@ const Assets = () => {
         if (!sponsor || !confirm('Are you sure you want to remove this image?')) return;
 
         try {
+            await deleteStorageFile(imageUrl);
             const newGallery = (sponsor.gallery_images || []).filter(url => url !== imageUrl);
             await updateProfile.mutateAsync({ gallery_images: newGallery });
             await refetch();
@@ -108,6 +145,7 @@ const Assets = () => {
     const handleRemoveDeck = async () => {
         if (!sponsor || !confirm('Remove the detail deck?')) return;
         try {
+            if (sponsor.detail_deck_url) await deleteStorageFile(sponsor.detail_deck_url);
             await updateProfile.mutateAsync({ detail_deck_url: '' });
             await refetch();
         } catch {
@@ -157,7 +195,17 @@ const Assets = () => {
 
                     <div className="aspect-square rounded-xl bg-black border border-zinc-800 flex items-center justify-center relative group-hover:border-rose-500/30 transition-all duration-300 overflow-hidden shadow-2xl">
                         {sponsor?.logo_url ? (
-                            <img src={sponsor.logo_url} alt="Logo" loading="lazy" className="w-3/4 h-3/4 object-contain" />
+                            <>
+                                <img src={sponsor.logo_url} alt="Logo" loading="lazy" className="w-3/4 h-3/4 object-contain" />
+                                <button
+                                    onClick={() => handleDeleteAsset('logo')}
+                                    disabled={deleting === 'logo'}
+                                    aria-label="Delete logo"
+                                    className="absolute top-2 right-2 p-2 bg-rose-500/20 hover:bg-rose-500 text-rose-500 hover:text-white rounded-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+                                >
+                                    {deleting === 'logo' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                </button>
+                            </>
                         ) : (
                             <div className="text-zinc-800 text-xs font-mono">NO_ASSET</div>
                         )}
@@ -191,7 +239,19 @@ const Assets = () => {
 
                     <div className="aspect-video rounded-xl bg-black border border-zinc-800 flex items-center justify-center relative group-hover:border-blue-500/30 transition-all duration-300 overflow-hidden shadow-2xl">
                         {sponsor?.banner_image_url ? (
-                            <img src={sponsor.banner_image_url} alt="Banner" loading="lazy" className="w-full h-full object-cover" />
+                            <>
+                                <img src={sponsor.banner_image_url} alt="Banner" loading="lazy" className="w-full h-full object-cover" />
+                                {features.canUploadBanner && (
+                                    <button
+                                        onClick={() => handleDeleteAsset('banner')}
+                                        disabled={deleting === 'banner'}
+                                        aria-label="Delete banner"
+                                        className="absolute top-2 right-2 p-2 bg-rose-500/20 hover:bg-rose-500 text-rose-500 hover:text-white rounded-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+                                    >
+                                        {deleting === 'banner' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    </button>
+                                )}
+                            </>
                         ) : (
                             <div className="text-zinc-800 text-xs font-mono">
                                 {features.canUploadBanner ? 'NO_ASSET' : 'LOCKED_FEATURE'}
