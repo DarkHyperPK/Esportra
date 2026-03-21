@@ -71,7 +71,7 @@ interface Venue {
   amenities?: string[];
   images?: string[];
   card_image?: string;
-  pc_specs?: VenuePcSpecs;
+  pc_specs?: VenuePcSpecs | string;
   contact_email?: string;
   contact_phone?: string;
   price_per_hour?: number;
@@ -453,26 +453,33 @@ const VenueManagementTool = () => {
                 </div>
 
                 {/* PC Specs */}
-                {selectedVenue.pc_specs && Object.values(selectedVenue.pc_specs).some(Boolean) && (
-                  <div className="mt-3 p-4 rounded-xl bg-zinc-900/50 border border-white/5">
-                    <p className="text-[10px] text-zinc-500 uppercase font-mono mb-3 flex items-center gap-1.5">
-                      <Cpu className="w-3 h-3" /> PC Specifications
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { label: 'CPU', value: selectedVenue.pc_specs.cpu },
-                        { label: 'GPU', value: selectedVenue.pc_specs.gpu },
-                        { label: 'RAM', value: selectedVenue.pc_specs.ram },
-                        { label: 'Monitors', value: selectedVenue.pc_specs.monitors },
-                      ].filter(item => item.value).map((item) => (
-                        <div key={item.label} className="flex items-center gap-2">
-                          <span className="text-[10px] text-zinc-500 font-mono w-16 shrink-0">{item.label}</span>
-                          <span className="text-sm text-white">{item.value}</span>
-                        </div>
-                      ))}
+                {selectedVenue.pc_specs && (() => {
+                  const specs: VenuePcSpecs = typeof selectedVenue.pc_specs === 'string'
+                    ? JSON.parse(selectedVenue.pc_specs)
+                    : selectedVenue.pc_specs;
+                  const entries = [
+                    { label: 'CPU', value: specs.cpu },
+                    { label: 'GPU', value: specs.gpu },
+                    { label: 'RAM', value: specs.ram },
+                    { label: 'Monitors', value: specs.monitors },
+                  ].filter(item => item.value);
+                  if (entries.length === 0) return null;
+                  return (
+                    <div className="mt-3 p-4 rounded-xl bg-zinc-900/50 border border-white/5">
+                      <p className="text-[10px] text-zinc-500 uppercase font-mono mb-3 flex items-center gap-1.5">
+                        <Cpu className="w-3 h-3" /> PC Specifications
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {entries.map((item) => (
+                          <div key={item.label} className="flex items-center gap-2">
+                            <span className="text-[10px] text-zinc-500 font-mono w-16 shrink-0">{item.label}</span>
+                            <span className="text-sm text-white">{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
               {/* Amenities */}
