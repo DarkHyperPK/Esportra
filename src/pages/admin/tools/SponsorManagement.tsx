@@ -85,7 +85,7 @@ const SponsorCard = ({
 
                 <h3 className="text-xl font-bold text-white mb-1">{sponsor.name}</h3>
                 <a href={sponsor.website_url} target="_blank" className="text-xs text-zinc-500 hover:text-rose-500 flex items-center gap-1 mb-4">
-                    <ExternalLink className="w-3 h-3" /> {new URL(sponsor.website_url).hostname}
+                    <ExternalLink className="w-3 h-3" /> {(() => { try { return new URL(sponsor.website_url).hostname; } catch { return sponsor.website_url || 'N/A'; } })()}
                 </a>
 
                 {/* Metrics Section */}
