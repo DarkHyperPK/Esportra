@@ -45,11 +45,14 @@ export const usePartnerApplication = () => {
                 description: 'Thank you for your interest. Our partnerships team will review your application and get back to you within 3-5 business days.',
             });
         },
-        onError: (error: any) => {
+        onError: (error: Error & { status?: number; body?: { error?: string } }) => {
+            const isDuplicate = error.status === 409;
             toast({
-                title: 'Submission Failed',
-                description: error.message || 'Something went wrong. Please try again.',
-                variant: 'destructive',
+                title: isDuplicate ? 'Application Already Exists' : 'Submission Failed',
+                description: isDuplicate
+                    ? 'An application with this email has already been submitted. Our team will be in touch.'
+                    : error.body?.error || error.message || 'Something went wrong. Please try again.',
+                variant: isDuplicate ? 'default' : 'destructive',
             });
         },
     });
