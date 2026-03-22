@@ -11,6 +11,7 @@ import {
   MessageSquare, Megaphone, LayoutGrid
 } from "lucide-react";
 import TournamentSchedule from "@/components/organizer/TournamentSchedule";
+import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
 interface StaffOrg {
