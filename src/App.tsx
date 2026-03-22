@@ -145,6 +145,12 @@ import { getWebsiteAssetUrl } from "@/lib/storage";
 
 const AppContent = React.memo(() => {
   const location = useLocation();
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   const isHome = location.pathname === '/';
   const BG_VIDEO_URL = getWebsiteAssetUrl("Tournament-dashboard-background-animation/background.mp4");
 
