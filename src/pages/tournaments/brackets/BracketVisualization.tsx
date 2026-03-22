@@ -28,6 +28,7 @@ import { useGraphBracket } from '@/hooks/useGraphBracket';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import { cn } from '@/lib/utils';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 
 // =============================================================================
@@ -732,6 +733,41 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
         {/* Bracket - Container Free (Like Battlefy) */}
         <div className="relative flex-1 overflow-auto bg-zinc-950/30">
+          {/* Round Tabs */}
+          {(() => {
+            const isDoubleElim = Object.keys(losersRounds).length > 0;
+            const roundTabs: { label: string; filter: FilterState }[] = [
+              { label: 'All', filter: { type: 'all' } },
+              ...Object.keys(winnersRounds).map(Number).sort((a, b) => a - b).map(r => ({
+                label: isDoubleElim ? `WB R${r}` : `Round ${r}`,
+                filter: { type: 'winners' as const, round: r },
+              })),
+              ...Object.keys(losersRounds).map(Number).sort((a, b) => a - b).map(r => ({
+                label: `LB R${r}`,
+                filter: { type: 'losers' as const, round: r },
+              })),
+              ...(finalsMatches.length > 0 ? [{ label: 'Grand Final', filter: { type: 'final' as const } }] : []),
+            ];
+            const isTabActive = (f: FilterState) => JSON.stringify(f) === JSON.stringify(activeFilter);
+            return (
+              <div className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur border-b border-white/5 flex items-center gap-1 px-4 py-2 overflow-x-auto">
+                {roundTabs.map(tab => (
+                  <button
+                    key={tab.label}
+                    onClick={() => setActiveFilter(tab.filter)}
+                    className={cn(
+                      'shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap',
+                      isTabActive(tab.filter)
+                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                        : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
           <div style={{
             width: totalWidth,
             height: filteredListPositions ? filteredListPositions.height : totalHeight,
