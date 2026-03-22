@@ -218,13 +218,13 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 const roundIndex = firstMatch.round_index;
                 const configDeadline = selfPlayEnabled
                     ? schedulingConfig?.round_deadlines?.[key] || existingTime
-                    : null;
+                    : existingTime;
 
                 newConfigs.set(key, {
                     roundIndex,
                     roundName: getRoundNameForFormat(stageFormat, roundIndex, totalRounds),
                     matchCount: matches.length,
-                    deadline: selfPlayEnabled ? configDeadline : null,
+                    deadline: configDeadline,
                     startTime: !selfPlayEnabled ? existingTime : null,
                     bracketKey: stageFormat === 'double_elimination' ? ((firstMatch as any).bracket_type || null) : null,
                 });
