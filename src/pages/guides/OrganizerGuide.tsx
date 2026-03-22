@@ -23,7 +23,6 @@ interface GuideStep {
   navigation?: string;
   tip?: string;
   warning?: string;
-  screenshot?: string;
 }
 
 /* ─── Guide Data ─────────────────────────────────────────────── */
@@ -38,20 +37,17 @@ const guideSections: GuideSection[] = [
         title: 'Create your Esportra account',
         content: 'Sign up at esportra.com using your email or social login. Complete your profile by adding a display name, avatar, and bio. A complete profile builds trust with potential participants.',
         navigation: 'Home → Sign Up → Complete Profile',
-        screenshot: '/guide-screenshots/01-sign-up.png',
       },
       {
         title: 'Apply for an Organizer License',
         content: 'Head to the License Portal and click "Apply for License" under the Organizer section. Fill in your organization details including your experience level, planned tournament types, and any relevant links to previous events you\'ve organized.',
         navigation: 'Verification Portal (/verification) → Apply for License → Fill form → Submit',
         tip: 'Applications are typically reviewed within 1–3 business days. You\'ll receive an email notification when approved.',
-        screenshot: '/guide-screenshots/03-verification-portal.png',
       },
       {
         title: 'Set up your Organizer Profile',
         content: 'Once approved, customize your organizer profile page. Add a banner image, description, social links, and your organization\'s branding. This is the public page players will see when they view your tournaments.',
         navigation: 'Organizer Dashboard (/organizer) → Organization Settings → Edit Profile',
-        screenshot: '/guide-screenshots/08-settings.png',
       },
       {
         title: 'Invite your staff (optional)',
@@ -100,7 +96,6 @@ const guideSections: GuideSection[] = [
         content: 'Review all settings on the summary page. Once published, the tournament appears in public listings and players can register. You can still edit most settings until registration closes, except the bracket format.',
         navigation: 'Create Tournament → Step 5: Review → Publish',
         warning: 'The bracket format cannot be changed after the tournament is published. Double-check this before publishing.',
-        screenshot: '/guide-screenshots/06-tournaments-listing.png',
       },
     ],
   },
@@ -114,7 +109,6 @@ const guideSections: GuideSection[] = [
         title: 'Monitor registrations',
         content: 'View all registered participants from the tournament\'s Manage page under the Participants tab. You can see registration time, team details, and check-in status. The progress bar shows how close you are to capacity.',
         navigation: 'Organizer Dashboard → My Tournaments → Select Tournament → Manage → Participants tab',
-        screenshot: '/guide-screenshots/07-my-tournaments.png',
       },
       {
         title: 'Handle the check-in window',
@@ -345,17 +339,6 @@ const GuideSectionCard = ({ section }: { section: GuideSection }) => {
                       <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/10 p-3">
                         <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                         <p className="text-xs text-amber-300">{step.warning}</p>
-                      </div>
-                    )}
-
-                    {step.screenshot && (
-                      <div className="mt-3 rounded-xl overflow-hidden border border-white/10">
-                        <img
-                          src={step.screenshot}
-                          alt={`Screenshot: ${step.title}`}
-                          className="w-full h-auto"
-                          loading="lazy"
-                        />
                       </div>
                     )}
                   </div>
