@@ -89,6 +89,7 @@ const UpcomingTournaments = () => {
           registrationData,
           start_date: tournament.start_date,
           end_date: tournament.end_date,
+          winner_name: tournament.winner_team_name,
         };
       });
 
@@ -237,6 +238,7 @@ const UpcomingTournaments = () => {
                     slug={tournament.slug}
                     start_date={tournament.start_date}
                     end_date={tournament.end_date}
+                    winner_name={tournament.winner_name}
                   />
                 </motion.div>
               ))

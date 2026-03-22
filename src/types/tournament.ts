@@ -51,6 +51,7 @@ export interface Tournament extends BaseTournament {
     current_participants: number;
     status: TournamentStatus;
     finished?: boolean;
+    winner_team_name?: string | null;
 }
 
 export interface TeamMember {

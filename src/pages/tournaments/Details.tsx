@@ -292,7 +292,8 @@ const TournamentDetails = () => {
       const newTournament: Tournament = {
         ...baseTournament,
         current_participants: t.current_participants || 0,
-        status: t.status === 'draft' ? 'upcoming' : t.status as any
+        status: t.status === 'draft' ? 'upcoming' : t.status as any,
+        winner_team_name: t.winner_team_name || null,
       };
       setTournament(newTournament);
       setError(null);

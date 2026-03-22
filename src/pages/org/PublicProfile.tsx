@@ -281,6 +281,7 @@ const OrganizationPublicProfile = () => {
                                             currentUserId={user?.id}
                                             start_date={t.start_date}
                                             end_date={t.end_date}
+                                            winner_name={t.winner_team_name}
                                         />
                                     ))}
                                 </div>
