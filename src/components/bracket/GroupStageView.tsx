@@ -514,11 +514,14 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                     ))}
                 </TabsList>
 
-                {groups.map(group => {
+                {groups.map((group, groupIndex) => {
                     const groupMatches = matchesByGroup[group] || [];
                     const groupStandings = standingsByGroup[group] || [];
                     const groupCount = groups.length || 1;
-                    const perGroupAdvancement = advancementCount ? Math.floor(advancementCount / groupCount) : undefined;
+                    // Distribute advancement slots fairly: first (remainder) groups get one extra
+                    const baseAdv = advancementCount ? Math.floor(advancementCount / groupCount) : 0;
+                    const remainder = advancementCount ? advancementCount % groupCount : 0;
+                    const perGroupAdvancement = advancementCount ? baseAdv + (groupIndex < remainder ? 1 : 0) : undefined;
 
                     return (
                         <TabsContent key={group} value={group} className="mt-6">
