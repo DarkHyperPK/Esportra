@@ -7,8 +7,8 @@ import { apiClient } from "@/lib/apiClient";
 import { ProfileLoading } from "@/components/profile/ProfileLoading";
 import {
   Shield, Trophy, Building2, ChevronRight,
-  Shield, Trophy, Building2, ChevronRight,
-  Clock, CheckCircle2
+  Clock, CheckCircle2, Swords, Users,
+  MessageSquare, Megaphone, LayoutGrid
 } from "lucide-react";
 import TournamentSchedule from "@/components/organizer/TournamentSchedule";
 import { cn } from "@/lib/utils";
@@ -240,6 +240,62 @@ const StaffDashboard = () => {
                     </span>
                   </div>
                 </div>
+
+                {/* Quick Actions — based on role & permissions */}
+                {tournaments.length > 0 && (() => {
+                  const t = tournaments[0]?.tournament;
+                  if (!t?.slug) return null;
+                  const slug = t.slug;
+                  const perms = selectedOrg.permissions;
+                  const isAdmin = selectedOrg.role === 'admin';
+
+                  const actions = [
+                    { perm: 'scores:update', label: 'Matches', icon: Swords, tab: 'stages', color: 'emerald' },
+                    { perm: 'teams:manage', label: 'Participants', icon: Users, tab: 'participants', color: 'purple' },
+                    { perm: 'bracket:edit', label: 'Brackets', icon: LayoutGrid, tab: 'stages', color: 'amber' },
+                    { perm: 'disputes:assist', label: 'Disputes', icon: MessageSquare, tab: 'disputes', color: 'red' },
+                    { perm: 'announcements:send', label: 'Announce', icon: Megaphone, tab: 'overview', color: 'cyan' },
+                  ].filter(a => isAdmin || perms.includes(a.perm));
+
+                  if (actions.length === 0) return null;
+
+                  const colorMap: Record<string, string> = {
+                    emerald: 'hover:border-emerald-500/30 hover:bg-emerald-500/5 group-hover:text-emerald-400',
+                    purple: 'hover:border-purple-500/30 hover:bg-purple-500/5 group-hover:text-purple-400',
+                    amber: 'hover:border-amber-500/30 hover:bg-amber-500/5 group-hover:text-amber-400',
+                    red: 'hover:border-red-500/30 hover:bg-red-500/5 group-hover:text-red-400',
+                    cyan: 'hover:border-cyan-500/30 hover:bg-cyan-500/5 group-hover:text-cyan-400',
+                  };
+
+                  return (
+                    <div className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <LayoutGrid className="h-5 w-5 text-amber-500" />
+                        <h3 className="text-lg font-bold">Quick Actions</h3>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {actions.map(a => {
+                          const Icon = a.icon;
+                          const colors = colorMap[a.color] || '';
+                          const [hoverBorder, hoverBg, iconColor] = colors.split(' ');
+                          return (
+                            <button
+                              key={a.perm}
+                              onClick={() => navigate(`/organizer/tournament/${slug}?tab=${a.tab}`)}
+                              className={cn(
+                                "flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 transition-all group",
+                                hoverBorder, hoverBg
+                              )}
+                            >
+                              <Icon className={cn("h-5 w-5 text-zinc-500 transition-colors", iconColor)} />
+                              <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">{a.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Schedule */}
                 <TournamentSchedule />
