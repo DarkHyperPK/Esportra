@@ -78,6 +78,15 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     const hasBoth = match.team1?.name && match.team2?.name && !match.team1.name.includes('TBD');
     const canAct = isOrganizer && isDbMatch(id);
     const w1 = match.winner?.id === match.team1?.id;
+
+    // Schedule validation: can't go live more than 15 minutes before scheduled time
+    const isTooEarlyForLive = (() => {
+        const st = match.scheduledTime || match.scheduled_time;
+        if (!st) return false;
+        const scheduledMs = new Date(st).getTime();
+        const nowMs = Date.now();
+        return scheduledMs - nowMs > 15 * 60 * 1000;
+    })();
     const w2 = match.winner?.id === match.team2?.id;
     const [showProofs, setShowProofs] = useState(false);
     const [actionMode, setActionMode] = useState<'default' | 'party_code'>('default');
@@ -406,10 +415,17 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                className="flex-1 min-w-[80px] h-8 bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300"
-                                                                onClick={(e) => { e.stopPropagation(); setActionMode('party_code'); }}
+                                                                className={cn(
+                                                                    "flex-1 min-w-[80px] h-8",
+                                                                    isTooEarlyForLive
+                                                                        ? "bg-zinc-900/20 border-zinc-700/30 text-zinc-500 cursor-not-allowed"
+                                                                        : "bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300"
+                                                                )}
+                                                                onClick={(e) => { e.stopPropagation(); if (!isTooEarlyForLive) setActionMode('party_code'); }}
+                                                                disabled={isTooEarlyForLive}
+                                                                title={isTooEarlyForLive ? 'Cannot go live before scheduled time' : undefined}
                                                             >
-                                                                <PlayCircle className="w-3.5 h-3.5 mr-1.5" /> Go Live
+                                                                <PlayCircle className="w-3.5 h-3.5 mr-1.5" /> {isTooEarlyForLive ? 'Not Yet' : 'Go Live'}
                                                             </Button>
                                                         )}
 
