@@ -499,6 +499,11 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                     const dateValue = e.target.value;
                                                     const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
                                                     updateRoundConfig(cfgKey, roundIndex, 'deadline', utcValue);
+                                                    // Also update startTime if a time is already set
+                                                    if (dateValue && config?.startTime) {
+                                                        const existingTime = utcToLocalTime(config.startTime);
+                                                        updateRoundConfig(cfgKey, roundIndex, 'startTime', localDateTimeToUTC(dateValue, existingTime));
+                                                    }
                                                 }}
                                                 className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 [color-scheme:dark]"
                                             />
