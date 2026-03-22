@@ -6,7 +6,7 @@ const Footer = () => {
   return (
     <footer className="bg-[#0a0a0a] border-t border-white/5 pt-24 pb-12 overflow-hidden">
       <div className="container mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 lg:gap-24 mb-24">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-16 lg:gap-24 mb-24">
 
           {/* Brand Col */}
           <div className="lg:col-span-1">
@@ -29,28 +29,14 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Links Col 1: Platform */}
-          <div>
-            <h4 className="text-white text-sm font-medium tracking-[0.2em] uppercase mb-10">System</h4>
-            <ul className="space-y-4">
-              {['Venues', 'Tournaments'].map((link) => (
-                <li key={link}>
-                  <Link to={`/${link.toLowerCase()}`} className="text-white/40 hover:text-white font-light transition-all duration-300">
-                    {link}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Links Col 2: Resources */}
+          {/* Links Col 1: Resources (merged System + Resources) */}
           <div>
             <h4 className="text-white text-sm font-medium tracking-[0.2em] uppercase mb-10">Resources</h4>
             <ul className="space-y-4">
               {[
+                { label: 'Tournaments', to: '/tournaments' },
+                { label: 'Venues', to: '/venues' },
                 { label: 'Help Centre', to: '/help' },
-                { label: 'For Organizers', to: '/for-organizers' },
-                { label: 'For Venues', to: '/for-venues' },
                 { label: 'FAQ', to: '/about/faq' },
               ].map((link) => (
                 <li key={link.label}>
@@ -62,7 +48,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Links Col 3: Company */}
+          {/* Links Col 2: Company */}
           <div className="relative">
             <h4 className="text-white text-sm font-medium tracking-[0.2em] uppercase mb-10">Company</h4>
             <ul className="space-y-4">
