@@ -455,6 +455,33 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     return minY === Infinity ? 0 : minY - 50;
   }, [activeFilter, matches, matchPositions]);
 
+  // When filtering to a specific round, compute stacked list positions (no bracket gaps)
+  const filteredListPositions = useMemo(() => {
+    if (activeFilter.type === 'all') return null;
+
+    const visibleMatches = matches.filter(m => {
+      if (activeFilter.type === 'winners') return (!m.bracketSide || m.bracketSide === 'winners') && m.round === activeFilter.round;
+      if (activeFilter.type === 'losers') return m.bracketSide === 'losers' && m.round === activeFilter.round;
+      if (activeFilter.type === 'final') return m.bracketSide === 'final';
+      return false;
+    });
+
+    visibleMatches.sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0));
+
+    const listGap = 8;
+    const startY = 50;
+    const positions = new Map<string, { x: number; y: number }>();
+    visibleMatches.forEach((m, i) => {
+      positions.set(String(m.id), { x: LEFT_PADDING, y: startY + i * (CARD_HEIGHT + listGap) });
+    });
+
+    const listHeight = visibleMatches.length > 0
+      ? startY + visibleMatches.length * (CARD_HEIGHT + listGap) + 50
+      : 0;
+
+    return { positions, height: listHeight };
+  }, [activeFilter, matches]);
+
   // Calculate canvas size based on max X/Y
   const { totalWidth, totalHeight, winnersBottomY } = useMemo(() => {
     let maxX = 0;
@@ -707,7 +734,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         <div className="relative flex-1 overflow-auto bg-zinc-950/30">
           <div style={{
             width: totalWidth,
-            height: totalHeight,
+            height: filteredListPositions ? filteredListPositions.height : totalHeight,
             position: 'relative'
           }}>
             {/* Winners Bracket Heading */}
@@ -758,8 +785,12 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                 }
 
                 // Use calculated positions from matchPositions
-                const pos = matchPositions.get(String(m.id));
+                const pos = filteredListPositions
+                  ? filteredListPositions.positions.get(String(m.id))
+                  : matchPositions.get(String(m.id));
                 if (!pos) return null;
+                const left = filteredListPositions ? pos.x : pos.x - filterXOffset;
+                const top = filteredListPositions ? pos.y : pos.y - filterYOffset;
 
                 return (
                   <motion.div
@@ -768,7 +799,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.2 }}
-                    style={{ position: 'absolute', left: pos.x - filterXOffset, top: pos.y - filterYOffset }}
+                    style={{ position: 'absolute', left, top }}
                   >
                     {renderMatchCard(m, 0, 0, // Pass 0,0 because we position the wrapper
                       m.bracketSide === 'final' ? "Grand Finals" :
