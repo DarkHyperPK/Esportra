@@ -21,10 +21,6 @@ export class RoundRobinGenerator implements IBracketGenerator {
         const nodes: BracketNode[] = [];
         const edges: BracketEdge[] = [];
 
-        // Extract scheduling config for auto-scheduling
-        const dailyStartTime = config?.daily_start_time || '20:00';
-        const tournamentStartDate = config?.tournament_start_date ? new Date(config.tournament_start_date) : null;
-
         // 1. Determine Groups
         const numGroups = bracketSize || 1;
         const groups: any[][] = Array.from({ length: numGroups }, () => []);
@@ -58,16 +54,6 @@ export class RoundRobinGenerator implements IBracketGenerator {
             const roundMatches = this.generateCircleSchedule(groupTeams);
 
             roundMatches.forEach((round, roundIdx) => {
-                // Auto-schedule: Calculate scheduled time for this round's day
-                let scheduledTime: string | undefined;
-                if (tournamentStartDate) {
-                    const roundDate = new Date(tournamentStartDate);
-                    roundDate.setDate(roundDate.getDate() + roundIdx); // Day 1 = round 0, Day 2 = round 1, etc.
-                    const [hours, minutes] = dailyStartTime.split(':').map(Number);
-                    roundDate.setHours(hours, minutes, 0, 0);
-                    scheduledTime = roundDate.toISOString();
-                }
-
                 round.forEach(matchup => {
                     const matchId = crypto.randomUUID();
 
@@ -83,7 +69,6 @@ export class RoundRobinGenerator implements IBracketGenerator {
                         team1_id: matchup.team1.id,
                         team2_id: matchup.team2.id,
                         best_of: bestOf,
-                        scheduled_time: scheduledTime, // Auto-scheduled based on day
                         // Layout hints (grid by group and round)
                         x: groupIdx * 400,
                         y: roundIdx * 150 + (round.indexOf(matchup) * 80)
