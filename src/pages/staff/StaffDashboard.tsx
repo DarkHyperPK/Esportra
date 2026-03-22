@@ -247,13 +247,18 @@ const StaffDashboard = () => {
                     <h3 className="text-lg font-bold">Quick Actions</h3>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    <button
-                      onClick={() => navigate('/organizer/dashboard?tab=schedule')}
-                      className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group"
-                    >
-                      <Calendar className="h-5 w-5 text-zinc-500 group-hover:text-blue-400 transition-colors" />
-                      <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">Schedule</span>
-                    </button>
+                    {tournaments.length > 0 && (
+                      <button
+                        onClick={() => {
+                          const t = tournaments[0]?.tournament;
+                          if (t?.slug) navigate(`/organizer/tournament/${t.slug}?tab=stages`);
+                        }}
+                        className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group"
+                      >
+                        <Calendar className="h-5 w-5 text-zinc-500 group-hover:text-blue-400 transition-colors" />
+                        <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">Schedule</span>
+                      </button>
+                    )}
                     {(selectedOrg.permissions.includes('scores:update') || selectedOrg.role === 'admin') && tournaments.length > 0 && (
                       <button
                         onClick={() => {
