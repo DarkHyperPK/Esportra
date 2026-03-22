@@ -7,7 +7,8 @@ import { apiClient } from "@/lib/apiClient";
 import { ProfileLoading } from "@/components/profile/ProfileLoading";
 import {
   Shield, Trophy, Building2, ChevronRight,
-  Clock, CheckCircle2
+  Clock, CheckCircle2, Calendar, Swords, Users,
+  MessageSquare, Megaphone, LayoutGrid
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -236,6 +237,83 @@ const StaffDashboard = () => {
                       <Building2 className="h-3 w-3" />
                       {selectedOrg.organization?.name}
                     </span>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <LayoutGrid className="h-5 w-5 text-amber-500" />
+                    <h3 className="text-lg font-bold">Quick Actions</h3>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <button
+                      onClick={() => navigate('/organizer/dashboard?tab=schedule')}
+                      className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group"
+                    >
+                      <Calendar className="h-5 w-5 text-zinc-500 group-hover:text-blue-400 transition-colors" />
+                      <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">Schedule</span>
+                    </button>
+                    {(selectedOrg.permissions.includes('scores:update') || selectedOrg.role === 'admin') && tournaments.length > 0 && (
+                      <button
+                        onClick={() => {
+                          const t = tournaments[0]?.tournament;
+                          if (t?.slug) navigate(`/organizer/tournament/${t.slug}?tab=stages`);
+                        }}
+                        className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group"
+                      >
+                        <Swords className="h-5 w-5 text-zinc-500 group-hover:text-emerald-400 transition-colors" />
+                        <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">Matches</span>
+                      </button>
+                    )}
+                    {(selectedOrg.permissions.includes('teams:manage') || selectedOrg.role === 'admin') && tournaments.length > 0 && (
+                      <button
+                        onClick={() => {
+                          const t = tournaments[0]?.tournament;
+                          if (t?.slug) navigate(`/organizer/tournament/${t.slug}?tab=participants`);
+                        }}
+                        className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group"
+                      >
+                        <Users className="h-5 w-5 text-zinc-500 group-hover:text-purple-400 transition-colors" />
+                        <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">Participants</span>
+                      </button>
+                    )}
+                    {(selectedOrg.permissions.includes('bracket:edit') || selectedOrg.role === 'admin') && tournaments.length > 0 && (
+                      <button
+                        onClick={() => {
+                          const t = tournaments[0]?.tournament;
+                          if (t?.slug) navigate(`/organizer/tournament/${t.slug}?tab=stages`);
+                        }}
+                        className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all group"
+                      >
+                        <LayoutGrid className="h-5 w-5 text-zinc-500 group-hover:text-amber-400 transition-colors" />
+                        <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">Brackets</span>
+                      </button>
+                    )}
+                    {(selectedOrg.permissions.includes('disputes:assist') || selectedOrg.role === 'admin') && tournaments.length > 0 && (
+                      <button
+                        onClick={() => {
+                          const t = tournaments[0]?.tournament;
+                          if (t?.slug) navigate(`/organizer/tournament/${t.slug}?tab=disputes`);
+                        }}
+                        className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-red-500/30 hover:bg-red-500/5 transition-all group"
+                      >
+                        <MessageSquare className="h-5 w-5 text-zinc-500 group-hover:text-red-400 transition-colors" />
+                        <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">Disputes</span>
+                      </button>
+                    )}
+                    {(selectedOrg.permissions.includes('announcements:send') || selectedOrg.role === 'admin') && tournaments.length > 0 && (
+                      <button
+                        onClick={() => {
+                          const t = tournaments[0]?.tournament;
+                          if (t?.slug) navigate(`/organizer/tournament/${t.slug}?tab=overview`);
+                        }}
+                        className="flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all group"
+                      >
+                        <Megaphone className="h-5 w-5 text-zinc-500 group-hover:text-cyan-400 transition-colors" />
+                        <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">Announce</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
