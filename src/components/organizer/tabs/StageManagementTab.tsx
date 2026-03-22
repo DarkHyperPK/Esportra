@@ -57,6 +57,11 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     });
     */
 
+    // Refetch parent data on mount to pick up status changes made in bracket views
+    useEffect(() => {
+        onUpdate();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         const checkBrackets = async () => {
             setBracketsLoading(true);
