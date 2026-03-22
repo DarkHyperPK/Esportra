@@ -242,12 +242,10 @@ const StaffDashboard = () => {
                 </div>
 
                 {/* Quick Actions — based on role & permissions */}
-                {tournaments.length > 0 && (() => {
-                  const t = tournaments[0]?.tournament;
-                  if (!t?.slug) return null;
-                  const slug = t.slug;
-                  const perms = selectedOrg.permissions;
+                {selectedOrg && (() => {
+                  const perms = selectedOrg.permissions || [];
                   const isAdmin = selectedOrg.role === 'admin';
+                  const firstSlug = tournaments[0]?.tournament?.slug;
 
                   const actions = [
                     { perm: 'scores:update', label: 'Matches', icon: Swords, tab: 'stages', color: 'emerald' },
@@ -259,40 +257,45 @@ const StaffDashboard = () => {
 
                   if (actions.length === 0) return null;
 
-                  const colorMap: Record<string, string> = {
-                    emerald: 'hover:border-emerald-500/30 hover:bg-emerald-500/5 group-hover:text-emerald-400',
-                    purple: 'hover:border-purple-500/30 hover:bg-purple-500/5 group-hover:text-purple-400',
-                    amber: 'hover:border-amber-500/30 hover:bg-amber-500/5 group-hover:text-amber-400',
-                    red: 'hover:border-red-500/30 hover:bg-red-500/5 group-hover:text-red-400',
-                    cyan: 'hover:border-cyan-500/30 hover:bg-cyan-500/5 group-hover:text-cyan-400',
-                  };
-
                   return (
                     <div className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-6">
                       <div className="flex items-center gap-3 mb-4">
                         <LayoutGrid className="h-5 w-5 text-amber-500" />
                         <h3 className="text-lg font-bold">Quick Actions</h3>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {actions.map(a => {
-                          const Icon = a.icon;
-                          const colors = colorMap[a.color] || '';
-                          const [hoverBorder, hoverBg, iconColor] = colors.split(' ');
-                          return (
-                            <button
-                              key={a.perm}
-                              onClick={() => navigate(`/organizer/tournament/${slug}?tab=${a.tab}`)}
-                              className={cn(
-                                "flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 transition-all group",
-                                hoverBorder, hoverBg
-                              )}
-                            >
-                              <Icon className={cn("h-5 w-5 text-zinc-500 transition-colors", iconColor)} />
-                              <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">{a.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {!firstSlug ? (
+                        <p className="text-xs text-zinc-600">No tournaments assigned yet</p>
+                      ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {actions.map(a => {
+                            const Icon = a.icon;
+                            return (
+                              <button
+                                key={a.perm}
+                                onClick={() => navigate(`/organizer/tournament/${firstSlug}?tab=${a.tab}`)}
+                                className={cn(
+                                  "flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 transition-all group",
+                                  a.color === 'emerald' && "hover:border-emerald-500/30 hover:bg-emerald-500/5",
+                                  a.color === 'purple' && "hover:border-purple-500/30 hover:bg-purple-500/5",
+                                  a.color === 'amber' && "hover:border-amber-500/30 hover:bg-amber-500/5",
+                                  a.color === 'red' && "hover:border-red-500/30 hover:bg-red-500/5",
+                                  a.color === 'cyan' && "hover:border-cyan-500/30 hover:bg-cyan-500/5",
+                                )}
+                              >
+                                <Icon className={cn(
+                                  "h-5 w-5 text-zinc-500 transition-colors",
+                                  a.color === 'emerald' && "group-hover:text-emerald-400",
+                                  a.color === 'purple' && "group-hover:text-purple-400",
+                                  a.color === 'amber' && "group-hover:text-amber-400",
+                                  a.color === 'red' && "group-hover:text-red-400",
+                                  a.color === 'cyan' && "group-hover:text-cyan-400",
+                                )} />
+                                <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">{a.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
