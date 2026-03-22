@@ -119,6 +119,7 @@ const ContactStandalone = React.lazy(() => import("./pages/Contact"));
 const Partners = React.lazy(() => import("./pages/Partners"));
 
 // Guides
+const HelpCenter = React.lazy(() => import("./pages/guides/HelpCenter"));
 const OrganizerGuide = React.lazy(() => import("./pages/guides/OrganizerGuide"));
 
 // App Download removed
@@ -505,7 +506,7 @@ const AppContent = React.memo(() => {
                 <Route path="/about/contact" element={<ContactPage />} />
                 <Route path="/about/faq" element={<FAQPage />} />
                 <Route path="/guides/organizer" element={<OrganizerGuide />} />
-                <Route path="/help" element={<OrganizerGuide />} />
+                <Route path="/help" element={<HelpCenter />} />
                 <Route path="/contact" element={<ContactStandalone />} />
                 <Route path="/partners" element={<Partners />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
