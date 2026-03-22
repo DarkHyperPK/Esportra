@@ -273,7 +273,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     return {
       winnersRounds: winners,
       losersRounds: losers,
-      finalsMatches: finals.sort((a, b) => a.matchNumber - b.matchNumber),
+      finalsMatches: finals.sort((a, b) => a.round - b.round || a.matchNumber - b.matchNumber),
       maxWinnersRound: Math.max(...Object.keys(winners).map(Number), 0)
     };
   }, [matches]);
@@ -838,8 +838,11 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                     style={{ position: 'absolute', left, top }}
                   >
                     {renderMatchCard(m, 0, 0, // Pass 0,0 because we position the wrapper
-                      m.bracketSide === 'final' ? "Grand Finals" :
-                        `${m.bracketSide === 'losers' ? 'L' : 'W'}${m.round} • M${m.matchNumber}`
+                      m.bracketSide === 'final'
+                        ? (finalsMatches.length > 1 && m.round === Math.max(...finalsMatches.map(f => f.round))
+                          ? "Grand Finals Reset"
+                          : "Grand Finals")
+                        : `${m.bracketSide === 'losers' ? 'L' : 'W'}${m.round} • M${m.matchNumber}`
                     )}
                   </motion.div>
                 );

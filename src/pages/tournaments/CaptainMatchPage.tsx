@@ -647,7 +647,13 @@ const CaptainMatchPage = () => {
         }
 
         // Single and Double Elimination
-        if (bracketSide === 'final') return 'Grand Finals';
+        if (bracketSide === 'final') {
+            const finalMatches = matches.filter(m => m.bracketSide === 'final');
+            if (finalMatches.length > 1 && round === Math.max(...finalMatches.map(f => f.round))) {
+                return 'Grand Finals Reset';
+            }
+            return 'Grand Finals';
+        }
         if (bracketSide === 'reset') return 'Grand Finals Reset';
 
         const teamCount = participants.length > 0 ? participants.length : 8; // Default to 8 if not loaded
