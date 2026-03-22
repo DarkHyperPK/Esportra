@@ -3,8 +3,7 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import {
   Trophy, Users, Settings, Shield, ChevronRight, ChevronDown,
-  Calendar, MapPin, Swords, BarChart3, Bell, Clock, CheckCircle2,
-  AlertTriangle, Info, ArrowRight, BookOpen
+  Swords, BarChart3, AlertTriangle, Info, ArrowRight, BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -21,9 +20,9 @@ interface GuideSection {
 interface GuideStep {
   title: string;
   content: string;
+  navigation?: string;
   tip?: string;
   warning?: string;
-  screenshotPlaceholder?: string;
 }
 
 /* ─── Guide Data ─────────────────────────────────────────────── */
@@ -37,22 +36,23 @@ const guideSections: GuideSection[] = [
       {
         title: 'Create your Esportra account',
         content: 'Sign up at esportra.com using your email or social login. Complete your profile by adding a display name, avatar, and bio. A complete profile builds trust with potential participants.',
-        screenshotPlaceholder: '[SCREENSHOT: Sign-up page with email form]',
+        navigation: 'Home → Sign Up → Complete Profile',
       },
       {
         title: 'Apply for an Organizer License',
-        content: 'Navigate to Settings → Verification and click "Apply for Organizer License". Fill in your organization details including your experience level, planned tournament types, and any relevant links to previous events you\'ve organized.',
+        content: 'Head to the License Portal and click "Apply for License" under the Organizer section. Fill in your organization details including your experience level, planned tournament types, and any relevant links to previous events you\'ve organized.',
+        navigation: 'Verification Portal (/verification) → Apply for License → Fill form → Submit',
         tip: 'Applications are typically reviewed within 1–3 business days. You\'ll receive an email notification when approved.',
-        screenshotPlaceholder: '[SCREENSHOT: Verification settings page with "Apply" button]',
       },
       {
         title: 'Set up your Organizer Profile',
         content: 'Once approved, customize your organizer profile page. Add a banner image, description, social links, and your organization\'s branding. This is the public page players will see when they view your tournaments.',
-        screenshotPlaceholder: '[SCREENSHOT: Organizer profile edit page]',
+        navigation: 'Organizer Dashboard (/organizer) → Organization Settings → Edit Profile',
       },
       {
         title: 'Invite your staff (optional)',
-        content: 'If you have moderators or admins who help run events, invite them as staff members. Go to your Organizer Dashboard → Staff and generate invite links. Staff can help manage matches, handle disputes, and moderate chat during tournaments.',
+        content: 'If you have moderators or admins who help run events, invite them as staff members. Go to your Organizer Dashboard and open the Staff section to generate invite links. Staff can help manage matches, handle disputes, and moderate chat during tournaments.',
+        navigation: 'Organizer Dashboard (/organizer) → Staff → Invite Staff Member',
         tip: 'Assign specific permissions to each staff member based on their role. Not everyone needs full admin access.',
       },
     ],
@@ -66,36 +66,36 @@ const guideSections: GuideSection[] = [
       {
         title: 'Start the Tournament Wizard',
         content: 'From your Organizer Dashboard, click "Create Tournament". The wizard walks you through each configuration step. You can save as draft at any point and come back later.',
-        screenshotPlaceholder: '[SCREENSHOT: Organizer dashboard with "Create Tournament" button highlighted]',
+        navigation: 'Organizer Dashboard (/organizer) → Create Tournament',
       },
       {
         title: 'Basic Information',
         content: 'Set the tournament name, description, and select the game (e.g., CS2, Valorant). Add a banner image that represents your event — this appears in tournament listings and search results. Write a compelling description that covers the format, rules, and what players can expect.',
+        navigation: 'Create Tournament → Step 1: Basic Info',
         tip: 'Use a 16:9 banner image for the best display across desktop and mobile.',
-        screenshotPlaceholder: '[SCREENSHOT: Tournament creation form — basic info step]',
       },
       {
         title: 'Schedule & Registration',
         content: 'Set your registration open/close dates, tournament start date, and check-in window. Choose between solo or team registration. Set the maximum number of participants and any entry requirements.',
+        navigation: 'Create Tournament → Step 2: Schedule & Registration',
         warning: 'Make sure to set registration close before the tournament start time. Players need time to form teams and check in.',
-        screenshotPlaceholder: '[SCREENSHOT: Schedule configuration step]',
       },
       {
         title: 'Choose Bracket Format',
         content: 'Select your bracket format:\n\n• Single Elimination — Each loss eliminates. Fast, decisive, best for smaller events.\n• Double Elimination — Players get a second chance through the losers bracket. More matches, fairer outcomes.\n• Swiss System — Round-based pairing by record. Great for large groups where full round-robin isn\'t feasible.\n• Round Robin — Everyone plays everyone. Best for small groups or league-style play.',
+        navigation: 'Create Tournament → Step 3: Format',
         tip: 'For your first tournament, Single Elimination with 8–16 players is the easiest to manage.',
-        screenshotPlaceholder: '[SCREENSHOT: Bracket format selection cards]',
       },
       {
         title: 'Configure Match Settings',
         content: 'Set the best-of format for each stage (Bo1, Bo3, Bo5). Configure map pool and veto settings if applicable. Set the default time per match and any overtime rules. You can customize these per round later.',
-        screenshotPlaceholder: '[SCREENSHOT: Match settings configuration]',
+        navigation: 'Create Tournament → Step 4: Match Settings',
       },
       {
         title: 'Review & Publish',
         content: 'Review all settings on the summary page. Once published, the tournament appears in public listings and players can register. You can still edit most settings until registration closes, except the bracket format.',
+        navigation: 'Create Tournament → Step 5: Review → Publish',
         warning: 'The bracket format cannot be changed after the tournament is published. Double-check this before publishing.',
-        screenshotPlaceholder: '[SCREENSHOT: Tournament review/summary page]',
       },
     ],
   },
@@ -107,8 +107,8 @@ const guideSections: GuideSection[] = [
     steps: [
       {
         title: 'Monitor registrations',
-        content: 'View all registered participants from the tournament\'s Manage page → Participants tab. You can see registration time, team details, and check-in status. The progress bar shows how close you are to capacity.',
-        screenshotPlaceholder: '[SCREENSHOT: Participants list with registration count]',
+        content: 'View all registered participants from the tournament\'s Manage page under the Participants tab. You can see registration time, team details, and check-in status. The progress bar shows how close you are to capacity.',
+        navigation: 'Organizer Dashboard → My Tournaments → Select Tournament → Manage → Participants tab',
       },
       {
         title: 'Handle the check-in window',
@@ -118,7 +118,7 @@ const guideSections: GuideSection[] = [
       {
         title: 'Seed the bracket',
         content: 'After registration closes, review and adjust seeding if needed. By default, players are seeded by registration order, but you can manually reorder them based on skill rating, previous performance, or any criteria you prefer.',
-        screenshotPlaceholder: '[SCREENSHOT: Seeding/reorder interface]',
+        navigation: 'Tournament Manage Page → Brackets tab → Seeding',
       },
       {
         title: 'Handle no-shows',
@@ -135,23 +135,23 @@ const guideSections: GuideSection[] = [
       {
         title: 'Generate the bracket',
         content: 'Once check-in closes, generate the bracket from the Manage Bracket page. The system creates all first-round matches based on seeding. Review the bracket before starting — you can swap participants if needed.',
-        screenshotPlaceholder: '[SCREENSHOT: Generated bracket view with swap controls]',
+        navigation: 'Tournament Manage Page → Brackets tab → Generate Bracket',
       },
       {
         title: 'Start matches (Go Live)',
         content: 'Click "Go Live" on individual matches or use "Start All" to begin the round. Going live notifies both teams and opens the match lobby. Players can then proceed with map veto (if configured) and play their match.',
-        screenshotPlaceholder: '[SCREENSHOT: Match card with "Go Live" button]',
+        navigation: 'Tournament Manage Page → Brackets tab → Match Card → Go Live',
       },
       {
         title: 'Map veto process',
         content: 'If map veto is enabled, teams alternate banning and picking maps from the pool. The veto process is real-time — both captains see updates instantly via SignalR. Once the veto completes, the match can begin on the selected map(s).',
-        screenshotPlaceholder: '[SCREENSHOT: Map veto interface with ban/pick sequence]',
+        navigation: 'Match Page → Map Veto section (auto-opens when match goes live)',
       },
       {
         title: 'Score reporting',
         content: 'After each map/game, the winning team\'s captain submits the score. The opposing captain must verify the score. If both agree, the match advances automatically. If there\'s a dispute, see the Disputes section below.',
+        navigation: 'Match Page → Report Score → Submit → Opponent verifies',
         tip: 'Encourage teams to take screenshots of the scoreboard. This speeds up dispute resolution if needed.',
-        screenshotPlaceholder: '[SCREENSHOT: Score submission form]',
       },
       {
         title: 'Advance BYE matches',
@@ -159,8 +159,8 @@ const guideSections: GuideSection[] = [
       },
       {
         title: 'Award walkovers',
-        content: 'If a team fails to show up or forfeits, award a walkover to their opponent using the Manual Adjustment menu. This advances the winning team and records the match as a walkover in the bracket history.',
-        screenshotPlaceholder: '[SCREENSHOT: Manual adjustment dropdown menu]',
+        content: 'If a team fails to show up or forfeits, award a walkover to their opponent using the Manual Adjustment menu on the match card. This advances the winning team and records the match as a walkover in the bracket history.',
+        navigation: 'Brackets tab → Match Card → ⋮ Menu → Award Walkover → Select Winner',
       },
     ],
   },
@@ -173,7 +173,7 @@ const guideSections: GuideSection[] = [
       {
         title: 'When disputes arise',
         content: 'A dispute is created when one team rejects the opponent\'s submitted score. The match is flagged and both teams can submit evidence (screenshots, replay files). The match pauses until resolved.',
-        screenshotPlaceholder: '[SCREENSHOT: Match with dispute indicator]',
+        navigation: 'Match Page → Score rejected → Dispute auto-created',
       },
       {
         title: 'Review evidence',
@@ -195,8 +195,8 @@ const guideSections: GuideSection[] = [
       {
         title: 'Swiss System — generating rounds',
         content: 'In Swiss format, rounds are generated one at a time. After all matches in a round complete, click "Generate Next Round". The system pairs teams with similar records (e.g., 2-0 plays 2-0). The number of rounds is calculated automatically based on participant count.',
+        navigation: 'Tournament Manage Page → Brackets tab → Swiss View → Generate Next Round',
         tip: 'For 16 participants, Swiss typically runs 4 rounds. For 32, it runs 5. The system calculates this automatically.',
-        screenshotPlaceholder: '[SCREENSHOT: Swiss standings with "Generate Next Round" button]',
       },
       {
         title: 'Resetting matches',
@@ -210,7 +210,7 @@ const guideSections: GuideSection[] = [
       {
         title: 'Double Elimination specifics',
         content: 'In double elimination, losing a match sends a team to the losers bracket. Teams eliminated from the losers bracket are out. The grand final is between the winners bracket champion and losers bracket champion. If the losers bracket champion wins the first grand final, a reset match may be played.',
-        screenshotPlaceholder: '[SCREENSHOT: Double elimination bracket showing winners and losers sides]',
+        navigation: 'Tournament Manage Page → Brackets tab → Winners / Losers bracket view',
       },
     ],
   },
@@ -223,12 +223,12 @@ const guideSections: GuideSection[] = [
       {
         title: 'Finalize the tournament',
         content: 'Once the final match concludes, the tournament is automatically marked as completed. The winner is displayed on the tournament page and bracket. All results are permanently recorded.',
-        screenshotPlaceholder: '[SCREENSHOT: Completed tournament with winner displayed]',
+        navigation: 'Tournament Page → Results (auto-populated after final match)',
       },
       {
         title: 'Review analytics',
         content: 'Check your tournament analytics for insights: total registrations, match completion rates, average match duration, viewer counts (if streamed), and participant feedback. Use these metrics to improve future events.',
-        screenshotPlaceholder: '[SCREENSHOT: Tournament analytics dashboard]',
+        navigation: 'Organizer Dashboard (/organizer) → Analytics',
       },
       {
         title: 'Grow your community',
@@ -321,9 +321,10 @@ const GuideSectionCard = ({ section }: { section: GuideSection }) => {
                     <h4 className="text-base font-semibold text-white">{step.title}</h4>
                     <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">{step.content}</p>
 
-                    {step.screenshotPlaceholder && (
-                      <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.02] p-4 text-center">
-                        <p className="text-xs text-zinc-500 italic">{step.screenshotPlaceholder}</p>
+                    {step.navigation && (
+                      <div className="flex items-start gap-2 rounded-lg bg-rose-500/5 border border-rose-500/10 p-3">
+                        <ArrowRight className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-rose-300 font-mono">{step.navigation}</p>
                       </div>
                     )}
 
@@ -436,7 +437,7 @@ const OrganizerGuide = () => {
               Apply for your organizer license and start building your competitive community today.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/settings">
+              <Link to="/verification">
                 <Button className="bg-rose-500 hover:bg-rose-600 text-white px-6">
                   Apply for License
                   <ArrowRight className="w-4 h-4 ml-2" />
