@@ -37,6 +37,7 @@ import {
   Lock,
   MapPin,
   Plus,
+  RefreshCw,
   Settings,
   ShieldCheck,
   Shuffle,
@@ -1375,6 +1376,16 @@ const TournamentDashboard = () => {
                   >
                     <CheckCircle className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
                     Mark as Finished
+                  </Button>
+                )}
+
+                {isOrganizer && tournament.status === 'completed' && (
+                  <Button
+                    onClick={() => handleStatusChange('published')}
+                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(245,158,11,0.1)] group"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2 transition-transform group-hover:rotate-180" />
+                    Reopen Tournament
                   </Button>
                 )}
 
