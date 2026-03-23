@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Countdown } from '@/components/ui/Countdown';
+import { isBattleRoyale } from '@/utils/gameFeatures';
 
 interface TournamentHeaderProps {
     tournament: any;
@@ -168,9 +169,15 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                         )}
                                         {isRegistered && isCaptain && (
                                             <div className="flex gap-4">
-                                                <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/captain-match`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
-                                                    <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER MATCH ROOM</span>
-                                                </Button>
+                                                {isBattleRoyale(tournament.game || '') ? (
+                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-lobby`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
+                                                        <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER GAME ROOM</span>
+                                                    </Button>
+                                                ) : (
+                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/captain-match`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
+                                                        <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER MATCH ROOM</span>
+                                                    </Button>
+                                                )}
                                                 {(tournament.status === 'published' || tournament.status === 'open') && (
                                                     <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
                                                         WITHDRAW

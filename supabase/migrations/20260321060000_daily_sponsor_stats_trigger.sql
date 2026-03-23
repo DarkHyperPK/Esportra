@@ -51,5 +51,10 @@ CREATE TRIGGER trg_aggregate_sponsor_impression
 -- RLS on daily_sponsor_stats
 ALTER TABLE daily_sponsor_stats ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "admin_read_daily_stats" ON daily_sponsor_stats
-    FOR SELECT USING (true);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'daily_sponsor_stats' AND policyname = 'admin_read_daily_stats'
+  ) THEN
+    CREATE POLICY "admin_read_daily_stats" ON daily_sponsor_stats FOR SELECT USING (true);
+  END IF;
+END $$;
