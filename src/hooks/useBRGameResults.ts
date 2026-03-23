@@ -33,19 +33,36 @@ export function useBRGameResults({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch saved BR game results from API
+  // Fetch saved BR game results from API (with settings fallback)
   const { data: savedGames, isLoading } = useQuery({
     queryKey: ['br-game-results', tournamentId],
     queryFn: async () => {
+      // Try dedicated endpoint first
       try {
         const data = await apiClient.get<BRGameData[]>(
           `/api/tournaments/${tournamentId}/br-results`
         );
-        return data || [];
+        if (data && data.length > 0) return data;
       } catch {
-        // Endpoint may not exist yet — fall back to tournament settings
-        return [];
+        // Endpoint may not exist yet
       }
+      // Fallback: read from tournament settings.brResults
+      try {
+        const tournament = await apiClient.get<any>(`/api/tournaments/${tournamentId}`);
+        const settings = tournament?.tournament?.settings || tournament?.settings || {};
+        const brResults = settings.brResults;
+        if (brResults && typeof brResults === 'object') {
+          const games: BRGameData[] = [];
+          for (const key of Object.keys(brResults)) {
+            const g = brResults[key];
+            if (g && g.gameNumber) games.push(g);
+          }
+          if (games.length > 0) return games;
+        }
+      } catch {
+        // Settings also unavailable
+      }
+      return [];
     },
     enabled: !!tournamentId,
     staleTime: 1000 * 60 * 2,

@@ -80,6 +80,7 @@ const TournamentBrackets = React.lazy(() => import("./pages/tournaments/Brackets
 const TournamentDetailsUser = React.lazy(() => import("./pages/tournaments/Details"));
 const TournamentDetails = React.lazy(() => import("./pages/admin/TournamentDetails"));
 const CaptainMatchPage = React.lazy(() => import("./pages/tournaments/CaptainMatchPage"));
+const BRGameRoom = React.lazy(() => import("./pages/tournaments/BRGameRoom"));
 const ManageBracketPage = React.lazy(() => import("./pages/organizer/ManageBracketPage"));
 const FullscreenBracketPage = React.lazy(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
 const OrganizationPublicProfile = React.lazy(() => import("./pages/org/PublicProfile"));
@@ -502,6 +503,11 @@ const AppContent = React.memo(() => {
                 <Route path="/tournaments/:slug/captain-match/:matchId?" element={
                   <ProtectedRoute>
                     <CaptainMatchPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tournaments/:slug/br-lobby" element={
+                  <ProtectedRoute>
+                    <BRGameRoom />
                   </ProtectedRoute>
                 } />
                 <Route path="/map-veto/:token" element={<MapVetoToken />} />
