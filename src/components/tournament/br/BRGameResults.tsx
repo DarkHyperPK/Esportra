@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Save, ChevronUp, ChevronDown } from 'lucide-react';
+import { Save, ChevronUp, ChevronDown, Copy, Key } from 'lucide-react';
 import type { BRScoringPreset, BRTeamResult } from '@/types/battleRoyale';
 
 interface BRGameResultsProps {
@@ -14,8 +14,10 @@ interface BRGameResultsProps {
   scoringPreset: BRScoringPreset;
   killCap: number | null;
   existingResults?: BRTeamResult[];
-  onSave: (results: BRTeamResult[]) => void;
+  onSave: (results: BRTeamResult[], lobbyCode?: string) => void;
   isSaving?: boolean;
+  lobbyCode?: string;
+  isOrganizer?: boolean;
 }
 
 const BRGameResults: React.FC<BRGameResultsProps> = ({
@@ -26,8 +28,11 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   existingResults,
   onSave,
   isSaving,
+  lobbyCode: initialLobbyCode,
+  isOrganizer,
 }) => {
   const { toast } = useToast();
+  const [currentLobbyCode, setCurrentLobbyCode] = useState(initialLobbyCode || '');
 
   const [results, setResults] = useState<{ teamId: string; placement: number; kills: number }[]>(() => {
     if (existingResults?.length) {
@@ -88,7 +93,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
       };
     });
 
-    onSave(fullResults);
+    onSave(fullResults, currentLobbyCode || undefined);
   };
 
   // Sort by placement for display
@@ -102,6 +107,36 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
           <Badge variant="outline" className="text-xs">
             {teams.length} teams
           </Badge>
+        </div>
+        {/* Lobby Code */}
+        <div className="flex items-center gap-2 mt-3">
+          <Key className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          {isOrganizer ? (
+            <Input
+              placeholder="Enter lobby code for players..."
+              value={currentLobbyCode}
+              onChange={(e) => setCurrentLobbyCode(e.target.value)}
+              className="h-8 text-sm flex-1 max-w-xs font-mono"
+            />
+          ) : currentLobbyCode ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">
+                {currentLobbyCode}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(currentLobbyCode);
+                  toast({ title: 'Lobby code copied!' });
+                }}
+                className="text-gray-400 hover:text-white p-1"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <span className="text-xs text-gray-500 italic">No lobby code set yet</span>
+          )}
         </div>
       </CardHeader>
       <CardContent className="pt-4">

@@ -7,6 +7,7 @@ import { getCountryFlag, getCountryFlagUrl } from '@/utils/countries';
 import CountrySelector from '@/components/ui/CountrySelector';
 import { Globe } from 'lucide-react';
 import EntityAvatar from '@/components/ui/EntityAvatar';
+import esportsGames from '@/data/esportsGames.json';
 
 // ── Types ──
 interface TeamStats {
@@ -36,7 +37,7 @@ interface PlayerStats {
 }
 
 // ── Constants ──
-const GAMES = ['All Games', 'Valorant', 'CS2', 'League of Legends'];
+const GAMES = ['All Games', ...esportsGames.games.map(g => g.name)];
 const RP_PER_WIN = 50;
 const RP_PER_LOSS = -10;
 const RP_PER_TOURNAMENT_WIN = 500;
@@ -112,19 +113,19 @@ const Leaderboards: React.FC = () => {
         <div className="min-h-screen pb-20">
             {/* Hero Header */}
             <div className="relative overflow-hidden pt-10 pb-16 px-4">
-                <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 via-purple-500/5 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-b from-rose-500/10 via-rose-500/5 to-transparent pointer-events-none" />
                 <div className="relative z-10 max-w-5xl mx-auto text-center">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6 }}
                     >
-                        <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-4 py-1.5 mb-6">
-                            <Trophy className="w-4 h-4 text-indigo-400" />
-                            <span className="text-xs font-bold uppercase tracking-widest text-indigo-300">Rankings</span>
+                        <div className="inline-flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 rounded-full px-4 py-1.5 mb-6">
+                            <Trophy className="w-4 h-4 text-rose-400" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-rose-300">Rankings</span>
                         </div>
                         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-none mb-4">
-                            Leader<span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">boards</span>
+                            Leader<span className="bg-gradient-to-r from-rose-400 to-cyan-400 bg-clip-text text-transparent">boards</span>
                         </h1>
                         <p className="text-zinc-500 text-sm sm:text-base max-w-md mx-auto">
                             See who dominates the competition. Rankings based on match wins, tournament victories, and MVP performances.
@@ -141,7 +142,7 @@ const Leaderboards: React.FC = () => {
                         <button
                             onClick={() => setCategory('teams')}
                             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${category === 'teams'
-                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                                ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20'
                                 : 'text-zinc-500 hover:text-white hover:bg-white/5'
                                 }`}
                         >
@@ -151,7 +152,7 @@ const Leaderboards: React.FC = () => {
                         <button
                             onClick={() => setCategory('players')}
                             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${category === 'players'
-                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                                ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20'
                                 : 'text-zinc-500 hover:text-white hover:bg-white/5'
                                 }`}
                         >
@@ -164,9 +165,9 @@ const Leaderboards: React.FC = () => {
                     <div className="relative">
                         <button
                             onClick={() => setGameMenuOpen(!gameMenuOpen)}
-                            className="flex items-center gap-2 bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-indigo-500/30 transition-all backdrop-blur-md"
+                            className="flex items-center gap-2 bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-rose-500/30 transition-all backdrop-blur-md"
                         >
-                            <Target className="w-3.5 h-3.5 text-indigo-400" />
+                            <Target className="w-3.5 h-3.5 text-rose-400" />
                             {game}
                             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gameMenuOpen ? 'rotate-180' : ''}`} />
                         </button>
@@ -183,7 +184,7 @@ const Leaderboards: React.FC = () => {
                                             key={g}
                                             onClick={() => { setGame(g); setGameMenuOpen(false); }}
                                             className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all ${game === g
-                                                ? 'bg-indigo-600/20 text-indigo-300'
+                                                ? 'bg-rose-600/20 text-rose-300'
                                                 : 'text-zinc-400 hover:bg-white/5 hover:text-white'
                                                 }`}
                                         >
@@ -224,7 +225,7 @@ const Leaderboards: React.FC = () => {
                         <motion.div
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                            className="w-10 h-10 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full"
+                            className="w-10 h-10 border-2 border-rose-500/30 border-t-rose-500 rounded-full"
                         />
                     </div>
                 ) : data.length === 0 ? (
@@ -270,7 +271,7 @@ const Leaderboards: React.FC = () => {
                                         exit={{ opacity: 0 }}
                                         transition={{ delay: idx * 0.03, type: 'spring', stiffness: 120 }}
                                         className={`group relative grid grid-cols-[60px,1fr,repeat(4,minmax(60px,100px)),100px] gap-2 items-center px-6 py-4 rounded-2xl border transition-all duration-300 backdrop-blur-sm ${isTopThree
-                                            ? 'bg-zinc-900/60 border-indigo-500/20 hover:border-indigo-500/40 shadow-lg'
+                                            ? 'bg-zinc-900/60 border-rose-500/20 hover:border-rose-500/40 shadow-lg'
                                             : 'bg-zinc-950/40 border-white/5 hover:border-white/15 hover:bg-zinc-900/40'
                                             }`}
                                     >
@@ -296,7 +297,7 @@ const Leaderboards: React.FC = () => {
                                                     size="w-11 h-11"
                                                 />
                                             </div>
-                                            <span className="text-sm font-bold text-white truncate group-hover:text-indigo-300 transition-colors">
+                                            <span className="text-sm font-bold text-white truncate group-hover:text-rose-300 transition-colors">
                                                 {(entry as any).name || (entry as any).username}
                                             </span>
                                             {entry.country_code && (
@@ -323,7 +324,7 @@ const Leaderboards: React.FC = () => {
 
                                         {/* RP */}
                                         <div className="text-right">
-                                            <span className={`text-base font-black tabular-nums ${isTopThree ? 'text-indigo-400' : 'text-white'}`}>
+                                            <span className={`text-base font-black tabular-nums ${isTopThree ? 'text-rose-400' : 'text-white'}`}>
                                                 {entry.rp.toLocaleString()}
                                             </span>
                                             <span className="text-[9px] font-bold text-zinc-600 ml-1 uppercase">rp</span>
@@ -331,7 +332,7 @@ const Leaderboards: React.FC = () => {
 
                                         {/* Hover Glow */}
                                         {isTopThree && (
-                                            <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-500/5 blur-[60px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                            <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-500/5 blur-[60px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                                         )}
                                     </motion.div>
                                 );
@@ -345,8 +346,8 @@ const Leaderboards: React.FC = () => {
             <div className="max-w-5xl mx-auto px-4 mt-16">
                 <div className="bg-zinc-900/40 border border-white/5 rounded-3xl p-8 backdrop-blur-sm">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center">
-                            <TrendingUp className="w-5 h-5 text-indigo-400" />
+                        <div className="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center">
+                            <TrendingUp className="w-5 h-5 text-rose-400" />
                         </div>
                         <div>
                             <h3 className="text-sm font-black text-white uppercase tracking-tight">Ranking Points (RP)</h3>
@@ -358,7 +359,7 @@ const Leaderboards: React.FC = () => {
                             { label: 'Match Win', value: `+${RP_PER_WIN}`, icon: Swords, color: 'text-emerald-400' },
                             { label: 'Match Loss', value: `${RP_PER_LOSS}`, icon: Target, color: 'text-rose-400' },
                             { label: 'Tournament Win', value: `+${RP_PER_TOURNAMENT_WIN}`, icon: Trophy, color: 'text-yellow-400' },
-                            { label: 'Match MVP', value: `+${RP_PER_MVP}`, icon: Star, color: 'text-indigo-400' },
+                            { label: 'Match MVP', value: `+${RP_PER_MVP}`, icon: Star, color: 'text-rose-400' },
                         ].map(item => (
                             <div key={item.label} className="bg-zinc-950/60 rounded-2xl p-4 border border-white/5">
                                 <item.icon className={`w-5 h-5 ${item.color} mb-2`} />

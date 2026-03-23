@@ -22,6 +22,42 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import esportsGames from '@/data/esportsGames.json';
 
+// Maps series format strings from esportsGames.json to display labels and numeric best_of values
+const SERIES_FORMAT_MAP: Record<string, { label: string; value: number }> = {
+    bo1: { label: "Best of 1", value: 1 },
+    bo2: { label: "Best of 2", value: 2 },
+    bo3: { label: "Best of 3", value: 3 },
+    bo5: { label: "Best of 5", value: 5 },
+    bo7: { label: "Best of 7", value: 7 },
+    ft2: { label: "First to 2", value: 3 },
+    ft3: { label: "First to 3", value: 5 },
+    ft5: { label: "First to 5", value: 9 },
+};
+
+const DEFAULT_SERIES_OPTIONS = [
+    { label: "Best of 1", value: 1 },
+    { label: "Best of 3", value: 3 },
+    { label: "Best of 5", value: 5 },
+];
+
+/** Returns the dropdown options for a game's series formats */
+function getSeriesOptions(gameData: { features?: { seriesFormats?: string[] } } | null) {
+    const formats = gameData?.features?.seriesFormats;
+    if (!formats || formats.length === 0) return DEFAULT_SERIES_OPTIONS;
+    return formats
+        .map(f => SERIES_FORMAT_MAP[f])
+        .filter(Boolean);
+}
+
+/** Returns the display label for a best_of value given the game context */
+function getBestOfLabel(bestOf: number, gameData: { features?: { seriesFormats?: string[] } } | null): string {
+    const formats = gameData?.features?.seriesFormats;
+    if (formats) {
+        const match = formats.map(f => SERIES_FORMAT_MAP[f]).find(m => m && m.value === bestOf);
+        if (match) return match.label;
+    }
+    return `Best of ${bestOf}`;
+}
 
 interface StageSetupWizardProps {
     open: boolean;
@@ -408,7 +444,8 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             // 2. Batch sync all remaining stages via PUT (upsert)
             console.log('[StageWizard] Saving stages:', stagesConfig.map(s => ({ id: s.id, name: s.name, capacity: s.capacity })));
             const stageDtos = stagesConfig.map((stage, i) => {
-                const normalizedBestOf = stage.best_of === 3 ? 3 : stage.best_of === 5 ? 5 : 1;
+                const validBestOfValues = [1, 2, 3, 5, 7, 9];
+                const normalizedBestOf = validBestOfValues.includes(stage.best_of) ? stage.best_of : 1;
                 // Build config from settings for format-specific parameters
                 const config = stage.settings ? {
                     ...(stage.settings.swiss_groups != null && { swiss_groups: stage.settings.swiss_groups }),
@@ -812,7 +849,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     </h4>
                     <div className="grid grid-cols-1 gap-6">
                         <div className="space-y-2">
-                            <Label className="text-gray-300">Best Of (Matches)</Label>
+                            <Label className="text-gray-300">Series Format</Label>
                             <Select
                                 value={String(stage.best_of)}
                                 onValueChange={(val) => updateStageConfig(currentStageIndex, 'best_of', Number(val))}
@@ -821,9 +858,9 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="1">Best of 1</SelectItem>
-                                    <SelectItem value="3">Best of 3</SelectItem>
-                                    <SelectItem value="5">Best of 5</SelectItem>
+                                    {getSeriesOptions(gameData).map(opt => (
+                                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1162,16 +1199,16 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         </div>
                         <div className="grid grid-cols-1 gap-4">
                             <div className="space-y-2">
-                                <Label>Best Of</Label>
+                                <Label>Series Format</Label>
                                 <Select
                                     value={String(manualFormState.best_of)}
                                     onValueChange={(val) => setManualFormState({ ...manualFormState, best_of: Number(val) })}
                                 >
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="1">Best of 1</SelectItem>
-                                        <SelectItem value="3">Best of 3</SelectItem>
-                                        <SelectItem value="5">Best of 5</SelectItem>
+                                        {getSeriesOptions(gameData).map(opt => (
+                                            <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -1337,7 +1374,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                     </div>
                                     <div className="flex items-center gap-2 text-gray-400">
                                         <Shield className="h-3.5 w-3.5 text-gray-500" />
-                                        <span>Best of <span className="text-gray-300">{stage.best_of}</span></span>
+                                        <span className="text-gray-300">{getBestOfLabel(stage.best_of, gameData)}</span>
                                     </div>
                                 </CardContent>
                             </Card>

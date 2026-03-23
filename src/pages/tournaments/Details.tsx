@@ -47,6 +47,8 @@ import PremiumBackground from "@/components/ui/PremiumBackground";
 import { AnimatePresence, motion } from "framer-motion";
 import esportsGamesData from '@/data/esportsGames.json';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
+import { isBattleRoyale } from '@/utils/gameFeatures';
+import { useGameTerminology } from '@/hooks/useGameTerminology';
 
 interface EsportsGame {
   name: string;
@@ -130,6 +132,8 @@ const TournamentDetails = () => {
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState<string | null>(null);
   const [showBannerDialog, setShowBannerDialog] = useState(false);
+  const terminology = useGameTerminology(tournament?.game);
+  const isBR = isBattleRoyale(tournament?.game || '');
 
   const isOrganizer = currentRole === 'organizer' && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id);
   const requiresCheckIn = Boolean(tournament?.check_in_required);
@@ -677,7 +681,10 @@ const TournamentDetails = () => {
           <div className="container mx-auto px-4">
             <div className="sticky top-4 z-40 bg-[#050505]/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl mb-12 shadow-2xl shadow-black/50 mx-auto max-w-3xl">
               <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">
-                {['Overview', 'Teams', 'Brackets', 'Stages', 'Rules'].map((tab) => (
+                {(isBR
+                  ? ['Overview', terminology.competitorLabelPlural, 'Leaderboard', 'Rules']
+                  : ['Overview', terminology.competitorLabelPlural, 'Brackets', 'Stages', 'Rules']
+                ).map((tab) => (
                   <TabsTrigger
                     key={tab}
                     value={tab.toLowerCase()}
@@ -696,30 +703,43 @@ const TournamentDetails = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="teams">
+          <TabsContent value={terminology.competitorLabelPlural.toLowerCase()}>
             <div className="container mx-auto px-4">
               <TeamsTab participants={enrichedParticipants} />
             </div>
           </TabsContent>
 
-          <TabsContent value="brackets">
-            {/* Full width container for brackets */}
-            <div className="w-full px-4 md:px-8">
-              <BracketsTab
-                tournamentId={tournament.id}
-                stages={stages}
-                selectedStageId={selectedStageId}
-                activeVersionsMap={activeVersionsMap}
-                onStageSelect={setSelectedStageId}
-              />
-            </div>
-          </TabsContent>
+          {isBR ? (
+            <TabsContent value="leaderboard">
+              <div className="container mx-auto px-4">
+                <div className="text-center py-16">
+                  <Trophy className="h-12 w-12 text-rose-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-heading text-white mb-2">Leaderboard</h3>
+                  <p className="text-gray-400">Points-based standings will appear here once games are played.</p>
+                </div>
+              </div>
+            </TabsContent>
+          ) : (
+            <>
+              <TabsContent value="brackets">
+                <div className="w-full px-4 md:px-8">
+                  <BracketsTab
+                    tournamentId={tournament.id}
+                    stages={stages}
+                    selectedStageId={selectedStageId}
+                    activeVersionsMap={activeVersionsMap}
+                    onStageSelect={setSelectedStageId}
+                  />
+                </div>
+              </TabsContent>
 
-          <TabsContent value="stages">
-            <div className="container mx-auto px-4">
-              <StagesTab tournamentId={tournament.id} />
-            </div>
-          </TabsContent>
+              <TabsContent value="stages">
+                <div className="container mx-auto px-4">
+                  <StagesTab tournamentId={tournament.id} />
+                </div>
+              </TabsContent>
+            </>
+          )}
 
           <TabsContent value="rules">
             <div className="container mx-auto px-4">

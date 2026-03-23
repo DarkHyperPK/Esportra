@@ -19,6 +19,7 @@ import { FaceitMatchReport } from '@/components/tournament/FaceitMatchReport';
 import { BracketMatch, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
 import { gameHasMapVeto } from '@/utils/gameFeatures';
+import { useGameTerminology } from '@/hooks/useGameTerminology';
 import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
 import TimeProposalCard from '@/components/tournament/TimeProposalCard';
 
@@ -61,6 +62,7 @@ const CaptainMatchPage = () => {
     const [roundDeadline, setRoundDeadline] = useState<string | null>(null);
     const [participantStatus, setParticipantStatus] = useState<string | null>(null);
     const [stageConfigs, setStageConfigs] = useState<Record<string, any>>({});
+    const terminology = useGameTerminology(tournament?.game);
     // Keep schedulingConfig as a derived value or helper for backward compatibility if needed, 
     // but better to use lookups. We'll leave the state for now but ignore it in favor of the map.
 
@@ -867,8 +869,8 @@ const CaptainMatchPage = () => {
                                             matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                             team1Id={activeMatch.team1?.id}
                                             team2Id={activeMatch.team2?.id}
-                                            team1Name={activeMatch.team1?.name || 'Team 1'}
-                                            team2Name={activeMatch.team2?.name || 'Team 2'}
+                                            team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                            team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                             userTeamId={userTeamId}
                                             scheduledTime={effectiveScheduledTime}
                                             isCaptain={isCaptain}
@@ -892,8 +894,8 @@ const CaptainMatchPage = () => {
                                                 <TimeProposalCard
                                                     matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                                     roundDeadline={effectiveDeadline}
-                                                    team1Name={activeMatch.team1?.name || 'Team 1'}
-                                                    team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                    team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                                    team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                                     userTeamId={userTeamId}
                                                     team1Id={activeMatch.team1?.id}
                                                     isCaptain={isCaptain}
@@ -916,8 +918,8 @@ const CaptainMatchPage = () => {
                                             return (
                                                 <FaceitMatchReport
                                                     matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                    team1Name={activeMatch.team1?.name || 'Team 1'}
-                                                    team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                    team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                                    team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                                     isCaptain={isCaptain}
                                                     onSuccess={() => {
                                                         toast({ title: "Match Reported", description: "CS2 result verified and saved." });
@@ -991,8 +993,8 @@ const CaptainMatchPage = () => {
                                                         userTeamId={userTeamId}
                                                         team1Id={activeMatch.team1?.id}
                                                         team2Id={activeMatch.team2?.id}
-                                                        team1Name={activeMatch.team1?.name || 'Team 1'}
-                                                        team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                        team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                                        team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                                         team1Logo={activeMatch.team1?.logo_url}
                                                         team2Logo={activeMatch.team2?.logo_url}
                                                         isCaptain={isCaptain}
@@ -1094,8 +1096,8 @@ const CaptainMatchPage = () => {
                                         matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                         userTeamId={userTeamId}
                                         team1Id={activeMatch.team1?.id}
-                                        team1Name={activeMatch.team1?.name || 'Team 1'}
-                                        team2Name={activeMatch.team2?.name || 'Team 2'}
+                                        team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                        team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                     />
                                     <div className="px-4 py-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-200">
                                         <p className="flex gap-2">
@@ -1152,8 +1154,8 @@ const CaptainMatchPage = () => {
                             gameNumber={nextGameNumber}
                             mapName={nextGameMap?.name}
                             mapId={nextGameMap?.id}
-                            team1Name={activeMatch?.team1?.name || 'Team 1'}
-                            team2Name={activeMatch?.team2?.name || 'Team 2'}
+                            team1Name={activeMatch?.team1?.name || `${terminology.competitorLabel} 1`}
+                            team2Name={activeMatch?.team2?.name || `${terminology.competitorLabel} 2`}
                             isCaptain={isCaptain}
                             onSuccess={() => {
                                 setUploadOpen(false);
