@@ -18,6 +18,7 @@ import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
 import { FaceitMatchReport } from '@/components/tournament/FaceitMatchReport';
 import { BracketMatch, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
+import { gameHasMapVeto } from '@/utils/gameFeatures';
 import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
 import TimeProposalCard from '@/components/tournament/TimeProposalCard';
 
@@ -446,8 +447,9 @@ const CaptainMatchPage = () => {
     }, [activeMatchVersion, stageConfigs]);
 
     const isVetoEnabled = useMemo(() => {
+        if (!gameHasMapVeto(tournament?.game || '')) return false;
         return tournament?.settings?.mapVetoEnabled !== false;
-    }, [tournament?.settings]);
+    }, [tournament?.settings, tournament?.game]);
 
     // Watch reports for the active match — used to detect disputed status
     const activeMatchRawId = activeMatch ? activeMatch.id.replace(/^(db-|wb-|lb-)/, '') : undefined;

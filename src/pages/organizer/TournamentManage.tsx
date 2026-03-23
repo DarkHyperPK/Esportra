@@ -72,6 +72,7 @@ import {
 import { handleError, TournamentError, AuthError, DatabaseError } from '@/utils/errorHandler';
 import { tournamentApi } from '@/services/api';
 import esportsGames from '@/data/esportsGames.json';
+import { getGameFeatures } from '@/utils/gameFeatures';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import BanManagement from '@/components/organizer/BanManagement';
@@ -1861,8 +1862,8 @@ const TournamentDashboard = () => {
                         </CardContent>
                       </Card>
 
-                      {/* Assisted Match Reporting — Valorant only */}
-                      {tournament?.game?.toLowerCase() === 'valorant' && (
+                      {/* Assisted Match Reporting — games with API integration */}
+                      {getGameFeatures(tournament?.game || '').assistedReporting && (
                         <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                           <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
@@ -1901,8 +1902,8 @@ const TournamentDashboard = () => {
                         </Card>
                       )}
 
-                      {/* Map Veto — games with map pools only */}
-                      {['valorant', 'counter-strike 2'].includes(tournament?.game?.toLowerCase() || '') && (
+                      {/* Map Veto — games with map veto support */}
+                      {getGameFeatures(tournament?.game || '').mapVeto && (
                         <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                           <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">

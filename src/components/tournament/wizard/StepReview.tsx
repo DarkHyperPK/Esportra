@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { TournamentWizardData, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
 import { cn } from '@/lib/utils';
+import { getGameFeatures } from '@/utils/gameFeatures';
 
 interface StepReviewProps {
     data: TournamentWizardData;
@@ -29,6 +30,7 @@ interface StepReviewProps {
 
 const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
     const hasErrors = Object.keys(errors).length > 0;
+    const features = getGameFeatures(data.game || '');
 
     const formatDate = (dateStr: string, timeStr?: string) => {
         if (!dateStr) return 'Not set';
@@ -108,9 +110,14 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
             title: 'Settings',
             icon: <Settings className="w-5 h-5" />,
             items: [
-                { label: 'Map Veto', value: data.mapVetoEnabled ? 'Enabled' : 'Disabled' },
-                ...(data.game?.toLowerCase() === 'valorant'
+                ...(features.mapVeto
+                    ? [{ label: 'Map Veto', value: data.mapVetoEnabled ? 'Enabled' : 'Disabled' }]
+                    : []),
+                ...(features.assistedReporting
                     ? [{ label: 'Assisted Match Reporting', value: data.assistedMatchReporting ? 'Enabled' : 'Disabled' }]
+                    : []),
+                ...(!features.mapVeto && !features.assistedReporting
+                    ? [{ label: 'Game Settings', value: 'No game-specific settings' }]
                     : []),
             ]
         },

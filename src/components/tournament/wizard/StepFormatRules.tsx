@@ -22,6 +22,7 @@ import esportsGames from '@/data/esportsGames.json';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getWebsiteAssetUrl } from '@/lib/storage';
+import { getGameByName } from '@/utils/gameFeatures';
 
 /* ──────────────────────────────────────────────────────────────
    Sub-components
@@ -95,9 +96,10 @@ const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index }) =
 
 const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, tournamentId, participantsCount }) => {
     const { toast } = useToast();
-    const selectedGame = esportsGames.games.find(
-        g => g.name.toLowerCase() === (data.game || '').toLowerCase()
-    );
+    const selectedGame = getGameByName(data.game || '');
+    const gameFeatures = selectedGame?.features;
+    const hasMapPool = gameFeatures?.mapPool ?? false;
+    const mapPoolSizeLimit = gameFeatures?.mapPoolSize ?? 7;
 
     const isPowerOfTwo = (n: number) => n > 0 && (n & (n - 1)) === 0;
 
@@ -105,10 +107,10 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
     const [availableMaps, setAvailableMaps] = useState<{ id: string; map_name: string; map_image_url?: string }[]>([]);
     const [loadingMaps, setLoadingMaps] = useState(false);
 
-    // Fetch maps when game changes
+    // Fetch maps when game changes — only for games with map pools
     useEffect(() => {
         const fetchMaps = async () => {
-            if (!data.game) {
+            if (!data.game || !hasMapPool) {
                 setAvailableMaps([]);
                 return;
             }
@@ -125,9 +127,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
 
                 setAvailableMaps(maps || []);
 
-                // Auto-select first 7 active maps by default if none selected
+                // Auto-select first batch of maps by default if none selected
                 if (maps && maps.length > 0 && (!data.mapPoolIds || data.mapPoolIds.length === 0)) {
-                    updateData({ mapPoolIds: maps.slice(0, 7).map(m => m.id) });
+                    updateData({ mapPoolIds: maps.slice(0, mapPoolSizeLimit).map(m => m.id) });
                 }
             } catch (err) {
                 console.error('[StepFormatRules] Error fetching maps:', err);
@@ -147,10 +149,10 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         if (currentIds.includes(mapId)) {
             updateData({ mapPoolIds: currentIds.filter(id => id !== mapId) });
         } else {
-            if (currentIds.length >= 7) {
+            if (currentIds.length >= mapPoolSizeLimit) {
                 toast({
                     title: "Map Limit Reached",
-                    description: "You can only select up to 7 maps for the map pool.",
+                    description: `You can only select up to ${mapPoolSizeLimit} maps for the map pool.`,
                     variant: "destructive"
                 });
                 return;
@@ -170,11 +172,6 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
             });
         }
     }, [availableMaps]);
-
-
-    // Determine available formats for the selected game
-    const gameFormats = selectedGame?.formats || [];
-    const hasMultipleFormats = gameFormats.length > 1;
 
 
     return (
@@ -294,47 +291,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                 </p>
             </div>
 
-            {/* Game Format Selector */}
-            {hasMultipleFormats && (
-                <div className="space-y-3">
-                    <div className="w-full h-px bg-white/5 my-6" />
-                    <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        <Users className="w-4 h-4" />
-                        Team Size Format
-                    </Label>
-                    <Select
-                        value={gameFormats.find(f => f.teamSize === data.teamSize)?.value || selectedGame?.defaultFormat}
-                        onValueChange={(value) => {
-                            const newFormat = gameFormats.find(f => f.value === value);
-                            if (newFormat) {
-                                updateData({ teamSize: newFormat.teamSize });
-                                toast({
-                                    title: "Format Updated",
-                                    description: `Team size set to ${newFormat.teamSize} (${newFormat.name})`,
-                                });
-                            }
-                        }}
-                    >
-                        <SelectTrigger className="w-full font-bold tracking-tight">
-                            <SelectValue placeholder="Select format" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {gameFormats.map((format: any) => (
-                                <SelectItem key={format.value} value={format.value}>
-                                    {format.name} ({format.teamSize === 1 ? 'Solo' : `${format.teamSize} Players`})
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <p className="text-sm text-gray-400">
-                        Select standard team size for this game.
-                    </p>
-                </div>
-            )}
 
-
-            {/* Map Pool Selection - Only show if game is selected */}
-            {data.game && (
+            {/* Map Pool Selection - Only show for games with map pools */}
+            {hasMapPool && data.game && (
                 <div className="space-y-4">
                     <div className="w-full h-px bg-white/5 my-6" />
                     <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
@@ -365,18 +324,18 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                         variant="outline"
                                         size="sm"
                                         onClick={() => {
-                                            const mapsToSelect = availableMaps.slice(0, 7);
+                                            const mapsToSelect = availableMaps.slice(0, mapPoolSizeLimit);
                                             updateData({ mapPoolIds: mapsToSelect.map(m => m.id) });
-                                            if (availableMaps.length > 7) {
+                                            if (availableMaps.length > mapPoolSizeLimit) {
                                                 toast({
                                                     title: "Selection Limited",
-                                                    description: "Selected the first 7 maps due to map pool limit.",
+                                                    description: `Selected the first ${mapPoolSizeLimit} maps due to map pool limit.`,
                                                 });
                                             }
                                         }}
                                         className="text-xs"
                                     >
-                                        {availableMaps.length > 7 ? 'Select Top 7' : 'Select All'}
+                                        {availableMaps.length > mapPoolSizeLimit ? `Select Top ${mapPoolSizeLimit}` : 'Select All'}
                                     </Button>
                                     <Button
                                         type="button"

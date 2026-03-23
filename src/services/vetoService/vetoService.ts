@@ -1,18 +1,20 @@
 import { BestOf, GameVetoConfig, TeamSide, VetoAction, VetoStep } from './types';
-import { VALORANT_CONFIG, CS2_CONFIG } from './sequences';
+import { VALORANT_CONFIG, CS2_CONFIG, R6S_CONFIG, COD_CONFIG } from './sequences';
 
 export class VetoService {
     private config: GameVetoConfig;
 
     constructor(game: string = 'valorant') {
-        // Map supported games to their configs
         const gameKey = game.toLowerCase();
         if (gameKey === 'valorant') {
             this.config = VALORANT_CONFIG;
         } else if (gameKey === 'cs2' || gameKey === 'counter-strike 2') {
             this.config = CS2_CONFIG;
+        } else if (gameKey === 'r6s' || gameKey === 'rainbow six siege') {
+            this.config = R6S_CONFIG;
+        } else if (gameKey === 'cod' || gameKey === 'call of duty') {
+            this.config = COD_CONFIG;
         } else {
-            // Default to Valorant
             this.config = VALORANT_CONFIG;
         }
     }

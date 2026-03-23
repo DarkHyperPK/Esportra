@@ -4,9 +4,13 @@ import { Settings, Zap, Swords } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { WizardStepProps } from '@/types/tournamentWizard';
+import { getGameFeatures } from '@/utils/gameFeatures';
 
 const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
-    const isValorant = data.game?.toLowerCase() === 'valorant';
+    const features = getGameFeatures(data.game || '');
+    const showMapVeto = features.mapVeto;
+    const showAssistedReporting = features.assistedReporting;
+    const hasAnySettings = showMapVeto || showAssistedReporting;
 
     return (
         <motion.div
@@ -22,7 +26,8 @@ const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
                 </Label>
 
                 <div className="space-y-4">
-                    {/* Map Veto Toggle */}
+                    {/* Map Veto Toggle — only for games with map veto */}
+                    {showMapVeto && (
                     <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
                         <Switch
                             checked={data.mapVetoEnabled}
@@ -35,13 +40,13 @@ const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
                             </p>
                             <p className="text-xs text-gray-400 mt-1">
                                 Teams must complete a map ban/pick phase before reporting match results.
-                                Disable this for games without map selection.
                             </p>
                         </div>
                     </div>
+                    )}
 
-                    {/* Assisted Match Reporting - Valorant only */}
-                    {isValorant && (
+                    {/* Assisted Match Reporting — games with API integration only */}
+                    {showAssistedReporting && (
                         <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
                             <Switch
                                 checked={data.assistedMatchReporting}
@@ -61,6 +66,15 @@ const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
                                     </p>
                                 )}
                             </div>
+                        </div>
+                    )}
+
+                    {/* No game-specific settings available */}
+                    {!hasAnySettings && (
+                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
+                            <p className="text-sm text-gray-400">
+                                No game-specific settings available for {data.game || 'this game'}.
+                            </p>
                         </div>
                     )}
                 </div>

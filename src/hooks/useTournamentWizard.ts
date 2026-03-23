@@ -17,6 +17,7 @@ import { apiClient } from '@/lib/apiClient';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
 import esportsGames from '@/data/esportsGames.json';
+import { getGameByName, getDefaultTeamSize } from '@/utils/gameFeatures';
 import slugify from 'slugify';
 
 const STORAGE_KEY = 'tournament_wizard_draft';
@@ -64,10 +65,14 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
         setData(prev => {
             const newData = { ...prev, ...updates };
             if (updates.game && updates.game !== prev.game) {
-                const game = esportsGames.games.find(g => g.name.toLowerCase() === updates.game?.toLowerCase());
+                const game = getGameByName(updates.game);
                 if (game) {
-                    const defaultFormat = game.formats.find(f => f.value === game.defaultFormat);
-                    if (defaultFormat) newData.teamSize = defaultFormat.teamSize;
+                    newData.teamSize = getDefaultTeamSize(updates.game);
+                    // Auto-configure game features
+                    if (!game.features.mapVeto) {
+                        newData.mapVetoEnabled = false;
+                        newData.mapPoolIds = [];
+                    }
                 }
             }
             return newData;
