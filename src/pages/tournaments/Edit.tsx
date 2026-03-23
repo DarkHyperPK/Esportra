@@ -108,16 +108,22 @@ const EditTournament = () => {
         registrationOpens: regOpensDate.toISOString().slice(0, 16),
         registrationCloses: regDeadline.toISOString().slice(0, 16),
         checkInRequired: tournamentData.check_in_required ?? false,
-        checkInWindowMinutes: (tournamentData.settings as any)?.checkInWindowMinutes ||
-          (checkInDeadline
-            ? Math.round((startDate.getTime() - checkInDeadline.getTime()) / 60000)
-            : 30),
+        checkInWindowMinutes: (() => {
+          const fromSettings = (tournamentData.settings as any)?.checkInWindowMinutes;
+          if (fromSettings && fromSettings >= 5) return fromSettings;
+          if (checkInDeadline) {
+            const mins = Math.round((startDate.getTime() - checkInDeadline.getTime()) / 60000);
+            if (mins >= 5) return mins;
+          }
+          return 30;
+        })(),
         autoRemoveUnchecked: tournamentData.auto_remove_unchecked ?? false,
         waitlistEnabled: false, // Default
         waitlistMax: 10, // Default
 
         // Game-specific settings
         assistedMatchReporting: !!(tournamentData.settings as any)?.assistedMatchReporting,
+        mapVetoEnabled: (tournamentData.settings as any)?.mapVetoEnabled ?? true,
       };
 
       console.log('[EditTournament] Mapped assistedMatchReporting:', mappedData.assistedMatchReporting);

@@ -33,6 +33,7 @@ interface TournamentCardProps {
   organizer_name?: string;
   start_date?: string;
   end_date?: string;
+  winner_name?: string;
 }
 
 const TournamentCardInner: React.FC<TournamentCardProps> = ({
@@ -58,6 +59,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   organizer_name,
   start_date,
   end_date,
+  winner_name,
 }) => {
   const navigate = useNavigate();
   const { currentRole } = useRole();
@@ -233,6 +235,16 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
               <span>{prize_pool}</span>
             </div>
           </div>
+
+          {/* Winner Display */}
+          {isCompleted && winner_name && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+              <span className="text-xs font-bold text-yellow-300 uppercase tracking-wider truncate">
+                Winner: {winner_name}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Action Button Area - Slide Up on Hover */}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
 import { TournamentCard } from '@/components/TournamentCard';
 import GameFilter from '@/components/GameFilter';
@@ -8,13 +8,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { RegistrationDetails } from '@/types/tournament';
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Trophy, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const UpcomingTournaments = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedGames, setSelectedGames] = useState<string[]>([]);
@@ -82,13 +83,14 @@ const UpcomingTournaments = () => {
           is_online: !tournament.venue_id,
           created_at: tournament.created_at,
           updated_at: tournament.updated_at,
-          image_url: tournament.banner_url || tournament.logo_url,
+          image_url: tournament.banner_url || undefined,
           team_size: 1,
           slug: tournament.slug,
           status: tournament.status || 'open',
           registrationData,
           start_date: tournament.start_date,
           end_date: tournament.end_date,
+          winner_name: tournament.winner_team_name,
         };
       });
 
@@ -103,7 +105,7 @@ const UpcomingTournaments = () => {
 
   useEffect(() => {
     fetchTournaments();
-  }, [user]);
+  }, [user, location.key]);
 
   const handleTournamentDelete = () => {
     fetchTournaments();
@@ -237,6 +239,7 @@ const UpcomingTournaments = () => {
                     slug={tournament.slug}
                     start_date={tournament.start_date}
                     end_date={tournament.end_date}
+                    winner_name={tournament.winner_name}
                   />
                 </motion.div>
               ))

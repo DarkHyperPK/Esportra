@@ -107,6 +107,21 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 </span>
                             </div>
 
+                            {/* Winner Banner */}
+                            {tournament.status === 'completed' && tournament.winner_team_name && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.6, delay: 0.4 }}
+                                    className="mt-8 inline-flex items-center gap-3 px-6 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-full backdrop-blur-md"
+                                >
+                                    <Trophy className="w-5 h-5 text-yellow-400" />
+                                    <span className="text-sm font-bold text-yellow-300 uppercase tracking-wider">
+                                        Winner: {tournament.winner_team_name}
+                                    </span>
+                                </motion.div>
+                            )}
+
                             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-4 leading-none text-white mix-blend-difference">
                                 {tournament.name.split(' ').slice(0, 2).join(' ')}
                             </h1>

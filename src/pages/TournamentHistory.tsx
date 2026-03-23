@@ -141,7 +141,7 @@ const TournamentHistoryPage = () => {
                                                 transition={{ duration: 0.7 }}
                                             >
                                                 <EntityAvatar
-                                                    src={t.banner_url || t.logo_url}
+                                                    src={t.banner_url || undefined}
                                                     name={t.name}
                                                     entityId={t.id}
                                                     type="team" // using team for shapes style which is better for tournaments

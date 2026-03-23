@@ -79,7 +79,7 @@ const TournamentList = () => {
         user_id: user.id, // Current user is organization owner here
         entry_fee: tournament.entry_fee?.toString() || 'Free',
         is_online: !tournament.venue_id,
-        image_url: tournament.banner_url || tournament.logo_url,
+        image_url: tournament.banner_url || undefined,
         slug: tournament.slug,
         status: (tournament.status || 'draft') as 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled',
         team_size: tournament.team_size || 1, // fallback default

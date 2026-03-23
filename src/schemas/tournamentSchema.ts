@@ -146,7 +146,8 @@ export const validateStep = (step: number, data: any): { valid: boolean; errors:
         2: formatRulesSchema,
         3: brandingSchema,
         4: registrationSchema,
-        5: fullTournamentSchema, // Review validates everything
+        // 5: Settings — no validation needed (all booleans with defaults)
+        6: fullTournamentSchema, // Review validates everything
     };
 
     const schema = schemas[step];

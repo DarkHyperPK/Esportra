@@ -20,19 +20,17 @@ import { format } from 'date-fns';
 
 interface ScheduledMatch {
   id: string;
-  scheduled_time: string;
+  scheduled_time: string | null;
   round_index: number;
   match_number: number;
   status: string;
-  team1: { name: string } | null;
-  team2: { name: string } | null;
-  version: {
-    tournament: {
-      id: string;
-      name: string;
-      game: string;
-    }
-  };
+  team1_name: string | null;
+  team2_name: string | null;
+  tournament_id: string;
+  tournament_name: string;
+  tournament_game: string;
+  tournament_slug: string;
+  stage_name: string;
 }
 
 const TournamentSchedule = () => {
@@ -145,28 +143,28 @@ const TournamentSchedule = () => {
                           <TableCell className="font-medium whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-3.5 h-3.5 text-gray-500" />
-                              {format(new Date(match.scheduled_time), 'HH:mm')}
+                              {match.scheduled_time ? format(new Date(match.scheduled_time), 'HH:mm') : '—'}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-medium text-white">{match.version?.tournament?.name || 'Unknown Tournament'}</span>
-                              <span className="text-xs text-gray-500">{match.version?.tournament?.game || ''}</span>
+                              <span className="font-medium text-white">{match.tournament_name || 'Unknown Tournament'}</span>
+                              <span className="text-xs text-gray-500">{match.tournament_game || ''}</span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <span className={match.team1 ? "text-white" : "text-gray-500 italic"}>
-                                {match.team1?.name || 'TBD'}
+                              <span className={match.team1_name ? "text-white" : "text-gray-500 italic"}>
+                                {match.team1_name || 'TBD'}
                               </span>
                               <span className="text-gray-600 text-xs">VS</span>
-                              <span className={match.team2 ? "text-white" : "text-gray-500 italic"}>
-                                {match.team2?.name || 'TBD'}
+                              <span className={match.team2_name ? "text-white" : "text-gray-500 italic"}>
+                                {match.team2_name || 'TBD'}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-gray-400">
-                            R{match.round_index + 1} M{match.match_number}
+                            R{(match.round_index ?? 0) + 1} M{match.match_number ?? 0}
                           </TableCell>
                           <TableCell className="text-right">
                             <Badge variant="outline" className={`

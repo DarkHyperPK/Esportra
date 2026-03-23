@@ -37,9 +37,11 @@ import {
   Lock,
   MapPin,
   Plus,
+  RefreshCw,
   Settings,
   ShieldCheck,
   Shuffle,
+  Swords,
   Trash2,
   Trophy,
   Unlock,
@@ -70,6 +72,7 @@ import {
 import { handleError, TournamentError, AuthError, DatabaseError } from '@/utils/errorHandler';
 import { tournamentApi } from '@/services/api';
 import esportsGames from '@/data/esportsGames.json';
+import { getGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import BanManagement from '@/components/organizer/BanManagement';
@@ -79,6 +82,9 @@ import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnoun
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
 import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
+import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
+import BRGameResults from '@/components/tournament/br/BRGameResults';
+import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
@@ -277,7 +283,7 @@ const TournamentDashboard = () => {
   const staffPermissions = (dashboardData?.staffPermissions || []) as StaffPermission[];
 
   // Tab State & Direction
-  const TAB_ORDER = ['overview', 'participants', 'stages', 'bans', 'disputes', 'staff', 'settings'];
+  const TAB_ORDER = ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'staff', 'settings'];
   // activeTab is declared below with location.state init
   const [direction, setDirection] = useState(0);
   const prevTabRef = React.useRef(0);
@@ -318,6 +324,7 @@ const TournamentDashboard = () => {
 
   const [removingUnchecked, setRemovingUnchecked] = useState(false);
   const [savingAssistedReporting, setSavingAssistedReporting] = useState(false);
+  const [savingMapVeto, setSavingMapVeto] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [cascadeWarnings, setCascadeWarnings] = useState<Array<{ entity: string; count: number; description?: string }>>([]);
   const [hasStaffAccess, setHasStaffAccess] = useState(false);
@@ -638,6 +645,35 @@ const TournamentDashboard = () => {
       });
     } finally {
       setSavingAssistedReporting(false);
+    }
+  };
+
+  const handleToggleMapVeto = async (enabled: boolean) => {
+    if (!tournament?.id) return;
+    setSavingMapVeto(true);
+    try {
+      const currentSettings = typeof tournament.settings === 'object' && tournament.settings
+        ? tournament.settings
+        : {};
+      await apiClient.put(`/api/tournaments/${tournament.id}`, {
+        settings: { ...currentSettings, mapVetoEnabled: enabled },
+      });
+      toast({
+        title: enabled ? 'Map Veto Enabled' : 'Map Veto Disabled',
+        description: enabled
+          ? 'Captains will go through a map veto process before each match.'
+          : 'Map veto has been turned off. Matches will proceed without map selection.',
+      });
+      refetchDashboard();
+    } catch (error: any) {
+      console.error('Error toggling map veto:', error);
+      toast({
+        title: 'Failed to update setting',
+        description: error.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingMapVeto(false);
     }
   };
 
@@ -1337,6 +1373,12 @@ const TournamentDashboard = () => {
                     <MapPin className="w-4 h-4" />
                     {tournament.venue || 'Remote'}
                   </div>
+                  {tournament.status === 'completed' && tournament.winner_team_name && (
+                    <div className="flex items-center gap-2 text-yellow-400">
+                      <Trophy className="w-4 h-4" />
+                      Winner: {tournament.winner_team_name}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1369,6 +1411,16 @@ const TournamentDashboard = () => {
                   >
                     <CheckCircle className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
                     Mark as Finished
+                  </Button>
+                )}
+
+                {isOrganizer && tournament.status === 'completed' && (
+                  <Button
+                    onClick={() => handleStatusChange('published')}
+                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(245,158,11,0.1)] group"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2 transition-transform group-hover:rotate-180" />
+                    Reopen Tournament
                   </Button>
                 )}
 
@@ -1470,7 +1522,12 @@ const TournamentDashboard = () => {
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               <TabsList className="bg-transparent p-0 h-auto gap-1">
-                {['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'].map((tab) => {
+                {(() => {
+                  const isBR = isBattleRoyale(tournament?.game || '');
+                  const tabs = isBR
+                    ? ['overview', 'participants', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                    : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
+                  return tabs.map((tab) => {
                   if (tab === 'brackets') {
                     return (
                       <button
@@ -1498,7 +1555,8 @@ const TournamentDashboard = () => {
                       <span className="relative z-10">{tab}</span>
                     </TabsTrigger>
                   );
-                })}
+                });
+                })()}
               </TabsList>
             </motion.div>
           </div>
@@ -1564,6 +1622,70 @@ const TournamentDashboard = () => {
                       onUpdate={() => refetchDashboard()}
                       game={tournament.game || ''}
                     />
+                  </TabTransition>
+                </TabsContent>
+              )}
+
+              {/* BR Games Tab */}
+              {activeTab === 'games' && isBattleRoyale(tournament?.game || '') && (
+                <TabsContent value="games" forceMount key="games">
+                  <TabTransition direction={direction}>
+                    {(() => {
+                      const brConf = getBRConfig(tournament?.game || '');
+                      const brSettings = tournament?.settings;
+                      const gameCount = brSettings?.brGameCount || brConf?.defaultGameCount || 6;
+                      const presetKey = brSettings?.brScoringPreset || brConf?.defaultPreset || '';
+                      const scoringPreset = brSettings?.brCustomScoring
+                        || (brConf?.scoringPresets?.[presetKey])
+                        || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
+                      const killCap = brSettings?.brKillCap ?? scoringPreset.killCap ?? null;
+
+                      const brTeams = participants.map(p => ({
+                        id: p.team_id || p.id,
+                        name: p.team_name || p.name || 'Unknown',
+                        logo: p.team_logo || undefined,
+                      }));
+
+                      return (
+                        <div className="space-y-6">
+                          {/* Scoring Config */}
+                          <BRScoringConfig preset={scoringPreset} killCap={killCap} />
+
+                          {/* Leaderboard placeholder */}
+                          <BRLeaderboard
+                            entries={[]}
+                            totalGames={gameCount}
+                            gamesCompleted={0}
+                          />
+
+                          {/* Game Result Entry */}
+                          <div className="space-y-4">
+                            <h3 className="text-lg font-bold text-white">Enter Game Results</h3>
+                            {brTeams.length === 0 ? (
+                              <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-6 text-center">
+                                <p className="text-gray-400">No participants registered yet. Results can be entered after teams register.</p>
+                              </Card>
+                            ) : (
+                              Array.from({ length: gameCount }, (_, i) => (
+                                <BRGameResults
+                                  key={i}
+                                  gameNumber={i + 1}
+                                  teams={brTeams}
+                                  scoringPreset={scoringPreset}
+                                  killCap={killCap}
+                                  onSave={(results) => {
+                                    toast({
+                                      title: `Game ${i + 1} Saved`,
+                                      description: `Results for ${results.length} teams recorded.`,
+                                    });
+                                  }}
+                                />
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </TabTransition>
                 </TabsContent>
               )}
@@ -1722,6 +1844,7 @@ const TournamentDashboard = () => {
                       tournament?.id && user?.id && (
                         <>
                           <DisputeCenter
+                            key={tournament.id}
                             tournamentId={tournament.id}
                             organizerId={tournament.organizer_id}
                             currentUserId={user.id}
@@ -1813,8 +1936,8 @@ const TournamentDashboard = () => {
                         </CardContent>
                       </Card>
 
-                      {/* Assisted Match Reporting — Valorant only */}
-                      {tournament?.game?.toLowerCase() === 'valorant' && (
+                      {/* Assisted Match Reporting — games with API integration */}
+                      {getGameFeatures(tournament?.game || '').assistedReporting && (
                         <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                           <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
@@ -1845,6 +1968,46 @@ const TournamentDashboard = () => {
                                   <p className="font-medium text-amber-300 mb-1">Riot Account Required</p>
                                   <p className="text-gray-400 text-xs">
                                     All participating players must link their Riot account for auto-detection to work. Players without linked accounts will be prompted during registration.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Map Veto — games with map veto support */}
+                      {getGameFeatures(tournament?.game || '').mapVeto && (
+                        <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                          <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
+                            <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                              <Swords className="w-5 h-5 text-rose-400" />
+                              Map Veto
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-0 space-y-4">
+                            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                              <Switch
+                                checked={tournament?.settings?.mapVetoEnabled !== false}
+                                onCheckedChange={handleToggleMapVeto}
+                                disabled={savingMapVeto}
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-white text-sm">
+                                  {savingMapVeto ? 'Saving...' : 'Enable Map Veto'}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  When enabled, team captains will go through a ban/pick map veto process before each match begins.
+                                </p>
+                              </div>
+                            </div>
+                            {tournament?.settings?.mapVetoEnabled === false && (
+                              <div className="flex items-start gap-2 text-sm text-gray-300 p-4 rounded-xl bg-rose-500/5 border border-rose-500/20">
+                                <AlertTriangle className="w-5 h-5 text-rose-400 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="font-medium text-rose-300 mb-1">Map Veto Disabled</p>
+                                  <p className="text-gray-400 text-xs">
+                                    Matches will proceed without map selection. Captains will report scores directly via manual match reporting.
                                   </p>
                                 </div>
                               </div>

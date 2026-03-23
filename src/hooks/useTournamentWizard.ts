@@ -17,6 +17,7 @@ import { apiClient } from '@/lib/apiClient';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
 import esportsGames from '@/data/esportsGames.json';
+import { getGameByName, getDefaultTeamSize, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import slugify from 'slugify';
 
 const STORAGE_KEY = 'tournament_wizard_draft';
@@ -64,10 +65,29 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
         setData(prev => {
             const newData = { ...prev, ...updates };
             if (updates.game && updates.game !== prev.game) {
-                const game = esportsGames.games.find(g => g.name.toLowerCase() === updates.game?.toLowerCase());
+                const game = getGameByName(updates.game);
                 if (game) {
-                    const defaultFormat = game.formats.find(f => f.value === game.defaultFormat);
-                    if (defaultFormat) newData.teamSize = defaultFormat.teamSize;
+                    newData.teamSize = getDefaultTeamSize(updates.game);
+                    // Auto-configure game features
+                    if (!game.features.mapVeto) {
+                        newData.mapVetoEnabled = false;
+                        newData.mapPoolIds = [];
+                    }
+                    // Auto-set tournament type based on game
+                    if (isBattleRoyale(updates.game)) {
+                        newData.tournamentType = 'battle_royale';
+                        const brConfig = getBRConfig(updates.game);
+                        if (brConfig) {
+                            newData.brGameCount = brConfig.defaultGameCount;
+                            newData.brScoringPreset = brConfig.defaultPreset;
+                            const preset = brConfig.scoringPresets[brConfig.defaultPreset];
+                            if (preset) {
+                                newData.brKillCap = preset.killCap;
+                            }
+                        }
+                    } else {
+                        newData.tournamentType = 'bracket';
+                    }
                 }
             }
             return newData;
@@ -159,10 +179,21 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     logoUrl:              data.logoUrl,
                     isPublic:             data.visibility === 'public',
                     checkInRequired:      data.checkInRequired,
-                    checkInDeadline:      startDateTime.toISOString(),
+                    checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),
                     rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
-                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false },
+                    settings:             {
+                        assistedMatchReporting: data.assistedMatchReporting ?? false,
+                        checkInWindowMinutes: data.checkInWindowMinutes || 30,
+                        mapVetoEnabled: data.mapVetoEnabled ?? true,
+                        ...(data.tournamentType === 'battle_royale' ? {
+                            brGameCount: data.brGameCount,
+                            brScoringPreset: data.brScoringPreset,
+                            brCustomScoring: data.brCustomScoring,
+                            brKillCap: data.brKillCap,
+                            brTiebreaker: data.brTiebreaker,
+                        } : {}),
+                    },
                 });
 
                 // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
@@ -216,13 +247,26 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     organizationId:       orgId,
                     isPublic:             data.visibility === 'public',
                     checkInRequired:      data.checkInRequired,
-                    checkInDeadline:      startDateTime.toISOString(),
+                    checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),
                     autoRemoveUnchecked:  data.autoRemoveUnchecked,
                     rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
-                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false },
+                    tournamentType:       data.tournamentType || 'bracket',
+                    settings: {
+                        assistedMatchReporting: data.assistedMatchReporting ?? false,
+                        checkInWindowMinutes: data.checkInWindowMinutes || 30,
+                        mapVetoEnabled: data.mapVetoEnabled ?? true,
+                        // BR-specific settings
+                        ...(data.tournamentType === 'battle_royale' ? {
+                            brGameCount: data.brGameCount,
+                            brScoringPreset: data.brScoringPreset,
+                            brCustomScoring: data.brCustomScoring,
+                            brKillCap: data.brKillCap,
+                            brTiebreaker: data.brTiebreaker,
+                        } : {}),
+                    },
                     // Backend handles stages + map pool in one transaction
-                    stages: data.stages.map((s, i) => ({
+                    stages: data.tournamentType === 'battle_royale' ? [] : data.stages.map((s, i) => ({
                         name:             s.name,
                         format:           s.format,
                         stageOrder:       s.stage_order ?? i,

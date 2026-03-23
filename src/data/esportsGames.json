@@ -2,29 +2,298 @@
   "games": [
     {
       "name": "Valorant",
+      "slug": "valorant",
+      "category": "5v5 Tactical FPS",
       "type": "bracket",
       "formats": [
-        {
-          "name": "5v5",
-          "value": "5v5",
-          "teamSize": 5
-        }
+        { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Valorant_logo_-_pink_color_version.svg"
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/VALORANT-285x380.jpg",
+      "features": {
+        "mapVeto": true,
+        "mapPool": true,
+        "mapPoolSize": 7,
+        "assistedReporting": true,
+        "seriesFormats": ["bo1", "bo3", "bo5"],
+        "hasSidePick": true,
+        "isTeamGame": true,
+        "isBattleRoyale": false
+      }
     },
     {
       "name": "Counter-Strike 2",
+      "slug": "cs2",
+      "category": "5v5 Tactical FPS",
       "type": "bracket",
       "formats": [
-        {
-          "name": "5v5",
-          "value": "5v5",
-          "teamSize": 5
-        }
+        { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Counter-Strike_2_Logo.svg"
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Counter-Strike%202-285x380.jpg",
+      "features": {
+        "mapVeto": true,
+        "mapPool": true,
+        "mapPoolSize": 7,
+        "assistedReporting": false,
+        "seriesFormats": ["bo1", "bo3", "bo5"],
+        "hasSidePick": true,
+        "isTeamGame": true,
+        "isBattleRoyale": false
+      }
+    },
+    {
+      "name": "Rainbow Six Siege",
+      "slug": "r6s",
+      "category": "5v5 Tactical FPS",
+      "type": "bracket",
+      "formats": [
+        { "name": "5v5", "value": "5v5", "teamSize": 5 }
+      ],
+      "defaultFormat": "5v5",
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Tom%20Clancy%27s%20Rainbow%20Six%20Siege-285x380.jpg",
+      "features": {
+        "mapVeto": true,
+        "mapPool": true,
+        "mapPoolSize": 9,
+        "assistedReporting": false,
+        "seriesFormats": ["bo1", "bo3"],
+        "hasSidePick": false,
+        "isTeamGame": true,
+        "isBattleRoyale": false
+      }
+    },
+    {
+      "name": "League of Legends",
+      "slug": "lol",
+      "category": "5v5 MOBA",
+      "type": "bracket",
+      "formats": [
+        { "name": "5v5", "value": "5v5", "teamSize": 5 }
+      ],
+      "defaultFormat": "5v5",
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/League%20of%20Legends-285x380.jpg",
+      "features": {
+        "mapVeto": false,
+        "mapPool": false,
+        "mapPoolSize": 0,
+        "assistedReporting": false,
+        "seriesFormats": ["bo1", "bo3", "bo5"],
+        "hasSidePick": false,
+        "isTeamGame": true,
+        "isBattleRoyale": false
+      }
+    },
+    {
+      "name": "Dota 2",
+      "slug": "dota2",
+      "category": "5v5 MOBA",
+      "type": "bracket",
+      "formats": [
+        { "name": "5v5", "value": "5v5", "teamSize": 5 }
+      ],
+      "defaultFormat": "5v5",
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Dota%202-285x380.jpg",
+      "features": {
+        "mapVeto": false,
+        "mapPool": false,
+        "mapPoolSize": 0,
+        "assistedReporting": false,
+        "seriesFormats": ["bo1", "bo2", "bo3", "bo5"],
+        "hasSidePick": false,
+        "isTeamGame": true,
+        "isBattleRoyale": false
+      }
+    },
+    {
+      "name": "Call of Duty",
+      "slug": "cod",
+      "category": "4v4 Arcade FPS",
+      "type": "bracket",
+      "formats": [
+        { "name": "4v4", "value": "4v4", "teamSize": 4 }
+      ],
+      "defaultFormat": "4v4",
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Call%20Of%20Duty-285x380.jpg",
+      "features": {
+        "mapVeto": true,
+        "mapPool": true,
+        "mapPoolSize": 10,
+        "assistedReporting": false,
+        "seriesFormats": ["bo3", "bo5"],
+        "hasSidePick": false,
+        "isTeamGame": true,
+        "isBattleRoyale": false
+      }
+    },
+    {
+      "name": "Fortnite",
+      "slug": "fortnite",
+      "category": "Battle Royale",
+      "type": "battle_royale",
+      "formats": [
+        { "name": "Solo", "value": "solo", "teamSize": 1 },
+        { "name": "Duo", "value": "duo", "teamSize": 2 },
+        { "name": "Trio", "value": "trio", "teamSize": 3 }
+      ],
+      "defaultFormat": "solo",
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Fortnite-285x380.jpg",
+      "features": {
+        "mapVeto": false,
+        "mapPool": false,
+        "mapPoolSize": 0,
+        "assistedReporting": false,
+        "seriesFormats": [],
+        "hasSidePick": false,
+        "isTeamGame": false,
+        "isBattleRoyale": true
+      },
+      "brConfig": {
+        "playersPerLobby": 100,
+        "defaultGameCount": 6,
+        "scoringPresets": {
+          "fncs": {
+            "name": "FNCS Standard",
+            "placements": [25, 22, 20, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+            "killPoints": 1,
+            "killCap": null
+          }
+        },
+        "defaultPreset": "fncs"
+      }
+    },
+    {
+      "name": "Apex Legends",
+      "slug": "apex",
+      "category": "Battle Royale",
+      "type": "battle_royale",
+      "formats": [
+        { "name": "Trios", "value": "trios", "teamSize": 3 }
+      ],
+      "defaultFormat": "trios",
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Apex%20Legends-285x380.jpg",
+      "features": {
+        "mapVeto": false,
+        "mapPool": false,
+        "mapPoolSize": 0,
+        "assistedReporting": false,
+        "seriesFormats": [],
+        "hasSidePick": false,
+        "isTeamGame": true,
+        "isBattleRoyale": true
+      },
+      "brConfig": {
+        "playersPerLobby": 60,
+        "defaultGameCount": 6,
+        "scoringPresets": {
+          "algs": {
+            "name": "ALGS Standard",
+            "placements": [12, 9, 7, 5, 4, 3, 3, 2, 2, 2, 1, 1, 1, 1, 1],
+            "killPoints": 1,
+            "killCap": 6
+          }
+        },
+        "defaultPreset": "algs"
+      }
+    },
+    {
+      "name": "PUBG",
+      "slug": "pubg",
+      "category": "Battle Royale",
+      "type": "battle_royale",
+      "formats": [
+        { "name": "Squads", "value": "squads", "teamSize": 4 }
+      ],
+      "defaultFormat": "squads",
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/PLAYERUNKNOWN%27S%20BATTLEGROUNDS-285x380.jpg",
+      "features": {
+        "mapVeto": false,
+        "mapPool": false,
+        "mapPoolSize": 0,
+        "assistedReporting": false,
+        "seriesFormats": [],
+        "hasSidePick": false,
+        "isTeamGame": true,
+        "isBattleRoyale": true
+      },
+      "brConfig": {
+        "playersPerLobby": 64,
+        "defaultGameCount": 6,
+        "scoringPresets": {
+          "pcs": {
+            "name": "PCS Standard",
+            "placements": [10, 6, 5, 4, 3, 2, 1, 1],
+            "killPoints": 1,
+            "killCap": null
+          }
+        },
+        "defaultPreset": "pcs"
+      }
+    },
+    {
+      "name": "Rocket League",
+      "slug": "rocket-league",
+      "category": "Vehicular Sports",
+      "type": "bracket",
+      "formats": [
+        { "name": "3v3", "value": "3v3", "teamSize": 3 },
+        { "name": "2v2", "value": "2v2", "teamSize": 2 },
+        { "name": "1v1", "value": "1v1", "teamSize": 1 }
+      ],
+      "defaultFormat": "3v3",
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Rocket%20League-285x380.jpg",
+      "features": {
+        "mapVeto": false,
+        "mapPool": false,
+        "mapPoolSize": 0,
+        "assistedReporting": false,
+        "seriesFormats": ["bo3", "bo5", "bo7"],
+        "hasSidePick": false,
+        "isTeamGame": true,
+        "isBattleRoyale": false
+      }
+    },
+    {
+      "name": "Tekken 8",
+      "slug": "tekken8",
+      "category": "Fighting",
+      "type": "bracket",
+      "formats": [
+        { "name": "1v1", "value": "1v1", "teamSize": 1 }
+      ],
+      "defaultFormat": "1v1",
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/TEKKEN%208-285x380.jpg",
+      "features": {
+        "mapVeto": false,
+        "mapPool": false,
+        "mapPoolSize": 0,
+        "assistedReporting": false,
+        "seriesFormats": ["ft2", "ft3", "ft5"],
+        "hasSidePick": false,
+        "isTeamGame": false,
+        "isBattleRoyale": false
+      }
+    },
+    {
+      "name": "EA FC 25",
+      "slug": "eafc25",
+      "category": "Sports Simulation",
+      "type": "bracket",
+      "formats": [
+        { "name": "1v1", "value": "1v1", "teamSize": 1 }
+      ],
+      "defaultFormat": "1v1",
+      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/EA%20Sports%20FC%2025-285x380.jpg",
+      "features": {
+        "mapVeto": false,
+        "mapPool": false,
+        "mapPoolSize": 0,
+        "assistedReporting": false,
+        "seriesFormats": ["bo1", "bo3", "bo5"],
+        "hasSidePick": false,
+        "isTeamGame": false,
+        "isBattleRoyale": false
+      }
     }
   ]
 }

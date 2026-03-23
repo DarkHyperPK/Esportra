@@ -28,6 +28,7 @@ import { useGraphBracket } from '@/hooks/useGraphBracket';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import { cn } from '@/lib/utils';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 
 // =============================================================================
@@ -272,7 +273,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     return {
       winnersRounds: winners,
       losersRounds: losers,
-      finalsMatches: finals.sort((a, b) => a.matchNumber - b.matchNumber),
+      finalsMatches: finals.sort((a, b) => a.round - b.round || a.matchNumber - b.matchNumber),
       maxWinnersRound: Math.max(...Object.keys(winners).map(Number), 0)
     };
   }, [matches]);
@@ -454,6 +455,33 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     // newY = oldY - offset => 50 = minY - offset => offset = minY - 50
     return minY === Infinity ? 0 : minY - 50;
   }, [activeFilter, matches, matchPositions]);
+
+  // When filtering to a specific round, compute stacked list positions (no bracket gaps)
+  const filteredListPositions = useMemo(() => {
+    if (activeFilter.type === 'all') return null;
+
+    const visibleMatches = matches.filter(m => {
+      if (activeFilter.type === 'winners') return (!m.bracketSide || m.bracketSide === 'winners') && m.round === activeFilter.round;
+      if (activeFilter.type === 'losers') return m.bracketSide === 'losers' && m.round === activeFilter.round;
+      if (activeFilter.type === 'final') return m.bracketSide === 'final';
+      return false;
+    });
+
+    visibleMatches.sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0));
+
+    const listGap = 8;
+    const startY = 50;
+    const positions = new Map<string, { x: number; y: number }>();
+    visibleMatches.forEach((m, i) => {
+      positions.set(String(m.id), { x: LEFT_PADDING, y: startY + i * (CARD_HEIGHT + listGap) });
+    });
+
+    const listHeight = visibleMatches.length > 0
+      ? startY + visibleMatches.length * (CARD_HEIGHT + listGap) + 50
+      : 0;
+
+    return { positions, height: listHeight };
+  }, [activeFilter, matches]);
 
   // Calculate canvas size based on max X/Y
   const { totalWidth, totalHeight, winnersBottomY } = useMemo(() => {
@@ -705,9 +733,44 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
         {/* Bracket - Container Free (Like Battlefy) */}
         <div className="relative flex-1 overflow-auto bg-zinc-950/30">
+          {/* Round Tabs */}
+          {(() => {
+            const isDoubleElim = Object.keys(losersRounds).length > 0;
+            const roundTabs: { label: string; filter: FilterState }[] = [
+              { label: 'All', filter: { type: 'all' } },
+              ...Object.keys(winnersRounds).map(Number).sort((a, b) => a - b).map(r => ({
+                label: isDoubleElim ? `WB R${r}` : `Round ${r}`,
+                filter: { type: 'winners' as const, round: r },
+              })),
+              ...Object.keys(losersRounds).map(Number).sort((a, b) => a - b).map(r => ({
+                label: `LB R${r}`,
+                filter: { type: 'losers' as const, round: r },
+              })),
+              ...(finalsMatches.length > 0 ? [{ label: 'Grand Final', filter: { type: 'final' as const } }] : []),
+            ];
+            const isTabActive = (f: FilterState) => JSON.stringify(f) === JSON.stringify(activeFilter);
+            return (
+              <div className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur border-b border-white/5 flex items-center gap-1 px-4 py-2 overflow-x-auto">
+                {roundTabs.map(tab => (
+                  <button
+                    key={tab.label}
+                    onClick={() => setActiveFilter(tab.filter)}
+                    className={cn(
+                      'shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap',
+                      isTabActive(tab.filter)
+                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                        : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
           <div style={{
             width: totalWidth,
-            height: totalHeight,
+            height: filteredListPositions ? filteredListPositions.height : totalHeight,
             position: 'relative'
           }}>
             {/* Winners Bracket Heading */}
@@ -758,8 +821,12 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                 }
 
                 // Use calculated positions from matchPositions
-                const pos = matchPositions.get(String(m.id));
+                const pos = filteredListPositions
+                  ? filteredListPositions.positions.get(String(m.id))
+                  : matchPositions.get(String(m.id));
                 if (!pos) return null;
+                const left = filteredListPositions ? pos.x : pos.x - filterXOffset;
+                const top = filteredListPositions ? pos.y : pos.y - filterYOffset;
 
                 return (
                   <motion.div
@@ -768,11 +835,14 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.2 }}
-                    style={{ position: 'absolute', left: pos.x - filterXOffset, top: pos.y - filterYOffset }}
+                    style={{ position: 'absolute', left, top }}
                   >
                     {renderMatchCard(m, 0, 0, // Pass 0,0 because we position the wrapper
-                      m.bracketSide === 'final' ? "Grand Finals" :
-                        `${m.bracketSide === 'losers' ? 'L' : 'W'}${m.round} • M${m.matchNumber}`
+                      m.bracketSide === 'final'
+                        ? (finalsMatches.length > 1 && m.round === Math.max(...finalsMatches.map(f => f.round))
+                          ? "Grand Finals Reset"
+                          : "Grand Finals")
+                        : `${m.bracketSide === 'losers' ? 'L' : 'W'}${m.round} • M${m.matchNumber}`
                     )}
                   </motion.div>
                 );

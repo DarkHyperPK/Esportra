@@ -218,13 +218,13 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 const roundIndex = firstMatch.round_index;
                 const configDeadline = selfPlayEnabled
                     ? schedulingConfig?.round_deadlines?.[key] || existingTime
-                    : null;
+                    : existingTime;
 
                 newConfigs.set(key, {
                     roundIndex,
                     roundName: getRoundNameForFormat(stageFormat, roundIndex, totalRounds),
                     matchCount: matches.length,
-                    deadline: selfPlayEnabled ? configDeadline : null,
+                    deadline: configDeadline,
                     startTime: !selfPlayEnabled ? existingTime : null,
                     bracketKey: stageFormat === 'double_elimination' ? ((firstMatch as any).bracket_type || null) : null,
                 });
@@ -499,6 +499,11 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                     const dateValue = e.target.value;
                                                     const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
                                                     updateRoundConfig(cfgKey, roundIndex, 'deadline', utcValue);
+                                                    // Also update startTime if a time is already set
+                                                    if (dateValue && config?.startTime) {
+                                                        const existingTime = utcToLocalTime(config.startTime);
+                                                        updateRoundConfig(cfgKey, roundIndex, 'startTime', localDateTimeToUTC(dateValue, existingTime));
+                                                    }
                                                 }}
                                                 className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 [color-scheme:dark]"
                                             />

@@ -186,6 +186,34 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
         return minY === Infinity ? 0 : minY - 50;
     }, [activeFilter, matches, matchPositions]);
 
+    // When filtering to a specific round, compute stacked list positions
+    const filteredListPositions = useMemo(() => {
+        if (activeFilter.type === 'all') return null;
+
+        const visibleMatches = matches.filter(m => {
+            if (activeFilter.type === 'winners') return m.bracketSide === 'winners' && m.round === activeFilter.round;
+            if (activeFilter.type === 'losers') return m.bracketSide === 'losers' && m.round === activeFilter.round;
+            if (activeFilter.type === 'final') return m.bracketSide === 'final';
+            return false;
+        });
+
+        // Sort by match_number for consistent ordering
+        visibleMatches.sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0));
+
+        const listGap = 8;
+        const startY = 50; // below heading
+        const positions: Record<string, { x: number; y: number }> = {};
+        visibleMatches.forEach((m, i) => {
+            positions[m.id] = { x: leftPadding, y: startY + i * (cardHeight + listGap) };
+        });
+
+        const listHeight = visibleMatches.length > 0
+            ? startY + visibleMatches.length * (cardHeight + listGap) + 50
+            : totalHeight;
+
+        return { positions, height: listHeight };
+    }, [activeFilter, matches, leftPadding, cardHeight, totalHeight]);
+
     const isMatchVisible = (match: BracketMatch) => {
         if (customFilterPredicate) return customFilterPredicate(match);
         if (activeFilter.type === 'all') return true;
@@ -198,7 +226,7 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     return (
         <div
             className="relative"
-            style={{ width: totalWidth, height: totalHeight, minWidth: '100%' }}
+            style={{ width: totalWidth, height: filteredListPositions ? filteredListPositions.height : totalHeight, minWidth: '100%' }}
         >
             {/* Winners Bracket Heading */}
             {(activeFilter.type === 'all' || activeFilter.type === 'winners') &&
@@ -238,8 +266,12 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                     if (!match) return null;
                     if (!isMatchVisible(match)) return null;
 
-                    const pos = matchPositions[match.id];
+                    const pos = filteredListPositions
+                        ? filteredListPositions.positions[match.id]
+                        : matchPositions[match.id];
                     if (!pos) return null;
+                    const left = filteredListPositions ? pos.x : pos.x - filterXOffset;
+                    const top = filteredListPositions ? pos.y : pos.y - filterYOffset;
                     return (
                         <motion.div
                             key={match.id}
@@ -247,7 +279,7 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                             animate={{ opacity: 1, scale: 1 }}
                             exit={disableAnimations ? undefined : { opacity: 0, scale: 0.9 }}
                             transition={disableAnimations ? { duration: 0 } : { duration: 0.2 }}
-                            style={{ position: 'absolute', left: pos.x - filterXOffset, top: pos.y - filterYOffset }}
+                            style={{ position: 'absolute', left, top }}
                         >
                             <ReadOnlyMatchCard
                                 match={match}

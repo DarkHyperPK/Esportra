@@ -134,7 +134,8 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
 
       // Backend now returns raised_by_name, team_name, reports, riot_accounts
       // Only enrich assigned_to_name if not already present
-      const rows = disputesData || [];
+      // Filter client-side as safety net in case backend doesn't filter by tournament_id
+      const rows = (disputesData || []).filter(d => d.tournament_id === tournamentId);
       const enriched = await Promise.all(
         rows.map(async (dispute) => {
           const enrichedDispute: Dispute = { ...dispute };

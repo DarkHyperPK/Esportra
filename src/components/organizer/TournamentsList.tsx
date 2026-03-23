@@ -81,7 +81,7 @@ const TournamentsList = () => {
             entry_fee: tournament.entry_fee,
             prize_pool: tournament.prize_pool,
             is_online: !tournament.venue_id,
-            image_url: tournament.banner_url || tournament.logo_url,
+            image_url: tournament.banner_url || undefined,
             user_id: tournament.organizer_id,
             created_at: tournament.created_at,
             updated_at: tournament.updated_at,

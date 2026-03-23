@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Maximize2, Layers } from 'lucide-react';
 import { PublicBracketView } from './brackets/PublicBracketView';
 import { useBracketRealtime } from '@/hooks/useBracketRealtime';
+import { isBattleRoyale } from '@/utils/gameFeatures';
+import { Trophy } from 'lucide-react';
 
 const TournamentBrackets = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -101,6 +103,33 @@ const TournamentBrackets = () => {
   }
 
   if (!tournament) return <div>Tournament not found</div>;
+
+  // BR tournaments don't have brackets — show leaderboard placeholder
+  if (isBattleRoyale(tournament.game)) {
+    return (
+      <div className="min-h-screen bg-transparent text-white relative font-sans">
+        <main className="w-full px-4 py-8 relative z-10">
+          <div className="max-w-4xl mx-auto">
+            <div className="p-8 rounded-2xl bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl text-center">
+              <Trophy className="h-12 w-12 text-rose-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-heading text-white mb-2">Points Leaderboard</h2>
+              <p className="text-gray-400 mb-6">
+                This is a Battle Royale tournament. Standings are determined by cumulative points across all games.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/tournaments/${slug}`)}
+                className="border-white/10 hover:bg-white/5"
+              >
+                View Tournament Details
+              </Button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-transparent text-white relative overflow-hidden font-sans">

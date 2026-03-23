@@ -57,6 +57,11 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     });
     */
 
+    // Refetch parent data on mount to pick up status changes made in bracket views
+    useEffect(() => {
+        onUpdate();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         const checkBrackets = async () => {
             setBracketsLoading(true);
@@ -592,6 +597,20 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         if (advancedStages[stageId] || advancingStages[stageId]) return;
         setAdvancingStages(prev => ({ ...prev, [stageId]: true }));
         try {
+            // If stage isn't marked completed yet, check and auto-complete
+            const stage = stages.find(s => s.id === stageId);
+            if (stage && stage.status !== 'completed') {
+                const completionService = new StageCompletionService();
+                const { isComplete } = await completionService.checkStageCompletion(stageId);
+                if (isComplete) {
+                    await apiClient.patch(`/api/stages/${stageId}/status`, { status: 'completed' });
+                } else {
+                    toast({ title: 'Stage Not Complete', description: 'All matches must be completed before advancing teams.', variant: 'destructive' });
+                    setAdvancingStages(prev => ({ ...prev, [stageId]: false }));
+                    return;
+                }
+            }
+
             const service = new StageCompletionService();
             const result = await service.advanceTeamsToNextStage(stageId);
 
@@ -852,7 +871,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                     variant="outline"
                                                     className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
                                                     onClick={() => handleAdvanceTeams(stage.id)}
-                                                    disabled={stage.status !== 'completed' || advancingStages[stage.id]}
+                                                    disabled={advancingStages[stage.id]}
                                                 >
                                                     {advancingStages[stage.id] ? (
                                                         <>

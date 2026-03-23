@@ -11,15 +11,35 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, MapPin, Calendar, Clock, Eye, EyeOff, Lock } from 'lucide-react';
+import { Globe, MapPin, Calendar, Clock, Eye, EyeOff, Lock, Target } from 'lucide-react';
 import esportsGames from '@/data/esportsGames.json';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
+import { getGameByName, getDefaultTeamSize, isBattleRoyale, getBRConfig, EsportsGame } from '@/utils/gameFeatures';
 
 const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode }) => {
-    const selectedGame = esportsGames.games.find(
-        g => g.name.toLowerCase() === data.game.toLowerCase()
-    );
+    const selectedGame = getGameByName(data.game) as EsportsGame | undefined;
+
+    const handleGameChange = (gameName: string) => {
+        const game = getGameByName(gameName);
+        const teamSize = game ? getDefaultTeamSize(gameName) : data.teamSize;
+        const updates: Partial<typeof data> = { game: gameName, teamSize };
+        // Auto-disable map veto for games that don't support it
+        if (game && !game.features.mapVeto) {
+            updates.mapVetoEnabled = false;
+            updates.mapPoolIds = [];
+        } else if (game?.features.mapVeto) {
+            updates.mapVetoEnabled = true;
+        }
+        updateData(updates);
+    };
+
+    const handleFormatChange = (formatValue: string) => {
+        const fmt = selectedGame?.formats.find(f => f.value === formatValue);
+        if (fmt) {
+            updateData({ teamSize: fmt.teamSize });
+        }
+    };
 
     // Get today's date for min date validation
     const today = new Date().toISOString().split('T')[0];
@@ -83,7 +103,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                 </div>
                 <Select
                     value={data.game}
-                    onValueChange={(value) => updateData({ game: value })}
+                    onValueChange={handleGameChange}
                     disabled={isEditMode}
                 >
                     <SelectTrigger className={cn(errors.game && 'border-red-500', isEditMode && "opacity-50 cursor-not-allowed")}>
@@ -97,6 +117,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                                 className="focus:bg-green-600 focus:text-white cursor-pointer"
                             >
                                 <div className="flex items-center gap-2">
+                                    <img src={game.logo} alt="" className="w-5 h-5 rounded object-cover" />
                                     <span>{game.name}</span>
                                 </div>
                             </SelectItem>
@@ -113,20 +134,62 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="p-4 bg-white/[0.02] rounded-lg border border-white/10"
+                        className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-3"
                     >
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
-                                🎮
-                            </div>
+                            <img src={selectedGame.logo} alt={selectedGame.name} className="w-10 h-10 object-cover rounded" />
                             <div>
                                 <div className="font-semibold text-white">{selectedGame.name}</div>
                                 <div className="text-sm text-gray-400">
-                                    Default: {selectedGame.defaultFormat} •
-                                    {selectedGame.formats.length} format{selectedGame.formats.length > 1 ? 's' : ''} available
+                                    {selectedGame.category} •
+                                    {selectedGame.formats.length > 1
+                                        ? ` ${selectedGame.formats.length} formats available`
+                                        : ` ${selectedGame.defaultFormat}`
+                                    }
                                 </div>
                             </div>
                         </div>
+                        {/* Format selector for games with multiple formats */}
+                        {selectedGame.formats.length > 1 && !isEditMode && (
+                            <div className="pt-2 border-t border-white/5">
+                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Format</Label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {selectedGame.formats.map((fmt) => (
+                                        <button
+                                            key={fmt.value}
+                                            type="button"
+                                            onClick={() => handleFormatChange(fmt.value)}
+                                            className={cn(
+                                                "px-3 py-2 rounded-lg border text-sm font-medium transition-all",
+                                                data.teamSize === fmt.teamSize
+                                                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
+                                                    : "border-white/10 text-gray-400 hover:border-white/20"
+                                            )}
+                                        >
+                                            {fmt.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* BR format notice */}
+                        {isBattleRoyale(selectedGame.name) && (
+                            <div className="pt-2 border-t border-white/5">
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                                    <Target className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-medium text-amber-300 text-sm">Points-Based Tournament</p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            {selectedGame.name} uses a points-based format with placement &amp; elimination scoring across multiple games.
+                                            {getBRConfig(selectedGame.name)?.playersPerLobby && (
+                                                <span className="text-amber-400/70"> Up to {getBRConfig(selectedGame.name)!.playersPerLobby} players per lobby.</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>

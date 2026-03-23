@@ -18,6 +18,8 @@ import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
 import { FaceitMatchReport } from '@/components/tournament/FaceitMatchReport';
 import { BracketMatch, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
+import { gameHasMapVeto } from '@/utils/gameFeatures';
+import { useGameTerminology } from '@/hooks/useGameTerminology';
 import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
 import TimeProposalCard from '@/components/tournament/TimeProposalCard';
 
@@ -60,6 +62,7 @@ const CaptainMatchPage = () => {
     const [roundDeadline, setRoundDeadline] = useState<string | null>(null);
     const [participantStatus, setParticipantStatus] = useState<string | null>(null);
     const [stageConfigs, setStageConfigs] = useState<Record<string, any>>({});
+    const terminology = useGameTerminology(tournament?.game);
     // Keep schedulingConfig as a derived value or helper for backward compatibility if needed, 
     // but better to use lookups. We'll leave the state for now but ignore it in favor of the map.
 
@@ -128,7 +131,7 @@ const CaptainMatchPage = () => {
                             }
                             configs[stage.id] = {
                                 format: stage.format,
-                                scheduling_config: sc
+                                scheduling_config: sc,
                             };
                         });
                         setStageConfigs(configs);
@@ -445,6 +448,11 @@ const CaptainMatchPage = () => {
         return stageConfigs[activeMatchVersion.stage_id]?.scheduling_config;
     }, [activeMatchVersion, stageConfigs]);
 
+    const isVetoEnabled = useMemo(() => {
+        if (!gameHasMapVeto(tournament?.game || '')) return false;
+        return tournament?.settings?.mapVetoEnabled !== false;
+    }, [tournament?.settings, tournament?.game]);
+
     // Watch reports for the active match — used to detect disputed status
     const activeMatchRawId = activeMatch ? activeMatch.id.replace(/^(db-|wb-|lb-)/, '') : undefined;
     const { reports: activeMatchReports } = useMatchResultReport(activeMatchRawId);
@@ -647,7 +655,13 @@ const CaptainMatchPage = () => {
         }
 
         // Single and Double Elimination
-        if (bracketSide === 'final') return 'Grand Finals';
+        if (bracketSide === 'final') {
+            const finalMatches = matches.filter(m => m.bracketSide === 'final');
+            if (finalMatches.length > 1 && round === Math.max(...finalMatches.map(f => f.round))) {
+                return 'Grand Finals Reset';
+            }
+            return 'Grand Finals';
+        }
         if (bracketSide === 'reset') return 'Grand Finals Reset';
 
         const teamCount = participants.length > 0 ? participants.length : 8; // Default to 8 if not loaded
@@ -855,8 +869,8 @@ const CaptainMatchPage = () => {
                                             matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                             team1Id={activeMatch.team1?.id}
                                             team2Id={activeMatch.team2?.id}
-                                            team1Name={activeMatch.team1?.name || 'Team 1'}
-                                            team2Name={activeMatch.team2?.name || 'Team 2'}
+                                            team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                            team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                             userTeamId={userTeamId}
                                             scheduledTime={effectiveScheduledTime}
                                             isCaptain={isCaptain}
@@ -880,8 +894,8 @@ const CaptainMatchPage = () => {
                                                 <TimeProposalCard
                                                     matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                                     roundDeadline={effectiveDeadline}
-                                                    team1Name={activeMatch.team1?.name || 'Team 1'}
-                                                    team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                    team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                                    team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                                     userTeamId={userTeamId}
                                                     team1Id={activeMatch.team1?.id}
                                                     isCaptain={isCaptain}
@@ -904,8 +918,8 @@ const CaptainMatchPage = () => {
                                             return (
                                                 <FaceitMatchReport
                                                     matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                    team1Name={activeMatch.team1?.name || 'Team 1'}
-                                                    team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                    team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                                    team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                                     isCaptain={isCaptain}
                                                     onSuccess={() => {
                                                         toast({ title: "Match Reported", description: "CS2 result verified and saved." });
@@ -939,18 +953,18 @@ const CaptainMatchPage = () => {
                                         {activeMatch.status !== 'completed' && !isMatchLive && (
                                             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800/50 text-xs text-zinc-500">
                                                 <Clock className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
-                                                <span>Complete check-in to unlock Map Veto and match actions</span>
+                                                <span>{isVetoEnabled ? 'Complete check-in to unlock Map Veto and match actions' : 'Complete check-in to unlock match actions'}</span>
                                             </div>
                                         )}
 
-                                        {isMatchLive && !isVetoCompleted && activeMatch.status !== 'completed' && (
+                                        {isVetoEnabled && isMatchLive && !isVetoCompleted && activeMatch.status !== 'completed' && (
                                             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 text-xs text-indigo-300">
                                                 <Swords className="w-3.5 h-3.5 shrink-0" />
                                                 <span>Complete Map Veto to unlock result reporting</span>
                                             </div>
                                         )}
 
-                                        {/* Valorant Auto-Report — only when veto completed */}
+                                        {/* Valorant Auto-Report — only when veto completed (or veto disabled) */}
                                         {(() => {
                                             const isValorant = tournament?.game?.toLowerCase() === 'valorant';
                                             const assistedEnabled = tournament?.settings?.assistedMatchReporting === true;
@@ -958,7 +972,8 @@ const CaptainMatchPage = () => {
                                             const bestOf = activeMatch.bestOf || 1;
                                             const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
                                             const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
-                                            if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && isVetoCompleted) {
+                                            const vetoReady = !isVetoEnabled || isVetoCompleted;
+                                            if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && vetoReady) {
                                                 // Block auto-report for disputed games
                                                 if (disputedGameNumbers.has(nextGameNumber)) {
                                                     return (
@@ -978,8 +993,8 @@ const CaptainMatchPage = () => {
                                                         userTeamId={userTeamId}
                                                         team1Id={activeMatch.team1?.id}
                                                         team2Id={activeMatch.team2?.id}
-                                                        team1Name={activeMatch.team1?.name || 'Team 1'}
-                                                        team2Name={activeMatch.team2?.name || 'Team 2'}
+                                                        team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                                        team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                                         team1Logo={activeMatch.team1?.logo_url}
                                                         team2Logo={activeMatch.team2?.logo_url}
                                                         isCaptain={isCaptain}
@@ -997,22 +1012,24 @@ const CaptainMatchPage = () => {
 
                                         {/* Map Veto + Manual Report — only show when match is live */}
                                         {isMatchLive && activeMatch.status !== 'completed' && (
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <Button
-                                                    onClick={() => handleOpenVeto(activeMatch)}
-                                                    className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-white h-10 text-sm font-semibold font-mono tracking-wide"
-                                                >
-                                                    <Swords className="w-4 h-4 mr-1.5" />
-                                                    Map Veto
-                                                </Button>
+                                            <div className={`grid gap-2 ${isVetoEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                                {isVetoEnabled && (
+                                                    <Button
+                                                        onClick={() => handleOpenVeto(activeMatch)}
+                                                        className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-white h-10 text-sm font-semibold font-mono tracking-wide"
+                                                    >
+                                                        <Swords className="w-4 h-4 mr-1.5" />
+                                                        Map Veto
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     onClick={() => handleUploadResult(activeMatch.id)}
                                                     className="bg-rose-500 hover:bg-rose-600 text-white h-10 text-sm font-semibold font-mono tracking-wide disabled:opacity-40"
-                                                    disabled={!isVetoCompleted || disputedGameNumbers.has(nextGameNumber)}
+                                                    disabled={(isVetoEnabled && !isVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
                                                 >
                                                     <Trophy className="w-4 h-4 mr-1.5" />
                                                     {disputedGameNumbers.has(nextGameNumber) ? `Game ${nextGameNumber} Disputed`
-                                                        : isVetoCompleted ? 'Manual Report' : 'Awaiting Veto'}
+                                                        : (isVetoEnabled && !isVetoCompleted) ? 'Awaiting Veto' : 'Manual Report'}
                                                 </Button>
                                             </div>
                                         )}
@@ -1079,8 +1096,8 @@ const CaptainMatchPage = () => {
                                         matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                         userTeamId={userTeamId}
                                         team1Id={activeMatch.team1?.id}
-                                        team1Name={activeMatch.team1?.name || 'Team 1'}
-                                        team2Name={activeMatch.team2?.name || 'Team 2'}
+                                        team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                        team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                     />
                                     <div className="px-4 py-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-200">
                                         <p className="flex gap-2">
@@ -1137,8 +1154,8 @@ const CaptainMatchPage = () => {
                             gameNumber={nextGameNumber}
                             mapName={nextGameMap?.name}
                             mapId={nextGameMap?.id}
-                            team1Name={activeMatch?.team1?.name || 'Team 1'}
-                            team2Name={activeMatch?.team2?.name || 'Team 2'}
+                            team1Name={activeMatch?.team1?.name || `${terminology.competitorLabel} 1`}
+                            team2Name={activeMatch?.team2?.name || `${terminology.competitorLabel} 2`}
                             isCaptain={isCaptain}
                             onSuccess={() => {
                                 setUploadOpen(false);

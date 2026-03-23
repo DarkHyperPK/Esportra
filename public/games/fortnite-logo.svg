@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <rect width="120" height="120" rx="20" fill="#2D5BE3"/>
+  <text x="60" y="62" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="16" fill="white">FORT</text>
+  <text x="60" y="84" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="16" fill="white" opacity="0.7">NITE</text>
+</svg>
