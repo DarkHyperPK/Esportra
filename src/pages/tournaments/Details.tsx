@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import slugify from 'slugify';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -47,8 +47,11 @@ import PremiumBackground from "@/components/ui/PremiumBackground";
 import { AnimatePresence, motion } from "framer-motion";
 import esportsGamesData from '@/data/esportsGames.json';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
-import { isBattleRoyale } from '@/utils/gameFeatures';
+import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
+import { useBRGameResults } from '@/hooks/useBRGameResults';
+import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
+import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
 
 interface EsportsGame {
   name: string;
@@ -135,6 +138,16 @@ const TournamentDetails = () => {
   const terminology = useGameTerminology(tournament?.game);
   const isBR = isBattleRoyale(tournament?.game || '');
 
+  // BR leaderboard config (only computed for BR tournaments)
+  const brConf = isBR ? getBRConfig(tournament?.game || '') : null;
+  const brSettings = isBR ? (tournament?.settings as any) : null;
+  const brGameCount = brSettings?.brGameCount || brConf?.defaultGameCount || 6;
+  const brPresetKey = brSettings?.brScoringPreset || brConf?.defaultPreset || '';
+  const brScoringPreset = brSettings?.brCustomScoring
+    || (brConf?.scoringPresets?.[brPresetKey as string])
+    || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
+  const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
+
   const isOrganizer = currentRole === 'organizer' && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id);
   const requiresCheckIn = Boolean(tournament?.check_in_required);
   const checkInDeadlineDate = tournament?.check_in_deadline ? new Date(tournament.check_in_deadline) : null;
@@ -218,6 +231,25 @@ const TournamentDetails = () => {
     },
     enabled: !!tournament?.id,
     staleTime: 30 * 1000,
+  });
+
+  // BR leaderboard hook (only active for BR tournaments)
+  const brTeams = useMemo(() =>
+    isBR ? (enrichedParticipants || []).map((p: any) => ({
+      id: p.team_id || p.id,
+      name: p.team_name || p.display_name || 'Unknown',
+      logo: p.team_logo || undefined,
+    })) : [],
+    [isBR, enrichedParticipants]
+  );
+
+  const brResults = useBRGameResults({
+    tournamentId: isBR ? tournament?.id : undefined,
+    gameCount: brGameCount,
+    scoringPreset: brScoringPreset,
+    killCap: brKillCap,
+    teams: brTeams,
+    tiebreaker: brSettings?.brTiebreaker || 'most_wins',
   });
 
   useEffect(() => {
@@ -711,12 +743,22 @@ const TournamentDetails = () => {
 
           {isBR ? (
             <TabsContent value="leaderboard">
-              <div className="container mx-auto px-4">
-                <div className="text-center py-16">
-                  <Trophy className="h-12 w-12 text-rose-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-heading text-white mb-2">Leaderboard</h3>
-                  <p className="text-gray-400">Points-based standings will appear here once games are played.</p>
-                </div>
+              <div className="container mx-auto px-4 space-y-6">
+                <BRScoringConfig preset={brScoringPreset} killCap={brKillCap} />
+                <BRLeaderboard
+                  entries={brResults.leaderboard}
+                  totalGames={brGameCount}
+                  gamesCompleted={brResults.gamesCompleted}
+                />
+                {brResults.winner && (
+                  <div className="flex items-center gap-4 p-6 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+                    <Trophy className="w-10 h-10 text-amber-400 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Champion</h3>
+                      <p className="text-amber-300 font-medium">{brResults.winner.teamName} — {brResults.winner.totalPoints} points</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
           ) : (

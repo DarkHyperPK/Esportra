@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -85,6 +86,7 @@ import { StageManagementTab } from '@/components/organizer/tabs/StageManagementT
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import BRGameResults from '@/components/tournament/br/BRGameResults';
 import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
+import { useBRGameResults } from '@/hooks/useBRGameResults';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
@@ -266,6 +268,7 @@ const TournamentDashboard = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.id;
 
@@ -281,6 +284,34 @@ const TournamentDashboard = () => {
   const stages = dashboardData?.stages || [];
   const isOrganizer = dashboardData?.isOrganizer || false;
   const staffPermissions = (dashboardData?.staffPermissions || []) as StaffPermission[];
+
+  // BR game results management
+  const isBR = isBattleRoyale(tournament?.game || '');
+  const brConf = isBR ? getBRConfig(tournament?.game || '') : null;
+  const brSettings = isBR ? tournament?.settings : null;
+  const brGameCount = brSettings?.brGameCount || brConf?.defaultGameCount || 6;
+  const brPresetKey = brSettings?.brScoringPreset || brConf?.defaultPreset || '';
+  const brScoringPreset = brSettings?.brCustomScoring
+    || (brConf?.scoringPresets?.[brPresetKey])
+    || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
+  const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
+  const brTeams = useMemo(() =>
+    isBR ? participants.map(p => ({
+      id: p.team_id || p.id,
+      name: p.team_name || p.name || 'Unknown',
+      logo: p.team_logo || undefined,
+    })) : [],
+    [isBR, participants]
+  );
+
+  const brResults = useBRGameResults({
+    tournamentId: isBR ? tournament?.id : undefined,
+    gameCount: brGameCount,
+    scoringPreset: brScoringPreset,
+    killCap: brKillCap,
+    teams: brTeams,
+    tiebreaker: brSettings?.brTiebreaker || 'most_wins',
+  });
 
   // Tab State & Direction
   const TAB_ORDER = ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'staff', 'settings'];
@@ -564,24 +595,39 @@ const TournamentDashboard = () => {
   const handleMarkFinished = async () => {
     if (!isOrganizer) return;
 
-    // Validate stages
-    const incomplete = stages.some(s => s.status !== 'completed');
-    if (incomplete) {
-      toast({
-        title: 'Cannot Finish',
-        description: 'All stages must be completed before finishing the tournament.',
-        variant: 'destructive'
-      });
-      return;
+    if (isBR) {
+      // BR tournaments: require all games completed
+      if (brResults.gamesCompleted < brGameCount) {
+        toast({
+          title: 'Cannot Finish',
+          description: `All ${brGameCount} games must have results before finishing the tournament.`,
+          variant: 'destructive'
+        });
+        return;
+      }
+    } else {
+      // Bracket tournaments: require all stages completed
+      const incomplete = stages.some(s => s.status !== 'completed');
+      if (incomplete) {
+        toast({
+          title: 'Cannot Finish',
+          description: 'All stages must be completed before finishing the tournament.',
+          variant: 'destructive'
+        });
+        return;
+      }
     }
 
     try {
       await handleStatusChange('completed');
+      const winnerName = isBR && brResults.winner ? brResults.winner.teamName : undefined;
       toast({
         title: 'Tournament Finished',
-        description: 'Tournament has been marked as completed. Winner crowned!',
-        variant: 'default', // success?
+        description: winnerName
+          ? `${winnerName} crowned as champion!`
+          : 'Tournament has been marked as completed.',
       });
+      queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
     } catch (e) {
       console.error('Error finishing tournament:', e);
     }
@@ -1627,65 +1673,77 @@ const TournamentDashboard = () => {
               )}
 
               {/* BR Games Tab */}
-              {activeTab === 'games' && isBattleRoyale(tournament?.game || '') && (
+              {activeTab === 'games' && isBR && (
                 <TabsContent value="games" forceMount key="games">
                   <TabTransition direction={direction}>
-                    {(() => {
-                      const brConf = getBRConfig(tournament?.game || '');
-                      const brSettings = tournament?.settings;
-                      const gameCount = brSettings?.brGameCount || brConf?.defaultGameCount || 6;
-                      const presetKey = brSettings?.brScoringPreset || brConf?.defaultPreset || '';
-                      const scoringPreset = brSettings?.brCustomScoring
-                        || (brConf?.scoringPresets?.[presetKey])
-                        || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
-                      const killCap = brSettings?.brKillCap ?? scoringPreset.killCap ?? null;
+                    <div className="space-y-6">
+                      {/* Scoring Config */}
+                      <BRScoringConfig preset={brScoringPreset} killCap={brKillCap} />
 
-                      const brTeams = participants.map(p => ({
-                        id: p.team_id || p.id,
-                        name: p.team_name || p.name || 'Unknown',
-                        logo: p.team_logo || undefined,
-                      }));
+                      {/* Live Leaderboard */}
+                      <BRLeaderboard
+                        entries={brResults.leaderboard}
+                        totalGames={brGameCount}
+                        gamesCompleted={brResults.gamesCompleted}
+                      />
 
-                      return (
-                        <div className="space-y-6">
-                          {/* Scoring Config */}
-                          <BRScoringConfig preset={scoringPreset} killCap={killCap} />
-
-                          {/* Leaderboard placeholder */}
-                          <BRLeaderboard
-                            entries={[]}
-                            totalGames={gameCount}
-                            gamesCompleted={0}
-                          />
-
-                          {/* Game Result Entry */}
-                          <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-white">Enter Game Results</h3>
-                            {brTeams.length === 0 ? (
-                              <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-6 text-center">
-                                <p className="text-gray-400">No participants registered yet. Results can be entered after teams register.</p>
-                              </Card>
-                            ) : (
-                              Array.from({ length: gameCount }, (_, i) => (
-                                <BRGameResults
-                                  key={i}
-                                  gameNumber={i + 1}
-                                  teams={brTeams}
-                                  scoringPreset={scoringPreset}
-                                  killCap={killCap}
-                                  onSave={(results) => {
-                                    toast({
-                                      title: `Game ${i + 1} Saved`,
-                                      description: `Results for ${results.length} teams recorded.`,
-                                    });
-                                  }}
-                                />
-                              ))
+                      {/* Winner banner */}
+                      {brResults.winner && (
+                        <Card className="bg-amber-500/10 backdrop-blur-md border border-amber-500/30 rounded-2xl p-6">
+                          <div className="flex items-center gap-4">
+                            <Trophy className="w-10 h-10 text-amber-400" />
+                            <div>
+                              <h3 className="text-lg font-bold text-white">Tournament Winner</h3>
+                              <p className="text-amber-300 font-medium">{brResults.winner.teamName} — {brResults.winner.totalPoints} points</p>
+                            </div>
+                            {tournament?.status !== 'completed' && (
+                              <Button
+                                onClick={async () => {
+                                  try {
+                                    await apiClient.put(`/api/tournaments/${tournament!.id}`, { status: 'completed' });
+                                    toast({ title: 'Tournament Completed', description: `${brResults.winner!.teamName} crowned as champion!` });
+                                    queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
+                                  } catch {
+                                    toast({ title: 'Error', description: 'Failed to complete tournament.', variant: 'destructive' });
+                                  }
+                                }}
+                                className="ml-auto bg-amber-600 hover:bg-amber-700 text-white"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Mark Completed
+                              </Button>
                             )}
                           </div>
-                        </div>
-                      );
-                    })()}
+                        </Card>
+                      )}
+
+                      {/* Game Result Entry */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-white">Enter Game Results</h3>
+                        {brTeams.length === 0 ? (
+                          <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-6 text-center">
+                            <p className="text-gray-400">No participants registered yet. Results can be entered after teams register.</p>
+                          </Card>
+                        ) : (
+                          Array.from({ length: brGameCount }, (_, i) => (
+                            <BRGameResults
+                              key={i}
+                              gameNumber={i + 1}
+                              teams={brTeams}
+                              scoringPreset={brScoringPreset}
+                              killCap={brKillCap}
+                              existingResults={brResults.getGameResults(i + 1)}
+                              lobbyCode={brResults.getLobbyCode(i + 1)}
+                              isOrganizer={isOrganizer}
+                              onSave={(results, lobbyCode) => {
+                                brResults.saveGameResults(i + 1, results, lobbyCode);
+                              }}
+                              isSaving={brResults.isSaving}
+                            />
+                          ))
+                        )}
+                      </div>
+                    </div>
                   </TabTransition>
                 </TabsContent>
               )}
