@@ -1771,6 +1771,7 @@ const TournamentDashboard = () => {
                       tournament?.id && user?.id && (
                         <>
                           <DisputeCenter
+                            key={tournament.id}
                             tournamentId={tournament.id}
                             organizerId={tournament.organizer_id}
                             currentUserId={user.id}
