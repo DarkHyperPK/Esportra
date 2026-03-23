@@ -270,7 +270,7 @@ const TournamentDetails = () => {
         user_id: t.organization_owner_id || t.organizer_id || '',
         rewards: t.rewards,
         created_at: t.created_at,
-        image_url: t.banner_url || t.logo_url || null,
+        image_url: t.banner_url || null,
         check_in_required: !!t.check_in_required,
         check_in_deadline: t.check_in_deadline,
         auto_remove_unchecked: t.auto_remove_unchecked ?? true,

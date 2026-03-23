@@ -232,7 +232,7 @@ const OrganizationPublicProfile = () => {
                                             prize_pool={t.prize_pool?.toString() || '0'}
                                             entry_fee={t.entry_fee?.toString() || 'Free'}
                                             is_online={t.is_online}
-                                            image_url={t.banner_url || t.logo_url}
+                                            image_url={t.banner_url || undefined}
                                             slug={t.slug}
                                             organizer_name={t.organization_name}
                                             organizer_id={t.organizer_owner_id}
@@ -274,7 +274,7 @@ const OrganizationPublicProfile = () => {
                                             prize_pool={t.prize_pool?.toString() || '0'}
                                             entry_fee={t.entry_fee?.toString() || 'Free'}
                                             is_online={t.is_online}
-                                            image_url={t.banner_url || t.logo_url}
+                                            image_url={t.banner_url || undefined}
                                             slug={t.slug}
                                             organizer_name={t.organization_name}
                                             organizer_id={t.organizer_owner_id}
