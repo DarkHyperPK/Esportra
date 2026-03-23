@@ -72,7 +72,7 @@ import {
 import { handleError, TournamentError, AuthError, DatabaseError } from '@/utils/errorHandler';
 import { tournamentApi } from '@/services/api';
 import esportsGames from '@/data/esportsGames.json';
-import { getGameFeatures } from '@/utils/gameFeatures';
+import { getGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import BanManagement from '@/components/organizer/BanManagement';
@@ -82,6 +82,9 @@ import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnoun
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
 import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
+import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
+import BRGameResults from '@/components/tournament/br/BRGameResults';
+import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
@@ -280,7 +283,7 @@ const TournamentDashboard = () => {
   const staffPermissions = (dashboardData?.staffPermissions || []) as StaffPermission[];
 
   // Tab State & Direction
-  const TAB_ORDER = ['overview', 'participants', 'stages', 'bans', 'disputes', 'staff', 'settings'];
+  const TAB_ORDER = ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'staff', 'settings'];
   // activeTab is declared below with location.state init
   const [direction, setDirection] = useState(0);
   const prevTabRef = React.useRef(0);
@@ -1519,7 +1522,12 @@ const TournamentDashboard = () => {
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               <TabsList className="bg-transparent p-0 h-auto gap-1">
-                {['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'].map((tab) => {
+                {(() => {
+                  const isBR = isBattleRoyale(tournament?.game || '');
+                  const tabs = isBR
+                    ? ['overview', 'participants', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                    : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
+                  return tabs.map((tab) => {
                   if (tab === 'brackets') {
                     return (
                       <button
@@ -1547,7 +1555,8 @@ const TournamentDashboard = () => {
                       <span className="relative z-10">{tab}</span>
                     </TabsTrigger>
                   );
-                })}
+                });
+                })()}
               </TabsList>
             </motion.div>
           </div>
@@ -1613,6 +1622,70 @@ const TournamentDashboard = () => {
                       onUpdate={() => refetchDashboard()}
                       game={tournament.game || ''}
                     />
+                  </TabTransition>
+                </TabsContent>
+              )}
+
+              {/* BR Games Tab */}
+              {activeTab === 'games' && isBattleRoyale(tournament?.game || '') && (
+                <TabsContent value="games" forceMount key="games">
+                  <TabTransition direction={direction}>
+                    {(() => {
+                      const brConf = getBRConfig(tournament?.game || '');
+                      const brSettings = tournament?.settings;
+                      const gameCount = brSettings?.brGameCount || brConf?.defaultGameCount || 6;
+                      const presetKey = brSettings?.brScoringPreset || brConf?.defaultPreset || '';
+                      const scoringPreset = brSettings?.brCustomScoring
+                        || (brConf?.scoringPresets?.[presetKey])
+                        || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
+                      const killCap = brSettings?.brKillCap ?? scoringPreset.killCap ?? null;
+
+                      const brTeams = participants.map(p => ({
+                        id: p.team_id || p.id,
+                        name: p.team_name || p.name || 'Unknown',
+                        logo: p.team_logo || undefined,
+                      }));
+
+                      return (
+                        <div className="space-y-6">
+                          {/* Scoring Config */}
+                          <BRScoringConfig preset={scoringPreset} killCap={killCap} />
+
+                          {/* Leaderboard placeholder */}
+                          <BRLeaderboard
+                            entries={[]}
+                            totalGames={gameCount}
+                            gamesCompleted={0}
+                          />
+
+                          {/* Game Result Entry */}
+                          <div className="space-y-4">
+                            <h3 className="text-lg font-bold text-white">Enter Game Results</h3>
+                            {brTeams.length === 0 ? (
+                              <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-6 text-center">
+                                <p className="text-gray-400">No participants registered yet. Results can be entered after teams register.</p>
+                              </Card>
+                            ) : (
+                              Array.from({ length: gameCount }, (_, i) => (
+                                <BRGameResults
+                                  key={i}
+                                  gameNumber={i + 1}
+                                  teams={brTeams}
+                                  scoringPreset={scoringPreset}
+                                  killCap={killCap}
+                                  onSave={(results) => {
+                                    toast({
+                                      title: `Game ${i + 1} Saved`,
+                                      description: `Results for ${results.length} teams recorded.`,
+                                    });
+                                  }}
+                                />
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </TabTransition>
                 </TabsContent>
               )}

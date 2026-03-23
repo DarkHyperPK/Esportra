@@ -1,6 +1,7 @@
 // Game feature flags and helpers for the esportsGames registry
 
 import esportsGames from '@/data/esportsGames.json';
+import type { BRConfig } from '@/types/battleRoyale';
 
 export interface GameFeatures {
   mapVeto: boolean;
@@ -28,6 +29,7 @@ export interface EsportsGame {
   defaultFormat: string;
   logo: string;
   features: GameFeatures;
+  brConfig?: BRConfig;
 }
 
 const DEFAULT_FEATURES: GameFeatures = {
@@ -70,4 +72,16 @@ export function getDefaultTeamSize(gameName: string): number {
   if (!game) return 5;
   const defaultFmt = game.formats.find(f => f.value === game.defaultFormat);
   return defaultFmt?.teamSize ?? game.formats[0]?.teamSize ?? 5;
+}
+
+/** Check if a game is a Battle Royale type */
+export function isBattleRoyale(gameName: string): boolean {
+  const game = getGameByName(gameName);
+  return game?.type === 'battle_royale' || game?.features?.isBattleRoyale === true;
+}
+
+/** Get BR config for a game (returns undefined for non-BR games) */
+export function getBRConfig(gameName: string): BRConfig | undefined {
+  const game = getGameByName(gameName);
+  return game?.brConfig;
 }

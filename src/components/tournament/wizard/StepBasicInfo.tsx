@@ -11,11 +11,11 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, MapPin, Calendar, Clock, Eye, EyeOff, Lock } from 'lucide-react';
+import { Globe, MapPin, Calendar, Clock, Eye, EyeOff, Lock, Target } from 'lucide-react';
 import esportsGames from '@/data/esportsGames.json';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
-import { getGameByName, getDefaultTeamSize, EsportsGame } from '@/utils/gameFeatures';
+import { getGameByName, getDefaultTeamSize, isBattleRoyale, getBRConfig, EsportsGame } from '@/utils/gameFeatures';
 
 const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode }) => {
     const selectedGame = getGameByName(data.game) as EsportsGame | undefined;
@@ -169,6 +169,24 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                                             {fmt.name}
                                         </button>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* BR format notice */}
+                        {isBattleRoyale(selectedGame.name) && (
+                            <div className="pt-2 border-t border-white/5">
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                                    <Target className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-medium text-amber-300 text-sm">Points-Based Tournament</p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            {selectedGame.name} uses a points-based format with placement &amp; elimination scoring across multiple games.
+                                            {getBRConfig(selectedGame.name)?.playersPerLobby && (
+                                                <span className="text-amber-400/70"> Up to {getBRConfig(selectedGame.name)!.playersPerLobby} players per lobby.</span>
+                                            )}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         )}

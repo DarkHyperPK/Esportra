@@ -130,7 +130,7 @@
       "name": "Fortnite",
       "slug": "fortnite",
       "category": "Battle Royale",
-      "type": "bracket",
+      "type": "battle_royale",
       "formats": [
         { "name": "Solo", "value": "solo", "teamSize": 1 },
         { "name": "Duo", "value": "duo", "teamSize": 2 },
@@ -143,17 +143,30 @@
         "mapPool": false,
         "mapPoolSize": 0,
         "assistedReporting": false,
-        "seriesFormats": ["bo1", "bo3"],
+        "seriesFormats": [],
         "hasSidePick": false,
         "isTeamGame": false,
         "isBattleRoyale": true
+      },
+      "brConfig": {
+        "playersPerLobby": 100,
+        "defaultGameCount": 6,
+        "scoringPresets": {
+          "fncs": {
+            "name": "FNCS Standard",
+            "placements": [25, 22, 20, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+            "killPoints": 1,
+            "killCap": null
+          }
+        },
+        "defaultPreset": "fncs"
       }
     },
     {
       "name": "Apex Legends",
       "slug": "apex",
       "category": "Battle Royale",
-      "type": "bracket",
+      "type": "battle_royale",
       "formats": [
         { "name": "Trios", "value": "trios", "teamSize": 3 }
       ],
@@ -164,17 +177,30 @@
         "mapPool": false,
         "mapPoolSize": 0,
         "assistedReporting": false,
-        "seriesFormats": ["bo1", "bo3"],
+        "seriesFormats": [],
         "hasSidePick": false,
         "isTeamGame": true,
         "isBattleRoyale": true
+      },
+      "brConfig": {
+        "playersPerLobby": 60,
+        "defaultGameCount": 6,
+        "scoringPresets": {
+          "algs": {
+            "name": "ALGS Standard",
+            "placements": [12, 9, 7, 5, 4, 3, 3, 2, 2, 2, 1, 1, 1, 1, 1],
+            "killPoints": 1,
+            "killCap": 6
+          }
+        },
+        "defaultPreset": "algs"
       }
     },
     {
       "name": "PUBG",
       "slug": "pubg",
       "category": "Battle Royale",
-      "type": "bracket",
+      "type": "battle_royale",
       "formats": [
         { "name": "Squads", "value": "squads", "teamSize": 4 }
       ],
@@ -185,10 +211,23 @@
         "mapPool": false,
         "mapPoolSize": 0,
         "assistedReporting": false,
-        "seriesFormats": ["bo1", "bo3"],
+        "seriesFormats": [],
         "hasSidePick": false,
         "isTeamGame": true,
         "isBattleRoyale": true
+      },
+      "brConfig": {
+        "playersPerLobby": 64,
+        "defaultGameCount": 6,
+        "scoringPresets": {
+          "pcs": {
+            "name": "PCS Standard",
+            "placements": [10, 6, 5, 4, 3, 2, 1, 1],
+            "killPoints": 1,
+            "killCap": null
+          }
+        },
+        "defaultPreset": "pcs"
       }
     },
     {

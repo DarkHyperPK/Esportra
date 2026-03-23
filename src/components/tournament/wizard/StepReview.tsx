@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { TournamentWizardData, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
 import { cn } from '@/lib/utils';
-import { getGameFeatures } from '@/utils/gameFeatures';
+import { getGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 
 interface StepReviewProps {
     data: TournamentWizardData;
@@ -31,6 +31,8 @@ interface StepReviewProps {
 const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
     const hasErrors = Object.keys(errors).length > 0;
     const features = getGameFeatures(data.game || '');
+    const isBR = isBattleRoyale(data.game || '');
+    const brConfig = getBRConfig(data.game || '');
 
     const formatDate = (dateStr: string, timeStr?: string) => {
         if (!dateStr) return 'Not set';
@@ -69,9 +71,16 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
         },
         {
             step: 2,
-            title: 'Format & Stages',
+            title: isBR ? 'Format & Scoring' : 'Format & Stages',
             icon: <Trophy className="w-5 h-5" />,
-            items: [
+            items: isBR ? [
+                { label: 'Tournament Type', value: 'Points-Based (Battle Royale)' },
+                { label: 'Games', value: `${data.brGameCount} games` },
+                { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : (brConfig?.scoringPresets?.[data.brScoringPreset]?.name || data.brScoringPreset) },
+                { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
+                { label: 'Max Participants', value: data.maxTeams === 0 ? 'Unlimited' : String(data.maxTeams) },
+                { label: 'Team Size', value: String(data.teamSize) },
+            ] : [
                 { label: 'Total Stages', value: `${data.stages.length} stage(s)` },
                 ...data.stages.map((stage, i) => ({
                     label: `Stage ${i + 1}`,
@@ -116,7 +125,13 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 ...(features.assistedReporting
                     ? [{ label: 'Assisted Match Reporting', value: data.assistedMatchReporting ? 'Enabled' : 'Disabled' }]
                     : []),
-                ...(!features.mapVeto && !features.assistedReporting
+                ...(isBR
+                    ? [
+                        { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
+                        { label: 'Tiebreaker', value: data.brTiebreaker === 'most_wins' ? 'Most Wins' : data.brTiebreaker === 'most_kills' ? 'Most Kills' : 'Best Placement' },
+                    ]
+                    : []),
+                ...(!features.mapVeto && !features.assistedReporting && !isBR
                     ? [{ label: 'Game Settings', value: 'No game-specific settings' }]
                     : []),
             ]
