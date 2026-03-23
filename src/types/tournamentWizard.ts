@@ -56,6 +56,7 @@ export interface TournamentWizardData {
 
     // Game-specific settings
     assistedMatchReporting: boolean;
+    mapVetoEnabled: boolean;
 }
 
 export interface WizardStepProps {
@@ -80,7 +81,8 @@ export const WIZARD_STEPS: Omit<WizardStep, 'isValid' | 'isComplete'>[] = [
     { id: 2, title: 'Format & Rules', description: 'Bracket type and settings' },
     { id: 3, title: 'Branding', description: 'Images and prize pool' },
     { id: 4, title: 'Registration', description: 'Sign-up and check-in' },
-    { id: 5, title: 'Review', description: 'Confirm and create' },
+    { id: 5, title: 'Settings', description: 'Match and game settings' },
+    { id: 6, title: 'Review', description: 'Confirm and create' },
 ];
 
 export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
@@ -127,4 +129,5 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
 
     // Game-specific
     assistedMatchReporting: false,
+    mapVetoEnabled: true,
 };

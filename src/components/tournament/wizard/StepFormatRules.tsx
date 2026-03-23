@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import {
     Select,
     SelectContent,
@@ -10,7 +9,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
-import { Trophy, Users, Shuffle, Award, Target, Plus, Trash2, Layers, Map as MapIcon, Check, Zap } from 'lucide-react';
+import { Trophy, Users, Shuffle, Award, Target, Plus, Trash2, Layers, Map as MapIcon, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import {
@@ -403,34 +402,6 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             </div>
                         </>
                     )}
-                </div>
-            )}
-
-            {/* Assisted Match Reporting - Valorant only */}
-            {data.game?.toLowerCase() === 'valorant' && (
-                <div className="space-y-4">
-                    <div className="w-full h-px bg-white/5 my-6" />
-                    <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        <Zap className="w-4 h-4" />
-                        Assisted Match Reporting
-                    </Label>
-                    <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
-                        <Switch
-                            checked={data.assistedMatchReporting}
-                            onCheckedChange={(checked) => updateData({ assistedMatchReporting: checked })}
-                        />
-                        <div className="flex-1">
-                            <p className="font-medium text-white text-sm">Enable Assisted Match Reporting</p>
-                            <p className="text-xs text-gray-400 mt-1">
-                                Automatically detects match results from Riot's API. Captains can scan their recent matches to report scores instantly.
-                            </p>
-                            {data.assistedMatchReporting && (
-                                <p className="text-xs text-amber-400 mt-2">
-                                    ⚠ Players will be required to link their Riot account before registering.
-                                </p>
-                            )}
-                        </div>
-                    </div>
                 </div>
             )}
 

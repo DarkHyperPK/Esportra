@@ -162,7 +162,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),
                     rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
-                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false, checkInWindowMinutes: data.checkInWindowMinutes || 30 },
+                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false, checkInWindowMinutes: data.checkInWindowMinutes || 30, mapVetoEnabled: data.mapVetoEnabled ?? true },
                 });
 
                 // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
@@ -220,7 +220,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     autoRemoveUnchecked:  data.autoRemoveUnchecked,
                     rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
-                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false, checkInWindowMinutes: data.checkInWindowMinutes || 30 },
+                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false, checkInWindowMinutes: data.checkInWindowMinutes || 30, mapVetoEnabled: data.mapVetoEnabled ?? true },
                     // Backend handles stages + map pool in one transaction
                     stages: data.stages.map((s, i) => ({
                         name:             s.name,

@@ -8,6 +8,7 @@ import StepBasicInfo from './StepBasicInfo';
 import StepFormatRules from './StepFormatRules';
 import StepBranding from './StepBranding';
 import StepRegistration from './StepRegistration';
+import StepSettings from './StepSettings';
 import StepReview from './StepReview';
 import { WIZARD_STEPS } from '@/types/tournamentWizard';
 
@@ -48,6 +49,8 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
             case 4:
                 return <StepRegistration data={data} updateData={updateData} errors={errors} />;
             case 5:
+                return <StepSettings data={data} updateData={updateData} errors={errors} />;
+            case 6:
                 return <StepReview data={data} errors={errors} onEdit={goToStep} />;
             default:
                 return null;

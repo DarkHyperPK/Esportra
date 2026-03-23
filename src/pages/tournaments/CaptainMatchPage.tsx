@@ -129,9 +129,6 @@ const CaptainMatchPage = () => {
                             configs[stage.id] = {
                                 format: stage.format,
                                 scheduling_config: sc,
-                                config: typeof stage.config === 'string'
-                                    ? (() => { try { return JSON.parse(stage.config); } catch { return {}; } })()
-                                    : (stage.config || {}),
                             };
                         });
                         setStageConfigs(configs);
@@ -449,9 +446,8 @@ const CaptainMatchPage = () => {
     }, [activeMatchVersion, stageConfigs]);
 
     const isVetoEnabled = useMemo(() => {
-        if (!activeMatchVersion?.stage_id) return true; // default to enabled for safety
-        return stageConfigs[activeMatchVersion.stage_id]?.config?.veto_enabled !== false;
-    }, [activeMatchVersion, stageConfigs]);
+        return tournament?.settings?.mapVetoEnabled !== false;
+    }, [tournament?.settings]);
 
     // Watch reports for the active match — used to detect disputed status
     const activeMatchRawId = activeMatch ? activeMatch.id.replace(/^(db-|wb-|lb-)/, '') : undefined;

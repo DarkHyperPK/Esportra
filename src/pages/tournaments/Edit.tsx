@@ -118,6 +118,7 @@ const EditTournament = () => {
 
         // Game-specific settings
         assistedMatchReporting: !!(tournamentData.settings as any)?.assistedMatchReporting,
+        mapVetoEnabled: (tournamentData.settings as any)?.mapVetoEnabled ?? true,
       };
 
       console.log('[EditTournament] Mapped assistedMatchReporting:', mappedData.assistedMatchReporting);

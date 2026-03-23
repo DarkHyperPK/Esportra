@@ -12,7 +12,8 @@ import {
     MapPin,
     Eye,
     EyeOff,
-    Lock
+    Lock,
+    Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -100,6 +101,17 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Check-in', value: `${data.checkInWindowMinutes} min before start` },
                 { label: 'Auto-remove no-shows', value: 'Enabled' },
                 { label: 'Waitlist', value: data.waitlistEnabled ? `Yes (max ${data.waitlistMax})` : 'Disabled' },
+            ]
+        },
+        {
+            step: 5,
+            title: 'Settings',
+            icon: <Settings className="w-5 h-5" />,
+            items: [
+                { label: 'Map Veto', value: data.mapVetoEnabled ? 'Enabled' : 'Disabled' },
+                ...(data.game?.toLowerCase() === 'valorant'
+                    ? [{ label: 'Assisted Match Reporting', value: data.assistedMatchReporting ? 'Enabled' : 'Disabled' }]
+                    : []),
             ]
         },
     ];
