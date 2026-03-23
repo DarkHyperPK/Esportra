@@ -2,8 +2,7 @@ name: 🔄 Deploy DB Migrations
 
 on:
   push:
-    branches: [main, staging]
-    paths: ['supabase/migrations/**']
+    branches: [main, staging]  # supabase db push is idempotent — safe to run on every push
   workflow_dispatch:
     inputs:
       environment:
