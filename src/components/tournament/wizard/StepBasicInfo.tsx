@@ -117,6 +117,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                                 className="focus:bg-green-600 focus:text-white cursor-pointer"
                             >
                                 <div className="flex items-center gap-2">
+                                    <img src={game.logo} alt="" className="w-5 h-5 rounded object-contain" />
                                     <span>{game.name}</span>
                                 </div>
                             </SelectItem>
@@ -136,8 +137,8 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-3"
                     >
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
-                                🎮
+                            <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
+                                <img src={selectedGame.logo} alt={selectedGame.name} className="w-10 h-10 object-contain" />
                             </div>
                             <div>
                                 <div className="font-semibold text-white">{selectedGame.name}</div>
