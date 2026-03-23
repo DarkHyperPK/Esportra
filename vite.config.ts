@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => ({
             if (id.includes('@radix-ui')) return 'vendor-radix';
             if (id.includes('@tanstack')) return 'vendor-tanstack';
             if (id.includes('react-router')) return 'vendor-router';
-            if (id.includes('zod') || id.includes('react-hook-form')) return 'vendor-forms';
+            if (id.includes('zod') || id.includes('react-hook-form') || id.includes('@hookform')) return 'vendor-forms';
             if (id.includes('@microsoft/signalr')) return 'vendor-signalr';
 
             return 'vendor-main';
