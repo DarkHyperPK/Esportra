@@ -47,6 +47,7 @@ interface StageConfig {
         points_per_draw?: number;
         points_per_loss?: number;
         use_check_in_only?: boolean;
+        veto_enabled?: boolean;
     };
 }
 
@@ -261,13 +262,27 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     const stageAny = s as any;
                     const bestOf = stageAny.best_of || 1;
 
-                    const result = {
+                    // Load settings from config JSON
+                    const stageConfig = typeof stageAny.config === 'string'
+                        ? (() => { try { return JSON.parse(stageAny.config); } catch { return {}; } })()
+                        : (stageAny.config || {});
+                    const result: StageConfig = {
                         id: s.id,
                         name: s.name,
                         format: s.format,
                         capacity: s.capacity || '',
                         advancement_count: s.advancement_count || '',
                         best_of: bestOf,
+                        settings: {
+                            ...(stageConfig.swiss_groups != null && { swiss_groups: stageConfig.swiss_groups }),
+                            ...(stageConfig.swiss_rounds != null && { swiss_rounds: stageConfig.swiss_rounds }),
+                            ...(stageConfig.group_count != null && { group_count: stageConfig.group_count }),
+                            ...(stageConfig.points_per_win != null && { points_per_win: stageConfig.points_per_win }),
+                            ...(stageConfig.points_per_draw != null && { points_per_draw: stageConfig.points_per_draw }),
+                            ...(stageConfig.points_per_loss != null && { points_per_loss: stageConfig.points_per_loss }),
+                            ...(stageConfig.use_check_in_only != null && { use_check_in_only: stageConfig.use_check_in_only }),
+                            ...(stageConfig.veto_enabled != null && { veto_enabled: stageConfig.veto_enabled }),
+                        },
                     };
                     console.log('[StageWizard] Mapped stage:', result);
                     return result;
@@ -404,6 +419,8 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     ...(stage.settings.points_per_win != null && { points_per_win: stage.settings.points_per_win }),
                     ...(stage.settings.points_per_draw != null && { points_per_draw: stage.settings.points_per_draw }),
                     ...(stage.settings.points_per_loss != null && { points_per_loss: stage.settings.points_per_loss }),
+                    ...(stage.settings.use_check_in_only != null && { use_check_in_only: stage.settings.use_check_in_only }),
+                    ...(stage.settings.veto_enabled != null && { veto_enabled: stage.settings.veto_enabled }),
                 } : undefined;
                 const hasConfig = config && Object.keys(config).length > 0;
                 return {
@@ -813,13 +830,34 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id={`vetoEnabled-${currentStageIndex}`}
+                                className="rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-500"
+                                checked={stage.settings?.veto_enabled || false}
+                                onChange={(e) => {
+                                    const newSettings = { ...stage.settings, veto_enabled: e.target.checked };
+                                    updateStageConfig(currentStageIndex, 'settings', newSettings);
+                                }}
+                            />
+                            <label
+                                htmlFor={`vetoEnabled-${currentStageIndex}`}
+                                className="text-sm font-medium leading-none text-gray-300"
+                            >
+                                Enable Map Veto
+                            </label>
+                        </div>
+                        <p className="text-[10px] text-gray-500 ml-6">
+                            When enabled, teams must complete a map veto before reporting match results.
+                        </p>
                     </div>
                 </div>
             </motion.div>
         );
     };
 
-    const renderManualSetup = () => {
+    const renderManualSetup= () => {
         return (
             <motion.div
                 variants={containerVariants}
@@ -1161,6 +1199,24 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="vetoEnabledManual"
+                                    className="rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-500"
+                                    checked={manualFormState.settings?.veto_enabled || false}
+                                    onChange={(e) => {
+                                        const newSettings = { ...manualFormState.settings, veto_enabled: e.target.checked };
+                                        setManualFormState({ ...manualFormState, settings: newSettings });
+                                    }}
+                                />
+                                <label
+                                    htmlFor="vetoEnabledManual"
+                                    className="text-sm font-medium leading-none text-gray-300"
+                                >
+                                    Enable Map Veto
+                                </label>
+                            </div>
                         </div>
 
                         <div className="flex justify-end gap-2 pt-2">
@@ -1324,6 +1380,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                     <div className="flex items-center gap-2 text-gray-400">
                                         <Shield className="h-3.5 w-3.5 text-gray-500" />
                                         <span>Best of <span className="text-gray-300">{stage.best_of}</span></span>
+                                        {stage.settings?.veto_enabled && <span className="text-emerald-400 text-xs">(Veto On)</span>}
                                     </div>
                                 </CardContent>
                             </Card>

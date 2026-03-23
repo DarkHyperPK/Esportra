@@ -128,7 +128,10 @@ const CaptainMatchPage = () => {
                             }
                             configs[stage.id] = {
                                 format: stage.format,
-                                scheduling_config: sc
+                                scheduling_config: sc,
+                                config: typeof stage.config === 'string'
+                                    ? (() => { try { return JSON.parse(stage.config); } catch { return {}; } })()
+                                    : (stage.config || {}),
                             };
                         });
                         setStageConfigs(configs);
@@ -443,6 +446,11 @@ const CaptainMatchPage = () => {
     const schedulingConfig = useMemo(() => {
         if (!activeMatchVersion?.stage_id) return null;
         return stageConfigs[activeMatchVersion.stage_id]?.scheduling_config;
+    }, [activeMatchVersion, stageConfigs]);
+
+    const isVetoEnabled = useMemo(() => {
+        if (!activeMatchVersion?.stage_id) return true; // default to enabled for safety
+        return stageConfigs[activeMatchVersion.stage_id]?.config?.veto_enabled !== false;
     }, [activeMatchVersion, stageConfigs]);
 
     // Watch reports for the active match — used to detect disputed status
@@ -945,18 +953,18 @@ const CaptainMatchPage = () => {
                                         {activeMatch.status !== 'completed' && !isMatchLive && (
                                             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800/50 text-xs text-zinc-500">
                                                 <Clock className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
-                                                <span>Complete check-in to unlock Map Veto and match actions</span>
+                                                <span>{isVetoEnabled ? 'Complete check-in to unlock Map Veto and match actions' : 'Complete check-in to unlock match actions'}</span>
                                             </div>
                                         )}
 
-                                        {isMatchLive && !isVetoCompleted && activeMatch.status !== 'completed' && (
+                                        {isVetoEnabled && isMatchLive && !isVetoCompleted && activeMatch.status !== 'completed' && (
                                             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 text-xs text-indigo-300">
                                                 <Swords className="w-3.5 h-3.5 shrink-0" />
                                                 <span>Complete Map Veto to unlock result reporting</span>
                                             </div>
                                         )}
 
-                                        {/* Valorant Auto-Report — only when veto completed */}
+                                        {/* Valorant Auto-Report — only when veto completed (or veto disabled) */}
                                         {(() => {
                                             const isValorant = tournament?.game?.toLowerCase() === 'valorant';
                                             const assistedEnabled = tournament?.settings?.assistedMatchReporting === true;
@@ -964,7 +972,8 @@ const CaptainMatchPage = () => {
                                             const bestOf = activeMatch.bestOf || 1;
                                             const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
                                             const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
-                                            if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && isVetoCompleted) {
+                                            const vetoReady = !isVetoEnabled || isVetoCompleted;
+                                            if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && vetoReady) {
                                                 // Block auto-report for disputed games
                                                 if (disputedGameNumbers.has(nextGameNumber)) {
                                                     return (
@@ -1003,22 +1012,24 @@ const CaptainMatchPage = () => {
 
                                         {/* Map Veto + Manual Report — only show when match is live */}
                                         {isMatchLive && activeMatch.status !== 'completed' && (
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <Button
-                                                    onClick={() => handleOpenVeto(activeMatch)}
-                                                    className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-white h-10 text-sm font-semibold font-mono tracking-wide"
-                                                >
-                                                    <Swords className="w-4 h-4 mr-1.5" />
-                                                    Map Veto
-                                                </Button>
+                                            <div className={`grid gap-2 ${isVetoEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                                {isVetoEnabled && (
+                                                    <Button
+                                                        onClick={() => handleOpenVeto(activeMatch)}
+                                                        className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-white h-10 text-sm font-semibold font-mono tracking-wide"
+                                                    >
+                                                        <Swords className="w-4 h-4 mr-1.5" />
+                                                        Map Veto
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     onClick={() => handleUploadResult(activeMatch.id)}
                                                     className="bg-rose-500 hover:bg-rose-600 text-white h-10 text-sm font-semibold font-mono tracking-wide disabled:opacity-40"
-                                                    disabled={!isVetoCompleted || disputedGameNumbers.has(nextGameNumber)}
+                                                    disabled={(isVetoEnabled && !isVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
                                                 >
                                                     <Trophy className="w-4 h-4 mr-1.5" />
                                                     {disputedGameNumbers.has(nextGameNumber) ? `Game ${nextGameNumber} Disputed`
-                                                        : isVetoCompleted ? 'Manual Report' : 'Awaiting Veto'}
+                                                        : (isVetoEnabled && !isVetoCompleted) ? 'Awaiting Veto' : 'Manual Report'}
                                                 </Button>
                                             </div>
                                         )}
