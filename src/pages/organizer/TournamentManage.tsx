@@ -1712,7 +1712,10 @@ const TournamentDashboard = () => {
                               <Button
                                 onClick={async () => {
                                   try {
-                                    await apiClient.put(`/api/tournaments/${tournament!.id}`, { status: 'completed' });
+                                    await apiClient.put(`/api/tournaments/${tournament!.id}`, {
+                                      status: 'completed',
+                                      winner_team_name: brResults.winner!.teamName,
+                                    });
                                     toast({ title: 'Tournament Completed', description: `${brResults.winner!.teamName} crowned as champion!` });
                                     queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
                                   } catch {
@@ -1731,28 +1734,39 @@ const TournamentDashboard = () => {
 
                       {/* Game Result Entry */}
                       <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white">Enter Game Results</h3>
+                        <h3 className="text-lg font-bold text-white">Games</h3>
                         {brTeams.length === 0 ? (
                           <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-6 text-center">
                             <p className="text-gray-400">No participants registered yet. Results can be entered after teams register.</p>
                           </Card>
                         ) : (
-                          Array.from({ length: brGameCount }, (_, i) => (
-                            <BRGameResults
-                              key={i}
-                              gameNumber={i + 1}
-                              teams={brTeams}
-                              scoringPreset={brScoringPreset}
-                              killCap={brKillCap}
-                              existingResults={brResults.getGameResults(i + 1)}
-                              lobbyCode={brResults.getLobbyCode(i + 1)}
-                              isOrganizer={isOrganizer}
-                              onSave={(results, lobbyCode) => {
-                                brResults.saveGameResults(i + 1, results, lobbyCode);
-                              }}
-                              isSaving={brResults.isSaving}
-                            />
-                          ))
+                          Array.from({ length: brGameCount }, (_, i) => {
+                            const gameNum = i + 1;
+                            const gameStatus = brResults.getGameStatus(gameNum);
+                            // Sequential: locked if any prior game is not completed
+                            const isLocked = i > 0 && brResults.getGameStatus(i) !== 'completed';
+                            return (
+                              <BRGameResults
+                                key={i}
+                                gameNumber={gameNum}
+                                teams={brTeams}
+                                scoringPreset={brScoringPreset}
+                                killCap={brKillCap}
+                                existingResults={brResults.getGameResults(gameNum)}
+                                lobbyCode={brResults.getLobbyCode(gameNum)}
+                                isOrganizer={isOrganizer}
+                                gameStatus={gameStatus}
+                                isLocked={isLocked}
+                                onStartGame={(lobbyCode) => {
+                                  brResults.startGame(gameNum, lobbyCode);
+                                }}
+                                onSave={(results, lobbyCode) => {
+                                  brResults.saveGameResults(gameNum, results, lobbyCode);
+                                }}
+                                isSaving={brResults.isSaving}
+                              />
+                            );
+                          })
                         )}
                       </div>
                     </div>

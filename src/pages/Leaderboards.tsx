@@ -8,6 +8,7 @@ import CountrySelector from '@/components/ui/CountrySelector';
 import { Globe } from 'lucide-react';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import esportsGames from '@/data/esportsGames.json';
+import { isBattleRoyale } from '@/utils/gameFeatures';
 
 // ── Types ──
 interface TeamStats {
@@ -351,23 +352,44 @@ const Leaderboards: React.FC = () => {
                         </div>
                         <div>
                             <h3 className="text-sm font-black text-white uppercase tracking-tight">Ranking Points (RP)</h3>
-                            <p className="text-xs text-zinc-500">How rankings are calculated</p>
+                            <p className="text-xs text-zinc-500">
+                                {game !== 'All Games' && isBattleRoyale(game)
+                                    ? 'Battle Royale scoring — placement + kills per game'
+                                    : 'How rankings are calculated'}
+                            </p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {[
-                            { label: 'Match Win', value: `+${RP_PER_WIN}`, icon: Swords, color: 'text-emerald-400' },
-                            { label: 'Match Loss', value: `${RP_PER_LOSS}`, icon: Target, color: 'text-rose-400' },
-                            { label: 'Tournament Win', value: `+${RP_PER_TOURNAMENT_WIN}`, icon: Trophy, color: 'text-yellow-400' },
-                            { label: 'Match MVP', value: `+${RP_PER_MVP}`, icon: Star, color: 'text-rose-400' },
-                        ].map(item => (
-                            <div key={item.label} className="bg-zinc-950/60 rounded-2xl p-4 border border-white/5">
-                                <item.icon className={`w-5 h-5 ${item.color} mb-2`} />
-                                <p className="text-xs text-zinc-500 font-semibold mb-1">{item.label}</p>
-                                <p className={`text-lg font-black ${item.color}`}>{item.value} <span className="text-[10px] text-zinc-600">RP</span></p>
-                            </div>
-                        ))}
-                    </div>
+                    {game !== 'All Games' && isBattleRoyale(game) ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            {[
+                                { label: 'Placement Pts', value: 'Per Game', icon: Target, color: 'text-emerald-400' },
+                                { label: 'Kill Pts', value: 'Per Kill', icon: Swords, color: 'text-rose-400' },
+                                { label: 'Tournament Win', value: `+${RP_PER_TOURNAMENT_WIN}`, icon: Trophy, color: 'text-yellow-400' },
+                                { label: 'Points Total', value: 'All Games', icon: Flame, color: 'text-amber-400' },
+                            ].map(item => (
+                                <div key={item.label} className="bg-zinc-950/60 rounded-2xl p-4 border border-white/5">
+                                    <item.icon className={`w-5 h-5 ${item.color} mb-2`} />
+                                    <p className="text-xs text-zinc-500 font-semibold mb-1">{item.label}</p>
+                                    <p className={`text-lg font-black ${item.color}`}>{item.value}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            {[
+                                { label: 'Match Win', value: `+${RP_PER_WIN}`, icon: Swords, color: 'text-emerald-400' },
+                                { label: 'Match Loss', value: `${RP_PER_LOSS}`, icon: Target, color: 'text-rose-400' },
+                                { label: 'Tournament Win', value: `+${RP_PER_TOURNAMENT_WIN}`, icon: Trophy, color: 'text-yellow-400' },
+                                { label: 'Match MVP', value: `+${RP_PER_MVP}`, icon: Star, color: 'text-rose-400' },
+                            ].map(item => (
+                                <div key={item.label} className="bg-zinc-950/60 rounded-2xl p-4 border border-white/5">
+                                    <item.icon className={`w-5 h-5 ${item.color} mb-2`} />
+                                    <p className="text-xs text-zinc-500 font-semibold mb-1">{item.label}</p>
+                                    <p className={`text-lg font-black ${item.color}`}>{item.value} <span className="text-[10px] text-zinc-600">RP</span></p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Save, ChevronUp, ChevronDown, Copy, Key } from 'lucide-react';
+import { Save, ChevronUp, ChevronDown, Copy, Key, Play, Lock, CheckCircle, Radio } from 'lucide-react';
 import type { BRScoringPreset, BRTeamResult } from '@/types/battleRoyale';
+import type { BRGameStatus } from '@/hooks/useBRGameResults';
 
 interface BRGameResultsProps {
   gameNumber: number;
@@ -15,9 +16,12 @@ interface BRGameResultsProps {
   killCap: number | null;
   existingResults?: BRTeamResult[];
   onSave: (results: BRTeamResult[], lobbyCode?: string) => void;
+  onStartGame?: (lobbyCode: string) => void;
   isSaving?: boolean;
   lobbyCode?: string;
   isOrganizer?: boolean;
+  gameStatus: BRGameStatus;
+  isLocked?: boolean;
 }
 
 const BRGameResults: React.FC<BRGameResultsProps> = ({
@@ -27,12 +31,16 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   killCap,
   existingResults,
   onSave,
+  onStartGame,
   isSaving,
   lobbyCode: initialLobbyCode,
   isOrganizer,
+  gameStatus,
+  isLocked = false,
 }) => {
   const { toast } = useToast();
   const [currentLobbyCode, setCurrentLobbyCode] = useState(initialLobbyCode || '');
+  const [startLobbyCode, setStartLobbyCode] = useState('');
 
   const [results, setResults] = useState<{ teamId: string; placement: number; kills: number }[]>(() => {
     if (existingResults?.length) {
@@ -99,19 +107,126 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   // Sort by placement for display
   const sortedResults = [...results].sort((a, b) => a.placement - b.placement);
 
+  const statusBadge = gameStatus === 'completed' ? (
+    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs">
+      <CheckCircle className="w-3 h-3 mr-1" /> Completed
+    </Badge>
+  ) : gameStatus === 'active' ? (
+    <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 text-xs animate-pulse">
+      <Radio className="w-3 h-3 mr-1" /> Live
+    </Badge>
+  ) : isLocked ? (
+    <Badge variant="outline" className="text-zinc-500 border-zinc-700 text-xs">
+      <Lock className="w-3 h-3 mr-1" /> Locked
+    </Badge>
+  ) : (
+    <Badge variant="outline" className="text-zinc-400 border-zinc-700 text-xs">
+      Pending
+    </Badge>
+  );
+
+  // PENDING STATE — show "Start Game" button for organizer
+  if (gameStatus === 'pending' && isOrganizer && !isLocked) {
+    return (
+      <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+        <CardHeader className="pb-3 border-b border-white/5">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-bold text-white">Game {gameNumber}</CardTitle>
+            {statusBadge}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="flex flex-col items-center gap-4 py-6">
+            <Play className="w-10 h-10 text-zinc-600" />
+            <p className="text-sm text-zinc-400 text-center">Ready to start. Enter a lobby code and start the game.</p>
+            <div className="flex items-center gap-2 w-full max-w-sm">
+              <Key className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+              <Input
+                placeholder="Lobby / party code..."
+                value={startLobbyCode}
+                onChange={(e) => setStartLobbyCode(e.target.value)}
+                className="h-9 text-sm font-mono flex-1"
+              />
+            </div>
+            <Button
+              onClick={() => {
+                if (!startLobbyCode.trim()) {
+                  toast({ title: 'Lobby code required', description: 'Enter a lobby code so players can join.', variant: 'destructive' });
+                  return;
+                }
+                onStartGame?.(startLobbyCode.trim());
+              }}
+              disabled={isSaving}
+              className="bg-rose-600 hover:bg-rose-700 text-white px-6"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              {isSaving ? 'Starting...' : 'Start Game'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // LOCKED PENDING STATE — show locked message for organizer and players
+  if (gameStatus === 'pending' && isLocked) {
+    return (
+      <Card className="bg-black/20 backdrop-blur-md border border-zinc-800/50 rounded-2xl overflow-hidden opacity-60">
+        <CardHeader className="pb-3 border-b border-white/5">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-bold text-zinc-500">Game {gameNumber}</CardTitle>
+            {statusBadge}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="flex flex-col items-center gap-2 py-4">
+            <Lock className="w-8 h-8 text-zinc-700" />
+            <p className="text-xs text-zinc-600 text-center">Complete the previous game to unlock</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // PENDING STATE — player view (no start button)
+  if (gameStatus === 'pending' && !isOrganizer) {
+    return (
+      <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+        <CardHeader className="pb-3 border-b border-white/5">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-bold text-white">Game {gameNumber}</CardTitle>
+            {statusBadge}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="flex flex-col items-center gap-2 py-4">
+            <p className="text-sm text-zinc-400 text-center">Waiting for organizer to start this game</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ACTIVE or COMPLETED STATE — show full results interface
   return (
-    <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+    <Card className={cn(
+      "bg-black/20 backdrop-blur-md border rounded-2xl overflow-hidden",
+      gameStatus === 'active' ? "border-rose-500/30" : "border-white/10"
+    )}>
       <CardHeader className="pb-3 border-b border-white/5">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-bold text-white">Game {gameNumber} Results</CardTitle>
-          <Badge variant="outline" className="text-xs">
-            {teams.length} teams
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              {teams.length} teams
+            </Badge>
+            {statusBadge}
+          </div>
         </div>
         {/* Lobby Code */}
         <div className="flex items-center gap-2 mt-3">
           <Key className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          {isOrganizer ? (
+          {isOrganizer && gameStatus === 'active' ? (
             <Input
               placeholder="Enter lobby code for players..."
               value={currentLobbyCode}
@@ -135,7 +250,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
               </button>
             </div>
           ) : (
-            <span className="text-xs text-gray-500 italic">No lobby code set yet</span>
+            <span className="text-xs text-gray-500 italic">No lobby code set</span>
           )}
         </div>
       </CardHeader>
@@ -177,24 +292,26 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                   )}>
                     {result.placement}
                   </span>
-                  <div className="flex flex-col -space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => moveTeam(realIndex, 'up')}
-                      disabled={result.placement === 1}
-                      className="text-gray-500 hover:text-white disabled:opacity-20 p-0"
-                    >
-                      <ChevronUp className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveTeam(realIndex, 'down')}
-                      disabled={result.placement === teams.length}
-                      className="text-gray-500 hover:text-white disabled:opacity-20 p-0"
-                    >
-                      <ChevronDown className="w-3 h-3" />
-                    </button>
-                  </div>
+                  {isOrganizer && gameStatus === 'active' && (
+                    <div className="flex flex-col -space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => moveTeam(realIndex, 'up')}
+                        disabled={result.placement === 1}
+                        className="text-gray-500 hover:text-white disabled:opacity-20 p-0"
+                      >
+                        <ChevronUp className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveTeam(realIndex, 'down')}
+                        disabled={result.placement === teams.length}
+                        className="text-gray-500 hover:text-white disabled:opacity-20 p-0"
+                      >
+                        <ChevronDown className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Team name */}
@@ -207,14 +324,18 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
 
                 {/* Kills input */}
                 <div>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={killCap || 99}
-                    value={result.kills}
-                    onChange={(e) => updateKills(realIndex, parseInt(e.target.value) || 0)}
-                    className="h-7 text-center text-sm [color-scheme:dark]"
-                  />
+                  {isOrganizer && gameStatus === 'active' ? (
+                    <Input
+                      type="number"
+                      min={0}
+                      max={killCap || 99}
+                      value={result.kills}
+                      onChange={(e) => updateKills(realIndex, parseInt(e.target.value) || 0)}
+                      className="h-7 text-center text-sm [color-scheme:dark]"
+                    />
+                  ) : (
+                    <span className="text-sm text-white font-medium block text-center">{result.kills}</span>
+                  )}
                 </div>
 
                 {/* Points breakdown */}
@@ -226,17 +347,19 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
           })}
         </div>
 
-        {/* Save button */}
-        <div className="mt-4 flex justify-end">
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {isSaving ? 'Saving...' : 'Save Results'}
-          </Button>
-        </div>
+        {/* Save button — only when organizer and game is active */}
+        {isOrganizer && gameStatus === 'active' && (
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {isSaving ? 'Saving...' : 'Save Results & Complete Game'}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

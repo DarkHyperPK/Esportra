@@ -13,10 +13,13 @@ interface UseBRGameResultsProps {
   tiebreaker?: 'most_wins' | 'most_kills' | 'head_to_head';
 }
 
+export type BRGameStatus = 'pending' | 'active' | 'completed';
+
 interface BRGameData {
   gameNumber: number;
   results: BRTeamResult[];
   lobbyCode?: string;
+  status: BRGameStatus;
 }
 
 export function useBRGameResults({
@@ -57,7 +60,7 @@ export function useBRGameResults({
     // Saved first
     if (savedGames) {
       for (const g of savedGames) {
-        merged.set(g.gameNumber, g);
+        merged.set(g.gameNumber, { ...g, status: g.status || (g.results.length > 0 ? 'completed' : 'pending') });
       }
     }
     // Local overrides
@@ -69,12 +72,12 @@ export function useBRGameResults({
 
   // Save game results mutation
   const saveMutation = useMutation({
-    mutationFn: async ({ gameNumber, results, lobbyCode }: BRGameData) => {
+    mutationFn: async ({ gameNumber, results, lobbyCode, status }: BRGameData) => {
       // Try API first
       try {
         await apiClient.put(
           `/api/tournaments/${tournamentId}/br-results/${gameNumber}`,
-          { gameNumber, results, lobbyCode }
+          { gameNumber, results, lobbyCode, status }
         );
         return { persisted: true };
       } catch {
@@ -83,7 +86,7 @@ export function useBRGameResults({
           const tournament = await apiClient.get<any>(`/api/tournaments/${tournamentId}`);
           const settings = tournament?.tournament?.settings || tournament?.settings || {};
           const brResults = settings.brResults || {};
-          brResults[`game_${gameNumber}`] = { gameNumber, results, lobbyCode };
+          brResults[`game_${gameNumber}`] = { gameNumber, results, lobbyCode, status };
           await apiClient.put(`/api/tournaments/${tournamentId}`, {
             settings: { ...settings, brResults },
           });
@@ -116,13 +119,56 @@ export function useBRGameResults({
     },
   });
 
-  // Save results for a specific game
+  // Save results for a specific game (marks as completed)
   const saveGameResults = useCallback(
     (gameNumber: number, results: BRTeamResult[], lobbyCode?: string) => {
-      saveMutation.mutate({ gameNumber, results, lobbyCode });
+      saveMutation.mutate({ gameNumber, results, lobbyCode, status: 'completed' });
     },
     [saveMutation]
   );
+
+  // Start a game (set lobby code and mark as active)
+  const startGame = useCallback(
+    (gameNumber: number, lobbyCode: string) => {
+      const existing = allGames.get(gameNumber);
+      saveMutation.mutate({
+        gameNumber,
+        results: existing?.results || [],
+        lobbyCode,
+        status: 'active',
+      });
+    },
+    [saveMutation, allGames]
+  );
+
+  // Get game status
+  const getGameStatus = useCallback(
+    (gameNumber: number): BRGameStatus => {
+      const game = allGames.get(gameNumber);
+      if (!game) return 'pending';
+      return game.status;
+    },
+    [allGames]
+  );
+
+  // Get the current active game number (first non-completed game, or null)
+  const activeGameNumber = useMemo((): number | null => {
+    for (let i = 1; i <= gameCount; i++) {
+      const status = allGames.get(i)?.status;
+      if (status === 'active') return i;
+    }
+    return null;
+  }, [allGames, gameCount]);
+
+  // Get the next game that can be started (first pending game where all prior are completed)
+  const nextGameNumber = useMemo((): number | null => {
+    for (let i = 1; i <= gameCount; i++) {
+      const status = allGames.get(i)?.status;
+      if (status === 'active') return null; // can't start next while one is active
+      if (!status || status === 'pending') return i;
+    }
+    return null; // all completed
+  }, [allGames, gameCount]);
 
   // Compute leaderboard from all game results
   const leaderboard = useMemo((): BRLeaderboardEntry[] => {
@@ -227,8 +273,12 @@ export function useBRGameResults({
     isLoading,
     isSaving: saveMutation.isPending,
     saveGameResults,
+    startGame,
     getGameResults,
+    getGameStatus,
     getLobbyCode,
+    activeGameNumber,
+    nextGameNumber,
     allGames,
   };
 }
