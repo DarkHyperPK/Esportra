@@ -159,10 +159,10 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     logoUrl:              data.logoUrl,
                     isPublic:             data.visibility === 'public',
                     checkInRequired:      data.checkInRequired,
-                    checkInDeadline:      startDateTime.toISOString(),
+                    checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),
                     rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
-                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false },
+                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false, checkInWindowMinutes: data.checkInWindowMinutes || 30 },
                 });
 
                 // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
@@ -216,11 +216,11 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     organizationId:       orgId,
                     isPublic:             data.visibility === 'public',
                     checkInRequired:      data.checkInRequired,
-                    checkInDeadline:      startDateTime.toISOString(),
+                    checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),
                     autoRemoveUnchecked:  data.autoRemoveUnchecked,
                     rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
-                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false },
+                    settings:             { assistedMatchReporting: data.assistedMatchReporting ?? false, checkInWindowMinutes: data.checkInWindowMinutes || 30 },
                     // Backend handles stages + map pool in one transaction
                     stages: data.stages.map((s, i) => ({
                         name:             s.name,
