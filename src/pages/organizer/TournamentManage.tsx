@@ -619,8 +619,15 @@ const TournamentDashboard = () => {
     }
 
     try {
-      await handleStatusChange('completed');
       const winnerName = isBR && brResults.winner ? brResults.winner.teamName : undefined;
+
+      // Send status + winner in one call so backend can award RP
+      await apiClient.put(`/api/tournaments/${tournament.id}`, {
+        status: 'completed',
+        ...(winnerName && { winner_team_name: winnerName }),
+      });
+
+      refetchDashboard();
       toast({
         title: 'Tournament Finished',
         description: winnerName
@@ -630,6 +637,11 @@ const TournamentDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
     } catch (e) {
       console.error('Error finishing tournament:', e);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete tournament.',
+        variant: 'destructive',
+      });
     }
   };
 
