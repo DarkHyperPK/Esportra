@@ -49,8 +49,6 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
   const { toast } = useToast();
   const { riotAccount } = useRiotAccount();
   const [loading, setLoading] = useState(false);
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [existingRegistration, setExistingRegistration] = useState<any>(null);
   const [registrationData, setRegistrationData] = useState<RegistrationData>({
     riot_tag: profile?.riot_tag || '',
     steam_tag: profile?.steam_tag || '',
@@ -60,11 +58,6 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
   // Riot games require linked Riot account
   const isRiotGame = ['valorant', 'league of legends'].includes(tournament.game?.toLowerCase() || '');
   const requiresRiotLink = isRiotGame && !!riotAccount;
-
-  // Check if user is already registered
-  useEffect(() => {
-    checkExistingRegistration();
-  }, [user, tournament.id]);
 
   // Auto-fill gamer tag: Riot tag for Riot games, otherwise username
   useEffect(() => {
@@ -81,25 +74,6 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       }));
     }
   }, [profile?.username, riotAccount, isRiotGame]);
-
-  const checkExistingRegistration = async () => {
-    if (!user) return;
-
-    try {
-      const data = await apiClient.get<any>(
-        `/api/tournaments/me/registration-status?tournamentId=${tournament.id}`
-      );
-
-      if (data) {
-        // Already registered — notify parent and close dialog
-        setIsRegistered(true);
-        setExistingRegistration(data);
-        onRegistrationComplete?.();
-      }
-    } catch (error) {
-      console.log('No existing registration found');
-    }
-  };
 
   const handleInputChange = (field: keyof RegistrationData, value: string) => {
     setRegistrationData(prev => ({
@@ -236,10 +210,6 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       setLoading(false);
     }
   };
-
-  if (isRegistered) {
-    return null;
-  }
 
   return (
     <div className="space-y-6">
