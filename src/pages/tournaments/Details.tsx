@@ -352,7 +352,7 @@ const TournamentDetails = () => {
     if (!force && hasCheckedRegistration.current) return;
 
     if (!user?.id || !tournament?.id) {
-      setRegistrationLoading(true);
+      setRegistrationLoading(false);
       setIsRegistered(false);
       setRegistrationDetails(null);
       setIsBanned(false);

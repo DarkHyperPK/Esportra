@@ -298,7 +298,7 @@ const TournamentDashboard = () => {
   const brTeams = useMemo(() =>
     isBR ? participants.map(p => ({
       id: p.team_id || p.id,
-      name: p.team_name || p.name || 'Unknown',
+      name: p.team_name || p.gamer_tag || p.user?.username || 'Unknown',
       logo: p.team_logo || undefined,
     })) : [],
     [isBR, participants]
@@ -1735,39 +1735,38 @@ const TournamentDashboard = () => {
                       {/* Game Result Entry */}
                       <div className="space-y-4">
                         <h3 className="text-lg font-bold text-white">Games</h3>
-                        {brTeams.length === 0 ? (
-                          <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-6 text-center">
-                            <p className="text-gray-400">No participants registered yet. Results can be entered after teams register.</p>
+                        {brTeams.length === 0 && (
+                          <Card className="bg-black/20 backdrop-blur-md border border-amber-500/20 rounded-2xl p-4 text-center">
+                            <p className="text-amber-400/80 text-sm">No participants registered yet. Games can be started once teams register.</p>
                           </Card>
-                        ) : (
-                          Array.from({ length: brGameCount }, (_, i) => {
-                            const gameNum = i + 1;
-                            const gameStatus = brResults.getGameStatus(gameNum);
-                            // Sequential: locked if any prior game is not completed
-                            const isLocked = i > 0 && brResults.getGameStatus(i) !== 'completed';
-                            return (
-                              <BRGameResults
-                                key={i}
-                                gameNumber={gameNum}
-                                teams={brTeams}
-                                scoringPreset={brScoringPreset}
-                                killCap={brKillCap}
-                                existingResults={brResults.getGameResults(gameNum)}
-                                lobbyCode={brResults.getLobbyCode(gameNum)}
-                                isOrganizer={isOrganizer}
-                                gameStatus={gameStatus}
-                                isLocked={isLocked}
-                                onStartGame={(lobbyCode) => {
-                                  brResults.startGame(gameNum, lobbyCode);
-                                }}
-                                onSave={(results, lobbyCode) => {
-                                  brResults.saveGameResults(gameNum, results, lobbyCode);
-                                }}
-                                isSaving={brResults.isSaving}
-                              />
-                            );
-                          })
                         )}
+                        {Array.from({ length: brGameCount }, (_, i) => {
+                          const gameNum = i + 1;
+                          const gameStatus = brResults.getGameStatus(gameNum);
+                          // Sequential: locked if any prior game is not completed
+                          const isLocked = i > 0 && brResults.getGameStatus(i) !== 'completed';
+                          return (
+                            <BRGameResults
+                              key={i}
+                              gameNumber={gameNum}
+                              teams={brTeams}
+                              scoringPreset={brScoringPreset}
+                              killCap={brKillCap}
+                              existingResults={brResults.getGameResults(gameNum)}
+                              lobbyCode={brResults.getLobbyCode(gameNum)}
+                              isOrganizer={isOrganizer}
+                              gameStatus={gameStatus}
+                              isLocked={isLocked}
+                              onStartGame={(lobbyCode) => {
+                                brResults.startGame(gameNum, lobbyCode);
+                              }}
+                              onSave={(results, lobbyCode) => {
+                                brResults.saveGameResults(gameNum, results, lobbyCode);
+                              }}
+                              isSaving={brResults.isSaving}
+                            />
+                          );
+                        })}
                       </div>
                     </div>
                   </TabTransition>
