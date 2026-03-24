@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
+import { useRequireVerification } from '@/hooks/useRequireVerification';
 import {
   Users,
   Trophy,
@@ -77,6 +78,7 @@ interface TeamCreationWizardProps {
 const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const requireVerification = useRequireVerification();
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState(2);
@@ -335,6 +337,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   };
 
   const handleCreateTeam = async () => {
+    if (!requireVerification()) return;
     if (!user || !teamName || !teamTag) {
       toast({
         title: 'Missing Information',

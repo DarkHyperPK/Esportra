@@ -21,6 +21,7 @@ import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle,
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
+import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { Tournament, BaseTournament, TournamentRegistration, RegistrationStatus, RegistrationType } from '@/types/tournament';
 import TournamentRegistrationForm from '@/components/TournamentRegistration';
 import { formatDistanceToNowStrict } from 'date-fns';
@@ -119,6 +120,7 @@ const TournamentDetails = () => {
   const { toast } = useToast();
   const { user, profile } = useAuth();
   const { currentRole } = useRole();
+  const requireVerification = useRequireVerification();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkInCount, setCheckInCount] = useState(0);
@@ -157,6 +159,7 @@ const TournamentDetails = () => {
   const isCaptainOrSelf = registrationDetails?.registration_type === 'team' ? isCaptain : true;
   const now = typeof window !== 'undefined' ? new Date() : null;
   const hasMissedCheckIn =
+    isRegistered &&
     requiresCheckIn &&
     checkInDeadlineDate instanceof Date &&
     now instanceof Date &&
@@ -484,6 +487,7 @@ const TournamentDetails = () => {
   }, [checkRegistration, fetchTournamentData]);
 
   const handleRegister = async () => {
+    if (!requireVerification()) return;
     if (!user?.id || !tournament) return;
 
     // Already registered — show toast and bail

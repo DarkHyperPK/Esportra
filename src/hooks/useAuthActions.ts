@@ -81,8 +81,9 @@ export const useAuthActions = () => {
       console.log(`User created with ID: ${authData.user.id} and role: ${role}`);
       // Profile is created automatically by the handle_new_user trigger on auth.users.
 
-      // If email confirmation is required (no session returned), show verify prompt
-      if (!authData.session) {
+      // If email confirmation is required, redirect to verify page
+      // Note: GoTrue may return a session even when email is unconfirmed
+      if (!authData.user.email_confirmed_at) {
         toast({
           title: 'Check your email',
           description: 'We sent a confirmation link to your email. Please verify to continue.',
@@ -92,7 +93,7 @@ export const useAuthActions = () => {
         return;
       }
 
-      // Session exists (autoconfirm enabled) — send welcome email and proceed
+      // Email is already confirmed (autoconfirm enabled) — send welcome email and proceed
       toast({
         title: 'Account created',
         description: 'Your account has been created successfully.',

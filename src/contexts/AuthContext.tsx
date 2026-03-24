@@ -221,11 +221,15 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     return profile?.role === 'casual';
   };
 
+  // Derive email verification status from Supabase user metadata
+  const isEmailVerified = !!(user?.email_confirmed_at);
+
   // Memoize the context value to prevent unnecessary re-renders
   const value = useMemo<AuthContextType>(() => ({
     user: isMounted ? user : null,
     profile: isMounted ? profile : null,
     loading: !isMounted || loading || authLoading || profileLoading,
+    isEmailVerified: isMounted ? isEmailVerified : true,
     signIn,
     signUp,
     signInWithGoogle,
@@ -242,6 +246,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     loading,
     authLoading,
     profileLoading,
+    isEmailVerified,
     error,
     profileError,
     signIn,

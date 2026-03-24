@@ -12,6 +12,7 @@ import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+import { useRequireVerification } from '@/hooks/useRequireVerification';
 
 export interface UseVenueBookingProps {
   venueId: string;
@@ -54,6 +55,7 @@ export interface VenueBooking {
 export const useVenueBooking = ({ venueId, venueName, pricePerHour, availableStations }: UseVenueBookingProps) => {
   const { user }     = useAuth();
   const { toast }    = useToast();
+  const requireVerification = useRequireVerification();
   const [open, setOpen]         = useState(false);
   const [date, setDateState]    = useState<Date>();
   const [timeSlot, setTimeSlot] = useState('');
@@ -123,6 +125,7 @@ export const useVenueBooking = ({ venueId, venueName, pricePerHour, availableSta
   };
 
   const handleBooking = async () => {
+    if (!requireVerification()) return;
     if (!date || !timeSlot) {
       toast({ title: 'Missing Information', description: 'Please select a date and time slot.', variant: 'destructive' });
       return;

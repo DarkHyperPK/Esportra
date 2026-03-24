@@ -16,6 +16,7 @@ import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { apiClient } from "@/lib/apiClient";
 import RoleSwitcher, { RoleSwitcherDialog } from "@/components/RoleSwitcher";
+import { AlertTriangle } from "lucide-react";
 
 // Specialized button component for inside the menu
 const RoleSwitcherMenuButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
@@ -60,7 +61,7 @@ const UserMenu = ({
 }: {
   handleSignOut: () => Promise<void>;
 }) => {
-  const { user, profile } = useAuth();
+  const { user, profile, isEmailVerified } = useAuth();
   const { currentRole: userRole } = useRole();
   const admin = useAdmin();
   const navigate = useNavigate();
@@ -209,6 +210,9 @@ const UserMenu = ({
           >
             <User className="mr-2 h-4 w-4" />
             {profile?.username || 'Account'}
+            {!isEmailVerified && user && (
+              <AlertTriangle className="ml-1.5 h-3.5 w-3.5 text-amber-400" />
+            )}
           </Button>
         </FramerDropdownTrigger>
         <FramerDropdownContent align="end" width={320}>
@@ -216,7 +220,14 @@ const UserMenu = ({
             <p className="text-sm font-semibold text-white">
               {profile?.full_name || profile?.username || 'User'}
             </p>
-            <p className="text-xs uppercase tracking-[0.2em] text-white/50 mt-1">{roleLabel}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/50">{roleLabel}</p>
+              {!isEmailVerified && user && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-400 uppercase tracking-wider">
+                  Unverified
+                </Badge>
+              )}
+            </div>
           </div>
 
           {!admin.isAdmin && hasApprovedLicense && (

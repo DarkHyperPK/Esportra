@@ -31,6 +31,7 @@ export type AuthContextType = {
   profile: UserProfile | null;
   loading: boolean;
   error?: string | null;
+  isEmailVerified: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, username: string, fullName?: string, role?: UserRole, dateOfBirth?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;

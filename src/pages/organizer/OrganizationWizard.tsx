@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,7 @@ const OrganizationWizard: React.FC = () => {
     const { user, profile } = useAuth();
     const { toast } = useToast();
     const navigate = useNavigate();
+    const requireVerification = useRequireVerification();
 
     const [currentStep, setCurrentStep] = useState(1);
     const [saving, setSaving] = useState(false);
@@ -127,6 +129,7 @@ const OrganizationWizard: React.FC = () => {
     };
 
     const handleCreate = async () => {
+        if (!requireVerification()) return;
         if (!name.trim() || !slug.trim()) {
             toast({ title: 'Error', description: 'Name and slug are required.', variant: 'destructive' });
             return;
