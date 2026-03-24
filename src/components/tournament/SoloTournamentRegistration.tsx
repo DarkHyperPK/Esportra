@@ -154,7 +154,13 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       } catch { /* no existing registration */ }
 
       if (existingReg) {
-        throw new Error('You are already registered for this tournament');
+        // Already registered — sync parent state and close dialog
+        toast({
+          title: 'Already Registered',
+          description: 'You are already registered for this tournament.',
+        });
+        onRegistrationComplete?.();
+        return;
       }
 
       // Create registration
@@ -174,9 +180,6 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
           : 'You have been successfully registered for the tournament.',
         variant: 'default',
       });
-
-      setIsRegistered(true);
-      setExistingRegistration(data);
 
       // Send confirmation email
       if (user.email) {

@@ -133,6 +133,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
         description: ''
       }}
       onRegistrationComplete={onRegisterSuccess}
+      onCancel={onCancel || onRegisterSuccess}
     />
   );
 };
