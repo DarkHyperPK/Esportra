@@ -81,23 +81,31 @@ export const useAuthActions = () => {
       console.log(`User created with ID: ${authData.user.id} and role: ${role}`);
       // Profile is created automatically by the handle_new_user trigger on auth.users.
 
+      // If email confirmation is required (no session returned), show verify prompt
+      if (!authData.session) {
+        toast({
+          title: 'Check your email',
+          description: 'We sent a confirmation link to your email. Please verify to continue.',
+          duration: 10000,
+        });
+        navigate('/auth/verify-email', { state: { email } });
+        return;
+      }
+
+      // Session exists (autoconfirm enabled) — send welcome email and proceed
       toast({
         title: 'Account created',
         description: 'Your account has been created successfully.',
         duration: 6000,
       });
 
-      // Step 4: Send welcome email (fire-and-forget)
       const { sendEmail } = await import('@/hooks/useEmail');
       sendEmail({
         type: 'WELCOME',
         email: email,
-        data: {
-          username: username,
-        },
+        data: { username },
       }).catch((err) => console.warn('[SignUp] Welcome email failed:', err));
 
-      // Navigate to user dashboard
       navigate('/');
 
     } catch (error: any) {

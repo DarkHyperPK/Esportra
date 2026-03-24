@@ -20,7 +20,6 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           is_admin: boolean
           admin_roles: string[]
-          admin_permissions: string[]
           is_suspended: boolean
           is_banned: boolean
           suspension_reason: string | null
@@ -31,10 +30,6 @@ export type Database = {
           gaming_profile: Json
           social_links: Json
           last_login: string | null
-          email_verified: boolean
-          email_verification_token: string | null
-          password_reset_token: string | null
-          password_reset_expires: string | null
           created_at: string
           updated_at: string
         }
@@ -48,7 +43,6 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           is_admin?: boolean
           admin_roles?: string[]
-          admin_permissions?: string[]
           is_suspended?: boolean
           is_banned?: boolean
           suspension_reason?: string | null
@@ -59,10 +53,6 @@ export type Database = {
           gaming_profile?: Json
           social_links?: Json
           last_login?: string | null
-          email_verified?: boolean
-          email_verification_token?: string | null
-          password_reset_token?: string | null
-          password_reset_expires?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -76,7 +66,6 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           is_admin?: boolean
           admin_roles?: string[]
-          admin_permissions?: string[]
           is_suspended?: boolean
           is_banned?: boolean
           suspension_reason?: string | null
@@ -87,10 +76,6 @@ export type Database = {
           gaming_profile?: Json
           social_links?: Json
           last_login?: string | null
-          email_verified?: boolean
-          email_verification_token?: string | null
-          password_reset_token?: string | null
-          password_reset_expires?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -943,7 +928,6 @@ export type Database = {
         }
         Relationships: []
       }
-      admin_permissions: {
         Row: {
           id: string
           name: string
