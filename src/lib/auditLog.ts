@@ -20,15 +20,15 @@ export type TargetType = 'user' | 'tournament' | 'venue' | 'payment' | 'team' | 
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 
 interface AuditLogEntry {
-    admin_id: string;
-    admin_name: string;
-    action_type: ActionType;
-    target_type: TargetType;
-    target_id: string;
-    target_name: string;
+    adminId: string;
+    adminName: string;
+    actionType: ActionType;
+    targetType: TargetType;
+    targetId: string;
+    targetName: string;
     details?: Record<string, unknown>;
-    ip_address?: string;
-    user_agent?: string;
+    ipAddress?: string;
+    userAgent?: string;
     severity: Severity;
 }
 
@@ -84,14 +84,14 @@ class AuditLogger {
             const adminName = profile?.full_name || profile?.username || user.email || 'Unknown Admin';
 
             const entry: AuditLogEntry = {
-                admin_id: user.id,
-                admin_name: adminName,
-                action_type: actionType,
-                target_type: targetType,
-                target_id: targetId,
-                target_name: targetName,
+                adminId: user.id,
+                adminName: adminName,
+                actionType: actionType,
+                targetType: targetType,
+                targetId: targetId,
+                targetName: targetName,
                 details: details || {},
-                user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+                userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
                 severity: severityOverride || getSeverity(actionType),
             };
 
