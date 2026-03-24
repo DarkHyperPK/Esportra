@@ -58,29 +58,33 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
   const [registrationData, setRegistrationData] = useState<RegistrationData>({
     riot_tag: profile?.riot_tag || '',
     steam_tag: profile?.steam_tag || '',
-    gamer_tag: profile?.riot_tag || profile?.username || ''
+    gamer_tag: profile?.username || ''
   });
+
+  // Riot games require linked Riot account
+  const isRiotGame = ['valorant', 'league of legends'].includes(tournament.game?.toLowerCase() || '');
+  const requiresRiotLink = isRiotGame && !!riotAccount;
 
   // Check if user is already registered
   useEffect(() => {
     checkExistingRegistration();
   }, [user, tournament.id]);
 
-  // Auto-fill gamer tag from linked Riot account, or fallback to profile username
+  // Auto-fill gamer tag: Riot tag for Riot games, otherwise username
   useEffect(() => {
-    if (riotAccount) {
+    if (isRiotGame && riotAccount) {
       setRegistrationData(prev => ({
         ...prev,
         riot_tag: `${riotAccount.game_name}#${riotAccount.tag_line}`,
         gamer_tag: `${riotAccount.game_name}#${riotAccount.tag_line}`
       }));
-    } else if (profile?.username && !registrationData.gamer_tag) {
+    } else if (profile?.username) {
       setRegistrationData(prev => ({
         ...prev,
         gamer_tag: profile.username
       }));
     }
-  }, [profile?.username, riotAccount]);
+  }, [profile?.username, riotAccount, isRiotGame]);
 
   const checkExistingRegistration = async () => {
     if (!user) return;
@@ -313,7 +317,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     ? 'registered'
     : (existingRegistration?.status || 'registered');
 
-  const gamerTag = existingRegistration?.gamer_tag || existingRegistration?.gamerTag || '';
+  const gamerTag = existingRegistration?.gamer_tag || existingRegistration?.gamerTag || profile?.username || '';
 
   if (isRegistered && existingRegistration) {
     return (
@@ -336,7 +340,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label className="text-white/60 text-sm">Gamer Tag</Label>
+              <Label className="text-white/60 text-sm">{isRiotGame ? 'Riot ID' : 'Display Name'}</Label>
               <p className="text-white font-medium mt-1">{gamerTag}</p>
             </div>
             <div>
@@ -452,33 +456,46 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Gamer Tag */}
-        <div className="space-y-2">
-          <Label htmlFor="gamer_tag" className="text-white flex items-center gap-2 text-sm font-medium">
-            <Gamepad2 className="w-4 h-4 text-blue-400" />
-            Gamer Tag <span className="text-red-400">*</span>
-            {riotAccount && (
-              <span className="ml-auto flex items-center gap-1 text-[10px] text-red-400 font-mono">
-                <ShieldCheck className="w-3 h-3" /> VERIFIED
-              </span>
+        {/* Riot-linked tag for Riot games */}
+        {isRiotGame && (
+          <div className="space-y-2">
+            <Label htmlFor="gamer_tag" className="text-white flex items-center gap-2 text-sm font-medium">
+              <Gamepad2 className="w-4 h-4 text-blue-400" />
+              Riot ID
+              {requiresRiotLink && (
+                <span className="ml-auto flex items-center gap-1 text-[10px] text-red-400 font-mono">
+                  <ShieldCheck className="w-3 h-3" /> VERIFIED
+                </span>
+              )}
+            </Label>
+            <Input
+              id="gamer_tag"
+              type="text"
+              value={registrationData.gamer_tag}
+              className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 h-10 disabled:opacity-60"
+              disabled
+            />
+            {requiresRiotLink ? (
+              <p className="text-xs text-red-400/70">Verified via Riot Sign-On</p>
+            ) : (
+              <p className="text-xs text-amber-400/70">Link your Riot account in Settings for verified status</p>
             )}
-          </Label>
-          <Input
-            id="gamer_tag"
-            type="text"
-            value={registrationData.gamer_tag}
-            onChange={(e) => handleInputChange('gamer_tag', e.target.value)}
-            placeholder="Enter your gamer tag"
-            className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 h-10 disabled:opacity-60"
-            required
-            disabled={!!riotAccount}
-          />
-          {riotAccount ? (
-            <p className="text-xs text-red-400/70">Verified via Riot Sign-On — cannot be changed manually</p>
-          ) : (
-            <p className="text-xs text-white/50">This will be displayed as your in-game name</p>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Show username as display name for non-Riot games */}
+        {!isRiotGame && (
+          <div className="space-y-2">
+            <Label className="text-white flex items-center gap-2 text-sm font-medium">
+              <User className="w-4 h-4 text-blue-400" />
+              Display Name
+            </Label>
+            <div className="bg-gray-800/50 border border-gray-700 rounded-md px-3 h-10 flex items-center">
+              <span className="text-white font-medium">{profile?.username || 'Loading...'}</span>
+            </div>
+            <p className="text-xs text-white/50">Your username will be used as your in-game display name</p>
+          </div>
+        )}
 
         {/* Agreement */}
         <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
