@@ -381,36 +381,50 @@ const TournamentDetails = () => {
       setIsBanned(false);
       setBanReason(null);
 
-      if (status.registration) {
-        const r = status.registration;
+      // Try primary endpoint first, then fallback
+      let r = status.registration;
+      if (!r) {
+        try {
+          const fallback = await apiClient.get<any>(
+            `/api/tournaments/me/registration-status?tournamentId=${tournament.id}`
+          );
+          if (fallback?.id || fallback?.tournament_id || fallback?.tournamentId) {
+            r = fallback;
+          }
+        } catch { /* no registration found via fallback either */ }
+      }
+
+      if (r) {
         setIsRegistered(true);
 
         const registration: TournamentRegistration & { team_id?: string; team_captain_id?: string } = {
           id: r.id,
-          tournament_id: r.tournament_id,
-          user_id: r.user_id,
-          registration_type: r.participant_type === 'solo' ? 'solo' : 'team',
-          riot_tag: r.riot_tag || null,
-          steam_tag: r.steam_tag || null,
-          gamer_tag: r.gamer_tag || null,
-          team_name: r.team_name || null,
-          team_logo: r.team_logo || null,
-          team_members: r.team_members || null,
+          tournament_id: r.tournament_id || r.tournamentId,
+          user_id: r.user_id || r.userId,
+          registration_type: (r.participant_type || r.participantType) === 'solo' ? 'solo' : 'team',
+          riot_tag: r.riot_tag || r.riotTag || null,
+          steam_tag: r.steam_tag || r.steamTag || null,
+          gamer_tag: r.gamer_tag || r.gamerTag || null,
+          team_name: r.team_name || r.teamName || null,
+          team_logo: r.team_logo || r.teamLogo || null,
+          team_members: r.team_members || r.teamMembers || null,
           status: r.status || 'registered',
-          checked_in_at: r.checked_in_at || null,
-          registered_at: r.registration_date || r.created_at,
-          created_at: r.created_at,
-          updated_at: r.updated_at || r.created_at,
-          team_id: r.team_id || undefined,
-          team_captain_id: r.team_captain_id || undefined
+          checked_in_at: r.checked_in_at || r.checkedInAt || null,
+          registered_at: r.registration_date || r.registrationDate || r.registered_at || r.registeredAt || r.created_at || r.createdAt,
+          created_at: r.created_at || r.createdAt,
+          updated_at: r.updated_at || r.updatedAt || r.created_at || r.createdAt,
+          team_id: r.team_id || r.teamId || undefined,
+          team_captain_id: r.team_captain_id || r.teamCaptainId || undefined
         };
         setRegistrationDetails(registration as TournamentRegistration);
         setShowEditDialog(false);
 
-        // Determine captain status from the consolidated response
-        const isCap = r.participant_type === 'solo' ||
-          r.team_captain_id === user.id ||
-          (status.captainTeams || []).some((t: any) => t.id === r.team_id);
+        // Determine captain status
+        const participantType = r.participant_type || r.participantType;
+        const teamCaptainId = r.team_captain_id || r.teamCaptainId;
+        const isCap = participantType === 'solo' ||
+          teamCaptainId === user.id ||
+          (status.captainTeams || []).some((t: any) => t.id === (r.team_id || r.teamId));
         setIsCaptain(isCap);
       } else {
         setIsRegistered(false);
@@ -849,7 +863,7 @@ const TournamentDetails = () => {
             initialData={registrationDetails}
             isEdit={!!registrationDetails}
             structure={selectedGame?.defaultFormat || ''}
-            teamSize={selectedGame?.formats.find(f => f.value === selectedGame.defaultFormat)?.teamSize || 1}
+            teamSize={tournament.team_size || selectedGame?.formats.find(f => f.value === selectedGame.defaultFormat)?.teamSize || 1}
           />
         </DialogContent>
       </Dialog>
