@@ -7,7 +7,10 @@
 
 import { supabase } from '@/lib/supabase';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5200';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_URL environment variable is required');
+}
 
 export class ApiError extends Error {
   status: number;
