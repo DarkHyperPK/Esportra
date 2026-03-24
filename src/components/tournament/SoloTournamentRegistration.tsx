@@ -137,7 +137,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
       // Check current registration count
       const participants = await apiClient.get<any[]>(
-        `/api/tournaments/${tournament.id}/participants?status=pending,approved,checked_in`
+        `/api/tournaments/${tournament.id}/participants?status=pending,approved,registered,checked_in`
       );
       const currentRegistrations = participants?.length ?? 0;
 
@@ -145,32 +145,14 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
         throw new Error('Tournament is full');
       }
 
-      // Check if user is already registered
-      let existingReg: any = null;
-      try {
-        existingReg = await apiClient.get<any>(
-          `/api/tournaments/me/registration-status?tournamentId=${tournament.id}`
-        );
-      } catch { /* no existing registration */ }
-
-      if (existingReg) {
-        // Already registered — sync parent state and close dialog
-        toast({
-          title: 'Already Registered',
-          description: 'You are already registered for this tournament.',
-        });
-        onRegistrationComplete?.();
-        return;
-      }
-
       // Create registration
       const data = await apiClient.post<any>(`/api/tournaments/${tournament.id}/register`, {
-        participant_type: 'solo',
-        gamer_tag: registrationData.gamer_tag.trim(),
-        solo_contact_email: user.email,
+        participantType: 'solo',
+        gamerTag: registrationData.gamer_tag.trim(),
+        soloContactEmail: user.email,
         status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'registered',
-        entry_fee_amount: tournament.entry_fee || 0,
-        entry_fee_paid: !tournament.entry_fee || tournament.entry_fee === 0
+        entryFeeAmount: tournament.entry_fee || 0,
+        entryFeePaid: !tournament.entry_fee || tournament.entry_fee === 0
       });
 
       toast({
@@ -204,6 +186,16 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
     } catch (error: any) {
       console.error('Registration error:', error);
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('already registered') || msg.includes('already exists')) {
+        // Ghost registration or race condition — treat as success
+        toast({
+          title: 'Already Registered',
+          description: 'You are already registered for this tournament.',
+        });
+        onRegistrationComplete?.();
+        return;
+      }
       toast({
         title: 'Registration Failed',
         description: error.message || 'An error occurred while registering. Please try again.',
