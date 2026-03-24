@@ -19,7 +19,7 @@ interface AuthProviderProps {
 // Separate the provider implementation
 function AuthProviderImpl({ children }: AuthProviderProps) {
   const { user, session, loading: authLoading, error: authError } = useAuthState();
-  const { signIn, signInWithGoogle, signInWithDiscord, signOut } = useAuthActions();
+  const { signIn, signUp: originalSignUp, signInWithGoogle, signInWithDiscord, signOut } = useAuthActions();
   const { updateProfile } = useProfileManagement();
   const {
     profile,
@@ -32,9 +32,6 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-
-  // Use the signUp from useAuthActions directly
-  const { signUp: originalSignUp } = useAuthActions();
 
   // Wrapper for signUp to ensure it returns void
   const signUp = async (
@@ -67,54 +64,29 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     if (authLoading) return;
 
     const currentUserId = user?.id || null;
-    const currentProfileId = profile?.id || null;
     const prevUserId = prevUserIdRef.current;
-    const prevProfileId = prevProfileIdRef.current;
 
-    // Only refetch if user actually changed (not just on tab switch)
-    // Also check if profile ID changed to avoid loops
-    if (currentUserId === prevUserId && currentProfileId === prevProfileId && profile) {
-      // User and profile haven't changed - no need to refetch
-      setLoading(false);
-      return;
-    }
-
-    // Update refs for next comparison
+    // Update ref
     prevUserIdRef.current = currentUserId;
-    prevProfileIdRef.current = currentProfileId;
 
     const handleUserChange = async () => {
       setError(null);
 
-      /*
-      console.log("🔄 AuthContext: handleUserChange called", {
-        user: user ? { id: user.id, email: user.email } : null,
-        authLoading,
-        profileLoading,
-        timestamp: new Date().toISOString()
-      });
-      */
-
       if (user) {
-        // Only fetch if we don't already have a profile for this user
-        if (profile && profile.id === user.id) {
-          // console.log("✅ Profile already loaded, skipping refetch");
+        // Skip if we already have a profile for this exact user
+        if (prevUserId === currentUserId && profile && profile.id === user.id) {
           setLoading(false);
           return;
         }
 
         try {
-          // console.log("✅ Auth state changed, user is logged in:", user.id);
           const profileResult = await fetchProfile(user.id);
 
-          // If we couldn't fetch a profile but we're authenticated
           if (!profileResult) {
             console.log("⚠️ No profile found for authenticated user. User may need to complete profile setup.");
           } else {
-            // Update profile ID ref after successful fetch
             prevProfileIdRef.current = profileResult.id;
 
-            // Immediate suspension check for already-logged-in sessions
             if (profileResult.is_suspended && window.location.pathname !== '/suspended') {
               console.warn("[AuthContext] Active session suspended, redirecting...");
               window.location.href = '/suspended';
