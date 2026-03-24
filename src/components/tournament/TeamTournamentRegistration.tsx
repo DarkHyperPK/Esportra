@@ -102,10 +102,6 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
 
   useEffect(() => {
-    checkExistingRegistration();
-  }, [user?.id, tournament.id]);
-
-  useEffect(() => {
     fetchCaptainTeams();
   }, [user?.id]);
 
@@ -200,28 +196,6 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
     fetchRosterMembers();
   }, [selectedRosterId, selectedTeamId, captainTeams]);
-
-  const checkExistingRegistration = async () => {
-    if (!user) return;
-    try {
-      let data: RegistrationStatus | RegistrationStatus[] | null = null;
-      try {
-        data = await apiClient.get<RegistrationStatus | RegistrationStatus[]>(
-          `/api/tournaments/me/registration-status?tournamentId=${tournament.id}`
-        );
-      } catch { /* no existing registration */ }
-      if (data) {
-        // Already registered; simply notify parent so the dialog can close
-        const registrations = Array.isArray(data) ? data : [data];
-        const isRegisteredForThis = registrations.some(
-          (r: RegistrationStatus) => r.tournament_id === tournament.id
-        );
-        if (isRegisteredForThis) {
-          onRegistrationComplete?.();
-        }
-      }
-    } catch { }
-  };
 
   const fetchCaptainTeams = async () => {
     if (!user?.id) return;
