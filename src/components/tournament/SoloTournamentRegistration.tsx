@@ -300,6 +300,21 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     );
   };
 
+  // Normalize API response fields (handle both camelCase from .NET and snake_case)
+  const regDate = existingRegistration?.registration_date
+    || existingRegistration?.registrationDate
+    || existingRegistration?.registered_at
+    || existingRegistration?.registeredAt
+    || existingRegistration?.created_at
+    || existingRegistration?.createdAt;
+
+  // Normalize status — treat 'pending' as 'registered' for free tournaments
+  const regStatus = existingRegistration?.status === 'pending' && !(tournament.entry_fee && tournament.entry_fee > 0)
+    ? 'registered'
+    : (existingRegistration?.status || 'registered');
+
+  const gamerTag = existingRegistration?.gamer_tag || existingRegistration?.gamerTag || '';
+
   if (isRegistered && existingRegistration) {
     return (
       <div className="space-y-6">
@@ -316,25 +331,27 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-white/70">Status:</span>
-            {getStatusBadge(existingRegistration.status)}
+            {getStatusBadge(regStatus)}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-white/60 text-sm">Gamer Tag</Label>
-              <p className="text-white font-medium mt-1">{existingRegistration.gamer_tag}</p>
+              <p className="text-white font-medium mt-1">{gamerTag}</p>
             </div>
             <div>
               <Label className="text-white/60 text-sm">Contact Email</Label>
               <p className="text-white font-medium mt-1">{user?.email}</p>
             </div>
+            {regDate && (
             <div>
               <Label className="text-white/60 text-sm">Registration Date</Label>
-              <p className="text-white font-medium mt-1">{formatDate(existingRegistration.registration_date || existingRegistration.registered_at || existingRegistration.created_at)}</p>
+              <p className="text-white font-medium mt-1">{formatDate(regDate)}</p>
             </div>
+            )}
           </div>
 
-          {existingRegistration.status === 'pending' && (
+          {regStatus === 'pending' && (
             <Alert className="bg-yellow-900/20 border-yellow-500/50">
               <AlertCircle className="h-4 w-4 text-yellow-500" />
               <AlertDescription className="text-yellow-200 text-sm">
