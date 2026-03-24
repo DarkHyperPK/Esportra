@@ -152,7 +152,7 @@ export const apiClient = {
   },
 
   /** Upload a file via multipart/form-data (no JSON Content-Type) */
-  async upload<T>(path: string, formData: FormData): Promise<T> {
+  async upload<T>(path: string, formData: FormData, _attempt = 0): Promise<T> {
     const { data: { session } } = await supabase.auth.getSession();
 
     const headers: Record<string, string> = {};
@@ -166,13 +166,13 @@ export const apiClient = {
       body: formData,
     });
 
-    if (response.status === 429) {
+    if (response.status === 429 && _attempt < MAX_RETRIES) {
       const retryAfterHeader = response.headers.get('Retry-After');
       const delay = retryAfterHeader
         ? parseInt(retryAfterHeader, 10) * 1_000
         : BASE_DELAY_MS;
       await new Promise((r) => setTimeout(r, delay));
-      return this.upload<T>(path, formData);
+      return this.upload<T>(path, formData, _attempt + 1);
     }
 
     if (!response.ok) {

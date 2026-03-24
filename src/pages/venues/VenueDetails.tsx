@@ -234,7 +234,15 @@ const VenueDetails = () => {
         );
     }
 
-    if (!venue) return null;
+    if (!venue) return (
+        <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+            <div className="text-center">
+                <h2 className="text-xl font-semibold text-white mb-2">Venue not found</h2>
+                <p className="text-zinc-400 mb-4">This venue doesn't exist or may have been removed.</p>
+                <a href="/venues" className="text-rose-500 hover:text-rose-400 underline">Browse all venues</a>
+            </div>
+        </div>
+    );
 
     const mainImage = venue.images && venue.images.length > 0 ? venue.images[0] : null;
 

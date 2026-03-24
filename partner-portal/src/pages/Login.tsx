@@ -37,7 +37,7 @@ const Login = () => {
         setIsVerifying(true);
 
         const cleanEmail = email.trim();
-        const cleanPassword = password.trim();
+        const cleanPassword = password;
 
         try {
             const { data: { user }, error } = await supabase.auth.signInWithPassword({

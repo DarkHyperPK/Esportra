@@ -5,6 +5,7 @@ import SetPassword from './pages/SetPassword';
 import Dashboard from './pages/Dashboard';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Assets = lazy(() => import('./pages/Assets'));
@@ -29,7 +30,7 @@ function App() {
           </Route>
 
           {/* Onboarding — Protected but no sidebar chrome */}
-          <Route path="/onboarding" element={<OnboardingWizard />} />
+          <Route path="/onboarding" element={<ProtectedRoute><OnboardingWizard /></ProtectedRoute>} />
 
           {/* Protected Dashboard Routes */}
           <Route element={<DashboardLayout />}>
