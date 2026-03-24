@@ -6,16 +6,12 @@ import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import {
   User,
   Gamepad2,
   Calendar,
   Trophy,
   DollarSign,
-  CheckCircle,
-  AlertCircle,
   Loader2,
   UserCheck,
   Shield,
@@ -95,14 +91,10 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       );
 
       if (data) {
+        // Already registered — notify parent and close dialog
         setIsRegistered(true);
         setExistingRegistration(data);
-        const gamer_tag = data.gamer_tag || profile?.riot_tag || profile?.username || '';
-        setRegistrationData({
-          riot_tag: profile?.riot_tag || '',
-          steam_tag: profile?.steam_tag || '',
-          gamer_tag
-        });
+        onRegistrationComplete?.();
       }
     } catch (error) {
       console.log('No existing registration found');
@@ -245,157 +237,8 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     }
   };
 
-  const handleCancelRegistration = async () => {
-    if (!existingRegistration) return;
-
-    setLoading(true);
-    try {
-      // Delete the registration completely instead of just updating status
-      await apiClient.delete(`/api/tournaments/${tournament.id}/register`);
-
-      toast({
-        title: 'Registration Withdrawn',
-        description: 'Your tournament registration has been withdrawn.',
-        variant: 'default',
-      });
-
-      setIsRegistered(false);
-      setExistingRegistration(null);
-      onRegistrationComplete?.(); // Notify parent component
-    } catch (error: any) {
-      console.error('Withdrawal error:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to withdraw registration. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      registered: { color: 'bg-green-500', text: 'Registered' },
-      pending: { color: 'bg-yellow-500', text: 'Pending Approval' },
-      approved: { color: 'bg-green-500', text: 'Approved' },
-      rejected: { color: 'bg-red-500', text: 'Rejected' },
-      cancelled: { color: 'bg-gray-500', text: 'Cancelled' },
-      checked_in: { color: 'bg-blue-500', text: 'Checked In' },
-      eliminated: { color: 'bg-gray-500', text: 'Eliminated' },
-      disqualified: { color: 'bg-red-500', text: 'Disqualified' }
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    return (
-      <Badge className={`${config.color} text-white`}>
-        {config.text}
-      </Badge>
-    );
-  };
-
-  // Normalize API response fields (handle both camelCase from .NET and snake_case)
-  const regDate = existingRegistration?.registration_date
-    || existingRegistration?.registrationDate
-    || existingRegistration?.registered_at
-    || existingRegistration?.registeredAt
-    || existingRegistration?.created_at
-    || existingRegistration?.createdAt;
-
-  // Normalize status — treat 'pending' as 'registered' for free tournaments
-  const regStatus = existingRegistration?.status === 'pending' && !(tournament.entry_fee && tournament.entry_fee > 0)
-    ? 'registered'
-    : (existingRegistration?.status || 'registered');
-
-  const gamerTag = existingRegistration?.gamer_tag || existingRegistration?.gamerTag || profile?.username || '';
-
-  if (isRegistered && existingRegistration) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3 pb-4 border-b border-white/10">
-          <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-            <CheckCircle className="w-5 h-5 text-green-500" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-white">Registration Status</h3>
-            <p className="text-sm text-white/60">You're registered for this tournament</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-white/70">Status:</span>
-            {getStatusBadge(regStatus)}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-white/60 text-sm">{isRiotGame ? 'Riot ID' : 'Display Name'}</Label>
-              <p className="text-white font-medium mt-1">{gamerTag}</p>
-            </div>
-            <div>
-              <Label className="text-white/60 text-sm">Contact Email</Label>
-              <p className="text-white font-medium mt-1">{user?.email}</p>
-            </div>
-            {regDate && (
-            <div>
-              <Label className="text-white/60 text-sm">Registration Date</Label>
-              <p className="text-white font-medium mt-1">{formatDate(regDate)}</p>
-            </div>
-            )}
-          </div>
-
-          {regStatus === 'pending' && (
-            <Alert className="bg-yellow-900/20 border-yellow-500/50">
-              <AlertCircle className="h-4 w-4 text-yellow-500" />
-              <AlertDescription className="text-yellow-200 text-sm">
-                Your registration is pending approval. You will be notified once the organizer reviews your application.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {existingRegistration.status === 'rejected' && existingRegistration.rejection_reason && (
-            <Alert className="bg-red-900/20 border-red-500/50">
-              <AlertCircle className="h-4 w-4 text-red-500" />
-              <AlertDescription className="text-red-200 text-sm">
-                <strong>Rejection Reason:</strong> {existingRegistration.rejection_reason}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex gap-2 pt-2">
-            {existingRegistration.status === 'pending' && (
-              <Button
-                onClick={handleCancelRegistration}
-                variant="outline"
-                disabled={loading}
-                className="border-red-500/50 text-red-400 hover:bg-red-500/10 flex-1"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Cancel Registration
-              </Button>
-            )}
-            <Button
-              onClick={onCancel}
-              variant="outline"
-              className="border-gray-600 text-gray-300 hover:bg-gray-800 flex-1"
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+  if (isRegistered) {
+    return null;
   }
 
   return (
