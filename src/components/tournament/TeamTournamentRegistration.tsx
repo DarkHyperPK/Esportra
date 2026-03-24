@@ -481,7 +481,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         rosterId: selectedRosterId,
         rosterName: roster?.name || null,
         teamContactEmail: user.email || null,
-        status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'approved',
+        status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'registered',
         entryFeeAmount: tournament.entry_fee || 0,
         entryFeePaid: !tournament.entry_fee || tournament.entry_fee === 0
       });

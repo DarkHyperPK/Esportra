@@ -192,7 +192,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
         participant_type: 'solo',
         gamer_tag: registrationData.gamer_tag.trim(),
         solo_contact_email: user.email,
-        status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'approved',
+        status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'registered',
         entry_fee_amount: tournament.entry_fee || 0,
         entry_fee_paid: !tournament.entry_fee || tournament.entry_fee === 0
       });
@@ -282,6 +282,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
+      registered: { color: 'bg-green-500', text: 'Registered' },
       pending: { color: 'bg-yellow-500', text: 'Pending Approval' },
       approved: { color: 'bg-green-500', text: 'Approved' },
       rejected: { color: 'bg-red-500', text: 'Rejected' },
@@ -329,7 +330,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
             </div>
             <div>
               <Label className="text-white/60 text-sm">Registration Date</Label>
-              <p className="text-white font-medium mt-1">{formatDate(existingRegistration.registration_date)}</p>
+              <p className="text-white font-medium mt-1">{formatDate(existingRegistration.registration_date || existingRegistration.registered_at || existingRegistration.created_at)}</p>
             </div>
           </div>
 
