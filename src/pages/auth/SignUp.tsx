@@ -117,12 +117,7 @@ const SignUp = () => {
         'casual',
         values.dateOfBirth
       );
-
-      toast({
-        title: "Account created!",
-        description: "Welcome to Esportra! You are now logged in.",
-      });
-      navigate("/");
+      // Toast and navigation are handled by useAuthActions.signUp
     } catch (error: any) {
       console.error("Signup error:", error);
       setFormError(error.message || "An error occurred during signup.");
