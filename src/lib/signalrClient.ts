@@ -24,7 +24,7 @@ import {
 } from '@microsoft/signalr';
 import { supabase } from '@/lib/supabase';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5200';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 // ── Hub connection factory ────────────────────────────────────────────────────
 

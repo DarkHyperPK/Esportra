@@ -1244,7 +1244,7 @@ const TournamentDashboard = () => {
       // 2. Fetch from RAWG via Edge Function proxy if missing data
       if (!background || !logo) {
         try {
-          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5200'}/api/games/search?q=${encodeURIComponent(gameName)}`);
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/games/search?q=${encodeURIComponent(gameName)}`);
           const data = await res.json();
           if (data && data.results && data.results.length > 0) {
             const game = data.results[0];

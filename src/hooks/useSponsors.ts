@@ -72,7 +72,7 @@ export function useSponsorStats(sponsorId: string) {
 // Uses fetch with keepalive:true — survives page navigation like sendBeacon
 // but properly sets Content-Type: application/json (sendBeacon downgrades to text/plain).
 
-const TRACK_URL = `${import.meta.env.VITE_API_URL ?? 'http://localhost:5200'}/api/sponsors/track`;
+const TRACK_URL = `${import.meta.env.VITE_API_URL}/api/sponsors/track`;
 
 function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
     fetch(TRACK_URL, {

@@ -38,8 +38,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
         // Define Supabase storage markers
         const isSupabaseStorage =
-            originalUrl.includes('api.esportra.com/storage/v1/object/public') ||
-            originalUrl.includes(import.meta.env.VITE_SUPABASE_URL + '/storage/v1/object/public');
+            originalUrl.includes('/storage/v1/object/public');
 
         if (!isSupabaseStorage) {
             return originalUrl;
