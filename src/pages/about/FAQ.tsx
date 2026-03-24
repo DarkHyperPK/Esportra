@@ -46,7 +46,7 @@ const FAQPage = () => {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col font-sans selection:bg-cyan-500/30">
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-cyan-900/10 blur-[150px] rounded-full mix-blend-screen" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
       </div>
 
       <main className="relative z-10 flex-grow pt-32 pb-20 px-4">

@@ -29,7 +29,7 @@ const ContactStandalone: React.FC = () => {
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-900/10 blur-[130px] rounded-full mix-blend-screen" />
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-900/10 blur-[130px] rounded-full mix-blend-screen" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
       </div>
 
       <main className="relative z-10 container mx-auto px-4 py-24 lg:py-32">
