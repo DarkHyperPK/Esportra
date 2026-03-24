@@ -27,7 +27,7 @@ import MatchChat from '@/components/tournament/MatchChat';
 import TournamentEndScreen from '@/components/tournament/TournamentEndScreen';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { formatDistanceToNow, format } from 'date-fns';
-import { FullScoreboard, getAgentIcon, getMapSplash, MAP_THEMES } from './FullScoreboard';
+
 import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useTeamManagement } from '@/hooks/useTeamManagement';

@@ -157,10 +157,8 @@ const BRGameRoom: React.FC = () => {
     : null;
 
   return (
-    <div className="min-h-screen relative">
-      <PremiumBackground variant="dark" />
-
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-8 space-y-6">
+    <PremiumBackground className="min-h-screen">
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button
@@ -417,7 +415,7 @@ const BRGameRoom: React.FC = () => {
           gamesCompleted={brResults.gamesCompleted}
         />
       </div>
-    </div>
+    </PremiumBackground>
   );
 };
 
