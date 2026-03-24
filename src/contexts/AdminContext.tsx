@@ -52,14 +52,12 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const profile = await apiClient.get<{
         is_admin: boolean;
         admin_roles: string[] | null;
-        admin_permissions: string[] | null;
       }>('/api/profiles/me');
 
       const profileRoles = (profile?.admin_roles || [])
         .map(normalizeRole)
         .filter((role): role is string => !!role);
 
-      const directPermissions = profile?.admin_permissions || [];
       const isUserAdmin = !!profile?.is_admin || profileRoles.length > 0;
 
       setIsAdmin(isUserAdmin);
@@ -72,7 +70,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         rolePerms.forEach(perm => rolePermissions.add(perm));
       });
 
-      directPermissions.forEach(perm => rolePermissions.add(perm));
       setPermissions(Array.from(rolePermissions));
 
     } catch (error) {

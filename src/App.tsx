@@ -40,6 +40,7 @@ const Callback = React.lazy(() => import("./pages/auth/Callback"));
 const SetPassword = React.lazy(() => import("./pages/auth/SetPassword"));
 const ForgotPassword = React.lazy(() => import("./pages/auth/ForgotPassword"));
 const ResetPassword = React.lazy(() => import("./pages/auth/ResetPassword"));
+const VerifyEmail = React.lazy(() => import("./pages/auth/VerifyEmail"));
 const Suspended = React.lazy(() => import("./pages/auth/Suspended"));
 
 
@@ -182,6 +183,7 @@ const AppContent = React.memo(() => {
                 <Route path="/auth/signin" element={<SignIn />} />
                 <Route path="/auth/callback" element={<Callback />} />
                 <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+                <Route path="/auth/verify-email" element={<VerifyEmail />} />
                 <Route path="/auth/reset-password" element={<ResetPassword />} />
                 <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/suspended" element={<Suspended />} />
