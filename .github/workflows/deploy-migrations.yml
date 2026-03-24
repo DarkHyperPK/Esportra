@@ -1,8 +1,8 @@
-name: 🔄 Deploy DB Migrations
+name: 🔄 Deploy DB Migrations (DISABLED — migrated to DbUp in backend repo)
 
+# Disabled: migrations now run via DbUp on .NET backend startup.
+# See: esportra-backend/src/Esportra.Infrastructure/Migrations/Scripts/
 on:
-  push:
-    branches: [main, staging]  # supabase db push is idempotent — safe to run on every push
   workflow_dispatch:
     inputs:
       environment:
