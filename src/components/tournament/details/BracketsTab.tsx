@@ -20,7 +20,7 @@ export const BracketsTab: React.FC<BracketsTabProps> = ({
         <>
             {stages.length === 0 ? (
                 <div className="aspect-video w-full rounded-2xl bg-[#121214] border border-white/10 flex items-center justify-center overflow-hidden relative group">
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5"></div>
+                    <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-5"></div>
                     <p className="text-gray-500 font-mono text-sm tracking-widest z-10">NO_BRACKETS_PUBLISHED</p>
                 </div>
             ) : (
