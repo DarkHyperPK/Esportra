@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Toast {
     id: number;
@@ -7,16 +7,34 @@ interface Toast {
     variant?: 'default' | 'destructive';
 }
 
-export const useToast = () => {
-    const [toasts, setToasts] = useState<Toast[]>([]);
+type Listener = (toasts: Toast[]) => void;
 
-    const toast = useCallback(({ title, description, variant = 'default' }: Omit<Toast, 'id'>) => {
-        const id = Date.now();
-        setToasts(prev => [...prev, { id, title, description, variant }]);
-        setTimeout(() => {
-            setToasts(prev => prev.filter(t => t.id !== id));
-        }, 3000);
+// Module-level global store so all components share the same toasts
+let toasts: Toast[] = [];
+const listeners = new Set<Listener>();
+
+function notify() {
+    listeners.forEach(l => l([...toasts]));
+}
+
+function addToast(t: Omit<Toast, 'id'>) {
+    const id = Date.now();
+    toasts = [...toasts, { id, ...t }];
+    notify();
+    setTimeout(() => {
+        toasts = toasts.filter(x => x.id !== id);
+        notify();
+    }, t.variant === 'destructive' ? 6000 : 3000);
+}
+
+export const useToast = () => {
+    const [state, setState] = useState<Toast[]>(toasts);
+
+    useEffect(() => {
+        listeners.add(setState);
+        return () => { listeners.delete(setState); };
     }, []);
 
-    return { toast, toasts };
+    const toast = useCallback((t: Omit<Toast, 'id'>) => addToast(t), []);
+    return { toast, toasts: state };
 };

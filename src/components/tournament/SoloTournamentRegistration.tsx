@@ -263,7 +263,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2 text-white/80">
             <Calendar className="w-4 h-4 text-white/50" />
-            <span>{formatDate(tournament.start_date)}</span>
+            <span>{new Date(tournament.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
           </div>
           {tournament.entry_fee && tournament.entry_fee > 0 && (
             <div className="flex items-center gap-2 text-white/80">

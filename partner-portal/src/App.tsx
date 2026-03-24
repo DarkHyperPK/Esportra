@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import Toaster from './components/Toaster';
 
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Assets = lazy(() => import('./pages/Assets'));
@@ -42,6 +43,7 @@ function App() {
           </Route>
         </Routes>
       </Suspense>
+      <Toaster />
     </Router>
   );
 }
