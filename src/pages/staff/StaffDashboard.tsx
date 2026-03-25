@@ -246,11 +246,16 @@ const StaffDashboard = () => {
                   const isAdmin = selectedOrg.role === 'admin';
 
                   const actions = [
-                    { perm: 'scores:update', label: 'Matches', icon: Swords, tab: 'stages', color: 'emerald' },
-                    { perm: 'teams:manage', label: 'Participants', icon: Users, tab: 'participants', color: 'purple' },
-                    { perm: 'bracket:edit', label: 'Brackets', icon: LayoutGrid, tab: 'stages', color: 'amber' },
-                    { perm: 'disputes:assist', label: 'Disputes', icon: MessageSquare, tab: 'disputes', color: 'red' },
-                    { perm: 'announcements:send', label: 'Announce', icon: Megaphone, tab: 'overview', color: 'cyan' },
+                    { perm: 'scores:update', label: 'Matches', icon: Swords, color: 'emerald',
+                      getPath: (id: string) => `/organizer/tournament/${id}?tab=stages` },
+                    { perm: 'teams:manage', label: 'Participants', icon: Users, color: 'purple',
+                      getPath: (id: string) => `/organizer/tournament/${id}?tab=participants` },
+                    { perm: 'bracket:edit', label: 'Brackets', icon: LayoutGrid, color: 'amber',
+                      getPath: (id: string) => `/organizer/tournament/${id}/brackets` },
+                    { perm: 'disputes:assist', label: 'Disputes', icon: MessageSquare, color: 'red',
+                      getPath: (_id: string) => `/organizer/disputes` },
+                    { perm: 'announcements:send', label: 'Announce', icon: Megaphone, color: 'cyan',
+                      getPath: (id: string) => `/organizer/tournament/${id}?tab=overview` },
                   ].filter(a => isAdmin || perms.includes(a.perm));
 
                   if (actions.length === 0) return null;
@@ -279,7 +284,7 @@ const StaffDashboard = () => {
                                     return (
                                       <button
                                         key={`${t.id}-${a.perm}`}
-                                        onClick={() => navigate(`/organizer/tournament/${identifier}?tab=${a.tab}`)}
+                                        onClick={() => navigate(a.getPath(identifier))}
                                         className={cn(
                                           "flex flex-col items-center gap-2 px-4 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50 transition-all group",
                                           a.color === 'emerald' && "hover:border-emerald-500/30 hover:bg-emerald-500/5",
