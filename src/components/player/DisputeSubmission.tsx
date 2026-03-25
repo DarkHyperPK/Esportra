@@ -260,15 +260,14 @@ const DisputeSubmission: React.FC<DisputeSubmissionProps> = ({
             `/api/tournaments/${tournamentId}`
           ).catch(() => null);
           if (tourneyData?.organizer_id && data?.id) {
-            await apiClient.post('/api/notifications', {
-              user_id: tourneyData.organizer_id,
+            apiClient.post('/api/notifications', {
+              userId: tourneyData.organizer_id,
               type: 'dispute_filed',
               title: 'New Dispute Filed',
               message: `A player filed a dispute in "${tourneyData.name}" — ${reasonLabel}.`,
               link: '/organizer/disputes',
               data: { dispute_id: data.id, tournament_id: tournamentId },
-              is_read: false,
-            });
+            }).catch(() => {});
           }
         }
       } catch {

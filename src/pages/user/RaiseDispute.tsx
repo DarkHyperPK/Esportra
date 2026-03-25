@@ -446,17 +446,16 @@ const RaiseDispute = () => {
         const reasonLabel = DISPUTE_REASONS.find(r => r.value === disputeReason)?.label || disputeReason;
 
         if (canResolveWithOrganizer) {
-          // Notify tournament organizer
+          // Notify tournament organizer (fire-and-forget, don't block dispute submission)
           if (tournament?.organizer_id && data?.id) {
-            await apiClient.post('/api/notifications', {
-              user_id: tournament.organizer_id,
+            apiClient.post('/api/notifications', {
+              userId: tournament.organizer_id,
               type: 'dispute_filed',
               title: 'New Dispute Filed',
               message: `A player filed a dispute in "${tournament.name}" — ${reasonLabel}.`,
               link: '/organizer/disputes',
               data: { dispute_id: data.id, tournament_id: tournament.id },
-              is_read: false,
-            });
+            }).catch(() => {});
           }
         } else {
           // Admin-routed (cheating, unsportsmanlike, other) → notify all admins/moderators

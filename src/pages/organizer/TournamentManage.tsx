@@ -1760,17 +1760,13 @@ const TournamentDashboard = () => {
                               evidence={brResults.getEvidence(gameNum)}
                               onStartGame={(lobbyCode) => {
                                 brResults.startGame(gameNum, lobbyCode);
-                                // Notify all participants about game start with lobby code
-                                participants.forEach(p => {
-                                  apiClient.post('/api/notifications', {
-                                    userId: p.user_id,
-                                    type: 'br_game_start',
+                                // Broadcast game start to all participants via tournament announcements
+                                if (tournament?.id) {
+                                  apiClient.post(`/api/tournaments/${tournament.id}/announcements`, {
                                     title: `Game ${gameNum} Started`,
-                                    message: `Lobby code: ${lobbyCode}. Join now!`,
-                                    link: `/tournaments/${tournament?.slug || tournament?.id}/match-room`,
-                                    data: { tournament_id: tournament?.id, game_number: gameNum, lobby_code: lobbyCode },
+                                    content: `Lobby code: ${lobbyCode}. Join now!`,
                                   }).catch(() => {});
-                                });
+                                }
                               }}
                               onSave={(results, lobbyCode) => {
                                 brResults.saveGameResults(gameNum, results, lobbyCode);
@@ -1778,17 +1774,13 @@ const TournamentDashboard = () => {
                               onResetGame={() => brResults.resetGame(gameNum)}
                               onUpdateLobbyCode={(code) => {
                                 brResults.updateLobbyCode(gameNum, code);
-                                // Notify all participants about updated lobby code
-                                participants.forEach(p => {
-                                  apiClient.post('/api/notifications', {
-                                    userId: p.user_id,
-                                    type: 'br_lobby_update',
+                                // Broadcast updated lobby code to all participants
+                                if (tournament?.id) {
+                                  apiClient.post(`/api/tournaments/${tournament.id}/announcements`, {
                                     title: `Lobby Code Updated — Game ${gameNum}`,
-                                    message: `New lobby code: ${code}`,
-                                    link: `/tournaments/${tournament?.slug || tournament?.id}/match-room`,
-                                    data: { tournament_id: tournament?.id, game_number: gameNum, lobby_code: code },
+                                    content: `New lobby code: ${code}`,
                                   }).catch(() => {});
-                                });
+                                }
                               }}
                               onMarkEvidenceReviewed={(teamId) => brResults.markEvidenceReviewed(gameNum, teamId)}
                               isSaving={brResults.isSaving}
