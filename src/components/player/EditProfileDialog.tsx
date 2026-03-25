@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { apiClient } from "@/lib/apiClient";
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ interface EditProfileDialogProps {
 
 const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
     const { profile, updateProfile } = useAuth();
+    const queryClient = useQueryClient();
     const [loading, setLoading] = useState(false);
     const [detecting, setDetecting] = useState(false);
     const [detectionFailed, setDetectionFailed] = useState(false);
@@ -128,6 +129,8 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                 steam_tag: formData.steam_tag,
                 country_code: formData.country_code
             });
+            // Invalidate all profile queries so the page reflects changes
+            queryClient.invalidateQueries({ queryKey: ['profile'] });
             onOpenChange(false);
         } catch (error) {
             console.error("Failed to update profile", error);
