@@ -66,6 +66,7 @@ export interface BREvidence {
   submittedAt: string;
   placement?: number;
   kills?: number;
+  reviewed?: boolean;
 }
 
 export const DEFAULT_BR_SETTINGS: BRTournamentSettings = {

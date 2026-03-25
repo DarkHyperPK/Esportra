@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Save, ChevronUp, ChevronDown, Copy, Key, Play, Lock, CheckCircle, Radio, ImageIcon, ExternalLink, RotateCcw, Edit3 } from 'lucide-react';
+import { Save, ChevronUp, ChevronDown, Copy, Key, Play, Lock, CheckCircle, Radio, ImageIcon, ExternalLink, RotateCcw, Edit3, Eye, EyeOff } from 'lucide-react';
 import type { BRScoringPreset, BRTeamResult, BREvidence } from '@/types/battleRoyale';
 import type { BRGameStatus } from '@/hooks/useBRGameResults';
 
@@ -19,6 +19,7 @@ interface BRGameResultsProps {
   onStartGame?: (lobbyCode: string) => void;
   onResetGame?: () => void;
   onUpdateLobbyCode?: (code: string) => void;
+  onMarkEvidenceReviewed?: (teamId: string) => void;
   isSaving?: boolean;
   lobbyCode?: string;
   isOrganizer?: boolean;
@@ -37,6 +38,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   onStartGame,
   onResetGame,
   onUpdateLobbyCode,
+  onMarkEvidenceReviewed,
   isSaving,
   lobbyCode: initialLobbyCode,
   isOrganizer,
@@ -367,34 +369,60 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
               <span className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">
                 Player Evidence ({evidence.length})
               </span>
+              {evidence.filter(e => !e.reviewed).length > 0 && (
+                <Badge className="bg-rose-500 text-white text-[10px] px-1.5 py-0 h-4 min-w-[18px] flex items-center justify-center">
+                  {evidence.filter(e => !e.reviewed).length} new
+                </Badge>
+              )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
               {evidence.map((ev) => (
                 <div
                   key={ev.teamId}
-                  className="bg-zinc-900/60 rounded-xl border border-white/5 overflow-hidden"
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors",
+                    ev.reviewed
+                      ? "bg-white/[0.02] border-white/5"
+                      : "bg-rose-500/5 border-rose-500/20"
+                  )}
                 >
-                  <a href={ev.imageUrl} target="_blank" rel="noopener noreferrer" className="block relative group">
-                    <img
-                      src={ev.imageUrl}
-                      alt={`Evidence from ${ev.teamName}`}
-                      className="w-full h-36 object-cover"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                      <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  </a>
-                  <div className="px-3 py-2">
-                    <p className="text-sm font-medium text-white truncate">{ev.teamName}</p>
-                    <div className="flex items-center gap-3 text-xs text-zinc-500 mt-0.5">
-                      {ev.placement && <span>#{ev.placement}</span>}
-                      {ev.kills !== undefined && <span>{ev.kills} kills</span>}
-                      <span className="ml-auto">
-                        {new Date(ev.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
+                  {/* Review status indicator */}
+                  <div className={cn(
+                    "w-2 h-2 rounded-full flex-shrink-0",
+                    ev.reviewed ? "bg-emerald-500" : "bg-rose-500 animate-pulse"
+                  )} />
+
+                  {/* Team name */}
+                  <span className="text-sm text-white font-medium truncate flex-1 min-w-0">
+                    {ev.teamName}
+                  </span>
+
+                  {/* Self-reported stats */}
+                  <div className="flex items-center gap-2 text-xs text-zinc-400 flex-shrink-0">
+                    {ev.placement && <span className="text-zinc-500">#{ev.placement}</span>}
+                    {ev.kills !== undefined && <span className="text-zinc-500">{ev.kills}K</span>}
                   </div>
+
+                  {/* View Evidence button */}
+                  <a
+                    href={ev.imageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      if (!ev.reviewed && onMarkEvidenceReviewed) {
+                        onMarkEvidenceReviewed(ev.teamId);
+                      }
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex-shrink-0",
+                      ev.reviewed
+                        ? "text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10"
+                        : "text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-500/20"
+                    )}
+                  >
+                    {ev.reviewed ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                    {ev.reviewed ? 'Viewed' : 'View'}
+                  </a>
                 </div>
               ))}
             </div>

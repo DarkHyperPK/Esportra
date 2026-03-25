@@ -357,6 +357,23 @@ export function useBRGameResults({
     [allGames]
   );
 
+  // Mark evidence as reviewed (organizer action)
+  const markEvidenceReviewed = useCallback(
+    async (gameNumber: number, teamId: string) => {
+      const game = allGames.get(gameNumber);
+      if (!game) return;
+      const updatedEvidence = (game.evidence || []).map(e =>
+        e.teamId === teamId ? { ...e, reviewed: true } : e
+      );
+      await persistGame({
+        ...game,
+        evidence: updatedEvidence,
+      });
+      queryClient.invalidateQueries({ queryKey: ['br-game-results', tournamentId] });
+    },
+    [allGames, persistGame, queryClient, tournamentId]
+  );
+
   return {
     leaderboard,
     gamesCompleted,
@@ -375,5 +392,6 @@ export function useBRGameResults({
     allGames,
     submitEvidence,
     getEvidence,
+    markEvidenceReviewed,
   };
 }

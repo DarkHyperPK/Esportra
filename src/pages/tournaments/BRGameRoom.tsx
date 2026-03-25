@@ -301,7 +301,7 @@ const BRGameRoom: React.FC = () => {
                             onClick={() => setReportPlacement(Math.max(1, reportPlacement - 1))}
                             disabled={reportPlacement <= 1}
                           >
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronUp className="w-4 h-4" />
                           </Button>
                           <div className="flex-1 text-center">
                             <span className={cn(
@@ -316,10 +316,10 @@ const BRGameRoom: React.FC = () => {
                             variant="outline"
                             size="icon"
                             className="h-9 w-9"
-                            onClick={() => setReportPlacement(Math.min(brTeams.length || 20, reportPlacement + 1))}
-                            disabled={reportPlacement >= (brTeams.length || 20)}
+                            onClick={() => setReportPlacement(Math.min(brTeams.length || 100, reportPlacement + 1))}
+                            disabled={reportPlacement >= (brTeams.length || 100)}
                           >
-                            <ChevronUp className="w-4 h-4" />
+                            <ChevronDown className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
