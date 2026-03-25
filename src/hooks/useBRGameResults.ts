@@ -48,7 +48,8 @@ export function useBRGameResults({
       }
       // Fallback: read from tournament settings.brResults
       try {
-        const tournament = await apiClient.get<any>(`/api/tournaments/${tournamentId}`);
+        // Add cache-buster to avoid apiClient GET deduplication returning stale data
+        const tournament = await apiClient.get<any>(`/api/tournaments/${tournamentId}?_t=${Date.now()}`);
         const settings = tournament?.tournament?.settings || tournament?.settings || {};
         const brResults = settings.brResults;
         if (brResults && typeof brResults === 'object') {
@@ -65,7 +66,8 @@ export function useBRGameResults({
       return [];
     },
     enabled: !!tournamentId,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 10, // 10s — lobby codes must propagate quickly
+    refetchInterval: 1000 * 15, // Poll every 15s so players see lobby codes promptly
   });
 
   // Local state for unsaved edits (maps gameNumber → results)
@@ -100,7 +102,7 @@ export function useBRGameResults({
       } catch {
         // API may not exist — store in tournament settings as fallback
         try {
-          const tournament = await apiClient.get<any>(`/api/tournaments/${tournamentId}`);
+          const tournament = await apiClient.get<any>(`/api/tournaments/${tournamentId}?_t=${Date.now()}`);
           const settings = tournament?.tournament?.settings || tournament?.settings || {};
           const brResults = settings.brResults || {};
           brResults[`game_${gameNumber}`] = { gameNumber, results, lobbyCode, status };
@@ -122,9 +124,13 @@ export function useBRGameResults({
         return next;
       });
       queryClient.invalidateQueries({ queryKey: ['br-game-results', tournamentId] });
+      queryClient.invalidateQueries({ queryKey: ['tournament-details'] });
+      const isStart = variables.status === 'active' && variables.results.length === 0;
       toast({
-        title: `Game ${variables.gameNumber} Results Saved`,
-        description: `Results for ${variables.results.length} teams recorded.`,
+        title: isStart ? `Game ${variables.gameNumber} Started` : `Game ${variables.gameNumber} Results Saved`,
+        description: isStart
+          ? `Lobby code set. Players can now join.`
+          : `Results for ${variables.results.length} teams recorded.`,
       });
     },
     onError: (error: Error) => {
