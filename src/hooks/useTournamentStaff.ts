@@ -18,7 +18,15 @@ interface UseTournamentStaffResult {
 export function useTournamentStaff(tournamentId?: string): UseTournamentStaffResult {
   const { data: staff = [], isLoading: loading, error: queryError, refetch } = useQuery({
     queryKey: ['tournament-staff', tournamentId],
-    queryFn: () => fetchTournamentStaff(tournamentId!),
+    queryFn: async () => {
+      try {
+        return await fetchTournamentStaff(tournamentId!);
+      } catch (err: any) {
+        // Org staff may not have access to tournament_staff endpoint — return empty gracefully
+        if (err?.status === 403 || err?.message?.includes('403')) return [];
+        throw err;
+      }
+    },
     enabled: !!tournamentId,
     staleTime: 2 * 60 * 1000,
   });

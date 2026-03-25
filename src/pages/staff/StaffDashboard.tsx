@@ -266,8 +266,8 @@ const StaffDashboard = () => {
                       ) : (
                         <div className="space-y-4">
                           {tournaments.map(t => {
-                            const slug = t.tournament?.slug;
-                            if (!slug) return null;
+                            const identifier = t.tournament?.slug || t.tournament_id || t.tournament?.id;
+                            if (!identifier) return null;
                             return (
                               <div key={t.id}>
                                 <p className="text-xs text-zinc-500 font-mono tracking-wider uppercase mb-2">
@@ -279,7 +279,7 @@ const StaffDashboard = () => {
                                     return (
                                       <button
                                         key={`${t.id}-${a.perm}`}
-                                        onClick={() => navigate(`/organizer/tournament/${slug}?tab=${a.tab}`)}
+                                        onClick={() => navigate(`/organizer/tournament/${identifier}?tab=${a.tab}`)}
                                         className={cn(
                                           "flex flex-col items-center gap-2 px-4 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50 transition-all group",
                                           a.color === 'emerald' && "hover:border-emerald-500/30 hover:bg-emerald-500/5",
@@ -339,7 +339,10 @@ const StaffDashboard = () => {
                       {tournaments.map((t) => (
                         <button
                           key={t.id}
-                          onClick={() => t.tournament?.slug && navigate(`/organizer/tournament/${t.tournament.slug}`)}
+                          onClick={() => {
+                            const id = t.tournament?.slug || t.tournament_id || t.tournament?.id;
+                            if (id) navigate(`/organizer/tournament/${id}`);
+                          }}
                           className="flex items-center justify-between px-4 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50 hover:border-amber-500/30 hover:bg-amber-500/5 transition-all group text-left"
                         >
                           <div className="flex items-center gap-3">
