@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Save, ChevronUp, ChevronDown, Copy, Key, Play, Lock, CheckCircle, Radio, ImageIcon, ExternalLink, RotateCcw, Edit3, Eye, EyeOff } from 'lucide-react';
+import { Save, Copy, Key, Play, Lock, CheckCircle, Radio, ImageIcon, RotateCcw, Edit3, Eye, EyeOff } from 'lucide-react';
 import type { BRScoringPreset, BRTeamResult, BREvidence } from '@/types/battleRoyale';
 import type { BRGameStatus } from '@/hooks/useBRGameResults';
 
@@ -63,25 +63,17 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
     return teams.map((t, i) => ({ teamId: t.id, placement: i + 1, kills: 0 }));
   });
 
-  const moveTeam = (index: number, direction: 'up' | 'down') => {
-    const newResults = [...results];
-    const swapIndex = direction === 'up' ? index - 1 : index + 1;
-    if (swapIndex < 0 || swapIndex >= newResults.length) return;
-
-    // Swap placements
-    const tempPlacement = newResults[index].placement;
-    newResults[index].placement = newResults[swapIndex].placement;
-    newResults[swapIndex].placement = tempPlacement;
-
-    // Swap positions in array
-    [newResults[index], newResults[swapIndex]] = [newResults[swapIndex], newResults[index]];
-    setResults(newResults);
-  };
-
   const updateKills = (index: number, kills: number) => {
     const capped = killCap ? Math.min(kills, killCap) : kills;
     const newResults = [...results];
     newResults[index] = { ...newResults[index], kills: Math.max(0, capped) };
+    setResults(newResults);
+  };
+
+  const updatePlacement = (index: number, placement: number) => {
+    const clamped = Math.max(1, Math.min(placement, 999));
+    const newResults = [...results];
+    newResults[index] = { ...newResults[index], placement: clamped };
     setResults(newResults);
   };
 
@@ -271,9 +263,10 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
       <CardContent className="pt-4">
         <div className="space-y-2">
           {/* Header */}
-          <div className="grid grid-cols-[40px_1fr_80px_60px_60px_60px] gap-2 px-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-            <div>#</div>
+          <div className="grid grid-cols-[60px_1fr_70px_70px_50px_50px_50px] gap-2 px-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+            <div className="text-center">#</div>
             <div>Team</div>
+            <div className="text-center">Placement</div>
             <div className="text-center">Kills</div>
             <div className="text-center">Place</div>
             <div className="text-center">Kill</div>
@@ -290,42 +283,22 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
               <div
                 key={result.teamId}
                 className={cn(
-                  "grid grid-cols-[40px_1fr_80px_60px_60px_60px] gap-2 items-center px-2 py-2 rounded-lg transition-colors",
+                  "grid grid-cols-[60px_1fr_70px_70px_50px_50px_50px] gap-2 items-center px-2 py-2 rounded-lg transition-colors",
                   result.placement === 1 ? "bg-amber-500/5 border border-amber-500/20" :
                   result.placement <= 3 ? "bg-white/[0.02] border border-white/5" :
                   "bg-white/[0.01]"
                 )}
               >
-                {/* Placement with reorder buttons */}
-                <div className="flex items-center gap-1">
+                {/* Display rank */}
+                <div className="text-center">
                   <span className={cn(
-                    "text-sm font-bold w-6 text-center",
+                    "text-sm font-bold",
                     result.placement === 1 ? "text-amber-400" :
                     result.placement === 2 ? "text-gray-300" :
                     result.placement === 3 ? "text-amber-600" : "text-gray-500"
                   )}>
-                    {result.placement}
+                    {displayIndex + 1}
                   </span>
-                  {isOrganizer && gameStatus === 'active' && (
-                    <div className="flex flex-col -space-y-1">
-                      <button
-                        type="button"
-                        onClick={() => moveTeam(realIndex, 'up')}
-                        disabled={result.placement === 1}
-                        className="text-gray-500 hover:text-white disabled:opacity-20 p-0"
-                      >
-                        <ChevronUp className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveTeam(realIndex, 'down')}
-                        disabled={result.placement === teams.length}
-                        className="text-gray-500 hover:text-white disabled:opacity-20 p-0"
-                      >
-                        <ChevronDown className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
                 </div>
 
                 {/* Team name */}
@@ -334,6 +307,22 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                     <img src={team.logo} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
                   )}
                   <span className="text-sm text-white truncate">{team?.name || 'Unknown'}</span>
+                </div>
+
+                {/* Placement input */}
+                <div>
+                  {isOrganizer && gameStatus === 'active' ? (
+                    <Input
+                      type="number"
+                      min={1}
+                      max={999}
+                      value={result.placement}
+                      onChange={(e) => updatePlacement(realIndex, parseInt(e.target.value) || 1)}
+                      className="h-7 text-center text-sm [color-scheme:dark]"
+                    />
+                  ) : (
+                    <span className="text-sm text-white font-medium block text-center">#{result.placement}</span>
+                  )}
                 </div>
 
                 {/* Kills input */}
@@ -376,7 +365,11 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
               )}
             </div>
             <div className="space-y-1.5">
-              {evidence.map((ev) => (
+              {evidence.map((ev) => {
+                const teamResultIndex = results.findIndex(r => r.teamId === ev.teamId);
+                const teamResult = teamResultIndex >= 0 ? results[teamResultIndex] : null;
+
+                return (
                 <div
                   key={ev.teamId}
                   className={cn(
@@ -399,9 +392,24 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
 
                   {/* Self-reported stats */}
                   <div className="flex items-center gap-2 text-xs text-zinc-400 flex-shrink-0">
-                    {ev.placement && <span className="text-zinc-500">#{ev.placement}</span>}
+                    {ev.placement && <span className="text-zinc-500">Claims #{ev.placement}</span>}
                     {ev.kills !== undefined && <span className="text-zinc-500">{ev.kills}K</span>}
                   </div>
+
+                  {/* Placement input — organizer sets actual placement inline */}
+                  {gameStatus === 'active' && teamResultIndex >= 0 && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="text-[10px] text-zinc-500">#</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={999}
+                        value={teamResult?.placement ?? 1}
+                        onChange={(e) => updatePlacement(teamResultIndex, parseInt(e.target.value) || 1)}
+                        className="h-6 w-14 text-center text-xs [color-scheme:dark]"
+                      />
+                    </div>
+                  )}
 
                   {/* View Evidence button */}
                   <a
@@ -422,7 +430,8 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                     {ev.reviewed ? 'Viewed' : 'View'}
                   </a>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
