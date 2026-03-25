@@ -100,15 +100,14 @@ const StaffDashboard = () => {
           tournament: t,
         })));
       } else {
-        // Mods/Co-Hosts see only assigned tournaments
-        const data = await apiClient.get<any[]>('/api/tournaments/staff/my-assignments');
-
-        const filtered = (data || []).filter((d: any) =>
-          d.organization_staff_id === selectedOrg.id
-        );
-        const mapped = filtered.map((d: any) => ({
-          ...d,
-          tournament: Array.isArray(d.tournament) ? d.tournament[0] : d.tournament,
+        // Mods/Co-Hosts see only their assigned tournaments via org staff endpoint
+        const staffList = await apiClient.get<any[]>(`/api/organizations/${selectedOrg.organization_id}/staff`);
+        const myEntry = (staffList || []).find((s: any) => s.id === selectedOrg.id);
+        const assignments = myEntry?.tournament_assignments || [];
+        const mapped = assignments.map((a: any) => ({
+          id: a.id,
+          tournament_id: a.tournament_id,
+          tournament: Array.isArray(a.tournament) ? a.tournament[0] : a.tournament,
         }));
         setTournaments(mapped as AssignedTournament[]);
       }
@@ -245,7 +244,6 @@ const StaffDashboard = () => {
                 {selectedOrg && (() => {
                   const perms = selectedOrg.permissions || [];
                   const isAdmin = selectedOrg.role === 'admin';
-                  const firstSlug = tournaments[0]?.tournament?.slug;
 
                   const actions = [
                     { perm: 'scores:update', label: 'Matches', icon: Swords, tab: 'stages', color: 'emerald' },
@@ -263,35 +261,48 @@ const StaffDashboard = () => {
                         <LayoutGrid className="h-5 w-5 text-amber-500" />
                         <h3 className="text-lg font-bold">Quick Actions</h3>
                       </div>
-                      {!firstSlug ? (
+                      {tournaments.length === 0 ? (
                         <p className="text-xs text-zinc-600">No tournaments assigned yet</p>
                       ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {actions.map(a => {
-                            const Icon = a.icon;
+                        <div className="space-y-4">
+                          {tournaments.map(t => {
+                            const slug = t.tournament?.slug;
+                            if (!slug) return null;
                             return (
-                              <button
-                                key={a.perm}
-                                onClick={() => navigate(`/organizer/tournament/${firstSlug}?tab=${a.tab}`)}
-                                className={cn(
-                                  "flex flex-col items-center gap-2 px-4 py-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 transition-all group",
-                                  a.color === 'emerald' && "hover:border-emerald-500/30 hover:bg-emerald-500/5",
-                                  a.color === 'purple' && "hover:border-purple-500/30 hover:bg-purple-500/5",
-                                  a.color === 'amber' && "hover:border-amber-500/30 hover:bg-amber-500/5",
-                                  a.color === 'red' && "hover:border-red-500/30 hover:bg-red-500/5",
-                                  a.color === 'cyan' && "hover:border-cyan-500/30 hover:bg-cyan-500/5",
-                                )}
-                              >
-                                <Icon className={cn(
-                                  "h-5 w-5 text-zinc-500 transition-colors",
-                                  a.color === 'emerald' && "group-hover:text-emerald-400",
-                                  a.color === 'purple' && "group-hover:text-purple-400",
-                                  a.color === 'amber' && "group-hover:text-amber-400",
-                                  a.color === 'red' && "group-hover:text-red-400",
-                                  a.color === 'cyan' && "group-hover:text-cyan-400",
-                                )} />
-                                <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">{a.label}</span>
-                              </button>
+                              <div key={t.id}>
+                                <p className="text-xs text-zinc-500 font-mono tracking-wider uppercase mb-2">
+                                  {t.tournament?.name || "Tournament"}
+                                </p>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                  {actions.map(a => {
+                                    const Icon = a.icon;
+                                    return (
+                                      <button
+                                        key={`${t.id}-${a.perm}`}
+                                        onClick={() => navigate(`/organizer/tournament/${slug}?tab=${a.tab}`)}
+                                        className={cn(
+                                          "flex flex-col items-center gap-2 px-4 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50 transition-all group",
+                                          a.color === 'emerald' && "hover:border-emerald-500/30 hover:bg-emerald-500/5",
+                                          a.color === 'purple' && "hover:border-purple-500/30 hover:bg-purple-500/5",
+                                          a.color === 'amber' && "hover:border-amber-500/30 hover:bg-amber-500/5",
+                                          a.color === 'red' && "hover:border-red-500/30 hover:bg-red-500/5",
+                                          a.color === 'cyan' && "hover:border-cyan-500/30 hover:bg-cyan-500/5",
+                                        )}
+                                      >
+                                        <Icon className={cn(
+                                          "h-5 w-5 text-zinc-500 transition-colors",
+                                          a.color === 'emerald' && "group-hover:text-emerald-400",
+                                          a.color === 'purple' && "group-hover:text-purple-400",
+                                          a.color === 'amber' && "group-hover:text-amber-400",
+                                          a.color === 'red' && "group-hover:text-red-400",
+                                          a.color === 'cyan' && "group-hover:text-cyan-400",
+                                        )} />
+                                        <span className="text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">{a.label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
                             );
                           })}
                         </div>
