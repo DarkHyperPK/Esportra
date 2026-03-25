@@ -240,7 +240,7 @@ const TournamentDetails = () => {
   const brTeams = useMemo(() =>
     isBR ? (enrichedParticipants || []).map((p: any) => ({
       id: p.team_id || p.id,
-      name: p.team_name || p.display_name || 'Unknown',
+      name: p.team_name || p.display_name || p.gamer_tag || p.solo_username || 'Unknown',
       logo: p.team_logo || undefined,
     })) : [],
     [isBR, enrichedParticipants]

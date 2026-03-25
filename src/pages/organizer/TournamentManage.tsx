@@ -1760,12 +1760,36 @@ const TournamentDashboard = () => {
                               evidence={brResults.getEvidence(gameNum)}
                               onStartGame={(lobbyCode) => {
                                 brResults.startGame(gameNum, lobbyCode);
+                                // Notify all participants about game start with lobby code
+                                participants.forEach(p => {
+                                  apiClient.post('/api/notifications', {
+                                    userId: p.user_id,
+                                    type: 'br_game_start',
+                                    title: `Game ${gameNum} Started`,
+                                    message: `Lobby code: ${lobbyCode}. Join now!`,
+                                    link: `/tournaments/${tournament?.slug || tournament?.id}/match-room`,
+                                    data: { tournament_id: tournament?.id, game_number: gameNum, lobby_code: lobbyCode },
+                                  }).catch(() => {});
+                                });
                               }}
                               onSave={(results, lobbyCode) => {
                                 brResults.saveGameResults(gameNum, results, lobbyCode);
                               }}
                               onResetGame={() => brResults.resetGame(gameNum)}
-                              onUpdateLobbyCode={(code) => brResults.updateLobbyCode(gameNum, code)}
+                              onUpdateLobbyCode={(code) => {
+                                brResults.updateLobbyCode(gameNum, code);
+                                // Notify all participants about updated lobby code
+                                participants.forEach(p => {
+                                  apiClient.post('/api/notifications', {
+                                    userId: p.user_id,
+                                    type: 'br_lobby_update',
+                                    title: `Lobby Code Updated — Game ${gameNum}`,
+                                    message: `New lobby code: ${code}`,
+                                    link: `/tournaments/${tournament?.slug || tournament?.id}/match-room`,
+                                    data: { tournament_id: tournament?.id, game_number: gameNum, lobby_code: code },
+                                  }).catch(() => {});
+                                });
+                              }}
                               onMarkEvidenceReviewed={(teamId) => brResults.markEvidenceReviewed(gameNum, teamId)}
                               isSaving={brResults.isSaving}
                             />

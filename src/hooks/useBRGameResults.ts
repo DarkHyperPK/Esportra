@@ -69,8 +69,8 @@ export function useBRGameResults({
       return games;
     },
     enabled: !!tournamentId,
-    staleTime: 1000 * 10,
-    refetchInterval: 1000 * 15,
+    staleTime: 1000 * 5,
+    refetchInterval: 1000 * 5,
   });
 
   // Merge saved data into a Map
@@ -262,8 +262,24 @@ export function useBRGameResults({
 
     for (const [, gameData] of allGames) {
       for (const result of gameData.results) {
-        const entry = teamMap.get(result.teamId);
-        if (!entry) continue;
+        let entry = teamMap.get(result.teamId);
+        // If team not in the provided teams list, create entry from saved result data
+        if (!entry) {
+          entry = {
+            teamId: result.teamId,
+            teamName: result.teamName || 'Unknown',
+            teamLogo: undefined,
+            totalPoints: 0,
+            totalKills: 0,
+            totalPlacementPoints: 0,
+            totalKillPoints: 0,
+            gamesPlayed: 0,
+            wins: 0,
+            bestPlacement: 999,
+            perGameResults: [],
+          };
+          teamMap.set(result.teamId, entry);
+        }
 
         entry.gamesPlayed += 1;
         entry.totalPlacementPoints += result.placementPoints;

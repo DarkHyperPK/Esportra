@@ -514,27 +514,26 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
         )}
       </CardContent>
 
-      {/* Evidence Lightbox */}
+      {/* Evidence Lightbox — rendered at top level to avoid overflow clipping */}
       {lightboxUrl && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setLightboxUrl(null)}
         >
-          <div className="relative max-w-4xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => setLightboxUrl(null)}
-              className="absolute -top-3 -right-3 z-10 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full p-2 border border-white/10 shadow-lg transition-colors"
-              aria-label="Close evidence"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <img
-              src={lightboxUrl}
-              alt="Evidence screenshot"
-              className="w-full max-h-[85vh] object-contain rounded-xl border border-white/10"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 z-[110] bg-zinc-800 hover:bg-zinc-700 text-white rounded-full p-3 border border-white/10 shadow-lg transition-colors"
+            aria-label="Close evidence"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Evidence screenshot"
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl border border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </Card>
