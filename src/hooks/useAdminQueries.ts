@@ -98,7 +98,7 @@ export const useAdminUserRoleAssignments = () =>
 export const useAdminTournaments = () =>
   useQuery({
     queryKey: adminKeys.tournaments(),
-    queryFn: () => apiClient.get<any[]>('/api/admin/tournaments?order=created_at.desc'),
+    queryFn: () => apiClient.get<any[]>('/api/admin/tournaments?limit=100&order=created_at.desc'),
     staleTime: 1000 * 30,
   });
 
@@ -106,7 +106,7 @@ export const useAdminTournaments = () =>
 export const useAdminVenues = () =>
   useQuery({
     queryKey: adminKeys.venues(),
-    queryFn: () => apiClient.get<any[]>('/api/admin/venues?order=created_at.desc'),
+    queryFn: () => apiClient.get<any[]>('/api/admin/venues?limit=100&order=created_at.desc'),
     staleTime: 1000 * 30,
   });
 
