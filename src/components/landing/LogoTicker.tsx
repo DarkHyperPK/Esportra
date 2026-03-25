@@ -4,15 +4,16 @@ import { getStorageUrl } from "@/lib/storage";
 
 const LogoTicker = () => {
     const { data: sponsors = [], isLoading } = useSponsors();
+    const apiSystemOptiX = sponsors.find(s => s.name?.toLowerCase() === 'systemoptix');
     const sponsorsWithLogos = [
-        {
-            id: '41081b79-4631-4123-bf27-a88cc89eae65',
+        ...(apiSystemOptiX ? [{
+            id: apiSystemOptiX.id,
             name: 'SystemOptiX',
-            logo_url: getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
+            logo_url: apiSystemOptiX.logo_url || getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
             website_url: 'https://systemoptix.net/',
             accent_color: '#06b6d4'
-        },
-        ...sponsors.filter(s => s.logo_url && s.name !== 'SystemOptiX')
+        }] : []),
+        ...sponsors.filter(s => s.logo_url && s.name?.toLowerCase() !== 'systemoptix')
     ];
 
     if (isLoading) return null;

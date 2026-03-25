@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { trackClick, trackImpression } from '@/hooks/useSponsors';
+import { trackClick, trackImpression, useSponsors } from '@/hooks/useSponsors';
 import { getStorageUrl } from '@/lib/storage';
 
 export const VerticalAdPlacement = () => {
+    const { data: sponsors = [] } = useSponsors();
+    const systemOptiX = sponsors.find(s => s.name?.toLowerCase() === 'systemoptix');
+    const sponsorId = systemOptiX?.id ?? '';
+
     // Performance HUD State (for SystemOptiX)
     const statsConfig = [
         { ping: '1.2ms', fps: '590 FPS' },
@@ -28,8 +32,8 @@ export const VerticalAdPlacement = () => {
     useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
-                if (entry.isIntersecting) {
-                    trackImpression('41081b79-4631-4123-bf27-a88cc89eae65');
+                if (entry.isIntersecting && sponsorId) {
+                    trackImpression(sponsorId);
                     observer.disconnect();
                 }
             },
@@ -80,7 +84,7 @@ export const VerticalAdPlacement = () => {
                             href="https://systemoptix.net/"
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => trackClick('41081b79-4631-4123-bf27-a88cc89eae65')}
+                            onClick={() => sponsorId && trackClick(sponsorId)}
                             className="text-[10px] font-mono text-white flex items-center gap-2 hover:text-emerald-400 transition-colors group/btn"
                         >
                             OPTIMIZE_NOW <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />

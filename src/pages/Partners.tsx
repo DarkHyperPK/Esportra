@@ -226,19 +226,22 @@ const Partners = () => {
 
     // Sort Sponsors: Platinum -> Gold -> Others
     const sponsors = React.useMemo(() => {
+        // Find the real SystemOptiX from API to get the correct DB ID
+        const apiSystemOptiX = rawSponsors.find(s => s.name?.toLowerCase() === 'systemoptix');
+
         const hardcodedSystemOptiX: Sponsor = {
-            id: '41081b79-4631-4123-bf27-a88cc89eae65',
+            id: apiSystemOptiX?.id ?? '',
             name: 'SystemOptiX',
             tagline: "DOMINATE WITH ZERO LATENCY",
             description: "Unleash Your PC's True Potential. Maximize your framerates and minimize latency with SystemOptix. Our premium PC optimization services tune your rig for peak esports performance, ensuring every millisecond counts.",
             website_url: 'https://systemoptix.net/',
-            logo_url: getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
-            banner_image_url: getStorageUrl('system.assets.partners', 'SystemOptiX/2.jpg'),
+            logo_url: apiSystemOptiX?.logo_url || getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
+            banner_image_url: apiSystemOptiX?.banner_image_url || getStorageUrl('system.assets.partners', 'SystemOptiX/2.jpg'),
             accent_color: '#06b6d4',
             tier: 'radiant',
             placement: ['logo_ticker', 'partner_showcase'],
             cta_text: 'Optimize Now',
-            discount_text: 'esportra20',
+            discount_text: apiSystemOptiX?.discount_text || 'esportra20',
             is_active: true,
             priority: 100,
             gallery_images: [
@@ -258,10 +261,12 @@ const Partners = () => {
         };
         const filteredRaw = rawSponsors.filter(s => s.name?.toLowerCase() !== 'systemoptix');
 
-        return [hardcodedSystemOptiX, ...filteredRaw].sort((a, b) => {
+        // Only include hardcoded entry if API returned SystemOptiX (so we have a valid ID)
+        const base = apiSystemOptiX ? [hardcodedSystemOptiX, ...filteredRaw] : rawSponsors;
+        return base.sort((a, b) => {
             const scoreA = tierOrder[a.tier?.toLowerCase()] || 0;
             const scoreB = tierOrder[b.tier?.toLowerCase()] || 0;
-            return scoreB - scoreA; // Descending order
+            return scoreB - scoreA;
         });
     }, [rawSponsors]);
 
