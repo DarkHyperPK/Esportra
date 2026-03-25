@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { BRTeamResult, BRLeaderboardEntry, BRScoringPreset, BRGameResult } from '@/types/battleRoyale';
+import type { BRTeamResult, BRLeaderboardEntry, BRScoringPreset, BRGameResult, BREvidence } from '@/types/battleRoyale';
 
 interface UseBRGameResultsProps {
   tournamentId: string | undefined;
@@ -20,6 +20,7 @@ interface BRGameData {
   results: BRTeamResult[];
   lobbyCode?: string;
   status: BRGameStatus;
+  evidence?: BREvidence[];
 }
 
 export function useBRGameResults({
@@ -289,6 +290,33 @@ export function useBRGameResults({
     return leaderboard.length > 0 ? leaderboard[0] : null;
   }, [leaderboard, gamesCompleted, gameCount]);
 
+  // Submit evidence for a game (player uploads screenshot)
+  const submitEvidence = useCallback(
+    async (gameNumber: number, evidence: BREvidence) => {
+      const game = allGames.get(gameNumber);
+      const existing = game?.evidence || [];
+      // Replace if same team already submitted for this game
+      const filtered = existing.filter(e => e.teamId !== evidence.teamId);
+      const updated: BRGameData = {
+        gameNumber,
+        results: game?.results || [],
+        lobbyCode: game?.lobbyCode,
+        status: game?.status || 'active',
+        evidence: [...filtered, evidence],
+      };
+      saveMutation.mutate(updated);
+    },
+    [allGames, saveMutation]
+  );
+
+  // Get evidence for a specific game
+  const getEvidence = useCallback(
+    (gameNumber: number): BREvidence[] => {
+      return allGames.get(gameNumber)?.evidence || [];
+    },
+    [allGames]
+  );
+
   return {
     leaderboard,
     gamesCompleted,
@@ -303,5 +331,7 @@ export function useBRGameResults({
     activeGameNumber,
     nextGameNumber,
     allGames,
+    submitEvidence,
+    getEvidence,
   };
 }

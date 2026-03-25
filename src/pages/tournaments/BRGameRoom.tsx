@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
@@ -16,7 +16,7 @@ import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import {
   Trophy, Copy, ArrowLeft, Radio, Clock, CheckCircle, Key, Send,
-  Target, Swords, ChevronUp, ChevronDown, Gamepad2,
+  Target, Swords, ChevronUp, ChevronDown, Gamepad2, ImagePlus, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -96,24 +96,70 @@ const BRGameRoom: React.FC = () => {
   const [reportPlacement, setReportPlacement] = useState<number>(1);
   const [reportKills, setReportKills] = useState<number>(0);
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Submit self-report
+  const handleEvidenceSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({ title: 'Invalid file type', description: 'Please upload a PNG, JPG, or WEBP image.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Maximum file size is 5MB.', variant: 'destructive' });
+      return;
+    }
+    setEvidenceFile(file);
+    setEvidencePreview(URL.createObjectURL(file));
+  };
+
+  const clearEvidence = () => {
+    setEvidenceFile(null);
+    if (evidencePreview) URL.revokeObjectURL(evidencePreview);
+    setEvidencePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Submit self-report with evidence
   const submitReport = async () => {
     if (!userTeam || !brResults.activeGameNumber) return;
+    if (!evidenceFile) {
+      toast({ title: 'Evidence required', description: 'Please upload a screenshot of your results.', variant: 'destructive' });
+      return;
+    }
     setReportSubmitting(true);
     try {
-      // Try to submit via API
-      await apiClient.post(`/api/tournaments/${tournament.id}/br-reports`, {
-        gameNumber: brResults.activeGameNumber,
+      // Upload evidence image
+      let imageUrl = '';
+      try {
+        const fd = new FormData();
+        fd.append('file', evidenceFile);
+        fd.append('bucket', 'tournaments.results');
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        imageUrl = url;
+      } catch {
+        toast({ title: 'Upload failed', description: 'Could not upload evidence image. Please try again.', variant: 'destructive' });
+        setReportSubmitting(false);
+        return;
+      }
+
+      // Submit evidence via hook
+      await brResults.submitEvidence(brResults.activeGameNumber, {
         teamId: userTeam.id,
         teamName: userTeam.name,
+        imageUrl,
+        submittedAt: new Date().toISOString(),
         placement: reportPlacement,
         kills: reportKills,
       });
-      toast({ title: 'Report Submitted', description: `Placement: #${reportPlacement}, Kills: ${reportKills}` });
+
+      toast({ title: 'Evidence Submitted', description: `Placement: #${reportPlacement}, Kills: ${reportKills}. The organizer will review your submission.` });
+      clearEvidence();
     } catch {
-      // If API doesn't exist, show success anyway (organizer will enter results)
-      toast({ title: 'Report Submitted', description: 'Your results have been reported to the organizer.' });
+      toast({ title: 'Submission failed', description: 'Could not submit your report. Please try again.', variant: 'destructive' });
     }
     setReportSubmitting(false);
   };
@@ -289,16 +335,55 @@ const BRGameRoom: React.FC = () => {
                         />
                       </div>
                     </div>
+
+                    {/* Evidence Upload */}
+                    <div>
+                      <label className="text-xs text-zinc-400 font-semibold mb-2 block">Evidence Screenshot</label>
+                      {evidencePreview ? (
+                        <div className="relative rounded-lg overflow-hidden border border-white/10">
+                          <img
+                            src={evidencePreview}
+                            alt="Evidence preview"
+                            className="w-full h-40 object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={clearEvidence}
+                            className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors"
+                            aria-label="Remove evidence"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full h-28 border-2 border-dashed border-zinc-700 hover:border-rose-500/50 rounded-lg flex flex-col items-center justify-center gap-2 text-zinc-500 hover:text-zinc-400 transition-colors"
+                        >
+                          <ImagePlus className="w-6 h-6" />
+                          <span className="text-xs font-medium">Upload screenshot of your results</span>
+                        </button>
+                      )}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={handleEvidenceSelect}
+                        className="hidden"
+                      />
+                    </div>
+
                     <Button
                       onClick={submitReport}
-                      disabled={reportSubmitting}
+                      disabled={reportSubmitting || !evidenceFile}
                       className="w-full bg-rose-600 hover:bg-rose-700 text-white"
                     >
                       <Send className="w-4 h-4 mr-2" />
-                      {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+                      {reportSubmitting ? 'Uploading & Submitting...' : 'Submit Report with Evidence'}
                     </Button>
                     <p className="text-[10px] text-zinc-600 text-center">
-                      Results will be verified by the organizer
+                      Upload a screenshot of your results. The organizer will verify and enter final scores.
                     </p>
                   </div>
                 )}

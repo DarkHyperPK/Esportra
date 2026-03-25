@@ -1757,6 +1757,7 @@ const TournamentDashboard = () => {
                               isOrganizer={isOrganizer}
                               gameStatus={gameStatus}
                               isLocked={isLocked}
+                              evidence={brResults.getEvidence(gameNum)}
                               onStartGame={(lobbyCode) => {
                                 brResults.startGame(gameNum, lobbyCode);
                               }}

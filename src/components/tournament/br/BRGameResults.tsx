@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Save, ChevronUp, ChevronDown, Copy, Key, Play, Lock, CheckCircle, Radio } from 'lucide-react';
-import type { BRScoringPreset, BRTeamResult } from '@/types/battleRoyale';
+import { Save, ChevronUp, ChevronDown, Copy, Key, Play, Lock, CheckCircle, Radio, ImageIcon, ExternalLink } from 'lucide-react';
+import type { BRScoringPreset, BRTeamResult, BREvidence } from '@/types/battleRoyale';
 import type { BRGameStatus } from '@/hooks/useBRGameResults';
 
 interface BRGameResultsProps {
@@ -22,6 +22,7 @@ interface BRGameResultsProps {
   isOrganizer?: boolean;
   gameStatus: BRGameStatus;
   isLocked?: boolean;
+  evidence?: BREvidence[];
 }
 
 const BRGameResults: React.FC<BRGameResultsProps> = ({
@@ -37,6 +38,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   isOrganizer,
   gameStatus,
   isLocked = false,
+  evidence = [],
 }) => {
   const { toast } = useToast();
   const [currentLobbyCode, setCurrentLobbyCode] = useState(initialLobbyCode || '');
@@ -346,6 +348,48 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
             );
           })}
         </div>
+
+        {/* Player Evidence Submissions */}
+        {isOrganizer && evidence.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-white/5">
+            <div className="flex items-center gap-2 mb-3">
+              <ImageIcon className="w-4 h-4 text-zinc-500" />
+              <span className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">
+                Player Evidence ({evidence.length})
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {evidence.map((ev) => (
+                <div
+                  key={ev.teamId}
+                  className="bg-zinc-900/60 rounded-xl border border-white/5 overflow-hidden"
+                >
+                  <a href={ev.imageUrl} target="_blank" rel="noopener noreferrer" className="block relative group">
+                    <img
+                      src={ev.imageUrl}
+                      alt={`Evidence from ${ev.teamName}`}
+                      className="w-full h-36 object-cover"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </a>
+                  <div className="px-3 py-2">
+                    <p className="text-sm font-medium text-white truncate">{ev.teamName}</p>
+                    <div className="flex items-center gap-3 text-xs text-zinc-500 mt-0.5">
+                      {ev.placement && <span>#{ev.placement}</span>}
+                      {ev.kills !== undefined && <span>{ev.kills} kills</span>}
+                      <span className="ml-auto">
+                        {new Date(ev.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Save button — only when organizer and game is active */}
         {isOrganizer && gameStatus === 'active' && (

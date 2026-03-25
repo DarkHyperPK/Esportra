@@ -59,6 +59,15 @@ export interface BRLeaderboardEntry {
   }[];
 }
 
+export interface BREvidence {
+  teamId: string;
+  teamName: string;
+  imageUrl: string;
+  submittedAt: string;
+  placement?: number;
+  kills?: number;
+}
+
 export const DEFAULT_BR_SETTINGS: BRTournamentSettings = {
   gameCount: 6,
   scoringPreset: 'custom',
