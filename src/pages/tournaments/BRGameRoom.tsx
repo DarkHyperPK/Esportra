@@ -43,7 +43,7 @@ const BRGameRoom: React.FC = () => {
   // Fetch participants
   const { data: participantsData } = useQuery({
     queryKey: ['tournament-participants', tournament?.id],
-    queryFn: () => apiClient.get<any[]>(`/api/tournaments/${tournament.id}/registrations`),
+    queryFn: () => apiClient.get<any[]>(`/api/tournaments/${tournament.id}/participants`),
     enabled: !!tournament?.id,
   });
 
