@@ -121,6 +121,16 @@ export function useBRGameResults({
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: persistGame,
+    onMutate: async (variables) => {
+      // Optimistic update: immediately reflect the change in cache
+      await queryClient.cancelQueries({ queryKey: ['br-game-results', tournamentId] });
+      const previous = queryClient.getQueryData<BRGameData[]>(['br-game-results', tournamentId]);
+      queryClient.setQueryData<BRGameData[]>(['br-game-results', tournamentId], (old) => {
+        const existing = old?.filter(g => g.gameNumber !== variables.gameNumber) || [];
+        return [...existing, variables];
+      });
+      return { previous };
+    },
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['br-game-results', tournamentId] });
       const isStart = variables.status === 'active' && variables.results.length === 0;
@@ -131,7 +141,11 @@ export function useBRGameResults({
           : `Results for ${variables.results.length} teams recorded.`,
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      // Rollback optimistic update
+      if (context?.previous) {
+        queryClient.setQueryData(['br-game-results', tournamentId], context.previous);
+      }
       toast({
         title: 'Failed to Save',
         description: error.message || 'Could not persist game data. Please try again.',

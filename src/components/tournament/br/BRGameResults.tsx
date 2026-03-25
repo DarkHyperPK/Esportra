@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,6 +48,11 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   const [currentLobbyCode, setCurrentLobbyCode] = useState(initialLobbyCode || '');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [startLobbyCode, setStartLobbyCode] = useState('');
+
+  // Sync lobby code when prop updates (e.g., after optimistic update or refetch)
+  useEffect(() => {
+    if (initialLobbyCode) setCurrentLobbyCode(initialLobbyCode);
+  }, [initialLobbyCode]);
 
   const [results, setResults] = useState<{ teamId: string; placement: number; kills: number }[]>(() => {
     if (existingResults?.length) {
