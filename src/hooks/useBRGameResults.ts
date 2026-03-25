@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { apiClient } from '@/lib/apiClient';
+import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { BRTeamResult, BRLeaderboardEntry, BRScoringPreset, BRGameResult, BREvidence } from '@/types/battleRoyale';
 
@@ -23,6 +23,14 @@ interface BRGameData {
   evidence?: BREvidence[];
 }
 
+// Persisted row shape in br_game_data table
+interface BRGameDataRow {
+  tournament_id: string;
+  games: Record<string, BRGameData>;
+  updated_at: string;
+  updated_by: string | null;
+}
+
 export function useBRGameResults({
   tournamentId,
   gameCount,
@@ -34,110 +42,99 @@ export function useBRGameResults({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch saved BR game results from API (with settings fallback)
+  // Fetch saved BR game data directly from Supabase
   const { data: savedGames, isLoading } = useQuery({
     queryKey: ['br-game-results', tournamentId],
-    queryFn: async () => {
-      // Try dedicated endpoint first
-      try {
-        const data = await apiClient.get<BRGameData[]>(
-          `/api/tournaments/${tournamentId}/br-results`
-        );
-        if (data && data.length > 0) return data;
-      } catch {
-        // Endpoint may not exist yet
+    queryFn: async (): Promise<BRGameData[]> => {
+      if (!tournamentId) return [];
+
+      const { data, error } = await supabase
+        .from('br_game_data')
+        .select('games')
+        .eq('tournament_id', tournamentId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('BR game data fetch error:', error);
+        return [];
       }
-      // Fallback: read from tournament settings.brResults
-      try {
-        // Add cache-buster to avoid apiClient GET deduplication returning stale data
-        const tournament = await apiClient.get<any>(`/api/tournaments/${tournamentId}?_t=${Date.now()}`);
-        const settings = tournament?.tournament?.settings || tournament?.settings || {};
-        const brResults = settings.brResults;
-        if (brResults && typeof brResults === 'object') {
-          const games: BRGameData[] = [];
-          for (const key of Object.keys(brResults)) {
-            const g = brResults[key];
-            if (g && g.gameNumber) games.push(g);
-          }
-          if (games.length > 0) return games;
-        }
-      } catch {
-        // Settings also unavailable
+      if (!data?.games) return [];
+
+      const games: BRGameData[] = [];
+      const gamesObj = data.games as Record<string, BRGameData>;
+      for (const key of Object.keys(gamesObj)) {
+        const g = gamesObj[key];
+        if (g && g.gameNumber) games.push(g);
       }
-      return [];
+      return games;
     },
     enabled: !!tournamentId,
-    staleTime: 1000 * 10, // 10s — lobby codes must propagate quickly
-    refetchInterval: 1000 * 15, // Poll every 15s so players see lobby codes promptly
+    staleTime: 1000 * 10,
+    refetchInterval: 1000 * 15,
   });
 
-  // Local state for unsaved edits (maps gameNumber → results)
-  const [localGames, setLocalGames] = useState<Map<number, BRGameData>>(new Map());
-
-  // Merge saved + local data
+  // Merge saved data into a Map
   const allGames = useMemo(() => {
     const merged = new Map<number, BRGameData>();
-    // Saved first
     if (savedGames) {
       for (const g of savedGames) {
-        merged.set(g.gameNumber, { ...g, status: g.status || (g.results.length > 0 ? 'completed' : 'pending') });
+        merged.set(g.gameNumber, {
+          ...g,
+          status: g.status || (g.results.length > 0 ? 'completed' : 'pending'),
+        });
       }
-    }
-    // Local overrides
-    for (const [num, data] of localGames) {
-      merged.set(num, data);
     }
     return merged;
-  }, [savedGames, localGames]);
+  }, [savedGames]);
 
-  // Save game results mutation
-  const saveMutation = useMutation({
-    mutationFn: async ({ gameNumber, results, lobbyCode, status }: BRGameData) => {
-      // Try API first
-      try {
-        await apiClient.put(
-          `/api/tournaments/${tournamentId}/br-results/${gameNumber}`,
-          { gameNumber, results, lobbyCode, status }
-        );
-        return { persisted: true };
-      } catch {
-        // API may not exist — store in tournament settings as fallback
-        try {
-          const tournament = await apiClient.get<any>(`/api/tournaments/${tournamentId}?_t=${Date.now()}`);
-          const settings = tournament?.tournament?.settings || tournament?.settings || {};
-          const brResults = settings.brResults || {};
-          brResults[`game_${gameNumber}`] = { gameNumber, results, lobbyCode, status };
-          await apiClient.put(`/api/tournaments/${tournamentId}`, {
-            settings: { ...settings, brResults },
-          });
-          return { persisted: true, fallback: true };
-        } catch (e2) {
-          // Store locally only
-          return { persisted: false };
-        }
-      }
+  // Helper: persist a single game update to Supabase
+  const persistGame = useCallback(
+    async (gameData: BRGameData) => {
+      if (!tournamentId) throw new Error('No tournament ID');
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Read current row
+      const { data: existing } = await supabase
+        .from('br_game_data')
+        .select('games')
+        .eq('tournament_id', tournamentId)
+        .maybeSingle();
+
+      const currentGames = (existing?.games as Record<string, BRGameData>) || {};
+      currentGames[`game_${gameData.gameNumber}`] = gameData;
+
+      const { error } = await supabase
+        .from('br_game_data')
+        .upsert({
+          tournament_id: tournamentId,
+          games: currentGames,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.id || null,
+        }, { onConflict: 'tournament_id' });
+
+      if (error) throw error;
     },
-    onSuccess: (result, variables) => {
-      // Update local state
-      setLocalGames(prev => {
-        const next = new Map(prev);
-        next.set(variables.gameNumber, variables);
-        return next;
-      });
+    [tournamentId]
+  );
+
+  // Save mutation
+  const saveMutation = useMutation({
+    mutationFn: persistGame,
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['br-game-results', tournamentId] });
-      queryClient.invalidateQueries({ queryKey: ['tournament-details'] });
       const isStart = variables.status === 'active' && variables.results.length === 0;
       toast({
         title: isStart ? `Game ${variables.gameNumber} Started` : `Game ${variables.gameNumber} Results Saved`,
         description: isStart
-          ? `Lobby code set. Players can now join.`
+          ? 'Lobby code set. Players can now join.'
           : `Results for ${variables.results.length} teams recorded.`,
       });
     },
     onError: (error: Error) => {
       toast({
-        title: 'Failed to Save Results',
-        description: error.message,
+        title: 'Failed to Save',
+        description: error.message || 'Could not persist game data. Please try again.',
         variant: 'destructive',
       });
     },
@@ -146,9 +143,16 @@ export function useBRGameResults({
   // Save results for a specific game (marks as completed)
   const saveGameResults = useCallback(
     (gameNumber: number, results: BRTeamResult[], lobbyCode?: string) => {
-      saveMutation.mutate({ gameNumber, results, lobbyCode, status: 'completed' });
+      const existing = allGames.get(gameNumber);
+      saveMutation.mutate({
+        gameNumber,
+        results,
+        lobbyCode: lobbyCode || existing?.lobbyCode,
+        status: 'completed',
+        evidence: existing?.evidence,
+      });
     },
-    [saveMutation]
+    [saveMutation, allGames]
   );
 
   // Start a game (set lobby code and mark as active)
@@ -160,6 +164,34 @@ export function useBRGameResults({
         results: existing?.results || [],
         lobbyCode,
         status: 'active',
+        evidence: existing?.evidence,
+      });
+    },
+    [saveMutation, allGames]
+  );
+
+  // Reset a game back to pending (organizer manual tool)
+  const resetGame = useCallback(
+    (gameNumber: number) => {
+      saveMutation.mutate({
+        gameNumber,
+        results: [],
+        lobbyCode: undefined,
+        status: 'pending',
+        evidence: [],
+      });
+    },
+    [saveMutation]
+  );
+
+  // Update lobby code for an active game
+  const updateLobbyCode = useCallback(
+    (gameNumber: number, lobbyCode: string) => {
+      const existing = allGames.get(gameNumber);
+      if (!existing) return;
+      saveMutation.mutate({
+        ...existing,
+        lobbyCode,
       });
     },
     [saveMutation, allGames]
@@ -175,7 +207,7 @@ export function useBRGameResults({
     [allGames]
   );
 
-  // Get the current active game number (first non-completed game, or null)
+  // Get the current active game number
   const activeGameNumber = useMemo((): number | null => {
     for (let i = 1; i <= gameCount; i++) {
       const status = allGames.get(i)?.status;
@@ -184,21 +216,20 @@ export function useBRGameResults({
     return null;
   }, [allGames, gameCount]);
 
-  // Get the next game that can be started (first pending game where all prior are completed)
+  // Get the next game that can be started
   const nextGameNumber = useMemo((): number | null => {
     for (let i = 1; i <= gameCount; i++) {
       const status = allGames.get(i)?.status;
-      if (status === 'active') return null; // can't start next while one is active
+      if (status === 'active') return null;
       if (!status || status === 'pending') return i;
     }
-    return null; // all completed
+    return null;
   }, [allGames, gameCount]);
 
   // Compute leaderboard from all game results
   const leaderboard = useMemo((): BRLeaderboardEntry[] => {
     const teamMap = new Map<string, BRLeaderboardEntry>();
 
-    // Initialize from teams
     for (const team of teams) {
       teamMap.set(team.id, {
         teamId: team.id,
@@ -215,7 +246,6 @@ export function useBRGameResults({
       });
     }
 
-    // Accumulate results from all games
     for (const [, gameData] of allGames) {
       for (const result of gameData.results) {
         const entry = teamMap.get(result.teamId);
@@ -237,12 +267,10 @@ export function useBRGameResults({
       }
     }
 
-    // Sort by total points, then tiebreaker
     const sorted = Array.from(teamMap.values())
       .filter(e => e.gamesPlayed > 0)
       .sort((a, b) => {
         if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
-        // Tiebreaker
         if (tiebreaker === 'most_wins') {
           if (b.wins !== a.wins) return b.wins - a.wins;
           return b.totalKills - a.totalKills;
@@ -251,7 +279,6 @@ export function useBRGameResults({
           if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills;
           return b.wins - a.wins;
         }
-        // head_to_head — fall back to kills
         return b.totalKills - a.totalKills;
       });
 
@@ -284,7 +311,7 @@ export function useBRGameResults({
     [allGames]
   );
 
-  // Determine tournament winner (top of leaderboard after all games)
+  // Determine tournament winner
   const winner = useMemo(() => {
     if (gamesCompleted < gameCount) return null;
     return leaderboard.length > 0 ? leaderboard[0] : null;
@@ -295,18 +322,17 @@ export function useBRGameResults({
     async (gameNumber: number, evidence: BREvidence) => {
       const game = allGames.get(gameNumber);
       const existing = game?.evidence || [];
-      // Replace if same team already submitted for this game
       const filtered = existing.filter(e => e.teamId !== evidence.teamId);
-      const updated: BRGameData = {
+      await persistGame({
         gameNumber,
         results: game?.results || [],
         lobbyCode: game?.lobbyCode,
         status: game?.status || 'active',
         evidence: [...filtered, evidence],
-      };
-      saveMutation.mutate(updated);
+      });
+      queryClient.invalidateQueries({ queryKey: ['br-game-results', tournamentId] });
     },
-    [allGames, saveMutation]
+    [allGames, persistGame, queryClient, tournamentId]
   );
 
   // Get evidence for a specific game
@@ -325,6 +351,8 @@ export function useBRGameResults({
     isSaving: saveMutation.isPending,
     saveGameResults,
     startGame,
+    resetGame,
+    updateLobbyCode,
     getGameResults,
     getGameStatus,
     getLobbyCode,

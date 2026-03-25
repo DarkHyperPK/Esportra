@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Save, ChevronUp, ChevronDown, Copy, Key, Play, Lock, CheckCircle, Radio, ImageIcon, ExternalLink } from 'lucide-react';
+import { Save, ChevronUp, ChevronDown, Copy, Key, Play, Lock, CheckCircle, Radio, ImageIcon, ExternalLink, RotateCcw, Edit3 } from 'lucide-react';
 import type { BRScoringPreset, BRTeamResult, BREvidence } from '@/types/battleRoyale';
 import type { BRGameStatus } from '@/hooks/useBRGameResults';
 
@@ -17,6 +17,8 @@ interface BRGameResultsProps {
   existingResults?: BRTeamResult[];
   onSave: (results: BRTeamResult[], lobbyCode?: string) => void;
   onStartGame?: (lobbyCode: string) => void;
+  onResetGame?: () => void;
+  onUpdateLobbyCode?: (code: string) => void;
   isSaving?: boolean;
   lobbyCode?: string;
   isOrganizer?: boolean;
@@ -33,6 +35,8 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   existingResults,
   onSave,
   onStartGame,
+  onResetGame,
+  onUpdateLobbyCode,
   isSaving,
   lobbyCode: initialLobbyCode,
   isOrganizer,
@@ -42,6 +46,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
 }) => {
   const { toast } = useToast();
   const [currentLobbyCode, setCurrentLobbyCode] = useState(initialLobbyCode || '');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [startLobbyCode, setStartLobbyCode] = useState('');
 
   const [results, setResults] = useState<{ teamId: string; placement: number; kills: number }[]>(() => {
@@ -391,17 +396,89 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
           </div>
         )}
 
-        {/* Save button — only when organizer and game is active */}
-        {isOrganizer && gameStatus === 'active' && (
-          <div className="mt-4 flex justify-end">
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {isSaving ? 'Saving...' : 'Save Results & Complete Game'}
-            </Button>
+        {/* Organizer Tools */}
+        {isOrganizer && (gameStatus === 'active' || gameStatus === 'completed') && (
+          <div className="mt-5 pt-4 border-t border-white/5 space-y-3">
+            {/* Save & Complete */}
+            {gameStatus === 'active' && (
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSaving ? 'Saving...' : 'Save Results & Complete Game'}
+                </Button>
+              </div>
+            )}
+
+            {/* Update Lobby Code (active games) */}
+            {gameStatus === 'active' && onUpdateLobbyCode && (
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="New lobby code..."
+                  value={currentLobbyCode}
+                  onChange={(e) => setCurrentLobbyCode(e.target.value)}
+                  className="h-8 text-sm font-mono flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (!currentLobbyCode.trim()) return;
+                    onUpdateLobbyCode(currentLobbyCode.trim());
+                    toast({ title: 'Lobby code updated' });
+                  }}
+                  disabled={isSaving}
+                  className="text-xs"
+                >
+                  <Edit3 className="w-3 h-3 mr-1" />
+                  Update Code
+                </Button>
+              </div>
+            )}
+
+            {/* Reset Game */}
+            {onResetGame && (
+              showResetConfirm ? (
+                <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <p className="text-xs text-red-400 flex-1">
+                    This will clear all results, evidence, and lobby code for this game.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowResetConfirm(false)}
+                    className="text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      onResetGame();
+                      setShowResetConfirm(false);
+                    }}
+                    disabled={isSaving}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs"
+                  >
+                    <RotateCcw className="w-3 h-3 mr-1" />
+                    Reset
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowResetConfirm(true)}
+                  className="text-zinc-500 hover:text-red-400 text-xs w-full justify-start"
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  Reset Game {gameNumber}
+                </Button>
+              )
+            )}
           </div>
         )}
       </CardContent>

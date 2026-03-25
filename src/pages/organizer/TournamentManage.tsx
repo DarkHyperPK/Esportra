@@ -1764,6 +1764,8 @@ const TournamentDashboard = () => {
                               onSave={(results, lobbyCode) => {
                                 brResults.saveGameResults(gameNum, results, lobbyCode);
                               }}
+                              onResetGame={() => brResults.resetGame(gameNum)}
+                              onUpdateLobbyCode={(code) => brResults.updateLobbyCode(gameNum, code)}
                               isSaving={brResults.isSaving}
                             />
                           );
