@@ -55,6 +55,10 @@ export const EditProfileForm = ({ profile, onUpdateProfile, loading }: EditProfi
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Instant local preview
+    setPreviewUrl(URL.createObjectURL(file));
+
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();

@@ -488,14 +488,7 @@ const TeamsPage = () => {
           latest_match_id: latestMatchId
         };
 
-        // Cache persistent stats via .NET API
-        await apiClient.put(`/api/integrations/riot/player-stats/${member.user_id}`, {
-          puuid: member.riot_puuid,
-          kd: calculatedStats.kd,
-          winRate: calculatedStats.winRate,
-          hsPercent: calculatedStats.hs,
-          latestMatchId: latestMatchId,
-        });
+        // Stats calculation done — update local state only (no backend persistence)
 
         setTeamMembers(prev => prev.map(m =>
           m?.user_id === member.user_id ? { ...m, stats: calculatedStats } : m

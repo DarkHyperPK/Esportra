@@ -14,6 +14,7 @@ interface AvatarUploaderProps {
 
 const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUploaderProps) => {
     const [isUploading, setIsUploading] = useState(false);
+    const [localPreview, setLocalPreview] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
@@ -46,6 +47,10 @@ const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUplo
             return;
         }
 
+        // Instant local preview
+        const blobUrl = URL.createObjectURL(file);
+        setLocalPreview(blobUrl);
+
         setIsUploading(true);
         try {
             const fileExt = file.name.split('.').pop();
@@ -67,6 +72,7 @@ const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUplo
             );
 
             onChange(result.url);
+            setLocalPreview(null);
 
             toast({
                 title: uploadPath ? 'Player card updated' : 'Avatar updated',
@@ -74,6 +80,7 @@ const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUplo
             });
         } catch (error: any) {
             console.error('Upload error:', error);
+            setLocalPreview(null);
             toast({
                 title: 'Upload failed',
                 description: error.message || 'Something went wrong.',
@@ -90,8 +97,8 @@ const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUplo
                 "rounded-full border-2 border-zinc-700 bg-zinc-900 group-hover:border-rose-500 transition-colors flex items-center justify-center p-0", // Removed overflow-hidden to let EntityAvatar handle it, removed padding
             )}>
                 <EntityAvatar
-                    src={value}
-                    name="Avatar" // Not ideal since we don't have the user name here, but better than nothing
+                    src={localPreview || value}
+                    name="Avatar"
                     type="user"
                     size={sizeClasses[size]}
                     className="border-none" // Remove border from EntityAvatar to avoid double border
