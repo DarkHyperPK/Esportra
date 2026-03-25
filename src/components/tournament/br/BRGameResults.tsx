@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Save, Copy, Key, Play, Lock, CheckCircle, Radio, ImageIcon, RotateCcw, Edit3, Eye, EyeOff } from 'lucide-react';
+import { Save, Copy, Key, Play, Lock, CheckCircle, Radio, ImageIcon, RotateCcw, Edit3, Eye, EyeOff, X } from 'lucide-react';
 import type { BRScoringPreset, BRTeamResult, BREvidence } from '@/types/battleRoyale';
 import type { BRGameStatus } from '@/hooks/useBRGameResults';
 
@@ -50,6 +50,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   const [currentLobbyCode, setCurrentLobbyCode] = useState(initialLobbyCode || '');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [startLobbyCode, setStartLobbyCode] = useState('');
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   // Sync lobby code when prop updates (e.g., after optimistic update or refetch)
   useEffect(() => {
@@ -263,19 +264,18 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
       <CardContent className="pt-4">
         <div className="space-y-2">
           {/* Header */}
-          <div className="grid grid-cols-[60px_1fr_70px_70px_50px_50px_50px] gap-2 px-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+          <div className="grid grid-cols-[40px_1fr_60px_60px_50px_50px_50px] gap-2 px-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
             <div className="text-center">#</div>
             <div>Team</div>
-            <div className="text-center">Placement</div>
-            <div className="text-center">Kills</div>
             <div className="text-center">Place</div>
+            <div className="text-center">Kills</div>
+            <div className="text-center">Pts</div>
             <div className="text-center">Kill</div>
             <div className="text-center">Total</div>
           </div>
 
-          {/* Results rows */}
+          {/* Results rows — read-only standings */}
           {sortedResults.map((result, displayIndex) => {
-            const realIndex = results.findIndex(r => r.teamId === result.teamId);
             const team = teams.find(t => t.id === result.teamId);
             const pts = calculatePoints(result.placement, result.kills);
 
@@ -283,13 +283,12 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
               <div
                 key={result.teamId}
                 className={cn(
-                  "grid grid-cols-[60px_1fr_70px_70px_50px_50px_50px] gap-2 items-center px-2 py-2 rounded-lg transition-colors",
+                  "grid grid-cols-[40px_1fr_60px_60px_50px_50px_50px] gap-2 items-center px-2 py-2 rounded-lg transition-colors",
                   result.placement === 1 ? "bg-amber-500/5 border border-amber-500/20" :
                   result.placement <= 3 ? "bg-white/[0.02] border border-white/5" :
                   "bg-white/[0.01]"
                 )}
               >
-                {/* Display rank */}
                 <div className="text-center">
                   <span className={cn(
                     "text-sm font-bold",
@@ -300,48 +299,14 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                     {displayIndex + 1}
                   </span>
                 </div>
-
-                {/* Team name */}
                 <div className="flex items-center gap-2 min-w-0">
                   {team?.logo && (
                     <img src={team.logo} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
                   )}
                   <span className="text-sm text-white truncate">{team?.name || 'Unknown'}</span>
                 </div>
-
-                {/* Placement input */}
-                <div>
-                  {isOrganizer && gameStatus === 'active' ? (
-                    <Input
-                      type="number"
-                      min={1}
-                      max={999}
-                      value={result.placement}
-                      onChange={(e) => updatePlacement(realIndex, parseInt(e.target.value) || 1)}
-                      className="h-7 text-center text-sm [color-scheme:dark]"
-                    />
-                  ) : (
-                    <span className="text-sm text-white font-medium block text-center">#{result.placement}</span>
-                  )}
-                </div>
-
-                {/* Kills input */}
-                <div>
-                  {isOrganizer && gameStatus === 'active' ? (
-                    <Input
-                      type="number"
-                      min={0}
-                      max={killCap || 99}
-                      value={result.kills}
-                      onChange={(e) => updateKills(realIndex, parseInt(e.target.value) || 0)}
-                      className="h-7 text-center text-sm [color-scheme:dark]"
-                    />
-                  ) : (
-                    <span className="text-sm text-white font-medium block text-center">{result.kills}</span>
-                  )}
-                </div>
-
-                {/* Points breakdown */}
+                <div className="text-center text-sm text-zinc-300 font-medium">#{result.placement}</div>
+                <div className="text-center text-sm text-zinc-300 font-medium">{result.kills}</div>
                 <div className="text-center text-xs text-emerald-400 font-bold">{pts.placementPts}</div>
                 <div className="text-center text-xs text-rose-400 font-bold">{pts.killPts}</div>
                 <div className="text-center text-sm text-white font-bold">{pts.total}</div>
@@ -364,71 +329,97 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                 </Badge>
               )}
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {evidence.map((ev) => {
                 const teamResultIndex = results.findIndex(r => r.teamId === ev.teamId);
                 const teamResult = teamResultIndex >= 0 ? results[teamResultIndex] : null;
+                const pts = teamResult ? calculatePoints(teamResult.placement, teamResult.kills) : null;
 
                 return (
                 <div
                   key={ev.teamId}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors",
+                    "rounded-lg border transition-colors overflow-hidden",
                     ev.reviewed
                       ? "bg-white/[0.02] border-white/5"
                       : "bg-rose-500/5 border-rose-500/20"
                   )}
                 >
-                  {/* Review status indicator */}
-                  <div className={cn(
-                    "w-2 h-2 rounded-full flex-shrink-0",
-                    ev.reviewed ? "bg-emerald-500" : "bg-rose-500 animate-pulse"
-                  )} />
+                  <div className="flex items-center gap-3 px-3 py-2">
+                    {/* Review status indicator */}
+                    <div className={cn(
+                      "w-2 h-2 rounded-full flex-shrink-0",
+                      ev.reviewed ? "bg-emerald-500" : "bg-rose-500 animate-pulse"
+                    )} />
 
-                  {/* Team name */}
-                  <span className="text-sm text-white font-medium truncate flex-1 min-w-0">
-                    {ev.teamName}
-                  </span>
+                    {/* Team name */}
+                    <span className="text-sm text-white font-medium truncate flex-1 min-w-0">
+                      {ev.teamName}
+                    </span>
 
-                  {/* Self-reported stats */}
-                  <div className="flex items-center gap-2 text-xs text-zinc-400 flex-shrink-0">
-                    {ev.placement && <span className="text-zinc-500">Claims #{ev.placement}</span>}
-                    {ev.kills !== undefined && <span className="text-zinc-500">{ev.kills}K</span>}
+                    {/* Self-reported stats */}
+                    <div className="flex items-center gap-2 text-xs flex-shrink-0">
+                      {ev.placement && <span className="text-zinc-500">Claims #{ev.placement}</span>}
+                      {ev.kills !== undefined && <span className="text-zinc-500">{ev.kills}K</span>}
+                    </div>
+
+                    {/* View Evidence button — opens lightbox */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLightboxUrl(ev.imageUrl);
+                        if (!ev.reviewed && onMarkEvidenceReviewed) {
+                          onMarkEvidenceReviewed(ev.teamId);
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex-shrink-0",
+                        ev.reviewed
+                          ? "text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10"
+                          : "text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-500/20"
+                      )}
+                    >
+                      {ev.reviewed ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                      {ev.reviewed ? 'Viewed' : 'View'}
+                    </button>
                   </div>
 
-                  {/* Placement input — organizer sets actual placement inline */}
+                  {/* Scoring inputs row */}
                   {gameStatus === 'active' && teamResultIndex >= 0 && (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <span className="text-[10px] text-zinc-500">#</span>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={999}
-                        value={teamResult?.placement ?? 1}
-                        onChange={(e) => updatePlacement(teamResultIndex, parseInt(e.target.value) || 1)}
-                        className="h-6 w-14 text-center text-xs [color-scheme:dark]"
-                      />
+                    <div className="flex items-center gap-3 px-3 py-2 border-t border-white/5 bg-black/20">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-zinc-500 uppercase font-semibold">Place</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={999}
+                          value={teamResult?.placement ?? 1}
+                          onChange={(e) => updatePlacement(teamResultIndex, parseInt(e.target.value) || 1)}
+                          className="h-7 w-16 text-center text-xs [color-scheme:dark]"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-zinc-500 uppercase font-semibold">Kills</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={killCap || 99}
+                          value={teamResult?.kills ?? 0}
+                          onChange={(e) => updateKills(teamResultIndex, parseInt(e.target.value) || 0)}
+                          className="h-7 w-16 text-center text-xs [color-scheme:dark]"
+                        />
+                      </div>
+                      {pts && (
+                        <div className="flex items-center gap-2 ml-auto text-xs">
+                          <span className="text-emerald-400 font-bold">{pts.placementPts}</span>
+                          <span className="text-zinc-600">+</span>
+                          <span className="text-rose-400 font-bold">{pts.killPts}</span>
+                          <span className="text-zinc-600">=</span>
+                          <span className="text-white font-bold">{pts.total}</span>
+                        </div>
+                      )}
                     </div>
                   )}
-
-                  {/* View Evidence button */}
-                  <a
-                    href={ev.imageUrl}
-                    onClick={() => {
-                      if (!ev.reviewed && onMarkEvidenceReviewed) {
-                        onMarkEvidenceReviewed(ev.teamId);
-                      }
-                    }}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex-shrink-0",
-                      ev.reviewed
-                        ? "text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10"
-                        : "text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-500/20"
-                    )}
-                  >
-                    {ev.reviewed ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                    {ev.reviewed ? 'Viewed' : 'View'}
-                  </a>
                 </div>
                 );
               })}
@@ -522,6 +513,30 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
           </div>
         )}
       </CardContent>
+
+      {/* Evidence Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setLightboxUrl(null)}
+              className="absolute -top-3 -right-3 z-10 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full p-2 border border-white/10 shadow-lg transition-colors"
+              aria-label="Close evidence"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={lightboxUrl}
+              alt="Evidence screenshot"
+              className="w-full max-h-[85vh] object-contain rounded-xl border border-white/10"
+            />
+          </div>
+        </div>
+      )}
     </Card>
   );
 };
