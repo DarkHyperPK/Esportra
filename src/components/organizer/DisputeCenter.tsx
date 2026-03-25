@@ -132,10 +132,10 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       setLoading(true);
       const disputesData = await apiClient.get<Dispute[]>(`/api/organizer/disputes?tournament_id=${tournamentId}`);
 
-      // Backend now returns raised_by_name, team_name, reports, riot_accounts
-      // Only enrich assigned_to_name if not already present
-      // Filter client-side as safety net in case backend doesn't filter by tournament_id
-      const rows = (disputesData || []).filter(d => d.tournament_id === tournamentId);
+      // Filter client-side: match tournament + exclude disputes raised by the current user (prevent self-handling)
+      const rows = (disputesData || []).filter(d =>
+        d.tournament_id === tournamentId && d.raised_by_user_id !== actorUserId
+      );
       const enriched = await Promise.all(
         rows.map(async (dispute) => {
           const enrichedDispute: Dispute = { ...dispute };
@@ -160,7 +160,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
     } finally {
       setLoading(false);
     }
-  }, [tournamentId, toast]);
+  }, [tournamentId, toast, actorUserId]);
 
   const fetchComments = useCallback(async (disputeId: string, silent = false) => {
     try {

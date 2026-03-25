@@ -117,7 +117,9 @@ const DisputeCenter: React.FC = () => {
         })
       );
 
-      setDisputes(enriched);
+      // Exclude disputes raised by the current user (prevent self-handling)
+      const filtered = enriched.filter(d => d.raised_by_user_id !== user?.id);
+      setDisputes(filtered);
     } catch (e: any) {
       console.error('Load disputes failed:', e);
       toast({ title: 'Failed to load disputes', description: e?.message || '', variant: 'destructive' });
