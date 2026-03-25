@@ -406,8 +406,6 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                   {/* View Evidence button */}
                   <a
                     href={ev.imageUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     onClick={() => {
                       if (!ev.reviewed && onMarkEvidenceReviewed) {
                         onMarkEvidenceReviewed(ev.teamId);

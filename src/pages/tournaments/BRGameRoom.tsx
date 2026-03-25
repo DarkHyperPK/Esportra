@@ -16,7 +16,7 @@ import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import {
   Trophy, Copy, ArrowLeft, Radio, Clock, CheckCircle, Key, Send,
-  Target, Swords, ChevronUp, ChevronDown, Gamepad2, ImagePlus, X,
+  Target, Swords, Gamepad2, ImagePlus, X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -52,13 +52,13 @@ const BRGameRoom: React.FC = () => {
   // Find user's team
   const userTeam = useMemo(() => {
     if (!user?.id || !participants.length) return null;
-    // Check if user is a participant (solo or team member)
     for (const p of participants) {
+      const playerName = p.team_name || p.solo_username || p.solo_full_name || p.name || p.display_name || 'Player';
       if (p.user_id === user.id || p.captain_id === user.id) {
-        return { id: p.team_id || p.id, name: p.team_name || p.name || 'My Team' };
+        return { id: p.team_id || p.id, name: playerName };
       }
       if (p.members?.some((m: any) => m.user_id === user.id)) {
-        return { id: p.team_id || p.id, name: p.team_name || p.name || 'My Team' };
+        return { id: p.team_id || p.id, name: playerName };
       }
     }
     return null;
@@ -77,8 +77,8 @@ const BRGameRoom: React.FC = () => {
   const brTeams = useMemo(() =>
     participants.map(p => ({
       id: p.team_id || p.id,
-      name: p.team_name || p.name || 'Unknown',
-      logo: p.team_logo || undefined,
+      name: p.team_name || p.solo_username || p.solo_full_name || p.name || p.display_name || 'Unknown',
+      logo: p.team_logo || p.team_logo_url || undefined,
     })),
     [participants]
   );
@@ -293,34 +293,19 @@ const BRGameRoom: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-xs text-zinc-400 font-semibold mb-1 block">Placement</label>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-9 w-9"
-                            onClick={() => setReportPlacement(Math.max(1, reportPlacement - 1))}
-                            disabled={reportPlacement <= 1}
-                          >
-                            <ChevronUp className="w-4 h-4" />
-                          </Button>
-                          <div className="flex-1 text-center">
-                            <span className={cn(
-                              "text-2xl font-bold",
-                              reportPlacement === 1 ? "text-amber-400" :
-                              reportPlacement <= 3 ? "text-zinc-300" : "text-zinc-400"
-                            )}>
-                              #{reportPlacement}
-                            </span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-9 w-9"
-                            onClick={() => setReportPlacement(Math.min(brTeams.length || 100, reportPlacement + 1))}
-                            disabled={reportPlacement >= (brTeams.length || 100)}
-                          >
-                            <ChevronDown className="w-4 h-4" />
-                          </Button>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 font-bold text-lg">#</span>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={reportPlacement}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value) || 1;
+                              setReportPlacement(Math.max(1, Math.min(100, v)));
+                            }}
+                            className="h-[42px] text-center text-lg font-bold pl-7 [color-scheme:dark]"
+                          />
                         </div>
                       </div>
                       <div>
