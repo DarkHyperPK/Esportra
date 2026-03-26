@@ -86,7 +86,13 @@ const ManageBracketPage = () => {
 
             console.log('ManageBracketPage: Tournament found:', tournamentData);
             setTournament(tournamentData);
-            setIsOrganizer(user?.id === tournamentData.organization?.owner_id);
+
+            // Staff with bracket:edit permission can manage brackets too
+            const ownsOrg = user?.id === tournamentData.organization?.owner_id;
+            const isOrganizerUser = user?.id === tournamentData.organizer_id;
+            const staffPerms: string[] = tournamentData.staffPermissions || [];
+            const hasBracketPerm = staffPerms.includes('bracket:edit');
+            setIsOrganizer(ownsOrg || isOrganizerUser || hasBracketPerm);
 
             // Fetch stage
             const stageData = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);

@@ -463,7 +463,7 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug/manage-bracket/:stageId" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
+                  <ProtectedRoute>
                     <ManageBracketPage />
                   </ProtectedRoute>
                 } />
