@@ -21,6 +21,10 @@ const Assets = () => {
 
     const [uploading, setUploading] = useState<'logo' | 'banner' | 'gallery' | 'deck' | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [campaignLogoUrl, setCampaignLogoUrl] = useState<string | null>(() => {
+        if (!sponsor?.id) return null;
+        return localStorage.getItem(`campaign-logo-${sponsor.id}`);
+    });
     const [copyData, setCopyData] = useState({
         tagline: sponsor?.tagline || '',
         cta_text: sponsor?.cta_text || '',
@@ -29,6 +33,14 @@ const Assets = () => {
     });
     const [isSavingCopy, setIsSavingCopy] = useState(false);
     const { toast } = useToast();
+
+    // Restore campaign logo URL from localStorage when sponsor loads
+    React.useEffect(() => {
+        if (sponsor?.id) {
+            const saved = localStorage.getItem(`campaign-logo-${sponsor.id}`);
+            if (saved) setCampaignLogoUrl(saved);
+        }
+    }, [sponsor?.id]);
 
     /** Delete a file from Supabase storage (best-effort, non-blocking) */
     const deleteStorageFile = async (url: string) => {
@@ -43,14 +55,19 @@ const Assets = () => {
 
     /** Delete logo or banner */
     const handleDeleteAsset = async (type: 'logo' | 'banner') => {
-        if (!sponsor || !confirm(`Remove the ${type === 'logo' ? 'logo' : 'banner'}?`)) return;
-        const url = type === 'logo' ? sponsor.logo_url : sponsor.banner_image_url;
+        if (!sponsor || !confirm(`Remove the ${type === 'logo' ? 'campaign logo' : 'banner'}?`)) return;
+        const url = type === 'logo' ? campaignLogoUrl : sponsor.banner_image_url;
         setDeleting(type);
         try {
             if (url) await deleteStorageFile(url);
-            await updateProfile.mutateAsync(type === 'logo' ? { logo_url: '' } : { banner_image_url: '' });
+            if (type === 'logo') {
+                localStorage.removeItem(`campaign-logo-${sponsor.id}`);
+                setCampaignLogoUrl(null);
+            } else {
+                await updateProfile.mutateAsync({ banner_image_url: '' });
+            }
             await refetch();
-            toast({ title: `${type === 'logo' ? 'Logo' : 'Banner'} removed.` });
+            toast({ title: `${type === 'logo' ? 'Campaign logo' : 'Banner'} removed.` });
         } catch {
             toast({ title: `Failed to remove ${type}`, variant: 'destructive' });
         } finally {
@@ -109,9 +126,11 @@ const Assets = () => {
             const publicUrl = uploadResult.url;
 
             if (type === 'logo') {
-                // Campaign Kit logo is a brand asset only — stored in storage but
-                // does NOT update sponsors.logo_url (that's managed via Account page)
-                await refetch();
+                // Campaign Kit logo — separate from sponsors.logo_url (profile logo)
+                if (sponsor.id) {
+                    localStorage.setItem(`campaign-logo-${sponsor.id}`, publicUrl);
+                    setCampaignLogoUrl(publicUrl);
+                }
             } else if (type === 'banner') {
                 await updateProfile.mutateAsync({ banner_image_url: publicUrl });
             } else if (type === 'deck') {
@@ -182,27 +201,45 @@ const Assets = () => {
 
             {/* ─── SECTION 1: Brand Assets ─── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Logo (read-only — managed via Account page) */}
-                <div className="p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-6">
+                {/* Campaign Kit Logo (separate from profile logo) */}
+                <div className="p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-6 group">
                     <div className="flex items-center justify-between">
                         <div>
                             <h3 className="font-bold flex items-center gap-2 text-white">
                                 <ImageIcon className="w-4 h-4 text-rose-500" />
-                                Brand_Logo
+                                Campaign_Logo
                             </h3>
-                            <p className="text-[10px] text-zinc-500 font-mono mt-1">MANAGED IN ACCOUNT SETTINGS</p>
+                            <p className="text-[10px] text-zinc-500 font-mono mt-1">BRAND ASSET FOR CAMPAIGN KIT</p>
                         </div>
+                        {campaignLogoUrl && (
+                            <button onClick={() => handleDeleteAsset('logo')} disabled={deleting === 'logo'}
+                                className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-500/30 transition-colors disabled:opacity-50">
+                                {deleting === 'logo' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            </button>
+                        )}
                     </div>
 
                     <div className="aspect-square rounded-xl bg-black border border-zinc-800 flex items-center justify-center relative overflow-hidden shadow-2xl">
-                        {sponsor?.logo_url ? (
-                            <img src={sponsor.logo_url} alt="Logo" loading="lazy" className="w-3/4 h-3/4 object-contain" />
+                        {campaignLogoUrl ? (
+                            <img src={campaignLogoUrl} alt="Campaign Logo" loading="lazy" className="w-3/4 h-3/4 object-contain" />
                         ) : (
                             <div className="text-zinc-800 text-xs font-mono">NO_ASSET</div>
                         )}
+                        {uploading === 'logo' && (
+                            <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+                            </div>
+                        )}
                     </div>
+
+                    <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-zinc-700 text-zinc-400 hover:text-white hover:border-rose-500/30 cursor-pointer transition-colors text-sm">
+                        <Upload className="w-4 h-4" />
+                        {campaignLogoUrl ? 'Replace Logo' : 'Upload Logo'}
+                        <input type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" className="hidden"
+                            onChange={(e) => handleFileUpload(e, 'logo')} />
+                    </label>
                     <p className="text-[10px] text-zinc-600 font-mono text-center">
-                        To update your logo, go to <a href="/account" className="text-rose-500 hover:underline">Account Settings</a>
+                        This is a downloadable brand asset. Profile logo is managed in <a href="/account" className="text-rose-500 hover:underline">Account Settings</a>.
                     </p>
                 </div>
 
