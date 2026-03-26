@@ -149,8 +149,18 @@ const SponsorDetail = ({ sponsor, onBack, onRefresh }: { sponsor: Sponsor; onBac
     const updateSponsor = useAdminSponsorUpdate();
     const { toast } = useToast();
     const [view, setView] = useState<'main' | 'link'>('main');
+    const [expandedZone, setExpandedZone] = useState<string | null>(null);
 
     const currentZones = sponsor.placement || [];
+    const assets = sponsor.placement_assets || {};
+
+    // Collect all available asset URLs from the sponsor
+    const availableAssets: { label: string; url: string }[] = [];
+    if (sponsor.logo_url) availableAssets.push({ label: 'Logo', url: sponsor.logo_url });
+    if (sponsor.banner_image_url) availableAssets.push({ label: 'Banner', url: sponsor.banner_image_url });
+    (sponsor.gallery_images || []).forEach((url, i) => {
+        if (url) availableAssets.push({ label: `Gallery ${i + 1}`, url });
+    });
 
     const toggleZone = (zone: string) => {
         const newZones = currentZones.includes(zone)
@@ -159,6 +169,16 @@ const SponsorDetail = ({ sponsor, onBack, onRefresh }: { sponsor: Sponsor; onBac
         updateSponsor.mutate(
             { id: sponsor.id, updates: { placement: newZones } },
             { onSuccess: () => { toast({ title: `Placement updated` }); onRefresh(); } }
+        );
+    };
+
+    const setZoneAsset = (zone: string, url: string | null) => {
+        const newAssets = { ...assets };
+        if (url) newAssets[zone] = url;
+        else delete newAssets[zone];
+        updateSponsor.mutate(
+            { id: sponsor.id, updates: { placement_assets: newAssets } },
+            { onSuccess: () => { toast({ title: `Asset updated for ${zone}` }); onRefresh(); } }
         );
     };
 
@@ -181,6 +201,13 @@ const SponsorDetail = ({ sponsor, onBack, onRefresh }: { sponsor: Sponsor; onBac
             { id: sponsor.id, updates: { tier } },
             { onSuccess: () => { toast({ title: `Tier changed to ${tier}` }); onRefresh(); } }
         );
+    };
+
+    // Resolve which asset is used for a zone
+    const getZoneAsset = (zone: string): string | null => {
+        if (assets[zone]) return assets[zone];
+        if (zone.includes('banner') || zone === 'browse_sidebar') return sponsor.banner_image_url || sponsor.logo_url || null;
+        return sponsor.logo_url || null;
     };
 
     if (view === 'link') {
@@ -241,27 +268,114 @@ const SponsorDetail = ({ sponsor, onBack, onRefresh }: { sponsor: Sponsor; onBac
                 </div>
             </div>
 
-            {/* Global Placement Zones */}
+            {/* Global Placement Zones with Asset Picker */}
             <div>
                 <h4 className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-1">Global Placements</h4>
-                <p className="text-[11px] text-zinc-600 mb-3">These show across the whole site — no tournament link needed</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <p className="text-[11px] text-zinc-600 mb-3">Toggle zones on/off, then pick which asset to show in each</p>
+                <div className="grid gap-3">
                     {GLOBAL_ZONES.map(zone => {
                         const active = currentZones.includes(zone.key);
+                        const isExpanded = expandedZone === zone.key;
+                        const currentAsset = getZoneAsset(zone.key);
+                        const hasCustomAsset = !!assets[zone.key];
+
                         return (
-                            <button
-                                key={zone.key}
-                                onClick={() => toggleZone(zone.key)}
-                                disabled={updateSponsor.isPending}
-                                className={`p-3 rounded-xl border transition-all text-left ${
-                                    active
-                                        ? 'bg-rose-500/10 border-rose-500/40 hover:bg-rose-500/20'
-                                        : 'bg-zinc-900/50 border-zinc-800/60 hover:border-zinc-700'
-                                }`}
-                            >
-                                <p className={`text-xs font-bold ${active ? 'text-rose-300' : 'text-zinc-400'}`}>{zone.label}</p>
-                                <p className="text-[10px] text-zinc-600 mt-0.5">{zone.desc}</p>
-                            </button>
+                            <div key={zone.key} className={`rounded-xl border transition-all ${active ? 'border-rose-500/40 bg-rose-500/5' : 'border-zinc-800/60 bg-zinc-900/50'}`}>
+                                {/* Zone header */}
+                                <div className="flex items-center gap-3 p-3">
+                                    <button
+                                        onClick={() => toggleZone(zone.key)}
+                                        disabled={updateSponsor.isPending}
+                                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${active ? 'bg-rose-500 border-rose-500' : 'border-zinc-600 hover:border-zinc-400'}`}
+                                    >
+                                        {active && <span className="text-white text-[10px] font-bold">✓</span>}
+                                    </button>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={`text-xs font-bold ${active ? 'text-rose-300' : 'text-zinc-400'}`}>{zone.label}</p>
+                                        <p className="text-[10px] text-zinc-600">{zone.desc}</p>
+                                    </div>
+                                    {active && (
+                                        <button
+                                            onClick={() => setExpandedZone(isExpanded ? null : zone.key)}
+                                            className="text-[10px] text-zinc-500 hover:text-white px-2 py-1 rounded-lg border border-zinc-800 hover:border-zinc-600 transition-colors"
+                                        >
+                                            {isExpanded ? 'Close' : hasCustomAsset ? 'Change Asset' : 'Pick Asset'}
+                                        </button>
+                                    )}
+                                    {active && currentAsset && (
+                                        <img src={currentAsset} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-zinc-700" />
+                                    )}
+                                </div>
+
+                                {/* Asset picker (expanded) */}
+                                {active && isExpanded && (
+                                    <div className="px-3 pb-3 border-t border-zinc-800/40 pt-3">
+                                        <p className="text-[10px] text-zinc-500 uppercase mb-2 font-bold">Select asset for this zone</p>
+                                        {availableAssets.length === 0 ? (
+                                            <p className="text-xs text-zinc-600">No assets uploaded. Add images in Sponsor CRM first.</p>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-2">
+                                                {availableAssets.map(asset => {
+                                                    const isSelected = assets[zone.key] === asset.url;
+                                                    return (
+                                                        <button
+                                                            key={asset.url}
+                                                            onClick={() => setZoneAsset(zone.key, isSelected ? null : asset.url)}
+                                                            disabled={updateSponsor.isPending}
+                                                            className={`relative rounded-xl border-2 overflow-hidden transition-all ${
+                                                                isSelected ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-zinc-800 hover:border-zinc-600'
+                                                            }`}
+                                                        >
+                                                            <img src={asset.url} alt={asset.label} className="w-20 h-14 object-cover" />
+                                                            <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] text-white text-center py-0.5 font-bold">
+                                                                {asset.label}
+                                                            </span>
+                                                            {isSelected && (
+                                                                <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center text-white text-[8px] font-bold">✓</span>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Live preview for active zone */}
+                                {active && currentAsset && !isExpanded && (
+                                    <div className="px-3 pb-3">
+                                        <div className="rounded-lg overflow-hidden border border-zinc-800/40">
+                                            {zone.key === 'homepage_banner' && (
+                                                <div className="bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-900 p-3 flex items-center gap-3">
+                                                    <img src={currentAsset} alt={sponsor.name} className="h-8 object-contain" />
+                                                    <div className="flex-1">
+                                                        <p className="text-[10px] text-zinc-500">SPONSORED</p>
+                                                        <p className="text-xs font-bold text-white">{sponsor.name} {sponsor.tagline ? `— ${sponsor.tagline}` : ''}</p>
+                                                    </div>
+                                                    <span className="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full font-bold">{sponsor.cta_text || 'Learn More'}</span>
+                                                </div>
+                                            )}
+                                            {zone.key === 'browse_sidebar' && (
+                                                <div className="bg-zinc-900 p-3 text-center">
+                                                    <img src={currentAsset} alt={sponsor.name} className="w-full h-20 object-cover rounded-lg mb-2" />
+                                                    <p className="text-[10px] text-zinc-500">SPONSORED</p>
+                                                    <p className="text-xs font-bold text-white">{sponsor.name}</p>
+                                                    <span className="text-[10px] text-rose-300">{sponsor.cta_text || 'Learn More'}</span>
+                                                </div>
+                                            )}
+                                            {zone.key === 'global_ticker' && (
+                                                <div className="bg-zinc-900 p-2 flex items-center gap-4 overflow-hidden">
+                                                    <span className="text-[9px] text-zinc-600 uppercase flex-shrink-0">Our Sponsors</span>
+                                                    {[1, 2, 3, 4].map(i => (
+                                                        <img key={i} src={currentAsset} alt="" className="h-5 object-contain opacity-70 flex-shrink-0" />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-[9px] text-zinc-600 mt-1 italic">Live preview — how this will appear on the site</p>
+                                    </div>
+                                )}
+                            </div>
                         );
                     })}
                 </div>

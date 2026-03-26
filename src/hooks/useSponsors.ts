@@ -12,6 +12,7 @@ export interface Sponsor {
     accent_color: string;
     tier: 'radiant' | 'ascendant' | 'diamond' | 'standard';
     placement: string[];
+    placement_assets?: Record<string, string>;
     cta_text: string;
     discount_text: string | null;
     is_active: boolean;
