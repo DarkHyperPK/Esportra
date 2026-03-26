@@ -62,10 +62,10 @@ const SponsorCard = ({
             <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                     <div
-                        className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg"
-                        style={{ backgroundColor: sponsor.accent_color }}
+                        className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg overflow-hidden"
+                        style={{ backgroundColor: sponsor.logo_url ? 'transparent' : sponsor.accent_color }}
                     >
-                        {sponsor.logo_url ? <img src={sponsor.logo_url} loading="lazy" className="w-8 h-8 rounded object-cover" /> : sponsor.name[0]}
+                        {sponsor.logo_url ? <img src={sponsor.logo_url} loading="lazy" className="w-full h-full object-contain" /> : sponsor.name[0]}
                     </div>
                     <div className="flex gap-1">
                         <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-400 hover:text-white" onClick={() => onInvite(sponsor)} title="Invite User">
