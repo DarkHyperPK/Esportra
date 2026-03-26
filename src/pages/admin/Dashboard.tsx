@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from '@/lib/apiClient';
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, MapPin, Trophy, BarChart3, CreditCard, Shield, FileText, Settings } from "lucide-react";
+import { Users, MapPin, Trophy, BarChart3, CreditCard, Shield, FileText, Settings, CheckCircle, Megaphone, Gavel } from "lucide-react";
 import { useAdmin } from "@/contexts/AdminContext";
 // Consolidated: use full UserManagement tool instead of AdminUsersList
 import AdminVenuesList from "@/components/admin/AdminVenuesList";
@@ -110,15 +110,31 @@ const AdminDashboard = () => {
 
           <div className="flex-1 overflow-y-auto px-2 pb-4">
             <div className="px-3 py-2 text-xs text-gray-400 uppercase tracking-wider">Navigation</div>
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === "overview" ? "bg-blue-600 text-white" : "text-gray-200 bg-gray-700/20 border border-gray-700/60 hover:bg-gray-700 hover:text-white"
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              Overview
-            </button>
+            {[
+              { id: 'overview', label: 'Overview', icon: BarChart3, permission: null },
+              { id: 'user-management', label: 'Users', icon: Users, permission: 'user:suspend' as const },
+              { id: 'tournaments', label: 'Tournaments', icon: Trophy, permission: 'tournament:approve' as const },
+              { id: 'tournament-management', label: 'Tournament Tools', icon: Megaphone, permission: 'tournament:approve' as const },
+              { id: 'venues', label: 'Venues', icon: MapPin, permission: 'venue:verify' as const },
+              { id: 'payments', label: 'Payments', icon: CreditCard, permission: 'payment:process' as const },
+              { id: 'verification', label: 'Verification', icon: CheckCircle, permission: 'verification:review' as const },
+              { id: 'audit-logs', label: 'Audit Logs', icon: FileText, permission: 'audit:view' as const },
+              { id: 'system', label: 'System', icon: Settings, permission: null },
+            ].filter(item => !item.permission || admin.hasPermission(item.permission)).map(item => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-1 ${
+                  activeTab === item.id ? "bg-blue-600 text-white" : "text-gray-200 bg-gray-700/20 border border-gray-700/60 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.label}
+                {item.id === 'verification' && pendingVerifications > 0 && (
+                  <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0">{pendingVerifications}</Badge>
+                )}
+              </button>
+            ))}
           </div>
           </div>
 
