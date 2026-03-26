@@ -19,7 +19,7 @@ export class VetoService {
             this.config = CS2_CONFIG;
         } else if (gameKey === 'r6s' || gameKey === 'rainbow six siege') {
             this.config = R6S_CONFIG;
-        } else if (gameKey === 'cod' || gameKey === 'call of duty') {
+        } else if (gameKey === 'cod' || gameKey === 'call of duty' || gameKey.includes('black ops')) {
             this.config = COD_CONFIG;
         } else {
             this.config = VALORANT_CONFIG;
