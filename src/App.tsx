@@ -68,6 +68,7 @@ const TournamentManagementTool = React.lazy(() => import("./pages/admin/tools/To
 const VenueManagementTool = React.lazy(() => import("./pages/admin/tools/VenueManagement"));
 const AnalyticsTool = React.lazy(() => import("./pages/admin/tools/Analytics"));
 const SponsorManagementTool = React.lazy(() => import("./pages/admin/tools/SponsorManagement"));
+const AdPlacementTool = React.lazy(() => import("./pages/admin/tools/AdPlacement"));
 
 // Venue Owner
 const VenueOwnerDashboard = React.lazy(() => import("./pages/venue-owner/Dashboard"));
@@ -338,6 +339,16 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <SponsorManagementTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/tools/ad-placement" element={
+                  <AdminProtectedRoute
+                    requiredPermission="tournament:approve"
+                    requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
+                  >
+                    <AdminLayout>
+                      <AdPlacementTool />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />
