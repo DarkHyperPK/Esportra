@@ -19,8 +19,6 @@ const PLACEMENT_ZONES = [
     { key: 'header', label: 'Tournament Header', desc: 'Hero banner co-branding' },
     { key: 'sidebar', label: 'Sidebar Ad', desc: 'Right sidebar featured block' },
     { key: 'ticker', label: 'Logo Ticker', desc: 'Scrolling logo marquee' },
-    { key: 'match_bar', label: 'Match Info Bar', desc: 'Logo in match details' },
-    { key: 'overlay', label: 'Stream Overlay', desc: 'Downloadable overlay assets' },
     { key: 'card_badge', label: 'Tournament Card', desc: 'Badge on listing cards' },
 ] as const;
 

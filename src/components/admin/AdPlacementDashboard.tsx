@@ -15,12 +15,18 @@ const TIER_COLORS: Record<string, string> = {
     standard: 'bg-zinc-800 text-zinc-300 border-zinc-600/30',
 };
 
-const ALL_ZONES = [
-    { key: 'header', label: 'Header Banner', desc: 'Hero banner co-branding' },
-    { key: 'sidebar', label: 'Sidebar Ad', desc: 'Right sidebar featured block' },
-    { key: 'ticker', label: 'Logo Ticker', desc: 'Scrolling logo marquee' },
-    { key: 'match_bar', label: 'Match Info Bar', desc: 'Logo in match details' },
-    { key: 'overlay', label: 'Stream Overlay', desc: 'Downloadable overlay assets' },
+// Global placements — sponsor-level, shown across the whole site
+const GLOBAL_ZONES = [
+    { key: 'homepage_banner', label: 'Homepage Banner', desc: 'Banner ad on the homepage' },
+    { key: 'browse_sidebar', label: 'Browse Sidebar', desc: 'Sidebar ad on tournament browse page' },
+    { key: 'global_ticker', label: 'Global Ticker', desc: 'Logo marquee in the site footer' },
+] as const;
+
+// Tournament placements — only when linked to a specific tournament
+const TOURNAMENT_ZONES = [
+    { key: 'header', label: 'Tournament Header', desc: 'Hero banner co-branding' },
+    { key: 'sidebar', label: 'Tournament Sidebar', desc: 'Right sidebar featured block' },
+    { key: 'ticker', label: 'Tournament Ticker', desc: 'Scrolling logo marquee' },
     { key: 'card_badge', label: 'Tournament Card', desc: 'Badge on listing cards' },
 ] as const;
 
@@ -30,15 +36,6 @@ const SPONSOR_TYPES = [
     { key: 'title_sponsor', label: 'Title Sponsor', icon: Star, color: 'text-amber-500' },
     { key: 'event_sponsor', label: 'Event Sponsor', icon: Megaphone, color: 'text-blue-400' },
     { key: 'media_sponsor', label: 'Media Sponsor', icon: Radio, color: 'text-emerald-400' },
-] as const;
-
-const LINK_ZONES = [
-    { key: 'header', label: 'Header' },
-    { key: 'sidebar', label: 'Sidebar' },
-    { key: 'ticker', label: 'Ticker' },
-    { key: 'match_bar', label: 'Match Bar' },
-    { key: 'overlay', label: 'Overlay' },
-    { key: 'card_badge', label: 'Card Badge' },
 ] as const;
 
 /** Sub-view: link sponsor to tournament */
@@ -121,7 +118,7 @@ const LinkToTournament = ({ sponsor, onBack }: { sponsor: Sponsor; onBack: () =>
                     <div>
                         <label className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-2 block">Placement Zones</label>
                         <div className="flex flex-wrap gap-2">
-                            {LINK_ZONES.map(z => (
+                            {TOURNAMENT_ZONES.map(z => (
                                 <button key={z.key} onClick={() => toggleZone(z.key)}
                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${zones.includes(z.key) ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-zinc-700'}`}>
                                     {z.label}
@@ -244,11 +241,12 @@ const SponsorDetail = ({ sponsor, onBack, onRefresh }: { sponsor: Sponsor; onBac
                 </div>
             </div>
 
-            {/* Placement Zones */}
+            {/* Global Placement Zones */}
             <div>
-                <h4 className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-3">Placement Zones</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {ALL_ZONES.map(zone => {
+                <h4 className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-1">Global Placements</h4>
+                <p className="text-[11px] text-zinc-600 mb-3">These show across the whole site — no tournament link needed</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {GLOBAL_ZONES.map(zone => {
                         const active = currentZones.includes(zone.key);
                         return (
                             <button
@@ -308,8 +306,10 @@ const SponsorDetail = ({ sponsor, onBack, onRefresh }: { sponsor: Sponsor; onBac
                 </div>
             </div>
 
-            {/* Extra: Link to Tournament */}
+            {/* Tournament-Specific Placements */}
             <div className="pt-2 border-t border-zinc-800/60">
+                <h4 className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-1">Tournament Placements</h4>
+                <p className="text-[11px] text-zinc-600 mb-3">Link this sponsor to a tournament to enable tournament-specific ad zones</p>
                 <button
                     onClick={() => setView('link')}
                     className="flex items-center gap-3 p-4 w-full bg-zinc-900/50 border border-zinc-800/60 rounded-xl hover:border-rose-500/40 hover:bg-rose-500/5 transition-all text-left group"
