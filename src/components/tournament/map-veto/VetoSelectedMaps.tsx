@@ -32,7 +32,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     bestOf,
     game = 'valorant',
 }) => {
-    const service = React.useMemo(() => new VetoService(game), [game]);
+    const service = React.useMemo(() => new VetoService(game, availableMaps.length || undefined), [game, availableMaps.length]);
     const currentBestOf = bestOf || 1;
     const vetoFormat = getVetoFormat(currentBestOf);
 
