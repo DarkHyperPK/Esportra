@@ -6,13 +6,13 @@ const LogoTicker = () => {
     const { data: sponsors = [], isLoading } = useSponsors();
     const apiSystemOptiX = sponsors.find(s => s.name?.toLowerCase() === 'systemoptix');
     const sponsorsWithLogos = [
-        ...(apiSystemOptiX ? [{
-            id: apiSystemOptiX.id,
+        {
+            id: apiSystemOptiX?.id || 'systemoptix-hardcoded',
             name: 'SystemOptiX',
-            logo_url: apiSystemOptiX.logo_url || getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
+            logo_url: apiSystemOptiX?.logo_url || getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
             website_url: 'https://systemoptix.net/',
             accent_color: '#06b6d4'
-        }] : []),
+        },
         ...sponsors.filter(s => s.logo_url && s.name?.toLowerCase() !== 'systemoptix')
     ];
 

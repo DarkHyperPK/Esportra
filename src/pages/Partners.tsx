@@ -261,8 +261,8 @@ const Partners = () => {
         };
         const filteredRaw = rawSponsors.filter(s => s.name?.toLowerCase() !== 'systemoptix');
 
-        // Only include hardcoded entry if API returned SystemOptiX (so we have a valid ID)
-        const base = apiSystemOptiX ? [hardcodedSystemOptiX, ...filteredRaw] : rawSponsors;
+        // Always include hardcoded SystemOptiX; tracking fires only when DB ID is available
+        const base = [hardcodedSystemOptiX, ...filteredRaw];
         return base.sort((a, b) => {
             const scoreA = tierOrder[a.tier?.toLowerCase()] || 0;
             const scoreB = tierOrder[b.tier?.toLowerCase()] || 0;
