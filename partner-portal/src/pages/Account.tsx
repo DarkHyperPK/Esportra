@@ -113,7 +113,7 @@ const Account = () => {
                                             <img
                                                 src={logoPreview || sponsor?.logo_url || ''}
                                                 alt="Logo"
-                                                className="w-full h-full object-contain p-2"
+                                                className="w-full h-full object-cover"
                                                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                             />
                                             {!uploadingLogo && (
