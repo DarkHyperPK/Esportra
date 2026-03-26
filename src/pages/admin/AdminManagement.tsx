@@ -32,8 +32,7 @@ import {
   ArrowDownRight,
   Home,
   LogOut,
-  Megaphone,
-  Monitor
+  Megaphone
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -230,7 +229,7 @@ const AdminManagement = () => {
     { label: 'Tournament Management', href: '/admin/tools/tournament-management', icon: Trophy, color: 'amber' },
     { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, color: 'emerald' },
     { label: 'Sponsor CRM', href: '/admin/tools/sponsor-management', icon: Megaphone, color: 'violet' },
-    { label: 'Ad Placement', href: '/admin/tools/ad-placement', icon: Monitor, color: 'cyan' },
+
     { label: 'Verification System', href: '/admin/tools/verification-system', icon: Shield, color: 'red', badge: stats.pendingVerifications },
     { label: 'Dispute Center', href: '/admin/disputes', icon: AlertTriangle, color: 'amber' },
     { label: 'Analytics', href: '/admin/tools/analytics', icon: BarChart3, color: 'blue' },
