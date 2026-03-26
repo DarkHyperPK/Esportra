@@ -109,7 +109,9 @@ const Assets = () => {
             const publicUrl = uploadResult.url;
 
             if (type === 'logo') {
-                await updateProfile.mutateAsync({ logo_url: publicUrl });
+                // Campaign Kit logo is a brand asset only — stored in storage but
+                // does NOT update sponsors.logo_url (that's managed via Account page)
+                await refetch();
             } else if (type === 'banner') {
                 await updateProfile.mutateAsync({ banner_image_url: publicUrl });
             } else if (type === 'deck') {
@@ -180,48 +182,28 @@ const Assets = () => {
 
             {/* ─── SECTION 1: Brand Assets ─── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Logo */}
-                <div className="p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-6 group">
+                {/* Logo (read-only — managed via Account page) */}
+                <div className="p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <h3 className="font-bold flex items-center gap-2 text-white">
                                 <ImageIcon className="w-4 h-4 text-rose-500" />
                                 Brand_Logo
                             </h3>
-                            <p className="text-[10px] text-zinc-500 font-mono mt-1">1:1 ASPECT • PNG/SVG</p>
+                            <p className="text-[10px] text-zinc-500 font-mono mt-1">MANAGED IN ACCOUNT SETTINGS</p>
                         </div>
-                        <span className="text-[10px] font-mono bg-zinc-900 px-2 py-1 rounded text-zinc-500">MAX 3MB</span>
                     </div>
 
-                    <div className="aspect-square rounded-xl bg-black border border-zinc-800 flex items-center justify-center relative group-hover:border-rose-500/30 transition-all duration-300 overflow-hidden shadow-2xl">
+                    <div className="aspect-square rounded-xl bg-black border border-zinc-800 flex items-center justify-center relative overflow-hidden shadow-2xl">
                         {sponsor?.logo_url ? (
-                            <>
-                                <img src={sponsor.logo_url} alt="Logo" loading="lazy" className="w-3/4 h-3/4 object-contain" />
-                                <button
-                                    onClick={() => handleDeleteAsset('logo')}
-                                    disabled={deleting === 'logo'}
-                                    aria-label="Delete logo"
-                                    className="absolute top-2 right-2 p-2 bg-rose-500/20 hover:bg-rose-500 text-rose-500 hover:text-white rounded-lg transition-all opacity-0 group-hover:opacity-100 z-10"
-                                >
-                                    {deleting === 'logo' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                                </button>
-                            </>
+                            <img src={sponsor.logo_url} alt="Logo" loading="lazy" className="w-3/4 h-3/4 object-contain" />
                         ) : (
                             <div className="text-zinc-800 text-xs font-mono">NO_ASSET</div>
                         )}
-
-                        {uploading === 'logo' ? (
-                            <div className="absolute inset-0 bg-black/90 flex items-center justify-center backdrop-blur-sm">
-                                <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
-                            </div>
-                        ) : (
-                            <label className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                <Upload className="w-6 h-6 text-white mb-2" />
-                                <span className="text-xs font-mono text-white">UPDATE_ASSET</span>
-                                <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'logo')} />
-                            </label>
-                        )}
                     </div>
+                    <p className="text-[10px] text-zinc-600 font-mono text-center">
+                        To update your logo, go to <a href="/account" className="text-rose-500 hover:underline">Account Settings</a>
+                    </p>
                 </div>
 
                 {/* Banner */}
