@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Trophy, ChevronRight, Megaphone, Loader2, Star, Radio, Plus, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Trophy, ChevronRight, Megaphone, Loader2, Star, Radio, Plus, Eye, ToggleLeft, ToggleRight, ExternalLink } from 'lucide-react';
 import { useAdminSponsors, useAdminSponsorUpdate } from '@/hooks/useAdminQueries';
 import { useSponsorStats, type Sponsor } from '@/hooks/useSponsors';
 import { useTournamentSponsors } from '@/hooks/useTournamentSponsors';
@@ -143,66 +143,153 @@ const LinkToTournament = ({ sponsor, onBack }: { sponsor: Sponsor; onBack: () =>
     );
 };
 
-/** Full-width live preview for a zone */
+/**
+ * Live zone previews — exact replicas of the actual site components.
+ * Mirrors TournamentSponsorBanner, TournamentSponsorSidebar, TournamentSponsorTicker.
+ */
 const ZonePreview = ({ zone, sponsor, assetUrl }: { zone: string; sponsor: Sponsor; assetUrl: string }) => {
+    /* ── Homepage Banner — mirrors TournamentSponsorBanner ──────────── */
     if (zone === 'homepage_banner') {
         return (
-            <div className="rounded-xl overflow-hidden border border-zinc-700/50">
-                <div className="bg-[#050505] border-b border-white/5 py-3 px-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <span className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Powered by</span>
-                            <a className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
-                                <img src={assetUrl} alt={sponsor.name} className="h-5 object-contain" />
-                                <span className="text-xs font-semibold text-white">{sponsor.name}</span>
+            <div className="space-y-2">
+                <p className="text-[9px] text-zinc-600 uppercase tracking-widest font-mono">
+                    This is exactly how the header banner renders on tournament pages
+                </p>
+                {/* Exact copy of TournamentSponsorBanner JSX */}
+                <div className="relative z-20 border-b border-white/5">
+                    <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
+                        {/* Title Sponsor (SponsorPill with isTitle) */}
+                        <a
+                            href={sponsor.website_url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 shrink-0 group"
+                        >
+                            <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mr-1">
+                                Powered by
+                            </span>
+                            {assetUrl && (
+                                <img src={assetUrl} alt={sponsor.name} className="h-6 w-auto object-contain" />
+                            )}
+                            <span className="text-sm font-bold transition-colors text-white group-hover:text-rose-400">
+                                {sponsor.name}
+                            </span>
+                            <ExternalLink className="w-3 h-3 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </a>
+
+                        {/* Additional header sponsors (showing self as example) */}
+                        <div className="flex items-center gap-3 overflow-x-auto scrollbar-none">
+                            <a className="flex items-center gap-2 shrink-0 group cursor-pointer">
+                                {assetUrl && (
+                                    <img src={assetUrl} alt={sponsor.name} className="h-6 w-auto object-contain" />
+                                )}
+                                <span className="text-sm font-bold transition-colors text-zinc-400 group-hover:text-white">
+                                    {sponsor.name}
+                                </span>
+                                <ExternalLink className="w-3 h-3 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </a>
                         </div>
-                        {sponsor.cta_text && (
-                            <span className="text-[10px] text-rose-400 font-bold">{sponsor.cta_text} →</span>
-                        )}
                     </div>
                 </div>
             </div>
         );
     }
 
+    /* ── Browse Sidebar — mirrors TournamentSponsorSidebar ──────────── */
     if (zone === 'browse_sidebar') {
         return (
-            <div className="rounded-xl overflow-hidden border border-zinc-700/50 max-w-[280px]">
-                <div className="bg-[#080808] border border-white/5">
-                    <div className="relative h-32 overflow-hidden">
-                        <img src={assetUrl} alt={sponsor.name} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                    </div>
-                    <div className="p-4 -mt-6 relative z-10">
-                        {sponsor.logo_url && (
-                            <img src={sponsor.logo_url} alt="" className="h-8 object-contain mb-2" />
-                        )}
-                        <p className="text-xs font-bold text-white">{sponsor.name}</p>
-                        {sponsor.tagline && <p className="text-[10px] text-zinc-500 mt-0.5">{sponsor.tagline}</p>}
-                        {sponsor.cta_text && (
-                            <span className="inline-block mt-2 text-[10px] text-rose-400 font-bold bg-rose-500/10 px-3 py-1 rounded-full">
-                                {sponsor.cta_text} →
-                            </span>
-                        )}
+            <div className="space-y-2">
+                <p className="text-[9px] text-zinc-600 uppercase tracking-widest font-mono">
+                    This is exactly how the sidebar card renders on tournament pages
+                </p>
+                {/* Exact copy of TournamentSponsorSidebar JSX */}
+                <div className="max-w-[300px]">
+                    <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-600 mb-4">
+                        Tournament Sponsors
+                    </p>
+                    <div className="group relative bg-[#080808] border border-white/5 overflow-hidden hover:border-white/10 transition-all duration-500">
+                        <a
+                            href={sponsor.website_url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                        >
+                            {/* Banner */}
+                            {(sponsor.banner_image_url || assetUrl) && (
+                                <div className="relative h-32 overflow-hidden">
+                                    <img
+                                        src={sponsor.banner_image_url || assetUrl}
+                                        alt={sponsor.name}
+                                        className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-transparent" />
+                                </div>
+                            )}
+
+                            {/* Content */}
+                            <div className="p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    {assetUrl && (
+                                        <img src={assetUrl} alt={sponsor.name} className="h-5 w-auto object-contain" />
+                                    )}
+                                    <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">
+                                        event sponsor
+                                    </span>
+                                </div>
+                                {sponsor.tagline && (
+                                    <p className="text-sm font-medium text-white mb-1 group-hover:text-rose-400 transition-colors">
+                                        {sponsor.tagline}
+                                    </p>
+                                )}
+                                <div className="flex items-center gap-1 text-[10px] text-zinc-600 group-hover:text-zinc-400 transition-colors">
+                                    <span>{sponsor.cta_text || 'Learn More'}</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                </div>
+                            </div>
+                        </a>
                     </div>
                 </div>
             </div>
         );
     }
 
+    /* ── Global Ticker — mirrors TournamentSponsorTicker ────────────── */
     if (zone === 'global_ticker') {
+        const items = [1, 2, 3, 4, 5, 6, 7, 8];
         return (
-            <div className="rounded-xl overflow-hidden border border-zinc-700/50">
-                <div className="bg-[#050505]/95 backdrop-blur py-3 px-6">
-                    <div className="flex items-center gap-10">
-                        <span className="text-[9px] text-zinc-600 uppercase tracking-widest font-bold flex-shrink-0">Our Partners</span>
-                        <div className="flex items-center gap-10 overflow-hidden">
-                            {[1, 2, 3, 4, 5].map(i => (
-                                <img key={i} src={assetUrl} alt="" className="h-5 object-contain opacity-50 grayscale hover:opacity-100 hover:grayscale-0 transition-all flex-shrink-0" />
-                            ))}
-                        </div>
+            <div className="space-y-2">
+                <p className="text-[9px] text-zinc-600 uppercase tracking-widest font-mono">
+                    This is exactly how the scrolling ticker renders on the site
+                </p>
+                {/* Exact copy of TournamentSponsorTicker JSX */}
+                <div className="relative overflow-hidden border-t border-white/5 bg-[#050505]/80 backdrop-blur-sm py-4">
+                    <div className="flex items-center animate-ticker gap-12 w-max">
+                        {items.map(i => (
+                            <a
+                                key={i}
+                                href={sponsor.website_url || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+                            >
+                                {assetUrl ? (
+                                    <img
+                                        src={assetUrl}
+                                        alt={sponsor.name}
+                                        className="h-5 w-auto object-contain grayscale hover:grayscale-0 transition-all"
+                                    />
+                                ) : (
+                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                                        {sponsor.name}
+                                    </span>
+                                )}
+                            </a>
+                        ))}
                     </div>
+
+                    {/* Fade edges */}
+                    <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-[#050505] to-transparent pointer-events-none" />
+                    <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#050505] to-transparent pointer-events-none" />
                 </div>
             </div>
         );
