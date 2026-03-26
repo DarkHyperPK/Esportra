@@ -22,6 +22,7 @@ import {
   Ban
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import TournamentSponsorManager from "@/components/admin/TournamentSponsorManager";
 import { useAdminTournaments, useAdminTournamentUpdate } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -58,6 +59,7 @@ const TournamentManagementTool = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
+  const [modalTab, setModalTab] = useState<'details' | 'sponsors'>('details');
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = () => {
@@ -340,15 +342,33 @@ const TournamentManagementTool = () => {
       </motion.div>
 
       {/* Tournament Detail Modal */}
-      <Dialog open={!!selectedTournament} onOpenChange={() => setSelectedTournament(null)}>
-        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl">
+      <Dialog open={!!selectedTournament} onOpenChange={() => { setSelectedTournament(null); setModalTab('details'); }}>
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <Trophy className="w-5 h-5 text-amber-500" />
-              Tournament Details
+              {selectedTournament?.name || 'Tournament Details'}
             </DialogTitle>
           </DialogHeader>
-          {selectedTournament && (
+
+          {/* Tabs */}
+          <div className="flex gap-1 border-b border-zinc-800 mb-4">
+            {(['details', 'sponsors'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setModalTab(tab)}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors ${
+                  modalTab === tab
+                    ? 'text-rose-500 border-b-2 border-rose-500'
+                    : 'text-zinc-500 hover:text-white'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {selectedTournament && modalTab === 'details' && (
             <div className="grid grid-cols-2 gap-4">
               {[
                 { label: 'Name', value: selectedTournament.name },
@@ -364,6 +384,13 @@ const TournamentManagementTool = () => {
                 </div>
               ))}
             </div>
+          )}
+
+          {selectedTournament && modalTab === 'sponsors' && (
+            <TournamentSponsorManager
+              tournamentId={selectedTournament.id}
+              tournamentName={selectedTournament.name}
+            />
           )}
         </DialogContent>
       </Dialog>
