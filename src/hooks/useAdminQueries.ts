@@ -118,6 +118,17 @@ export const useAdminSponsors = () =>
     staleTime: 1000 * 60,
   });
 
+export const useAdminSponsorUpdate = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Record<string, unknown> }) =>
+      apiClient.put(`/api/sponsors/${id}`, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
+    },
+  });
+};
+
 export const useAdminSponsorApplications = () =>
   useQuery({
     queryKey: adminKeys.sponsorApplications(),
