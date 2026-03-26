@@ -253,7 +253,7 @@ const StaffDashboard = () => {
                     { perm: 'bracket:edit', label: 'Brackets', icon: LayoutGrid, color: 'amber',
                       getPath: (id: string) => `/organizer/tournament/${id}/brackets` },
                     { perm: 'disputes:assist', label: 'Disputes', icon: MessageSquare, color: 'red',
-                      getPath: (_id: string) => `/organizer/disputes` },
+                      getPath: (id: string) => `/organizer/tournament/${id}?tab=disputes` },
                     { perm: 'announcements:send', label: 'Announce', icon: Megaphone, color: 'cyan',
                       getPath: (id: string) => `/organizer/tournament/${id}?tab=overview` },
                   ].filter(a => isAdmin || perms.includes(a.perm));

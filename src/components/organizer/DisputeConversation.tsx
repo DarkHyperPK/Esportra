@@ -122,9 +122,16 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1 gap-3">
-                    <span className={`text-[11px] font-semibold ${isStaff ? 'text-rose-300' : 'text-blue-300'}`}>
-                      {c.user_name || 'Unknown'}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[11px] font-semibold ${isStaff ? 'text-rose-300' : 'text-blue-300'}`}>
+                        {c.user_name || 'Unknown'}
+                      </span>
+                      {isStaff && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded-full leading-none">
+                          Staff
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[10px] text-zinc-600">{formatTime(c.created_at)}</span>
                   </div>
                   {hasText && <p className="text-zinc-300 text-[13px] leading-relaxed">{c.comment}</p>}

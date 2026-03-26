@@ -13,6 +13,7 @@ interface DisputeActionsProps {
   assignmentLoading: boolean;
   resolutionNotes: string;
   resolutionStatus: 'resolved' | 'rejected';
+  resolvedByName?: string | null;
   onAssigneeChange: (id: string) => void;
   onAssign: () => void;
   onStatusChange: (status: 'resolved' | 'rejected') => void;
@@ -23,7 +24,7 @@ interface DisputeActionsProps {
 const DisputeActions: React.FC<DisputeActionsProps> = ({
   status, canAssist, canAssignOthers,
   assigneeId, assignmentOptions, assignmentLoading,
-  resolutionNotes, resolutionStatus,
+  resolutionNotes, resolutionStatus, resolvedByName,
   onAssigneeChange, onAssign, onStatusChange, onNotesChange,
   onResolve,
 }) => {
@@ -117,7 +118,11 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
             ? 'border-l-emerald-500 text-emerald-300'
             : 'border-l-rose-500 text-red-300'
         }`}>
-          This dispute has been <strong>{status}</strong>.
+          This dispute has been <strong>{status}</strong>
+          {resolvedByName && (
+            <span className="text-zinc-400"> by <span className="text-white font-medium">{resolvedByName}</span></span>
+          )}
+          .
         </div>
       )}
     </div>

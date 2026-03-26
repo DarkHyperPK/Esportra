@@ -13,7 +13,8 @@ export type ActionType =
     | 'verify' | 'unverify'
     | 'resolve' | 'escalate'
     | 'login' | 'logout'
-    | 'settings_update' | 'role_change';
+    | 'settings_update' | 'role_change'
+    | 'assigned' | 'resolved' | 'rejected';
 
 export type TargetType = 'user' | 'tournament' | 'venue' | 'payment' | 'team' | 'match' | 'dispute' | 'system' | 'sponsor';
 
@@ -40,11 +41,14 @@ function getSeverity(action: ActionType): Severity {
             return 'critical';
         case 'suspend':
         case 'reject':
+        case 'rejected':
         case 'escalate':
             return 'high';
         case 'approve':
         case 'verify':
         case 'resolve':
+        case 'resolved':
+        case 'assigned':
         case 'role_change':
         case 'settings_update':
             return 'medium';

@@ -196,6 +196,11 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
         {dispute.resolution_notes && (
           <div className="border-l-2 border-blue-500/40 pl-4">
             <h3 className="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-1">Resolution</h3>
+            {dispute.assigned_to_name && (
+              <p className="text-xs text-zinc-500 mb-1">
+                {dispute.status === 'resolved' ? 'Resolved' : 'Rejected'} by <span className="text-white font-medium">{dispute.assigned_to_name}</span>
+              </p>
+            )}
             <p className="text-sm text-zinc-300">{dispute.resolution_notes}</p>
           </div>
         )}
@@ -210,6 +215,7 @@ const DisputeDetailPanel: React.FC<DisputeDetailPanelProps> = ({
           assignmentLoading={assignmentLoading}
           resolutionNotes={resolutionNotes}
           resolutionStatus={resolutionStatus}
+          resolvedByName={dispute.assigned_to_name}
           onAssigneeChange={onAssigneeChange}
           onAssign={onAssign}
           onStatusChange={onResolutionStatusChange}
