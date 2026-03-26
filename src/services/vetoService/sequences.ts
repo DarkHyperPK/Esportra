@@ -1,151 +1,98 @@
-import { GameVetoConfig, VetoStep } from './types';
+import { BestOf, Bo1Style, GameVetoConfig, TeamSide, VetoStep } from './types';
 
-// ── CS2 Veto Sequences (per match-parameters.txt) ────────────────────
-// Bo1: Ban-Ban-Ban-Ban-Ban-Ban → remaining map played
-const cs2BO1: VetoStep[] = [
-    { actionNumber: 1, action: 'ban', team: 'T1' },
-    { actionNumber: 2, action: 'ban', team: 'T2' },
-    { actionNumber: 3, action: 'ban', team: 'T1' },
-    { actionNumber: 4, action: 'ban', team: 'T2' },
-    { actionNumber: 5, action: 'ban', team: 'T1' },
-    { actionNumber: 6, action: 'ban', team: 'T2' },
-    { actionNumber: 7, action: 'pick_side', team: 'T1', isDecider: true },
-];
+// ── Dynamic Veto Sequence Generator ────────────────────────────────────
+// Derives sequences from pool size + bestOf at runtime. No hardcoded step arrays.
 
-// Bo3: Ban-Ban-Pick-Pick-Ban-Ban → remaining map (decider)
-const cs2BO3: VetoStep[] = [
-    { actionNumber: 1, action: 'ban', team: 'T1' },
-    { actionNumber: 2, action: 'ban', team: 'T2' },
-    { actionNumber: 3, action: 'pick', team: 'T1' },
-    { actionNumber: 4, action: 'pick_side', team: 'T2' },
-    { actionNumber: 5, action: 'pick', team: 'T2' },
-    { actionNumber: 6, action: 'pick_side', team: 'T1' },
-    { actionNumber: 7, action: 'ban', team: 'T1' },
-    { actionNumber: 8, action: 'ban', team: 'T2' },
-    { actionNumber: 9, action: 'pick_side', team: 'T1', isDecider: true },
-];
+function generateBo1(poolSize: number, style: Bo1Style): VetoStep[] {
+    const steps: VetoStep[] = [];
+    let n = 1;
 
-// Bo5: Ban-Ban-Pick-Pick-Pick-Pick → remaining map (decider)
-const cs2BO5: VetoStep[] = [
-    { actionNumber: 1, action: 'ban', team: 'T1' },
-    { actionNumber: 2, action: 'ban', team: 'T2' },
-    { actionNumber: 3, action: 'pick', team: 'T1' },
-    { actionNumber: 4, action: 'pick_side', team: 'T2' },
-    { actionNumber: 5, action: 'pick', team: 'T2' },
-    { actionNumber: 6, action: 'pick_side', team: 'T1' },
-    { actionNumber: 7, action: 'pick', team: 'T1' },
-    { actionNumber: 8, action: 'pick_side', team: 'T2' },
-    { actionNumber: 9, action: 'pick', team: 'T2' },
-    { actionNumber: 10, action: 'pick_side', team: 'T1' },
-    { actionNumber: 11, action: 'pick_side', team: 'T1', isDecider: true },
-];
+    if (style === 'pure_ban') {
+        // Ban all but 1 → decider side pick (CS2 / R6S / CoD style)
+        for (let i = 0; i < poolSize - 1; i++) {
+            steps.push({ actionNumber: n++, action: 'ban', team: i % 2 === 0 ? 'T1' : 'T2' });
+        }
+        steps.push({ actionNumber: n++, action: 'pick_side', team: 'T1', isDecider: true });
+    } else {
+        // Ban down to 2 → pick → opponent side pick (Valorant style)
+        for (let i = 0; i < poolSize - 2; i++) {
+            steps.push({ actionNumber: n++, action: 'ban', team: i % 2 === 0 ? 'T1' : 'T2' });
+        }
+        steps.push({ actionNumber: n++, action: 'pick', team: 'T1' });
+        steps.push({ actionNumber: n++, action: 'pick_side', team: 'T2' });
+    }
 
-// ── Valorant Veto Sequences (per match-parameters.txt) ───────────────
-// Bo1: Ban-Ban-Ban-Ban-Ban-Ban → remaining map played
-const valorantBO1: VetoStep[] = [
-    { actionNumber: 1, action: 'ban', team: 'T1' },
-    { actionNumber: 2, action: 'ban', team: 'T2' },
-    { actionNumber: 3, action: 'ban', team: 'T1' },
-    { actionNumber: 4, action: 'ban', team: 'T2' },
-    { actionNumber: 5, action: 'ban', team: 'T1' },
-    { actionNumber: 6, action: 'pick', team: 'T1' },
-    { actionNumber: 7, action: 'pick_side', team: 'T2' },
-];
+    return steps;
+}
 
-// Bo3: Pick-Pick-Ban-Ban-Ban-Ban → remaining map (decider)
-const valorantBO3: VetoStep[] = [
-    { actionNumber: 1, action: 'ban', team: 'T1' },
-    { actionNumber: 2, action: 'ban', team: 'T2' },
-    { actionNumber: 3, action: 'pick', team: 'T1' },
-    { actionNumber: 4, action: 'pick_side', team: 'T2' },
-    { actionNumber: 5, action: 'pick', team: 'T2' },
-    { actionNumber: 6, action: 'pick_side', team: 'T1' },
-    { actionNumber: 7, action: 'ban', team: 'T2' },
-    { actionNumber: 8, action: 'ban', team: 'T1' },
-    { actionNumber: 9, action: 'pick_side', team: 'T1', isDecider: true },
-];
+function generateBoX(poolSize: number, bestOf: 3 | 5): VetoStep[] {
+    const steps: VetoStep[] = [];
+    let n = 1;
+    const explicitPicks = bestOf - 1; // 2 for BO3, 4 for BO5
+    const remainingBans = poolSize - bestOf - 2;
 
-// Bo5: Pick-Pick-Ban-Ban-Pick-Pick → remaining map (decider)
-const valorantBO5: VetoStep[] = [
-    { actionNumber: 1, action: 'ban', team: 'T1' },
-    { actionNumber: 2, action: 'ban', team: 'T2' },
-    { actionNumber: 3, action: 'pick', team: 'T1' },
-    { actionNumber: 4, action: 'pick_side', team: 'T2' },
-    { actionNumber: 5, action: 'pick', team: 'T2' },
-    { actionNumber: 6, action: 'pick_side', team: 'T1' },
-    { actionNumber: 7, action: 'pick', team: 'T1' },
-    { actionNumber: 8, action: 'pick_side', team: 'T2' },
-    { actionNumber: 9, action: 'pick', team: 'T2' },
-    { actionNumber: 10, action: 'pick_side', team: 'T1' },
-    { actionNumber: 11, action: 'pick_side', team: 'T1', isDecider: true },
-];
+    if (remainingBans < 0) {
+        throw new Error(
+            `Map pool (${poolSize}) too small for BO${bestOf}. Need at least ${bestOf + 2} maps.`
+        );
+    }
 
-// ── R6S Veto Sequences (per match-parameters.txt) ────────────────────
-// Bo1: Ban-Ban-Ban-Ban-Ban-Ban → remaining map
-const r6sBO1: VetoStep[] = [
-    { actionNumber: 1, action: 'ban', team: 'T1' },
-    { actionNumber: 2, action: 'ban', team: 'T2' },
-    { actionNumber: 3, action: 'ban', team: 'T1' },
-    { actionNumber: 4, action: 'ban', team: 'T2' },
-    { actionNumber: 5, action: 'ban', team: 'T1' },
-    { actionNumber: 6, action: 'ban', team: 'T2' },
-    { actionNumber: 7, action: 'pick_side', team: 'T1', isDecider: true },
-];
+    // Phase 1: 2 initial bans (T1 → T2)
+    steps.push({ actionNumber: n++, action: 'ban', team: 'T1' });
+    steps.push({ actionNumber: n++, action: 'ban', team: 'T2' });
 
-// Bo3: Ban-Ban-Pick-Pick-Ban-Ban → decider
-const r6sBO3: VetoStep[] = [
-    { actionNumber: 1, action: 'ban', team: 'T1' },
-    { actionNumber: 2, action: 'ban', team: 'T2' },
-    { actionNumber: 3, action: 'pick', team: 'T1' },
-    { actionNumber: 4, action: 'pick', team: 'T2' },
-    { actionNumber: 5, action: 'ban', team: 'T1' },
-    { actionNumber: 6, action: 'ban', team: 'T2' },
-    { actionNumber: 7, action: 'pick_side', team: 'T1', isDecider: true },
-];
+    // Phase 2: alternating picks; opponent picks side after each pick
+    for (let i = 0; i < explicitPicks; i++) {
+        const picker: TeamSide = i % 2 === 0 ? 'T1' : 'T2';
+        const sidePicker: TeamSide = picker === 'T1' ? 'T2' : 'T1';
+        steps.push({ actionNumber: n++, action: 'pick', team: picker });
+        steps.push({ actionNumber: n++, action: 'pick_side', team: sidePicker });
+    }
 
-// ── CoD Veto Sequences ───────────────────────────────────────────────
-// CoD uses same structure as CS2 for map veto
-const codBO3 = cs2BO3;
-const codBO5 = cs2BO5;
+    // Phase 3: remaining bans (alternating T1 → T2)
+    for (let i = 0; i < remainingBans; i++) {
+        steps.push({ actionNumber: n++, action: 'ban', team: i % 2 === 0 ? 'T1' : 'T2' });
+    }
 
-// ── Configs ──────────────────────────────────────────────────────────
+    // Phase 4: decider side pick
+    steps.push({ actionNumber: n++, action: 'pick_side', team: 'T1', isDecider: true });
+
+    return steps;
+}
+
+/** Generate a veto sequence dynamically from pool size and best-of format. */
+export function generateSequence(
+    poolSize: number,
+    bestOf: BestOf,
+    bo1Style: Bo1Style = 'pure_ban',
+): VetoStep[] {
+    if (bestOf === 1) return generateBo1(poolSize, bo1Style);
+    return generateBoX(poolSize, bestOf);
+}
+
+// ── Game Configs ────────────────────────────────────────────────────────
+// Only pool size and BO1 style. Sequences are generated at runtime.
 
 export const CS2_CONFIG: GameVetoConfig = {
     game: 'cs2',
     mapPoolSize: 7,
-    sequences: {
-        1: cs2BO1,
-        3: cs2BO3,
-        5: cs2BO5,
-    },
+    bo1Style: 'pure_ban',
 };
 
 export const VALORANT_CONFIG: GameVetoConfig = {
     game: 'valorant',
     mapPoolSize: 7,
-    sequences: {
-        1: valorantBO1,
-        3: valorantBO3,
-        5: valorantBO5,
-    },
+    bo1Style: 'ban_pick',
 };
 
 export const R6S_CONFIG: GameVetoConfig = {
     game: 'r6s',
     mapPoolSize: 9,
-    sequences: {
-        1: r6sBO1,
-        3: r6sBO3,
-        5: r6sBO3, // R6S doesn't have Bo5 in competitive — fallback to Bo3
-    },
+    bo1Style: 'pure_ban',
 };
 
 export const COD_CONFIG: GameVetoConfig = {
     game: 'cod',
     mapPoolSize: 10,
-    sequences: {
-        1: cs2BO1, // CoD rarely plays Bo1, fallback
-        3: codBO3,
-        5: codBO5,
-    },
+    bo1Style: 'pure_ban',
 };

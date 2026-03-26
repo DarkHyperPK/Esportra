@@ -1,5 +1,5 @@
 import { BestOf, GameVetoConfig, TeamSide, VetoAction, VetoStep } from './types';
-import { VALORANT_CONFIG, CS2_CONFIG, R6S_CONFIG, COD_CONFIG } from './sequences';
+import { VALORANT_CONFIG, CS2_CONFIG, R6S_CONFIG, COD_CONFIG, generateSequence } from './sequences';
 
 export class VetoService {
     private config: GameVetoConfig;
@@ -20,7 +20,9 @@ export class VetoService {
     }
 
     getSequence(bestOf: BestOf): VetoStep[] {
-        return this.config.sequences[bestOf] || [];
+        // Use per-format override if provided, otherwise generate dynamically
+        return this.config.overrides?.[bestOf]
+            ?? generateSequence(this.config.mapPoolSize, bestOf, this.config.bo1Style);
     }
 
     getStep(bestOf: BestOf, actionNumber: number): VetoStep | undefined {
