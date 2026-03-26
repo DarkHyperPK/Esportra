@@ -251,7 +251,7 @@ const StaffDashboard = () => {
                     { perm: 'teams:manage', label: 'Participants', icon: Users, color: 'purple',
                       getPath: (id: string) => `/organizer/tournament/${id}?tab=participants` },
                     { perm: 'bracket:edit', label: 'Brackets', icon: LayoutGrid, color: 'amber',
-                      getPath: (id: string) => `/organizer/tournament/${id}/brackets` },
+                      getPath: (id: string) => `/organizer/tournament/${id}?tab=stages` },
                     { perm: 'disputes:assist', label: 'Disputes', icon: MessageSquare, color: 'red',
                       getPath: (id: string) => `/organizer/tournament/${id}?tab=disputes` },
                     { perm: 'announcements:send', label: 'Announce', icon: Megaphone, color: 'cyan',
