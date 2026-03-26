@@ -9,7 +9,7 @@
         { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/VALORANT-285x380.jpg",
+      "logo": "/games/valorant-logo.svg",
       "features": {
         "mapVeto": true,
         "mapPool": true,
@@ -30,7 +30,7 @@
         { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Counter-Strike%202-285x380.jpg",
+      "logo": "/games/cs2-logo.svg",
       "features": {
         "mapVeto": true,
         "mapPool": true,
@@ -51,7 +51,7 @@
         { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Tom%20Clancy%27s%20Rainbow%20Six%20Siege-285x380.jpg",
+      "logo": "/games/r6s-logo.svg",
       "features": {
         "mapVeto": true,
         "mapPool": true,
@@ -72,7 +72,7 @@
         { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/League%20of%20Legends-285x380.jpg",
+      "logo": "/games/lol-logo.svg",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -93,7 +93,7 @@
         { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Dota%202-285x380.jpg",
+      "logo": "/games/dota2-logo.svg",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -114,7 +114,7 @@
         { "name": "4v4", "value": "4v4", "teamSize": 4 }
       ],
       "defaultFormat": "4v4",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Call%20Of%20Duty-285x380.jpg",
+      "logo": "/games/cod-logo.svg",
       "features": {
         "mapVeto": true,
         "mapPool": true,
@@ -137,7 +137,7 @@
         { "name": "Trio", "value": "trio", "teamSize": 3 }
       ],
       "defaultFormat": "solo",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Fortnite-285x380.jpg",
+      "logo": "/games/fortnite-logo.svg",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -171,7 +171,7 @@
         { "name": "Trios", "value": "trios", "teamSize": 3 }
       ],
       "defaultFormat": "trios",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Apex%20Legends-285x380.jpg",
+      "logo": "/games/apex-logo.svg",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -205,7 +205,7 @@
         { "name": "Squads", "value": "squads", "teamSize": 4 }
       ],
       "defaultFormat": "squads",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/PLAYERUNKNOWN%27S%20BATTLEGROUNDS-285x380.jpg",
+      "logo": "/games/pubg-logo.svg",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -241,7 +241,7 @@
         { "name": "1v1", "value": "1v1", "teamSize": 1 }
       ],
       "defaultFormat": "3v3",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/Rocket%20League-285x380.jpg",
+      "logo": "/games/rocket-league-logo.svg",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -262,7 +262,7 @@
         { "name": "1v1", "value": "1v1", "teamSize": 1 }
       ],
       "defaultFormat": "1v1",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/TEKKEN%208-285x380.jpg",
+      "logo": "/games/tekken8-logo.svg",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -275,15 +275,15 @@
       }
     },
     {
-      "name": "EA FC 25",
-      "slug": "eafc25",
+      "name": "EA FC",
+      "slug": "eafc",
       "category": "Sports Simulation",
       "type": "bracket",
       "formats": [
         { "name": "1v1", "value": "1v1", "teamSize": 1 }
       ],
       "defaultFormat": "1v1",
-      "logo": "https://static-cdn.jtvnw.net/ttv-boxart/EA%20Sports%20FC%2025-285x380.jpg",
+      "logo": "/games/eafc-logo.svg",
       "features": {
         "mapVeto": false,
         "mapPool": false,

@@ -1,8 +1,18 @@
 import { useState, useEffect } from 'react';
 import { rawgSearchGames } from '@/lib/rawgProxy';
+import esportsGames from '@/data/esportsGames.json';
 
 // Cache for game logos to avoid redundant API calls
 const logoCache: Record<string, string | null> = {};
+
+/** Get the Twitch CDN logo from esportsGames.json as fallback */
+function getStaticLogo(gameName: string): string | null {
+    const game = (esportsGames.games as any[]).find(
+        g => g.name.toLowerCase() === gameName.trim().toLowerCase()
+            || g.slug === gameName.trim().toLowerCase()
+    );
+    return game?.logo ?? null;
+}
 
 /**
  * Global hook for fetching game logos from RAWG API (via Edge Function proxy)
@@ -40,13 +50,15 @@ export const useGameLogo = (gameName: string | null | undefined): string | null 
           logoCache[gameName.toLowerCase()] = logoUrl;
           setLogo(logoUrl);
         } else {
-          logoCache[gameName.toLowerCase()] = null;
-          setLogo(null);
+          const fallback = getStaticLogo(gameName);
+          logoCache[gameName.toLowerCase()] = fallback;
+          setLogo(fallback);
         }
       } catch (error) {
         console.warn(`[useGameLogo] Failed to fetch logo for ${gameName}:`, error);
-        logoCache[gameName.toLowerCase()] = null;
-        setLogo(null);
+        const fallback = getStaticLogo(gameName);
+        logoCache[gameName.toLowerCase()] = fallback;
+        setLogo(fallback);
       }
     };
 
@@ -94,13 +106,15 @@ export const useGameLogos = (gameNames: (string | null | undefined)[]): Record<s
               logoCache[gameName.toLowerCase()] = logoUrl;
               newLogos[gameName] = logoUrl;
             } else {
-              logoCache[gameName.toLowerCase()] = null;
-              newLogos[gameName] = null;
+              const fallback = getStaticLogo(gameName);
+              logoCache[gameName.toLowerCase()] = fallback;
+              newLogos[gameName] = fallback;
             }
           } catch (error) {
             console.warn(`[useGameLogos] Failed to fetch logo for ${gameName}:`, error);
-            logoCache[gameName.toLowerCase()] = null;
-            newLogos[gameName] = null;
+            const fallback = getStaticLogo(gameName);
+            logoCache[gameName.toLowerCase()] = fallback;
+            newLogos[gameName] = fallback;
           }
         })
       );
