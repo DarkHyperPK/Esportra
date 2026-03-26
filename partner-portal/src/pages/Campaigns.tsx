@@ -5,9 +5,6 @@ import {
   Calendar,
   ExternalLink,
   Zap,
-  Eye,
-  Globe,
-  ChevronRight,
 } from 'lucide-react';
 import { usePartnerData } from '@/hooks/usePartnerData';
 import { useSponsorTournaments, type SponsorTournamentLink } from '@/hooks/useSponsorTournaments';
@@ -28,17 +25,40 @@ const ZONE_LABELS: Record<string, string> = {
 };
 
 const Campaigns = () => {
-  const { data: partnerData, isLoading: partnerLoading } = usePartnerData();
+  const { data: partnerData, isLoading: partnerLoading, error: partnerError } = usePartnerData();
   const sponsorId = partnerData?.sponsor?.id;
-  const { data: tournaments = [], isLoading: tournamentsLoading } = useSponsorTournaments(sponsorId);
+  const { data: tournaments = [], isLoading: tournamentsLoading, error: tournamentsError } = useSponsorTournaments(sponsorId);
 
   const isLoading = partnerLoading || tournamentsLoading;
+  const error = partnerError || tournamentsError;
 
   if (isLoading) {
     return (
       <div className="h-[60vh] flex flex-col items-center justify-center gap-4 text-zinc-500">
         <Loader2 className="w-10 h-10 animate-spin text-rose-500" />
         <p className="font-mono text-xs tracking-widest uppercase animate-pulse">Loading_Campaigns...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-6 text-center px-4">
+        <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+          <Trophy className="w-8 h-8 text-rose-500" />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-white mb-2">CAMPAIGNS_LOAD_FAILED</h3>
+          <p className="text-zinc-500 max-w-md mx-auto mb-6">
+            Could not load your campaign placements. Please try again.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-white text-black font-bold rounded-lg hover:bg-zinc-200 transition-colors"
+          >
+            RETRY
+          </button>
+        </div>
       </div>
     );
   }

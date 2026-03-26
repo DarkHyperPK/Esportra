@@ -4,6 +4,16 @@ import { useTournamentSponsors, type TournamentSponsor } from '@/hooks/useTourna
 import { useAllSponsors, type Sponsor } from '@/hooks/useSponsors';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const PLACEMENT_ZONES = [
     { key: 'header', label: 'Tournament Header', desc: 'Hero banner co-branding' },
@@ -30,6 +40,7 @@ const TournamentSponsorManager = ({ tournamentId, tournamentName }: Props) => {
     const { data: allSponsors } = useAllSponsors();
     const [showAssign, setShowAssign] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [removingId, setRemovingId] = useState<{ id: string; name: string } | null>(null);
 
     // Sponsors not yet linked to this tournament
     const linkedIds = new Set(linked?.map(l => l.sponsor_id) ?? []);
@@ -52,8 +63,14 @@ const TournamentSponsorManager = ({ tournamentId, tournamentName }: Props) => {
     };
 
     const handleRemove = (sponsorId: string, name: string) => {
-        if (!confirm(`Remove ${name} from this tournament?`)) return;
-        remove.mutate(sponsorId);
+        setRemovingId({ id: sponsorId, name });
+    };
+
+    const confirmRemove = () => {
+        if (removingId) {
+            remove.mutate(removingId.id);
+            setRemovingId(null);
+        }
     };
 
     const toggleZone = (ts: TournamentSponsor, zone: string) => {
@@ -101,7 +118,7 @@ const TournamentSponsorManager = ({ tournamentId, tournamentName }: Props) => {
                 <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-3">
                     <div className="flex items-center justify-between">
                         <p className="text-sm font-bold text-white">Select a sponsor to assign</p>
-                        <button onClick={() => setShowAssign(false)} className="text-zinc-500 hover:text-white">
+                        <button onClick={() => setShowAssign(false)} aria-label="Close assign panel" className="text-zinc-500 hover:text-white">
                             <X className="w-4 h-4" />
                         </button>
                     </div>
@@ -185,12 +202,14 @@ const TournamentSponsorManager = ({ tournamentId, tournamentName }: Props) => {
                                     <div className="flex items-center gap-1 flex-shrink-0">
                                         <button
                                             onClick={() => setEditingId(isEditing ? null : ts.id)}
+                                            aria-label={isEditing ? 'Collapse editor' : 'Expand editor'}
                                             className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
                                         >
                                             <ChevronDown className={`w-4 h-4 transition-transform ${isEditing ? 'rotate-180' : ''}`} />
                                         </button>
                                         <button
                                             onClick={() => handleRemove(ts.sponsor_id, ts.sponsor.name)}
+                                            aria-label={`Remove ${ts.sponsor.name}`}
                                             className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors"
                                         >
                                             <Trash2 className="w-4 h-4" />
@@ -280,6 +299,24 @@ const TournamentSponsorManager = ({ tournamentId, tournamentName }: Props) => {
                     ))}
                 </div>
             </div>
+
+            {/* Remove Confirmation Dialog */}
+            <AlertDialog open={!!removingId} onOpenChange={() => setRemovingId(null)}>
+                <AlertDialogContent className="bg-[#0a0a0c] border-zinc-800">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white">Remove Sponsor?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-400">
+                            This will remove <strong className="text-white">{removingId?.name}</strong> from this tournament. Their ads will stop displaying immediately.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmRemove} className="bg-red-600 hover:bg-red-700 text-white">
+                            Remove
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
