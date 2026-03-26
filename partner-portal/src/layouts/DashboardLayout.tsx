@@ -17,9 +17,15 @@ const DashboardLayout = () => {
     useEffect(() => {
         // Use getUser() for initial verification as it hits the server to verify the session
         // getSession() only reads from localStorage and might be stale/invalid
-        supabase.auth.getUser().then(async ({ data: { user }, error }) => {
+        // Retry once on failure (token may not be restored from storage yet on cold refresh)
+        const verifyUser = async (attempt = 1): Promise<void> => {
+            const { data: { user }, error } = await supabase.auth.getUser();
             if (error || !user) {
-                // If there's an error or no user, clear any stale state to prevent loops
+                if (attempt < 2) {
+                    // Wait briefly for Supabase to restore session from storage
+                    await new Promise(r => setTimeout(r, 500));
+                    return verifyUser(attempt + 1);
+                }
                 if (user || error) supabase.auth.signOut();
                 setSession(null);
                 setIsLoading(false);
@@ -42,7 +48,9 @@ const DashboardLayout = () => {
             }
 
             setIsLoading(false);
-        });
+        };
+
+        verifyUser();
 
         const {
             data: { subscription },

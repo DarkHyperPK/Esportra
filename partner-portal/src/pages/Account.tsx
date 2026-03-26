@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { User, Shield, Save, Loader2, Mail } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, Shield, Save, Loader2, Mail, Upload, X } from 'lucide-react';
 import { usePartnerData } from '@/hooks/usePartnerData';
 import { usePartnerMutations } from '@/hooks/usePartnerMutations';
+import { apiClient } from '@/lib/apiClient';
 import { supabase } from '@/lib/supabase';
 
 const Account = () => {
@@ -12,6 +13,9 @@ const Account = () => {
     const [formData, setFormData] = useState({ name: '', website_url: '' });
     const [userEmail, setUserEmail] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const logoInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (sponsor) {
@@ -24,6 +28,42 @@ const Account = () => {
             if (data.user?.email) setUserEmail(data.user.email);
         });
     }, []);
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !sponsor) return;
+
+        // Instant preview
+        setLogoPreview(URL.createObjectURL(file));
+        setUploadingLogo(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('bucket', 'system.assets.partners');
+            formData.append('folder', sponsor.id);
+
+            const result = await apiClient.upload<{ url: string }>('/api/storage/upload', formData);
+            await updateProfile.mutateAsync({ logo_url: result.url });
+            setLogoPreview(null);
+        } catch {
+            setLogoPreview(null);
+        } finally {
+            setUploadingLogo(false);
+            if (logoInputRef.current) logoInputRef.current.value = '';
+        }
+    };
+
+    const handleRemoveLogo = async () => {
+        if (!sponsor || !confirm('Remove your company logo?')) return;
+        setUploadingLogo(true);
+        try {
+            await updateProfile.mutateAsync({ logo_url: '' });
+            setLogoPreview(null);
+        } finally {
+            setUploadingLogo(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -62,6 +102,58 @@ const Account = () => {
                             <User className="w-5 h-5 text-rose-500" />
                             COMPANY_IDENTITY
                         </h3>
+
+                        {/* Logo Upload */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Company Logo</label>
+                            <div className="flex items-center gap-6">
+                                <div className="relative w-20 h-20 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden">
+                                    {(logoPreview || sponsor?.logo_url) ? (
+                                        <>
+                                            <img
+                                                src={logoPreview || sponsor?.logo_url || ''}
+                                                alt="Logo"
+                                                className="w-full h-full object-contain p-2"
+                                            />
+                                            {!uploadingLogo && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleRemoveLogo}
+                                                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                                                >
+                                                    <X className="w-3 h-3 text-white" />
+                                                </button>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span className="text-2xl font-black text-zinc-700">{sponsor?.name?.[0] || '?'}</span>
+                                    )}
+                                    {uploadingLogo && (
+                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                            <Loader2 className="w-5 h-5 animate-spin text-rose-500" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={() => logoInputRef.current?.click()}
+                                        disabled={uploadingLogo}
+                                        className="px-4 py-2 bg-zinc-900 border border-zinc-800 text-white text-xs font-bold rounded-lg hover:bg-zinc-800 transition-colors flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                        <Upload className="w-3 h-3" /> Upload Logo
+                                    </button>
+                                    <p className="text-[10px] text-zinc-600 mt-1">PNG or SVG, max 2MB</p>
+                                    <input
+                                        ref={logoInputRef}
+                                        type="file"
+                                        accept="image/png,image/svg+xml,image/jpeg"
+                                        onChange={handleLogoUpload}
+                                        className="hidden"
+                                    />
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Contact Email (read-only) */}
                         <div className="space-y-2">
