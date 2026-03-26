@@ -34,6 +34,7 @@ interface TournamentCardProps {
   start_date?: string;
   end_date?: string;
   winner_name?: string;
+  title_sponsor_name?: string;
 }
 
 const TournamentCardInner: React.FC<TournamentCardProps> = ({
@@ -60,6 +61,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   start_date,
   end_date,
   winner_name,
+  title_sponsor_name,
 }) => {
   const navigate = useNavigate();
   const { currentRole } = useRole();
@@ -243,6 +245,14 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
               <span className="text-xs font-bold text-yellow-300 uppercase tracking-wider truncate">
                 Winner: {winner_name}
               </span>
+            </div>
+          )}
+
+          {/* Title Sponsor Badge */}
+          {title_sponsor_name && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit">
+              <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">Powered by</span>
+              <span className="text-[10px] font-bold text-zinc-300">{title_sponsor_name}</span>
             </div>
           )}
         </div>

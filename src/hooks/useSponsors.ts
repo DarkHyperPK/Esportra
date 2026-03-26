@@ -74,7 +74,7 @@ export function useSponsorStats(sponsorId: string) {
 
 const TRACK_URL = `${import.meta.env.VITE_API_URL}/api/sponsors/track`;
 
-function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
+function invokeTrack(sponsorId: string, eventType: 'impression' | 'click', tournamentId?: string) {
     fetch(TRACK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,6 +82,7 @@ function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
             sponsorId,
             eventType,
             pageUrl: window.location.href,
+            ...(tournamentId ? { tournamentId } : {}),
         }),
         keepalive: true,
     })
@@ -92,11 +93,11 @@ function invokeTrack(sponsorId: string, eventType: 'impression' | 'click') {
 }
 
 // ─── PUBLIC API (drop-in replacement) ────────────────────────────────
-export function trackImpression(sponsorId: string) {
-    invokeTrack(sponsorId, 'impression');
+export function trackImpression(sponsorId: string, tournamentId?: string) {
+    invokeTrack(sponsorId, 'impression', tournamentId);
 }
 
-export function trackClick(sponsorId: string) {
-    invokeTrack(sponsorId, 'click');
+export function trackClick(sponsorId: string, tournamentId?: string) {
+    invokeTrack(sponsorId, 'click', tournamentId);
 }
 

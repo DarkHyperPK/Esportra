@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, ChevronRight, Trophy, Clock, Zap, CheckCircle, MapPin, Globe, ExternalLink, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { VerticalAdPlacement } from './VerticalAdPlacement';
+import { TournamentSponsorSidebar } from '@/components/tournament/TournamentSponsorSidebar';
 
 interface Stage {
     id: string;
@@ -97,6 +98,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                             </p>
                             {/* Vertical Ad Placement (On Demand) */}
                             {showVerticalAd && <VerticalAdPlacement />}
+                            {/* Tournament-specific sponsor sidebar */}
+                            {tournament.id && <TournamentSponsorSidebar tournamentId={tournament.id} />}
                         </div>
 
                         {/* Right: Content */}
