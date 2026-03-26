@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from '@/lib/apiClient';
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, MapPin, Trophy, BarChart3, CreditCard, Shield, FileText, Settings, CheckCircle, Megaphone, Gavel } from "lucide-react";
+import { Users, MapPin, Trophy, BarChart3, CreditCard, Shield, FileText, Settings, CheckCircle, Megaphone, Gavel, Monitor } from "lucide-react";
 import { useAdmin } from "@/contexts/AdminContext";
 // Consolidated: use full UserManagement tool instead of AdminUsersList
 import AdminVenuesList from "@/components/admin/AdminVenuesList";
@@ -15,6 +15,7 @@ import VerificationPanel from "@/components/admin/VerificationPanel";
 import AuditLogs from "@/components/admin/AuditLogs";
 import UserManagement from "@/components/admin/UserManagement";
 import TournamentManagement from "@/components/admin/TournamentManagement";
+import AdPlacementDashboard from "@/components/admin/AdPlacementDashboard";
 import { Badge } from "@/components/ui/badge";
 
 const AdminDashboard = () => {
@@ -115,6 +116,7 @@ const AdminDashboard = () => {
               { id: 'user-management', label: 'Users', icon: Users, permission: 'user:suspend' as const },
               { id: 'tournaments', label: 'Tournaments', icon: Trophy, permission: 'tournament:approve' as const },
               { id: 'tournament-management', label: 'Tournament Tools', icon: Megaphone, permission: 'tournament:approve' as const },
+              { id: 'ad-placement', label: 'Ad Placement', icon: Monitor, permission: 'tournament:approve' as const },
               { id: 'venues', label: 'Venues', icon: MapPin, permission: 'venue:verify' as const },
               { id: 'payments', label: 'Payments', icon: CreditCard, permission: 'payment:process' as const },
               { id: 'verification', label: 'Verification', icon: CheckCircle, permission: 'verification:review' as const },
@@ -233,6 +235,7 @@ const AdminDashboard = () => {
           {activeTab === "user-management" && admin.hasPermission('user:suspend') && <UserManagement />}
           {activeTab === "tournaments" && admin.hasPermission('tournament:approve') && <AdminTournamentsList />}
           {activeTab === "tournament-management" && admin.hasPermission('tournament:approve') && <TournamentManagement />}
+          {activeTab === "ad-placement" && admin.hasPermission('tournament:approve') && <AdPlacementDashboard />}
           {activeTab === "venues" && admin.hasPermission('venue:verify') && <AdminVenuesList />}
           {activeTab === "venue-management" && admin.hasPermission('venue:verify') && <AdminVenuesList />}
           {activeTab === "payments" && admin.hasPermission('payment:process') && <AdminPayments displayType="full" />}
