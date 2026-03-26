@@ -11,6 +11,7 @@ import Toaster from './components/Toaster';
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Assets = lazy(() => import('./pages/Assets'));
 const Account = lazy(() => import('./pages/Account'));
+const Campaigns = lazy(() => import('./pages/Campaigns'));
 const OnboardingWizard = lazy(() => import('./pages/OnboardingWizard'));
 
 const PageLoader = () => (
@@ -38,6 +39,7 @@ function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/assets" element={<Assets />} />
             <Route path="/account" element={<Account />} />
           </Route>

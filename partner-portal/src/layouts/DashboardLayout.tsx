@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, FileImage, Settings, LogOut, BarChart } from 'lucide-react';
+import { LayoutDashboard, FileImage, Settings, LogOut, BarChart, Trophy } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useEffect, useState } from 'react';
@@ -79,6 +79,7 @@ const DashboardLayout = () => {
     const navItems = [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
         { label: 'Analytics', icon: BarChart, path: '/analytics' },
+        { label: 'Campaigns', icon: Trophy, path: '/campaigns' },
         { label: 'Campaign Kit', icon: FileImage, path: '/assets' },
         { label: 'Account', icon: Settings, path: '/account' },
     ];
