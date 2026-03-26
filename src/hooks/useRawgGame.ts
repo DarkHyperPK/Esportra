@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
+import esportsGames from '@/data/esportsGames.json';
 
 interface RawgGameData {
     gameLogo: string | null;
@@ -8,6 +9,15 @@ interface RawgGameData {
     carouselIndex: number;
     isLoading: boolean;
     error: string | null;
+}
+
+/** Get the Twitch CDN logo from esportsGames.json as fallback */
+function getTwitchFallback(gameName: string): string | null {
+    const game = (esportsGames.games as any[]).find(
+        g => g.name.toLowerCase() === gameName.trim().toLowerCase()
+            || g.slug === gameName.trim().toLowerCase()
+    );
+    return game?.logo ?? null;
 }
 
 export const useRawgGame = (gameName: string) => {
@@ -70,11 +80,27 @@ export const useRawgGame = (gameName: string) => {
                         }
                     }
                 } else if (isMounted) {
-                    setData(prev => ({ ...prev, isLoading: false, error: 'No results found' }));
+                    const fallback = getTwitchFallback(gameName);
+                    setData(prev => ({
+                        ...prev,
+                        gameLogo: fallback,
+                        gameBanner: fallback,
+                        screenshots: fallback ? [fallback] : [],
+                        isLoading: false,
+                        error: fallback ? null : 'No results found',
+                    }));
                 }
             } catch (err) {
                 if (isMounted) {
-                    setData(prev => ({ ...prev, isLoading: false, error: err instanceof Error ? err.message : 'Unknown error' }));
+                    const fallback = getTwitchFallback(gameName);
+                    setData(prev => ({
+                        ...prev,
+                        gameLogo: fallback,
+                        gameBanner: fallback,
+                        screenshots: fallback ? [fallback] : [],
+                        isLoading: false,
+                        error: fallback ? null : (err instanceof Error ? err.message : 'Unknown error'),
+                    }));
                 }
             }
         };
