@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { trackClick, trackImpression, useSponsors } from '@/hooks/useSponsors';
+import { trackClick, trackImpression } from '@/hooks/useSponsors';
 import { getStorageUrl } from '@/lib/storage';
 
-export const VerticalAdPlacement = () => {
-    const { data: sponsors = [] } = useSponsors();
-    const systemOptiX = sponsors.find(s => s.name?.toLowerCase() === 'systemoptix');
-    const sponsorId = systemOptiX?.id ?? '';
+interface Props {
+    sponsorId?: string;
+}
 
-    // Performance HUD State (for SystemOptiX)
+export const VerticalAdPlacement = ({ sponsorId }: Props) => {
+    // Performance HUD State
     const statsConfig = [
         { ping: '1.2ms', fps: '590 FPS' },
         { ping: '0.8ms', fps: '840 FPS' },
@@ -41,7 +41,7 @@ export const VerticalAdPlacement = () => {
         );
         if (adRef.current) observer.observe(adRef.current);
         return () => observer.disconnect();
-    }, []);
+    }, [sponsorId]);
 
     return (
         <div ref={adRef} className="mt-12 hidden lg:flex flex-col gap-8">
@@ -49,7 +49,7 @@ export const VerticalAdPlacement = () => {
                 <div className="aspect-[1/2] relative overflow-hidden">
                     <img
                         src={getStorageUrl('system.assets.partners', 'SystemOptiX/1.jpg')}
-                        alt="SystemOptiX"
+                        alt="Partner"
                         className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all [transition-duration:1500ms]"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
@@ -71,7 +71,7 @@ export const VerticalAdPlacement = () => {
                     <div className="flex items-center gap-3 mb-4">
                         <img
                             src={getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png')}
-                            alt="SystemOptiX"
+                            alt="Partner"
                             className="h-6 w-auto object-contain"
                         />
                         <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-[8px] text-amber-500 font-bold uppercase tracking-widest rounded">Radiant Partner</span>
@@ -98,3 +98,4 @@ export const VerticalAdPlacement = () => {
         </div>
     );
 };
+
