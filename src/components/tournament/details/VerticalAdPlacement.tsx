@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { trackClick, trackImpression } from '@/hooks/useSponsors';
+import { trackClick, trackImpression, useSponsors } from '@/hooks/useSponsors';
 import { getStorageUrl } from '@/lib/storage';
 
 interface Props {
-    sponsorId?: string;
+    sponsorId?: string; // optional override — if not passed, resolves SystemOptiX from DB
 }
 
-export const VerticalAdPlacement = ({ sponsorId }: Props) => {
+export const VerticalAdPlacement = ({ sponsorId: sponsorIdProp }: Props) => {
+    const { data: sponsors = [] } = useSponsors();
+    // Resolve sponsor ID: use prop if provided, otherwise look up SystemOptiX from DB
+    const dbSystemOptiX = sponsors.find(s => s.name?.toLowerCase() === 'systemoptix');
+    const sponsorId = sponsorIdProp || dbSystemOptiX?.id || '';
+
     // Performance HUD State
     const statsConfig = [
         { ping: '1.2ms', fps: '590 FPS' },
@@ -48,7 +53,7 @@ export const VerticalAdPlacement = ({ sponsorId }: Props) => {
             <div className="relative group bg-[#080808] border border-white/5 overflow-hidden transition-all duration-500 hover:border-emerald-500/30">
                 <div className="aspect-[1/2] relative overflow-hidden">
                     <img
-                        src={getStorageUrl('system.assets.partners', 'SystemOptiX/1.jpg')}
+                        src={dbSystemOptiX?.banner_image_url || getStorageUrl('system.assets.partners', 'SystemOptiX/1.jpg')}
                         alt="Partner"
                         className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all [transition-duration:1500ms]"
                     />
@@ -70,7 +75,7 @@ export const VerticalAdPlacement = ({ sponsorId }: Props) => {
                 <div className="p-6 bg-zinc-950/50 backdrop-blur-sm border-t border-white/5">
                     <div className="flex items-center gap-3 mb-4">
                         <img
-                            src={getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png')}
+                            src={dbSystemOptiX?.logo_url || getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png')}
                             alt="Partner"
                             className="h-6 w-auto object-contain"
                         />
@@ -81,7 +86,7 @@ export const VerticalAdPlacement = ({ sponsorId }: Props) => {
 
                     <div className="flex items-center justify-between gap-4">
                         <a
-                            href="https://systemoptix.net/"
+                            href={dbSystemOptiX?.website_url || 'https://systemoptix.net/'}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => sponsorId && trackClick(sponsorId)}
@@ -90,7 +95,7 @@ export const VerticalAdPlacement = ({ sponsorId }: Props) => {
                             OPTIMIZE_NOW <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
                         </a>
                         <div className="px-2 py-1 border border-emerald-500/20 bg-emerald-500/5 text-[9px] font-mono text-emerald-500 uppercase">
-                            esportra20
+                            {dbSystemOptiX?.discount_text || 'esportra20'}
                         </div>
                     </div>
                 </div>
@@ -98,4 +103,5 @@ export const VerticalAdPlacement = ({ sponsorId }: Props) => {
         </div>
     );
 };
+
 
