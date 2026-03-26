@@ -4,7 +4,6 @@ import { LayoutDashboard, FileImage, Settings, LogOut, BarChart } from 'lucide-r
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useEffect, useState } from 'react';
-import { useBranding } from '@/hooks/useBranding';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 
 const DashboardLayout = () => {
@@ -12,7 +11,6 @@ const DashboardLayout = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [session, setSession] = useState<{ id: string } | null>(null);
     const [needsOnboarding, setNeedsOnboarding] = useState(false);
-    const { data: branding } = useBranding();
 
     useEffect(() => {
         // Use getUser() for initial verification as it hits the server to verify the session
@@ -103,7 +101,7 @@ const DashboardLayout = () => {
             <aside className="w-72 border-r border-white/5 bg-[#0a0a0c]/80 backdrop-blur-xl p-8 hidden lg:flex flex-col relative z-20">
                 <div className="mb-12">
                     <div className="flex items-center gap-3 mb-2">
-                        <img src={branding?.logoUrl || getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')} alt="Esportra" className="w-8 h-8 object-contain" />
+                        <img src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')} alt="Esportra" className="w-8 h-8 object-contain" />
                         <h1 className="text-xl font-black font-heading tracking-tighter">
                             ESPORTRA<span className="text-rose-500">_PARTNER</span>
                         </h1>
