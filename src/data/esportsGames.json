@@ -9,7 +9,7 @@
         { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "/games/valorant-logo.svg",
+      "logo": "/games/valorant-logo.png",
       "features": {
         "mapVeto": true,
         "mapPool": true,
@@ -30,7 +30,7 @@
         { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "/games/cs2-logo.svg",
+      "logo": "/games/cs2-logo.png",
       "features": {
         "mapVeto": true,
         "mapPool": true,
@@ -51,7 +51,7 @@
         { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "/games/r6s-logo.svg",
+      "logo": "/games/r6s-logo.png",
       "features": {
         "mapVeto": true,
         "mapPool": true,
@@ -72,7 +72,7 @@
         { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "/games/lol-logo.svg",
+      "logo": "/games/lol-logo.png",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -93,7 +93,7 @@
         { "name": "5v5", "value": "5v5", "teamSize": 5 }
       ],
       "defaultFormat": "5v5",
-      "logo": "/games/dota2-logo.svg",
+      "logo": "/games/dota2-logo.png",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -114,7 +114,7 @@
         { "name": "4v4", "value": "4v4", "teamSize": 4 }
       ],
       "defaultFormat": "4v4",
-      "logo": "/games/cod-logo.svg",
+      "logo": "/games/cod-logo.png",
       "features": {
         "mapVeto": true,
         "mapPool": true,
@@ -137,7 +137,7 @@
         { "name": "Trio", "value": "trio", "teamSize": 3 }
       ],
       "defaultFormat": "solo",
-      "logo": "/games/fortnite-logo.svg",
+      "logo": "/games/fortnite-logo.png",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -171,7 +171,7 @@
         { "name": "Trios", "value": "trios", "teamSize": 3 }
       ],
       "defaultFormat": "trios",
-      "logo": "/games/apex-logo.svg",
+      "logo": "/games/apex-logo.png",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -205,7 +205,7 @@
         { "name": "Squads", "value": "squads", "teamSize": 4 }
       ],
       "defaultFormat": "squads",
-      "logo": "/games/pubg-logo.svg",
+      "logo": "/games/pubg-logo.png",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -241,7 +241,7 @@
         { "name": "1v1", "value": "1v1", "teamSize": 1 }
       ],
       "defaultFormat": "3v3",
-      "logo": "/games/rocket-league-logo.svg",
+      "logo": "/games/rocket-league-logo.png",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -262,7 +262,7 @@
         { "name": "1v1", "value": "1v1", "teamSize": 1 }
       ],
       "defaultFormat": "1v1",
-      "logo": "/games/tekken8-logo.svg",
+      "logo": "/games/tekken8-logo.png",
       "features": {
         "mapVeto": false,
         "mapPool": false,
@@ -283,7 +283,7 @@
         { "name": "1v1", "value": "1v1", "teamSize": 1 }
       ],
       "defaultFormat": "1v1",
-      "logo": "/games/eafc-logo.svg",
+      "logo": "/games/eafc-logo.png",
       "features": {
         "mapVeto": false,
         "mapPool": false,
