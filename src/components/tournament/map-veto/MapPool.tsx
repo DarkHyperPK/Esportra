@@ -41,7 +41,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
     bestOf,
     game = 'valorant',
 }) => {
-    const service = React.useMemo(() => new VetoService(game), [game]);
+    const service = React.useMemo(() => new VetoService(game, availableMaps.length || undefined), [game, availableMaps.length]);
 
     // Optimistic UI: immediately reflect user's ban/pick before DB confirms
     const [optimisticBanned, setOptimisticBanned] = useState<Set<string>>(new Set());

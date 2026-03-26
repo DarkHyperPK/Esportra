@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Trophy, ChevronRight, Megaphone, Loader2, Globe, Star, Radio, Plus, Eye, BarChart3, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Trophy, ChevronRight, Megaphone, Loader2, Star, Radio, Plus, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useAdminSponsors, useAdminSponsorUpdate } from '@/hooks/useAdminQueries';
 import { useSponsorStats, type Sponsor } from '@/hooks/useSponsors';
 import { useTournamentSponsors } from '@/hooks/useTournamentSponsors';
@@ -143,18 +143,193 @@ const LinkToTournament = ({ sponsor, onBack }: { sponsor: Sponsor; onBack: () =>
     );
 };
 
-/** Sponsor detail: zones, priority, stats, link to tournament */
+/** Full-width live preview for a zone */
+const ZonePreview = ({ zone, sponsor, assetUrl }: { zone: string; sponsor: Sponsor; assetUrl: string }) => {
+    if (zone === 'homepage_banner') {
+        return (
+            <div className="rounded-xl overflow-hidden border border-zinc-700/50">
+                <div className="bg-[#050505] border-b border-white/5 py-3 px-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <span className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Powered by</span>
+                            <a className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
+                                <img src={assetUrl} alt={sponsor.name} className="h-5 object-contain" />
+                                <span className="text-xs font-semibold text-white">{sponsor.name}</span>
+                            </a>
+                        </div>
+                        {sponsor.cta_text && (
+                            <span className="text-[10px] text-rose-400 font-bold">{sponsor.cta_text} →</span>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (zone === 'browse_sidebar') {
+        return (
+            <div className="rounded-xl overflow-hidden border border-zinc-700/50 max-w-[280px]">
+                <div className="bg-[#080808] border border-white/5">
+                    <div className="relative h-32 overflow-hidden">
+                        <img src={assetUrl} alt={sponsor.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    </div>
+                    <div className="p-4 -mt-6 relative z-10">
+                        {sponsor.logo_url && (
+                            <img src={sponsor.logo_url} alt="" className="h-8 object-contain mb-2" />
+                        )}
+                        <p className="text-xs font-bold text-white">{sponsor.name}</p>
+                        {sponsor.tagline && <p className="text-[10px] text-zinc-500 mt-0.5">{sponsor.tagline}</p>}
+                        {sponsor.cta_text && (
+                            <span className="inline-block mt-2 text-[10px] text-rose-400 font-bold bg-rose-500/10 px-3 py-1 rounded-full">
+                                {sponsor.cta_text} →
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (zone === 'global_ticker') {
+        return (
+            <div className="rounded-xl overflow-hidden border border-zinc-700/50">
+                <div className="bg-[#050505]/95 backdrop-blur py-3 px-6">
+                    <div className="flex items-center gap-10">
+                        <span className="text-[9px] text-zinc-600 uppercase tracking-widest font-bold flex-shrink-0">Our Partners</span>
+                        <div className="flex items-center gap-10 overflow-hidden">
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <img key={i} src={assetUrl} alt="" className="h-5 object-contain opacity-50 grayscale hover:opacity-100 hover:grayscale-0 transition-all flex-shrink-0" />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return null;
+};
+
+/** Single zone card with toggle, asset picker, and preview */
+const ZoneCard = ({
+    zone,
+    active,
+    sponsor,
+    assets,
+    availableAssets,
+    isPending,
+    previewOpen,
+    onToggle,
+    onSetAsset,
+    onTogglePreview,
+}: {
+    zone: { key: string; label: string; desc: string };
+    active: boolean;
+    sponsor: Sponsor;
+    assets: Record<string, string>;
+    availableAssets: { label: string; url: string }[];
+    isPending: boolean;
+    previewOpen: boolean;
+    onToggle: () => void;
+    onSetAsset: (url: string | null) => void;
+    onTogglePreview: () => void;
+}) => {
+    const currentAsset = assets[zone.key] ||
+        (zone.key.includes('banner') || zone.key === 'browse_sidebar' ? sponsor.banner_image_url : sponsor.logo_url) || null;
+
+    return (
+        <div className={`rounded-2xl border transition-all ${active ? 'border-rose-500/30 bg-[#0d0a0b]' : 'border-zinc-800/50 bg-zinc-900/30'}`}>
+            {/* Zone row */}
+            <div className="flex items-center gap-4 p-4">
+                <button
+                    onClick={onToggle}
+                    disabled={isPending}
+                    aria-label={`Toggle ${zone.label}`}
+                    className={`w-11 h-6 rounded-full relative transition-all flex-shrink-0 ${active ? 'bg-rose-500' : 'bg-zinc-700 hover:bg-zinc-600'}`}
+                >
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${active ? 'left-[22px]' : 'left-0.5'}`} />
+                </button>
+                <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${active ? 'text-white' : 'text-zinc-500'}`}>{zone.label}</p>
+                    <p className="text-xs text-zinc-600 mt-0.5">{zone.desc}</p>
+                </div>
+                {active && currentAsset && (
+                    <img src={currentAsset} alt="" className="w-10 h-10 rounded-xl object-cover flex-shrink-0 border border-zinc-700/50" />
+                )}
+                {active && (
+                    <button
+                        onClick={onTogglePreview}
+                        aria-label={`Preview ${zone.label}`}
+                        className={`p-2 rounded-xl transition-all ${previewOpen ? 'bg-rose-500/20 text-rose-300' : 'bg-zinc-800/60 text-zinc-500 hover:text-white hover:bg-zinc-800'}`}
+                    >
+                        <Eye className="w-4 h-4" />
+                    </button>
+                )}
+            </div>
+
+            {/* Asset picker — always visible when zone is active */}
+            {active && (
+                <div className="px-4 pb-4 border-t border-zinc-800/30 pt-3">
+                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-2">Choose Asset</p>
+                    {availableAssets.length === 0 ? (
+                        <p className="text-xs text-zinc-600 italic">No assets uploaded — add images in Sponsor CRM first</p>
+                    ) : (
+                        <div className="flex flex-wrap gap-2">
+                            {availableAssets.map(asset => {
+                                const isSelected = assets[zone.key] === asset.url;
+                                return (
+                                    <button
+                                        key={asset.url}
+                                        onClick={() => onSetAsset(isSelected ? null : asset.url)}
+                                        disabled={isPending}
+                                        className={`group relative rounded-xl overflow-hidden transition-all border-2 ${
+                                            isSelected ? 'border-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.2)]' : 'border-zinc-800 hover:border-zinc-600'
+                                        }`}
+                                    >
+                                        <img src={asset.url} alt={asset.label} className="w-24 h-16 object-cover" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                                        <span className="absolute bottom-1 left-1.5 text-[9px] text-white/80 font-bold">{asset.label}</span>
+                                        {isSelected && (
+                                            <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
+                                                <span className="text-white text-[9px] font-bold">✓</span>
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Full-width slide-down live preview */}
+            {active && previewOpen && currentAsset && (
+                <div className="px-4 pb-4">
+                    <div className="bg-[#050505] rounded-xl p-4 border border-zinc-800/40">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Eye className="w-3.5 h-3.5 text-rose-400" />
+                            <span className="text-[10px] text-rose-400 uppercase tracking-widest font-bold">Live Preview</span>
+                        </div>
+                        <ZonePreview zone={zone.key} sponsor={sponsor} assetUrl={currentAsset} />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+/** Sponsor detail: step-based flow */
 const SponsorDetail = ({ sponsor, onBack, onRefresh }: { sponsor: Sponsor; onBack: () => void; onRefresh: () => void }) => {
     const { data: stats, isLoading: loadingStats } = useSponsorStats(sponsor.id);
     const updateSponsor = useAdminSponsorUpdate();
     const { toast } = useToast();
     const [view, setView] = useState<'main' | 'link'>('main');
-    const [expandedZone, setExpandedZone] = useState<string | null>(null);
+    const [previewZone, setPreviewZone] = useState<string | null>(null);
 
     const currentZones = sponsor.placement || [];
     const assets = sponsor.placement_assets || {};
 
-    // Collect all available asset URLs from the sponsor
     const availableAssets: { label: string; url: string }[] = [];
     if (sponsor.logo_url) availableAssets.push({ label: 'Logo', url: sponsor.logo_url });
     if (sponsor.banner_image_url) availableAssets.push({ label: 'Banner', url: sponsor.banner_image_url });
@@ -178,7 +353,7 @@ const SponsorDetail = ({ sponsor, onBack, onRefresh }: { sponsor: Sponsor; onBac
         else delete newAssets[zone];
         updateSponsor.mutate(
             { id: sponsor.id, updates: { placement_assets: newAssets } },
-            { onSuccess: () => { toast({ title: `Asset updated for ${zone}` }); onRefresh(); } }
+            { onSuccess: () => { toast({ title: `Asset updated` }); onRefresh(); } }
         );
     };
 
@@ -203,239 +378,159 @@ const SponsorDetail = ({ sponsor, onBack, onRefresh }: { sponsor: Sponsor; onBac
         );
     };
 
-    // Resolve which asset is used for a zone
-    const getZoneAsset = (zone: string): string | null => {
-        if (assets[zone]) return assets[zone];
-        if (zone.includes('banner') || zone === 'browse_sidebar') return sponsor.banner_image_url || sponsor.logo_url || null;
-        return sponsor.logo_url || null;
-    };
-
     if (view === 'link') {
         return <LinkToTournament sponsor={sponsor} onBack={() => setView('main')} />;
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
+            {/* Back nav */}
             <button onClick={onBack} className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors">
                 <ChevronRight className="w-4 h-4 rotate-180" /> Back to sponsors
             </button>
 
-            {/* Sponsor header */}
-            <div className="flex items-center gap-4 p-4 bg-zinc-900/50 border border-zinc-800/60 rounded-2xl">
-                {sponsor.logo_url && sponsor.logo_url.startsWith('http') ? (
-                    <img src={sponsor.logo_url} alt={sponsor.name} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
-                ) : (
-                    <div className="w-14 h-14 rounded-xl bg-zinc-800 flex items-center justify-center flex-shrink-0">
-                        <Megaphone className="w-6 h-6 text-zinc-500" />
+            {/* ── STEP 1: Sponsor Identity ─────────────────────────────── */}
+            <div className="p-5 bg-[#0a0a0c] border border-zinc-800/50 rounded-2xl">
+                <div className="flex items-center gap-4">
+                    {sponsor.logo_url && sponsor.logo_url.startsWith('http') ? (
+                        <img src={sponsor.logo_url} alt={sponsor.name} className="w-16 h-16 rounded-2xl object-cover flex-shrink-0 border border-zinc-700/30" />
+                    ) : (
+                        <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                            <Megaphone className="w-7 h-7 text-zinc-500" />
+                        </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <h3 className="text-xl font-bold text-white">{sponsor.name}</h3>
+                        <p className="text-sm text-zinc-400 mt-0.5 truncate">{sponsor.tagline || sponsor.website_url || 'No tagline'}</p>
                     </div>
-                )}
-                <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold text-white">{sponsor.name}</h3>
-                    <p className="text-sm text-zinc-400 truncate">{sponsor.tagline || sponsor.website_url}</p>
+                    <button
+                        onClick={toggleActive}
+                        disabled={updateSponsor.isPending}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+                            sponsor.is_active
+                                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
+                                : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
+                        }`}
+                    >
+                        {sponsor.is_active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+                        {sponsor.is_active ? 'Active' : 'Inactive'}
+                    </button>
                 </div>
-                <button
-                    onClick={toggleActive}
-                    disabled={updateSponsor.isPending}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                        sponsor.is_active
-                            ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
-                            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
-                    }`}
-                >
-                    {sponsor.is_active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                    {sponsor.is_active ? 'Active' : 'Inactive'}
-                </button>
-            </div>
 
-            {/* Stats */}
-            <div>
-                <h4 className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-3 flex items-center gap-2">
-                    <BarChart3 className="w-3.5 h-3.5" /> Performance
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                    <div className="p-3 bg-zinc-900/50 border border-zinc-800/60 rounded-xl text-center">
-                        <p className="text-[10px] text-zinc-500 uppercase mb-1">Impressions</p>
-                        <p className="text-xl font-bold text-white">{loadingStats ? '...' : (stats?.impressions ?? 0).toLocaleString()}</p>
+                {/* Quick stats inline */}
+                <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-zinc-800/40">
+                    <div className="text-center">
+                        <p className="text-lg font-bold text-white">{loadingStats ? '—' : (stats?.impressions ?? 0).toLocaleString()}</p>
+                        <p className="text-[10px] text-zinc-500 uppercase">Impressions</p>
                     </div>
-                    <div className="p-3 bg-zinc-900/50 border border-zinc-800/60 rounded-xl text-center">
-                        <p className="text-[10px] text-zinc-500 uppercase mb-1">Clicks</p>
-                        <p className="text-xl font-bold text-white">{loadingStats ? '...' : (stats?.clicks ?? 0).toLocaleString()}</p>
+                    <div className="text-center">
+                        <p className="text-lg font-bold text-white">{loadingStats ? '—' : (stats?.clicks ?? 0).toLocaleString()}</p>
+                        <p className="text-[10px] text-zinc-500 uppercase">Clicks</p>
                     </div>
-                    <div className="p-3 bg-zinc-900/50 border border-zinc-800/60 rounded-xl text-center">
-                        <p className="text-[10px] text-zinc-500 uppercase mb-1">CTR</p>
-                        <p className="text-xl font-bold text-white">{loadingStats ? '...' : (stats?.ctr ?? '0%')}</p>
+                    <div className="text-center">
+                        <p className="text-lg font-bold text-white">{loadingStats ? '—' : (stats?.ctr ?? '0%')}</p>
+                        <p className="text-[10px] text-zinc-500 uppercase">CTR</p>
                     </div>
                 </div>
             </div>
 
-            {/* Global Placement Zones with Asset Picker */}
+            {/* ── STEP 2: Where should ads appear? ────────────────────── */}
             <div>
-                <h4 className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-1">Global Placements</h4>
-                <p className="text-[11px] text-zinc-600 mb-3">Toggle zones on/off, then pick which asset to show in each</p>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-rose-500/10 text-rose-400 text-xs font-bold">1</div>
+                    <div>
+                        <h4 className="text-sm font-bold text-white">Where should ads appear?</h4>
+                        <p className="text-xs text-zinc-500">Toggle zones on, pick assets, then preview</p>
+                    </div>
+                </div>
                 <div className="grid gap-3">
-                    {GLOBAL_ZONES.map(zone => {
-                        const active = currentZones.includes(zone.key);
-                        const isExpanded = expandedZone === zone.key;
-                        const currentAsset = getZoneAsset(zone.key);
-                        const hasCustomAsset = !!assets[zone.key];
-
-                        return (
-                            <div key={zone.key} className={`rounded-xl border transition-all ${active ? 'border-rose-500/40 bg-rose-500/5' : 'border-zinc-800/60 bg-zinc-900/50'}`}>
-                                {/* Zone header */}
-                                <div className="flex items-center gap-3 p-3">
-                                    <button
-                                        onClick={() => toggleZone(zone.key)}
-                                        disabled={updateSponsor.isPending}
-                                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${active ? 'bg-rose-500 border-rose-500' : 'border-zinc-600 hover:border-zinc-400'}`}
-                                    >
-                                        {active && <span className="text-white text-[10px] font-bold">✓</span>}
-                                    </button>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-xs font-bold ${active ? 'text-rose-300' : 'text-zinc-400'}`}>{zone.label}</p>
-                                        <p className="text-[10px] text-zinc-600">{zone.desc}</p>
-                                    </div>
-                                    {active && (
-                                        <button
-                                            onClick={() => setExpandedZone(isExpanded ? null : zone.key)}
-                                            className="text-[10px] text-zinc-500 hover:text-white px-2 py-1 rounded-lg border border-zinc-800 hover:border-zinc-600 transition-colors"
-                                        >
-                                            {isExpanded ? 'Close' : hasCustomAsset ? 'Change Asset' : 'Pick Asset'}
-                                        </button>
-                                    )}
-                                    {active && currentAsset && (
-                                        <img src={currentAsset} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-zinc-700" />
-                                    )}
-                                </div>
-
-                                {/* Asset picker (expanded) */}
-                                {active && isExpanded && (
-                                    <div className="px-3 pb-3 border-t border-zinc-800/40 pt-3">
-                                        <p className="text-[10px] text-zinc-500 uppercase mb-2 font-bold">Select asset for this zone</p>
-                                        {availableAssets.length === 0 ? (
-                                            <p className="text-xs text-zinc-600">No assets uploaded. Add images in Sponsor CRM first.</p>
-                                        ) : (
-                                            <div className="flex flex-wrap gap-2">
-                                                {availableAssets.map(asset => {
-                                                    const isSelected = assets[zone.key] === asset.url;
-                                                    return (
-                                                        <button
-                                                            key={asset.url}
-                                                            onClick={() => setZoneAsset(zone.key, isSelected ? null : asset.url)}
-                                                            disabled={updateSponsor.isPending}
-                                                            className={`relative rounded-xl border-2 overflow-hidden transition-all ${
-                                                                isSelected ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-zinc-800 hover:border-zinc-600'
-                                                            }`}
-                                                        >
-                                                            <img src={asset.url} alt={asset.label} className="w-20 h-14 object-cover" />
-                                                            <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] text-white text-center py-0.5 font-bold">
-                                                                {asset.label}
-                                                            </span>
-                                                            {isSelected && (
-                                                                <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center text-white text-[8px] font-bold">✓</span>
-                                                            )}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Live preview for active zone */}
-                                {active && currentAsset && !isExpanded && (
-                                    <div className="px-3 pb-3">
-                                        <div className="rounded-lg overflow-hidden border border-zinc-800/40">
-                                            {zone.key === 'homepage_banner' && (
-                                                <div className="bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-900 p-3 flex items-center gap-3">
-                                                    <img src={currentAsset} alt={sponsor.name} className="h-8 object-contain" />
-                                                    <div className="flex-1">
-                                                        <p className="text-[10px] text-zinc-500">SPONSORED</p>
-                                                        <p className="text-xs font-bold text-white">{sponsor.name} {sponsor.tagline ? `— ${sponsor.tagline}` : ''}</p>
-                                                    </div>
-                                                    <span className="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full font-bold">{sponsor.cta_text || 'Learn More'}</span>
-                                                </div>
-                                            )}
-                                            {zone.key === 'browse_sidebar' && (
-                                                <div className="bg-zinc-900 p-3 text-center">
-                                                    <img src={currentAsset} alt={sponsor.name} className="w-full h-20 object-cover rounded-lg mb-2" />
-                                                    <p className="text-[10px] text-zinc-500">SPONSORED</p>
-                                                    <p className="text-xs font-bold text-white">{sponsor.name}</p>
-                                                    <span className="text-[10px] text-rose-300">{sponsor.cta_text || 'Learn More'}</span>
-                                                </div>
-                                            )}
-                                            {zone.key === 'global_ticker' && (
-                                                <div className="bg-zinc-900 p-2 flex items-center gap-4 overflow-hidden">
-                                                    <span className="text-[9px] text-zinc-600 uppercase flex-shrink-0">Our Sponsors</span>
-                                                    {[1, 2, 3, 4].map(i => (
-                                                        <img key={i} src={currentAsset} alt="" className="h-5 object-contain opacity-70 flex-shrink-0" />
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <p className="text-[9px] text-zinc-600 mt-1 italic">Live preview — how this will appear on the site</p>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                    {GLOBAL_ZONES.map(zone => (
+                        <ZoneCard
+                            key={zone.key}
+                            zone={zone}
+                            active={currentZones.includes(zone.key)}
+                            sponsor={sponsor}
+                            assets={assets}
+                            availableAssets={availableAssets}
+                            isPending={updateSponsor.isPending}
+                            previewOpen={previewZone === zone.key}
+                            onToggle={() => toggleZone(zone.key)}
+                            onSetAsset={(url) => setZoneAsset(zone.key, url)}
+                            onTogglePreview={() => setPreviewZone(previewZone === zone.key ? null : zone.key)}
+                        />
+                    ))}
                 </div>
             </div>
 
-            {/* Tier + Priority */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <h4 className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-3">Tier</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                        {TIERS.map(t => (
-                            <button
-                                key={t}
-                                onClick={() => updateTier(t)}
-                                disabled={updateSponsor.isPending}
-                                className={`px-3 py-2 rounded-lg text-xs font-bold capitalize transition-all border ${
-                                    sponsor.tier === t
-                                        ? `${TIER_COLORS[t]}`
-                                        : 'bg-zinc-900/50 text-zinc-500 border-zinc-800 hover:border-zinc-700'
-                                }`}
-                            >
-                                {t}
-                            </button>
-                        ))}
+            {/* ── STEP 3: Tier & Priority ─────────────────────────────── */}
+            <div>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-rose-500/10 text-rose-400 text-xs font-bold">2</div>
+                    <div>
+                        <h4 className="text-sm font-bold text-white">Tier & Priority</h4>
+                        <p className="text-xs text-zinc-500">Higher tier = more prominent, higher priority = shown first</p>
                     </div>
                 </div>
-                <div>
-                    <h4 className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-3">Priority</h4>
-                    <input
-                        type="range"
-                        min={1}
-                        max={10}
-                        value={sponsor.priority}
-                        onChange={e => updatePriority(Number(e.target.value))}
-                        className="w-full accent-rose-500"
-                    />
-                    <div className="flex justify-between text-[10px] text-zinc-500 mt-1">
-                        <span>Low (1)</span>
-                        <span className="text-white font-bold">{sponsor.priority}</span>
-                        <span>High (10)</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 bg-[#0a0a0c] border border-zinc-800/50 rounded-2xl">
+                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-3">Sponsor Tier</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            {TIERS.map(t => (
+                                <button
+                                    key={t}
+                                    onClick={() => updateTier(t)}
+                                    disabled={updateSponsor.isPending}
+                                    className={`px-3 py-2.5 rounded-xl text-xs font-bold capitalize transition-all border ${
+                                        sponsor.tier === t
+                                            ? `${TIER_COLORS[t]}`
+                                            : 'bg-zinc-900/50 text-zinc-500 border-zinc-800 hover:border-zinc-700'
+                                    }`}
+                                >
+                                    {t}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="p-4 bg-[#0a0a0c] border border-zinc-800/50 rounded-2xl">
+                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider mb-3">Display Priority</p>
+                        <input
+                            type="range"
+                            min={1}
+                            max={10}
+                            value={sponsor.priority}
+                            onChange={e => updatePriority(Number(e.target.value))}
+                            className="w-full accent-rose-500 mt-2"
+                        />
+                        <div className="flex justify-between text-xs text-zinc-500 mt-2">
+                            <span>Low</span>
+                            <span className="text-white font-bold text-sm">{sponsor.priority}/10</span>
+                            <span>High</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Tournament-Specific Placements */}
-            <div className="pt-2 border-t border-zinc-800/60">
-                <h4 className="text-xs text-zinc-400 uppercase tracking-wider font-bold mb-1">Tournament Placements</h4>
-                <p className="text-[11px] text-zinc-600 mb-3">Link this sponsor to a tournament to enable tournament-specific ad zones</p>
+            {/* ── STEP 4: Tournament Linking ───────────────────────────── */}
+            <div>
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-rose-500/10 text-rose-400 text-xs font-bold">3</div>
+                    <div>
+                        <h4 className="text-sm font-bold text-white">Tournament Placements</h4>
+                        <p className="text-xs text-zinc-500">Link to tournaments for header, sidebar, ticker, and card badges</p>
+                    </div>
+                </div>
                 <button
                     onClick={() => setView('link')}
-                    className="flex items-center gap-3 p-4 w-full bg-zinc-900/50 border border-zinc-800/60 rounded-xl hover:border-rose-500/40 hover:bg-rose-500/5 transition-all text-left group"
+                    className="flex items-center gap-4 p-5 w-full bg-[#0a0a0c] border border-zinc-800/50 rounded-2xl hover:border-rose-500/30 hover:bg-rose-500/5 transition-all text-left group"
                 >
-                    <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
-                        <Plus className="w-5 h-5 text-rose-400" />
+                    <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center flex-shrink-0">
+                        <Plus className="w-6 h-6 text-rose-400" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                         <p className="text-sm font-bold text-white">Link to Tournament</p>
-                        <p className="text-[11px] text-zinc-500">Assign this sponsor to a specific tournament</p>
+                        <p className="text-xs text-zinc-500 mt-0.5">Assign this sponsor to a specific tournament for tournament-only zones</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors ml-auto" />
+                    <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-rose-400 transition-colors" />
                 </button>
             </div>
         </div>

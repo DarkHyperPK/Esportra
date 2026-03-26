@@ -3,8 +3,15 @@ import { VALORANT_CONFIG, CS2_CONFIG, R6S_CONFIG, COD_CONFIG, generateSequence }
 
 export class VetoService {
     private config: GameVetoConfig;
+    private poolSizeOverride: number | null;
 
-    constructor(game: string = 'valorant') {
+    /**
+     * @param game - Game identifier (e.g. 'valorant', 'cs2', 'rainbow six siege')
+     * @param mapPoolSize - Optional override. When provided, sequences are generated
+     *                      for this pool size instead of the game's default.
+     *                      Pass `availableMaps.length` to make veto fully dynamic.
+     */
+    constructor(game: string = 'valorant', mapPoolSize?: number) {
         const gameKey = game.toLowerCase();
         if (gameKey === 'valorant') {
             this.config = VALORANT_CONFIG;
@@ -17,10 +24,19 @@ export class VetoService {
         } else {
             this.config = VALORANT_CONFIG;
         }
+        this.poolSizeOverride = mapPoolSize ?? null;
+    }
+
+    /** Effective pool size — override if provided, else game default */
+    get mapPoolSize(): number {
+        return this.poolSizeOverride ?? this.config.mapPoolSize;
     }
 
     getSequence(bestOf: BestOf): VetoStep[] {
-        // Use per-format override if provided, otherwise generate dynamically
+        // If pool size is overridden, always generate fresh (overrides don't apply)
+        if (this.poolSizeOverride !== null) {
+            return generateSequence(this.poolSizeOverride, bestOf, this.config.bo1Style);
+        }
         return this.config.overrides?.[bestOf]
             ?? generateSequence(this.config.mapPoolSize, bestOf, this.config.bo1Style);
     }

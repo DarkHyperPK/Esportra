@@ -287,10 +287,6 @@ export const useMapVetoMachine = ({
     forcedTeamId,
     onComplete,
 }: UseMapVetoMachineProps) => {
-    // Initialize VetoService for the specific game
-    const service = useMemo(() => new VetoService(game), [game]);
-    const localSequences = useMemo(() => getLocalSequences(service), [service]);
-
     const { user } = useAuth();
     const { currentRole, switchRole } = useRole();
     const { toast } = useToast();
@@ -314,6 +310,11 @@ export const useMapVetoMachine = ({
     // Side selection state
     const [showSideDialog, setShowSideDialog] = useState(false);
     const [pendingMapId, setPendingMapId] = useState<string | null>(null);
+
+    // VetoService: uses actual map pool size when maps are loaded, falls back to game default
+    const actualPoolSize = allAvailableMaps.length > 0 ? allAvailableMaps.length : undefined;
+    const service = useMemo(() => new VetoService(game, actualPoolSize), [game, actualPoolSize]);
+    const localSequences = useMemo(() => getLocalSequences(service), [service]);
 
     // Refs
     const copiedLinkTimeoutRef = useRef<NodeJS.Timeout>();
