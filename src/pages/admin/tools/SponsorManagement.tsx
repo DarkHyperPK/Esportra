@@ -65,7 +65,7 @@ const SponsorCard = ({
                         className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg"
                         style={{ backgroundColor: sponsor.accent_color }}
                     >
-                        {sponsor.logo_url ? <img src={sponsor.logo_url} loading="lazy" className="w-8 h-8 object-contain" /> : sponsor.name[0]}
+                        {sponsor.logo_url ? <img src={sponsor.logo_url} loading="lazy" className="w-8 h-8 rounded object-cover" /> : sponsor.name[0]}
                     </div>
                     <div className="flex gap-1">
                         <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-400 hover:text-white" onClick={() => onInvite(sponsor)} title="Invite User">
@@ -100,7 +100,7 @@ const SponsorCard = ({
                     </div>
                     <div className="text-center">
                         <p className="text-[10px] text-zinc-500 uppercase tracking-wider">CTR</p>
-                        <p className="text-sm font-bold text-emerald-400">{stats?.ctr || '0.0'}%</p>
+                        <p className="text-sm font-bold text-emerald-400">{stats?.ctr || '0%'}</p>
                     </div>
                 </div>
 
