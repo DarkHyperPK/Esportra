@@ -108,12 +108,13 @@ const Account = () => {
                             <label className="text-xs font-mono text-zinc-500 uppercase tracking-widest">Company Logo</label>
                             <div className="flex items-center gap-6">
                                 <div className="relative w-20 h-20 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden">
-                                    {(logoPreview || sponsor?.logo_url) ? (
+                                    {(logoPreview || (sponsor?.logo_url && sponsor.logo_url.startsWith('http'))) ? (
                                         <>
                                             <img
                                                 src={logoPreview || sponsor?.logo_url || ''}
                                                 alt="Logo"
                                                 className="w-full h-full object-contain p-2"
+                                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                             />
                                             {!uploadingLogo && (
                                                 <button
