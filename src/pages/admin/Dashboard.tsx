@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from '@/lib/apiClient';
 import Footer from "@/components/Footer";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, MapPin, Trophy, BarChart3, CreditCard, Shield, FileText, Settings, CheckCircle, Megaphone, Gavel } from "lucide-react";
+import { Users, MapPin, Trophy, BarChart3, CreditCard, Shield, FileText, Settings, CheckCircle, Megaphone, Gavel, Award } from "lucide-react";
 import { useAdmin } from "@/contexts/AdminContext";
 // Consolidated: use full UserManagement tool instead of AdminUsersList
 import AdminVenuesList from "@/components/admin/AdminVenuesList";
@@ -15,6 +15,7 @@ import VerificationPanel from "@/components/admin/VerificationPanel";
 import AuditLogs from "@/components/admin/AuditLogs";
 import UserManagement from "@/components/admin/UserManagement";
 import TournamentManagement from "@/components/admin/TournamentManagement";
+import LicenseManagement from "@/components/admin/LicenseManagement";
 
 import { Badge } from "@/components/ui/badge";
 
@@ -119,6 +120,7 @@ const AdminDashboard = () => {
               { id: 'venues', label: 'Venues', icon: MapPin, permission: 'venue:verify' as const },
               { id: 'payments', label: 'Payments', icon: CreditCard, permission: 'payment:process' as const },
               { id: 'verification', label: 'Verification', icon: CheckCircle, permission: 'verification:review' as const },
+              { id: 'licenses', label: 'Licenses', icon: Award, permission: 'verification:review' as const },
               { id: 'audit-logs', label: 'Audit Logs', icon: FileText, permission: 'audit:view' as const },
               { id: 'system', label: 'System', icon: Settings, permission: null },
             ].filter(item => !item.permission || admin.hasPermission(item.permission)).map(item => (
@@ -239,6 +241,7 @@ const AdminDashboard = () => {
           {activeTab === "venue-management" && admin.hasPermission('venue:verify') && <AdminVenuesList />}
           {activeTab === "payments" && admin.hasPermission('payment:process') && <AdminPayments displayType="full" />}
           {activeTab === "verification" && admin.hasPermission('verification:review') && <VerificationPanel onPendingCountChange={setPendingVerifications} />}
+          {activeTab === "licenses" && admin.hasPermission('verification:review') && <LicenseManagement />}
           {activeTab === "audit-logs" && admin.hasPermission('audit:view') && <AuditLogs />}
           
           {activeTab === "system" && (

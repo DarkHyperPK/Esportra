@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/apiClient";
 import { auditLog } from "@/lib/auditLog";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -144,6 +145,17 @@ const VerificationSystemTool = () => {
         } catch (userRoleError) {
           console.error('Error adding to user_roles:', userRoleError);
           toast({ title: 'Warning', description: 'Request approved but failed to grant active role permissions.', variant: 'destructive' });
+        }
+
+        // C. Create license record (ESP-OR/ESP-VO/ESP-BR ID)
+        try {
+          await apiClient.post('/api/admin/licenses', {
+            user_id: selectedRequest.user_id,
+            license_type: selectedRequest.requested_role,
+          });
+        } catch (licenseError) {
+          console.error('Error creating license:', licenseError);
+          toast({ title: 'Warning', description: 'Approved but failed to generate license ID. Assign manually from Licenses tab.', variant: 'destructive' });
         }
       }
 
