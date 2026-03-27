@@ -55,7 +55,6 @@ const StaffDashboard = React.lazy(() => import("./pages/staff/StaffDashboard"));
 const TeamsPage = React.lazy(() => import("./pages/player/Teams"));
 
 // Admin
-const AdminDashboard = React.lazy(() => import("./pages/admin/Dashboard"));
 const AdminManagement = React.lazy(() => import("./pages/admin/AdminManagement"));
 const AdminAccess = React.lazy(() => import("./pages/admin/AdminAccess"));
 const AdminRoleManagement = React.lazy(() => import("./pages/admin/tools/AdminManagement"));
