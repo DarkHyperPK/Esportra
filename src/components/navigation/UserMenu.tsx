@@ -323,9 +323,6 @@ const UserMenu = ({
               </>
             )}
 
-            {admin.isAdmin && (
-              <FramerDropdownItem to="/admin/dashboard">Admin Dashboard</FramerDropdownItem>
-            )}
           </div>
 
           <div className="border-t border-white/10 px-3 py-3">

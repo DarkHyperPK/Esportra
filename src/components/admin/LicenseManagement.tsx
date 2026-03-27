@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Award, Shield, ChevronLeft, ChevronRight, RefreshCw,
   Copy, Check, UserPlus, Ban, RotateCcw, Eye, Building, MapPin,
-  Trophy, FileText, Loader2, X
+  Trophy, FileText, Loader2, X, Zap
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -103,6 +103,9 @@ export default function LicenseManagement() {
   const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // Backfill state
+  const [backfillLoading, setBackfillLoading] = useState(false);
+
   // Assign dialog
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignEmail, setAssignEmail] = useState('');
@@ -134,6 +137,23 @@ export default function LicenseManagement() {
   }, [query, statusFilter, typeFilter, page, toast]);
 
   useEffect(() => { fetchLicenses(); }, [fetchLicenses]);
+
+  // ── Bulk backfill: issue organizer licenses to all unlicensed organizers ──
+
+  const backfillOrganizers = async () => {
+    setBackfillLoading(true);
+    try {
+      const res = await apiClient.post<{ issued: number }>('/api/admin/licenses/backfill', {
+        license_type: 'organizer',
+      });
+      toast({ title: 'Backfill complete', description: `${res.issued ?? 0} organizer license(s) issued.` });
+      fetchLicenses();
+    } catch (err: any) {
+      toast({ title: 'Backfill failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setBackfillLoading(false);
+    }
+  };
 
   // ── User detail ───────────────────────────────────────────────────────────
 
@@ -212,6 +232,10 @@ export default function LicenseManagement() {
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchLicenses} className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
             <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={backfillOrganizers} disabled={backfillLoading} className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10">
+            {backfillLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Zap className="w-4 h-4 mr-1" />}
+            Backfill Organizers
           </Button>
           <Button size="sm" onClick={() => setAssignOpen(true)} className="bg-rose-600 hover:bg-rose-700 text-white">
             <UserPlus className="w-4 h-4 mr-1" /> Assign License
