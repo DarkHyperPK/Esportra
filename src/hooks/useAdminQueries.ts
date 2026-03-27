@@ -236,7 +236,7 @@ export const useAdminVerifiedRoleCreate = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { user_id: string; role: string; verified_by: string }) =>
+    mutationFn: (data: { user_id: string; role: string; status: string; is_active: boolean }) =>
       apiClient.post('/api/admin/verified-roles', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.verificationRequests() });

@@ -127,7 +127,8 @@ const VerificationSystemTool = () => {
           await verifiedRoleCreate.mutateAsync({
             user_id: selectedRequest.user_id,
             role: selectedRequest.requested_role,
-            verified_by: '',
+            status: 'approved',
+            is_active: true,
           });
         } catch (verifiedRoleError) {
           console.error('Error adding to verified_roles:', verifiedRoleError);

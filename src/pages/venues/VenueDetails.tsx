@@ -424,7 +424,7 @@ const VenueDetails = () => {
                     <div className="bg-[#0a0a0c] border border-white/5 rounded-3xl p-6 sticky top-24">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-xl font-bold">Location & Contact</h3>
-                            {venue.venue_id && <VenueIdBadge venueId={venue.venue_id} />}
+                            {venue.venue_id && user?.id === venue.owner_id && <VenueIdBadge venueId={venue.venue_id} />}
                         </div>
 
                         <div className="space-y-6">
