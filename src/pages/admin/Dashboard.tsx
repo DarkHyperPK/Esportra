@@ -20,7 +20,7 @@ import LicenseManagement from "@/components/admin/LicenseManagement";
 import { Badge } from "@/components/ui/badge";
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
