@@ -32,8 +32,7 @@ interface LicenseRow {
   username: string;
   email: string;
   avatar_url: string | null;
-  first_name: string | null;
-  last_name: string | null;
+  full_name: string | null;
 }
 
 interface UserDetail {
@@ -41,8 +40,7 @@ interface UserDetail {
     id: string;
     username: string;
     email: string;
-    first_name: string | null;
-    last_name: string | null;
+    full_name: string | null;
     avatar_url: string | null;
     is_admin: boolean;
     admin_roles: string[] | null;
@@ -419,7 +417,7 @@ export default function LicenseManagement() {
                     </div>
                   )}
                   <div>
-                    <div className="text-lg font-semibold">{detailUser.profile.first_name} {detailUser.profile.last_name}</div>
+                    <div className="text-lg font-semibold">{detailUser.profile.full_name || detailUser.profile.username}</div>
                     <div className="text-xs text-zinc-400 font-normal">@{detailUser.profile.username} · {detailUser.profile.email}</div>
                   </div>
                 </DialogTitle>
