@@ -51,7 +51,7 @@ interface UserDetail {
   verified_roles: { role: string; status: string; is_active: boolean; verified_at: string }[];
   organizations: { id: string; name: string; slug: string; logo_url: string | null }[];
   venues: { id: string; name: string; city: string | null; country: string | null; status: string }[];
-  tournaments: { id: string; title: string; game: string; status: string }[];
+  tournaments: { id: string; name: string; game: string; status: string }[];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -529,7 +529,7 @@ export default function LicenseManagement() {
                     <div className="space-y-1">
                       {detailUser.tournaments.map(t => (
                         <div key={t.id} className="flex items-center gap-2 text-xs py-1">
-                          <span className="text-white font-medium">{t.title}</span>
+                          <span className="text-white font-medium">{t.name}</span>
                           <span className="text-zinc-500">{t.game}</span>
                           <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${t.status === 'published' ? 'text-emerald-400' : t.status === 'completed' ? 'text-blue-400' : 'text-zinc-500'}`}>{t.status}</span>
                         </div>
