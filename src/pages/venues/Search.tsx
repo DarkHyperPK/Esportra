@@ -1,26 +1,41 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Footer from '@/components/Footer';
 import LocationFilter from '@/components/LocationFilter';
 import { VenueCard } from '@/components/venues/VenueCard';
 import { Button } from '@/components/ui/button';
-import { Filter, MapPin, Loader2 } from 'lucide-react';
+import { Filter, MapPin, Loader2, X, ChevronDown } from 'lucide-react';
 import { useVenueSearch, NearMeParams } from '@/hooks/useVenueSearch';
 import { Skeleton } from "@/components/ui/skeleton";
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/apiClient';
+
+interface VenueFilters {
+  cities: string[];
+  countries: string[];
+}
 
 const VenueSearch = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [nearMeActive, setNearMeActive] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
   const { toast } = useToast();
   const { venues, loading, searchVenues } = useVenueSearch();
+
+  const { data: filters } = useQuery<VenueFilters>({
+    queryKey: ['venue-filters'],
+    queryFn: () => apiClient.get<VenueFilters>('/api/venues/filters'),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     setNearMeActive(false);
-    searchVenues({ query });
+    searchVenues({ query, country: selectedCountry || undefined, city: selectedCity || undefined });
   };
 
   const handleLocationChange = (location: { latitude: number | null; longitude: number | null }) => {
@@ -29,6 +44,19 @@ const VenueSearch = () => {
 
   const handleDistanceChange = (distance: string) => {
     searchVenues({ distance });
+  };
+
+  const handleCountryChange = (country: string) => {
+    setSelectedCountry(country);
+    setSelectedCity('');
+    setNearMeActive(false);
+    searchVenues({ query: searchQuery || undefined, country: country || undefined, city: undefined });
+  };
+
+  const handleCityChange = (city: string) => {
+    setSelectedCity(city);
+    setNearMeActive(false);
+    searchVenues({ query: searchQuery || undefined, country: selectedCountry || undefined, city: city || undefined });
   };
 
   const handleNearMe = () => {
@@ -50,7 +78,8 @@ const VenueSearch = () => {
         };
         setNearMeActive(true);
         setLocating(false);
-        // Pass nearMe directly in params — no timing issue
+        setSelectedCountry('');
+        setSelectedCity('');
         searchVenues({ nearMe: coords });
       },
       () => {
@@ -70,6 +99,24 @@ const VenueSearch = () => {
     searchVenues({ query: searchQuery });
   };
 
+  const handleClearFilters = () => {
+    setSelectedCountry('');
+    setSelectedCity('');
+    setNearMeActive(false);
+    setSearchQuery('');
+    searchVenues({});
+  };
+
+  const hasActiveFilters = selectedCountry || selectedCity || nearMeActive;
+
+  // Filter cities by selected country if available
+  const availableCities = filters?.cities?.filter(city => {
+    if (!selectedCountry) return true;
+    // If country is selected, we show all cities from the API
+    // (The API returns all cities from published venues — city filtering is server-side)
+    return true;
+  }) ?? [];
+
   return (
     <div className="min-h-screen bg-esports-dark text-white flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-8">
@@ -83,39 +130,84 @@ const VenueSearch = () => {
           />
         </div>
 
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-gaming-purple">
-              <Filter className="mr-2" />
-              Filters
-            </Button>
+        {/* Filter Bar */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          {/* Country Dropdown */}
+          {filters?.countries && filters.countries.length > 0 && (
+            <div className="relative">
+              <select
+                value={selectedCountry}
+                onChange={(e) => handleCountryChange(e.target.value)}
+                className="appearance-none bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-zinc-700 transition-colors"
+              >
+                <option value="">All Countries</option>
+                {filters.countries.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+            </div>
+          )}
 
-            {nearMeActive ? (
-              <Button
-                variant="outline"
-                className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
-                onClick={handleClearNearMe}
+          {/* City Dropdown */}
+          {availableCities.length > 0 && (
+            <div className="relative">
+              <select
+                value={selectedCity}
+                onChange={(e) => handleCityChange(e.target.value)}
+                className="appearance-none bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-zinc-700 transition-colors"
               >
-                <MapPin className="w-4 h-4 mr-2 fill-emerald-400" />
-                Near Me &nbsp;✕
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                className="border-white/20 hover:border-white/40"
-                onClick={handleNearMe}
-                disabled={locating}
-              >
-                {locating
-                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  : <MapPin className="w-4 h-4 mr-2" />
-                }
-                Near Me
-              </Button>
-            )}
-          </div>
-          <div className="text-gray-400">
-            Showing {venues.length} venue{venues.length !== 1 ? 's' : ''}
+                <option value="">All Cities</option>
+                {availableCities.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+            </div>
+          )}
+
+          {/* Near Me */}
+          {nearMeActive ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+              onClick={handleClearNearMe}
+            >
+              <MapPin className="w-4 h-4 mr-2 fill-emerald-400" />
+              Near Me &nbsp;✕
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-zinc-800 hover:border-zinc-700"
+              onClick={handleNearMe}
+              disabled={locating}
+            >
+              {locating
+                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                : <MapPin className="w-4 h-4 mr-2" />
+              }
+              Near Me
+            </Button>
+          )}
+
+          {/* Clear All */}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-zinc-500 hover:text-white"
+              onClick={handleClearFilters}
+            >
+              <X className="w-4 h-4 mr-1" /> Clear filters
+            </Button>
+          )}
+
+          {/* Count */}
+          <div className="ml-auto text-sm text-zinc-500">
+            {venues.length} venue{venues.length !== 1 ? 's' : ''}
             {nearMeActive ? ' nearby' : ''}
           </div>
         </div>
@@ -173,7 +265,9 @@ const VenueSearch = () => {
             <p className="text-sm text-gray-500">
               {nearMeActive
                 ? 'No venues within 50 km. Try clearing the Near Me filter.'
-                : 'Try adjusting your search parameters'}
+                : hasActiveFilters
+                  ? 'No venues match your filters. Try broadening your search.'
+                  : 'Try adjusting your search parameters'}
             </p>
           </div>
         )}

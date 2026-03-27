@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from '@/lib/apiClient';
-import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
+import { fetchGameData } from '@/hooks/useRawgGame';
 
 interface TournamentRegistration {
   id: string;
@@ -105,38 +105,22 @@ const PlayerTournaments = () => {
     fetchTournaments();
   }, [user]);
 
-  // Fetch RAWG images for each game via proxy
+  // Fetch RAWG images for each game via shared cache
   useEffect(() => {
     const fetchImages = async () => {
       const newImages: Record<string, { logo: string | null; banner: string | null }> = {};
+      const uniqueGames = Array.from(new Set(tournaments.map(t => t.game)));
+
       await Promise.all(
-        tournaments.map(async (tournament) => {
-          const searchName = tournament.game.trim().toLowerCase() === 'cs2' ? 'Counter-Strike 2' : tournament.game;
-          try {
-            const data = await rawgSearchGames(searchName);
-            if (data?.results?.length > 0) {
-              const gameData = data.results[0];
-              let banner = null;
-              try {
-                const screenshotsData = await rawgGetScreenshots(gameData.id);
-                if (screenshotsData?.results?.length > 0) {
-                  banner = screenshotsData.results[0].image;
-                } else {
-                  banner = gameData.background_image_additional || gameData.background_image || null;
-                }
-              } catch {
-                banner = gameData.background_image_additional || gameData.background_image || null;
-              }
-              newImages[tournament.id] = {
-                logo: gameData.background_image || null,
-                banner,
-              };
-            } else {
-              newImages[tournament.id] = { logo: null, banner: null };
-            }
-          } catch {
-            newImages[tournament.id] = { logo: null, banner: null };
-          }
+        uniqueGames.map(async (game) => {
+          const cached = await fetchGameData(game);
+          // Map back to all tournaments with this game
+          tournaments.filter(t => t.game === game).forEach(t => {
+            newImages[t.id] = {
+              logo: cached.gameLogo,
+              banner: cached.gameBanner,
+            };
+          });
         })
       );
       setGameImages(newImages);

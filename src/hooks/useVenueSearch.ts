@@ -20,6 +20,7 @@ export interface NearMeParams {
 export interface VenueSearchParams {
   query?: string;
   city?: string;
+  country?: string;
   distance?: string;
   latitude?: number | null;
   longitude?: number | null;
@@ -58,6 +59,7 @@ export const useVenueSearch = (options: VenueSearchOptions = {}) => {
         const qs = new URLSearchParams();
         if (searchParams.query)        qs.set('q', searchParams.query);
         if (searchParams.city)         qs.set('city', searchParams.city);
+        if (searchParams.country)      qs.set('country', searchParams.country);
         if (options.includeOwned)      qs.set('includeOwned', 'true');
         qs.set('limit',  String(searchParams.pageSize ?? 20));
         qs.set('offset', String(((searchParams.page ?? 1) - 1) * (searchParams.pageSize ?? 20)));

@@ -22,7 +22,7 @@ import esportsGames from '@/data/esportsGames.json';
 import EditTeamDialog from '@/components/player/EditTeamDialog';
 import PlayerCard from '@/components/player/PlayerCard';
 import { sendEmail } from '@/hooks/useEmail';
-import { rawgSearchGames } from '@/lib/rawgProxy';
+import { fetchGameData } from '@/hooks/useRawgGame';
 
 const TeamsPage = () => {
   const { user, profile } = useAuth();
@@ -152,11 +152,8 @@ const TeamsPage = () => {
       const newImages: Record<string, string> = {};
       await Promise.all(missing.map(async (g) => {
         try {
-          const searchName = String(g).trim().toLowerCase() === 'cs2' ? 'Counter-Strike 2' : g;
-          const data = await rawgSearchGames(searchName, 1);
-          if (data?.results?.length > 0) {
-            newImages[g] = data.results[0].background_image || '';
-          }
+          const cached = await fetchGameData(g);
+          if (cached.gameLogo) newImages[g] = cached.gameLogo;
         } catch {/* ignore */ }
       }));
       if (Object.keys(newImages).length > 0) {
@@ -232,29 +229,19 @@ const TeamsPage = () => {
   const fetchGameImages = async () => {
     setImagesLoading(true);
     const images: Record<string, string> = {};
-    const batchSize = 4;
     const games = esportsGames.games;
 
-    for (let i = 0; i < games.length; i += batchSize) {
-      const batch = games.slice(i, i + batchSize);
-      await Promise.all(
-        batch.map(async (game: any) => {
-          try {
-            const searchName = game.name.trim().toLowerCase() === 'cs2' ? 'Counter-Strike 2' : game.name;
-            const data = await rawgSearchGames(searchName, 1);
-            if (data?.results?.length > 0) {
-              images[game.name] = data.results[0].background_image || '';
-            }
-          } catch {
-            // ignore individual failures
-          }
-        })
-      );
-      setGameImages({ ...images });
-      if (i + batchSize < games.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
+    await Promise.all(
+      games.map(async (game: any) => {
+        try {
+          const cached = await fetchGameData(game.name);
+          if (cached.gameLogo) images[game.name] = cached.gameLogo;
+        } catch {
+          // ignore individual failures
+        }
+      })
+    );
+    setGameImages({ ...images });
     setImagesLoading(false);
   };
 

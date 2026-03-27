@@ -1,17 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check } from 'lucide-react';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useBranding } from '@/hooks/useBranding';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 import StepBranding from '@/components/onboarding/StepBranding';
-import StepLegal from '@/components/onboarding/StepLegal';
-
-const STEPS = [
-    { id: 'branding', label: 'Branding', description: 'Upload your brand assets' },
-    { id: 'legal', label: 'Agreement', description: 'Accept partnership terms' },
-];
 
 const OnboardingWizard = () => {
     const navigate = useNavigate();
@@ -24,14 +17,6 @@ const OnboardingWizard = () => {
         saveStep,
         completeOnboarding,
     } = useOnboarding();
-
-    const [activeStep, setActiveStep] = useState(0);
-
-    useEffect(() => {
-        if (!isLoading && meta) {
-            setActiveStep(meta.current_step || 0);
-        }
-    }, [isLoading, meta]);
 
     useEffect(() => {
         if (!isLoading && isCompleted) {
@@ -47,12 +32,9 @@ const OnboardingWizard = () => {
         );
     }
 
-    const handleSaveStep = async (stepName: string, stepData: Record<string, string | boolean | null>, nextStep: number) => {
-        await saveStep.mutateAsync({ stepName, stepData, nextStep });
-        setActiveStep(nextStep);
-    };
+    const handleSaveBranding = async (stepData: Record<string, string | boolean | null>) => {
+        await saveStep.mutateAsync({ stepName: 'branding', stepData, nextStep: 1 });
 
-    const handleComplete = async () => {
         let ip = 'unknown';
         try {
             const res = await fetch('https://api.ipify.org?format=json');
@@ -85,51 +67,18 @@ const OnboardingWizard = () => {
                     </span>
                 </div>
                 <span className="text-xs font-mono text-zinc-600 uppercase tracking-widest">
-                    Step {activeStep + 1} of {STEPS.length}
+                    Brand Setup
                 </span>
             </header>
 
             <div className="relative z-10 px-8 pt-6">
-                <div className="flex gap-2">
-                    {STEPS.map((step, idx) => (
-                        <div key={step.id} className="flex-1 flex flex-col gap-2">
-                            <div className="h-1 rounded-full overflow-hidden bg-zinc-900">
-                                <motion.div
-                                    className={`h-full rounded-full ${idx < activeStep
-                                        ? 'bg-emerald-500'
-                                        : idx === activeStep
-                                            ? 'bg-rose-500'
-                                            : 'bg-transparent'
-                                        }`}
-                                    initial={{ width: 0 }}
-                                    animate={{ width: idx <= activeStep ? '100%' : '0%' }}
-                                    transition={{ duration: 0.5, ease: 'easeOut' }}
-                                />
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${idx < activeStep
-                                        ? 'bg-emerald-500/20 text-emerald-400'
-                                        : idx === activeStep
-                                            ? 'bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/30'
-                                            : 'bg-zinc-900 text-zinc-600'
-                                        }`}
-                                >
-                                    {idx < activeStep ? (
-                                        <Check className="w-3.5 h-3.5" />
-                                    ) : (
-                                        idx + 1
-                                    )}
-                                </div>
-                                <span
-                                    className={`text-xs font-medium tracking-tight hidden sm:block ${idx === activeStep ? 'text-white' : 'text-zinc-600'
-                                        }`}
-                                >
-                                    {step.label}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
+                <div className="h-1 rounded-full overflow-hidden bg-zinc-900">
+                    <motion.div
+                        className="h-full rounded-full bg-rose-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: '100%' }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                    />
                 </div>
             </div>
 
@@ -137,27 +86,18 @@ const OnboardingWizard = () => {
                 <div className="w-full max-w-xl">
                     <AnimatePresence mode="wait">
                         <motion.div
-                            key={activeStep}
+                            key="branding"
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
                             transition={{ duration: 0.3 }}
                         >
-                            {activeStep === 0 && (
-                                <StepBranding
-                                    data={meta.steps.branding}
-                                    sponsorId={sponsorId || ''}
-                                    onSave={(d) => handleSaveStep('branding', d, 1)}
-                                    saving={saveStep.isPending}
-                                />
-                            )}
-                            {activeStep === 1 && (
-                                <StepLegal
-                                    onComplete={handleComplete}
-                                    onBack={() => setActiveStep(0)}
-                                    saving={completeOnboarding.isPending}
-                                />
-                            )}
+                            <StepBranding
+                                data={meta?.steps?.branding ?? {}}
+                                sponsorId={sponsorId || ''}
+                                onSave={handleSaveBranding}
+                                saving={saveStep.isPending || completeOnboarding.isPending}
+                            />
                         </motion.div>
                     </AnimatePresence>
                 </div>

@@ -35,6 +35,8 @@ export interface Tournament {
   is_public?: boolean;
   organizer_name?: string;
   organization_slug?: string;
+  venue_city?: string | null;
+  venue_country?: string | null;
 }
 
 type TournamentStatus = 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
@@ -61,6 +63,8 @@ interface ApiTournamentRow {
   current_participants: number;
   organizer_name: string;
   organization_slug: string | null;
+  venue_city: string | null;
+  venue_country: string | null;
 }
 
 function mapRow(item: ApiTournamentRow): Tournament {
@@ -88,15 +92,34 @@ function mapRow(item: ApiTournamentRow): Tournament {
     organizer_name:      item.organizer_name ?? 'Unknown',
     organization_slug:   item.organization_slug ?? undefined,
     is_public:           item.is_public,
+    venue_city:          item.venue_city,
+    venue_country:       item.venue_country,
   };
 }
 
-export function useTournaments(status?: TournamentStatus) {
+export interface TournamentFilterParams {
+  status?: TournamentStatus;
+  game?: string;
+  is_online?: boolean;
+  city?: string;
+  country?: string;
+}
+
+export function useTournaments(filters?: TournamentFilterParams | TournamentStatus) {
+  // Backward-compatible: accept string status or filter object
+  const filterObj: TournamentFilterParams = typeof filters === 'string'
+    ? { status: filters }
+    : (filters ?? {});
+
   return useQuery<Tournament[]>({
-    queryKey: ['tournaments', status],
+    queryKey: ['tournaments', filterObj],
     queryFn: async () => {
       const params = new URLSearchParams({ limit: '100', offset: '0' });
-      if (status) params.set('status', status);
+      if (filterObj.status) params.set('status', filterObj.status);
+      if (filterObj.game) params.set('game', filterObj.game);
+      if (filterObj.is_online !== undefined) params.set('is_online', String(filterObj.is_online));
+      if (filterObj.city) params.set('city', filterObj.city);
+      if (filterObj.country) params.set('country', filterObj.country);
 
       const rows = await apiClient.get<ApiTournamentRow[]>(`/api/tournaments?${params}`);
       return rows.map(mapRow);

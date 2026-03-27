@@ -18,11 +18,13 @@ export interface BaseTournament {
     date: string;
     time: string;
     venue: string | null;
+    venue_id?: string | null;
     is_online: boolean;
     max_participants: number;
     team_size: number;
     prize_pool: string;
     entry_fee: string | null;
+    start_date?: string;
     end_date?: string; // Added to support timeline display
     description: string;
     user_id: string; // Keep for legacy
@@ -34,6 +36,9 @@ export interface BaseTournament {
     check_in_deadline?: string | null;
     auto_remove_unchecked?: boolean;
     settings?: any;
+    organizer_name?: string;
+    venue_city?: string | null;
+    venue_country?: string | null;
     organizer?: {
         username: string;
         avatar_url?: string | null;

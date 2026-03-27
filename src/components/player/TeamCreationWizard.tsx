@@ -31,7 +31,7 @@ import {
   PlusCircle
 } from "lucide-react";
 import esportsGames from '@/data/esportsGames.json';
-import { rawgSearchGames } from '@/lib/rawgProxy';
+import { fetchGameData } from '@/hooks/useRawgGame';
 import CountrySelector from '@/components/ui/CountrySelector';
 import { detectUserCountry } from '@/utils/countries';
 
@@ -111,37 +111,24 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   const [gameImages, setGameImages] = useState<Record<string, string>>({});
   const [imagesLoading, setImagesLoading] = useState(true);
 
-  // Fetch game images from RAWG API with optimized loading
+  // Fetch game images via shared RAWG cache
   const fetchGameImages = async () => {
     setImagesLoading(true);
     const images: Record<string, string> = {};
-
-    const batchSize = 4;
     const games = esportsGames.games;
 
-    for (let i = 0; i < games.length; i += batchSize) {
-      const batch = games.slice(i, i + batchSize);
-      await Promise.all(
-        batch.map(async (game: Game) => {
-          try {
-            const searchName = game.name.trim().toLowerCase() === 'cs2' ? 'Counter-Strike 2' : game.name;
-            const data = await rawgSearchGames(searchName, 1);
-            if (data?.results?.length > 0) {
-              images[game.name] = data.results[0].background_image || '';
-            }
-          } catch {
-            // ignore individual failures
-          }
-        })
-      );
+    await Promise.all(
+      games.map(async (game: Game) => {
+        try {
+          const cached = await fetchGameData(game.name);
+          if (cached.gameLogo) images[game.name] = cached.gameLogo;
+        } catch {
+          // ignore individual failures
+        }
+      })
+    );
 
-      setGameImages({ ...images });
-
-      if (i + batchSize < games.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
-
+    setGameImages({ ...images });
     setImagesLoading(false);
   };
 

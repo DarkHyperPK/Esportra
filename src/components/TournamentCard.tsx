@@ -128,7 +128,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -8, scale: 1.01 }}
+      whileHover={{ y: -8 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       transition={{ duration: 0.3 }}
@@ -138,9 +138,8 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
       {/* 1. Background Image Layer */}
       <div className="absolute inset-0 z-0 bg-black">
         <motion.div
-          animate={{ scale: isHovered ? 1.05 : 1 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
           className="w-full h-full relative"
+          style={{ willChange: 'transform' }}
         >
           {/* 1. Custom Banner (if uploaded) - Highest Priority */}
           {image_url ? (
@@ -153,7 +152,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             />
           ) : (
             /* 2. RAWG Content (Carousel or Static) - Fallback */
-            <AnimatePresence mode="popLayout">
+            <AnimatePresence mode="wait">
               {screenshots.length > 0 ? (
                 <motion.img
                   key={screenshots[carouselIndex]}
@@ -185,7 +184,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
         <div className="flex gap-2">
           {getStatusBadge()}
           {!is_online && (
-            <Badge variant="outline" className="bg-black/60 border-white/10 backdrop-blur-md text-purple-400">
+            <Badge variant="outline" className="bg-black/70 border-white/10 text-purple-400">
               LAN
             </Badge>
           )}
@@ -193,12 +192,12 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
 
         <div className="flex text-xs font-medium text-gray-300 gap-2">
           {organizer_name && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 border border-white/10">
               <span className="text-gray-400">by</span>
               <span className="text-white truncate max-w-[100px]">{organizer_name}</span>
             </div>
           )}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 border border-white/10">
             <Users className="w-3.5 h-3.5" />
             <span>{current_participants}/{max_participants}</span>
           </div>
