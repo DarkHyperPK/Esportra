@@ -175,31 +175,33 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
             {value ? (
                 // Preview
                 <div className={cn(
-                    "relative rounded-lg overflow-hidden border border-zinc-700 bg-black/20",
-                    aspectRatio === 'banner' ? "aspect-video" : "aspect-square w-32"
+                    "relative rounded-xl overflow-hidden border border-zinc-800 bg-black/20 group",
+                    aspectRatio === 'banner' || aspectRatio === 'video' ? "aspect-video" : "aspect-square w-32"
                 )}>
                     <img
                         src={value}
                         alt="Preview"
                         className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end justify-center pb-4 gap-2">
                         <Button
                             type="button"
                             variant="secondary"
                             size="sm"
+                            className="bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 text-white text-xs"
                             onClick={() => inputRef.current?.click()}
                         >
-                            <RotateCcw className="w-4 h-4 mr-1" />
+                            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
                             Change
                         </Button>
                         <Button
                             type="button"
                             variant="destructive"
                             size="sm"
+                            className="bg-red-500/20 backdrop-blur-md border border-red-500/20 hover:bg-red-500/30 text-red-300 text-xs"
                             onClick={handleRemove}
                         >
-                            <X className="w-4 h-4 mr-1" />
+                            <X className="w-3.5 h-3.5 mr-1.5" />
                             Remove
                         </Button>
                     </div>
@@ -208,11 +210,11 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                 // Upload zone
                 <div
                     className={cn(
-                        "border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer relative",
-                        aspectRatio === 'banner' ? "aspect-video" : "aspect-square w-32",
+                        "group relative rounded-xl border transition-all cursor-pointer overflow-hidden",
+                        aspectRatio === 'banner' || aspectRatio === 'video' ? "aspect-video" : "aspect-square w-32",
                         isDragging
-                            ? "border-rose-500/50 bg-rose-500/5"
-                            : "border-zinc-700 hover:border-zinc-500 hover:bg-zinc-900/50",
+                            ? "border-rose-500/40 bg-rose-500/5 shadow-[0_0_30px_-5px_rgba(244,63,94,0.15)]"
+                            : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 hover:bg-zinc-900/80",
                         isUploading && "pointer-events-none"
                     )}
                     onDrop={handleDrop}
@@ -221,27 +223,33 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                     onClick={() => inputRef.current?.click()}
                 >
                     {isUploading ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-10 rounded-lg">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10 rounded-xl">
                             <Loader2 className="w-8 h-8 text-rose-500 animate-spin mb-2" />
                             <span className="text-sm font-medium text-white">Uploading...</span>
                         </div>
                     ) : null}
 
-                    <div className="flex flex-col items-center justify-center h-full">
-                        <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-3">
-                            {aspectRatio === 'banner' ? (
-                                <Upload className="w-6 h-6 text-zinc-400" />
-                            ) : (
-                                <ImageIcon className="w-6 h-6 text-zinc-400" />
-                            )}
+                    <div className="flex flex-col items-center justify-center h-full gap-3 px-4">
+                        <div className={cn(
+                            "w-11 h-11 rounded-xl flex items-center justify-center transition-colors",
+                            isDragging
+                                ? "bg-rose-500/10 border border-rose-500/30"
+                                : "bg-zinc-800/80 border border-zinc-700/50 group-hover:border-zinc-600"
+                        )}>
+                            <Upload className={cn(
+                                "w-5 h-5 transition-colors",
+                                isDragging ? "text-rose-400" : "text-zinc-500 group-hover:text-zinc-400"
+                            )} />
                         </div>
-                        <p className="text-sm text-zinc-400 mb-1">
-                            <span className="text-rose-400 font-medium">Click to upload</span>
-                            {' '}or drag and drop
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                            Recommended: {dimensions.width}×{dimensions.height} ({dimensions.display})
-                        </p>
+                        <div className="text-center">
+                            <p className="text-sm text-zinc-400">
+                                <span className="text-rose-400 font-semibold group-hover:text-rose-300 transition-colors">Click to upload</span>
+                                {' '}or drag and drop
+                            </p>
+                            <p className="text-[11px] text-zinc-600 mt-1">
+                                {dimensions.width}×{dimensions.height} ({dimensions.display}) • Max 10MB
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}

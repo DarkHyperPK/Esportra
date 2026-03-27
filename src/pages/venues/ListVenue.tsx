@@ -508,43 +508,41 @@ const ListVenue = () => {
                     </div>
 
                     {/* Card Banner Upload */}
-                    <div className="p-6 rounded-2xl bg-[#0a0a0c] border border-white/5 mb-8">
-                      <div className="flex items-center gap-3 mb-1">
-                        <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-                          <ImageIcon className="w-4 h-4 text-rose-500" />
+                    <div className="p-6 rounded-2xl bg-[#0a0a0c] border border-white/5 mb-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                          <ImageIcon className="w-4 h-4 text-rose-400" />
                         </div>
                         <div>
                           <h3 className="text-sm font-bold text-white">Card Banner</h3>
                           <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Displayed on search results • 16:9 aspect</p>
                         </div>
                       </div>
-                      <div className="max-w-lg mt-4">
-                        <ImageUploader
-                          value={formData.card_image || null}
-                          onChange={(url) => setFormData(prev => ({ ...prev, card_image: url || '' }))}
-                          bucket="venue-images"
-                          folder={`uploads/${user?.id}/cards`}
-                          aspectRatio="video"
-                          label=""
-                        />
-                      </div>
+                      <ImageUploader
+                        value={formData.card_image || null}
+                        onChange={(url) => setFormData(prev => ({ ...prev, card_image: url || '' }))}
+                        bucket="venue-images"
+                        folder={`uploads/${user?.id}/cards`}
+                        aspectRatio="video"
+                        label=""
+                      />
                     </div>
 
                     {/* Gallery Images */}
                     <div className="p-6 rounded-2xl bg-[#0a0a0c] border border-white/5">
                       <div className="flex items-center gap-3 mb-5">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                          <ImageIcon className="w-4 h-4 text-emerald-500" />
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                          <ImageIcon className="w-4 h-4 text-emerald-400" />
                         </div>
                         <div>
                           <h3 className="text-sm font-bold text-white">Showcase Gallery</h3>
                           <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">Up to 3 images • The first image is your main cover</p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                         {[0, 1, 2].map((idx) => (
-                          <div key={idx} className="space-y-2">
-                            <div className="flex items-center gap-2">
+                          <div key={idx}>
+                            <div className="flex items-center gap-2 mb-2">
                               <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
                                 {idx === 0 ? "Main Cover" : `Image ${idx + 1}`}
                               </span>
