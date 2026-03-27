@@ -65,7 +65,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent z-10" />
                         <div className="absolute inset-0 bg-gradient-to-b from-[#050505] via-transparent to-transparent z-10" />
                         <img
-                            src={tournament.image_url || '/placeholder.jpg'}
+                            src={tournament.image_url || '/placeholder.svg'}
                             alt={tournament.name}
                             className="w-full h-full object-cover contrast-110"
                         />

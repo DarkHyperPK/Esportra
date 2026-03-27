@@ -167,7 +167,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
                 />
               ) : (
                 <img
-                  src={gameBanner || '/placeholder.jpg'}
+                  src={gameBanner || '/placeholder.svg'}
                   className="w-full h-full object-cover object-center opacity-30"
                   alt={game}
                 />
