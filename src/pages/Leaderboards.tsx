@@ -4,11 +4,10 @@ import { Trophy, Medal, Star, Swords, Crown, ChevronDown, Users, User, Flame, Ta
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { getCountryFlag, getCountryFlagUrl } from '@/utils/countries';
-import CountrySelector from '@/components/ui/CountrySelector';
-import { Globe } from 'lucide-react';
+import { Globe, X } from 'lucide-react';
 import EntityAvatar from '@/components/ui/EntityAvatar';
-import esportsGames from '@/data/esportsGames.json';
 import { isBattleRoyale } from '@/utils/gameFeatures';
+import { useQuery } from '@tanstack/react-query';
 
 // ── Types ──
 interface TeamStats {
@@ -37,8 +36,12 @@ interface PlayerStats {
     rp: number;
 }
 
+interface LeaderboardFilters {
+    games: string[];
+    countries: string[];
+}
+
 // ── Constants ──
-const GAMES = ['All Games', ...esportsGames.games.map(g => g.name)];
 const RP_PER_WIN = 50;
 const RP_PER_LOSS = -10;
 const RP_PER_TOURNAMENT_WIN = 500;
@@ -55,12 +58,19 @@ const RANK_ICONS = [Crown, Medal, Award];
 // ── Page Component ──
 const Leaderboards: React.FC = () => {
     const [category, setCategory] = useState<'teams' | 'players'>('teams');
-    const [game, setGame] = useState('All Games');
+    const [game, setGame] = useState('');
     const [gameMenuOpen, setGameMenuOpen] = useState(false);
     const [teams, setTeams] = useState<TeamStats[]>([]);
     const [players, setPlayers] = useState<PlayerStats[]>([]);
-    const [country, setCountry] = useState('All Countries');
+    const [country, setCountry] = useState('');
     const [loading, setLoading] = useState(true);
+
+    // Fetch filter options (only games/countries with actual leaderboard data)
+    const { data: filterOptions } = useQuery<LeaderboardFilters>({
+        queryKey: ['leaderboard-filters'],
+        queryFn: () => apiClient.get<LeaderboardFilters>('/api/leaderboards/filters'),
+        staleTime: 5 * 60 * 1000,
+    });
 
     // ── Fetch Team Leaderboard ──
     useEffect(() => {
@@ -70,8 +80,8 @@ const Leaderboards: React.FC = () => {
         const fetchTeams = async () => {
             try {
                 const params = new URLSearchParams();
-                if (game !== 'All Games') params.set('game', game);
-                if (country !== 'All Countries') params.set('country', country);
+                if (game) params.set('game', game);
+                if (country) params.set('country', country);
                 const queryStr = params.toString() ? `?${params.toString()}` : '';
                 const stats = await apiClient.get<TeamStats[]>(`/api/leaderboards/teams${queryStr}`);
                 setTeams(stats || []);
@@ -93,8 +103,8 @@ const Leaderboards: React.FC = () => {
         const fetchPlayers = async () => {
             try {
                 const params = new URLSearchParams();
-                if (game !== 'All Games') params.set('game', game);
-                if (country !== 'All Countries') params.set('country', country);
+                if (game) params.set('game', game);
+                if (country) params.set('country', country);
                 const queryStr = params.toString() ? `?${params.toString()}` : '';
                 const stats = await apiClient.get<PlayerStats[]>(`/api/leaderboards/players${queryStr}`);
                 setPlayers((stats || []).filter(p => p.matches_played > 0));
@@ -169,7 +179,7 @@ const Leaderboards: React.FC = () => {
                             className="flex items-center gap-2 bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-rose-500/30 transition-all backdrop-blur-md"
                         >
                             <Target className="w-3.5 h-3.5 text-rose-400" />
-                            {game}
+                            {game || 'All Games'}
                             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gameMenuOpen ? 'rotate-180' : ''}`} />
                         </button>
                         <AnimatePresence>
@@ -180,7 +190,16 @@ const Leaderboards: React.FC = () => {
                                     exit={{ opacity: 0, y: -8, scale: 0.95 }}
                                     className="absolute right-0 mt-2 w-56 bg-zinc-900/95 border border-white/10 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md z-50"
                                 >
-                                    {GAMES.map(g => (
+                                    <button
+                                        onClick={() => { setGame(''); setGameMenuOpen(false); }}
+                                        className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all ${!game
+                                            ? 'bg-rose-600/20 text-rose-300'
+                                            : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                                            }`}
+                                    >
+                                        All Games
+                                    </button>
+                                    {(filterOptions?.games ?? []).map(g => (
                                         <button
                                             key={g}
                                             onClick={() => { setGame(g); setGameMenuOpen(false); }}
@@ -197,22 +216,29 @@ const Leaderboards: React.FC = () => {
                         </AnimatePresence>
                     </div>
 
-                    {/* Country Filter */}
+                    {/* Country Filter — content-aware */}
                     <div className="flex items-center gap-2">
-                        <CountrySelector
-                            value={country === 'All Countries' ? '' : country}
-                            onChange={(val) => setCountry(val || 'All Countries')}
-                            placeholder="All Countries"
-                            className="w-48 !bg-zinc-900/60 !border-white/10 !rounded-2xl !px-5 !py-2.5 !text-xs !font-bold !uppercase !tracking-widest !h-[unset]"
-                        />
-                        {country !== 'All Countries' && (
+                        <div className="relative">
+                            <select
+                                value={country}
+                                onChange={(e) => setCountry(e.target.value)}
+                                className="appearance-none bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-2.5 pr-9 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-rose-500/30 transition-all backdrop-blur-md cursor-pointer focus:outline-none focus:border-rose-500/30"
+                            >
+                                <option value="">All Countries</option>
+                                {(filterOptions?.countries ?? []).map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
+                        </div>
+                        {country && (
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setCountry('All Countries')}
+                                onClick={() => setCountry('')}
                                 className="text-zinc-500 hover:text-white"
                             >
-                                Clear
+                                <X className="w-4 h-4" />
                             </Button>
                         )}
                     </div>
@@ -353,13 +379,13 @@ const Leaderboards: React.FC = () => {
                         <div>
                             <h3 className="text-sm font-black text-white uppercase tracking-tight">Ranking Points (RP)</h3>
                             <p className="text-xs text-zinc-500">
-                                {game !== 'All Games' && isBattleRoyale(game)
+                                {game && isBattleRoyale(game)
                                     ? 'Battle Royale scoring — placement + kills per game'
                                     : 'How rankings are calculated'}
                             </p>
                         </div>
                     </div>
-                    {game !== 'All Games' && isBattleRoyale(game) ? (
+                    {game && isBattleRoyale(game) ? (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             {[
                                 { label: 'Placement Pts', value: 'Per Game', icon: Target, color: 'text-emerald-400' },
