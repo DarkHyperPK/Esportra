@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Medal, Star, Swords, Crown, ChevronDown, Users, User, Flame, Target, Award, TrendingUp } from 'lucide-react';
+import { Trophy, Medal, Crown, ChevronDown, Users, Flame, Target, Award, TrendingUp, Swords, Star } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
-import { Button } from '@/components/ui/button';
-import { getCountryFlag, getCountryFlagUrl } from '@/utils/countries';
-import { Globe, X } from 'lucide-react';
+import { getCountryFlagUrl } from '@/utils/countries';
+import { Globe } from 'lucide-react';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { isBattleRoyale } from '@/utils/gameFeatures';
 import { useQuery } from '@tanstack/react-query';
@@ -20,19 +19,6 @@ interface TeamStats {
     losses: number;
     win_rate: number;
     tournaments_won: number;
-    rp: number;
-}
-
-interface PlayerStats {
-    id: string;
-    username: string;
-    avatar_url: string | null;
-    country_code: string | null;
-    matches_played: number;
-    wins: number;
-    losses: number;
-    win_rate: number;
-    mvps: number;
     rp: number;
 }
 
@@ -57,12 +43,11 @@ const RANK_ICONS = [Crown, Medal, Award];
 
 // ── Page Component ──
 const Leaderboards: React.FC = () => {
-    const [category, setCategory] = useState<'teams' | 'players'>('teams');
     const [game, setGame] = useState('');
     const [gameMenuOpen, setGameMenuOpen] = useState(false);
     const [teams, setTeams] = useState<TeamStats[]>([]);
-    const [players, setPlayers] = useState<PlayerStats[]>([]);
     const [country, setCountry] = useState('');
+    const [countryMenuOpen, setCountryMenuOpen] = useState(false);
     const [loading, setLoading] = useState(true);
 
     // Fetch filter options (only games/countries with actual leaderboard data)
@@ -74,7 +59,6 @@ const Leaderboards: React.FC = () => {
 
     // ── Fetch Team Leaderboard ──
     useEffect(() => {
-        if (category !== 'teams') return;
         setLoading(true);
 
         const fetchTeams = async () => {
@@ -93,32 +77,9 @@ const Leaderboards: React.FC = () => {
         };
 
         fetchTeams();
-    }, [category, game, country]);
+    }, [game, country]);
 
-    // ── Fetch Player Leaderboard ──
-    useEffect(() => {
-        if (category !== 'players') return;
-        setLoading(true);
-
-        const fetchPlayers = async () => {
-            try {
-                const params = new URLSearchParams();
-                if (game) params.set('game', game);
-                if (country) params.set('country', country);
-                const queryStr = params.toString() ? `?${params.toString()}` : '';
-                const stats = await apiClient.get<PlayerStats[]>(`/api/leaderboards/players${queryStr}`);
-                setPlayers((stats || []).filter(p => p.matches_played > 0));
-            } catch (err) {
-                console.error('Player leaderboard fetch error:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchPlayers();
-    }, [category, game, country]);
-
-    const data = category === 'teams' ? teams : players;
+    const data = teams;
 
     return (
         <div className="min-h-screen pb-20">
@@ -148,34 +109,18 @@ const Leaderboards: React.FC = () => {
             {/* Controls */}
             <div className="max-w-5xl mx-auto px-4 mb-8">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    {/* Category Toggle */}
+                    {/* Teams Label */}
                     <div className="flex items-center bg-zinc-900/60 border border-white/10 rounded-2xl p-1 backdrop-blur-md">
-                        <button
-                            onClick={() => setCategory('teams')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${category === 'teams'
-                                ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20'
-                                : 'text-zinc-500 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
+                        <div className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-rose-600 text-white shadow-lg shadow-rose-500/20">
                             <Users className="w-3.5 h-3.5" />
                             Teams
-                        </button>
-                        <button
-                            onClick={() => setCategory('players')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${category === 'players'
-                                ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20'
-                                : 'text-zinc-500 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            <User className="w-3.5 h-3.5" />
-                            Players
-                        </button>
+                        </div>
                     </div>
 
                     {/* Game Filter Dropdown */}
                     <div className="relative">
                         <button
-                            onClick={() => setGameMenuOpen(!gameMenuOpen)}
+                            onClick={() => { setGameMenuOpen(!gameMenuOpen); setCountryMenuOpen(false); }}
                             className="flex items-center gap-2 bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-rose-500/30 transition-all backdrop-blur-md"
                         >
                             <Target className="w-3.5 h-3.5 text-rose-400" />
@@ -216,31 +161,53 @@ const Leaderboards: React.FC = () => {
                         </AnimatePresence>
                     </div>
 
-                    {/* Country Filter — content-aware */}
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <select
-                                value={country}
-                                onChange={(e) => setCountry(e.target.value)}
-                                className="appearance-none bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-2.5 pr-9 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-rose-500/30 transition-all backdrop-blur-md cursor-pointer focus:outline-none focus:border-rose-500/30"
-                            >
-                                <option value="">All Countries</option>
-                                {(filterOptions?.countries ?? []).map(c => (
-                                    <option key={c} value={c}>{c}</option>
-                                ))}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
-                        </div>
-                        {country && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setCountry('')}
-                                className="text-zinc-500 hover:text-white"
-                            >
-                                <X className="w-4 h-4" />
-                            </Button>
-                        )}
+                    {/* Country Filter Dropdown — matching game dropdown style */}
+                    <div className="relative">
+                        <button
+                            onClick={() => { setCountryMenuOpen(!countryMenuOpen); setGameMenuOpen(false); }}
+                            className="flex items-center gap-2 bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-rose-500/30 transition-all backdrop-blur-md"
+                        >
+                            <Globe className="w-3.5 h-3.5 text-rose-400" />
+                            {country || 'All Countries'}
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${countryMenuOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        <AnimatePresence>
+                            {countryMenuOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                                    className="absolute right-0 mt-2 w-56 bg-zinc-900/95 border border-white/10 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md z-50 max-h-72 overflow-y-auto"
+                                >
+                                    <button
+                                        onClick={() => { setCountry(''); setCountryMenuOpen(false); }}
+                                        className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all ${!country
+                                            ? 'bg-rose-600/20 text-rose-300'
+                                            : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                                            }`}
+                                    >
+                                        All Countries
+                                    </button>
+                                    {(filterOptions?.countries ?? []).map(c => (
+                                        <button
+                                            key={c}
+                                            onClick={() => { setCountry(c); setCountryMenuOpen(false); }}
+                                            className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center gap-2 ${country === c
+                                                ? 'bg-rose-600/20 text-rose-300'
+                                                : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                                                }`}
+                                        >
+                                            <img
+                                                src={getCountryFlagUrl(c)}
+                                                alt={c}
+                                                className="w-5 h-3.5 object-cover rounded-sm"
+                                            />
+                                            {c}
+                                        </button>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
             </div>
@@ -276,11 +243,11 @@ const Leaderboards: React.FC = () => {
                         {/* Header Row */}
                         <div className="grid grid-cols-[60px,1fr,repeat(4,minmax(60px,100px)),100px] gap-2 px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">
                             <span>Rank</span>
-                            <span>{category === 'teams' ? 'Team' : 'Player'}</span>
+                            <span>Team</span>
                             <span className="text-center">Played</span>
                             <span className="text-center">Wins</span>
                             <span className="text-center">Win%</span>
-                            <span className="text-center">{category === 'teams' ? 'Trophies' : 'MVPs'}</span>
+                            <span className="text-center">Trophies</span>
                             <span className="text-right">RP</span>
                         </div>
 
@@ -317,15 +284,15 @@ const Leaderboards: React.FC = () => {
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="w-11 h-11 flex-shrink-0 flex items-center justify-center">
                                                 <EntityAvatar
-                                                    src={(entry as any).logo_url || (entry as any).avatar_url}
-                                                    name={(entry as any).name || (entry as any).username}
+                                                    src={(entry as any).logo_url}
+                                                    name={(entry as any).name}
                                                     entityId={entry.id}
-                                                    type={category === 'teams' ? 'team' : 'user'}
+                                                    type="team"
                                                     size="w-11 h-11"
                                                 />
                                             </div>
                                             <span className="text-sm font-bold text-white truncate group-hover:text-rose-300 transition-colors">
-                                                {(entry as any).name || (entry as any).username}
+                                                {(entry as any).name}
                                             </span>
                                             {entry.country_code && (
                                                 <img
@@ -342,11 +309,8 @@ const Leaderboards: React.FC = () => {
                                         <span className="text-center text-sm font-bold text-emerald-400 tabular-nums">{entry.wins}</span>
                                         <span className="text-center text-sm font-bold text-zinc-300 tabular-nums">{entry.win_rate}%</span>
                                         <span className="text-center text-sm font-bold text-yellow-400 tabular-nums flex items-center justify-center gap-1">
-                                            {category === 'teams' ? (entry as TeamStats).tournaments_won : (entry as PlayerStats).mvps}
-                                            {category === 'teams'
-                                                ? <Trophy className="w-3 h-3 text-yellow-500/60" />
-                                                : <Star className="w-3 h-3 text-yellow-500/60" />
-                                            }
+                                            {(entry as TeamStats).tournaments_won}
+                                            <Trophy className="w-3 h-3 text-yellow-500/60" />
                                         </span>
 
                                         {/* RP */}
