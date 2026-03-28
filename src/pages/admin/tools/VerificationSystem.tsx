@@ -25,14 +25,11 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import { apiClient } from "@/lib/apiClient";
 import { auditLog } from "@/lib/auditLog";
 import { useToast } from "@/hooks/use-toast";
 import {
   useAdminVerificationRequests,
   useAdminVerificationAction,
-  useAdminVerifiedRoleCreate,
-  useAdminUserRoleUpdate,
 } from "@/hooks/useAdminQueries";
 import {
   Dialog,
@@ -83,8 +80,6 @@ const VerificationSystemTool = () => {
   const { toast } = useToast();
   const { data: rawRequests, isLoading: loading, refetch } = useAdminVerificationRequests();
   const verificationAction = useAdminVerificationAction();
-  const verifiedRoleCreate = useAdminVerifiedRoleCreate();
-  const userRoleUpdate = useAdminUserRoleUpdate();
 
   const requests = useMemo<VerificationRequest[]>(() =>
     (rawRequests || []).map((r: any) => ({
@@ -114,61 +109,20 @@ const VerificationSystemTool = () => {
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
     try {
-      // 1. Update the request status
       await verificationAction.mutateAsync({
         requestId,
-        updates: { status: newStatus, updated_at: new Date().toISOString() }
+        updates: { status: newStatus }
       });
 
-      // 2. If approved, grant the roles
-      if (action === 'approve' && selectedRequest) {
-
-        // A. Add to verified_roles (Official Record)
-        try {
-          await verifiedRoleCreate.mutateAsync({
-            user_id: selectedRequest.user_id,
-            role: selectedRequest.requested_role,
-            status: 'approved',
-            is_active: true,
-          });
-        } catch (verifiedRoleError) {
-          console.error('Error adding to verified_roles:', verifiedRoleError);
-          toast({ title: 'Warning', description: 'Request approved but failed to update verified_roles table.', variant: 'destructive' });
-        }
-
-        // B. Add to user_roles (Functional Permission)
-        try {
-          await userRoleUpdate.mutateAsync({
-            user_id: selectedRequest.user_id,
-            role: selectedRequest.requested_role,
-          });
-        } catch (userRoleError) {
-          console.error('Error adding to user_roles:', userRoleError);
-          toast({ title: 'Warning', description: 'Request approved but failed to grant active role permissions.', variant: 'destructive' });
-        }
-
-        // C. Create license record (ESP-OR/ESP-VO/ESP-BR ID)
-        try {
-          await apiClient.post('/api/admin/licenses', {
-            user_id: selectedRequest.user_id,
-            license_type: selectedRequest.requested_role,
-          });
-        } catch (licenseError) {
-          console.error('Error creating license:', licenseError);
-          toast({ title: 'Warning', description: 'Approved but failed to generate license ID. Assign manually from Licenses tab.', variant: 'destructive' });
-        }
-      }
-
-      // 3. Log the action
       await auditLog.log(action as any, 'user', requestId, `${selectedRequest?.first_name} ${selectedRequest?.last_name}`, {
         status: newStatus,
         role: selectedRequest?.requested_role
       });
 
       toast({
-        title: action === 'approve' ? 'Request Approved & Role Granted' : 'Request Rejected',
+        title: action === 'approve' ? 'Request Approved' : 'Request Rejected',
         description: action === 'approve'
-          ? `User has been verified as ${selectedRequest?.requested_role.replace('_', ' ')}.`
+          ? `Application approved for ${selectedRequest?.requested_role.replace('_', ' ')}.`
           : 'Verification request has been rejected.'
       });
     } catch (error) {
@@ -512,19 +466,21 @@ const VerificationSystemTool = () => {
                             <Eye className="w-4 h-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10 cursor-pointer"
-                            onClick={() => {
-                              setSelectedRequest(request);
-                              setActionType('approve');
-                              setActionDialogOpen(true);
-                            }}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            {request.status === 'approved' ? 'Re-Approve (Sync)' : 'Approve'}
-                          </DropdownMenuItem>
+                          {request.status === 'pending' && (
+                            <DropdownMenuItem
+                              className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10 cursor-pointer"
+                              onClick={() => {
+                                setSelectedRequest(request);
+                                setActionType('approve');
+                                setActionDialogOpen(true);
+                              }}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Approve
+                            </DropdownMenuItem>
+                          )}
 
-                          {request.status !== 'rejected' && (
+                          {request.status === 'pending' && (
                             <DropdownMenuItem
                               className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer"
                               onClick={() => {
