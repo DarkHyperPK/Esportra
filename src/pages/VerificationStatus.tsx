@@ -183,23 +183,13 @@ const VerificationStatus: React.FC = () => {
                 <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Apply for License</h1>
                 <p className="text-zinc-400">Apply for and manage your organizer or venue owner licenses.</p>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={fetchVerificationData}
-                  variant="outline"
-                  className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh
-                </Button>
-                <Button
-                  onClick={() => navigate(-1)}
-                  variant="outline"
-                  className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                >
-                  Back
-                </Button>
-              </div>
+              <Button
+                onClick={() => navigate(-1)}
+                variant="outline"
+                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+              >
+                Back
+              </Button>
             </div>
           </div>
 
