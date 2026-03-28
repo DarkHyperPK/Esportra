@@ -3,9 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRole } from '@/contexts/RoleContext';
-import { Building2, Trophy, MapPin, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { ShieldCheck, Trophy, MapPin, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import VerificationWizard from './verification/wizard/VerificationWizard';
 // import OrganizerVerificationForm from './verification/OrganizerVerificationForm';
 // import VenueOwnerVerificationForm from './verification/VenueOwnerVerificationForm';
@@ -21,25 +19,10 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
   onCancel,
   requestedRole
 }) => {
-  const { user } = useAuth();
-  const { currentRole } = useRole();
   const { toast } = useToast();
   const [selectedRole, setSelectedRole] = useState<'organizer' | 'venue_owner' | null>(
     requestedRole || null
   );
-
-  // Determine which role to request verification for
-  const getRequestedRole = (): 'organizer' | 'venue_owner' => {
-    if (requestedRole) {
-      return requestedRole;
-    }
-    if (currentRole === 'casual') {
-      // Casual users can request organizer verification by default
-      return 'organizer';
-    }
-    // For other roles, default to organizer
-    return 'organizer';
-  };
 
   const handleRoleSelect = (role: 'organizer' | 'venue_owner') => {
     setSelectedRole(role);
@@ -62,51 +45,51 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
   // If no role selected, show role selection
   if (!selectedRole) {
     return (
-      <Card className="w-full max-w-4xl mx-auto bg-gray-800/50 border-gray-700">
+      <Card className="w-full max-w-4xl mx-auto bg-[#0a0a0c] border-white/10 rounded-3xl overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
-            <Building2 className="w-5 h-5" />
-            Request Verification
+            <ShieldCheck className="w-5 h-5 text-rose-400" />
+            Choose License Type
           </CardTitle>
-          <p className="text-gray-400 text-sm">
-            Choose the type of verification you need to access specialized features on our platform.
+          <p className="text-zinc-400 text-sm">
+            Select the license you want to apply for to unlock platform features.
           </p>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Organizer Option */}
             <Card
-              className="bg-gray-700/50 border-gray-600 hover:border-purple-500 cursor-pointer transition-all duration-200 hover:bg-gray-700/70"
+              className="bg-gradient-to-br from-[#121214] to-[#18181b] border-white/10 hover:border-rose-500/30 cursor-pointer transition-all duration-200 hover:-translate-y-1"
               onClick={() => handleRoleSelect('organizer')}
             >
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <Trophy className="w-8 h-8 text-purple-400" />
+                  <Trophy className="w-8 h-8 text-rose-400" />
                   <h3 className="text-xl font-semibold text-white">Tournament Organizer</h3>
                 </div>
-                <p className="text-gray-300 mb-4">
+                <p className="text-zinc-300 mb-4">
                   Create and manage tournaments, verify results, and organize gaming events for the community.
                 </p>
-                <div className="space-y-2 text-sm text-gray-400">
+                <div className="space-y-2 text-sm text-zinc-400">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400" />
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
                     <span>Create tournaments</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400" />
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
                     <span>Manage participants</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400" />
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
                     <span>Verify results</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-400" />
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
                     <span>Set prize pools</span>
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+                  <Button className="w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white shadow-lg shadow-rose-500/20">
                     Apply as Organizer
                   </Button>
                 </div>
@@ -115,7 +98,7 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
 
             {/* Venue Owner Option */}
             <Card
-              className="bg-gray-700/50 border-gray-600 hover:border-green-500 cursor-pointer transition-all duration-200 hover:bg-gray-700/70"
+              className="bg-gradient-to-br from-[#121214] to-[#18181b] border-white/10 hover:border-emerald-500/30 cursor-pointer transition-all duration-200 hover:-translate-y-1"
               onClick={() => handleRoleSelect('venue_owner')}
             >
               <CardContent className="p-6">
@@ -123,10 +106,10 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
                   <MapPin className="w-8 h-8 text-green-400" />
                   <h3 className="text-xl font-semibold text-white">Gaming Zone Owner</h3>
                 </div>
-                <p className="text-gray-300 mb-4">
+                <p className="text-zinc-300 mb-4">
                   List your gaming zone, manage bookings, and provide gaming spaces for tournaments and events.
                 </p>
-                <div className="space-y-2 text-sm text-gray-400">
+                <div className="space-y-2 text-sm text-zinc-400">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-400" />
                     <span>List gaming zones</span>
@@ -145,7 +128,7 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
+                  <Button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/20">
                     Apply as Venue Owner
                   </Button>
                 </div>
@@ -153,7 +136,7 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
             </Card>
           </div>
 
-          <Alert className="mt-6 bg-blue-900/20 border-blue-700">
+          <Alert className="mt-6 bg-blue-900/15 border-blue-500/30">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-blue-300">
               <strong>Important:</strong> Verification requests are reviewed by our admin team.
@@ -170,7 +153,7 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
                 type="button"
                 variant="outline"
                 onClick={onCancel}
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
               >
                 Cancel
               </Button>
@@ -185,12 +168,28 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
   if (selectedRole === 'organizer' || selectedRole === 'venue_owner') {
     return (
       <div className="max-w-4xl mx-auto p-4">
-        { /* Title Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0f0f12] p-4">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300 mb-2">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Verification Wizard
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-1">
             {selectedRole === 'organizer' ? 'Organizer Verification' : 'Venue Verification'}
-          </h1>
-          <p className="text-gray-400">Complete the steps below to verify your account.</p>
+            </h1>
+            <p className="text-zinc-400">Complete the steps below to verify your account.</p>
+          </div>
+          {!requestedRole && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSelectedRole(null)}
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Change Type
+            </Button>
+          )}
         </div>
 
         <VerificationWizard

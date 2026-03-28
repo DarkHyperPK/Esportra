@@ -9,7 +9,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useNavigate } from 'react-router-dom';
 import VerificationRequestForm from '@/components/VerificationRequestForm';
-import UserRolesDisplay from '@/components/UserRolesDisplay';
 import {
   Shield,
   Clock,
@@ -169,42 +168,45 @@ const VerificationStatus: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white">
+    <div className="min-h-screen bg-[#050505] text-white">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">License Portal</h1>
-              <p className="text-gray-400">Apply for and manage your professional licenses</p>
+          <div className="mb-8 rounded-3xl border border-white/10 bg-[#0a0a0c] p-6 md:p-8 relative overflow-hidden">
+            <div className="absolute -top-16 -right-16 w-56 h-56 bg-rose-500/10 blur-3xl rounded-full pointer-events-none" />
+            <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none" />
+            <div className="relative flex items-center justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] uppercase tracking-wider text-rose-300 mb-3">
+                  <Shield className="w-3.5 h-3.5" />
+                  License Portal
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Apply for License</h1>
+                <p className="text-zinc-400">Apply for and manage your organizer or venue owner licenses.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={fetchVerificationData}
+                  variant="outline"
+                  className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
+                <Button
+                  onClick={() => navigate(-1)}
+                  variant="outline"
+                  className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                >
+                  Back
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={fetchVerificationData}
-                variant="outline"
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-              <Button
-                onClick={() => navigate(-1)}
-                variant="outline"
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
-              >
-                Back
-              </Button>
-            </div>
-          </div>
-
-          {/* Debug: User Roles Display */}
-          <div className="mb-8">
-            <UserRolesDisplay />
           </div>
 
           {/* Verification Status Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* Organizer License */}
-            <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border-gray-700 hover:border-rose-500/30 transition-colors">
+            <Card className="bg-gradient-to-br from-[#0a0a0c] to-[#121214] border-white/10 hover:border-rose-500/30 transition-all hover:-translate-y-0.5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
                   <Trophy className="w-5 h-5 text-rose-400" />
@@ -242,7 +244,7 @@ const VerificationStatus: React.FC = () => {
                     </p>
                     <Button
                       onClick={() => { setRequestFor('organizer'); setShowRequestForm(true); }}
-                      className="bg-rose-600 hover:bg-rose-700 text-white"
+                      className="bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white shadow-lg shadow-rose-500/20"
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
                       Apply for License
@@ -253,7 +255,7 @@ const VerificationStatus: React.FC = () => {
             </Card>
 
             {/* Venue Owner License */}
-            <Card className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 border-gray-700 hover:border-emerald-500/30 transition-colors">
+            <Card className="bg-gradient-to-br from-[#0a0a0c] to-[#121214] border-white/10 hover:border-emerald-500/30 transition-all hover:-translate-y-0.5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
                   <Building2 className="w-5 h-5 text-emerald-400" />
@@ -291,7 +293,7 @@ const VerificationStatus: React.FC = () => {
                     </p>
                     <Button
                       onClick={() => { setRequestFor('venue_owner'); setShowRequestForm(true); }}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/20"
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
                       Apply for License
@@ -304,7 +306,7 @@ const VerificationStatus: React.FC = () => {
 
           {/* Application History */}
           {requests.length > 0 && (
-            <Card className="bg-gray-800/50 border-gray-700">
+            <Card className="bg-[#0a0a0c] border-white/10">
               <CardHeader>
                 <CardTitle className="text-white">Application History</CardTitle>
               </CardHeader>
@@ -367,10 +369,10 @@ const VerificationStatus: React.FC = () => {
           )}
 
           {/* Information Alert */}
-          <Alert className="mt-6 bg-blue-900/20 border-blue-700">
-            <Award className="h-4 w-4" />
-            <AlertDescription className="text-blue-300">
-              <strong>License Application Process:</strong> Our team reviews all license applications within 1-3 business days.
+            <Alert className="mt-6 bg-blue-900/15 border-blue-500/30">
+              <Award className="h-4 w-4" />
+              <AlertDescription className="text-blue-300">
+                <strong>License Application Process:</strong> Our team reviews all license applications within 1-3 business days.
               You'll receive an email notification once your application is processed. Please provide accurate business information.
             </AlertDescription>
           </Alert>
@@ -379,8 +381,8 @@ const VerificationStatus: React.FC = () => {
 
       {/* Verification Request Form Dialog */}
       {showRequestForm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-3xl border border-white/10 bg-[#09090b] shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
             <VerificationRequestForm
               requestedRole={requestFor || undefined}
               onSuccess={() => {
