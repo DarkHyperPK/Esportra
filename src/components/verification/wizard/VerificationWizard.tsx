@@ -208,7 +208,7 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
             }
 
             // Database Insert/Update via API (backend handles upsert logic)
-            await apiClient.post('/api/profiles/me/verification', payload);
+            await apiClient.post('/api/profiles/me/verification-requests', payload);
 
             toast({
                 title: 'Success!',
