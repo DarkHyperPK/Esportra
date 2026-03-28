@@ -413,6 +413,9 @@ export default function LicenseManagement() {
       {/* ── User Detail Dialog ─────────────────────────────────────────────── */}
       <Dialog open={!!detailUser || detailLoading} onOpenChange={(open) => { if (!open) setDetailUser(null); }}>
         <DialogContent className="bg-[#121214] border-zinc-800 text-white max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="sr-only">
+            <DialogTitle>User details</DialogTitle>
+          </DialogHeader>
           {detailLoading && !detailUser ? (
             <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-rose-400" /></div>
           ) : detailUser ? (
