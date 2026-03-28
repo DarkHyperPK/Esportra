@@ -54,6 +54,12 @@ interface UserDetail {
   tournaments: { id: string; name: string; game: string; status: string }[];
 }
 
+interface ProfileSearchResult {
+  id: string;
+  email?: string;
+  username?: string;
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const LICENSE_TYPE_LABEL: Record<string, string> = {
@@ -176,8 +182,12 @@ export default function LicenseManagement() {
   const handleAssign = async () => {
     setAssignLoading(true);
     try {
-      const searchResult = await apiClient.get<any>(`/api/profiles/search?email=${encodeURIComponent(assignEmail)}`);
-      const user = Array.isArray(searchResult) ? searchResult[0] : searchResult;
+      const email = assignEmail.trim();
+      const searchResult = await apiClient.get<ProfileSearchResult[]>(
+        `/api/profiles/search?q=${encodeURIComponent(email)}`
+      );
+      const exact = searchResult.find((p) => (p.email ?? '').toLowerCase() === email.toLowerCase());
+      const user = exact ?? (searchResult.length === 1 ? searchResult[0] : null);
       if (!user?.id) throw new Error('User not found with that email.');
 
       await apiClient.post('/api/admin/licenses', {
