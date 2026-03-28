@@ -42,7 +42,6 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
 
     const [currentStep, setCurrentStep] = useState(1);
     const [data, setData] = useState<VerificationWizardData>(loadDraft);
-    const [draftRestored, setDraftRestored] = useState(() => !!localStorage.getItem(draftKey));
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [stepValidation, setStepValidation] = useState<Record<number, boolean>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,7 +64,6 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
     // Helper to update form data
     const updateData = (updates: Partial<VerificationWizardData>) => {
         setData(prev => ({ ...prev, ...updates }));
-        setDraftRestored(false);
         // Clear errors for fields being updated
         const newErrors = { ...errors };
         Object.keys(updates).forEach(key => delete newErrors[key]);
@@ -274,19 +272,6 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
 
     return (
         <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden">
-            {/* Draft restored banner */}
-            {draftRestored && (
-                <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300">
-                    <span>📝 Draft restored from your previous session.</span>
-                    <button
-                        onClick={() => { setData(DEFAULT_VERIFICATION_DATA); clearDraft(); setDraftRestored(false); }}
-                        className="ml-3 text-xs underline hover:text-white"
-                    >
-                        Clear draft
-                    </button>
-                </div>
-            )}
-
             {/* Progress */}
             <WizardProgress
                 currentStep={currentStep}
