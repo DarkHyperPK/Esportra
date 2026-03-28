@@ -19,12 +19,30 @@ interface VerificationWizardProps {
     onCancel?: () => void;
 }
 
+const DRAFT_KEY_PREFIX = 'esportra_verification_draft_';
+
 const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess, onCancel }) => {
     const { user } = useAuth();
     const { toast } = useToast();
 
+    const draftKey = `${DRAFT_KEY_PREFIX}${role}`;
+
+    // Load draft from localStorage on init
+    const loadDraft = (): VerificationWizardData => {
+        try {
+            const saved = localStorage.getItem(draftKey);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // File fields can't be serialized — keep them null
+                return { ...DEFAULT_VERIFICATION_DATA, ...parsed, cnicFront: null, cnicBack: null, venueExterior: null, venueInterior: null, gamingArea: null };
+            }
+        } catch { /* ignore corrupt draft */ }
+        return DEFAULT_VERIFICATION_DATA;
+    };
+
     const [currentStep, setCurrentStep] = useState(1);
-    const [data, setData] = useState<VerificationWizardData>(DEFAULT_VERIFICATION_DATA);
+    const [data, setData] = useState<VerificationWizardData>(loadDraft);
+    const [draftRestored, setDraftRestored] = useState(() => !!localStorage.getItem(draftKey));
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [stepValidation, setStepValidation] = useState<Record<number, boolean>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,9 +50,22 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
     const STEPS = role === 'organizer' ? ORGANIZER_STEPS : VENUE_OWNER_STEPS;
     const isLastStep = currentStep === STEPS.length;
 
+    // Autosave text/number fields to localStorage (debounced)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            // Strip File objects before saving
+            const { cnicFront, cnicBack, venueExterior, venueInterior, gamingArea, ...serializable } = data;
+            localStorage.setItem(draftKey, JSON.stringify(serializable));
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [data, draftKey]);
+
+    const clearDraft = () => localStorage.removeItem(draftKey);
+
     // Helper to update form data
     const updateData = (updates: Partial<VerificationWizardData>) => {
         setData(prev => ({ ...prev, ...updates }));
+        setDraftRestored(false);
         // Clear errors for fields being updated
         const newErrors = { ...errors };
         Object.keys(updates).forEach(key => delete newErrors[key]);
@@ -216,6 +247,7 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
                 variant: 'default'
             });
 
+            clearDraft();
             if (onSuccess) onSuccess();
 
         } catch (error) {
@@ -242,6 +274,19 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
 
     return (
         <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden">
+            {/* Draft restored banner */}
+            {draftRestored && (
+                <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300">
+                    <span>📝 Draft restored from your previous session.</span>
+                    <button
+                        onClick={() => { setData(DEFAULT_VERIFICATION_DATA); clearDraft(); setDraftRestored(false); }}
+                        className="ml-3 text-xs underline hover:text-white"
+                    >
+                        Clear draft
+                    </button>
+                </div>
+            )}
+
             {/* Progress */}
             <WizardProgress
                 currentStep={currentStep}
