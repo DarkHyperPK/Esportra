@@ -232,6 +232,40 @@ export const useAdminVerificationAction = () => {
   });
 };
 
+export const useAdminVerificationDelete = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (requestId: string) =>
+      apiClient.delete(`/api/admin/verification-requests/${requestId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.verificationRequests() });
+      toast({ title: 'Verification request deleted' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
+    },
+  });
+};
+
+export const useAdminLicenseDelete = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (licenseId: string) =>
+      apiClient.delete(`/api/admin/licenses/${licenseId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      toast({ title: 'License deleted' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
+    },
+  });
+};
+
 export const useAdminVerifiedRoleCreate = () => {
   const queryClient = useQueryClient();
 

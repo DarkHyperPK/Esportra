@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   useAdminVerificationRequests,
   useAdminVerificationAction,
+  useAdminVerificationDelete,
 } from "@/hooks/useAdminQueries";
 import {
   Dialog,
@@ -80,6 +81,7 @@ const VerificationSystemTool = () => {
   const { toast } = useToast();
   const { data: rawRequests, isLoading: loading, refetch } = useAdminVerificationRequests();
   const verificationAction = useAdminVerificationAction();
+  const verificationDelete = useAdminVerificationDelete();
 
   const requests = useMemo<VerificationRequest[]>(() =>
     (rawRequests || []).map((r: any) => ({
@@ -493,6 +495,18 @@ const VerificationSystemTool = () => {
                               Reject
                             </DropdownMenuItem>
                           )}
+
+                          <DropdownMenuItem
+                            className="text-red-500 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
+                            onClick={() => {
+                              if (confirm('Delete this verification request permanently?')) {
+                                verificationDelete.mutate(request.id);
+                              }
+                            }}
+                          >
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>

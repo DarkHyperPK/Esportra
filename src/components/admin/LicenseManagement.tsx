@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Award, Shield, ChevronLeft, ChevronRight, RefreshCw,
   Copy, Check, UserPlus, Ban, RotateCcw, Eye, Building, MapPin,
-  Trophy, FileText, Loader2, X
+  Trophy, FileText, Loader2, X, Trash2
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -179,6 +179,18 @@ export default function LicenseManagement() {
     }
   };
 
+  const deleteLicense = async (licenseId: string) => {
+    if (!confirm('Delete this license permanently?')) return;
+    try {
+      await apiClient.delete(`/api/admin/licenses/${licenseId}`);
+      toast({ title: 'License deleted' });
+      fetchLicenses();
+      setDetailUser(null);
+    } catch (err: any) {
+      toast({ title: 'Delete failed', description: err.message, variant: 'destructive' });
+    }
+  };
+
   const handleAssign = async () => {
     setAssignLoading(true);
     try {
@@ -343,6 +355,9 @@ export default function LicenseManagement() {
                             <RotateCcw className="w-4 h-4" />
                           </button>
                         )}
+                        <button onClick={() => deleteLicense(lic.id)} className="p-1.5 rounded-md hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors" title="Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </motion.tr>
