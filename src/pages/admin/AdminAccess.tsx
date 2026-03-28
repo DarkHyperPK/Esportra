@@ -85,8 +85,10 @@ const AdminAccess: React.FC = () => {
   const assign = async () => {
     try {
       setLoading(true);
-      const searchResult = await apiClient.get<any>(`/api/profiles/search?email=${encodeURIComponent(email)}`);
-      const user = Array.isArray(searchResult) ? searchResult[0] : searchResult;
+      const searchResult = await apiClient.get<any>(`/api/profiles/search?q=${encodeURIComponent(email)}`);
+      const user = Array.isArray(searchResult)
+        ? (searchResult.find((p: any) => (p?.email ?? '').toLowerCase() === email.toLowerCase()) ?? searchResult[0])
+        : searchResult;
       if (!user?.id) throw new Error('User not found');
 
       const targetUserIsSuperAdmin = user.is_admin && (user.admin_roles as string[])?.includes('super_admin');
@@ -158,8 +160,10 @@ const AdminAccess: React.FC = () => {
   const revoke = async () => {
     try {
       setLoading(true);
-      const searchResult = await apiClient.get<any>(`/api/profiles/search?email=${encodeURIComponent(email)}`);
-      const user = Array.isArray(searchResult) ? searchResult[0] : searchResult;
+      const searchResult = await apiClient.get<any>(`/api/profiles/search?q=${encodeURIComponent(email)}`);
+      const user = Array.isArray(searchResult)
+        ? (searchResult.find((p: any) => (p?.email ?? '').toLowerCase() === email.toLowerCase()) ?? searchResult[0])
+        : searchResult;
       if (!user?.id) throw new Error('User not found');
 
       const targetUserIsSuperAdmin = user.is_admin && (user.admin_roles as string[])?.includes('super_admin');
