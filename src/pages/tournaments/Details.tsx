@@ -328,6 +328,7 @@ const TournamentDetails = () => {
           avatar_url: t.organizer_avatar
         },
         settings: typeof t.settings === 'string' ? (() => { try { return JSON.parse(t.settings); } catch { return t.settings; } })() : (t.settings || {}),
+        rules: t.rules || null,
       };
 
       const newTournament: Tournament = {

@@ -14,12 +14,7 @@ export const RulesTab: React.FC<RulesTabProps> = ({ rules }) => {
                 {hasCustomRules ? (
                     <p>{rules}</p>
                 ) : (
-                    <>
-                        <p>1. All participants must execute check-in procedures within the designated window.</p>
-                        <p>2. Unauthorized hardware or software manipulation will result in immediate termination.</p>
-                        <p>3. Match disputes must be filed with evidence (replay/screenshot) within 5 minutes of completion.</p>
-                        <p>4. Respectful communication is mandatory. Toxicity protocols are active.</p>
-                    </>
+                    <p className="text-zinc-500 italic">No rules have been set for this tournament.</p>
                 )}
             </div>
         </div>
