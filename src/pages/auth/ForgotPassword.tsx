@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiClient } from '@/lib/apiClient';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -46,13 +46,12 @@ const ForgotPassword = () => {
         setError(null);
 
         try {
-            // Call .NET backend for branded recovery email
-            const result = await apiClient.post('/api/auth/recovery', {
-                email: values.email,
-                redirectBase: window.location.origin,
-            });
+            const { error: authError } = await supabase.auth.resetPasswordForEmail(
+                values.email,
+                { redirectTo: `${window.location.origin}/auth/callback` }
+            );
 
-            if (result?.error) throw new Error(result.error);
+            if (authError) throw authError;
 
             setSuccess(true);
             toast({
