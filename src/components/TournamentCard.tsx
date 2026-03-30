@@ -125,21 +125,16 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -8 }}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      transition={{ duration: 0.3 }}
-      className="group relative h-[380px] w-full rounded-3xl overflow-hidden bg-[#0a0a0c] border border-white/5 shadow-2xl cursor-pointer"
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="group relative h-[380px] w-full rounded-3xl overflow-hidden bg-[#0a0a0c] border border-white/5 shadow-2xl cursor-pointer transition-transform duration-300 hover:-translate-y-2"
       onClick={() => navigate(`/tournaments/${slug || id}`)}
     >
       {/* 1. Background Image Layer */}
       <div className="absolute inset-0 z-0 bg-black">
-        <motion.div
+        <div
           className="w-full h-full relative"
-          style={{ willChange: 'transform' }}
         >
           {/* 1. Custom Banner (if uploaded) - Highest Priority */}
           {image_url ? (
@@ -173,7 +168,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
               )}
             </AnimatePresence>
           )}
-        </motion.div>
+        </div>
 
         {/* Gradient Overlay for Text Readability - Intensified */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-[#050507]/80 to-[#050507]/30 opacity-100" />
@@ -319,7 +314,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
       <div className="absolute inset-0 rounded-3xl border border-white/5 group-hover:border-white/20 transition-colors duration-300 pointer-events-none" />
       <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-[inset_0_0_20px_rgba(139,92,246,0.1)]" />
 
-    </motion.div>
+    </div>
   );
 };
 
