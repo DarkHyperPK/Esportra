@@ -386,20 +386,7 @@ const TournamentDetails = () => {
       setBanReason(null);
 
       // Try primary endpoint first, then fallback
-      let r = status.registration;
-      console.log('[checkRegistration] /my-status registration:', r);
-      if (!r) {
-        try {
-          const fallback = await apiClient.get<any>(
-            `/api/tournaments/me/registration-status?tournamentId=${tournament.id}`
-          );
-          console.log('[checkRegistration] fallback response:', fallback);
-          // Accept any truthy response as a valid registration
-          if (fallback && typeof fallback === 'object' && Object.keys(fallback).length > 0) {
-            r = fallback;
-          }
-        } catch { /* no registration found via fallback either */ }
-      }
+      const r = status.registration;
 
       if (r) {
         setIsRegistered(true);
