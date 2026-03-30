@@ -36,6 +36,7 @@ export interface BaseTournament {
     check_in_deadline?: string | null;
     auto_remove_unchecked?: boolean;
     settings?: any;
+    rules?: string | null;
     organizer_name?: string;
     venue_city?: string | null;
     venue_country?: string | null;

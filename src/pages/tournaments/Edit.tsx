@@ -103,6 +103,7 @@ const EditTournament = () => {
         twitterUrl: '', // Not in DB schema shown
         streamUrl: tournamentData.stream_url || '',
         rewards: tournamentData.rewards || '',
+        rules: tournamentData.rules || '',
 
         // Step 4: Registration
         registrationOpens: regOpensDate.toISOString().slice(0, 16),

@@ -9,7 +9,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
-import { Trophy, Users, Shuffle, Award, Target, Plus, Trash2, Layers, Map as MapIcon, Check } from 'lucide-react';
+import { Trophy, Users, Shuffle, Award, Target, Plus, Trash2, Layers, Map as MapIcon, Check, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import {
@@ -633,6 +633,23 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                     )}
                 </>
             )}
+
+            {/* ── Tournament Rules ── */}
+            <div className="space-y-3 mt-6">
+                <Label className="text-white text-sm font-semibold flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-rose-400" />
+                    Tournament Rules
+                    <span className="text-zinc-500 text-xs font-normal">(optional)</span>
+                </Label>
+                <textarea
+                    value={data.rules || ''}
+                    onChange={(e) => updateData({ rules: e.target.value })}
+                    placeholder="Enter your tournament rules here. Each rule on a new line, e.g.:\n1. All participants must check in 30 minutes before start.\n2. No unauthorized software allowed.\n3. Disputes must be filed within 5 minutes of match end."
+                    rows={8}
+                    className="w-full rounded-xl bg-zinc-900/50 border border-white/10 text-white placeholder:text-zinc-600 px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500/40 resize-y"
+                />
+                <p className="text-xs text-zinc-500">These rules will be displayed on the tournament's public page under the Rules tab.</p>
+            </div>
 
         </motion.div>
     );

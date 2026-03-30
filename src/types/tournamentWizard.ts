@@ -37,6 +37,7 @@ export interface TournamentWizardData {
     seedingType: SeedingType;
     thirdPlaceMatch: boolean;
     mapPoolIds: string[]; // Selected map IDs for tournament map pool
+    rules: string;
 
     // Battle Royale specific (Step 2)
     brGameCount: number;
@@ -118,6 +119,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     seedingType: 'random',
     thirdPlaceMatch: false,
     mapPoolIds: [],
+    rules: '',
 
     // Battle Royale
     brGameCount: 6,

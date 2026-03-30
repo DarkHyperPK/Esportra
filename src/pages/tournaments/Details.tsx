@@ -844,7 +844,7 @@ const TournamentDetails = () => {
 
           <TabsContent value="rules">
             <div className="container mx-auto px-4">
-              <RulesTab />
+              <RulesTab rules={tournament.rules} />
             </div>
           </TabsContent>
         </Tabs>
