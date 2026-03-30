@@ -54,12 +54,17 @@ const ResetPassword = () => {
 
     useEffect(() => {
         const verifySession = async () => {
-            // Session is established by Callback.tsx via PASSWORD_RECOVERY event.
-            // Just verify it's still valid.
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setError("Your reset session has expired or is invalid. Please request a new link.");
+            // Session establishment can lag briefly after the callback redirect.
+            for (let attempt = 0; attempt < 8; attempt++) {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    setError(null);
+                    return;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 250));
             }
+
+            setError("Your reset session has expired or is invalid. Please request a new link.");
         };
         verifySession();
     }, []);
