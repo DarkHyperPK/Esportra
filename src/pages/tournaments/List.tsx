@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Users, Calendar, CheckCircle2, MapPin, Wifi, ChevronDown, X, Search } from 'lucide-react';
+import { Trophy, Users, Calendar, CheckCircle2, MapPin, Wifi, ChevronDown, X, Search, Flame, Clock, CheckCircle, Archive } from 'lucide-react';
 import { Tournament } from '@/types/tournament';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -18,14 +18,24 @@ interface TournamentFilters {
   games: string[];
 }
 
+const STATUS_TABS = [
+  { key: '',          label: 'All',       icon: Trophy,      statuses: null },
+  { key: 'upcoming',  label: 'Upcoming',  icon: Clock,       statuses: ['open', 'published', 'check_in'] },
+  { key: 'ongoing',   label: 'Live',      icon: Flame,       statuses: ['ongoing'] },
+  { key: 'completed', label: 'Completed', icon: CheckCircle, statuses: ['completed'] },
+  { key: 'cancelled', label: 'Cancelled', icon: Archive,     statuses: ['cancelled'] },
+] as const;
+
 const TournamentList = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [registeredTournaments, setRegisteredTournaments] = useState<string[]>([]);
   const { toast } = useToast();
 
-  // Filter state
+  // Filter state — read initial tab from URL
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || '');
   const [selectedGame, setSelectedGame] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<'' | 'lan' | 'online'>('');
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -55,10 +65,20 @@ const TournamentList = () => {
     }
   }, [user]);
 
+  // Resolve the DB status value(s) for the active tab
+  const currentTab = STATUS_TABS.find(t => t.key === activeTab) || STATUS_TABS[0];
+
   // Fetch tournaments with filters
   const fetchTournaments = useCallback(async () => {
     try {
       const params = new URLSearchParams({ limit: '100', offset: '0' });
+
+      // For tabs with a single status, use the API status param directly
+      // For tabs with multiple statuses (upcoming), we fetch all and filter client-side
+      if (currentTab.statuses && currentTab.statuses.length === 1) {
+        params.set('status', currentTab.statuses[0]);
+      }
+
       if (selectedGame) params.set('game', selectedGame);
       if (selectedFormat === 'online') params.set('is_online', 'true');
       if (selectedFormat === 'lan') params.set('is_online', 'false');
@@ -67,15 +87,22 @@ const TournamentList = () => {
 
       const tournamentsData = await apiClient.get<any[]>(`/api/tournaments?${params}`);
 
-      const mappedTournaments = (tournamentsData || []).map(tournament => ({
+      let mappedTournaments = (tournamentsData || []).map(tournament => ({
         ...tournament,
         current_participants: tournament.current_participants ?? 0,
-        status: tournament.status ?? 'upcoming',
+        status: tournament.status ?? 'open',
         team_size: tournament.team_size ?? 1,
         is_online: !tournament.venue_id,
         venue_city: tournament.venue_city ?? null,
         venue_country: tournament.venue_country ?? null,
       }));
+
+      // Client-side multi-status filter for tabs like "upcoming"
+      if (currentTab.statuses && currentTab.statuses.length > 1) {
+        mappedTournaments = mappedTournaments.filter(t =>
+          (currentTab.statuses as readonly string[]).includes(t.status)
+        );
+      }
 
       setTournaments(mappedTournaments);
     } catch (error) {
@@ -86,7 +113,7 @@ const TournamentList = () => {
         variant: 'destructive',
       });
     }
-  }, [toast, selectedGame, selectedFormat, selectedCountry, selectedCity]);
+  }, [toast, selectedGame, selectedFormat, selectedCountry, selectedCity, currentTab]);
 
   // Fetch all data
   const fetchData = useCallback(async () => {
@@ -107,6 +134,16 @@ const TournamentList = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Sync tab to URL
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    if (key) {
+      setSearchParams({ tab: key });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   // Client-side text search on top of API filters
   const filteredTournaments = useMemo(() => {
@@ -141,8 +178,30 @@ const TournamentList = () => {
     <div className="min-h-screen bg-esports-dark text-white">
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Browse Tournaments</h1>
-          <p className="text-gray-400">Find and join upcoming tournaments</p>
+          <h1 className="text-3xl font-bold">Tournaments</h1>
+          <p className="text-gray-400">Browse, filter, and join tournaments</p>
+        </div>
+
+        {/* Status Tabs */}
+        <div className="flex items-center gap-1 mb-5 overflow-x-auto pb-1 border-b border-zinc-800/60">
+          {STATUS_TABS.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => handleTabChange(tab.key)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
+                  isActive
+                    ? 'bg-rose-500/10 text-rose-400 border-b-2 border-rose-500'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Search Bar */}
@@ -179,7 +238,7 @@ const TournamentList = () => {
           {/* Format Toggle */}
           <div className="flex rounded-lg border border-zinc-800 overflow-hidden">
             <button
-              onClick={() => setSelectedFormat(selectedFormat === '' ? '' : '')}
+              onClick={() => setSelectedFormat('')}
               className={`px-3 py-2 text-sm transition-colors ${
                 selectedFormat === '' ? 'bg-rose-500/20 text-rose-400' : 'bg-zinc-900 text-zinc-400 hover:text-white'
               }`}
@@ -291,9 +350,16 @@ const TournamentList = () => {
                           <CardTitle>{tournament.name}</CardTitle>
                           <p className="text-gray-400">{tournament.game}</p>
                         </div>
-                        {isRegistered(tournament.id) && (
-                          <CheckCircle2 className="h-5 w-5 text-gaming-purple" />
-                        )}
+                        <div className="flex items-center gap-2">
+                          {tournament.status === 'ongoing' && (
+                            <span className="flex items-center gap-1 text-xs font-medium text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">
+                              <Flame className="w-3 h-3" /> LIVE
+                            </span>
+                          )}
+                          {isRegistered(tournament.id) && (
+                            <CheckCircle2 className="h-5 w-5 text-gaming-purple" />
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -333,7 +399,7 @@ const TournamentList = () => {
           <div className="text-center py-12 bg-gaming-dark border border-gaming-gray/30 rounded-lg">
             <p className="text-gray-400 mb-2">No tournaments found</p>
             <p className="text-sm text-gray-500">
-              {hasActiveFilters
+              {hasActiveFilters || activeTab
                 ? 'No tournaments match your filters. Try broadening your search.'
                 : 'Check back soon for new tournaments!'}
             </p>

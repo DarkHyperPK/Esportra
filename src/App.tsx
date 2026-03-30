@@ -109,8 +109,7 @@ const ManageVenues = React.lazy(() => import("./pages/venues/ManageVenues"));
 const ListVenue = React.lazy(() => import("./pages/venues/ListVenue"));
 
 // Tournaments
-const UpcomingTournaments = React.lazy(() => import("./pages/tournaments/Upcoming"));
-const OngoingTournaments = React.lazy(() => import("./pages/tournaments/Ongoing"));
+const BrowseTournaments = React.lazy(() => import("./pages/tournaments/List"));
 const CreateTournament = React.lazy(() => import("./pages/tournaments/Create"));
 
 // About
@@ -485,7 +484,7 @@ const AppContent = React.memo(() => {
                     <OrganizerDisputesPage />
                   </ProtectedRoute>
                 } />
-                <Route path="/tournaments" element={<TournamentList />} />
+                <Route path="/tournaments" element={<BrowseTournaments />} />
                 <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
                 <Route path="/player/:username" element={<PlayerProfile />} />
@@ -507,8 +506,8 @@ const AppContent = React.memo(() => {
                 } />
 
                 {/* Tournaments Routes */}
-                <Route path="/tournaments/upcoming" element={<UpcomingTournaments />} />
-                <Route path="/tournaments/ongoing" element={<OngoingTournaments />} />
+                <Route path="/tournaments/upcoming" element={<Navigate to="/tournaments?tab=upcoming" replace />} />
+                <Route path="/tournaments/ongoing" element={<Navigate to="/tournaments?tab=ongoing" replace />} />
                 <Route path="/tournaments/create" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <CreateTournament />
