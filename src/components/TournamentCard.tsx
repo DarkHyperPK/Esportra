@@ -183,6 +183,11 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
               LAN
             </Badge>
           )}
+          {entry_fee && entry_fee !== 'Free' && entry_fee !== '0' && entry_fee !== '$0' && (
+            <Badge variant="outline" className="bg-amber-500/20 border-amber-500/40 text-amber-300">
+              💳 Paid
+            </Badge>
+          )}
         </div>
 
         <div className="flex text-xs font-medium text-gray-300 gap-2">
