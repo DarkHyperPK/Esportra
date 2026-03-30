@@ -507,7 +507,7 @@ const AppContent = React.memo(() => {
 
                 {/* Tournaments Routes */}
                 <Route path="/tournaments/upcoming" element={<Navigate to="/tournaments?tab=upcoming" replace />} />
-                <Route path="/tournaments/ongoing" element={<Navigate to="/tournaments?tab=ongoing" replace />} />
+                <Route path="/tournaments/ongoing" element={<Navigate to="/tournaments?tab=live" replace />} />
                 <Route path="/tournaments/create" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <CreateTournament />

@@ -20,12 +20,26 @@ interface TournamentFilters {
 }
 
 const STATUS_TABS = [
-  { key: '',          label: 'All',       icon: Trophy,      statuses: null },
-  { key: 'upcoming',  label: 'Upcoming',  icon: Clock,       statuses: ['open', 'published', 'check_in'] },
-  { key: 'ongoing',   label: 'Live',      icon: Flame,       statuses: ['ongoing'] },
-  { key: 'completed', label: 'Completed', icon: CheckCircle, statuses: ['completed'] },
-  { key: 'cancelled', label: 'Cancelled', icon: Archive,     statuses: ['cancelled'] },
+  { key: '',          label: 'All',       icon: Trophy },
+  { key: 'upcoming',  label: 'Upcoming',  icon: Clock },
+  { key: 'live',      label: 'Live',      icon: Flame },
+  { key: 'completed', label: 'Completed', icon: CheckCircle },
+  { key: 'cancelled', label: 'Cancelled', icon: Archive },
 ] as const;
+
+// Compute effective display status using the same logic as TournamentCard
+function getEffectiveStatus(t: any): string {
+  if (t.status === 'cancelled') return 'cancelled';
+  if (t.status === 'completed') return 'completed';
+
+  const now = new Date();
+  const startDate = t.start_date ? new Date(t.start_date) : null;
+  const endDate = t.end_date ? new Date(t.end_date) : null;
+
+  if (endDate && now >= endDate) return 'completed';
+  if (startDate && now >= startDate) return 'live';
+  return 'upcoming';
+}
 
 const TournamentList = () => {
   const { user } = useAuth();
@@ -74,12 +88,6 @@ const TournamentList = () => {
     try {
       const params = new URLSearchParams({ limit: '100', offset: '0' });
 
-      // For tabs with a single status, use the API status param directly
-      // For tabs with multiple statuses (upcoming), we fetch all and filter client-side
-      if (currentTab.statuses && currentTab.statuses.length === 1) {
-        params.set('status', currentTab.statuses[0]);
-      }
-
       if (selectedGame) params.set('game', selectedGame);
       if (selectedFormat === 'online') params.set('is_online', 'true');
       if (selectedFormat === 'lan') params.set('is_online', 'false');
@@ -98,11 +106,9 @@ const TournamentList = () => {
         venue_country: tournament.venue_country ?? null,
       }));
 
-      // Client-side multi-status filter for tabs like "upcoming"
-      if (currentTab.statuses && currentTab.statuses.length > 1) {
-        mappedTournaments = mappedTournaments.filter(t =>
-          (currentTab.statuses as readonly string[]).includes(t.status)
-        );
+      // Filter by effective display status (matches TournamentCard badge logic)
+      if (activeTab) {
+        mappedTournaments = mappedTournaments.filter(t => getEffectiveStatus(t) === activeTab);
       }
 
       setTournaments(mappedTournaments);
@@ -114,7 +120,7 @@ const TournamentList = () => {
         variant: 'destructive',
       });
     }
-  }, [toast, selectedGame, selectedFormat, selectedCountry, selectedCity, currentTab]);
+  }, [toast, selectedGame, selectedFormat, selectedCountry, selectedCity, activeTab]);
 
   // Fetch all data
   const fetchData = useCallback(async () => {
