@@ -10,7 +10,6 @@ import { Tournament } from '@/types/tournament';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import { TournamentCard } from '@/components/TournamentCard';
 
 interface TournamentFilters {
@@ -296,18 +295,9 @@ const TournamentList = () => {
             ))}
           </div>
         ) : filteredTournaments.length > 0 ? (
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            initial="hidden"
-            animate="show"
-            variants={{ show: { transition: { staggerChildren: 0.05 } } }}
-          >
-            {filteredTournaments.map((tournament, index) => (
-              <motion.div
-                key={tournament.id}
-                variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
-                transition={{ duration: 0.3 }}
-              >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredTournaments.map((tournament) => (
+              <div key={tournament.id}>
                 <TournamentCard
                   id={tournament.id}
                   name={tournament.name}
@@ -330,9 +320,9 @@ const TournamentList = () => {
                   registrationData={isRegistered(tournament.id) ? { id: tournament.id } : null}
                   currentUserId={user?.id}
                 />
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         ) : (
           <div className="text-center py-12 bg-gaming-dark border border-gaming-gray/30 rounded-lg">
             <p className="text-gray-400 mb-2">No {activeTab ? (STATUS_TABS.find(t => t.key === activeTab)?.label.toLowerCase() ?? '') : ''} tournaments found</p>
