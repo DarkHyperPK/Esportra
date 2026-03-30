@@ -27,18 +27,12 @@ const STATUS_TABS = [
   { key: 'cancelled', label: 'Cancelled', icon: Archive },
 ] as const;
 
-// Compute effective display status using the same logic as TournamentCard
+// Map tab keys to DB statuses
 function getEffectiveStatus(t: any): string {
   if (t.status === 'cancelled') return 'cancelled';
   if (t.status === 'completed') return 'completed';
-
-  const now = new Date();
-  const startDate = t.start_date ? new Date(t.start_date) : null;
-  const endDate = t.end_date ? new Date(t.end_date) : null;
-
-  if (endDate && now >= endDate) return 'completed';
-  if (startDate && now >= startDate) return 'live';
-  return 'upcoming';
+  if (t.status === 'ongoing') return 'live';
+  return 'upcoming'; // open, published, check_in, draft
 }
 
 const TournamentList = () => {

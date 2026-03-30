@@ -75,13 +75,13 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   // Date-Driven Status Logic
   const now = new Date();
   const startDate = start_date ? new Date(start_date) : new Date(`${date}T${time}`);
-  const endDate = end_date ? new Date(end_date) : (startDate ? new Date(startDate.getTime() + 4 * 60 * 60 * 1000) : null); // Fallback to +4h if no end_date
+  const endDate = end_date ? new Date(end_date) : (startDate ? new Date(startDate.getTime() + 4 * 60 * 60 * 1000) : null);
 
-  const isUpcoming = now < startDate;
-  const isLive = endDate ? (now >= startDate && now < endDate) : (now >= startDate && status !== 'completed');
-  const isCompleted = endDate ? (now >= endDate || status === 'completed') : (status === 'completed');
+  const isUpcoming = status === 'open' || status === 'published' || status === 'check_in';
+  const isLive = status === 'ongoing';
+  const isCompleted = status === 'completed';
 
-  // Status Badge Logic
+  // Status Badge Logic — trust DB status as source of truth
   const getStatusBadge = () => {
     if (status === 'cancelled') {
       return (
@@ -91,7 +91,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
       );
     }
 
-    if (isCompleted) {
+    if (status === 'completed') {
       return (
         <Badge className="bg-emerald-600 text-white border-none shadow-[0_0_10px_rgba(16,185,129,0.4)]">
           COMPLETED
@@ -99,7 +99,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
       );
     }
 
-    if (isLive) {
+    if (status === 'ongoing') {
       return (
         <Badge className="bg-red-600 text-white animate-pulse border-none shadow-[0_0_10px_rgba(220,38,38,0.5)]">
           <span className="w-2 h-2 rounded-full bg-white mr-2 animate-ping" />
