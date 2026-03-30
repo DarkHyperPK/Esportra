@@ -370,9 +370,15 @@ const TournamentList = () => {
           </motion.div>
         ) : (
           <div className="text-center py-12 bg-gaming-dark border border-gaming-gray/30 rounded-lg">
-            <p className="text-gray-400 mb-2">No tournaments found</p>
+            <p className="text-gray-400 mb-2">No {currentTab.key ? currentTab.label.toLowerCase() : ''} tournaments found</p>
             <p className="text-sm text-gray-500">
-              {hasActiveFilters || activeTab
+              {activeTab === 'ongoing'
+                ? 'No tournaments are currently live. Check the Upcoming tab for scheduled events.'
+                : activeTab === 'completed'
+                ? 'No completed tournaments yet.'
+                : activeTab === 'cancelled'
+                ? 'No cancelled tournaments.'
+                : hasActiveFilters
                 ? 'No tournaments match your filters. Try broadening your search.'
                 : 'Check back soon for new tournaments!'}
             </p>
