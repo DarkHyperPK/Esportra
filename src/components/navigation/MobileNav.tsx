@@ -131,9 +131,7 @@ const MobileNav = ({
                       className="ml-3 mt-1 border-l border-white/10 pl-2"
                     >
                     <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
-                      <Link to="/tournaments/upcoming" className={subLinkClass} onClick={onClose}>Upcoming Tournaments</Link>
-                      <Link to="/tournaments/ongoing" className={subLinkClass} onClick={onClose}>Live Tournaments</Link>
-                      <Link to="/tournament-history" className={subLinkClass} onClick={onClose}>Tournament History</Link>
+                      <Link to="/tournaments" className={subLinkClass} onClick={onClose}>Browse Tournaments</Link>
                       {(userRole === 'organizer' || isSuperAdmin) && (
                         <>
                           <div className="h-px bg-white/10 my-1 mx-2" />

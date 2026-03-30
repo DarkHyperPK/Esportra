@@ -52,9 +52,7 @@ const DesktopNav = ({
           Tournaments
         </FramerDropdownTrigger>
         <FramerDropdownContent className="min-w-[220px]">
-          <FramerDropdownItem to="/tournaments/upcoming">Upcoming Tournaments</FramerDropdownItem>
-          <FramerDropdownItem to="/tournaments/ongoing">Live Tournaments</FramerDropdownItem>
-          <FramerDropdownItem to="/tournament-history">Tournament History</FramerDropdownItem>
+          <FramerDropdownItem to="/tournaments">Browse Tournaments</FramerDropdownItem>
           {(userRole === 'organizer' || isSuperAdmin) && (
             <>
               <div className="h-px bg-white/10 my-1 mx-2" />
