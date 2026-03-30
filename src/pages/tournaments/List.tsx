@@ -3,14 +3,15 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 
 import Footer from '@/components/Footer';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Users, Calendar, CheckCircle2, MapPin, Wifi, ChevronDown, X, Search, Flame, Clock, CheckCircle, Archive } from 'lucide-react';
+import { Trophy, Users, Calendar, MapPin, Wifi, ChevronDown, X, Search, Flame, Clock, CheckCircle, Archive } from 'lucide-react';
 import { Tournament } from '@/types/tournament';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { TournamentCard } from '@/components/TournamentCard';
 
 interface TournamentFilters {
   cities: string[];
@@ -336,62 +337,34 @@ const TournamentList = () => {
             animate="show"
             variants={{ show: { transition: { staggerChildren: 0.05 } } }}
           >
-            {filteredTournaments.map((tournament) => (
+            {filteredTournaments.map((tournament, index) => (
               <motion.div
                 key={tournament.id}
                 variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
                 transition={{ duration: 0.3 }}
               >
-                <Link to={`/tournaments/${tournament.slug || tournament.id}`}>
-                  <Card className={`bg-gaming-dark border-gaming-gray/30 hover:border-gaming-purple transition-colors ${isRegistered(tournament.id) ? 'border-gaming-purple' : ''}`}>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle>{tournament.name}</CardTitle>
-                          <p className="text-gray-400">{tournament.game}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {tournament.status === 'ongoing' && (
-                            <span className="flex items-center gap-1 text-xs font-medium text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">
-                              <Flame className="w-3 h-3" /> LIVE
-                            </span>
-                          )}
-                          {isRegistered(tournament.id) && (
-                            <CheckCircle2 className="h-5 w-5 text-gaming-purple" />
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex items-center text-gray-400">
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {new Date(tournament.start_date || tournament.date).toLocaleDateString()} at {tournament.time || ''}
-                        </div>
-                        <div className="flex items-center text-gray-400">
-                          <Users className="mr-2 h-4 w-4" />
-                          Registered Participants: {tournament.current_participants}
-                        </div>
-                        <div className="flex items-center text-gaming-green">
-                          <Trophy className="mr-2 h-4 w-4" />
-                          Prize Pool: {tournament.prize_pool}
-                        </div>
-                        <div className="flex justify-between items-center mt-4">
-                          <span className="text-sm text-gray-400 flex items-center gap-1.5">
-                            {tournament.is_online || !tournament.venue_id ? (
-                              <><Wifi className="w-3.5 h-3.5" /> Online</>
-                            ) : (
-                              <><MapPin className="w-3.5 h-3.5" /> {tournament.venue_city || 'LAN'}</>
-                            )}
-                          </span>
-                          <Button className="bg-gaming-purple hover:bg-gaming-purple/80">
-                            {isRegistered(tournament.id) ? 'View Details' : 'Join Tournament'}
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                <TournamentCard
+                  id={tournament.id}
+                  name={tournament.name}
+                  game={tournament.game}
+                  date={tournament.date || new Date(tournament.start_date || '').toLocaleDateString('en-CA')}
+                  time={tournament.time || ''}
+                  venue={tournament.venue || ''}
+                  max_participants={tournament.max_participants}
+                  current_participants={tournament.current_participants}
+                  status={tournament.status as any}
+                  team_size={tournament.team_size}
+                  prize_pool={tournament.prize_pool}
+                  entry_fee={tournament.entry_fee || undefined}
+                  is_online={tournament.is_online}
+                  image_url={tournament.image_url || tournament.banner_url || undefined}
+                  slug={tournament.slug || tournament.id}
+                  organizer_name={tournament.organizer_name}
+                  start_date={tournament.start_date}
+                  end_date={tournament.end_date}
+                  registrationData={isRegistered(tournament.id) ? { id: tournament.id } : null}
+                  currentUserId={user?.id}
+                />
               </motion.div>
             ))}
           </motion.div>
