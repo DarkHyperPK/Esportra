@@ -9,69 +9,84 @@ const Callback = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
+    // Capture hash immediately before any async processing clears it
+    const initialHash = window.location.hash;
 
-      if (error) {
-        toast({
-          title: "Authentication Error",
-          description: error.message,
-          variant: "destructive",
-        });
+    const handleSession = async (session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
+      if (!session) {
         navigate('/auth/signin');
         return;
       }
 
-      if (session) {
-        // Check for suspension
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_suspended, suspension_until, suspension_reason, suspension_type')
-          .eq('id', session.user.id)
-          .single();
+      // Check for suspension
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_suspended, suspension_until, suspension_reason, suspension_type')
+        .eq('id', session.user.id)
+        .single();
 
-        if (profile?.is_suspended) {
-          console.warn("[AuthCallback] Suspended user attempted OAuth login:", session.user.id);
-          await supabase.auth.signOut();
-          toast({
-            title: 'Account Restricted',
-            description: `This account is suspended. Reason: ${profile.suspension_reason || 'Violation of terms'}`,
-            variant: 'destructive'
-          });
-          navigate('/suspended', {
-            replace: true,
-            state: {
-              reason: profile.suspension_reason,
-              type: profile.suspension_type,
-              until: profile.suspension_until
-            }
-          });
-          return;
-        }
+      if (profile?.is_suspended) {
+        await supabase.auth.signOut();
+        toast({
+          title: 'Account Restricted',
+          description: `This account is suspended. Reason: ${profile.suspension_reason || 'Violation of terms'}`,
+          variant: 'destructive'
+        });
+        navigate('/suspended', {
+          replace: true,
+          state: {
+            reason: profile.suspension_reason,
+            type: profile.suspension_type,
+            until: profile.suspension_until
+          }
+        });
+        return;
+      }
 
-        // If we are here because of a password recovery link
-        const hash = window.location.hash;
-        if (hash && hash.includes('type=recovery')) {
-          toast({
-            title: "Security Check Passed",
-            description: "Please set your new password.",
-          });
+      toast({ title: "Success!", description: "You have successfully signed in." });
+      navigate('/');
+    };
+
+    // PASSWORD_RECOVERY fires reliably before getSession() resolves — use it as primary handler
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        toast({ title: "Link verified", description: "Please set your new password." });
+        navigate('/auth/reset-password');
+        return;
+      }
+
+      if (event === 'SIGNED_IN') {
+        // Fallback: check captured hash for recovery in case event fires as SIGNED_IN
+        if (initialHash.includes('type=recovery')) {
+          toast({ title: "Link verified", description: "Please set your new password." });
           navigate('/auth/reset-password');
           return;
         }
-
-        // Successfully authenticated
-        toast({
-          title: "Success!",
-          description: "You have successfully signed in.",
-        });
-        navigate('/');
-      } else {
-        navigate('/auth/signin');
+        handleSession(session);
       }
-    };
+    });
 
-    handleAuthCallback();
+    // Fallback: in case onAuthStateChange doesn't fire (e.g. session already exists)
+    const fallback = setTimeout(async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        toast({ title: "Authentication Error", description: error.message, variant: "destructive" });
+        navigate('/auth/signin');
+        return;
+      }
+      if (initialHash.includes('type=recovery') && session) {
+        toast({ title: "Link verified", description: "Please set your new password." });
+        navigate('/auth/reset-password');
+        return;
+      }
+      if (session) handleSession(session);
+      else navigate('/auth/signin');
+    }, 1500);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(fallback);
+    };
   }, [navigate, toast]);
 
   return (
