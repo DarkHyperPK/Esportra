@@ -131,6 +131,25 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                 </div>
             </div>
 
+            {/* Payment Instructions — only shown for paid tournaments */}
+            {data.entryFee && data.entryFee.toLowerCase() !== 'free' && data.entryFee !== '0' && (
+                <div className="space-y-2 mt-4">
+                    <Label htmlFor="paymentInstructions" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                        <DollarSign className="w-4 h-4" />
+                        Payment Instructions
+                    </Label>
+                    <textarea
+                        id="paymentInstructions"
+                        rows={4}
+                        placeholder="How should participants pay? E.g.:\nBank: ABC Bank, Account# 1234567890, IBAN: PK00...\nJazzCash/EasyPaisa: 0300-1234567\nAfter payment, upload receipt screenshot during registration."
+                        value={data.paymentInstructions}
+                        onChange={(e) => updateData({ paymentInstructions: e.target.value })}
+                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-rose-500/50"
+                    />
+                    <p className="text-xs text-gray-500">Players will see these instructions when registering and be asked to upload a payment receipt</p>
+                </div>
+            )}
+
             {/* Description */}
             <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-2">

@@ -329,6 +329,7 @@ const TournamentDetails = () => {
         },
         settings: typeof t.settings === 'string' ? (() => { try { return JSON.parse(t.settings); } catch { return t.settings; } })() : (t.settings || {}),
         rules: t.rules || null,
+        payment_instructions: t.payment_instructions || null,
       };
 
       const newTournament: Tournament = {
@@ -870,6 +871,8 @@ const TournamentDetails = () => {
             tournamentName={tournament.name}
             game={tournament.game}
             settings={tournament.settings}
+            entryFee={tournament.entry_fee}
+            paymentInstructions={tournament.payment_instructions}
             onRegisterSuccess={handleRegistrationSuccess}
             onCancel={() => setShowEditDialog(false)}
             initialData={registrationDetails}

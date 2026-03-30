@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import TeamTournamentRegistration from '@/components/tournament/TeamTournamentRegistration';
 import SoloTournamentRegistration from '@/components/tournament/SoloTournamentRegistration';
-import { AlertTriangle, Ban as BanIcon } from 'lucide-react';
+import { AlertTriangle, Ban as BanIcon, Upload, DollarSign, CheckCircle, FileText, Loader2 } from 'lucide-react';
 import { RegistrationDetails } from '@/types/tournament';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
+import { Button } from '@/components/ui/button';
 
 interface TournamentRegistrationProps {
   tournamentId: string;
@@ -15,6 +16,8 @@ interface TournamentRegistrationProps {
   teamSize?: number;
   structure?: string;
   settings?: any;
+  entryFee?: number | string | null;
+  paymentInstructions?: string | null;
   onSuccess?: (registration: RegistrationDetails | null) => void;
   isEdit?: boolean;
   initialData?: RegistrationDetails | null;
@@ -29,6 +32,8 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   teamSize = 1,
   structure = 'solo',
   settings,
+  entryFee,
+  paymentInstructions,
   onSuccess,
   isEdit = false,
   initialData,
@@ -41,6 +46,19 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   // Ban state
   const [banned, setBanned] = useState(false);
   const [banReason, setBanReason] = useState<string | null>(null);
+
+  // Payment receipt upload state
+  const [showReceiptUpload, setShowReceiptUpload] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Determine if paid tournament
+  const parsedFee = typeof entryFee === 'string'
+    ? (entryFee.toLowerCase() === 'free' ? 0 : parseFloat(entryFee) || 0)
+    : (entryFee ?? 0);
+  const isPaid = parsedFee > 0;
 
   // Check if this is a team tournament
   const isTeamTournament = (teamSize || 1) > 1 || game?.toLowerCase() === 'valorant';
@@ -70,6 +88,69 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
     checkBan();
   }, [user, tournamentId]);
 
+  const handleRegistrationComplete = () => {
+    if (isPaid) {
+      setShowReceiptUpload(true);
+    } else {
+      onRegisterSuccess?.();
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowed.includes(file.type)) {
+      toast({ title: 'Invalid file', description: 'Only JPEG, PNG, WebP, or PDF files accepted.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'File must be under 5MB.', variant: 'destructive' });
+      return;
+    }
+
+    setReceiptFile(file);
+    if (file.type.startsWith('image/')) {
+      setReceiptPreview(URL.createObjectURL(file));
+    } else {
+      setReceiptPreview(null);
+    }
+  };
+
+  const handleUploadReceipt = async () => {
+    if (!receiptFile) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('receipt', receiptFile);
+
+      await apiClient.upload(`/api/tournaments/${tournamentId}/upload-receipt`, formData);
+
+      toast({
+        title: 'Receipt Uploaded',
+        description: 'Your payment receipt has been submitted for review. The organizer will approve your registration shortly.',
+      });
+      onRegisterSuccess?.();
+    } catch (error: any) {
+      toast({
+        title: 'Upload Failed',
+        description: error.message || 'Failed to upload receipt. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSkipReceipt = () => {
+    toast({
+      title: 'Registration Pending',
+      description: 'You can upload your payment receipt later from the tournament page.',
+    });
+    onRegisterSuccess?.();
+  };
+
   // Show login prompt if not authenticated
   if (!user) {
     return (
@@ -97,6 +178,87 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
     );
   }
 
+  // Receipt upload step for paid tournaments
+  if (showReceiptUpload) {
+    return (
+      <div className="space-y-6 p-2">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+            <DollarSign className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Payment Required</h3>
+            <p className="text-sm text-zinc-400">Entry Fee: PKR {parsedFee}</p>
+          </div>
+        </div>
+
+        {paymentInstructions && (
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="w-4 h-4 text-zinc-400" />
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Payment Instructions</span>
+            </div>
+            <p className="text-sm text-zinc-300 whitespace-pre-wrap">{paymentInstructions}</p>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Upload Payment Receipt</label>
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-zinc-700 hover:border-rose-500/50 rounded-xl p-6 text-center cursor-pointer transition-colors"
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            {receiptPreview ? (
+              <div className="space-y-3">
+                <img src={receiptPreview} alt="Receipt" className="max-h-48 mx-auto rounded-lg" />
+                <p className="text-xs text-zinc-400">{receiptFile?.name}</p>
+              </div>
+            ) : receiptFile ? (
+              <div className="space-y-2">
+                <FileText className="w-10 h-10 mx-auto text-zinc-500" />
+                <p className="text-sm text-zinc-300">{receiptFile.name}</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Upload className="w-10 h-10 mx-auto text-zinc-500" />
+                <p className="text-sm text-zinc-400">Click to upload screenshot or PDF</p>
+                <p className="text-xs text-zinc-600">JPEG, PNG, WebP, or PDF — max 5MB</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            onClick={handleUploadReceipt}
+            disabled={!receiptFile || uploading}
+            className="flex-1 bg-rose-600 hover:bg-rose-500 text-white"
+          >
+            {uploading ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</>
+            ) : (
+              <><CheckCircle className="w-4 h-4 mr-2" /> Submit Receipt</>
+            )}
+          </Button>
+          <Button
+            onClick={handleSkipReceipt}
+            variant="outline"
+            className="border-zinc-700 text-zinc-400 hover:text-white"
+          >
+            Upload Later
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // For team tournaments, use the team registration component
   if (isTeamTournament) {
     return (
@@ -106,14 +268,14 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           name: tournamentName,
           game: game || '',
           start_date: new Date().toISOString(),
-          entry_fee: undefined,
+          entry_fee: parsedFee || undefined,
           prize_pool: undefined,
           max_teams: 100,
           team_size: teamSize,
           settings,
         }}
-        onRegistrationComplete={onRegisterSuccess}
-        onCancel={onCancel || onRegisterSuccess} // Close dialog on cancel
+        onRegistrationComplete={handleRegistrationComplete}
+        onCancel={onCancel || onRegisterSuccess}
       />
     );
 
@@ -127,12 +289,12 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
         name: tournamentName,
         game: game || '',
         start_date: new Date().toISOString(),
-        entry_fee: 0,
+        entry_fee: parsedFee,
         prize_pool: 0,
         max_teams: 100,
         description: ''
       }}
-      onRegistrationComplete={onRegisterSuccess}
+      onRegistrationComplete={handleRegistrationComplete}
       onCancel={onCancel || onRegisterSuccess}
     />
   );

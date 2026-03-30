@@ -37,6 +37,7 @@ export interface BaseTournament {
     auto_remove_unchecked?: boolean;
     settings?: any;
     rules?: string | null;
+    payment_instructions?: string | null;
     organizer_name?: string;
     venue_city?: string | null;
     venue_country?: string | null;

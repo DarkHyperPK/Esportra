@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Tournament as TournamentType } from '@/hooks/useTournaments';
 import { TournamentStatus } from '@/types/tournament';
@@ -163,6 +164,11 @@ interface Participant {
   created_at: string;
   team_logo?: string | null;
   checked_in_at?: string | null;
+  payment_status?: string | null;
+  payment_receipt_url?: string | null;
+  payment_rejection_reason?: string | null;
+  entry_fee_amount?: number | null;
+  entry_fee_paid?: boolean;
   user: {
     username: string;
     full_name: string | null;
@@ -676,6 +682,47 @@ const TournamentDashboard = () => {
       setRemovingUnchecked(false);
     }
   };
+
+  // Payment approval/rejection
+  const [approvingPayment, setApprovingPayment] = useState<string | null>(null);
+  const [rejectingPayment, setRejectingPayment] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [showRejectDialog, setShowRejectDialog] = useState<string | null>(null);
+  const [receiptViewUrl, setReceiptViewUrl] = useState<string | null>(null);
+
+  const handleApprovePayment = async (participantId: string) => {
+    if (!tournament?.id) return;
+    setApprovingPayment(participantId);
+    try {
+      await apiClient.post(`/api/tournaments/${tournament.id}/participants/${participantId}/approve-payment`);
+      toast({ title: 'Payment Approved', description: 'The participant is now registered.' });
+      refetchDashboard();
+    } catch (error: any) {
+      toast({ title: 'Approval Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setApprovingPayment(null);
+    }
+  };
+
+  const handleRejectPayment = async (participantId: string) => {
+    if (!tournament?.id) return;
+    setRejectingPayment(participantId);
+    try {
+      await apiClient.post(`/api/tournaments/${tournament.id}/participants/${participantId}/reject-payment`, {
+        reason: rejectionReason || 'Payment could not be verified.'
+      });
+      toast({ title: 'Payment Rejected', description: 'The participant has been notified.' });
+      setShowRejectDialog(null);
+      setRejectionReason('');
+      refetchDashboard();
+    } catch (error: any) {
+      toast({ title: 'Rejection Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setRejectingPayment(null);
+    }
+  };
+
+  const pendingPayments = participants.filter(p => p.payment_status === 'pending');
 
   const handleToggleAssistedReporting = async (enabled: boolean) => {
     if (!tournament?.id) return;
@@ -1194,6 +1241,22 @@ const TournamentDashboard = () => {
   );
 
   const renderCheckInBadge = (participant: Participant) => {
+    // Payment status badge (takes priority if payment pending)
+    if (participant.payment_status === 'pending') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-amber-400/40 bg-amber-500/10 text-amber-200">
+          💳 Payment Pending
+        </span>
+      );
+    }
+    if (participant.payment_status === 'rejected') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-red-500/40 bg-red-500/10 text-red-300">
+          💳 Payment Rejected
+        </span>
+      );
+    }
+
     if (!effectiveCheckInRequired) return null;
     if (participant.checked_in_at) {
       return (
@@ -1896,6 +1959,68 @@ const TournamentDashboard = () => {
                         </CardContent>
                       </Card>
                     )}
+                    {/* Pending Payments Section */}
+                    {pendingPayments.length > 0 && isOrganizer && (
+                      <Card className="relative bg-black/20 backdrop-blur-md border border-amber-500/20 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                        <MotionTiles />
+                        <CardHeader className="p-0 border-b border-amber-500/20 pb-4 mb-6 relative z-10">
+                          <CardTitle className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
+                            💳 Pending Payment Review
+                            <Badge className="bg-amber-500/20 text-amber-200 border-amber-500/40 text-xs">
+                              {pendingPayments.length}
+                            </Badge>
+                          </CardTitle>
+                          <p className="text-xs text-gray-400 mt-1">
+                            These registrations are awaiting payment verification. Review receipts and approve or reject.
+                          </p>
+                        </CardHeader>
+                        <CardContent className="p-0 relative z-10 space-y-4">
+                          {pendingPayments.map((p) => (
+                            <div key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white font-semibold truncate">
+                                  {p.team_name || p.gamer_tag || p.user?.username || 'Unknown'}
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                  Registered {new Date(p.registered_at).toLocaleDateString()}
+                                  {p.entry_fee_amount ? ` · Entry fee: $${p.entry_fee_amount}` : ''}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {p.payment_receipt_url ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
+                                    onClick={() => setReceiptViewUrl(p.payment_receipt_url!)}
+                                  >
+                                    <Eye className="w-3.5 h-3.5 mr-1" /> Receipt
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-gray-500 italic">No receipt</span>
+                                )}
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-500 text-white"
+                                  disabled={approvingPayment === p.id}
+                                  onClick={() => handleApprovePayment(p.id)}
+                                >
+                                  {approvingPayment === p.id ? 'Approving...' : 'Approve'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-red-500/40 text-red-300 hover:bg-red-500/10"
+                                  onClick={() => { setShowRejectDialog(p.id); setRejectionReason(''); }}
+                                >
+                                  Reject
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
                     <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                       <MotionTiles />
                       <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
@@ -2209,6 +2334,57 @@ const TournamentDashboard = () => {
           </AlertDialog>
         )
       }
+
+      {/* Payment Rejection Dialog */}
+      <Dialog open={!!showRejectDialog} onOpenChange={(open) => { if (!open) setShowRejectDialog(null); }}>
+        <DialogContent className="bg-[#0a0a0c] border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle>Reject Payment</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Provide a reason for rejecting this payment. The participant will be notified and can re-upload a receipt.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            placeholder="e.g. Receipt is blurry, amount doesn't match, wrong payment method..."
+            className="bg-white/5 border-white/10 text-white min-h-[80px]"
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="border-white/10 text-white hover:bg-white/10" onClick={() => setShowRejectDialog(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-500 text-white"
+              disabled={!!rejectingPayment}
+              onClick={() => showRejectDialog && handleRejectPayment(showRejectDialog)}
+            >
+              {rejectingPayment ? 'Rejecting...' : 'Reject Payment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt Viewer Dialog */}
+      <Dialog open={!!receiptViewUrl} onOpenChange={(open) => { if (!open) setReceiptViewUrl(null); }}>
+        <DialogContent className="bg-[#0a0a0c] border-white/10 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Payment Receipt</DialogTitle>
+          </DialogHeader>
+          {receiptViewUrl && (
+            receiptViewUrl.toLowerCase().endsWith('.pdf') ? (
+              <div className="text-center py-4">
+                <a href={receiptViewUrl} target="_blank" rel="noopener noreferrer"
+                  className="text-rose-400 hover:text-rose-300 underline">
+                  Open PDF Receipt ↗
+                </a>
+              </div>
+            ) : (
+              <img src={receiptViewUrl} alt="Payment receipt" className="w-full rounded-lg border border-white/10" />
+            )
+          )}
+        </DialogContent>
+      </Dialog>
     </div >
   );
 };
