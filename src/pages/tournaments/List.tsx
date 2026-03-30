@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 
@@ -38,9 +38,6 @@ function getEffectiveStatus(t: any): string {
 const TournamentList = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [registeredTournaments, setRegisteredTournaments] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Filter state — read initial tab from URL
@@ -58,39 +55,23 @@ const TournamentList = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch user's registrations
-  const fetchUserRegistrations = useCallback(async () => {
-    if (!user || !user.id) {
-      setRegisteredTournaments([]);
-      return;
-    }
+  // Build query params for tournaments
+  const tournamentsQueryParams = useMemo(() => {
+    const params = new URLSearchParams({ limit: '100', offset: '0' });
+    if (selectedGame) params.set('game', selectedGame);
+    if (selectedFormat === 'online') params.set('is_online', 'true');
+    if (selectedFormat === 'lan') params.set('is_online', 'false');
+    if (selectedCountry) params.set('country', selectedCountry);
+    if (selectedCity) params.set('city', selectedCity);
+    return params.toString();
+  }, [selectedGame, selectedFormat, selectedCountry, selectedCity]);
 
-    try {
-      const data = await apiClient.get<{ tournament_id: string }[]>('/api/tournaments/me/registration-status');
-      const userRegistrations = (data || []).map(reg => reg.tournament_id.toString());
-      setRegisteredTournaments(userRegistrations);
-    } catch (error) {
-      console.error('[TournamentList] Error fetching registrations:', error);
-    }
-  }, [user]);
-
-  // Resolve the DB status value(s) for the active tab
-  const currentTab = STATUS_TABS.find(t => t.key === activeTab) || STATUS_TABS[0];
-
-  // Fetch tournaments with filters
-  const fetchTournaments = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({ limit: '100', offset: '0' });
-
-      if (selectedGame) params.set('game', selectedGame);
-      if (selectedFormat === 'online') params.set('is_online', 'true');
-      if (selectedFormat === 'lan') params.set('is_online', 'false');
-      if (selectedCountry) params.set('country', selectedCountry);
-      if (selectedCity) params.set('city', selectedCity);
-
-      const tournamentsData = await apiClient.get<any[]>(`/api/tournaments?${params}`);
-
-      let mappedTournaments = (tournamentsData || []).map(tournament => ({
+  // Fetch tournaments via useQuery (cached, no refetch on tab-switch)
+  const { data: allTournaments = [], isLoading: loading } = useQuery<Tournament[]>({
+    queryKey: ['browse-tournaments', tournamentsQueryParams],
+    queryFn: async () => {
+      const tournamentsData = await apiClient.get<any[]>(`/api/tournaments?${tournamentsQueryParams}`);
+      return (tournamentsData || []).map(tournament => ({
         ...tournament,
         current_participants: tournament.current_participants ?? 0,
         status: tournament.status ?? 'open',
@@ -99,42 +80,26 @@ const TournamentList = () => {
         venue_city: tournament.venue_city ?? null,
         venue_country: tournament.venue_country ?? null,
       }));
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-      // Filter by effective display status (matches TournamentCard badge logic)
-      if (activeTab) {
-        mappedTournaments = mappedTournaments.filter(t => getEffectiveStatus(t) === activeTab);
-      }
+  // Fetch user registrations via useQuery
+  const { data: registeredTournaments = [] } = useQuery<string[]>({
+    queryKey: ['my-tournament-registrations', user?.id],
+    queryFn: async () => {
+      const data = await apiClient.get<{ tournament_id: string }[]>('/api/tournaments/me/registration-status');
+      return (data || []).map(reg => reg.tournament_id.toString());
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
 
-      setTournaments(mappedTournaments);
-    } catch (error) {
-      console.error('[TournamentList] Error fetching tournaments:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load tournaments',
-        variant: 'destructive',
-      });
-    }
-  }, [toast, selectedGame, selectedFormat, selectedCountry, selectedCity, activeTab]);
-
-  // Fetch all data
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        fetchTournaments(),
-        fetchUserRegistrations()
-      ]);
-    } catch (error) {
-      console.error('[TournamentList] Error in fetchData:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchTournaments, fetchUserRegistrations]);
-
-  // Fetch data on mount and when filters change
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Filter by status tab
+  const tournaments = useMemo(() => {
+    if (!activeTab) return allTournaments;
+    return allTournaments.filter(t => getEffectiveStatus(t) === activeTab);
+  }, [allTournaments, activeTab]);
 
   // Sync tab to URL
   const handleTabChange = (key: string) => {
