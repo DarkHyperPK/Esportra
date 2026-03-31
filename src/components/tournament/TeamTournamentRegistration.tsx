@@ -160,12 +160,13 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
           ) || [];
         } catch { /* riot accounts optional */ }
 
-        const accountMap = new Map();
+        const accountMap = new Map<string, string | true>();
         verifiedAccounts?.forEach(a => {
+          const uid = String(a.user_id);
           if (a.game_name && a.tag_line) {
-            accountMap.set(a.user_id, `${a.game_name}#${a.tag_line}`);
+            accountMap.set(uid, `${a.game_name}#${a.tag_line}`);
           } else {
-            accountMap.set(a.user_id, true); // Just verified but no tag data?
+            accountMap.set(uid, true);
           }
         });
 
@@ -175,14 +176,14 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
             is_starter: true,
             is_captain: true,
             profile: captainProfile,
-            is_verified: accountMap.has(captainId),
-            riot_tag_fallback: typeof accountMap.get(captainId) === 'string' ? accountMap.get(captainId) : null
+            is_verified: accountMap.has(String(captainId)),
+            riot_tag_fallback: typeof accountMap.get(String(captainId)) === 'string' ? accountMap.get(String(captainId)) : null
           },
           ...(members || []).filter((m: RosterMember) => m.user_id !== captainId).map((m: RosterMember) => ({
             ...m,
             profile: m.profiles || { username: m.username, full_name: m.full_name, avatar_url: m.avatar_url },
-            is_verified: accountMap.has(m.user_id),
-            riot_tag_fallback: typeof accountMap.get(m.user_id) === 'string' ? accountMap.get(m.user_id) : null
+            is_verified: accountMap.has(String(m.user_id)),
+            riot_tag_fallback: typeof accountMap.get(String(m.user_id)) === 'string' ? accountMap.get(String(m.user_id)) : null
           }))
         ];
 
@@ -763,7 +764,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
                                         {tournament?.game?.toLowerCase() === 'valorant' && tournament?.settings?.assistedMatchReporting && (
                                           <div className="flex items-center">
-                                            {m.is_verified ? (
+                                            {(m.is_verified || m.profile?.riot_tag || m.riot_tag_fallback) ? (
                                               <TooltipProvider delayDuration={0}>
                                                 <Tooltip>
                                                   <TooltipTrigger asChild>
@@ -803,7 +804,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                               const selectedRoster = teamRosters.find(r => r.id === selectedRosterId);
                               // Only show requirements if roster doesn't meet criteria
                               const rosterMeetsCriteria = selectedRoster &&
-                                selectedRoster.game === tournament.game &&
+                                selectedRoster.game?.toLowerCase() === tournament.game?.toLowerCase() &&
                                 Number(selectedRoster.team_size) >= coreMembers;
 
                               // Don't show message if criteria is met
