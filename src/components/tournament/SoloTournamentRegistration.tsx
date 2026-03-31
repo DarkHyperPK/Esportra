@@ -150,9 +150,6 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
         participantType: 'solo',
         gamerTag: registrationData.gamer_tag.trim(),
         soloContactEmail: user.email,
-        status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'registered',
-        entryFeeAmount: tournament.entry_fee || 0,
-        entryFeePaid: !tournament.entry_fee || tournament.entry_fee === 0
       });
 
       toast({

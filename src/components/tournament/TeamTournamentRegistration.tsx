@@ -457,12 +457,15 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         rosterId: selectedRosterId,
         rosterName: roster?.name || null,
         teamContactEmail: user.email || null,
-        status: tournament.entry_fee && tournament.entry_fee > 0 ? 'pending' : 'registered',
-        entryFeeAmount: tournament.entry_fee || 0,
-        entryFeePaid: !tournament.entry_fee || tournament.entry_fee === 0
       });
 
-      toast({ title: 'Registered', description: 'Team registered successfully.' });
+      const isPaid = tournament.entry_fee && tournament.entry_fee > 0;
+      toast({
+        title: isPaid ? 'Registration Pending' : 'Registered',
+        description: isPaid
+          ? 'Your registration is pending approval. Upload payment receipt to proceed.'
+          : 'Team registered successfully.',
+      });
 
       // Send confirmation email
       if (user.email) {
