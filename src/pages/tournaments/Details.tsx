@@ -411,7 +411,7 @@ const TournamentDetails = () => {
           team_name: r.team_name || r.teamName || null,
           team_logo: r.team_logo || r.teamLogo || null,
           team_members: r.team_members || r.teamMembers || null,
-          status: r.status || 'registered',
+          status: r.status || 'approved',
           checked_in_at: r.checked_in_at || r.checkedInAt || null,
           registered_at: r.registration_date || r.registrationDate || r.registered_at || r.registeredAt || r.created_at || r.createdAt,
           created_at: r.created_at || r.createdAt,

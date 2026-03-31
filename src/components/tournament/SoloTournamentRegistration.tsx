@@ -137,7 +137,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
       // Check current registration count
       const participants = await apiClient.get<any[]>(
-        `/api/tournaments/${tournament.id}/participants?status=pending,approved,registered,checked_in`
+        `/api/tournaments/${tournament.id}/participants?status=pending,approved,checked_in`
       );
       const currentRegistrations = participants?.length ?? 0;
 

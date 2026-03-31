@@ -193,7 +193,7 @@ const ParticipantsList = () => {
             email: isTeamReg ? (team.owner?.email || '') : (profile.email || ''),
             tournament: tournamentMap[reg.tournament_id] || 'Unknown',
             registeredAt: reg.created_at,
-            status: reg.status === 'registered' ? 'confirmed' : (reg.status || 'pending'),
+            status: reg.status === 'approved' ? 'confirmed' : (reg.status || 'pending'),
             isTeamFormat,
             tournamentSlug: tournamentSlugMap[reg.tournament_id]
           };

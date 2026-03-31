@@ -105,7 +105,7 @@ export interface Database {
           team_logo_url: string | null
           team_contact_email: string | null
           team_contact_phone: string | null
-          status: 'registered' | 'checked_in' | 'withdrawn' | 'pending'
+          status: 'approved' | 'checked_in' | 'withdrawn' | 'pending'
           registration_date: string | null
           checked_in_at: string | null
           created_at: string
@@ -124,7 +124,7 @@ export interface Database {
           team_logo_url?: string | null
           team_contact_email?: string | null
           team_contact_phone?: string | null
-          status?: 'registered' | 'checked_in' | 'withdrawn' | 'pending'
+          status?: 'approved' | 'checked_in' | 'withdrawn' | 'pending'
           registration_date?: string | null
           checked_in_at?: string | null
           created_at?: string
@@ -143,7 +143,7 @@ export interface Database {
           team_logo_url?: string | null
           team_contact_email?: string | null
           team_contact_phone?: string | null
-          status?: 'registered' | 'checked_in' | 'withdrawn' | 'pending'
+          status?: 'approved' | 'checked_in' | 'withdrawn' | 'pending'
           registration_date?: string | null
           checked_in_at?: string | null
           created_at?: string

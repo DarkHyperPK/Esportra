@@ -52,7 +52,7 @@ export const useTournamentRegistration = ({
     steam_tag: (initialData as any)?.steam_tag || '',
     teamName: initialData?.team_name || '',
     teamMembers: initialData?.team_members ? initialData.team_members.split(',') : Array(teamSize).fill(''),
-    status: initialData?.status || 'registered'
+    status: initialData?.status || 'approved'
   }));
 
   // Reset state when initialData changes
@@ -143,7 +143,7 @@ export const useTournamentRegistration = ({
         team_members: state.type === 'team' ? teamMembersArr.join(',') : null,
         team_logo_url: state.type === 'team' ? (override?.teamLogo || null) : null,
         user_email: user.email || null,
-        status: 'registered',
+        status: 'approved',
         created_at: new Date().toISOString()
       };
 
@@ -194,7 +194,7 @@ export const useTournamentRegistration = ({
           team_name: state.type === 'team' ? state.teamName : null,
           team_members: state.type === 'team' ? teamMembersArr.join(',') : null,
           team_logo: state.type === 'team' ? (override?.teamLogo || null) : null,
-          status: 'registered',
+          status: 'approved',
           registered_at: new Date().toISOString(),
           created_at: data?.created_at || new Date().toISOString(),
           updated_at: data?.created_at || new Date().toISOString()

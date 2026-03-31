@@ -1915,7 +1915,7 @@ const TournamentDashboard = () => {
                             </div>
                             <div className="flex flex-col px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Pending</span>
-                              <span className="text-3xl font-black text-amber-400 tracking-tight">{Math.max(0, participants.filter(p => p.status === 'registered' || p.status === 'pending').length)}</span>
+                              <span className="text-3xl font-black text-amber-400 tracking-tight">{Math.max(0, participants.filter(p => p.status === 'approved' || p.status === 'pending').length)}</span>
                             </div>
                           </div>
                           <div>

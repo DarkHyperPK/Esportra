@@ -52,7 +52,7 @@ export interface DashboardParticipant {
     id: string;
     user_id: string;
     tournament_id: string;
-    status: 'registered' | 'checked_in' | 'withdrawn' | 'pending';
+    status: 'approved' | 'checked_in' | 'withdrawn' | 'pending';
     participant_type: 'solo' | 'team';
     team_name: string | null;
     team_logo: string | null;

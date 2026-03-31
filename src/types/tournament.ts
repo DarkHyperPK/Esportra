@@ -2,12 +2,12 @@ export type TournamentStatus = 'draft' | 'published' | 'open' | 'closed' | 'ongo
 export type RegistrationStatus =
     | 'pending'
     | 'approved'
-    | 'registered'
     | 'checked_in'
     | 'rejected'
     | 'cancelled'
     | 'disqualified'
     | 'eliminated'
+    | 'waitlist'
     | 'winner';
 export type RegistrationType = 'solo' | 'team';
 
