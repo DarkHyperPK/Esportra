@@ -70,7 +70,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
 
   // Use the custom hook for game images and carousel
-  const { gameLogo, gameBanner, screenshots, carouselIndex } = useRawgGame(game);
+  const { gameLogo, gameBanner, rawgScreenshots, carouselIndex } = useRawgGame(game);
 
   // Date-Driven Status Logic
   const now = new Date();
@@ -146,12 +146,12 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
               responsive={true}
             />
           ) : (
-            /* 2. RAWG Content (Carousel or Static) - Fallback */
+            /* 2. RAWG Screenshots (Carousel or Static) - Fallback */
             <AnimatePresence mode="wait">
-              {screenshots.length > 0 ? (
+              {rawgScreenshots.length > 0 ? (
                 <motion.img
-                  key={screenshots[carouselIndex]}
-                  src={screenshots[carouselIndex]}
+                  key={rawgScreenshots[carouselIndex % rawgScreenshots.length]}
+                  src={rawgScreenshots[carouselIndex % rawgScreenshots.length]}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}

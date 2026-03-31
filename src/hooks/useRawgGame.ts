@@ -10,8 +10,9 @@ interface IgdbVideo {
 
 interface GameData {
     gameLogo: string | null;
-    gameBanner: string | null;
-    screenshots: string[];
+    gameBanner: string | null;       // IGDB primary banner (for public page)
+    screenshots: string[];            // IGDB banners (for public page carousel)
+    rawgScreenshots: string[];        // RAWG screenshots (for card carousel)
     videos: IgdbVideo[];
     carouselIndex: number;
     isLoading: boolean;
@@ -22,7 +23,8 @@ interface GameData {
 export interface CachedGame {
     gameLogo: string | null;
     gameBanner: string | null;
-    screenshots: string[];
+    screenshots: string[];           // IGDB banners
+    rawgScreenshots: string[];       // RAWG screenshots
     videos: IgdbVideo[];
 }
 
@@ -89,7 +91,7 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
 
     const promise = (async (): Promise<CachedGame> => {
         try {
-            // Fetch IGDB assets and RAWG logo in parallel
+            // Fetch IGDB assets and RAWG search in parallel
             const [igdbResult, rawgResult] = await Promise.allSettled([
                 apiClient.get<IgdbAssetsResponse>(
                     `/api/games/igdb-assets?game=${encodeURIComponent(gameName)}`
@@ -99,7 +101,23 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
                     const raw = await rawgSearchGames(searchName);
                     const result = raw?.data ?? raw;
                     if (!result?.results?.length) return null;
-                    return { logo: result.results[0].background_image as string | null };
+                    const game = result.results[0];
+                    // Fetch RAWG screenshots for card carousel
+                    let ssImages: string[] = [];
+                    if (game.id) {
+                        try {
+                            const ssRaw = await rawgGetScreenshots(game.id);
+                            const ssResult = ssRaw?.data ?? ssRaw;
+                            ssImages = (ssResult?.results || [])
+                                .map((s: any) => s.image as string)
+                                .filter(Boolean)
+                                .slice(0, 8);
+                        } catch { /* non-critical */ }
+                    }
+                    return {
+                        logo: game.background_image as string | null,
+                        screenshots: ssImages.length > 0 ? ssImages : (game.background_image ? [game.background_image] : []),
+                    };
                 })()
             ]);
 
@@ -109,14 +127,17 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
             const igdbBanners = igdb?.banners || [];
             const igdbVideos = igdb?.videos || [];
             const rawgLogo = rawg?.logo || null;
+            const rawgScreenshots = rawg?.screenshots || [];
             const twitchFallback = getTwitchFallback(gameName);
 
-            // IGDB banners for carousel; RAWG only for logo
             const cached: CachedGame = {
                 gameLogo: rawgLogo || twitchFallback,
                 gameBanner: igdbBanners[0] || rawgLogo || twitchFallback,
                 screenshots: igdbBanners.length > 0
                     ? igdbBanners
+                    : [rawgLogo].filter(Boolean) as string[],
+                rawgScreenshots: rawgScreenshots.length > 0
+                    ? rawgScreenshots
                     : [rawgLogo].filter(Boolean) as string[],
                 videos: igdbVideos,
             };
@@ -129,6 +150,7 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
                 gameLogo: fallback,
                 gameBanner: fallback,
                 screenshots: fallback ? [fallback] : [],
+                rawgScreenshots: fallback ? [fallback] : [],
                 videos: [],
             };
             gameCache.set(cacheKey, cached);
@@ -157,6 +179,7 @@ export const useRawgGame = (gameName: string) => {
         gameLogo: null,
         gameBanner: null,
         screenshots: [],
+        rawgScreenshots: [],
         videos: [],
         carouselIndex: 0,
         isLoading: true,
@@ -177,7 +200,7 @@ export const useRawgGame = (gameName: string) => {
                     ...result,
                     carouselIndex: 0,
                     isLoading: false,
-                    error: result.screenshots.length === 0 ? 'No results found' : null,
+                    error: (result.screenshots.length === 0 && result.rawgScreenshots.length === 0) ? 'No results found' : null,
                 });
             }
         });
@@ -185,22 +208,24 @@ export const useRawgGame = (gameName: string) => {
         return () => { isMounted = false; };
     }, [gameName, cacheKey]);
 
+    const maxLen = Math.max(data.screenshots.length, data.rawgScreenshots.length);
+
     useEffect(() => {
-        if (data.screenshots.length <= 1) return;
+        if (maxLen <= 1) return;
 
         if (carouselTimeout.current) clearTimeout(carouselTimeout.current);
 
         carouselTimeout.current = setTimeout(() => {
             setData(prev => ({
                 ...prev,
-                carouselIndex: (prev.carouselIndex + 1) % prev.screenshots.length
+                carouselIndex: (prev.carouselIndex + 1) % maxLen
             }));
         }, 6000);
 
         return () => {
             if (carouselTimeout.current) clearTimeout(carouselTimeout.current);
         };
-    }, [data.carouselIndex, data.screenshots.length]);
+    }, [data.carouselIndex, maxLen]);
 
     return data;
 };
