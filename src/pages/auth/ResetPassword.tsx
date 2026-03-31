@@ -81,12 +81,16 @@ const ResetPassword = () => {
             if (updateError) throw updateError;
 
             setSuccess(true);
+            sessionStorage.removeItem('password_recovery_pending');
+
+            // Sign out the recovery session so user must log in with new password
+            await supabase.auth.signOut();
+
             toast({
                 title: "Password updated!",
-                description: "Your password has been reset successfully.",
+                description: "Your password has been reset. Please sign in with your new password.",
             });
 
-            // Wait a bit before redirecting
             setTimeout(() => {
                 navigate('/auth/signin');
             }, 3000);
@@ -206,7 +210,7 @@ const ResetPassword = () => {
                         </div>
                         <h2 className="text-2xl font-bold text-white mb-2">Password Reset!</h2>
                         <p className="text-white/60 mb-8 max-w-xs mx-auto">
-                            Your password has been updated. You are being redirected to the sign-in page...
+                            Your password has been updated. Please sign in with your new password...
                         </p>
                         <div className="flex justify-center">
                             <Loader2 className="w-6 h-6 text-rose-500 animate-spin" />

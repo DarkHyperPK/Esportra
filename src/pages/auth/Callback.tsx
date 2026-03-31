@@ -50,6 +50,7 @@ const Callback = () => {
     // PASSWORD_RECOVERY fires reliably before getSession() resolves — use it as primary handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
+        sessionStorage.setItem('password_recovery_pending', 'true');
         toast({ title: "Link verified", description: "Please set your new password." });
         navigate('/auth/reset-password');
         return;
@@ -58,6 +59,7 @@ const Callback = () => {
       if (event === 'SIGNED_IN') {
         // Fallback: check captured hash for recovery in case event fires as SIGNED_IN
         if (initialHash.includes('type=recovery')) {
+          sessionStorage.setItem('password_recovery_pending', 'true');
           toast({ title: "Link verified", description: "Please set your new password." });
           navigate('/auth/reset-password');
           return;
@@ -75,6 +77,7 @@ const Callback = () => {
         return;
       }
       if (initialHash.includes('type=recovery') && session) {
+        sessionStorage.setItem('password_recovery_pending', 'true');
         toast({ title: "Link verified", description: "Please set your new password." });
         navigate('/auth/reset-password');
         return;

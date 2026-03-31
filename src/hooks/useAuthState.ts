@@ -16,6 +16,12 @@ export const useAuthState = () => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (mounted) {
+        // Block recovery sessions from being treated as normal auth
+        if (sessionStorage.getItem('password_recovery_pending') === 'true') {
+          setUser(null);
+          setSession(null);
+          return;
+        }
         setUser(newSession?.user || null);
         setSession(newSession);
 
@@ -35,8 +41,14 @@ export const useAuthState = () => {
         }
 
         if (mounted) {
-          setSession(currentSession);
-          setUser(currentSession?.user || null);
+          // Block recovery sessions from being treated as normal auth
+          if (sessionStorage.getItem('password_recovery_pending') === 'true') {
+            setSession(null);
+            setUser(null);
+          } else {
+            setSession(currentSession);
+            setUser(currentSession?.user || null);
+          }
           setLoading(false);
         }
       })
