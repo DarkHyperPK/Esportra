@@ -391,6 +391,13 @@ const TournamentDetails = () => {
       const r = status.registration;
 
       if (r) {
+        const rStatus = (r.status || '').toLowerCase();
+        // Rejected or cancelled registrations = not registered
+        if (rStatus === 'rejected' || rStatus === 'cancelled') {
+          setIsRegistered(false);
+          setRegistrationDetails(null);
+          setIsCaptain(false);
+        } else {
         setIsRegistered(true);
 
         const registration: TournamentRegistration & { team_id?: string; team_captain_id?: string } = {
@@ -422,6 +429,7 @@ const TournamentDetails = () => {
           teamCaptainId === user.id ||
           (status.captainTeams || []).some((t: any) => t.id === (r.team_id || r.teamId));
         setIsCaptain(isCap);
+        }
       } else {
         setIsRegistered(false);
         setRegistrationDetails(null);
