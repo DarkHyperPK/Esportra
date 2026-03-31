@@ -69,13 +69,22 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent z-10" />
                         <div className="absolute inset-0 bg-gradient-to-b from-[#050505] via-transparent to-transparent z-10" />
                         {isVideoBanner ? (
-                            <iframe
-                                src={bannerSrc}
-                                title={tournament.name}
-                                className="w-full h-full object-cover pointer-events-none"
-                                style={{ border: 'none', position: 'absolute', top: '-60px', left: 0, width: '100%', height: 'calc(100% + 120px)' }}
-                                allow="autoplay; encrypted-media"
-                            />
+                            <div className="absolute inset-0 overflow-hidden">
+                                <iframe
+                                    src={bannerSrc}
+                                    title={tournament.name}
+                                    className="absolute top-1/2 left-1/2 pointer-events-none"
+                                    style={{
+                                        border: 'none',
+                                        width: '177.78vh',   // 16:9 width relative to viewport height
+                                        height: '56.25vw',   // 16:9 height relative to viewport width
+                                        minWidth: '100%',
+                                        minHeight: '100%',
+                                        transform: 'translate(-50%, -50%)',
+                                    }}
+                                    allow="autoplay; encrypted-media"
+                                />
+                            </div>
                         ) : (
                             <img
                                 src={bannerSrc}
