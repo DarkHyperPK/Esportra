@@ -1246,14 +1246,14 @@ const TournamentDashboard = () => {
     if (participant.payment_status === 'pending') {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-amber-400/40 bg-amber-500/10 text-amber-200">
-          💳 Payment Pending
+          Pending
         </span>
       );
     }
     if (participant.payment_status === 'rejected') {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-red-500/40 bg-red-500/10 text-red-300">
-          💳 Payment Rejected
+          Rejected
         </span>
       );
     }

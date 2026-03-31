@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Settings, DollarSign } from 'lucide-react';
+import { Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface TeamCardProps {
@@ -95,21 +95,6 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
                             {/* Status Badge */}
                             <div className="absolute top-3 left-3 z-10 scale-90 origin-top-left flex gap-1">
                                 {renderStatusBadge(participant)}
-                                {participant.payment_status === 'pending' && (
-                                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                        <DollarSign className="w-2.5 h-2.5" />$
-                                    </span>
-                                )}
-                                {participant.payment_status === 'approved' && (
-                                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-500/20 text-green-300 border border-green-500/30">
-                                        <DollarSign className="w-2.5 h-2.5" />✓
-                                    </span>
-                                )}
-                                {participant.payment_status === 'rejected' && (
-                                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30">
-                                        <DollarSign className="w-2.5 h-2.5" />✗
-                                    </span>
-                                )}
                             </div>
 
                             {/* Logo */}
