@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
+import { apiClient } from '@/lib/apiClient';
 import esportsGames from '@/data/esportsGames.json';
 
 interface RawgGameData {
@@ -75,42 +76,41 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
 
     const promise = (async (): Promise<CachedGame> => {
         try {
-            const searchName = getRawgGameName(gameName);
-            const raw = await rawgSearchGames(searchName);
-            const result = raw?.data ?? raw;
+            // Fetch IGDB banner and RAWG data in parallel
+            const [igdbResult, rawgResult] = await Promise.allSettled([
+                apiClient.get<{ banner: string | null; cover: string | null }>(
+                    `/api/games/igdb-banner?game=${encodeURIComponent(gameName)}`
+                ),
+                (async () => {
+                    const searchName = getRawgGameName(gameName);
+                    const raw = await rawgSearchGames(searchName);
+                    const result = raw?.data ?? raw;
+                    if (!result?.results?.length) return null;
+                    const gameData = result.results[0];
+                    let screenshots: string[] = [];
+                    try {
+                        const ss = await rawgGetScreenshots(gameData.id);
+                        screenshots = (ss.results || []).map((s: any) => s.image);
+                    } catch { /* screenshots optional */ }
+                    return { logo: gameData.background_image, screenshots };
+                })()
+            ]);
 
-            if (result?.results?.length > 0) {
-                const gameData = result.results[0];
-                const logo = gameData.background_image || null;
+            const igdb = igdbResult.status === 'fulfilled' ? igdbResult.value : null;
+            const rawg = rawgResult.status === 'fulfilled' ? rawgResult.value : null;
 
-                try {
-                    const screenshotsData = await rawgGetScreenshots(gameData.id);
-                    const screenshotUrls = (screenshotsData.results || []).map((s: any) => s.image);
-                    const cached: CachedGame = {
-                        gameLogo: logo,
-                        gameBanner: screenshotUrls[0] || logo,
-                        screenshots: screenshotUrls.length > 0 ? screenshotUrls : [gameData.background_image_additional, logo].filter(Boolean),
-                    };
-                    gameCache.set(cacheKey, cached);
-                    persistCache();
-                    return cached;
-                } catch {
-                    const cached: CachedGame = {
-                        gameLogo: logo,
-                        gameBanner: gameData.background_image_additional || logo,
-                        screenshots: [gameData.background_image_additional, logo].filter(Boolean),
-                    };
-                    gameCache.set(cacheKey, cached);
-                    persistCache();
-                    return cached;
-                }
-            }
+            // IGDB banner is preferred; RAWG logo as fallback for logo only
+            const igdbBanner = igdb?.banner || null;
+            const rawgLogo = rawg?.logo || null;
+            const screenshots = rawg?.screenshots || [];
+            const twitchFallback = getTwitchFallback(gameName);
 
-            const fallback = getTwitchFallback(gameName);
             const cached: CachedGame = {
-                gameLogo: fallback,
-                gameBanner: fallback,
-                screenshots: fallback ? [fallback] : [],
+                gameLogo: rawgLogo || twitchFallback,
+                gameBanner: igdbBanner || screenshots[0] || rawgLogo || twitchFallback,
+                screenshots: screenshots.length > 0
+                    ? screenshots
+                    : [igdbBanner, rawgLogo].filter(Boolean) as string[],
             };
             gameCache.set(cacheKey, cached);
             persistCache();
