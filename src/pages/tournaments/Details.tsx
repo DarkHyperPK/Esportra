@@ -55,6 +55,7 @@ import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
 import { TournamentSponsorBanner } from '@/components/tournament/TournamentSponsorBanner';
 import { TournamentSponsorTicker } from '@/components/tournament/TournamentSponsorTicker';
+import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 
 interface EsportsGame {
   name: string;
@@ -139,6 +140,8 @@ const TournamentDetails = () => {
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState<string | null>(null);
   const [showBannerDialog, setShowBannerDialog] = useState(false);
+  const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
+  const [selectedArtwork, setSelectedArtwork] = useState<string | null>(null);
   const terminology = useGameTerminology(tournament?.game);
   const isBR = isBattleRoyale(tournament?.game || '');
 
@@ -572,6 +575,8 @@ const TournamentDetails = () => {
 
       setTournament(prev => prev ? { ...prev, image_url: url } : null);
       setShowBannerDialog(false);
+      setSelectedArtwork(null);
+      setBannerMode('upload');
       toast({
         title: 'Banner updated',
         description: 'The tournament banner has been updated successfully.'
@@ -897,30 +902,75 @@ const TournamentDetails = () => {
       </AlertDialog>
 
       {/* Banner Edit Dialog */}
-      <Dialog open={showBannerDialog} onOpenChange={setShowBannerDialog}>
-        <DialogContent className="max-w-xl bg-[#0a0a0c] border border-white/10">
+      <Dialog open={showBannerDialog} onOpenChange={(open) => {
+        setShowBannerDialog(open);
+        if (!open) { setBannerMode('upload'); setSelectedArtwork(null); }
+      }}>
+        <DialogContent className="max-w-2xl bg-[#0a0a0c] border border-white/10">
           <DialogHeader>
             <DialogTitle className="text-white font-heading text-2xl tracking-wide">
               EDIT_BANNER
             </DialogTitle>
           </DialogHeader>
-          <div className="py-6">
-            <ImageUploader
-              value={tournament?.image_url || null}
-              onChange={handleBannerUpdate}
-              aspectRatio="banner"
-              label="Tournament Banner"
-              helperText="Upload a high-quality banner for your tournament (16:9 recommended)"
-              bucket="system.assets.website"
-              folder={`Tournament-card-banners/${(tournament as any)?.organizer?.username || 'unknown'}`}
-              customFileName={slugify(tournament?.name || 'banner', { lower: true, strict: true })}
-              useTimestamp={true}
-            />
+
+          {/* Mode toggle */}
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => setBannerMode('upload')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                bannerMode === 'upload'
+                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                  : 'bg-white/5 text-zinc-400 border border-white/5 hover:bg-white/10'
+              }`}
+            >
+              Upload Custom
+            </button>
+            <button
+              onClick={() => setBannerMode('artwork')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                bannerMode === 'artwork'
+                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                  : 'bg-white/5 text-zinc-400 border border-white/5 hover:bg-white/10'
+              }`}
+            >
+              Use Artwork from Esportra Partners
+            </button>
           </div>
-          <DialogFooter>
+
+          <div className="py-4">
+            {bannerMode === 'upload' ? (
+              <ImageUploader
+                value={tournament?.image_url || null}
+                onChange={handleBannerUpdate}
+                aspectRatio="banner"
+                label="Tournament Banner"
+                helperText="Upload a high-quality banner for your tournament (16:9 recommended)"
+                bucket="system.assets.website"
+                folder={`Tournament-card-banners/${(tournament as any)?.organizer?.username || 'unknown'}`}
+                customFileName={slugify(tournament?.name || 'banner', { lower: true, strict: true })}
+                useTimestamp={true}
+              />
+            ) : (
+              <ArtworkPicker
+                gameName={tournament?.game || ''}
+                onSelect={setSelectedArtwork}
+                selectedUrl={selectedArtwork}
+              />
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowBannerDialog(false)} className="border-white/10 text-white hover:bg-white/5">
               CANCEL
             </Button>
+            {bannerMode === 'artwork' && selectedArtwork && (
+              <Button
+                onClick={() => handleBannerUpdate(selectedArtwork)}
+                className="bg-rose-500 hover:bg-rose-600 text-white"
+              >
+                USE SELECTED ARTWORK
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
