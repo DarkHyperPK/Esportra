@@ -3,10 +3,16 @@ import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
 import { apiClient } from '@/lib/apiClient';
 import esportsGames from '@/data/esportsGames.json';
 
-interface RawgGameData {
+interface IgdbVideo {
+    videoId: string;
+    name: string | null;
+}
+
+interface GameData {
     gameLogo: string | null;
     gameBanner: string | null;
     screenshots: string[];
+    videos: IgdbVideo[];
     carouselIndex: number;
     isLoading: boolean;
     error: string | null;
@@ -17,9 +23,10 @@ export interface CachedGame {
     gameLogo: string | null;
     gameBanner: string | null;
     screenshots: string[];
+    videos: IgdbVideo[];
 }
 
-const CACHE_KEY = 'rawg_game_cache';
+const CACHE_KEY = 'game_assets_cache_v2';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
 
 function loadPersistedCache(): Map<string, CachedGame> {
@@ -65,6 +72,12 @@ function getRawgGameName(name: string) {
     return name;
 }
 
+interface IgdbAssetsResponse {
+    banners: string[];
+    cover: string | null;
+    videos: IgdbVideo[];
+}
+
 export async function fetchGameData(gameName: string): Promise<CachedGame> {
     const cacheKey = gameName.trim().toLowerCase();
 
@@ -76,41 +89,36 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
 
     const promise = (async (): Promise<CachedGame> => {
         try {
-            // Fetch IGDB banner and RAWG data in parallel
+            // Fetch IGDB assets and RAWG logo in parallel
             const [igdbResult, rawgResult] = await Promise.allSettled([
-                apiClient.get<{ banner: string | null; cover: string | null }>(
-                    `/api/games/igdb-banner?game=${encodeURIComponent(gameName)}`
+                apiClient.get<IgdbAssetsResponse>(
+                    `/api/games/igdb-assets?game=${encodeURIComponent(gameName)}`
                 ),
                 (async () => {
                     const searchName = getRawgGameName(gameName);
                     const raw = await rawgSearchGames(searchName);
                     const result = raw?.data ?? raw;
                     if (!result?.results?.length) return null;
-                    const gameData = result.results[0];
-                    let screenshots: string[] = [];
-                    try {
-                        const ss = await rawgGetScreenshots(gameData.id);
-                        screenshots = (ss.results || []).map((s: any) => s.image);
-                    } catch { /* screenshots optional */ }
-                    return { logo: gameData.background_image, screenshots };
+                    return { logo: result.results[0].background_image as string | null };
                 })()
             ]);
 
             const igdb = igdbResult.status === 'fulfilled' ? igdbResult.value : null;
             const rawg = rawgResult.status === 'fulfilled' ? rawgResult.value : null;
 
-            // IGDB banner is preferred; RAWG logo as fallback for logo only
-            const igdbBanner = igdb?.banner || null;
+            const igdbBanners = igdb?.banners || [];
+            const igdbVideos = igdb?.videos || [];
             const rawgLogo = rawg?.logo || null;
-            const screenshots = rawg?.screenshots || [];
             const twitchFallback = getTwitchFallback(gameName);
 
+            // IGDB banners for carousel; RAWG only for logo
             const cached: CachedGame = {
                 gameLogo: rawgLogo || twitchFallback,
-                gameBanner: igdbBanner || screenshots[0] || rawgLogo || twitchFallback,
-                screenshots: screenshots.length > 0
-                    ? screenshots
-                    : [igdbBanner, rawgLogo].filter(Boolean) as string[],
+                gameBanner: igdbBanners[0] || rawgLogo || twitchFallback,
+                screenshots: igdbBanners.length > 0
+                    ? igdbBanners
+                    : [rawgLogo].filter(Boolean) as string[],
+                videos: igdbVideos,
             };
             gameCache.set(cacheKey, cached);
             persistCache();
@@ -121,6 +129,7 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
                 gameLogo: fallback,
                 gameBanner: fallback,
                 screenshots: fallback ? [fallback] : [],
+                videos: [],
             };
             gameCache.set(cacheKey, cached);
             persistCache();
@@ -139,7 +148,7 @@ export const useRawgGame = (gameName: string) => {
     const cacheKey = gameName.trim().toLowerCase();
     const cached = gameCache.get(cacheKey);
 
-    const [data, setData] = useState<RawgGameData>(() => cached ? {
+    const [data, setData] = useState<GameData>(() => cached ? {
         ...cached,
         carouselIndex: 0,
         isLoading: false,
@@ -148,6 +157,7 @@ export const useRawgGame = (gameName: string) => {
         gameLogo: null,
         gameBanner: null,
         screenshots: [],
+        videos: [],
         carouselIndex: 0,
         isLoading: true,
         error: null,
@@ -185,7 +195,7 @@ export const useRawgGame = (gameName: string) => {
                 ...prev,
                 carouselIndex: (prev.carouselIndex + 1) % prev.screenshots.length
             }));
-        }, 6000); // Slower carousel — reduces re-renders
+        }, 6000);
 
         return () => {
             if (carouselTimeout.current) clearTimeout(carouselTimeout.current);
