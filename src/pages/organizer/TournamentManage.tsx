@@ -1242,11 +1242,11 @@ const TournamentDashboard = () => {
   );
 
   const renderCheckInBadge = (participant: Participant) => {
-    // Payment status badge (takes priority if payment pending)
+    // Payment status badges take priority
     if (participant.payment_status === 'pending') {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-amber-400/40 bg-amber-500/10 text-amber-200">
-          Pending
+          Payment Pending
         </span>
       );
     }
@@ -1258,26 +1258,39 @@ const TournamentDashboard = () => {
       );
     }
 
-    if (!effectiveCheckInRequired) return null;
-    if (participant.checked_in_at) {
+    // Check-in badges (only when check-in is required)
+    if (effectiveCheckInRequired) {
+      if (participant.checked_in_at) {
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-green-500/40 bg-green-500/10 text-green-300">
+            Checked In
+          </span>
+        );
+      }
+      if (isCheckInClosed) {
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-red-500/40 bg-red-500/10 text-red-300">
+            Missed
+          </span>
+        );
+      }
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-amber-400/40 bg-amber-500/10 text-amber-200">
+          Awaiting Check-in
+        </span>
+      );
+    }
+
+    // Approved (no check-in required or paid tournament approved)
+    if (participant.status === 'approved') {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-green-500/40 bg-green-500/10 text-green-300">
-          Checked In
+          Approved
         </span>
       );
     }
-    if (isCheckInClosed) {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-red-500/40 bg-red-500/10 text-red-300">
-          Missed
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-amber-400/40 bg-amber-500/10 text-amber-200">
-        Awaiting
-      </span>
-    );
+
+    return null;
   };
 
   // Fetch game background from RAWG API
