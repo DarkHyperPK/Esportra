@@ -1907,7 +1907,7 @@ const TournamentDashboard = () => {
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-0">
                             <div className="flex flex-col sm:border-r border-white/10 px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Participants</span>
-                              <span className="text-3xl font-black text-white tracking-tight">{participants.length}</span>
+                              <span className="text-3xl font-black text-white tracking-tight">{participants.filter(p => p.status !== 'rejected').length}</span>
                             </div>
                             <div className="flex flex-col sm:border-r border-white/10 px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Checked In</span>
@@ -1976,12 +1976,12 @@ const TournamentDashboard = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-0 relative z-10">
-                        {participants.length === 0 ? (
+                        {participants.filter(p => p.status !== 'rejected').length === 0 ? (
                           <p className="text-gray-400 italic">No participants registered yet.</p>
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             <AnimatePresence>
-                              {participants.map((participant) => (
+                              {participants.filter(p => p.status !== 'rejected').map((participant) => (
                                 <OrganizerTeamCard
                                   key={participant.id}
                                   participant={participant}
