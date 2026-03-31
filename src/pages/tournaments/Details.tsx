@@ -141,7 +141,6 @@ const TournamentDetails = () => {
   const [banReason, setBanReason] = useState<string | null>(null);
   const [showBannerDialog, setShowBannerDialog] = useState(false);
   const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
-  const [selectedArtwork, setSelectedArtwork] = useState<string | null>(null);
   const terminology = useGameTerminology(tournament?.game);
   const isBR = isBattleRoyale(tournament?.game || '');
 
@@ -575,7 +574,6 @@ const TournamentDetails = () => {
 
       setTournament(prev => prev ? { ...prev, image_url: url } : null);
       setShowBannerDialog(false);
-      setSelectedArtwork(null);
       setBannerMode('upload');
       toast({
         title: 'Banner updated',
@@ -904,7 +902,7 @@ const TournamentDetails = () => {
       {/* Banner Edit Dialog */}
       <Dialog open={showBannerDialog} onOpenChange={(open) => {
         setShowBannerDialog(open);
-        if (!open) { setBannerMode('upload'); setSelectedArtwork(null); }
+        if (!open) { setBannerMode('upload'); }
       }}>
         <DialogContent className="max-w-2xl bg-[#0a0a0c] border border-white/10">
           <DialogHeader>
@@ -953,24 +951,19 @@ const TournamentDetails = () => {
             ) : (
               <ArtworkPicker
                 gameName={tournament?.game || ''}
-                onSelect={setSelectedArtwork}
-                selectedUrl={selectedArtwork}
+                onSelect={handleBannerUpdate}
+                uploadConfig={{
+                  bucket: 'system.assets.website',
+                  folder: `Tournament-card-banners/${(tournament as any)?.organizer?.username || 'unknown'}`,
+                }}
               />
             )}
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setShowBannerDialog(false)} className="border-white/10 text-white hover:bg-white/5">
               CANCEL
             </Button>
-            {bannerMode === 'artwork' && selectedArtwork && (
-              <Button
-                onClick={() => handleBannerUpdate(selectedArtwork)}
-                className="bg-rose-500 hover:bg-rose-600 text-white"
-              >
-                USE SELECTED ARTWORK
-              </Button>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

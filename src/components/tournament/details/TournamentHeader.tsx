@@ -41,6 +41,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     const navigate = useNavigate();
     const gameData = useRawgGame(tournament.game || '');
     const bannerSrc = tournament.image_url || gameData.gameBanner || '/placeholder.svg';
+    const isVideoBanner = bannerSrc.includes('youtube.com/embed/');
 
     return (
         <>
@@ -67,11 +68,21 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                     >
                         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent z-10" />
                         <div className="absolute inset-0 bg-gradient-to-b from-[#050505] via-transparent to-transparent z-10" />
-                        <img
-                            src={bannerSrc}
-                            alt={tournament.name}
-                            className="w-full h-full object-cover contrast-110"
-                        />
+                        {isVideoBanner ? (
+                            <iframe
+                                src={bannerSrc}
+                                title={tournament.name}
+                                className="w-full h-full object-cover pointer-events-none"
+                                style={{ border: 'none', position: 'absolute', top: '-60px', left: 0, width: '100%', height: 'calc(100% + 120px)' }}
+                                allow="autoplay; encrypted-media"
+                            />
+                        ) : (
+                            <img
+                                src={bannerSrc}
+                                alt={tournament.name}
+                                className="w-full h-full object-cover contrast-110"
+                            />
+                        )}
                         {isOrganizer && (
                             <div className="absolute top-8 right-8 z-30">
                                 <Button

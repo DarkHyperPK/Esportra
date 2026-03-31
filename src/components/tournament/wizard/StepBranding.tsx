@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Image, DollarSign, FileText, Link as LinkIcon, MessageCircle, Twitter } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
@@ -13,7 +12,6 @@ import { useAuth } from '@/contexts/AuthContext';
 const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
     const { profile } = useAuth();
     const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
-    const [selectedArtwork, setSelectedArtwork] = useState<string | null>(null);
 
     // Sanitize names for storage path
     const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -75,26 +73,17 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                         useTimestamp={false}
                     />
                 ) : (
-                    <div className="space-y-3">
-                        <ArtworkPicker
-                            gameName={data.game || ''}
-                            onSelect={setSelectedArtwork}
-                            selectedUrl={selectedArtwork}
-                        />
-                        {selectedArtwork && (
-                            <Button
-                                type="button"
-                                onClick={() => {
-                                    updateData({ bannerUrl: selectedArtwork });
-                                    setSelectedArtwork(null);
-                                    setBannerMode('upload');
-                                }}
-                                className="bg-rose-500 hover:bg-rose-600 text-white"
-                            >
-                                USE SELECTED ARTWORK
-                            </Button>
-                        )}
-                    </div>
+                    <ArtworkPicker
+                        gameName={data.game || ''}
+                        onSelect={(url) => {
+                            updateData({ bannerUrl: url });
+                            setBannerMode('upload');
+                        }}
+                        uploadConfig={{
+                            bucket: 'system.assets.website',
+                            folder: `Tournament-card-banners/${organizerName}`,
+                        }}
+                    />
                 )}
             </div>
 
