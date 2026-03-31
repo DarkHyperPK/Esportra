@@ -206,6 +206,9 @@ const CaptainMatchPage = () => {
             // Get participants from wrapped response
             setParticipants(response.participants || []);
 
+            // Use backend-computed organizer flag (avoids extra API call)
+            setIsOrganizer(response.isOrganizer || false);
+
         } catch (error: any) {
             console.error('Error fetching tournament:', error);
             toast({
@@ -227,19 +230,7 @@ const CaptainMatchPage = () => {
         const checkRoles = async () => {
             if (!user || !participants.length || teamsLoading || !tournament) return;
 
-            // 1. Check if user is organizer or belongs to organization
-            let isOrg = tournament.organizer_id === user.id;
-
-            if (!isOrg && tournament.organization_id) {
-                try {
-                    const orgData = await apiClient.get<any>(`/api/organizations/${tournament.organization_id}/staff`);
-                    // If we can fetch org staff and user owns it, they're an organizer
-                    isOrg = true;
-                } catch {
-                    // Not an org owner
-                }
-            }
-            setIsOrganizer(isOrg);
+            // 1. Organizer status already set from API response
 
             // 2. Check if user is Admin
             const isAd = !!(profile as any)?.is_admin || profile?.role === 'admin';
