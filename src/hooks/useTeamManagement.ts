@@ -95,14 +95,14 @@ export const useTeamManagement = () => {
     queryKey: ['my-teams'],
     queryFn:  () => apiClient.get<Team[]>('/api/teams/me'),
     enabled:  !!user,
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
   });
 
   const { data: teamInvites = [], isLoading: invitesLoading } = useQuery<TeamInvite[]>({
     queryKey: ['my-team-invites'],
     queryFn:  () => apiClient.get<TeamInvite[]>('/api/teams/me/invites'),
     enabled:  !!user,
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
   });
 
   // ── Mutations ─────────────────────────────────────────────────────────────

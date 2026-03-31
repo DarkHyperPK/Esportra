@@ -237,7 +237,7 @@ const TournamentDetails = () => {
       });
     },
     enabled: !!tournament?.id,
-    staleTime: 30 * 1000,
+    staleTime: 2 * 60_000,
   });
 
   // BR leaderboard hook (only active for BR tournaments)

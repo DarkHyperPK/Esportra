@@ -146,6 +146,12 @@ const RiotOAuthCallback   = React.lazy(() => import("./pages/auth/RiotOAuthCallb
 
 import { getWebsiteAssetUrl } from "@/lib/storage";
 
+// Redirect /settings → /account/settings preserving query params
+const SettingsRedirect = () => {
+  const location = useLocation();
+  return <Navigate to={`/account/settings${location.search}`} replace />;
+};
+
 const AppContent = React.memo(() => {
   const location = useLocation();
 
@@ -549,6 +555,8 @@ const AppContent = React.memo(() => {
                     <AccountSettings />
                   </ProtectedRoute>
                 } />
+                {/* Legacy /settings redirect preserving query params */}
+                <Route path="/settings" element={<SettingsRedirect />} />
 
                 {/* Admin Protected Route for TournamentDetails */}
                 <Route path="/admin/tournaments/:id" element={<AdminProtectedRoute><TournamentDetails /></AdminProtectedRoute>} />

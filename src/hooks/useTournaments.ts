@@ -124,6 +124,6 @@ export function useTournaments(filters?: TournamentFilterParams | TournamentStat
       const rows = await apiClient.get<ApiTournamentRow[]>(`/api/tournaments?${params}`);
       return rows.map(mapRow);
     },
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
   });
 }

@@ -112,8 +112,8 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser,
                         {member.username}
                     </h3>
 
-                    {/* Stats Grid - Only show for Valorant or if stats are explicitly provided and relevant */}
-                    {isValorant && (
+                    {/* Stats Grid - Hidden for now, will be re-enabled with platform stats */}
+                    {false && isValorant && (
                         <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
                             <div className="flex flex-col items-center">
                                 <span className="text-[9px] uppercase tracking-widest text-white/30 mb-1">K/D</span>

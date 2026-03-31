@@ -396,7 +396,8 @@ const TeamsPage = () => {
           }));
 
           setTeamMembers(membersWithRiot);
-          fetchStatsForMembers(membersWithRiot);
+          // Riot stats fetching disabled — will be re-enabled with platform stats
+          // fetchStatsForMembers(membersWithRiot);
         } catch (err) {
           console.error("Error fetching team members:", err);
           setTeamMembers([]);

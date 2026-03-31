@@ -27,7 +27,7 @@ export function useTournamentRegistrationStatus(tournamentIds: string[]) {
       );
     },
     enabled: !!user && tournamentIds.length > 0,
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
   });
 
   return { statusMap, loading };
