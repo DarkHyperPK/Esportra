@@ -1960,68 +1960,6 @@ const TournamentDashboard = () => {
                         </CardContent>
                       </Card>
                     )}
-                    {/* Pending Payments Section */}
-                    {pendingPayments.length > 0 && isOrganizer && (
-                      <Card className="relative bg-black/20 backdrop-blur-md border border-amber-500/20 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
-                        <MotionTiles />
-                        <CardHeader className="p-0 border-b border-amber-500/20 pb-4 mb-6 relative z-10">
-                          <CardTitle className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
-                            💳 Pending Payment Review
-                            <Badge className="bg-amber-500/20 text-amber-200 border-amber-500/40 text-xs">
-                              {pendingPayments.length}
-                            </Badge>
-                          </CardTitle>
-                          <p className="text-xs text-gray-400 mt-1">
-                            These registrations are awaiting payment verification. Review receipts and approve or reject.
-                          </p>
-                        </CardHeader>
-                        <CardContent className="p-0 relative z-10 space-y-4">
-                          {pendingPayments.map((p) => (
-                            <div key={p.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-white font-semibold truncate">
-                                  {p.team_name || p.gamer_tag || p.user?.username || 'Unknown'}
-                                </p>
-                                <p className="text-xs text-gray-400">
-                                  Registered {new Date(p.registered_at).toLocaleDateString()}
-                                  {p.entry_fee_amount ? ` · Entry fee: $${p.entry_fee_amount}` : ''}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                {p.payment_receipt_url ? (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
-                                    onClick={() => setReceiptViewUrl(p.payment_receipt_url!)}
-                                  >
-                                    <Eye className="w-3.5 h-3.5 mr-1" /> Receipt
-                                  </Button>
-                                ) : (
-                                  <span className="text-xs text-gray-500 italic">No receipt</span>
-                                )}
-                                <Button
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-500 text-white"
-                                  disabled={approvingPayment === p.id}
-                                  onClick={() => handleApprovePayment(p.id)}
-                                >
-                                  {approvingPayment === p.id ? 'Approving...' : 'Approve'}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-red-500/40 text-red-300 hover:bg-red-500/10"
-                                  onClick={() => { setShowRejectDialog(p.id); setRejectionReason(''); }}
-                                >
-                                  Reject
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    )}
                     {/* Payment Review — only for paid tournaments */}
                     {tournament && parseFloat(tournament.entry_fee || '0') > 0 && (
                       <PaymentManagement
