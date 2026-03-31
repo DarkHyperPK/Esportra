@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, X, Image as ImageIcon, Loader2, RotateCcw, Check } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Loader2, RotateCcw, Check, Sun } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
+    const [brightness, setBrightness] = useState(100);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
     const [originalFile, setOriginalFile] = useState<File | null>(null);
 
@@ -85,6 +86,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         setOriginalFile(file);
         setImageSrc(imageDataUrl);
         setZoom(1);
+        setBrightness(100);
     };
 
     const handleCropSave = async () => {
@@ -92,7 +94,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
         try {
             setIsUploading(true);
-            const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+            const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels, 0, { horizontal: false, vertical: false }, brightness);
 
             if (!croppedImageBlob) {
                 throw new Error('Failed to crop image');
@@ -292,6 +294,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                                 style={{
                                     containerStyle: { background: '#000' },
                                     cropAreaStyle: { border: '2px solid #f43f5e' },
+                                    mediaStyle: { filter: `brightness(${brightness}%)` },
                                 }}
                             />
                         )}
@@ -299,7 +302,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
                     <div className="p-6 bg-[#0a0a0c] border-t border-white/10 z-20 space-y-4">
                         <div className="flex items-center gap-4">
-                            <span className="text-xs font-mono text-gray-400 uppercase tracking-widest">Zoom</span>
+                            <span className="text-xs font-mono text-gray-400 uppercase tracking-widest w-20">Zoom</span>
                             <Slider
                                 value={[zoom]}
                                 min={1}
@@ -308,6 +311,21 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                                 onValueChange={(val) => setZoom(val[0])}
                                 className="flex-1"
                             />
+                            <span className="text-xs font-mono text-zinc-500 w-10 text-right">{zoom.toFixed(1)}x</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <span className="text-xs font-mono text-gray-400 uppercase tracking-widest w-20 flex items-center gap-1.5">
+                                <Sun className="w-3.5 h-3.5 text-yellow-500" /> Bright
+                            </span>
+                            <Slider
+                                value={[brightness]}
+                                min={50}
+                                max={150}
+                                step={1}
+                                onValueChange={(val) => setBrightness(val[0])}
+                                className="flex-1"
+                            />
+                            <span className="text-xs font-mono text-zinc-500 w-10 text-right">{brightness}%</span>
                         </div>
                         <DialogFooter className="gap-2 sm:gap-0">
                             <Button variant="ghost" onClick={() => setImageSrc(null)} disabled={isUploading}>

@@ -32,7 +32,8 @@ export default async function getCroppedImg(
     imageSrc: string,
     pixelCrop: { x: number; y: number; width: number; height: number },
     rotation = 0,
-    flip = { horizontal: false, vertical: false }
+    flip = { horizontal: false, vertical: false },
+    brightness = 100
 ): Promise<Blob | null> {
     const image = await createImage(imageSrc)
     const canvas = document.createElement('canvas')
@@ -61,8 +62,14 @@ export default async function getCroppedImg(
     ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1)
     ctx.translate(-image.width / 2, -image.height / 2)
 
+    // apply brightness filter
+    ctx.filter = `brightness(${brightness}%)`
+
     // draw rotated image
     ctx.drawImage(image, 0, 0)
+
+    // reset filter before getImageData
+    ctx.filter = 'none'
 
     // croppedAreaPixels values are bounding box relative
     // extract the cropped image using these values
