@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, Clock, Eye, DollarSign, ImageIcon, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   const [rejectTarget, setRejectTarget] = useState<DashboardParticipant | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [receiptViewUrl, setReceiptViewUrl] = useState<string | null>(null);
+  const [loadingReceipt, setLoadingReceipt] = useState(false);
 
   const paidParticipants = useMemo(
     () => participants.filter(p => p.payment_status && p.payment_status !== 'not_required'),
@@ -84,6 +85,18 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
       case 'approved': return <Badge className="bg-green-500/20 text-green-300 border-green-500/40"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
       case 'rejected': return <Badge className="bg-red-500/20 text-red-300 border-red-500/40"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
       default: return null;
+    }
+  };
+
+  const viewReceipt = async (participant: DashboardParticipant) => {
+    setLoadingReceipt(true);
+    try {
+      const res = await apiClient.get<{ url: string }>(`/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`);
+      setReceiptViewUrl(res.url);
+    } catch {
+      toast({ title: 'Could not load receipt', variant: 'destructive' });
+    } finally {
+      setLoadingReceipt(false);
     }
   };
 
@@ -166,7 +179,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                     {/* Receipt + actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {p.payment_receipt_url && (
-                        <Button size="sm" variant="outline" onClick={() => setReceiptViewUrl(p.payment_receipt_url!)} className="border-zinc-700 text-zinc-400 hover:text-white gap-1">
+                        <Button size="sm" variant="outline" onClick={() => viewReceipt(p)} disabled={loadingReceipt} className="border-zinc-700 text-zinc-400 hover:text-white gap-1">
                           <Eye className="w-3.5 h-3.5" /> Receipt
                         </Button>
                       )}
