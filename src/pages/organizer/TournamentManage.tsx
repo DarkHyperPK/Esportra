@@ -78,6 +78,7 @@ import { getGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatur
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import BanManagement from '@/components/organizer/BanManagement';
+import PaymentManagement from '@/components/organizer/PaymentManagement';
 import DisputeCenter from '@/components/organizer/DisputeCenter';
 import MatchChecker from '@/components/organizer/MatchChecker';
 import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnouncementPanel';
@@ -2020,6 +2021,14 @@ const TournamentDashboard = () => {
                           ))}
                         </CardContent>
                       </Card>
+                    )}
+                    {/* Payment Review — only for paid tournaments */}
+                    {tournament && parseFloat(tournament.entry_fee || '0') > 0 && (
+                      <PaymentManagement
+                        tournamentId={tournament.id}
+                        participants={participants as DashboardParticipant[]}
+                        onRefresh={refetchDashboard}
+                      />
                     )}
                     <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                       <MotionTiles />

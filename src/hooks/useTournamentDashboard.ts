@@ -60,6 +60,11 @@ export interface DashboardParticipant {
     gamer_tag: string | null;
     registered_at: string;
     created_at: string;
+    payment_status?: string | null;
+    payment_receipt_url?: string | null;
+    payment_rejection_reason?: string | null;
+    entry_fee_amount?: number | null;
+    entry_fee_paid?: boolean;
     user?: {
         username: string;
         avatar_url: string | null;
@@ -142,6 +147,11 @@ export function useTournamentDashboard(slug: string | undefined) {
                 gamer_tag:        p.gamer_tag ?? null,
                 registered_at:    p.registration_date ?? p.created_at,
                 created_at:       p.created_at,
+                payment_status:           p.payment_status ?? null,
+                payment_receipt_url:      p.payment_receipt_url ?? null,
+                payment_rejection_reason: p.payment_rejection_reason ?? null,
+                entry_fee_amount:         p.entry_fee_amount ?? null,
+                entry_fee_paid:           p.entry_fee_paid ?? false,
                 user:             p.username ? { username: p.username, avatar_url: null, full_name: null } : undefined,
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));
