@@ -400,9 +400,10 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       // ── VALORANT SPECIFIC VALIDATION (only when assisted match reporting is enabled) ──
       const isValorant = tournament?.game?.toLowerCase() === 'valorant';
       if (isValorant && tournament?.settings?.assistedMatchReporting) {
-        // Only check if the captain (user) is verified
+        // Only check if the captain (user) has a linked Riot account
         const captainData = rosterMembersData.find(m => m.is_captain);
-        if (captainData && !captainData.is_verified) {
+        const captainHasRiot = captainData?.is_verified || captainData?.profile?.riot_tag || captainData?.riot_tag_fallback;
+        if (captainData && !captainHasRiot) {
           throw new Error(`As the team captain, you must link your Riot account via Riot Sign-On to register for a Valorant tournament.`);
         }
       }
