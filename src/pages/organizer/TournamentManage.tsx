@@ -1989,12 +1989,12 @@ const TournamentDashboard = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-0 relative z-10">
-                        {participants.filter(p => p.status !== 'rejected').length === 0 ? (
+                        {participants.filter(p => !['rejected', 'cancelled', 'disqualified'].includes(p.status)).length === 0 ? (
                           <p className="text-gray-400 italic">No participants registered yet.</p>
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             <AnimatePresence>
-                              {participants.filter(p => p.status !== 'rejected').map((participant) => (
+                              {participants.filter(p => !['rejected', 'cancelled', 'disqualified'].includes(p.status)).map((participant) => (
                                 <OrganizerTeamCard
                                   key={participant.id}
                                   participant={participant}
