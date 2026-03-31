@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Image, DollarSign, FileText, Link as LinkIcon, MessageCircle, Twitter } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import ImageUploader from './ImageUploader';
+import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
     const { profile } = useAuth();
+    const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
+    const [selectedArtwork, setSelectedArtwork] = useState<string | null>(null);
 
     // Sanitize names for storage path
     const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -31,18 +35,67 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
 
             {/* Image Uploads */}
             <div className="w-full h-px bg-white/5 my-6" />
-            <div className="max-w-2xl">
-                <ImageUploader
-                    value={data.bannerUrl}
-                    onChange={(url) => updateData({ bannerUrl: url })}
-                    aspectRatio="banner"
-                    label="Tournament Card Banner"
-                    helperText="This image will be displayed as the background of your tournament card and page header."
-                    bucket="system.assets.website"
-                    folder={`Tournament-card-banners/${organizerName}`}
-                    customFileName={tournamentName}
-                    useTimestamp={false}
-                />
+            <div className="max-w-2xl space-y-4">
+                {/* Mode toggle */}
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setBannerMode('upload')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            bannerMode === 'upload'
+                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                : 'bg-white/5 text-zinc-400 border border-white/5 hover:bg-white/10'
+                        }`}
+                    >
+                        Upload Custom
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setBannerMode('artwork')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            bannerMode === 'artwork'
+                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                : 'bg-white/5 text-zinc-400 border border-white/5 hover:bg-white/10'
+                        }`}
+                    >
+                        Use Artwork from Esportra Partners
+                    </button>
+                </div>
+
+                {bannerMode === 'upload' ? (
+                    <ImageUploader
+                        value={data.bannerUrl}
+                        onChange={(url) => updateData({ bannerUrl: url })}
+                        aspectRatio="banner"
+                        label="Tournament Card Banner"
+                        helperText="This image will be displayed as the background of your tournament card and page header."
+                        bucket="system.assets.website"
+                        folder={`Tournament-card-banners/${organizerName}`}
+                        customFileName={tournamentName}
+                        useTimestamp={false}
+                    />
+                ) : (
+                    <div className="space-y-3">
+                        <ArtworkPicker
+                            gameName={data.game || ''}
+                            onSelect={setSelectedArtwork}
+                            selectedUrl={selectedArtwork}
+                        />
+                        {selectedArtwork && (
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    updateData({ bannerUrl: selectedArtwork });
+                                    setSelectedArtwork(null);
+                                    setBannerMode('upload');
+                                }}
+                                className="bg-rose-500 hover:bg-rose-600 text-white"
+                            >
+                                USE SELECTED ARTWORK
+                            </Button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Prize Pool & Entry Fee */}
