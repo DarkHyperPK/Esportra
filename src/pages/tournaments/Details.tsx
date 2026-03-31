@@ -849,8 +849,14 @@ const TournamentDetails = () => {
       <Footer />
 
       {/* Registration Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0a0a0c] border border-white/10">
+      <Dialog open={showEditDialog} onOpenChange={(open) => {
+        if (!open) {
+          // Dialog is closing — just close it. The TournamentRegistration 
+          // component's handleCancelReceiptUpload handles withdrawal if needed.
+          setShowEditDialog(false);
+        }
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0a0a0c] border border-white/10" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="text-white font-heading text-2xl tracking-wide">
               {isRegistered ? 'MODIFY_REGISTRATION' : 'INITIATE_REGISTRATION'}

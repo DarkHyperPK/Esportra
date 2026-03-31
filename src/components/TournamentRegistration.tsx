@@ -96,6 +96,22 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
     }
   };
 
+  const handleCancelReceiptUpload = async () => {
+    // User closed receipt dialog without uploading — withdraw the registration
+    try {
+      await apiClient.delete(`/api/tournaments/${tournamentId}/register`);
+    } catch { /* ignore if already cancelled */ }
+    toast({
+      title: 'Registration Cancelled',
+      description: 'You must upload a payment receipt to complete registration.',
+      variant: 'destructive',
+    });
+    setShowReceiptUpload(false);
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    onCancel?.();
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -247,7 +263,18 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
               <><CheckCircle className="w-4 h-4 mr-2" /> Submit Receipt</>
             )}
           </Button>
+          <Button
+            onClick={handleCancelReceiptUpload}
+            variant="outline"
+            disabled={uploading}
+            className="border-zinc-700 text-zinc-400 hover:text-white"
+          >
+            Cancel
+          </Button>
         </div>
+        <p className="text-xs text-zinc-500 text-center">
+          Cancelling will withdraw your registration.
+        </p>
       </div>
     );
   }

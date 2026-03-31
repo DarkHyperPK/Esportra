@@ -193,9 +193,16 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                             </Button>
                                         )}
                                         {isRegistered && awaitingApproval && (
-                                            <div className="flex items-center gap-3 h-14 md:h-16 px-8 md:px-12 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none">
-                                                <Clock className="w-5 h-5 animate-pulse" />
-                                                PENDING APPROVAL
+                                            <div className="flex gap-4">
+                                                <div className="flex items-center gap-3 h-14 md:h-16 px-8 md:px-12 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none">
+                                                    <Clock className="w-5 h-5 animate-pulse" />
+                                                    PENDING APPROVAL
+                                                </div>
+                                                {(tournament.status === 'published' || tournament.status === 'open') && (
+                                                    <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
+                                                        WITHDRAW
+                                                    </Button>
+                                                )}
                                             </div>
                                         )}
                                         {isRegistered && !awaitingApproval && isCaptain && (
