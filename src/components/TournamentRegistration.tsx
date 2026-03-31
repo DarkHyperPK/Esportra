@@ -247,13 +247,6 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
               <><CheckCircle className="w-4 h-4 mr-2" /> Submit Receipt</>
             )}
           </Button>
-          <Button
-            onClick={handleSkipReceipt}
-            variant="outline"
-            className="border-zinc-700 text-zinc-400 hover:text-white"
-          >
-            Upload Later
-          </Button>
         </div>
       </div>
     );

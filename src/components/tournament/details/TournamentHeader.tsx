@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Upload } from 'lucide-react';
+import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Upload, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,7 @@ interface TournamentHeaderProps {
 
     isLoading?: boolean; // New prop
     checkInStartTime?: Date | null;
+    awaitingApproval?: boolean;
 }
 
 export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
@@ -36,7 +37,8 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     onWithdraw,
     onCheckIn,
     isLoading = false, // Default to false
-    checkInStartTime
+    checkInStartTime,
+    awaitingApproval = false
 }) => {
     const navigate = useNavigate();
     const gameData = useRawgGame(tournament.game || '');
@@ -190,7 +192,13 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                 <span className="relative z-10 flex items-center gap-2">INITIATE REGISTRATION <ChevronRight className="w-5 h-5" /></span>
                                             </Button>
                                         )}
-                                        {isRegistered && isCaptain && (
+                                        {isRegistered && awaitingApproval && (
+                                            <div className="flex items-center gap-3 h-14 md:h-16 px-8 md:px-12 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none">
+                                                <Clock className="w-5 h-5 animate-pulse" />
+                                                PENDING APPROVAL
+                                            </div>
+                                        )}
+                                        {isRegistered && !awaitingApproval && isCaptain && (
                                             <div className="flex gap-4">
                                                 {isBattleRoyale(tournament.game || '') ? (
                                                     <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-lobby`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">

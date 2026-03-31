@@ -719,6 +719,7 @@ const TournamentDetails = () => {
         onCheckIn={handleSelfCheckIn}
         isLoading={registrationLoading}
         checkInStartTime={checkInStartTime}
+        awaitingApproval={awaitingApproval}
       />
 
       {/* Tournament Sponsor Banner */}
