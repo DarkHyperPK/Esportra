@@ -95,8 +95,8 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
       await apiClient.delete(`/api/tournaments/${tournamentId}/bans/${selectedBan.id}`);
 
       toast({
-        title: 'Success',
-        description: 'Ban has been lifted.',
+        title: 'Ban Lifted',
+        description: 'Ban has been lifted and participant registration restored.',
       });
 
       setUnbanDialogOpen(false);

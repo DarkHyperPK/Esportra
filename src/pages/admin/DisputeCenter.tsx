@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MessageSquare, AlertCircle, CheckCircle, XCircle, Clock, Image as ImageIcon, RefreshCw, X, Search, Send, ZoomIn } from 'lucide-react';
+import { MessageSquare, AlertCircle, CheckCircle, XCircle, Clock, Image as ImageIcon, RefreshCw, X, Search, Send, ZoomIn, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -76,6 +76,7 @@ const DisputeCenter: React.FC = () => {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [liftingBan, setLiftingBan] = useState(false);
 
   const load = async () => {
     try {
@@ -329,6 +330,35 @@ const DisputeCenter: React.FC = () => {
     }
   };
 
+  const liftBan = async () => {
+    if (!selectedDispute) return;
+    setLiftingBan(true);
+    try {
+      const result = await apiClient.post<{ success: boolean; banLifted: boolean; participantRestored: boolean }>(
+        `/api/admin/disputes/${selectedDispute.id}/lift-ban`, {}
+      );
+
+      toast({
+        title: 'Ban Lifted',
+        description: result.participantRestored
+          ? 'Ban lifted and participant registration restored.'
+          : 'Ban lifted. Participant may need to re-register.',
+      });
+
+      setSelectedDispute(null);
+      setComments([]);
+      await load();
+    } catch (e: any) {
+      toast({
+        title: 'Error',
+        description: e.message || 'Failed to lift ban',
+        variant: 'destructive',
+      });
+    } finally {
+      setLiftingBan(false);
+    }
+  };
+
   const tabFiltered = activeTab === 'all'
     ? disputes
     : activeTab === 'tournament'
@@ -564,6 +594,19 @@ const DisputeCenter: React.FC = () => {
                     <div>
                       <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-4" />
                       <label className="text-zinc-500 text-xs uppercase tracking-wider mb-2 block font-medium">Resolution</label>
+
+                      {/* Lift Ban action for ban appeals */}
+                      {selectedDispute.dispute_reason === 'ban_appeal' && selectedDispute.tournament_id && (
+                        <Button
+                          onClick={liftBan}
+                          disabled={liftingBan}
+                          className="w-full mb-3 bg-amber-600 hover:bg-amber-500 text-white transition-colors"
+                        >
+                          <Shield className="h-4 w-4 mr-1.5" />
+                          {liftingBan ? 'Lifting Ban...' : 'Lift Ban & Restore Participant'}
+                        </Button>
+                      )}
+
                       <Textarea
                         value={resolutionNotes}
                         onChange={(e) => setResolutionNotes(e.target.value)}
