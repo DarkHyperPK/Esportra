@@ -28,7 +28,7 @@ export interface CachedGame {
     videos: IgdbVideo[];
 }
 
-const CACHE_KEY = 'game_assets_cache_v2';
+const CACHE_KEY = 'game_assets_cache_v3';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
 
 function loadPersistedCache(): Map<string, CachedGame> {
@@ -208,7 +208,7 @@ export const useRawgGame = (gameName: string) => {
         return () => { isMounted = false; };
     }, [gameName, cacheKey]);
 
-    const maxLen = Math.max(data.screenshots.length, data.rawgScreenshots.length);
+    const maxLen = Math.max(data.screenshots?.length || 0, data.rawgScreenshots?.length || 0);
 
     useEffect(() => {
         if (maxLen <= 1) return;

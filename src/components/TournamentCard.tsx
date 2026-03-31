@@ -148,7 +148,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
           ) : (
             /* 2. RAWG Screenshots (Carousel or Static) - Fallback */
             <AnimatePresence mode="wait">
-              {rawgScreenshots.length > 0 ? (
+              {(rawgScreenshots?.length || 0) > 0 ? (
                 <motion.img
                   key={rawgScreenshots[carouselIndex % rawgScreenshots.length]}
                   src={rawgScreenshots[carouselIndex % rawgScreenshots.length]}
