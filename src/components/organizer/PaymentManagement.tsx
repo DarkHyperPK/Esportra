@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
-import { supabase } from '@/lib/supabase';
 import type { DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 interface PaymentManagementProps {
@@ -92,16 +91,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   const viewReceipt = async (participant: DashboardParticipant) => {
     setLoadingReceipt(true);
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_URL;
-      const { data: { session } } = await supabase.auth.getSession();
-      const resp = await fetch(
-        `${apiBaseUrl}/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`,
-        { headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {} }
-      );
-      if (!resp.ok) throw new Error('Failed to load receipt');
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      setReceiptViewUrl(url);
+      const res = await apiClient.get<{ url: string }>(`/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`);
+      setReceiptViewUrl(res.url);
     } catch {
       toast({ title: 'Could not load receipt', variant: 'destructive' });
     } finally {
@@ -220,7 +211,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
       </Card>
 
       {/* Receipt Viewer Dialog */}
-      <Dialog open={!!receiptViewUrl} onOpenChange={() => { if (receiptViewUrl) URL.revokeObjectURL(receiptViewUrl); setReceiptViewUrl(null); }}>
+      <Dialog open={!!receiptViewUrl} onOpenChange={() => setReceiptViewUrl(null)}>
         <DialogContent className="max-w-2xl bg-[#0a0a0c] border border-white/10">
           <DialogHeader>
             <DialogTitle className="text-white">Payment Receipt</DialogTitle>
