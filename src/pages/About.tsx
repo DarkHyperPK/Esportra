@@ -175,6 +175,14 @@ const AboutPage: React.FC = () => {
         </section>
 
       </main>
+
+      {/* Attribution */}
+      <div className="text-center py-4 border-t border-white/5">
+        <p className="text-[11px] text-zinc-600">
+          Game artwork data powered by <a href="https://www.igdb.com" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-zinc-400 underline underline-offset-2">IGDB</a>
+        </p>
+      </div>
+
       <Footer />
     </div>
   );

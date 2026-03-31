@@ -303,7 +303,7 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
       )}
 
       <p className="text-xs text-zinc-500">
-        Artwork provided by IGDB via Esportra Partners
+        Artwork from Esportra Partners
       </p>
     </div>
   );
