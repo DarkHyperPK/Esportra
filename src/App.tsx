@@ -449,6 +449,11 @@ const AppContent = React.memo(() => {
                     <VenueOwnerDashboard />
                   </ProtectedRoute>
                 } />
+                <Route path="/venues/dashboard" element={
+                  <ProtectedRoute allowedRoles={['venue_owner']}>
+                    <VenueOwnerDashboard />
+                  </ProtectedRoute>
+                } />
 
                 {/* Tournament Organizer Routes */}
                 <Route path="/organizer/dashboard" element={

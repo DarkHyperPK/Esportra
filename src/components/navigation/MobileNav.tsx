@@ -96,7 +96,7 @@ const MobileNav = ({
                       {(userRole === 'venue_owner' || isSuperAdmin) && (
                         <>
                           <Link to="/venues/list-venue" className={subLinkClass} onClick={onClose}>List Your Venue</Link>
-                          <Link to="/venues/manage" className={subLinkClass} onClick={onClose}>Manage Venues</Link>
+                          <Link to="/venues/dashboard" className={subLinkClass} onClick={onClose}>Venue Dashboard</Link>
                         </>
                       )}
                     </div>
@@ -255,8 +255,8 @@ const MobileNav = ({
                 )}
                 {(userRole === 'venue_owner' && !isSuperAdmin) && (
                   <div className="mb-3 space-y-1">
-                    <Link to="/venues/manage" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-cyan-300 transition-all duration-200 hover:border-cyan-500/40 hover:bg-cyan-500/10" onClick={onClose}>
-                      My Venues
+                    <Link to="/venues/dashboard" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-cyan-300 transition-all duration-200 hover:border-cyan-500/40 hover:bg-cyan-500/10" onClick={onClose}>
+                      Venue Dashboard
                     </Link>
                     <Link to="/venues/list-venue" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                       List New Venue

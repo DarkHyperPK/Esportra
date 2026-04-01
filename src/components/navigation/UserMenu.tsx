@@ -293,14 +293,14 @@ const UserMenu = ({
               <>
                 <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
                 <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
-                <FramerDropdownItem to="/venue-owner/dashboard">Manage Venues</FramerDropdownItem>
+                <FramerDropdownItem to="/venues/dashboard">Venue Dashboard</FramerDropdownItem>
                 <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
               </>
             )}
 
             {!admin.isAdmin && userRole === 'venue_owner' && (
               <>
-                <FramerDropdownItem to="/venues/manage">Manage Venues</FramerDropdownItem>
+                <FramerDropdownItem to="/venues/dashboard">Venue Dashboard</FramerDropdownItem>
                 <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
               </>
             )}

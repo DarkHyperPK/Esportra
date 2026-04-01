@@ -39,7 +39,7 @@ const DesktopNav = ({
           {(userRole === 'venue_owner' || isSuperAdmin) && (
             <>
               <FramerDropdownItem to="/venues/list-venue">List Your Venue</FramerDropdownItem>
-              <FramerDropdownItem to="/venues/manage">Manage Venues</FramerDropdownItem>
+              <FramerDropdownItem to="/venues/dashboard">Venue Dashboard</FramerDropdownItem>
             </>
           )}
         </FramerDropdownContent>
