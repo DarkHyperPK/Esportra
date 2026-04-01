@@ -67,7 +67,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   const ownerId = organizer_id || user_id;
   const isOrganizer = currentRole === 'organizer' && currentUserId && ownerId && currentUserId === ownerId;
   const [isHovered, setIsHovered] = useState(false);
-  const [bannerIsVideo, setBannerIsVideo] = useState(false);
+  const [bannerFailed, setBannerFailed] = useState(false);
 
   // Use the custom hook for game images and carousel
   const { gameLogo, gameBanner, rawgScreenshots, carouselIndex } = useRawgGame(game);
@@ -124,7 +124,6 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
     );
   };
 
-  const isVideo = image_url ? /\.(mp4|webm|ogg|mov)(\?|$)/i.test(image_url) : false;
 
   return (
     <div
@@ -138,25 +137,16 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
         <div
           className="w-full h-full relative"
         >
-          {/* 1. Custom Banner (if uploaded) - Highest Priority */}
-          {image_url && (isVideo || bannerIsVideo) ? (
-            <video
-              src={image_url}
-              className="w-full h-full object-cover object-center opacity-40 group-hover:opacity-50 transition-opacity"
-              autoPlay
-              loop
-              muted
-              playsInline
-            />
-          ) : image_url ? (
+          {/* Banner: custom image → RAWG screenshots → game banner fallback */}
+          {image_url && !bannerFailed ? (
             <img
               src={image_url}
               className="w-full h-full object-cover object-center opacity-40 group-hover:opacity-50 transition-opacity"
               alt={name}
-              onError={() => setBannerIsVideo(true)}
+              onError={() => setBannerFailed(true)}
             />
           ) : (
-            /* 2. RAWG Screenshots (Carousel or Static) - Fallback */
+            /* RAWG Screenshots (Carousel or Static) - Fallback */
             <AnimatePresence mode="wait">
               {(rawgScreenshots?.length || 0) > 0 ? (
                 <motion.img
