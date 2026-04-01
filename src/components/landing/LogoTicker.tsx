@@ -3,7 +3,7 @@ import { useSponsors, trackClick, trackImpression } from '@/hooks/useSponsors';
 import { getStorageUrl } from "@/lib/storage";
 
 const LogoTicker = () => {
-    const { data: sponsors = [], isLoading } = useSponsors();
+    const { data: sponsors = [], isLoading } = useSponsors('logo_ticker');
     const apiSystemOptiX = sponsors.find(s => s.name?.toLowerCase() === 'systemoptix');
     const sponsorsWithLogos = [
         {

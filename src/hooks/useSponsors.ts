@@ -27,9 +27,10 @@ export function useSponsors(placement?: string) {
     return useQuery({
         queryKey: ['sponsors', placement],
         queryFn: async () => {
-            const params = new URLSearchParams({ active: 'true' });
+            const params = new URLSearchParams();
             if (placement) params.set('placement', placement);
-            let sponsors = await apiClient.get<Sponsor[]>(`/api/sponsors?${params}`);
+            const qs = params.toString();
+            let sponsors = await apiClient.get<Sponsor[]>(`/api/sponsors/active${qs ? `?${qs}` : ''}`);
 
             // Filter by date range client-side
             const now = new Date().toISOString();
