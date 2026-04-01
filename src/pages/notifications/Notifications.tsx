@@ -7,7 +7,6 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, CheckCheck, Bell, Inbox, ShieldAlert, Users, Info, ExternalLink, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MotionTiles } from '@/components/effects/MotionTiles';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -124,9 +123,19 @@ const NotificationsPage = () => {
   const typeMeta = (n: any) => {
     switch (n.type) {
       case 'team_invite': return { icon: <Users className="h-4 w-4" />, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' };
+      case 'team_invite_response': return { icon: <Users className="h-4 w-4" />, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' };
+      case 'team_announcement': return { icon: <Bell className="h-4 w-4" />, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
+      case 'staff_invite': return { icon: <Users className="h-4 w-4" />, color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' };
+      case 'result_reported': return { icon: <Info className="h-4 w-4" />, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
+      case 'result_disputed': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
+      case 'result_accepted': return { icon: <CheckCheck className="h-4 w-4" />, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' };
+      case 'dispute_filed': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' };
+      case 'dispute_resolved': return { icon: <CheckCheck className="h-4 w-4" />, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' };
+      case 'dispute_rejected': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
+      case 'tournament_announcement': return { icon: <Bell className="h-4 w-4" />, color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20' };
+      case 'new_dispute': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
       case 'ban': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/20' };
       case 'kick': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' };
-      case 'team_invite_response': return { icon: <Users className="h-4 w-4" />, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' };
       default: return { icon: <Info className="h-4 w-4" />, color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20' };
     }
   };
@@ -140,24 +149,16 @@ const NotificationsPage = () => {
   }, [notifications, filter, optimisticIds]);
 
   return (
-    <div className="min-h-screen relative bg-[#050507] overflow-hidden text-white">
-      <MotionTiles />
-
-      {/* Background gradients */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900/10 rounded-full blur-[120px]" />
-      </div>
-
-      <div className="relative z-10 container mx-auto px-4 py-8 max-w-4xl">
+    <div className="min-h-screen bg-[#050505] text-white">
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
 
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-heading font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
-              Notification Center
+            <h1 className="text-2xl font-heading font-semibold text-white">
+              Notifications
             </h1>
-            <p className="text-white/40 mt-1 font-light">Stay updated with your latest activities</p>
+            <p className="text-zinc-500 mt-0.5 text-sm">Stay updated with your latest activities</p>
           </div>
 
           {notifications.length > 0 && (
@@ -198,10 +199,10 @@ const NotificationsPage = () => {
               key={t.id}
               onClick={() => setFilter(t.id as any)}
               className={cn(
-                "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 border",
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border",
                 filter === t.id
-                  ? "bg-gaming-purple/20 border-gaming-purple text-white shadow-[0_0_15px_rgba(139,92,246,0.3)]"
-                  : "bg-white/5 border-white/5 text-white/50 hover:bg-white/10 hover:text-white hover:border-white/10"
+                  ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                  : "bg-white/5 border-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300 hover:border-white/10"
               )}
             >
               {t.label}
@@ -226,7 +227,7 @@ const NotificationsPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="flex flex-col items-center justify-center py-20 border border-white/5 rounded-3xl bg-black/20 backdrop-blur-sm"
+                className="flex flex-col items-center justify-center py-20 border border-white/5 rounded-xl bg-[#0a0a0c]"
               >
                 <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
                   <Inbox className="h-8 w-8 text-white/20" />
@@ -246,12 +247,12 @@ const NotificationsPage = () => {
                     exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
                     transition={{ delay: i * 0.05 }}
                     className={cn(
-                      "group relative overflow-hidden rounded-2xl border transition-all duration-300",
+                      "group relative overflow-hidden rounded-xl border transition-all duration-200",
                       selectedNotifications.includes(n.id)
-                        ? "bg-gaming-purple/10 border-gaming-purple/40"
+                        ? "bg-rose-500/5 border-rose-500/30"
                         : !n.is_read
-                          ? "bg-[#0f0f12] border-white/10 shadow-lg shadow-black/50"
-                          : "bg-black/20 border-white/5 opacity-80 hover:opacity-100"
+                          ? "bg-[#0a0a0c] border-white/10"
+                          : "bg-[#0a0a0c]/50 border-white/5 opacity-70 hover:opacity-100"
                     )}
                   >
                     {/* Selection Checkbox Overlay */}
@@ -260,7 +261,7 @@ const NotificationsPage = () => {
                         type="checkbox"
                         checked={selectedNotifications.includes(n.id)}
                         onChange={() => toggleNotificationSelection(n.id)}
-                        className="w-4 h-4 rounded border-white/20 bg-black/50 checked:bg-gaming-purple checked:border-gaming-purple transition-all cursor-pointer"
+                        className="w-4 h-4 rounded border-white/20 bg-black/50 checked:bg-rose-500 checked:border-rose-500 transition-all cursor-pointer"
                       />
                     </div>
 
@@ -287,7 +288,7 @@ const NotificationsPage = () => {
                             {n.title}
                           </h4>
                           {!n.is_read && (
-                            <span className="w-2 h-2 rounded-full bg-gaming-purple animate-pulse" />
+                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                           )}
                         </div>
                         <p className="text-white/50 text-xs sm:text-sm line-clamp-2 leading-relaxed">
@@ -296,7 +297,7 @@ const NotificationsPage = () => {
 
                         {/* Helper for Invites */}
                         {n.type === 'team_invite' && (
-                          <div className="flex items-center gap-1 mt-2 text-gaming-purple text-[10px] font-medium uppercase tracking-wider">
+                          <div className="flex items-center gap-1 mt-2 text-rose-400 text-[10px] font-medium uppercase tracking-wider">
                             <span>Manage in Teams</span>
                             <ArrowRight className="h-2.5 w-2.5" />
                           </div>
