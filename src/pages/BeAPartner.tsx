@@ -39,7 +39,7 @@ const tiers = [
     color: 'emerald',
     rankIcon: RANK_ICONS.ascendant,
     price: 'Growth',
-    popular: true,
+    popular: false,
     features: [
       'Everything in Partner, plus:',
       'Up to 3 tournament sponsorships',
@@ -138,13 +138,8 @@ const BeAPartner = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className={`relative p-8 rounded-2xl bg-[#0a0a0c] border ${tier.popular ? c.border : 'border-white/5'} flex flex-col`}
+                    className={`relative p-8 rounded-2xl bg-[#0a0a0c] border border-white/5 flex flex-col`}
                   >
-                    {tier.popular && (
-                      <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 ${c.badge} text-black text-xs font-bold rounded-full`}>
-                        Most Popular
-                      </div>
-                    )}
                     <div className="w-16 h-16 mb-6">
                       <img src={tier.rankIcon} alt={tier.name} className="w-full h-full object-contain drop-shadow-lg" />
                     </div>
@@ -168,11 +163,7 @@ const BeAPartner = () => {
 
                     <Link
                       to="/partners#apply"
-                      className={`mt-8 w-full py-3 rounded-xl text-center text-sm font-bold transition-colors border ${
-                        tier.popular
-                          ? `${c.bg} ${c.border} ${c.text} hover:opacity-80`
-                          : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                      }`}
+                      className={`mt-8 w-full py-3 rounded-xl text-center text-sm font-bold transition-colors border bg-white/5 border-white/10 text-white hover:bg-white/10`}
                     >
                       Get Started
                     </Link>
