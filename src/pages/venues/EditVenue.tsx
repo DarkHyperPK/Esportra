@@ -250,6 +250,7 @@ const EditVenue = () => {
                     longitude={longitude}
                     onChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
                     height="300px"
+                    address={[address, city, country].filter(Boolean).join(', ')}
                   />
                 </Suspense>
               </div>

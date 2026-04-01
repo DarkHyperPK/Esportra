@@ -427,6 +427,7 @@ const ListVenue = () => {
                             longitude={formData.longitude}
                             onChange={(lat, lng) => setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))}
                             height="280px"
+                            address={[formData.address, formData.city, formData.country].filter(Boolean).join(', ')}
                           />
                         </React.Suspense>
                       </div>

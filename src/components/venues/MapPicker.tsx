@@ -25,6 +25,8 @@ interface MapPickerProps {
   onChange: (lat: number, lng: number) => void;
   height?: string;
   readonly?: boolean;
+  /** Pre-fill search with venue address */
+  address?: string;
 }
 
 // Sub-component: click handler for placing marker
@@ -52,10 +54,13 @@ const MapPicker: React.FC<MapPickerProps> = ({
   onChange,
   height = '300px',
   readonly = false,
+  address = '',
 }) => {
   const [locating, setLocating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
   const hasPosition = latitude != null && longitude != null;
-  const center: [number, number] = hasPosition ? [latitude!, longitude!] : [25.2048, 55.2708]; // Default: Dubai
+  const center: [number, number] = hasPosition ? [latitude!, longitude!] : [25.2048, 55.2708];
   const zoom = hasPosition ? 15 : 4;
 
   const handleLocateMe = () => {
@@ -67,23 +72,59 @@ const MapPicker: React.FC<MapPickerProps> = ({
         setLocating(false);
       },
       () => setLocating(false),
-      { timeout: 10000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   };
+
+  const handleSearch = async (query?: string) => {
+    const q = (query || searchQuery).trim();
+    if (!q) return;
+    setSearching(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`, {
+        headers: { 'Accept-Language': 'en' },
+      });
+      const data = await res.json();
+      if (data?.[0]) {
+        onChange(parseFloat(data[0].lat), parseFloat(data[0].lon));
+      }
+    } catch { /* non-critical */ }
+    setSearching(false);
+  };
+
+  // Auto-geocode from address prop on mount if no coordinates set
+  const geocoded = useRef(false);
+  useEffect(() => {
+    if (!geocoded.current && !hasPosition && address) {
+      geocoded.current = true;
+      handleSearch(address);
+    }
+  }, [address, hasPosition]);
 
   return (
     <div className="space-y-2">
       {!readonly && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+            <Input
+              placeholder="Search address or city..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleSearch())}
+              className="bg-black/30 border-white/10 focus:border-rose-500/50 h-8 text-xs"
+            />
+            <Button type="button" variant="outline" size="sm"
+              className="border-white/10 hover:bg-white/5 text-xs h-8 px-2.5 shrink-0"
+              onClick={() => handleSearch()} disabled={searching}>
+              <Search className={`w-3.5 h-3.5 ${searching ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
           <Button type="button" variant="outline" size="sm"
-            className="border-white/10 hover:bg-white/5 text-xs"
+            className="border-white/10 hover:bg-white/5 text-xs h-8"
             onClick={handleLocateMe} disabled={locating}>
             <Navigation className={`w-3.5 h-3.5 mr-1.5 ${locating ? 'animate-pulse' : ''}`} />
             {locating ? 'Locating...' : 'Use my location'}
           </Button>
-          {!hasPosition && (
-            <span className="text-xs text-zinc-500">Click the map to drop a pin</span>
-          )}
         </div>
       )}
 
