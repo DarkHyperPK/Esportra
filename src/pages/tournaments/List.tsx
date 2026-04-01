@@ -72,6 +72,7 @@ const TournamentList = () => {
       const tournamentsData = await apiClient.get<any[]>(`/api/tournaments?${tournamentsQueryParams}`);
       return (tournamentsData || []).map(tournament => ({
         ...tournament,
+        image_url: tournament.banner_url ?? tournament.logo_url ?? null,
         current_participants: tournament.current_participants ?? 0,
         status: tournament.status ?? 'open',
         team_size: tournament.team_size ?? 1,

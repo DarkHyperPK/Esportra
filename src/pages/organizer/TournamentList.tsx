@@ -51,6 +51,7 @@ const TournamentList = () => {
         }
         return {
           ...tournament,
+          image_url: tournament.banner_url ?? tournament.logo_url ?? null,
           current_participants: 0,
           status,
           team_size: tournament.team_size ?? 1
