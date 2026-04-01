@@ -369,9 +369,10 @@ const EditVenue = () => {
               <div>
                 <label className="text-sm text-zinc-400 mb-2 block">Card Banner</label>
                 <ImageUploader
-                  currentImage={cardImage || null}
-                  onImageChange={(url) => setCardImage(url || '')}
+                  value={cardImage || null}
+                  onChange={(url) => setCardImage(url || '')}
                   bucket="venue-images"
+                  folder={`uploads/cards`}
                   label="Upload banner image"
                 />
               </div>
@@ -390,9 +391,10 @@ const EditVenue = () => {
                   ))}
                   <div className="aspect-[4/3]">
                     <ImageUploader
-                      currentImage={null}
-                      onImageChange={(url) => { if (url) setImages(prev => [...prev, url]); }}
+                      value={null}
+                      onChange={(url) => { if (url) setImages(prev => [...prev, url]); }}
                       bucket="venue-images"
+                      folder={`uploads/gallery`}
                       label="+"
                     />
                   </div>
