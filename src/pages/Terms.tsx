@@ -268,6 +268,12 @@ const TermsPage: React.FC = () => {
                             <li>Tournament organizers who set entry fees are solely responsible for collecting, managing, and accounting for those fees in compliance with applicable laws.</li>
                             <li>Esportra is not a payment processor for tournament entry fees or prize disbursements unless explicitly stated in a separate agreement.</li>
                         </ul>
+                        <div className="mt-4 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5">
+                            <p className="text-amber-400 font-semibold text-sm mb-1">⚠️ Important Notice</p>
+                            <p className="text-gray-400 text-sm leading-relaxed">
+                                Esportra is <strong className="text-gray-200">not responsible</strong> for any manual payments collected by tournament organizers as entry fees, nor for the disbursement of any promised winning prizes. All financial arrangements between organizers and participants — including entry fee collection, prize pool management, and prize distribution — are solely between the organizer and the participants. Esportra bears no liability for any failure, delay, or dispute arising from such transactions.
+                            </p>
+                        </div>
                     </section>
 
                     {/* ── 9. Disclaimers & Limitation of Liability ── */}
