@@ -5,7 +5,7 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash, Plus, CheckCircle, XCircle, Clock, Loader2, AlertCircle } from 'lucide-react';
-import { VenueCard } from '@/components/venues/VenueCard';
+import { VenueCardV2 } from '@/components/venues/VenueCardV2';
 import { VenueEditModal } from '@/components/admin/VenueEditModal';
 import { auditLog } from '@/lib/auditLog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -189,7 +189,7 @@ const VenueManagement = ({ userId }: VenueManagementProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {venues.map((venue) => (
                 <div key={venue.id} className="relative group">
-                  <VenueCard venue={venue} showStatus />
+                  <VenueCardV2 venue={venue} showStatus />
                   <div className="absolute inset-0 bg-black bg-opacity-70 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity duration-200 rounded-3xl z-30">
                     <Button size="sm" onClick={() => handleEditVenue(venue)} className="bg-gaming-blue hover:bg-gaming-blue/80">
                       <Edit className="h-4 w-4 mr-2" /> Edit

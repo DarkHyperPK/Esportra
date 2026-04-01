@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
-import { VenueCard } from '@/components/venues/VenueCard';
+import { VenueCardV2 } from '@/components/venues/VenueCardV2';
 import { Venue } from '@/types/venue';
 import { apiClient } from '@/lib/apiClient';
 
@@ -34,7 +34,7 @@ const FeaturedVenues = () => {
             ))
           ) : venues.length > 0 ? (
             venues.map((venue) => (
-              <VenueCard key={venue.id} venue={venue} />
+              <VenueCardV2 key={venue.id} venue={venue} />
             ))
           ) : (
             <p className="col-span-3 text-center text-gray-400">No venues available</p>
