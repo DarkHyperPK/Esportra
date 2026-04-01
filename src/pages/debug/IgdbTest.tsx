@@ -27,7 +27,8 @@ const IgdbTest = () => {
     setBanner(null);
     try {
       const res = await apiClient.get<any>(`/api/games/search?q=${encodeURIComponent(query)}`);
-      const data = Array.isArray(res) ? res : (res?.data || []);
+      const raw = res?.data ?? res;
+      const data = Array.isArray(raw) ? raw : (raw?.results || []);
       setSearchResults(data);
       toast({ title: `Found ${data.length} games` });
     } catch (err: any) {
