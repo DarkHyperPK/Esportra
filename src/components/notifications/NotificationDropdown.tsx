@@ -126,30 +126,60 @@ export const NotificationDropdown = () => {
         }
     };
 
+    const typeBg = (type: string) => {
+        switch (type) {
+            case 'team_invite': return 'bg-blue-500/10 border-blue-500/20';
+            case 'team_invite_response': return 'bg-green-500/10 border-green-500/20';
+            case 'team_announcement': return 'bg-amber-500/10 border-amber-500/20';
+            case 'staff_invite': return 'bg-cyan-500/10 border-cyan-500/20';
+            case 'result_reported': return 'bg-amber-500/10 border-amber-500/20';
+            case 'result_disputed': return 'bg-red-500/10 border-red-500/20';
+            case 'result_accepted': return 'bg-green-500/10 border-green-500/20';
+            case 'dispute_filed': return 'bg-orange-500/10 border-orange-500/20';
+            case 'dispute_resolved': return 'bg-green-500/10 border-green-500/20';
+            case 'dispute_rejected': return 'bg-red-500/10 border-red-500/20';
+            case 'tournament_announcement': return 'bg-rose-500/10 border-rose-500/20';
+            case 'new_dispute': return 'bg-red-500/10 border-red-500/20';
+            case 'ban': return 'bg-red-500/10 border-red-500/20';
+            case 'kick': return 'bg-orange-500/10 border-orange-500/20';
+            case 'veto_your_turn':
+            case 'match_ready': return 'bg-rose-500/10 border-rose-500/20';
+            case 'veto_completed': return 'bg-blue-500/10 border-blue-500/20';
+            case 'match_completed': return 'bg-amber-500/10 border-amber-500/20';
+            default: return 'bg-zinc-500/10 border-zinc-500/20';
+        }
+    };
+
     const typeIcon = (type: string) => {
         switch (type) {
             case 'team_invite':
                 return <Users className="h-4 w-4 text-blue-400" />;
-            case 'staff_invite':
-                return <Shield className="h-4 w-4 text-amber-400" />;
-            case 'ban':
-            case 'kick':
-                return <ShieldAlert className="h-4 w-4 text-red-500" />;
             case 'team_invite_response':
                 return <Users className="h-4 w-4 text-green-400" />;
-            case 'tournament_announcement':
-                return <Bell className="h-4 w-4 text-emerald-400" />;
+            case 'team_announcement':
+                return <Bell className="h-4 w-4 text-amber-400" />;
+            case 'staff_invite':
+                return <Shield className="h-4 w-4 text-cyan-400" />;
             case 'result_reported':
-                return <FileText className="h-4 w-4 text-blue-400" />;
+                return <FileText className="h-4 w-4 text-amber-400" />;
             case 'result_accepted':
-                return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+                return <CheckCircle2 className="h-4 w-4 text-green-400" />;
             case 'result_disputed':
+                return <ShieldAlert className="h-4 w-4 text-red-400" />;
             case 'dispute_filed':
-                return <AlertTriangle className="h-4 w-4 text-yellow-400" />;
+                return <AlertTriangle className="h-4 w-4 text-orange-400" />;
             case 'dispute_resolved':
-                return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+                return <CheckCircle2 className="h-4 w-4 text-green-400" />;
             case 'dispute_rejected':
                 return <XCircle className="h-4 w-4 text-red-400" />;
+            case 'new_dispute':
+                return <ShieldAlert className="h-4 w-4 text-red-400" />;
+            case 'tournament_announcement':
+                return <Bell className="h-4 w-4 text-rose-400" />;
+            case 'ban':
+                return <ShieldAlert className="h-4 w-4 text-red-500" />;
+            case 'kick':
+                return <ShieldAlert className="h-4 w-4 text-orange-500" />;
             case 'veto_your_turn':
             case 'match_ready':
                 return <Swords className="h-4 w-4 text-rose-400" />;
@@ -158,7 +188,7 @@ export const NotificationDropdown = () => {
             case 'match_completed':
                 return <Trophy className="h-4 w-4 text-yellow-400" />;
             default:
-                return <Info className="h-4 w-4 text-gray-400" />;
+                return <Info className="h-4 w-4 text-zinc-400" />;
         }
     };
 
@@ -173,14 +203,14 @@ export const NotificationDropdown = () => {
                 key={n.id}
                 className={cn(
                     "w-full text-left px-4 py-3 transition-colors flex gap-3",
-                    !isRead && "bg-gaming-purple/5",
+                    !isRead && "bg-rose-500/5",
                     isStaffInvite ? "cursor-default" : "cursor-pointer hover:bg-white/5"
                 )}
                 onClick={() => !isStaffInvite && handleNotificationClick(n)}
             >
                 <div className={cn(
-                    "mt-1 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-white/10",
-                    !isRead ? "bg-gaming-purple/10" : "bg-white/5"
+                    "mt-1 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border",
+                    !isRead ? typeBg(n.type) : "bg-white/5 border-white/10"
                 )}>
                     {typeIcon(n.type)}
                 </div>
@@ -197,7 +227,7 @@ export const NotificationDropdown = () => {
 
                     {n.type === 'tournament_announcement' && (
                         <div className="flex items-center gap-3 mt-1.5">
-                            <p className="text-[10px] text-emerald-500/70 font-medium hover:text-emerald-400 transition-colors">
+                            <p className="text-[10px] text-rose-500/70 font-medium hover:text-rose-400 transition-colors">
                                 {expandedAnnouncementId === n.id ? "Show less" : "Read more"}
                             </p>
                             {expandedAnnouncementId === n.id && n.link && (
@@ -251,7 +281,7 @@ export const NotificationDropdown = () => {
                     </p>
                 </div>
                 {!isRead && !isStaffInvite && (
-                    <div className="w-2 h-2 rounded-full bg-gaming-purple mt-2 flex-shrink-0" />
+                    <div className="w-2 h-2 rounded-full bg-rose-500 mt-2 flex-shrink-0" />
                 )}
             </div>
         );
@@ -275,14 +305,14 @@ export const NotificationDropdown = () => {
             </PopoverTrigger>
             <PopoverContent
                 align="end"
-                className="w-[380px] p-0 border border-white/10 bg-[#0a0a0a]/95 backdrop-blur-xl shadow-2xl rounded-xl overflow-hidden"
+                className="w-[380px] p-0 border border-white/10 bg-[#0a0a0c] shadow-2xl rounded-xl overflow-hidden"
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5">
                     <h4 className="font-heading font-semibold text-sm text-white flex items-center gap-2">
                         Notifications
                         {unreadCount > 0 && (
-                            <span className="bg-gaming-purple/20 text-gaming-purple px-1.5 py-0.5 rounded text-[10px]">
+                            <span className="bg-rose-500/15 text-rose-400 px-1.5 py-0.5 rounded text-[10px]">
                                 {unreadCount} new
                             </span>
                         )}
