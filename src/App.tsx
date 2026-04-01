@@ -142,6 +142,7 @@ const OrganizerDisputesPage = React.lazy(() => import('./pages/organizer/Dispute
 const MapVetoToken = React.lazy(() => import('./pages/tournaments/MapVetoToken'));
 const RiotTest = React.lazy(() => import("./pages/debug/RiotTest"));
 const FaceitTest = React.lazy(() => import("./pages/debug/FaceitTest"));
+const IgdbTest = React.lazy(() => import("./pages/debug/IgdbTest"));
 const FaceitOAuthCallback = React.lazy(() => import("./pages/auth/FaceitOAuthCallback"));
 const RiotOAuthCallback   = React.lazy(() => import("./pages/auth/RiotOAuthCallback"));
 
@@ -584,6 +585,7 @@ const AppContent = React.memo(() => {
                 {/* Debug Routes */}
                 <Route path="/debug/riot" element={<RiotTest />} />
                 <Route path="/debug/faceit" element={<FaceitTest />} />
+                <Route path="/debug/igdb" element={<IgdbTest />} />
 
                 {/* Catch-all route */}
                 <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
