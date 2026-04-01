@@ -139,7 +139,6 @@ export const NotificationDropdown = () => {
             case 'dispute_resolved': return 'bg-green-500/10 border-green-500/20';
             case 'dispute_rejected': return 'bg-red-500/10 border-red-500/20';
             case 'tournament_announcement': return 'bg-rose-500/10 border-rose-500/20';
-            case 'new_dispute': return 'bg-red-500/10 border-red-500/20';
             case 'ban': return 'bg-red-500/10 border-red-500/20';
             case 'kick': return 'bg-orange-500/10 border-orange-500/20';
             case 'veto_your_turn':
@@ -172,8 +171,6 @@ export const NotificationDropdown = () => {
                 return <CheckCircle2 className="h-4 w-4 text-green-400" />;
             case 'dispute_rejected':
                 return <XCircle className="h-4 w-4 text-red-400" />;
-            case 'new_dispute':
-                return <ShieldAlert className="h-4 w-4 text-red-400" />;
             case 'tournament_announcement':
                 return <Bell className="h-4 w-4 text-rose-400" />;
             case 'ban':
