@@ -76,7 +76,7 @@ const VenueSearchV2 = () => {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const coords: NearMeParams = { lat: pos.coords.latitude, lng: pos.coords.longitude, radiusKm: 50 };
+        const coords: NearMeParams = { lat: pos.coords.latitude, lng: pos.coords.longitude, radiusKm: 100 };
         setNearMeActive(true);
         setLocating(false);
         setSelectedCountry('');
@@ -87,7 +87,7 @@ const VenueSearchV2 = () => {
         setLocating(false);
         toast({ title: 'Location denied', description: 'Allow location access to find venues near you.', variant: 'destructive' });
       },
-      { timeout: 10000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   };
 
@@ -246,7 +246,7 @@ const VenueSearchV2 = () => {
             <p className="text-zinc-400 mb-1">No venues found</p>
             <p className="text-sm text-zinc-600">
               {nearMeActive
-                ? 'No venues within 50 km. Try clearing the filter.'
+                ? 'No venues within 100 km. Try clearing the filter.'
                 : hasActiveFilters
                   ? 'No matches. Try broader filters.'
                   : 'Try a different search query.'}

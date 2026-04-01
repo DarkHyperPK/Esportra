@@ -79,6 +79,9 @@ const VenueCardV2Inner: React.FC<Props> = ({ venue, showStatus = false }) => {
         <div className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-rose-500 font-medium mb-1.5">
           <MapPin className="w-3 h-3" />
           {venue.city}{venue.country ? `, ${venue.country}` : ''}
+          {venue.distance_km != null && (
+            <span className="ml-auto text-zinc-500 normal-case tracking-normal">{venue.distance_km} km</span>
+          )}
         </div>
 
         {/* Name */}

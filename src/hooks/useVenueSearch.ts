@@ -40,6 +40,7 @@ const transformVenue = (venue: any): Venue => ({
   location:  `${venue.city || ''}, ${venue.address || ''}`,
   priceRange: venue.price_range || '$10-20/hr',
   openNow:    venue.open_now !== undefined ? venue.open_now : true,
+  distance_km: venue.distance_km ?? null,
 });
 
 export const useVenueSearch = (options: VenueSearchOptions = {}) => {

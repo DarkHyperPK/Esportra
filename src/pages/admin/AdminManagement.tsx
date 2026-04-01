@@ -91,6 +91,8 @@ const AdminManagement = () => {
     pendingVerifications: statsQuery.data?.pendingVerifications || 0,
     totalBookings: statsQuery.data?.totalBookings || 0,
     newUsersToday: statsQuery.data?.newUsersToday || 0,
+    pendingVenues: statsQuery.data?.pendingVenues || 0,
+    pendingLicenses: statsQuery.data?.pendingLicenses || 0,
   };
 
   // Derived audit logs with column mapping
@@ -228,11 +230,11 @@ const AdminManagement = () => {
   const quickNavLinks = [
     { label: 'User Management', href: '/admin/tools/user-management', icon: Users, color: 'rose' },
     { label: 'Tournament Management', href: '/admin/tools/tournament-management', icon: Trophy, color: 'amber' },
-    { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, color: 'emerald' },
+    { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, color: 'emerald', badge: stats.pendingVenues },
     { label: 'Sponsor CRM', href: '/admin/tools/sponsor-management', icon: Megaphone, color: 'violet' },
 
     { label: 'Verification System', href: '/admin/tools/verification-system', icon: Shield, color: 'red', badge: stats.pendingVerifications },
-    { label: 'License Management', href: '/admin/tools/license-management', icon: Award, color: 'violet' },
+    { label: 'License Management', href: '/admin/tools/license-management', icon: Award, color: 'violet', badge: stats.pendingLicenses },
     { label: 'Dispute Center', href: '/admin/disputes', icon: AlertTriangle, color: 'amber' },
     { label: 'Analytics', href: '/admin/tools/analytics', icon: BarChart3, color: 'blue' },
     { label: 'Audit Logs', href: '/admin/audit', icon: FileText, color: 'zinc' },

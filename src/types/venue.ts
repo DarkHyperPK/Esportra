@@ -39,4 +39,5 @@ export interface Venue {
     // Metadata
     created_at?: string;
     updated_at?: string;
+    distance_km?: number | null;
 }
