@@ -18,8 +18,9 @@ interface PartnerSectionProps {
 const tierConfig: Record<string, { label: string; icon: typeof Star; color: string }> = {
     radiant: { label: 'RADIANT_PARTNER', icon: Zap, color: 'text-amber-500' },
     ascendant: { label: 'ASCENDANT_PARTNER', icon: Award, color: 'text-emerald-500' },
-    diamond: { label: 'DIAMOND_PARTNER', icon: Star, color: 'text-zinc-500' },
-    standard: { label: 'OFFICIAL_PARTNER', icon: Star, color: 'text-zinc-500' },
+    partner: { label: 'PARTNER', icon: Star, color: 'text-blue-400' },
+    diamond: { label: 'PARTNER', icon: Star, color: 'text-blue-400' },
+    standard: { label: 'PARTNER', icon: Star, color: 'text-blue-400' },
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -256,6 +257,7 @@ const Partners = () => {
         const tierOrder: Record<string, number> = {
             radiant: 3,
             ascendant: 2,
+            partner: 1,
             diamond: 1,
             standard: 1
         };

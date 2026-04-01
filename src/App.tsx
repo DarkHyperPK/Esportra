@@ -122,6 +122,7 @@ const PrivacyPage = React.lazy(() => import("./pages/Privacy"));
 const TermsPage = React.lazy(() => import("./pages/Terms"));
 const ContactStandalone = React.lazy(() => import("./pages/Contact"));
 const Partners = React.lazy(() => import("./pages/Partners"));
+const BeAPartner = React.lazy(() => import("./pages/BeAPartner"));
 
 // Guides
 const HelpCenter = React.lazy(() => import("./pages/guides/HelpCenter"));
@@ -553,6 +554,7 @@ const AppContent = React.memo(() => {
                 <Route path="/help" element={<HelpCenter />} />
                 <Route path="/contact" element={<ContactStandalone />} />
                 <Route path="/partners" element={<Partners />} />
+                <Route path="/be-a-partner" element={<BeAPartner />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
 

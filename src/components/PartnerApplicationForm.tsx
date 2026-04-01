@@ -34,8 +34,8 @@ const PARTNERSHIP_GOALS = [
 ];
 
 const BUDGET_OPTIONS = [
-    { value: 'under_1k', label: 'Under $1,000', tier: 'diamond' },
-    { value: '1k_5k', label: '$1,000 – $5,000', tier: 'diamond' },
+    { value: 'under_1k', label: 'Under $1,000', tier: 'partner' },
+    { value: '1k_5k', label: '$1,000 – $5,000', tier: 'partner' },
     { value: '5k_15k', label: '$5,000 – $15,000', tier: 'ascendant' },
     { value: '15k_50k', label: '$15,000 – $50,000', tier: 'ascendant' },
     { value: '50k_plus', label: '$50,000+', tier: 'radiant' },
@@ -57,7 +57,7 @@ const PartnerApplicationForm: React.FC = () => {
 
     const [form, setForm] = useState<Partial<PartnerApplication>>({
         company_size: undefined,
-        partnership_tier: 'diamond',
+        partnership_tier: 'partner',
         partnership_goals: [],
         budget_range: undefined,
     });
@@ -222,9 +222,9 @@ const PartnerApplicationForm: React.FC = () => {
                                 <label className={labelClass}>Partnership Tier *</label>
                                 <div className="grid grid-cols-3 gap-3">
                                     {[
-                                        { value: 'radiant', label: 'Radiant', desc: 'Premium placement, co-branded events', color: '#8b5cf6' },
-                                        { value: 'ascendant', label: 'Ascendant', desc: 'Featured partner, tournament branding', color: '#f59e0b' },
-                                        { value: 'diamond', label: 'Diamond', desc: 'Partner listing, community access', color: '#f43f5e' },
+                                        { value: 'radiant', label: 'Radiant', desc: 'All ad zones, unlimited sponsorships, full analytics', color: '#f59e0b' },
+                                        { value: 'ascendant', label: 'Ascendant', desc: 'Banner ads, 3 sponsorships, analytics dashboard', color: '#10b981' },
+                                        { value: 'partner', label: 'Partner', desc: 'Logo ticker placement, 1 tournament sponsorship', color: '#3b82f6' },
                                     ].map(t => (
                                         <button key={t.value} onClick={() => set('partnership_tier', t.value)}
                                             className={`p-4 rounded-xl text-center transition-all border ${form.partnership_tier === t.value

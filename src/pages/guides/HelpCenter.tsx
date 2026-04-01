@@ -44,6 +44,15 @@ const guides: GuideCard[] = [
     href: '/guides/venue-owner',
     available: false,
   },
+  {
+    title: 'Be a Partner',
+    description:
+      'Learn about our partnership tiers, placement zones, analytics, and how to get your brand in front of thousands of competitive gamers.',
+    icon: <Sparkles className="w-6 h-6" />,
+    href: '/be-a-partner',
+    tag: 'New',
+    available: true,
+  },
 ];
 
 /* ─── Quick Link Data ────────────────────────────────────────── */
