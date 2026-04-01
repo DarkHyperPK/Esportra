@@ -43,27 +43,6 @@
       }
     },
     {
-      "name": "Rainbow Six Siege",
-      "slug": "r6s",
-      "category": "5v5 Tactical FPS",
-      "type": "bracket",
-      "formats": [
-        { "name": "5v5", "value": "5v5", "teamSize": 5 }
-      ],
-      "defaultFormat": "5v5",
-      "logo": "/games/r6s-logo.png",
-      "features": {
-        "mapVeto": true,
-        "mapPool": true,
-        "mapPoolSize": 9,
-        "assistedReporting": false,
-        "seriesFormats": ["bo1", "bo3"],
-        "hasSidePick": false,
-        "isTeamGame": true,
-        "isBattleRoyale": false
-      }
-    },
-    {
       "name": "League of Legends",
       "slug": "lol",
       "category": "5v5 MOBA",
@@ -100,27 +79,6 @@
         "mapPoolSize": 0,
         "assistedReporting": false,
         "seriesFormats": ["bo1", "bo2", "bo3", "bo5"],
-        "hasSidePick": false,
-        "isTeamGame": true,
-        "isBattleRoyale": false
-      }
-    },
-    {
-      "name": "Call of Duty: Black Ops 6",
-      "slug": "cod",
-      "category": "4v4 Arcade FPS",
-      "type": "bracket",
-      "formats": [
-        { "name": "4v4", "value": "4v4", "teamSize": 4 }
-      ],
-      "defaultFormat": "4v4",
-      "logo": "/games/cod-logo.png",
-      "features": {
-        "mapVeto": true,
-        "mapPool": true,
-        "mapPoolSize": 10,
-        "assistedReporting": false,
-        "seriesFormats": ["bo3", "bo5"],
         "hasSidePick": false,
         "isTeamGame": true,
         "isBattleRoyale": false
