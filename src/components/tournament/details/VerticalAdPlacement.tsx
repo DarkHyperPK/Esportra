@@ -82,7 +82,7 @@ export const VerticalAdPlacement = ({ sponsorId: sponsorIdProp }: Props) => {
                         <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-[8px] text-amber-500 font-bold uppercase tracking-widest rounded">Radiant Partner</span>
                     </div>
                     <h4 className="text-white font-bold text-sm mb-2 group-hover:text-emerald-400 transition-colors">STOP BLAMING YOUR PC.</h4>
-                    <p className="text-gray-500 text-xs mb-6 font-light">SystemOptiX tunes your rig for peak esports performance. Maximum FPS. Minimum input lag.</p>
+                    <p className="text-gray-500 text-xs mb-6 font-light">Frame-perfect optimization that eliminates stutters, reduces input delay, and unlocks the FPS your hardware was built to deliver.</p>
 
                     <div className="flex items-center justify-between gap-4">
                         <a

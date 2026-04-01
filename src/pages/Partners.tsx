@@ -233,7 +233,7 @@ const Partners = () => {
             id: apiSystemOptiX?.id ?? '',
             name: 'SystemOptiX',
             tagline: "STOP BLAMING YOUR PC.",
-            description: "SystemOptiX tunes your rig for peak esports performance. Maximum FPS. Minimum input lag. Every millisecond earned.",
+            description: "Frame-perfect optimization that eliminates stutters, reduces input delay, and unlocks the FPS your hardware was built to deliver.",
             website_url: 'https://systemoptix.net/',
             logo_url: apiSystemOptiX?.logo_url || getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
             banner_image_url: apiSystemOptiX?.banner_image_url || getStorageUrl('system.assets.partners', 'SystemOptiX/2.jpg'),
