@@ -250,7 +250,7 @@ const ListVenue = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col relative">
       {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px]" />
@@ -304,7 +304,7 @@ const ListVenue = () => {
 
         {/* Form Container */}
         <div className="w-full max-w-3xl">
-          <div className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-10 shadow-2xl relative overflow-hidden">
+          <div className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-10 shadow-2xl relative overflow-visible">
 
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
 
