@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { X, MessageCircle } from 'lucide-react';
+import { X } from 'lucide-react';
+import { getWebsiteAssetUrl } from '@/lib/storage';
 
 const DISMISSED_KEY = 'beta-notice-dismissed';
+
+// Valorant Ascent map splash for visual flair
+const VALORANT_SPLASH = 'https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/splash.png';
 
 const BetaNoticeBanner = () => {
   const [dismissed, setDismissed] = useState(() => {
@@ -18,22 +22,38 @@ const BetaNoticeBanner = () => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={handleDismiss}>
       <div
-        className="relative mx-4 w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0a0c]/95 backdrop-blur-xl p-8 shadow-2xl shadow-rose-500/10"
+        className="relative mx-4 w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0a0c] overflow-hidden shadow-2xl shadow-rose-500/10"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Hero image header */}
+        <div className="relative h-36 overflow-hidden">
+          <img
+            src={VALORANT_SPLASH}
+            alt=""
+            className="w-full h-full object-cover object-center opacity-50"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a0c]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-transparent to-transparent opacity-80" />
+          {/* Logo centered on the image */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <img
+              src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
+              alt="Esportra"
+              className="h-10 drop-shadow-lg"
+            />
+          </div>
+        </div>
+
         <button
           onClick={handleDismiss}
-          className="absolute top-4 right-4 p-1.5 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+          className="absolute top-3 right-3 p-1.5 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-colors z-10"
           aria-label="Dismiss beta notice"
         >
           <X className="h-4 w-4" />
         </button>
 
-        <div className="flex flex-col items-center text-center gap-4">
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-rose-500/15 border border-rose-500/20">
-            <MessageCircle className="h-6 w-6 text-rose-400" />
-          </div>
-
+        {/* Content */}
+        <div className="flex flex-col items-center text-center gap-4 px-8 pb-8 -mt-2">
           <div>
             <h2 className="text-xl font-semibold text-white mb-2">Welcome to the Beta!</h2>
             <p className="text-white/60 text-sm leading-relaxed">
