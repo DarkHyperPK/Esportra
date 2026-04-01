@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import { useToast } from '@/hooks/use-toast';
-import VenueBooking from '@/components/VenueBooking';
 import {
   MapPin,
   Clock,
@@ -174,13 +173,6 @@ const VenueDetails = () => {
                 </div>
               </div>
 
-              <div className="mt-8">
-                <VenueBooking
-                  venueId={venue.id}
-                  venueName={venue.name}
-                  pricePerHour={pricePerHour}
-                  availableStations={venue.stations}
-                />
               </div>
             </div>
           </div>

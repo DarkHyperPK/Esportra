@@ -33,7 +33,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import Footer from '@/components/Footer';
-import VenueBooking from '@/components/VenueBooking';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
@@ -318,15 +317,6 @@ const VenueDetails = () => {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <VenueBooking
-                                venueId={venue.id}
-                                venueName={venue.name}
-                                pricePerHour={
-                                    venue.price_per_hour ??
-                                    (parseInt((venue.price_range ?? '').replace(/[^0-9]/g, '')) || 10)
-                                }
-                                availableStations={venue.stations}
-                            />
                             <Button variant="outline" className="border-white/20 hover:bg-white/10 rounded-full px-6 py-6" onClick={() => {
                                 navigator.clipboard.writeText(window.location.href);
                                 toast({ description: "Link copied to clipboard!" });
