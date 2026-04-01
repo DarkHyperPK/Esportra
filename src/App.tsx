@@ -26,6 +26,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import React from 'react';
 import Navbar from "@/components/Navbar";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
+import BetaNoticeBanner from "@/components/BetaNoticeBanner";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
 // import AdminLayout from "@/components/admin/AdminLayout";
 const AdminLayout = React.lazy(() => import("@/components/admin/AdminLayout"));
@@ -180,6 +181,7 @@ const AppContent = React.memo(() => {
       <Toaster />
       <Sonner />
       <Navbar />
+      <BetaNoticeBanner />
       <EmailVerificationBanner />
       <div className="relative z-10">
         <React.Suspense fallback={<PremiumLoadingScreen />}>
