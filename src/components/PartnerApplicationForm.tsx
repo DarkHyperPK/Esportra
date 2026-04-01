@@ -222,9 +222,9 @@ const PartnerApplicationForm: React.FC = () => {
                                 <label className={labelClass}>Partnership Tier *</label>
                                 <div className="grid grid-cols-3 gap-3">
                                     {[
-                                        { value: 'radiant', label: 'Radiant', desc: 'All ad zones, unlimited sponsorships, full analytics', color: '#f59e0b' },
-                                        { value: 'ascendant', label: 'Ascendant', desc: 'Banner ads, 3 sponsorships, analytics dashboard', color: '#10b981' },
-                                        { value: 'partner', label: 'Partner', desc: 'Logo ticker placement, 1 tournament sponsorship', color: '#3b82f6' },
+                                        { value: 'radiant', label: 'Radiant', desc: 'All ad zones, unlimited sponsorships, full analytics', color: '#f59e0b', icon: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/24/largeicon.png' },
+                                        { value: 'ascendant', label: 'Ascendant', desc: 'Banner ads, 3 sponsorships, analytics dashboard', color: '#10b981', icon: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/20/largeicon.png' },
+                                        { value: 'partner', label: 'Partner', desc: 'Logo ticker placement, 1 tournament sponsorship', color: '#3b82f6', icon: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/15/largeicon.png' },
                                     ].map(t => (
                                         <button key={t.value} onClick={() => set('partnership_tier', t.value)}
                                             className={`p-4 rounded-xl text-center transition-all border ${form.partnership_tier === t.value
@@ -236,6 +236,7 @@ const PartnerApplicationForm: React.FC = () => {
                                                 backgroundColor: `${t.color}10`,
                                             } : undefined}
                                         >
+                                            <img src={t.icon} alt={t.label} className="w-10 h-10 mx-auto mb-2 object-contain" />
                                             <p className="text-sm font-bold" style={{ color: form.partnership_tier === t.value ? t.color : 'white' }}>
                                                 {t.label}
                                             </p>

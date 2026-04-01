@@ -2,15 +2,22 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   Handshake, BarChart3, Image, FileText, Trophy, Globe,
-  ArrowRight, CheckCircle2, Zap, Shield, Star
+  ArrowRight, CheckCircle2
 } from 'lucide-react';
 import Footer from '@/components/Footer';
+
+// Valorant rank icons from the public API
+const RANK_ICONS = {
+  partner: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/15/largeicon.png',    // Platinum 3
+  ascendant: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/20/largeicon.png',  // Ascendant 2
+  radiant: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/24/largeicon.png',    // Radiant
+};
 
 const tiers = [
   {
     name: 'Partner',
     color: 'blue',
-    icon: Star,
+    rankIcon: RANK_ICONS.partner,
     price: 'Entry',
     features: [
       'Logo on homepage partner ticker',
@@ -30,7 +37,7 @@ const tiers = [
   {
     name: 'Ascendant',
     color: 'emerald',
-    icon: Zap,
+    rankIcon: RANK_ICONS.ascendant,
     price: 'Growth',
     popular: true,
     features: [
@@ -52,7 +59,7 @@ const tiers = [
   {
     name: 'Radiant',
     color: 'amber',
-    icon: Shield,
+    rankIcon: RANK_ICONS.radiant,
     price: 'Premium',
     features: [
       'Everything in Ascendant, plus:',
@@ -138,8 +145,8 @@ const BeAPartner = () => {
                         Most Popular
                       </div>
                     )}
-                    <div className={`w-12 h-12 rounded-xl ${c.bg} flex items-center justify-center mb-6`}>
-                      <tier.icon className={`w-6 h-6 ${c.text}`} />
+                    <div className="w-16 h-16 mb-6">
+                      <img src={tier.rankIcon} alt={tier.name} className="w-full h-full object-contain drop-shadow-lg" />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-1">{tier.name}</h3>
                     <p className={`text-sm ${c.text} font-medium mb-6`}>{tier.price} Tier</p>
