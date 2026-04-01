@@ -241,6 +241,52 @@ export default function LicenseManagement() {
         </div>
       </div>
 
+      {/* License Perks Reference */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Trophy className="w-4 h-4 text-purple-400" />
+            <span className="text-sm font-semibold text-purple-300">Organizer (ESP-OR)</span>
+          </div>
+          <ul className="text-xs text-zinc-400 space-y-1">
+            <li>• Create &amp; manage tournaments</li>
+            <li>• Set entry fees &amp; prize pools</li>
+            <li>• Access bracket &amp; match management</li>
+            <li>• Dispute resolution tools</li>
+            <li>• Organizer analytics dashboard</li>
+            <li>• Custom organizer profile page</li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Building className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm font-semibold text-emerald-300">Venue Owner (ESP-VO)</span>
+          </div>
+          <ul className="text-xs text-zinc-400 space-y-1">
+            <li>• List &amp; manage gaming venues</li>
+            <li>• Booking management system</li>
+            <li>• Station &amp; availability control</li>
+            <li>• Venue impression analytics</li>
+            <li>• Desktop pairing for live status</li>
+            <li>• Appear in "Near Me" search</li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Eye className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-semibold text-blue-300">Broadcaster (ESP-BR)</span>
+          </div>
+          <ul className="text-xs text-zinc-400 space-y-1">
+            <li>• Access live match data feeds</li>
+            <li>• Real-time bracket updates</li>
+            <li>• Map veto spectator mode</li>
+            <li>• Match chat monitoring</li>
+            <li>• Stream overlay integration</li>
+            <li>• Priority event notifications</li>
+          </ul>
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">

@@ -7,7 +7,6 @@ import { useRole } from '@/contexts/RoleContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
 import { cn } from '@/lib/utils';
-import { OptimizedImage } from '@/components/ui/OptimizedImage';
 
 interface TournamentCardProps {
   id: string;
@@ -68,6 +67,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   const ownerId = organizer_id || user_id;
   const isOrganizer = currentRole === 'organizer' && currentUserId && ownerId && currentUserId === ownerId;
   const [isHovered, setIsHovered] = useState(false);
+  const [bannerIsVideo, setBannerIsVideo] = useState(false);
 
   // Use the custom hook for game images and carousel
   const { gameLogo, gameBanner, rawgScreenshots, carouselIndex } = useRawgGame(game);
@@ -139,7 +139,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
           className="w-full h-full relative"
         >
           {/* 1. Custom Banner (if uploaded) - Highest Priority */}
-          {image_url && isVideo ? (
+          {image_url && (isVideo || bannerIsVideo) ? (
             <video
               src={image_url}
               className="w-full h-full object-cover object-center opacity-40 group-hover:opacity-50 transition-opacity"
@@ -149,12 +149,11 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
               playsInline
             />
           ) : image_url ? (
-            <OptimizedImage
+            <img
               src={image_url}
               className="w-full h-full object-cover object-center opacity-40 group-hover:opacity-50 transition-opacity"
               alt={name}
-              width={800}
-              responsive={true}
+              onError={() => setBannerIsVideo(true)}
             />
           ) : (
             /* 2. RAWG Screenshots (Carousel or Static) - Fallback */

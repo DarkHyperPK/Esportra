@@ -31,6 +31,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [useFallback, setUseFallback] = useState(false);
 
     // Helper to optimize Supabase URLs
     const getOptimizedUrl = (originalUrl: string) => {
@@ -75,35 +76,44 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         return canOptimize ? `${optimizedUrl}?${params.toString()}` : optimizedUrl;
     };
 
-    const optimizedSrc = getOptimizedUrl(src);
+    const optimizedSrc = useFallback ? src : getOptimizedUrl(src);
 
     return (
         <div className={cn("relative overflow-hidden", className)} style={{ width: width ? 'fit-content' : '100%' }}>
-            {isLoading && (
+            {isLoading && !error && (
                 <Skeleton
                     className="absolute inset-0 w-full h-full z-10"
                     style={{ aspectRatio: width && height ? `${width}/${height}` : undefined }}
                 />
             )}
-            <img
-                src={optimizedSrc}
-                alt={alt}
-                width={width}
-                height={height}
-                loading="lazy"
-                decoding="async"
-                onLoad={() => setIsLoading(false)}
-                onError={() => {
-                    setIsLoading(false);
-                    setError(true);
-                }}
-                className={cn(
-                    "transition-opacity duration-500",
-                    isLoading ? "opacity-0" : "opacity-100",
-                    className
-                )}
-                {...props}
-            />
+            {error && useFallback ? (
+                <div className="absolute inset-0 w-full h-full bg-black/50" />
+            ) : (
+                <img
+                    src={optimizedSrc}
+                    alt={alt}
+                    width={width}
+                    height={height}
+                    loading="lazy"
+                    decoding="async"
+                    onLoad={() => setIsLoading(false)}
+                    onError={() => {
+                        if (!useFallback) {
+                            // Try the original URL without render transforms
+                            setUseFallback(true);
+                        } else {
+                            setIsLoading(false);
+                            setError(true);
+                        }
+                    }}
+                    className={cn(
+                        "transition-opacity duration-500",
+                        isLoading ? "opacity-0" : "opacity-100",
+                        className
+                    )}
+                    {...props}
+                />
+            )}
         </div>
     );
 };

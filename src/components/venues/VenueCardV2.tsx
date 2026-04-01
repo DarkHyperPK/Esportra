@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Clock, Monitor, Gamepad2, Wifi, Wind, Coffee, Car, Maximize2, Zap } from 'lucide-react';
 import { OptimizedImage } from '@/components/ui/OptimizedImage';
 import { Venue, VenueStatus } from '@/types/venue';
+import { useTrackImpression } from '@/hooks/useVenueImpressions';
 
 const STATUS_BADGE: Record<VenueStatus, { label: string; cls: string }> = {
   draft:          { label: 'Draft',          cls: 'bg-zinc-700 text-zinc-200' },
@@ -36,7 +37,16 @@ interface Props {
 
 const VenueCardV2Inner: React.FC<Props> = ({ venue, showStatus = false }) => {
   const navigate = useNavigate();
+  const { mutate: trackImpression } = useTrackImpression();
+  const tracked = useRef(false);
   const gameList = venue.games ? venue.games.split(',').map(g => g.trim()).filter(Boolean).slice(0, 3) : [];
+
+  useEffect(() => {
+    if (!tracked.current && venue.id) {
+      tracked.current = true;
+      trackImpression({ venueId: venue.id, eventType: 'card_view' });
+    }
+  }, [venue.id]);
 
   return (
     <div
