@@ -102,9 +102,9 @@ const ADMIN_ROLE_SETS = {
 };
 
 // Venues
-const VenueSearch = React.lazy(() => import("./pages/venues/Search"));
+const VenueSearch = React.lazy(() => import("./pages/venues/VenueSearchV2"));
 const FeaturedVenues = React.lazy(() => import("./pages/venues/Featured"));
-const VenueDetails = React.lazy(() => import("./pages/venues/VenueDetails"));
+const VenueDetails = React.lazy(() => import("./pages/venues/VenueDetailsV2"));
 const ManageVenues = React.lazy(() => import("./pages/venues/ManageVenues"));
 const ListVenue = React.lazy(() => import("./pages/venues/ListVenue"));
 
