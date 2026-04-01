@@ -3,6 +3,7 @@ import { BarChart, MousePointerClick, Eye, TrendingUp, Loader2, Globe, Users, Fi
 import type { LucideIcon } from 'lucide-react';
 import { usePartnerData, useDemographics } from '@/hooks/usePartnerData';
 import { useSponsorStats } from '@/hooks/useSponsors';
+import { normalizeTier } from '@/utils/permissions';
 
 interface ChartDataPoint {
     label: string;
@@ -90,10 +91,10 @@ const Analytics = () => {
         : 10;
 
     // Harden tier mapping
-    const rawTier = (sponsor?.tier || 'partner').toLowerCase();
-    const isRadiant = rawTier === 'radiant';
-    const isAscendant = rawTier === 'ascendant';
-    const isPartnerTier = !isRadiant && !isAscendant;
+    const normalizedTier = normalizeTier(sponsor?.tier);
+    const isRadiant = normalizedTier === 'radiant';
+    const isAscendant = normalizedTier === 'ascendant';
+    const isPartnerTier = normalizedTier === 'partner';
 
     // Normalized tier name for display
     const displayTier = isRadiant ? 'Radiant' : isAscendant ? 'Ascendant' : 'Partner';
@@ -224,7 +225,7 @@ const Analytics = () => {
                             onClick={() => (isRadiant || isAscendant) && setRange('weekly')}
                             className={`px-3 py-1 rounded text-xs font-bold transition-colors ${range === 'weekly' ? 'bg-white/10 text-white' : (isRadiant || isAscendant) ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-700 cursor-not-allowed'
                                 }`}
-                            title={!(isRadiant || isAscendant) ? 'Diamond tier restriction' : ''}
+                            title={!(isRadiant || isAscendant) ? 'Ascendant tier required' : ''}
                         >
                             Weekly
                         </button>

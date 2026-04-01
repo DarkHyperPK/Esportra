@@ -4,6 +4,7 @@ import { usePartnerData } from '@/hooks/usePartnerData';
 import { usePartnerMutations } from '@/hooks/usePartnerMutations';
 import { apiClient } from '@/lib/apiClient';
 import { supabase } from '@/lib/supabase';
+import { normalizeTier, TIER_FEATURES } from '@/utils/permissions';
 
 const Account = () => {
     const { data } = usePartnerData();
@@ -205,9 +206,11 @@ const Account = () => {
                         <div className="p-8 rounded-2xl bg-[#0a0a0c] border border-white/5 space-y-4">
                             <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Partnership Tier</h3>
                             <div className="text-2xl font-black text-white uppercase tracking-tight">
-                                {sponsor.tier === 'radiant' && <span className="text-amber-500">Radiant</span>}
-                                {sponsor.tier === 'ascendant' && <span className="text-emerald-500">Ascendant</span>}
-                                {(!sponsor.tier || sponsor.tier === 'partner' || sponsor.tier === 'standard' || sponsor.tier === 'diamond') && <span className="text-blue-400">Partner</span>}
+                                {(() => {
+                                    const tier = normalizeTier(sponsor.tier);
+                                    const features = TIER_FEATURES[tier];
+                                    return <span className={features.color}>{features.label}</span>;
+                                })()}
                             </div>
                             <p className="text-[10px] font-mono text-zinc-600">TIER_MANAGED_BY_ADMIN</p>
                         </div>

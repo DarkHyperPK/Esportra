@@ -4,6 +4,7 @@ import { BarChart3, TrendingUp, MousePointer2, Loader2, Calendar, ArrowUpRight, 
 import { usePartnerData } from '@/hooks/usePartnerData';
 import { supabase } from '@/lib/supabase';
 import EditProfileModal from '@/components/EditProfileModal';
+import { normalizeTier } from '@/utils/permissions';
 
 const Dashboard = () => {
     const { data, isLoading, error } = usePartnerData();
@@ -64,10 +65,10 @@ const Dashboard = () => {
     ];
 
     // Harden tier mapping
-    const rawTier = (sponsor?.tier || 'partner').toLowerCase();
-    const isRadiant = rawTier === 'radiant';
-    const isAscendant = rawTier === 'ascendant';
-    const isPartnerTier = !isRadiant && !isAscendant;
+    const normalizedTier = normalizeTier(sponsor?.tier);
+    const isRadiant = normalizedTier === 'radiant';
+    const isAscendant = normalizedTier === 'ascendant';
+    const isPartnerTier = normalizedTier === 'partner';
 
     // Normalized tier name for display
     const displayTier = isRadiant ? 'Radiant' : isAscendant ? 'Ascendant' : 'Partner';
