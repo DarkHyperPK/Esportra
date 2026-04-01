@@ -256,7 +256,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                                                 {p.gameName} <span className="text-zinc-500 font-normal">#{p.tagLine}</span>
                                             </div>
                                             <div className="text-[9px] text-zinc-600 flex items-center gap-1 mt-0.5">
-                                                <img src={`https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/${p.competitiveTier}/smallicon.png`} loading="lazy" className="w-3 h-3 opacity-80" />
+                                                <img src={`https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/${p.competitiveTier}/smallicon.png`} loading="lazy" className="w-3 h-3 opacity-80" />
                                             </div>
                                         </div>
                                     </div>

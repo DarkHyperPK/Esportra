@@ -222,9 +222,9 @@ const PartnerApplicationForm: React.FC = () => {
                                 <label className={labelClass}>Partnership Tier *</label>
                                 <div className="grid grid-cols-3 gap-3">
                                     {[
-                                        { value: 'radiant', label: 'Radiant', desc: 'All ad zones, unlimited sponsorships, full analytics', color: '#f59e0b', icon: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/24/largeicon.png' },
-                                        { value: 'ascendant', label: 'Ascendant', desc: 'Banner ads, 3 sponsorships, analytics dashboard', color: '#10b981', icon: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/20/largeicon.png' },
-                                        { value: 'partner', label: 'Partner', desc: 'Logo ticker placement, 1 tournament sponsorship', color: '#3b82f6', icon: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a3b05d1c/15/largeicon.png' },
+                                        { value: 'radiant', label: 'Radiant', desc: 'All ad zones, unlimited sponsorships, full analytics', color: '#f59e0b', icon: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/24/largeicon.png' },
+                                        { value: 'ascendant', label: 'Ascendant', desc: 'Banner ads, 3 sponsorships, analytics dashboard', color: '#10b981', icon: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/20/largeicon.png' },
+                                        { value: 'partner', label: 'Partner', desc: 'Logo ticker placement, 1 tournament sponsorship', color: '#3b82f6', icon: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/15/largeicon.png' },
                                     ].map(t => (
                                         <button key={t.value} onClick={() => set('partnership_tier', t.value)}
                                             className={`p-4 rounded-xl text-center transition-all border ${form.partnership_tier === t.value
