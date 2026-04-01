@@ -1,43 +1,46 @@
 
-export type Tier = 'standard' | 'diamond' | 'ascendant' | 'radiant';
+export type Tier = 'partner' | 'ascendant' | 'radiant';
 
 export const TIER_FEATURES = {
-    standard: {
+    partner: {
         canUploadBanner: false,
         canViewAdvancedStats: false,
+        canUploadDeck: false,
         maxShowcaseImages: 0,
-        label: 'Official Partner',
-        color: 'text-zinc-500'
-    },
-    diamond: {
-        canUploadBanner: false,
-        canViewAdvancedStats: false,
-        maxShowcaseImages: 0,
-        label: 'Diamond Partner',
-        color: 'text-zinc-500'
+        maxTournamentSponsorships: 1,
+        allowedZones: ['ticker'] as string[],
+        label: 'Partner',
+        color: 'text-blue-400'
     },
     ascendant: {
         canUploadBanner: true,
         canViewAdvancedStats: true,
+        canUploadDeck: true,
         maxShowcaseImages: 5,
+        maxTournamentSponsorships: 3,
+        allowedZones: ['ticker', 'sidebar', 'card_badge'] as string[],
         label: 'Ascendant Partner',
         color: 'text-emerald-500'
     },
     radiant: {
         canUploadBanner: true,
         canViewAdvancedStats: true,
+        canUploadDeck: true,
         maxShowcaseImages: 8,
+        maxTournamentSponsorships: -1, // unlimited
+        allowedZones: ['ticker', 'sidebar', 'card_badge', 'header', 'match_bar', 'stream_overlay'] as string[],
         label: 'Radiant Partner',
         color: 'text-amber-500'
     }
 };
 
 export const normalizeTier = (tier?: string | null): Tier => {
-    if (!tier) return 'diamond';
-    // Case insensitive match
-    const t = tier.toLowerCase() as Tier;
-    if (t in TIER_FEATURES) return t;
-    return 'diamond';
+    if (!tier) return 'partner';
+    const t = tier.toLowerCase();
+    if (t in TIER_FEATURES) return t as Tier;
+    // Map legacy tiers
+    if (t === 'standard' || t === 'diamond') return 'partner';
+    return 'partner';
 };
 
 export const getTierFeatures = (tier?: string | null) => {

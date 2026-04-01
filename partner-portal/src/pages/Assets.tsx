@@ -299,12 +299,13 @@ const Assets = () => {
             </div>
 
             {/* ─── SECTION 2: Detail Deck ─── */}
-            <div className="p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-6">
+            <div className={`p-8 rounded-2xl bg-[#08080a] border border-white/5 space-y-6 ${!features.canUploadDeck ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
                         <h3 className="text-xl font-bold text-white flex items-center gap-3">
                             <FileText className="w-5 h-5 text-amber-500" />
                             Detail_Deck
+                            {!features.canUploadDeck && <span className="text-[10px] font-mono text-zinc-500 ml-2">ASCENDANT+ REQUIRED</span>}
                         </h3>
                         <p className="text-zinc-500 text-sm mt-2 max-w-lg">
                             Upload your campaign brief, ad copy specifications, and brand guidelines. Our team uses this to place your ads across the platform.

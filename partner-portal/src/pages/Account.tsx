@@ -207,8 +207,7 @@ const Account = () => {
                             <div className="text-2xl font-black text-white uppercase tracking-tight">
                                 {sponsor.tier === 'radiant' && <span className="text-amber-500">Radiant</span>}
                                 {sponsor.tier === 'ascendant' && <span className="text-emerald-500">Ascendant</span>}
-                                {sponsor.tier === 'diamond' && <span className="text-blue-400">Diamond</span>}
-                                {sponsor.tier === 'standard' && <span className="text-zinc-400">Standard</span>}
+                                {(!sponsor.tier || sponsor.tier === 'partner' || sponsor.tier === 'standard' || sponsor.tier === 'diamond') && <span className="text-blue-400">Partner</span>}
                             </div>
                             <p className="text-[10px] font-mono text-zinc-600">TIER_MANAGED_BY_ADMIN</p>
                         </div>

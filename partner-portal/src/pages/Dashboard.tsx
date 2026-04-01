@@ -64,13 +64,13 @@ const Dashboard = () => {
     ];
 
     // Harden tier mapping
-    const rawTier = (sponsor?.tier || 'diamond').toLowerCase();
+    const rawTier = (sponsor?.tier || 'partner').toLowerCase();
     const isRadiant = rawTier === 'radiant';
     const isAscendant = rawTier === 'ascendant';
-    const isStandard = !isRadiant && !isAscendant;
+    const isPartnerTier = !isRadiant && !isAscendant;
 
     // Normalized tier name for display
-    const displayTier = isRadiant ? 'Radiant' : isAscendant ? 'Ascendant' : 'Diamond';
+    const displayTier = isRadiant ? 'Radiant' : isAscendant ? 'Ascendant' : 'Partner';
 
     return (
         <div className="space-y-12 pb-20">
@@ -94,15 +94,15 @@ const Dashboard = () => {
                     </button>
                     <div className={`px-4 py-2 border rounded-lg flex items-center gap-3 ${isRadiant ? 'bg-amber-500/10 border-amber-500/20' :
                         isAscendant ? 'bg-emerald-500/10 border-emerald-500/20' :
-                            'bg-pink-500/10 border-pink-500/20'
+                            'bg-blue-500/10 border-blue-500/20'
                         }`}>
                         <div className={`w-2 h-2 rounded-full animate-ping ${isRadiant ? 'bg-amber-500' :
                             isAscendant ? 'bg-emerald-500' :
-                                'bg-pink-500'
+                                'bg-blue-500'
                             }`} />
                         <span className={`text-xs font-mono uppercase tracking-widest font-bold ${isRadiant ? 'text-amber-500' :
                             isAscendant ? 'text-emerald-500' :
-                                'text-pink-500'
+                                'text-blue-500'
                             }`}>
                             {displayTier}_access
                         </span>
@@ -111,7 +111,7 @@ const Dashboard = () => {
             </div>
 
             {/* Stats Grid - Hidden for Standard if they have zero access, but let's show them as 0/N/A or a small prompt */}
-            {!isStandard ? (
+            {!isPartnerTier ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {cards.map((card, i) => (
                         <motion.div
@@ -147,9 +147,9 @@ const Dashboard = () => {
                         <TrendingUp className="w-10 h-10 text-zinc-500" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-white mb-2">STANDARD_PARTNERSHIP_ACTIVE</h3>
+                        <h3 className="text-xl font-bold text-white mb-2">PARTNER_TIER_ACTIVE</h3>
                         <p className="text-zinc-500 text-sm font-mono max-w-md">
-                            Your brand is currently active in our global partner ticker. Analytics and advanced tracking are available in Gold & Platinum tiers.
+                            Your brand is currently active in our global partner ticker. Analytics and advanced tracking are available in Ascendant & Radiant tiers.
                         </p>
                     </div>
                 </div>

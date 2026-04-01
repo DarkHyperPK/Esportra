@@ -90,13 +90,13 @@ const Analytics = () => {
         : 10;
 
     // Harden tier mapping
-    const rawTier = (sponsor?.tier || 'diamond').toLowerCase();
+    const rawTier = (sponsor?.tier || 'partner').toLowerCase();
     const isRadiant = rawTier === 'radiant';
     const isAscendant = rawTier === 'ascendant';
-    const isStandard = !isRadiant && !isAscendant;
+    const isPartnerTier = !isRadiant && !isAscendant;
 
     // Normalized tier name for display
-    const displayTier = isRadiant ? 'Radiant' : isAscendant ? 'Ascendant' : 'Diamond';
+    const displayTier = isRadiant ? 'Radiant' : isAscendant ? 'Ascendant' : 'Partner';
 
     if (isPartnerLoading || isStatsLoading) {
         return (
@@ -117,24 +117,24 @@ const Analytics = () => {
         );
     }
 
-    // GATING: Diamond Tier has no analytics access
-    if (isStandard) {
+    // GATING: Partner Tier has no analytics access
+    if (isPartnerTier) {
         return (
             <div className="max-w-xl mx-auto py-20 text-center space-y-8">
-                <div className="w-20 h-20 bg-pink-500/10 border border-pink-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <TrendingUp className="w-10 h-10 text-pink-500" />
+                <div className="w-20 h-20 bg-blue-500/10 border border-blue-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <TrendingUp className="w-10 h-10 text-blue-500" />
                 </div>
                 <div>
-                    <h2 className="text-3xl font-black italic tracking-tighter text-white mb-4">DIAMOND_TIER_RESTRICTED</h2>
+                    <h2 className="text-3xl font-black italic tracking-tighter text-white mb-4">PARTNER_TIER_RESTRICTED</h2>
                     <p className="text-zinc-500 font-mono text-sm leading-relaxed">
-                        Analytics modules are not enabled for Diamond partners. <br />
-                        As a Diamond partner, your brand is featured in our global logo ticker.
+                        Analytics modules are not enabled for Partner tier. <br />
+                        As a Partner, your brand is featured in our global logo ticker.
                     </p>
                 </div>
-                <div className="p-6 bg-[#0a0a0c] border border-pink-500/10 rounded-2xl">
+                <div className="p-6 bg-[#0a0a0c] border border-blue-500/10 rounded-2xl">
                     <p className="text-xs text-white font-bold mb-2 uppercase italic tracking-widest">Upgrade recommended</p>
                     <p className="text-[10px] text-zinc-500 font-mono leading-relaxed">
-                        Transition to <span className="text-emerald-500 font-bold">ASCENDANT</span> to unlock impression tracking and clinical performance data.
+                        Upgrade to <span className="text-emerald-500 font-bold">ASCENDANT</span> to unlock impression tracking and performance analytics.
                     </p>
                 </div>
             </div>
