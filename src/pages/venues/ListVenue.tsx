@@ -30,6 +30,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
+import React from 'react';
+
+const MapPicker = React.lazy(() => import('@/components/venues/MapPicker'));
 
 // Icons mapping for amenities
 const AMENITIES_LIST = [
@@ -114,7 +117,9 @@ const ListVenue = () => {
       // Amenities
       amenities: [] as string[],
       pricePerHour: '',
-      currency: 'USD'
+      currency: 'USD',
+      latitude: null as number | null,
+      longitude: null as number | null,
     };
   });
 
@@ -213,6 +218,8 @@ const ListVenue = () => {
           contactPhone: formData.contactPhone,
           pricePerHour: parseFloat(formData.pricePerHour) || 0,
           currency: formData.currency,
+          latitude: formData.latitude,
+          longitude: formData.longitude,
           status: submitStatus,
           submittedAt: submitStatus === 'pending_review' ? new Date().toISOString() : null,
         });
@@ -408,6 +415,20 @@ const ListVenue = () => {
                           placeholder="Street address..."
                           className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl px-4 backdrop-blur-sm"
                         />
+                      </div>
+
+                      {/* Map Pin */}
+                      <div>
+                        <label className="text-sm font-medium text-gray-300 mb-1.5 block">Pin Location on Map</label>
+                        <p className="text-xs text-zinc-500 mb-2">Click the map or use "Use my location" to set your venue's exact coordinates. This helps players find you.</p>
+                        <React.Suspense fallback={<div className="h-[280px] bg-zinc-900 rounded-xl animate-pulse" />}>
+                          <MapPicker
+                            latitude={formData.latitude}
+                            longitude={formData.longitude}
+                            onChange={(lat, lng) => setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))}
+                            height="280px"
+                          />
+                        </React.Suspense>
                       </div>
                     </div>
                   </>

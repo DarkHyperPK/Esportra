@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +9,7 @@ import {
   MapPin, Clock, Phone, Mail, Cpu, Monitor, Wifi, Coffee, Car,
   Wind, Zap, Maximize2, Share2, ChevronLeft, ChevronRight,
   Gamepad2, CheckCircle, Star, X, User, Copy, Check,
-  AlertTriangle, Globe, Armchair, Image as ImageIcon
+  AlertTriangle, Globe, Armchair, Image as ImageIcon, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +17,8 @@ import Footer from '@/components/Footer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+
+const MapPicker = React.lazy(() => import('@/components/venues/MapPicker'));
 
 // ── Amenity icons + labels ──────────────────────────────────────────
 const AMENITIES: Record<string, { icon: React.ElementType; label: string }> = {
@@ -52,6 +54,8 @@ interface Venue {
   venue_id?: string;
   status?: string;
   rejection_reason?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface Review {
@@ -452,6 +456,23 @@ const VenueDetailsV2 = () => {
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* Map */}
+              {venue.latitude != null && venue.longitude != null && (
+                <div className="mt-5 pt-5 border-t border-white/5">
+                  <h4 className="text-sm font-medium text-zinc-400 mb-3">Map</h4>
+                  <Suspense fallback={<div className="h-[200px] bg-zinc-900 rounded-xl animate-pulse" />}>
+                    <MapPicker latitude={venue.latitude} longitude={venue.longitude} onChange={() => {}} height="200px" readonly />
+                  </Suspense>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${venue.latitude},${venue.longitude}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3" /> Open in Google Maps
+                  </a>
                 </div>
               )}
             </div>

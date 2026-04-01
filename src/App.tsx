@@ -107,6 +107,7 @@ const FeaturedVenues = React.lazy(() => import("./pages/venues/Featured"));
 const VenueDetails = React.lazy(() => import("./pages/venues/VenueDetailsV2"));
 const ManageVenues = React.lazy(() => import("./pages/venues/ManageVenues"));
 const ListVenue = React.lazy(() => import("./pages/venues/ListVenue"));
+const EditVenue = React.lazy(() => import("./pages/venues/EditVenue"));
 
 // Tournaments
 const BrowseTournaments = React.lazy(() => import("./pages/tournaments/List"));
@@ -508,6 +509,11 @@ const AppContent = React.memo(() => {
                 <Route path="/venues/manage" element={
                   <ProtectedRoute allowedRoles={['venue_owner']}>
                     <ManageVenues />
+                  </ProtectedRoute>
+                } />
+                <Route path="/venues/edit/:id" element={
+                  <ProtectedRoute allowedRoles={['venue_owner']}>
+                    <EditVenue />
                   </ProtectedRoute>
                 } />
 
