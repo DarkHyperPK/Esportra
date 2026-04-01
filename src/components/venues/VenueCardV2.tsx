@@ -13,6 +13,13 @@ const STATUS_BADGE: Record<VenueStatus, { label: string; cls: string }> = {
   archived:       { label: 'Archived',       cls: 'bg-zinc-800 text-zinc-400' },
 };
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '€', GBP: '£', AED: 'د.إ', SAR: '﷼', INR: '₹', PKR: '₨',
+  TRY: '₺', EGP: 'E£', QAR: 'QR', KWD: 'KD', BHD: 'BD', OMR: 'OMR',
+  JOD: 'JD', MAD: 'MAD', MYR: 'RM', SGD: 'S$', IDR: 'Rp', PHP: '₱', BRL: 'R$', JPY: '¥'
+};
+function cs(code?: string): string { return code ? (CURRENCY_SYMBOLS[code] || code) : '$'; }
+
 interface Props {
   venue: Venue;
   showStatus?: boolean;
@@ -52,7 +59,7 @@ const VenueCardV2Inner: React.FC<Props> = ({ venue, showStatus = false }) => {
         {/* Price */}
         {venue.price_per_hour != null && venue.price_per_hour > 0 && (
           <div className="absolute top-3 right-3 text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 backdrop-blur-sm">
-            ${venue.price_per_hour}/hr
+            {cs(venue.currency)}{venue.price_per_hour}/hr
           </div>
         )}
       </div>

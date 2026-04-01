@@ -19,6 +19,7 @@ export interface Venue {
     images?: string[] | null;
     card_image?: string | null;
     price_per_hour: number;
+    currency?: string;
     slug?: string;
     owner_id?: string;
     amenities?: string[];

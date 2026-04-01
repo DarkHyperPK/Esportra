@@ -8,15 +8,12 @@ import { useVenueLiveStatus } from '@/hooks/useVenueLiveStatus';
 import {
   MapPin, Clock, Phone, Mail, Cpu, Monitor, Wifi, Coffee, Car,
   Wind, Zap, Maximize2, Share2, ChevronLeft, ChevronRight,
-  Gamepad2, CheckCircle, Star, X, User, Copy, Check,
+  Gamepad2, CheckCircle, X, Copy, Check,
   AlertTriangle, Globe, Armchair, Image as ImageIcon, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import Footer from '@/components/Footer';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
 
 const MapPicker = React.lazy(() => import('@/components/venues/MapPicker'));
 
@@ -49,6 +46,7 @@ interface Venue {
   images: string[];
   amenities: string[];
   price_per_hour?: number;
+  currency?: string;
   pc_specs: Record<string, string> | string | null;
   owner_id: string;
   venue_id?: string;
@@ -58,14 +56,15 @@ interface Venue {
   longitude?: number | null;
 }
 
-interface Review {
-  id: string;
-  venue_id: string;
-  user_id: string;
-  rating: number;
-  comment: string;
-  created_at: string;
-  profiles?: { username: string; avatar_url: string };
+
+// ── Currency symbol lookup ────────────────────────────────────────────
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '€', GBP: '£', AED: 'د.إ', SAR: '﷼', INR: '₹', PKR: '₨',
+  TRY: '₺', EGP: 'E£', QAR: 'QR', KWD: 'KD', BHD: 'BD', OMR: 'OMR',
+  JOD: 'JD', MAD: 'MAD', MYR: 'RM', SGD: 'S$', IDR: 'Rp', PHP: '₱', BRL: 'R$', JPY: '¥'
+};
+function currencySymbol(code?: string): string {
+  return code ? (CURRENCY_SYMBOLS[code] || code) : '$';
 }
 
 // ── Helper: safely parse pc_specs (Dapper returns jsonb as string) ──
@@ -97,17 +96,6 @@ function VenueIdBadge({ venueId }: { venueId: string }) {
   );
 }
 
-// ── Star rating helper ──────────────────────────────────────────────
-function Stars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }) {
-  const w = size === 'lg' ? 'w-5 h-5' : 'w-3.5 h-3.5';
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map(s => (
-        <Star key={s} className={`${w} ${s <= Math.round(rating) ? 'fill-amber-400 text-amber-400' : 'text-zinc-700'}`} />
-      ))}
-    </div>
-  );
-}
 
 // =====================================================================
 const VenueDetailsV2 = () => {
@@ -119,14 +107,6 @@ const VenueDetailsV2 = () => {
   const [venue, setVenue] = useState<Venue | null>(null);
   const [loading, setLoading] = useState(true);
   const [lightboxIdx, setLightboxIdx] = useState(-1);
-
-  // Reviews
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [avgRating, setAvgRating] = useState(0);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [newRating, setNewRating] = useState(5);
-  const [newComment, setNewComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   // Tracking
   const { mutate: trackImpression } = useTrackImpression();
@@ -145,7 +125,6 @@ const VenueDetailsV2 = () => {
         return;
       }
       setVenue(data);
-      fetchReviews(data.id);
       if (!tracked.current) {
         tracked.current = true;
         trackImpression({ venueId: data.id, eventType: 'view', userId: user?.id });
@@ -155,33 +134,6 @@ const VenueDetailsV2 = () => {
       navigate('/venues/search');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchReviews = async (venueId: string) => {
-    try {
-      const data = await apiClient.get<Review[]>(`/api/reviews/venue/${venueId}`);
-      if (data) {
-        setReviews(data);
-        setAvgRating(data.length ? data.reduce((s, r) => s + r.rating, 0) / data.length : 0);
-      }
-    } catch { /* non-critical */ }
-  };
-
-  const handleSubmitReview = async () => {
-    if (!user || !venue) return;
-    setSubmitting(true);
-    try {
-      await apiClient.post('/api/reviews', { venueId: venue.id, reviewType: 'venue', rating: newRating, comment: newComment });
-      toast({ title: 'Review submitted', description: 'Thanks for your feedback!' });
-      setReviewOpen(false);
-      setNewComment('');
-      setNewRating(5);
-      fetchReviews(venue.id);
-    } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -254,7 +206,7 @@ const VenueDetailsV2 = () => {
                 <span className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4 text-rose-500" />{venue.city}, {venue.country}</span>
                 <span className="inline-flex items-center gap-1.5"><Clock className="w-4 h-4 text-zinc-500" />{venue.hours || 'Open 24/7'}</span>
                 {venue.price_per_hour != null && venue.price_per_hour > 0 && (
-                  <span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">${venue.price_per_hour}/hr</span>
+                  <span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">{currencySymbol(venue.currency)}{venue.price_per_hour}/hr</span>
                 )}
               </div>
 
@@ -359,51 +311,6 @@ const VenueDetailsV2 = () => {
               </section>
             )}
 
-            {/* Reviews */}
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white">Reviews</h2>
-                <Button variant="outline" size="sm"
-                  className="text-xs border-white/10 hover:bg-white/5 rounded-lg"
-                  onClick={() => user ? setReviewOpen(true) : navigate('/auth/signin')}>
-                  Write a review
-                </Button>
-              </div>
-
-              {/* Rating summary */}
-              <div className="flex items-center gap-3 mb-6">
-                <span className="text-3xl font-bold">{avgRating > 0 ? avgRating.toFixed(1) : '—'}</span>
-                <div>
-                  <Stars rating={avgRating} size="lg" />
-                  <span className="text-xs text-zinc-500">{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
-                </div>
-              </div>
-
-              {reviews.length === 0 ? (
-                <p className="text-center text-zinc-500 py-8 border border-dashed border-white/10 rounded-xl">
-                  No reviews yet — be the first to share your experience.
-                </p>
-              ) : (
-                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
-                  {reviews.map(r => (
-                    <div key={r.id} className="bg-[#0a0a0c] border border-white/5 rounded-xl p-4">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src={r.profiles?.avatar_url || undefined} />
-                          <AvatarFallback className="bg-zinc-800 text-zinc-400"><User className="w-3.5 h-3.5" /></AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{r.profiles?.username || 'Anonymous'}</div>
-                          <Stars rating={r.rating} />
-                        </div>
-                        <span className="text-xs text-zinc-600 shrink-0">{new Date(r.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <p className="text-sm text-zinc-400 pl-11">{r.comment}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
           </div>
 
           {/* ── Right sidebar ────────────────────────────────────── */}
@@ -482,35 +389,6 @@ const VenueDetailsV2 = () => {
 
       <Footer />
 
-      {/* ── Review dialog ────────────────────────────────────────── */}
-      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
-        <DialogContent className="bg-[#0a0a0c] border-white/10 text-white sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Write a Review</DialogTitle>
-            <DialogDescription className="text-zinc-500">Share your experience at {venue.name}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex justify-center gap-2">
-              {[1, 2, 3, 4, 5].map(s => (
-                <button key={s} type="button" onClick={() => setNewRating(s)}
-                  className="transition-transform hover:scale-110">
-                  <Star className={`w-8 h-8 ${s <= newRating ? 'fill-amber-400 text-amber-400' : 'text-zinc-700'}`} />
-                </button>
-              ))}
-            </div>
-            <Textarea placeholder="Tell us about the setup, vibe, and internet speed..."
-              value={newComment} onChange={e => setNewComment(e.target.value)}
-              className="bg-black/30 border-white/10 focus:border-rose-500/50 min-h-[100px]" />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setReviewOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmitReview} disabled={submitting}
-              className="bg-rose-600 hover:bg-rose-700 text-white">
-              {submitting ? 'Submitting...' : 'Post Review'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ── Lightbox ─────────────────────────────────────────────── */}
       <AnimatePresence>

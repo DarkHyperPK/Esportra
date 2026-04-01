@@ -57,6 +57,7 @@ const EditVenue = () => {
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [pricePerHour, setPricePerHour] = useState('');
+  const [currency, setCurrency] = useState('USD');
   const [amenities, setAmenities] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [cardImage, setCardImage] = useState('');
@@ -96,6 +97,7 @@ const EditVenue = () => {
       setContactEmail(data.contact_email || '');
       setContactPhone(data.contact_phone || '');
       setPricePerHour(String(data.price_per_hour || ''));
+      setCurrency(data.currency || 'USD');
       setAmenities(data.amenities || []);
       setImages(data.images || []);
       setCardImage(data.card_image || '');
@@ -133,6 +135,7 @@ const EditVenue = () => {
         contactEmail,
         contactPhone,
         pricePerHour: parseFloat(pricePerHour) || undefined,
+        currency,
         amenities,
         images,
         cardImage: cardImage || (images.length > 0 ? images[0] : undefined),
@@ -344,10 +347,21 @@ const EditVenue = () => {
                     className="bg-black/30 border-white/10 focus:border-rose-500/50" />
                 </div>
               </div>
-              <div className="max-w-xs">
-                <label className="text-sm text-zinc-400 mb-1 block">Price per Hour ($)</label>
-                <Input value={pricePerHour} onChange={e => setPricePerHour(e.target.value)} type="number" step="0.01"
-                  className="bg-black/30 border-white/10 focus:border-rose-500/50" />
+              <div className="flex items-end gap-3 max-w-md">
+                <div className="flex-1">
+                  <label className="text-sm text-zinc-400 mb-1 block">Price per Hour</label>
+                  <Input value={pricePerHour} onChange={e => setPricePerHour(e.target.value)} type="number" step="0.01"
+                    className="bg-black/30 border-white/10 focus:border-rose-500/50" />
+                </div>
+                <div className="w-28">
+                  <label className="text-sm text-zinc-400 mb-1 block">Currency</label>
+                  <select value={currency} onChange={e => setCurrency(e.target.value)}
+                    className="w-full h-10 rounded-md bg-black/30 border border-white/10 text-white px-3 text-sm focus:border-rose-500/50 outline-none">
+                    {['USD','EUR','GBP','AED','SAR','INR','PKR','TRY','EGP','QAR','KWD','BHD','OMR','JOD','MAD','MYR','SGD','IDR','PHP','BRL','JPY'].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </section>
