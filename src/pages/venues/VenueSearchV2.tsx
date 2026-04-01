@@ -3,7 +3,7 @@ import Footer from '@/components/Footer';
 import { VenueCardV2 } from '@/components/venues/VenueCardV2';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, MapPin, Loader2, X, ChevronDown } from 'lucide-react';
+import { Search, MapPin, Loader2, X, ChevronDown, Wifi, Wind, Coffee, Car, Maximize2, Zap } from 'lucide-react';
 import { useVenueSearch, NearMeParams } from '@/hooks/useVenueSearch';
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from 'framer-motion';
@@ -16,12 +16,22 @@ interface VenueFilters {
   countries: string[];
 }
 
+const AMENITY_FILTERS = [
+  { id: 'wifi',    icon: Wifi,      label: 'WiFi' },
+  { id: 'ac',      icon: Wind,      label: 'A/C' },
+  { id: 'food',    icon: Coffee,    label: 'Food & Drinks' },
+  { id: 'parking', icon: Car,       label: 'Parking' },
+  { id: 'private', icon: Maximize2, label: 'Private Rooms' },
+  { id: 'power',   icon: Zap,       label: 'Backup Power' },
+];
+
 const VenueSearchV2 = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [nearMeActive, setNearMeActive] = useState(false);
   const [locating, setLocating] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const { toast } = useToast();
   const { venues, loading, searchVenues } = useVenueSearch();
 
@@ -34,20 +44,28 @@ const VenueSearchV2 = () => {
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
     setNearMeActive(false);
-    searchVenues({ query: searchQuery || undefined, country: selectedCountry || undefined, city: selectedCity || undefined });
+    searchVenues({ query: searchQuery || undefined, country: selectedCountry || undefined, city: selectedCity || undefined, amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined });
   };
 
   const handleCountryChange = (country: string) => {
     setSelectedCountry(country);
     setSelectedCity('');
     setNearMeActive(false);
-    searchVenues({ query: searchQuery || undefined, country: country || undefined, city: undefined });
+    searchVenues({ query: searchQuery || undefined, country: country || undefined, city: undefined, amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined });
   };
 
   const handleCityChange = (city: string) => {
     setSelectedCity(city);
     setNearMeActive(false);
-    searchVenues({ query: searchQuery || undefined, country: selectedCountry || undefined, city: city || undefined });
+    searchVenues({ query: searchQuery || undefined, country: selectedCountry || undefined, city: city || undefined, amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined });
+  };
+
+  const toggleAmenity = (id: string) => {
+    const updated = selectedAmenities.includes(id)
+      ? selectedAmenities.filter(a => a !== id)
+      : [...selectedAmenities, id];
+    setSelectedAmenities(updated);
+    searchVenues({ query: searchQuery || undefined, country: selectedCountry || undefined, city: selectedCity || undefined, amenities: updated.length > 0 ? updated : undefined });
   };
 
   const handleNearMe = () => {
@@ -63,7 +81,7 @@ const VenueSearchV2 = () => {
         setLocating(false);
         setSelectedCountry('');
         setSelectedCity('');
-        searchVenues({ nearMe: coords });
+        searchVenues({ nearMe: coords, amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined });
       },
       () => {
         setLocating(false);
@@ -76,12 +94,13 @@ const VenueSearchV2 = () => {
   const handleClearAll = () => {
     setSelectedCountry('');
     setSelectedCity('');
+    setSelectedAmenities([]);
     setNearMeActive(false);
     setSearchQuery('');
     searchVenues({});
   };
 
-  const hasActiveFilters = !!selectedCountry || !!selectedCity || nearMeActive;
+  const hasActiveFilters = !!selectedCountry || !!selectedCity || nearMeActive || selectedAmenities.length > 0;
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col">
@@ -155,6 +174,29 @@ const VenueSearchV2 = () => {
             }
             {nearMeActive ? 'Near Me ✕' : 'Near Me'}
           </Button>
+
+          {/* Amenity filters */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {AMENITY_FILTERS.map(a => {
+              const active = selectedAmenities.includes(a.id);
+              const Icon = a.icon;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => toggleAmenity(a.id)}
+                  className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
+                    active
+                      ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+                      : 'bg-[#0a0a0c] border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'
+                  }`}
+                >
+                  <Icon className="w-3 h-3" />
+                  {a.label}
+                </button>
+              );
+            })}
+          </div>
 
           {/* Clear */}
           {hasActiveFilters && (

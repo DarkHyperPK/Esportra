@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Clock, Monitor, Gamepad2 } from 'lucide-react';
+import { MapPin, Clock, Monitor, Gamepad2, Wifi, Wind, Coffee, Car, Maximize2, Zap } from 'lucide-react';
 import { OptimizedImage } from '@/components/ui/OptimizedImage';
 import { Venue, VenueStatus } from '@/types/venue';
 
@@ -19,6 +19,15 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   JOD: 'JD', MAD: 'MAD', MYR: 'RM', SGD: 'S$', IDR: 'Rp', PHP: '₱', BRL: 'R$', JPY: '¥'
 };
 function cs(code?: string): string { return code ? (CURRENCY_SYMBOLS[code] || code) : '$'; }
+
+const AMENITY_ICONS: Record<string, { icon: React.ElementType; label: string }> = {
+  wifi:    { icon: Wifi,      label: 'WiFi' },
+  ac:      { icon: Wind,      label: 'A/C' },
+  food:    { icon: Coffee,    label: 'Food' },
+  parking: { icon: Car,       label: 'Parking' },
+  private: { icon: Maximize2, label: 'Private' },
+  power:   { icon: Zap,       label: 'Power' },
+};
 
 interface Props {
   venue: Venue;
@@ -79,12 +88,31 @@ const VenueCardV2Inner: React.FC<Props> = ({ venue, showStatus = false }) => {
 
         {/* Games */}
         {gameList.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
+          <div className="flex flex-wrap gap-1.5 mb-2">
             {gameList.map((game, i) => (
               <span key={i} className="inline-flex items-center gap-1 text-[11px] text-zinc-400 bg-white/5 border border-white/5 rounded-md px-2 py-0.5">
                 <Gamepad2 className="w-2.5 h-2.5 text-zinc-500" />{game}
               </span>
             ))}
+          </div>
+        )}
+
+        {/* Amenities */}
+        {venue.amenities && venue.amenities.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {venue.amenities.slice(0, 4).map(key => {
+              const a = AMENITY_ICONS[key];
+              if (!a) return null;
+              const Icon = a.icon;
+              return (
+                <span key={key} className="inline-flex items-center gap-1 text-[10px] text-zinc-500 bg-white/[0.03] rounded px-1.5 py-0.5">
+                  <Icon className="w-2.5 h-2.5" />{a.label}
+                </span>
+              );
+            })}
+            {venue.amenities.length > 4 && (
+              <span className="text-[10px] text-zinc-600">+{venue.amenities.length - 4}</span>
+            )}
           </div>
         )}
 

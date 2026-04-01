@@ -22,6 +22,7 @@ export interface VenueSearchParams {
   city?: string;
   country?: string;
   distance?: string;
+  amenities?: string[];
   latitude?: number | null;
   longitude?: number | null;
   page?: number;
@@ -35,7 +36,7 @@ export interface VenueSearchOptions {
 
 const transformVenue = (venue: any): Venue => ({
   ...venue,
-  amenities: venue.games?.split(',')?.map((g: string) => g.trim()) || [],
+  amenities: Array.isArray(venue.amenities) ? venue.amenities : [],
   location:  `${venue.city || ''}, ${venue.address || ''}`,
   priceRange: venue.price_range || '$10-20/hr',
   openNow:    venue.open_now !== undefined ? venue.open_now : true,
@@ -67,7 +68,14 @@ export const useVenueSearch = (options: VenueSearchOptions = {}) => {
         rawData = await apiClient.get<any[]>(`/api/venues?${qs}`);
       }
 
-      return (rawData ?? []).map(transformVenue);
+      // Client-side amenities filter
+      let results = (rawData ?? []).map(transformVenue);
+      if (searchParams.amenities && searchParams.amenities.length > 0) {
+        results = results.filter(v =>
+          searchParams.amenities!.every(a => v.amenities?.includes(a))
+        );
+      }
+      return results;
     },
     staleTime: 3 * 60 * 1000,
   });
