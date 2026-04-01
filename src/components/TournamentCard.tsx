@@ -124,6 +124,8 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
     );
   };
 
+  const isVideo = image_url ? /\.(mp4|webm|ogg|mov)(\?|$)/i.test(image_url) : false;
+
   return (
     <div
       onMouseEnter={() => setIsHovered(true)}
@@ -137,12 +139,21 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
           className="w-full h-full relative"
         >
           {/* 1. Custom Banner (if uploaded) - Highest Priority */}
-          {image_url ? (
+          {image_url && isVideo ? (
+            <video
+              src={image_url}
+              className="w-full h-full object-cover object-center opacity-40 group-hover:opacity-50 transition-opacity"
+              autoPlay
+              loop
+              muted
+              playsInline
+            />
+          ) : image_url ? (
             <OptimizedImage
               src={image_url}
               className="w-full h-full object-cover object-center opacity-40 group-hover:opacity-50 transition-opacity"
               alt={name}
-              width={800} // Reasonable default for card width
+              width={800}
               responsive={true}
             />
           ) : (
