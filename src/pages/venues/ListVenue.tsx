@@ -234,7 +234,7 @@ const ListVenue = () => {
       localStorage.removeItem('venue_list_data');
       localStorage.removeItem('venue_list_step');
 
-      navigate('/venues/manage');
+      navigate('/venues/dashboard');
     } catch (error: any) {
       console.error('Error submitting venue:', error);
       toast({ title: "Error", description: error.message, variant: "destructive" });

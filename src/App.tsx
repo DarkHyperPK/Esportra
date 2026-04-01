@@ -511,11 +511,7 @@ const AppContent = React.memo(() => {
                     <ListVenue />
                   </ProtectedRoute>
                 } />
-                <Route path="/venues/manage" element={
-                  <ProtectedRoute allowedRoles={['venue_owner']}>
-                    <ManageVenues />
-                  </ProtectedRoute>
-                } />
+                <Route path="/venues/manage" element={<Navigate to="/venues/dashboard" replace />} />
                 <Route path="/venues/edit/:id" element={
                   <ProtectedRoute allowedRoles={['venue_owner']}>
                     <EditVenue />

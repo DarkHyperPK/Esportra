@@ -79,10 +79,10 @@ const EditVenue = () => {
   const fetchVenue = async () => {
     try {
       const data = await apiClient.get<any>(`/api/venues/${id}`);
-      if (!data) { navigate('/venues/manage'); return; }
+      if (!data) { navigate('/venues/dashboard'); return; }
       if (data.owner_id !== user?.id) {
         toast({ title: 'Access denied', variant: 'destructive' });
-        navigate('/venues/manage');
+        navigate('/venues/dashboard');
         return;
       }
       setVenue(data);
@@ -113,7 +113,7 @@ const EditVenue = () => {
       setMonitors(specs.monitors || '');
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
-      navigate('/venues/manage');
+      navigate('/venues/dashboard');
     } finally {
       setLoading(false);
     }
@@ -146,7 +146,7 @@ const EditVenue = () => {
         longitude: longitude ?? undefined,
       });
       toast({ title: 'Venue updated', description: 'Changes saved successfully.' });
-      navigate('/venues/manage');
+      navigate('/venues/dashboard');
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     } finally {
@@ -177,7 +177,7 @@ const EditVenue = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <button onClick={() => navigate('/venues/manage')}
+            <button onClick={() => navigate('/venues/dashboard')}
               className="inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-white mb-2 transition-colors">
               <ChevronLeft className="w-4 h-4" /> Back to My Venues
             </button>
@@ -405,7 +405,7 @@ const EditVenue = () => {
 
           {/* Bottom save */}
           <div className="flex justify-end gap-3 pb-8">
-            <Button variant="outline" onClick={() => navigate('/venues/manage')}
+            <Button variant="outline" onClick={() => navigate('/venues/dashboard')}
               className="border-white/10 hover:bg-white/5">
               Cancel
             </Button>
