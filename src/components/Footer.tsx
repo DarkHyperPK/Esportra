@@ -47,6 +47,7 @@ const Footer = () => {
                 { label: 'Tournaments', to: '/tournaments' },
                 { label: 'Venues', to: '/venues' },
                 { label: 'Help Centre', to: '/help' },
+                { label: 'Be a Partner', to: '/be-a-partner' },
                 { label: 'FAQ', to: '/about/faq' },
               ].map((link) => (
                 <li key={link.label}>
