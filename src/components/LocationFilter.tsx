@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { Search, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useToast } from "@/hooks/use-toast";
 
@@ -11,17 +10,14 @@ interface LocationFilterProps {
   className?: string;
   onSearch?: (query: string) => void;
   onLocationChange?: (location: { latitude: number | null, longitude: number | null }) => void;
-  onDistanceChange?: (distance: string) => void;
 }
 
 const LocationFilter = ({ 
   className,
   onSearch,
   onLocationChange,
-  onDistanceChange
 }: LocationFilterProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [distance, setDistance] = useState("");
   const { latitude, longitude, error, loading } = useGeolocation();
   const { toast } = useToast();
   const [usingCurrentLocation, setUsingCurrentLocation] = useState(false);
@@ -31,13 +27,6 @@ const LocationFilter = ({
       onLocationChange({ latitude, longitude });
     }
   }, [latitude, longitude, onLocationChange, usingCurrentLocation]);
-
-  const handleDistanceChange = (value: string) => {
-    setDistance(value);
-    if (onDistanceChange) {
-      onDistanceChange(value);
-    }
-  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -82,7 +71,7 @@ const LocationFilter = ({
   return (
     <div className={`bg-esports-dark/80 backdrop-blur-md p-4 md:p-6 rounded-xl border border-gray-600/30 ${className}`}>
       <h2 className="text-xl font-bold text-white mb-4">Find Gaming Venues Near You</h2>
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="md:col-span-2">
           <div className="relative">
             <Input
@@ -94,20 +83,6 @@ const LocationFilter = ({
             />
             <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
           </div>
-        </div>
-        
-        <div>
-          <Select value={distance} onValueChange={handleDistanceChange}>
-            <SelectTrigger className="bg-esports-dark border-gray-600/30 text-white">
-              <SelectValue placeholder="Distance" />
-            </SelectTrigger>
-            <SelectContent className="bg-esports-dark border-gray-600/30 text-white">
-              <SelectItem value="5">Within 5 km</SelectItem>
-              <SelectItem value="10">Within 10 km</SelectItem>
-              <SelectItem value="20">Within 20 km</SelectItem>
-              <SelectItem value="50">Within 50 km</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
         
         <div>

@@ -42,10 +42,6 @@ const VenueSearch = () => {
     searchVenues({ latitude: location.latitude, longitude: location.longitude });
   };
 
-  const handleDistanceChange = (distance: string) => {
-    searchVenues({ distance });
-  };
-
   const handleCountryChange = (country: string) => {
     setSelectedCountry(country);
     setSelectedCity('');
@@ -126,7 +122,6 @@ const VenueSearch = () => {
           <LocationFilter
             onSearch={handleSearch}
             onLocationChange={handleLocationChange}
-            onDistanceChange={handleDistanceChange}
           />
         </div>
 
