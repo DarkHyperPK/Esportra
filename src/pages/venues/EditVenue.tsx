@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Footer from '@/components/Footer';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
+import CitySearch from '@/components/venues/CitySearch';
+import GamesPicker from '@/components/venues/GamesPicker';
 import {
   Loader2, Save, ChevronLeft, Wifi, Wind, Coffee, Car, Maximize2,
   Zap, Cpu, Monitor, X, Plus
@@ -217,22 +219,16 @@ const EditVenue = () => {
                   placeholder="Street address..."
                   className="bg-black/30 border-white/10 focus:border-rose-500/50" />
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div>
-                  <label className="text-sm text-zinc-400 mb-1 block">City</label>
-                  <Input value={city} onChange={e => setCity(e.target.value)}
-                    className="bg-black/30 border-white/10 focus:border-rose-500/50" />
-                </div>
-                <div>
-                  <label className="text-sm text-zinc-400 mb-1 block">State</label>
-                  <Input value={state} onChange={e => setState(e.target.value)}
-                    className="bg-black/30 border-white/10 focus:border-rose-500/50" />
-                </div>
-                <div>
-                  <label className="text-sm text-zinc-400 mb-1 block">Country</label>
-                  <Input value={country} onChange={e => setCountry(e.target.value)}
-                    className="bg-black/30 border-white/10 focus:border-rose-500/50" />
-                </div>
+              <div>
+                <label className="text-sm text-zinc-400 mb-1 block">City, State & Country</label>
+                <CitySearch
+                  city={city}
+                  state={state}
+                  country={country}
+                  onSelect={(c, s, co) => { setCity(c); setState(s); setCountry(co); }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm text-zinc-400 mb-1 block">Postal Code</label>
                   <Input value={postalCode} onChange={e => setPostalCode(e.target.value)}
@@ -274,9 +270,8 @@ const EditVenue = () => {
                 </div>
               </div>
               <div>
-                <label className="text-sm text-zinc-400 mb-1 block">Top Games (comma-separated)</label>
-                <Input value={games} onChange={e => setGames(e.target.value)} placeholder="CS2, Valorant, League of Legends"
-                  className="bg-black/30 border-white/10 focus:border-rose-500/50" />
+                <label className="text-sm text-zinc-400 mb-1 block">Top Games</label>
+                <GamesPicker value={games} onChange={setGames} />
               </div>
 
               {/* Hardware */}

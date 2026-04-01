@@ -30,7 +30,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
-import React from 'react';
+import CitySearch from '@/components/venues/CitySearch';
+import GamesPicker from '@/components/venues/GamesPicker';
 
 const MapPicker = React.lazy(() => import('@/components/venues/MapPicker'));
 
@@ -360,40 +361,13 @@ const ListVenue = () => {
                     </div>
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-300 mb-1.5 block">City</label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-500" />
-                          <Input
-                            name="city"
-                            value={formData.city}
-                            onChange={handleChange}
-                            placeholder="City"
-                            className="pl-10 bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-300 mb-1.5 block">State / Province</label>
-                          <Input
-                            name="state"
-                            value={formData.state}
-                            onChange={handleChange}
-                            placeholder="NY"
-                            className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-300 mb-1.5 block">Country</label>
-                          <Input
-                            name="country"
-                            value={formData.country}
-                            onChange={handleChange}
-                            placeholder="USA"
-                            className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
-                          />
-                        </div>
+                        <label className="text-sm font-medium text-gray-300 mb-1.5 block">City, State & Country</label>
+                        <CitySearch
+                          city={formData.city}
+                          state={formData.state}
+                          country={formData.country}
+                          onSelect={(c, s, co) => setFormData(prev => ({ ...prev, city: c, state: s, country: co }))}
+                        />
                       </div>
 
                       <div>
@@ -482,12 +456,9 @@ const ListVenue = () => {
 
                     <div>
                       <label className="text-sm font-medium text-gray-300 mb-1.5 block">Popular Games</label>
-                      <Input
-                        name="games"
+                      <GamesPicker
                         value={formData.games}
-                        onChange={handleChange}
-                        placeholder="Valorant, CS2, League..."
-                        className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
+                        onChange={(v) => setFormData(prev => ({ ...prev, games: v }))}
                       />
                     </div>
                   </>
