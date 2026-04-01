@@ -26,9 +26,10 @@ const IgdbTest = () => {
     setAssets(null);
     setBanner(null);
     try {
-      const data = await apiClient.get<any[]>(`/api/games/search?q=${encodeURIComponent(query)}`);
-      setSearchResults(data || []);
-      toast({ title: `Found ${data?.length || 0} games` });
+      const res = await apiClient.get<any>(`/api/games/search?q=${encodeURIComponent(query)}`);
+      const data = Array.isArray(res) ? res : (res?.data || []);
+      setSearchResults(data);
+      toast({ title: `Found ${data.length} games` });
     } catch (err: any) {
       toast({ title: 'Search failed', description: err.message, variant: 'destructive' });
       setSearchResults([]);
