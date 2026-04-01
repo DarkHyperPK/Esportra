@@ -173,6 +173,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                                     <AvatarUploader
                                         value={formData.avatar_url || ''}
                                         onChange={(url) => setFormData({ ...formData, avatar_url: url })}
+                                        onRemove={() => setFormData({ ...formData, avatar_url: '' })}
                                         size="xl"
                                         uploadPath={profile?.id ? `profile-pictures/${profile.id}_${Date.now()}_avatar.png` : undefined}
                                     />

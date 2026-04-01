@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { User, Camera, Loader2 } from 'lucide-react';
+import { User, Camera, Loader2, X } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -8,11 +8,12 @@ import EntityAvatar from '@/components/ui/EntityAvatar';
 interface AvatarUploaderProps {
     value: string | null;
     onChange: (url: string) => void;
+    onRemove?: () => void;
     size?: 'sm' | 'md' | 'lg' | 'xl';
     uploadPath?: string;
 }
 
-const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUploaderProps) => {
+const AvatarUploader = ({ value, onChange, onRemove, size = 'xl', uploadPath }: AvatarUploaderProps) => {
     const [isUploading, setIsUploading] = useState(false);
     const [localPreview, setLocalPreview] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -127,6 +128,21 @@ const AvatarUploader = ({ value, onChange, size = 'xl', uploadPath }: AvatarUplo
                 onChange={handleFileSelect}
                 disabled={isUploading}
             />
+
+            {/* Remove button */}
+            {onRemove && (value || localPreview) && !isUploading && (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove();
+                        setLocalPreview(null);
+                    }}
+                    className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-colors shadow-lg z-10"
+                >
+                    <X className="w-3.5 h-3.5 text-white" />
+                </button>
+            )}
         </div>
     );
 };
