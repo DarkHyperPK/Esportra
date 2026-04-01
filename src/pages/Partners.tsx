@@ -232,8 +232,8 @@ const Partners = () => {
         const hardcodedSystemOptiX: Sponsor = {
             id: apiSystemOptiX?.id ?? '',
             name: 'SystemOptiX',
-            tagline: "DOMINATE WITH ZERO LATENCY",
-            description: "Unleash Your PC's True Potential. Maximize your framerates and minimize latency with SystemOptix. Our premium PC optimization services tune your rig for peak esports performance, ensuring every millisecond counts.",
+            tagline: "STOP BLAMING YOUR PC.",
+            description: "SystemOptiX tunes your rig for peak esports performance. Maximum FPS. Minimum input lag. Every millisecond earned.",
             website_url: 'https://systemoptix.net/',
             logo_url: apiSystemOptiX?.logo_url || getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
             banner_image_url: apiSystemOptiX?.banner_image_url || getStorageUrl('system.assets.partners', 'SystemOptiX/2.jpg'),
