@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { BRTeamResult, BRLeaderboardEntry, BRScoringPreset, BRGameResult, BREvidence } from '@/types/battleRoyale';
 
@@ -23,14 +23,6 @@ interface BRGameData {
   evidence?: BREvidence[];
 }
 
-// Persisted row shape in br_game_data table
-interface BRGameDataRow {
-  tournament_id: string;
-  games: Record<string, BRGameData>;
-  updated_at: string;
-  updated_by: string | null;
-}
-
 export function useBRGameResults({
   tournamentId,
   gameCount,
@@ -42,26 +34,20 @@ export function useBRGameResults({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch saved BR game data directly from Supabase
+  // Fetch saved BR game data from backend API
   const { data: savedGames, isLoading } = useQuery({
     queryKey: ['br-game-results', tournamentId],
     queryFn: async (): Promise<BRGameData[]> => {
       if (!tournamentId) return [];
 
-      const { data, error } = await supabase
-        .from('br_game_data')
-        .select('games')
-        .eq('tournament_id', tournamentId)
-        .maybeSingle();
+      const resp = await apiClient.get<{ games: Record<string, BRGameData> }>(
+        `/api/tournaments/${tournamentId}/br-games`
+      );
 
-      if (error) {
-        console.error('BR game data fetch error:', error);
-        return [];
-      }
-      if (!data?.games) return [];
+      if (!resp?.games) return [];
 
       const games: BRGameData[] = [];
-      const gamesObj = data.games as Record<string, BRGameData>;
+      const gamesObj = resp.games as Record<string, BRGameData>;
       for (const key of Object.keys(gamesObj)) {
         const g = gamesObj[key];
         if (g && g.gameNumber) games.push(g);
@@ -87,35 +73,24 @@ export function useBRGameResults({
     return merged;
   }, [savedGames]);
 
-  // Helper: persist a single game update to Supabase
+  // Helper: persist a single game update via backend API
   const persistGame = useCallback(
     async (gameData: BRGameData) => {
       if (!tournamentId) throw new Error('No tournament ID');
 
-      const { data: { user } } = await supabase.auth.getUser();
-
-      // Read current row
-      const { data: existing } = await supabase
-        .from('br_game_data')
-        .select('games')
-        .eq('tournament_id', tournamentId)
-        .maybeSingle();
-
-      const currentGames = (existing?.games as Record<string, BRGameData>) || {};
+      // Read current games from cache to merge
+      const currentSaved = queryClient.getQueryData<BRGameData[]>(['br-game-results', tournamentId]) || [];
+      const currentGames: Record<string, BRGameData> = {};
+      for (const g of currentSaved) {
+        currentGames[`game_${g.gameNumber}`] = g;
+      }
       currentGames[`game_${gameData.gameNumber}`] = gameData;
 
-      const { error } = await supabase
-        .from('br_game_data')
-        .upsert({
-          tournament_id: tournamentId,
-          games: currentGames,
-          updated_at: new Date().toISOString(),
-          updated_by: user?.id || null,
-        }, { onConflict: 'tournament_id' });
-
-      if (error) throw error;
+      await apiClient.put(`/api/tournaments/${tournamentId}/br-games`, {
+        games: currentGames,
+      });
     },
-    [tournamentId]
+    [tournamentId, queryClient]
   );
 
   // Save mutation
@@ -350,19 +325,15 @@ export function useBRGameResults({
   // Submit evidence for a game (player uploads screenshot)
   const submitEvidence = useCallback(
     async (gameNumber: number, evidence: BREvidence) => {
-      const game = allGames.get(gameNumber);
-      const existing = game?.evidence || [];
-      const filtered = existing.filter(e => e.teamId !== evidence.teamId);
-      await persistGame({
+      if (!tournamentId) return;
+      await apiClient.put(`/api/tournaments/${tournamentId}/br-games/evidence`, {
         gameNumber,
-        results: game?.results || [],
-        lobbyCode: game?.lobbyCode,
-        status: game?.status || 'active',
-        evidence: [...filtered, evidence],
+        teamId: evidence.teamId,
+        imageUrl: evidence.imageUrl,
       });
       queryClient.invalidateQueries({ queryKey: ['br-game-results', tournamentId] });
     },
-    [allGames, persistGame, queryClient, tournamentId]
+    [tournamentId, queryClient]
   );
 
   // Get evidence for a specific game
