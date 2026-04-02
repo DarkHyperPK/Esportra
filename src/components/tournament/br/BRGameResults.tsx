@@ -374,7 +374,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
 
                     <div className="flex items-center gap-2 ml-auto flex-shrink-0">
                       {/* Scoring inputs inline — for organizers */}
-                      {isOrganizer && teamResultIndex >= 0 && (
+                      {isOrganizer && (
                         <>
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] text-zinc-500 uppercase font-semibold">Place</span>
@@ -382,8 +382,16 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                               type="number"
                               min={1}
                               max={999}
-                              value={teamResult?.placement ?? 1}
-                              onChange={(e) => updatePlacement(teamResultIndex, parseInt(e.target.value) || 1)}
+                              value={teamResult?.placement ?? ev.placement ?? 1}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 1;
+                                if (teamResultIndex >= 0) {
+                                  updatePlacement(teamResultIndex, val);
+                                } else {
+                                  // Add team to results
+                                  setResults(prev => [...prev, { teamId: ev.teamId, placement: val, kills: ev.kills ?? 0 }]);
+                                }
+                              }}
                               className="h-7 w-14 text-center text-xs [color-scheme:dark]"
                             />
                           </div>
@@ -393,8 +401,15 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                               type="number"
                               min={0}
                               max={killCap || 99}
-                              value={teamResult?.kills ?? 0}
-                              onChange={(e) => updateKills(teamResultIndex, parseInt(e.target.value) || 0)}
+                              value={teamResult?.kills ?? ev.kills ?? 0}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 0;
+                                if (teamResultIndex >= 0) {
+                                  updateKills(teamResultIndex, val);
+                                } else {
+                                  setResults(prev => [...prev, { teamId: ev.teamId, placement: ev.placement ?? prev.length + 1, kills: val }]);
+                                }
+                              }}
                               className="h-7 w-14 text-center text-xs [color-scheme:dark]"
                             />
                           </div>
