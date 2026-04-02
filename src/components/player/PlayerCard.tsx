@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Crown, Camera } from 'lucide-react';
+import { Shield, Crown, Camera, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -82,6 +82,17 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser,
                             <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-500/80 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
                             <span className="relative text-[10px] uppercase tracking-[0.25em] font-extrabold text-amber-100 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">
                                 Captain
+                            </span>
+                        </div>
+                    )}
+
+                    {member.role === 'coach' && (
+                        <div className="relative group/badge flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)] transition-opacity duration-300 group-hover:opacity-0 overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-400/5 to-transparent opacity-50" />
+                            <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                            <ClipboardList className="w-3.5 h-3.5 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
+                            <span className="relative text-[10px] uppercase tracking-[0.25em] font-extrabold text-cyan-100 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+                                Coach
                             </span>
                         </div>
                     )}

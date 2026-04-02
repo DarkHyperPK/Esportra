@@ -22,7 +22,7 @@ export interface TeamMember {
   username: string;
   full_name?: string;
   avatar_url?: string;
-  role: 'captain' | 'member' | 'substitute';
+  role: 'captain' | 'member' | 'substitute' | 'coach';
   verified: boolean;
   joined_at: string;
   is_active: boolean;
@@ -253,6 +253,18 @@ export const useTeamManagement = () => {
     catch { return []; }
   }, []);
 
+  const changeRole = useCallback(async (teamId: string, userId: string, role: 'member' | 'substitute' | 'coach'): Promise<boolean> => {
+    try {
+      await apiClient.put(`/api/teams/${teamId}/members/${userId}/role`, { role });
+      queryClient.invalidateQueries({ queryKey: ['my-teams'] });
+      toast({ title: 'Role updated', description: `Member role changed to ${role}.` });
+      return true;
+    } catch (err: any) {
+      toast({ title: 'Failed to change role', description: err?.body?.error || err.message, variant: 'destructive' });
+      return false;
+    }
+  }, [queryClient, toast]);
+
   const submitting = createTeamMutation.isPending || updateTeamMutation.isPending
     || deleteMutation.isPending || inviteMutation.isPending;
 
@@ -278,6 +290,7 @@ export const useTeamManagement = () => {
     removeTeamMember,
     removeMemberFromTeam: removeTeamMember,
     transferCaptaincy,
+    changeRole,
     getVerifiedUsers,
 
     // Refresh

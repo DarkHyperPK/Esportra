@@ -34,6 +34,7 @@ const TeamsPage = () => {
     inviteUserToTeam,
     removeMemberFromTeam,
     transferCaptaincy,
+    changeRole,
     disbandTeam,
     leaveTeam,
     revokeTeamInvite,
@@ -1457,7 +1458,7 @@ const TeamsPage = () => {
                         username: member.username,
                         avatar_url: member.avatar_url || undefined,
                         card_image_url: member.card_image_url || undefined,
-                        role: member.user_id === currentTeam?.owner_id ? 'captain' : 'member',
+                        role: member.user_id === currentTeam?.owner_id ? 'captain' : (teamMembers.find(tm => tm?.user_id === member.user_id)?.role || 'member'),
                         stats: teamMembers.find(tm => tm?.user_id === member.user_id)?.stats,
                         game: r.game
                       }}
@@ -2165,6 +2166,28 @@ const TeamsPage = () => {
                                   >
                                     {(manageMemberStatuses[uid] ?? true) ? 'STARTER' : 'BENCH'}
                                   </button>
+                                  {isCaptain && uid !== currentTeam?.owner_id && (
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const currentRole = teamMembers.find(m => m.user_id === uid)?.role;
+                                        const newRole = currentRole === 'coach' ? 'member' : 'coach';
+                                        if (currentTeam?.id) {
+                                          const ok = await changeRole(currentTeam.id, uid, newRole);
+                                          if (ok) {
+                                            setTeamMembers(prev => prev.map(m => m.user_id === uid ? { ...m, role: newRole } : m));
+                                          }
+                                        }
+                                      }}
+                                      className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-all ${
+                                        teamMembers.find(m => m.user_id === uid)?.role === 'coach'
+                                          ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20'
+                                          : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10 hover:text-white/50'
+                                      }`}
+                                    >
+                                      {teamMembers.find(m => m.user_id === uid)?.role === 'coach' ? 'COACH' : 'SET COACH'}
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
