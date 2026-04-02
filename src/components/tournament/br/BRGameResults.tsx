@@ -76,6 +76,30 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingResultsJson]);
 
+  // Auto-fill results from player-reported evidence scores
+  const evidenceJson = JSON.stringify(evidence.map(e => ({ teamId: e.teamId, teamName: e.teamName, placement: e.placement, kills: e.kills })));
+  useEffect(() => {
+    const evList = JSON.parse(evidenceJson) as { teamId: string; teamName: string; placement?: number; kills?: number }[];
+    if (!evList.length) return;
+    setResults(prev => {
+      const updated = [...prev];
+      for (const ev of evList) {
+        if (ev.placement == null) continue;
+        // Find by teamId or team name
+        let idx = updated.findIndex(r => r.teamId === ev.teamId);
+        if (idx < 0) {
+          const matched = teams.find(t => t.name === ev.teamName);
+          if (matched) idx = updated.findIndex(r => r.teamId === matched.id);
+        }
+        if (idx >= 0) {
+          updated[idx] = { ...updated[idx], placement: ev.placement, kills: ev.kills ?? updated[idx].kills };
+        }
+      }
+      return updated;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evidenceJson]);
+
   const updateKills = (index: number, kills: number) => {
     const capped = killCap ? Math.min(kills, killCap) : kills;
     const newResults = [...results];
