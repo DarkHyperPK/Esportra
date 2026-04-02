@@ -368,9 +368,9 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                       {ev.teamName}
                     </span>
 
-                    {/* Self-reported stats — always show, fallback to "N/A" */}
-                    <span className="text-xs text-zinc-500">Placement: <span className="text-zinc-300">{ev.placement != null ? `#${ev.placement}` : 'N/A'}</span></span>
-                    <span className="text-xs text-zinc-500">Kills: <span className="text-zinc-300">{ev.kills != null ? ev.kills : 'N/A'}</span></span>
+                    {/* Self-reported stats — show reported values, fall back to current scores */}
+                    <span className="text-xs text-zinc-500">Placement: <span className="text-zinc-300">#{ev.placement ?? teamResult?.placement ?? '—'}</span></span>
+                    <span className="text-xs text-zinc-500">Kills: <span className="text-zinc-300">{ev.kills ?? teamResult?.kills ?? '—'}</span></span>
 
                     <div className="flex items-center gap-2 ml-auto flex-shrink-0">
                       {/* Scoring inputs inline — for organizers */}
