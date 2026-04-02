@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { VerticalAdPlacement } from './VerticalAdPlacement';
 import { TournamentSponsorSidebar } from '@/components/tournament/TournamentSponsorSidebar';
 
+import { isBattleRoyale } from '@/utils/gameFeatures';
+
 interface Stage {
     id: string;
     name: string;
@@ -23,9 +25,10 @@ interface OverviewTabProps {
 export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [] }) => {
     const navigate = useNavigate();
 
-    // Check if any stage has self-play enabled
+    // Check if any stage has self-play enabled (not applicable for Battle Royale games)
+    const isBR = isBattleRoyale(tournament?.game || '');
     const selfPlayStage = stages.find(s => s.scheduling_config?.self_play_enabled);
-    const isSelfPlayEnabled = !!selfPlayStage;
+    const isSelfPlayEnabled = !isBR && !!selfPlayStage;
 
     // Check if vertical ad is enabled for this tournament
     const showVerticalAd = tournament.settings?.showVerticalAd === true;

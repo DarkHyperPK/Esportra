@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Zap, MessageCircle, CheckCircle, Users, GitBranch } from 'lucide-react';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { getTimezoneAbbr } from '@/lib/timeUtils';
+import { isBattleRoyale } from '@/utils/gameFeatures';
 
 interface StageSchedulingConfigProps {
     stageId: string;
     stageFormat: string; // single_elimination, double_elimination, swiss, round_robin
+    gameName?: string;
     onConfigChange?: (config: any) => void;
 }
 
@@ -43,10 +45,11 @@ const formatInfo: Record<string, { label: string; icon: string; description: str
     },
 };
 
-const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, stageFormat, onConfigChange }) => {
+const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, stageFormat, gameName, onConfigChange }) => {
     const { schedulingConfig, updateConfig, isLoading } = useMatchScheduling(stageId);
     const formatData = formatInfo[stageFormat] || formatInfo.single_elimination;
     const [optimisticSelfPlay, setOptimisticSelfPlay] = React.useState<boolean | null>(null);
+    const isBR = gameName ? isBattleRoyale(gameName) : false;
     const isSelfPlayEnabled = optimisticSelfPlay !== null ? optimisticSelfPlay : !!schedulingConfig?.self_play_enabled;
 
     const handleUpdate = async (key: string, value: any) => {
@@ -113,7 +116,8 @@ const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, 
                     </div>
                 </div>
 
-                {/* Self-Play Toggle */}
+                {/* Self-Play Toggle — hidden for Battle Royale games */}
+                {!isBR && (
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -136,6 +140,7 @@ const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, 
                         className="data-[state=checked]:bg-esports-purple"
                     />
                 </motion.div>
+                )}
 
                 {/* Check-in Window (always enabled, tournament check-in is mandatory) */}
                 <motion.div

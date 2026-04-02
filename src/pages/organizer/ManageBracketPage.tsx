@@ -562,6 +562,7 @@ const ManageBracketPage = () => {
                                 <StageSchedulingConfig
                                     stageId={stageId!}
                                     stageFormat={stage?.format || 'single_elimination'}
+                                    gameName={tournament?.game}
                                     onConfigChange={() => fetchData(true)}
                                 />
                             </div>

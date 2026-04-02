@@ -18,7 +18,7 @@ import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
 import { FaceitMatchReport } from '@/components/tournament/FaceitMatchReport';
 import { BracketMatch, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
-import { gameHasMapVeto } from '@/utils/gameFeatures';
+import { gameHasMapVeto, isBattleRoyale } from '@/utils/gameFeatures';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
 import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
 import TimeProposalCard from '@/components/tournament/TimeProposalCard';
@@ -797,7 +797,7 @@ const CaptainMatchPage = () => {
                                             userTeamId={userTeamId}
                                             scheduledTime={effectiveScheduledTime}
                                             isCaptain={isCaptain}
-                                            selfPlayEnabled={schedulingConfig?.self_play_enabled || false}
+                                            selfPlayEnabled={!isBattleRoyale(tournament?.game || '') && (schedulingConfig?.self_play_enabled || false)}
                                             checkInWindowMinutes={schedulingConfig?.checkin_window_minutes || 15}
                                             onPartyCodeGenerated={(code) => {
                                                 refetchBracket();
@@ -807,7 +807,7 @@ const CaptainMatchPage = () => {
                                     )}
 
                                     {/* Time Proposal Card */}
-                                    {((!effectiveScheduledTime) && (schedulingConfig?.self_play_enabled && activeMatch.status === 'pending') && activeMatch.team2?.id) && (
+                                    {((!effectiveScheduledTime) && (!isBattleRoyale(tournament?.game || '') && schedulingConfig?.self_play_enabled && activeMatch.status === 'pending') && activeMatch.team2?.id) && (
                                         (() => {
                                             const roundIndex = activeMatch.round - 1;
                                             const configDeadline = schedulingConfig?.round_deadlines?.[String(roundIndex)];
