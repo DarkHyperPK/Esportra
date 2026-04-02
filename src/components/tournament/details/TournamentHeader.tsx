@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { Countdown } from '@/components/ui/Countdown';
 import { isBattleRoyale } from '@/utils/gameFeatures';
 import { useRawgGame } from '@/hooks/useRawgGame';
-import { formatDate } from '@/utils/dateFormat';
 
 interface TournamentHeaderProps {
     tournament: any;
@@ -168,7 +167,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 <div className="flex flex-col items-center gap-2">
                                     <Calendar className="w-5 h-5 text-blue-500 mb-2" />
                                     <span>Start Date</span>
-                                    <span className="text-white text-lg font-bold font-sans">{formatDate(tournament.date)}{tournament.time && ` • ${tournament.time}`}</span>
+                                    <span className="text-white text-lg font-bold font-sans">{tournament.date}{tournament.time && ` • ${tournament.time}`}</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-2">
                                     <Users className="w-5 h-5 text-green-500 mb-2" />
