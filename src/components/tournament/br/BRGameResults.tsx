@@ -355,7 +355,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                       : "bg-rose-500/5 border-rose-500/20"
                   )}
                 >
-                  <div className="flex items-center gap-3 px-3 py-2">
+                  <div className="flex items-center gap-3 px-3 py-2 flex-wrap">
                     {/* Review status indicator */}
                     <div className={cn(
                       "w-2 h-2 rounded-full flex-shrink-0",
@@ -363,73 +363,64 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                     )} />
 
                     {/* Team name */}
-                    <span className="text-sm text-white font-medium truncate flex-1 min-w-0">
+                    <span className="text-sm text-white font-medium truncate min-w-0">
                       {ev.teamName}
                     </span>
 
                     {/* Self-reported stats */}
-                    <div className="flex items-center gap-2 text-xs flex-shrink-0">
-                      {ev.placement != null && <span className="text-zinc-500">Claims #{ev.placement}</span>}
-                      {ev.kills != null && <span className="text-zinc-500">{ev.kills}K</span>}
-                    </div>
+                    {ev.placement != null && (
+                      <span className="text-xs text-zinc-500">Placement: <span className="text-zinc-300">{ev.placement}</span></span>
+                    )}
+                    {ev.kills != null && (
+                      <span className="text-xs text-zinc-500">Kills: <span className="text-zinc-300">{ev.kills}</span></span>
+                    )}
 
-                    {/* View Evidence button — opens lightbox */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLightboxUrl(ev.imageUrl);
-                        if (!ev.reviewed && onMarkEvidenceReviewed) {
-                          onMarkEvidenceReviewed(ev.teamId);
-                        }
-                      }}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex-shrink-0",
-                        ev.reviewed
-                          ? "text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10"
-                          : "text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-500/20"
+                    <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+                      {/* Scoring inputs inline — for organizers */}
+                      {isOrganizer && teamResultIndex >= 0 && (
+                        <>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={999}
+                            value={teamResult?.placement ?? 1}
+                            onChange={(e) => updatePlacement(teamResultIndex, parseInt(e.target.value) || 1)}
+                            className="h-7 w-14 text-center text-xs [color-scheme:dark]"
+                            title="Placement"
+                          />
+                          <Input
+                            type="number"
+                            min={0}
+                            max={killCap || 99}
+                            value={teamResult?.kills ?? 0}
+                            onChange={(e) => updateKills(teamResultIndex, parseInt(e.target.value) || 0)}
+                            className="h-7 w-14 text-center text-xs [color-scheme:dark]"
+                            title="Kills"
+                          />
+                        </>
                       )}
-                    >
-                      {ev.reviewed ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                      {ev.reviewed ? 'Viewed' : 'View'}
-                    </button>
+
+                      {/* View Evidence button — opens lightbox */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLightboxUrl(ev.imageUrl);
+                          if (!ev.reviewed && onMarkEvidenceReviewed) {
+                            onMarkEvidenceReviewed(ev.teamId);
+                          }
+                        }}
+                        className={cn(
+                          "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex-shrink-0",
+                          ev.reviewed
+                            ? "text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10"
+                            : "text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-500/20"
+                        )}
+                      >
+                        {ev.reviewed ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                        {ev.reviewed ? 'Viewed' : 'View'}
+                      </button>
+                    </div>
                   </div>
-
-                  {/* Scoring inputs row — show for organizers whenever evidence exists */}
-                  {isOrganizer && teamResultIndex >= 0 && (
-                    <div className="flex items-center gap-3 px-3 py-2 border-t border-white/5 bg-black/20">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-zinc-500 uppercase font-semibold">Place</span>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={999}
-                          value={teamResult?.placement ?? 1}
-                          onChange={(e) => updatePlacement(teamResultIndex, parseInt(e.target.value) || 1)}
-                          className="h-7 w-16 text-center text-xs [color-scheme:dark]"
-                        />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-zinc-500 uppercase font-semibold">Kills</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={killCap || 99}
-                          value={teamResult?.kills ?? 0}
-                          onChange={(e) => updateKills(teamResultIndex, parseInt(e.target.value) || 0)}
-                          className="h-7 w-16 text-center text-xs [color-scheme:dark]"
-                        />
-                      </div>
-                      {pts && (
-                        <div className="flex items-center gap-2 ml-auto text-xs">
-                          <span className="text-emerald-400 font-bold">{pts.placementPts}</span>
-                          <span className="text-zinc-600">+</span>
-                          <span className="text-rose-400 font-bold">{pts.killPts}</span>
-                          <span className="text-zinc-600">=</span>
-                          <span className="text-white font-bold">{pts.total}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
                 );
               })}
