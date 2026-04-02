@@ -6,6 +6,7 @@ import { Tournament } from '@/hooks/useTournaments';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { RegistrationDetails } from '@/types/tournament';
+import { formatDate, formatTime } from '@/utils/dateFormat';
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -70,8 +71,8 @@ const UpcomingTournaments = () => {
           id: tournament.id,
           name: tournament.name,
           game: tournament.game,
-          date: tournament.start_date ? new Date(tournament.start_date).toLocaleDateString('en-CA') : '',
-          time: tournament.start_date ? new Date(tournament.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
+          date: tournament.start_date ? formatDate(tournament.start_date) : '',
+          time: tournament.start_date ? formatTime(tournament.start_date) : '',
           venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
           max_participants: tournament.max_teams,
           current_participants: tournament.current_participants || 0,

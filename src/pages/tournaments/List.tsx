@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { TournamentCard } from '@/components/TournamentCard';
+import { formatDate } from '@/utils/dateFormat';
 
 interface TournamentFilters {
   cities: string[];
@@ -303,7 +304,7 @@ const TournamentList = () => {
                   id={tournament.id}
                   name={tournament.name}
                   game={tournament.game}
-                  date={tournament.date || new Date(tournament.start_date || '').toLocaleDateString('en-CA')}
+                  date={tournament.date || formatDate(tournament.start_date)}
                   time={tournament.time || ''}
                   venue={tournament.venue || ''}
                   max_participants={tournament.max_participants}

@@ -4,6 +4,7 @@ import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { formatDate } from '@/utils/dateFormat';
 
 const PlayerTournamentHistory = () => {
   const { user } = useAuth();
@@ -42,7 +43,7 @@ const PlayerTournamentHistory = () => {
             <Card key={tournament.id} className="bg-gaming-dark border-gaming-gray/30">
               <CardHeader>
                 <CardTitle>{tournament.name}</CardTitle>
-                <div className="text-gray-400 text-sm">{new Date(tournament.date).toLocaleDateString()}</div>
+                <div className="text-gray-400 text-sm">{formatDate(tournament.date)}</div>
                 <div className="text-xs text-gaming-green mt-1">Result: <span className="font-semibold">(Coming soon)</span></div>
               </CardHeader>
               <CardContent>

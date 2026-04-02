@@ -11,6 +11,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/apiClient';
+import { formatDate, formatTime } from '@/utils/dateFormat';
 
 export interface DashboardTournament {
     id: string;
@@ -126,8 +127,8 @@ export function useTournamentDashboard(slug: string | undefined) {
                 entry_fee:   t.entry_fee?.toString()  ?? '0',
                 prize_pool:  t.prize_pool?.toString()  ?? '0',
                 // Legacy computed fields
-                date:                  t.start_date ? new Date(t.start_date).toLocaleDateString() : '',
-                time:                  t.start_date ? new Date(t.start_date).toLocaleTimeString() : '',
+                date:                  t.start_date ? formatDate(t.start_date) : '',
+                time:                  t.start_date ? formatTime(t.start_date) : '',
                 venue:                 t.venue_id ? `Venue ${t.venue_id}` : 'Online',
                 is_online:             !t.venue_id,
                 max_participants:      t.max_teams ?? 0,

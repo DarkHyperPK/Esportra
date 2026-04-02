@@ -21,6 +21,7 @@ import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle,
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
+import { formatDate, formatTime } from '@/utils/dateFormat';
 import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { Tournament, BaseTournament, TournamentRegistration, RegistrationStatus, RegistrationType } from '@/types/tournament';
 import TournamentRegistrationForm from '@/components/TournamentRegistration';
@@ -301,8 +302,8 @@ const TournamentDetails = () => {
         id: t.id,
         name: t.name,
         game: t.game,
-        date: t.start_date ? new Date(t.start_date).toLocaleDateString('en-CA') : '',
-        time: t.start_date ? new Date(t.start_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' }) : '',
+        date: t.start_date ? formatDate(t.start_date) : '',
+        time: t.start_date ? formatTime(t.start_date) : '',
         venue: t.venue_name || '',
         is_online: !t.venue_id,
         max_participants: t.max_teams,
@@ -317,7 +318,7 @@ const TournamentDetails = () => {
         check_in_required: !!t.check_in_required,
         check_in_deadline: t.check_in_deadline,
         auto_remove_unchecked: t.auto_remove_unchecked ?? true,
-        end_date: t.end_date ? new Date(t.end_date).toLocaleDateString('en-CA') : undefined,
+        end_date: t.end_date ? formatDate(t.end_date) : undefined,
         organization: {
           slug: t.organization_slug,
           name: t.organization_name,

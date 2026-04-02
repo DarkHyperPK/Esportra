@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from '@/lib/apiClient';
 import { fetchGameData } from '@/hooks/useRawgGame';
+import { formatDate } from '@/utils/dateFormat';
 
 interface TournamentRegistration {
   id: string;
@@ -220,14 +221,14 @@ const PlayerTournaments = () => {
                 </div>
                 <div className="flex justify-between text-sm text-gray-300 relative z-10">
                   <div>
-                    <p>Date: {new Date(tournament.date).toLocaleDateString()}</p>
+                    <p>Date: {formatDate(tournament.date)}</p>
                     <p>Time: {tournament.time}</p>
                     <p>Venue: {tournament.venue}</p>
                   </div>
                   <div className="text-right">
                     <p>Participants: {tournament.current_participants} / {tournament.max_participants}</p>
                     <p className="text-xs mt-1">
-                      Registered: {new Date(tournament.registered_at).toLocaleDateString()}
+                      Registered: {formatDate(tournament.registered_at)}
                     </p>
                   </div>
                 </div>

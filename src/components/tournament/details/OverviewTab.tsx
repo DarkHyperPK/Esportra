@@ -3,6 +3,7 @@ import { Users, ChevronRight, Trophy, Clock, Zap, CheckCircle, MapPin, Globe, Ex
 import { useNavigate } from 'react-router-dom';
 import { VerticalAdPlacement } from './VerticalAdPlacement';
 import { TournamentSponsorSidebar } from '@/components/tournament/TournamentSponsorSidebar';
+import { formatDate } from '@/utils/dateFormat';
 
 import { isBattleRoyale } from '@/utils/gameFeatures';
 
@@ -49,12 +50,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                             <p className="text-[10px] font-mono tracking-[0.3em] text-gray-500 uppercase mb-2">Timeline</p>
                             <p className="text-xl font-bold flex items-center justify-center gap-2 tracking-tight">
                                 <span className="text-emerald-400">
-                                    {new Date(tournament.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    {formatDate(tournament.date)}
                                 </span>
                                 <span className="text-white/20">-</span>
                                 <span className="text-red-400">
                                     {tournament.end_date
-                                        ? new Date(tournament.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                        ? formatDate(tournament.end_date)
                                         : 'TBA'}
                                 </span>
                             </p>
@@ -121,7 +122,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                     <ul className="space-y-4">
                                         <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
                                             <span>Registration Deadline</span>
-                                            <span className="text-white">{new Date(tournament.date).toLocaleDateString()}{tournament.time && ` • ${tournament.time}`}</span>
+                                            <span className="text-white">{formatDate(tournament.date)}{tournament.time && ` • ${tournament.time}`}</span>
                                         </li>
                                         <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
                                             <span>Check-In Window</span>
