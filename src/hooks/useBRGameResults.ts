@@ -330,6 +330,8 @@ export function useBRGameResults({
         gameNumber,
         teamId: evidence.teamId,
         imageUrl: evidence.imageUrl,
+        placement: evidence.placement ?? null,
+        kills: evidence.kills ?? null,
       });
       queryClient.invalidateQueries({ queryKey: ['br-game-results', tournamentId] });
     },

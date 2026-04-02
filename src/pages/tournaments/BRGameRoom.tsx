@@ -324,6 +324,14 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Queue start notice */}
+                  {activeGame && (
+                    <div className="flex items-center gap-2 rounded-lg border border-amber-500/15 bg-amber-500/5 px-3 py-2">
+                      <Clock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                      <p className="text-xs text-amber-300/80">Queue will be started <span className="font-semibold text-amber-300">5 minutes</span> after the lobby code goes live.</p>
+                    </div>
+                  )}
+
                   {/* Self-Report Form */}
                   {userTeam && !userAlreadySubmitted && (
                     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-4">
