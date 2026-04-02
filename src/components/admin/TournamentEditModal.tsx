@@ -146,18 +146,22 @@ export function TournamentEditModal({
     try {
       setLoading(true);
 
+      // Combine date + time into a proper ISO DateTime for the backend
+      const dateStr = data.date as string;
+      const timeStr = data.time as string;
+      const startDate = dateStr
+        ? timeStr ? `${dateStr}T${timeStr}:00` : `${dateStr}T00:00:00`
+        : undefined;
+
       await apiClient.put(`/api/tournaments/${tournament.id}`, {
         name: data.name,
         game: data.game,
-        date: data.date,
-        time: data.time,
-        venue: data.venue,
-        max_participants: parseInt(data.max_participants as string),
-        prize_pool: data.prize_pool,
+        startDate,
+        maxTeams: data.max_participants ? parseInt(data.max_participants as string) : undefined,
+        prizePool: data.prize_pool ? parseFloat(data.prize_pool as string) : undefined,
         description: data.description,
-        image_url: imageUrl || tournament.image_url,
-        entry_fee: data.entry_fee,
-        is_online: data.is_online
+        bannerUrl: imageUrl || tournament.image_url,
+        entryFee: data.entry_fee ? parseFloat(data.entry_fee as string) : undefined,
       });
 
       toast({

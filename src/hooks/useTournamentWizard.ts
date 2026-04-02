@@ -13,6 +13,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
@@ -27,6 +28,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
+    const queryClient = useQueryClient();
 
     const [currentStep, setCurrentStepRaw] = useState(() => {
         if (typeof window !== 'undefined' && !tournamentId) {
@@ -221,6 +223,8 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                 }
 
                 toast({ title: 'Tournament Updated', description: 'Your tournament has been updated successfully.' });
+                queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
+                queryClient.invalidateQueries({ queryKey: ['tournament'] });
                 navigate(`/organizer/tournament/${tournamentId}`);
 
             } else {
