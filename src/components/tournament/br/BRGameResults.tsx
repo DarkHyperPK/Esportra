@@ -64,14 +64,17 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
     return teams.map((t, i) => ({ teamId: t.id, placement: i + 1, kills: 0 }));
   });
 
-  // Sync results when existing results change (e.g., after reset or refetch)
+  // Sync results when existing results change from backend (e.g., after reset or refetch)
+  const existingResultsJson = JSON.stringify(existingResults || []);
   useEffect(() => {
-    if (existingResults?.length) {
-      setResults(existingResults.map(r => ({ teamId: r.teamId, placement: r.placement, kills: r.kills })));
+    const parsed = JSON.parse(existingResultsJson) as BRTeamResult[];
+    if (parsed.length) {
+      setResults(parsed.map(r => ({ teamId: r.teamId, placement: r.placement, kills: r.kills })));
     } else {
       setResults(teams.map((t, i) => ({ teamId: t.id, placement: i + 1, kills: 0 })));
     }
-  }, [existingResults, teams]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingResultsJson]);
 
   const updateKills = (index: number, kills: number) => {
     const capped = killCap ? Math.min(kills, killCap) : kills;
