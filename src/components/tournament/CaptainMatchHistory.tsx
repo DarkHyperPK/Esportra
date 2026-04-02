@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,6 +49,8 @@ const GameCard: React.FC<{
     const splash = resolveMapSplash(game.map_name);
     const myScore = isTeam1 ? game.team1_score : game.team2_score;
     const oppScore = isTeam1 ? game.team2_score : game.team1_score;
+    const [splashLoaded, setSplashLoaded] = useState(false);
+    const handleSplashLoad = useCallback(() => setSplashLoaded(true), []);
 
     return (
         <div className="space-y-2">
@@ -58,7 +60,7 @@ const GameCard: React.FC<{
             >
                 {splash && (
                     <div className="absolute inset-0 z-0">
-                        <img src={splash} loading="lazy" alt="" className="w-full h-full object-cover opacity-40 group-hover/game:opacity-60 transition-opacity" />
+                        <img src={splash} loading="lazy" alt="" onLoad={handleSplashLoad} className={`w-full h-full object-cover transition-opacity duration-500 ${splashLoaded ? 'opacity-40 group-hover/game:opacity-60' : 'opacity-0'}`} />
                         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/40 to-transparent" />
                     </div>
                 )}
@@ -169,7 +171,7 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                                             <div className="relative flex items-center justify-between p-4 cursor-pointer group overflow-hidden" onClick={() => toggleMatch(match.id)}>
                                                 {games.length > 0 && (
                                                     <div className="absolute inset-0 z-0">
-                                                        <img src={resolveMapSplash(games[0].map_name) || ''} loading="lazy" alt="" className="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                        <img src={resolveMapSplash(games[0].map_name) || ''} loading="lazy" alt="" className="w-full h-full object-cover opacity-0 group-hover:opacity-30 transition-opacity duration-500" onLoad={(e) => { (e.target as HTMLImageElement).classList.replace('opacity-0', 'opacity-20'); }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                                         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-zinc-950/50" />
                                                     </div>
                                                 )}

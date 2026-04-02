@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 
@@ -11,6 +11,15 @@ const BetaNoticeBanner = () => {
   const [dismissed, setDismissed] = useState(() => {
     return localStorage.getItem(DISMISSED_KEY) === 'true';
   });
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Preload the hero image so it's ready before render
+  useEffect(() => {
+    if (dismissed) return;
+    const img = new Image();
+    img.src = VALORANT_SPLASH;
+    img.onload = () => setImageLoaded(true);
+  }, [dismissed]);
 
   if (dismissed) return null;
 
@@ -26,11 +35,11 @@ const BetaNoticeBanner = () => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Hero image header */}
-        <div className="relative h-36 overflow-hidden">
+        <div className="relative h-36 overflow-hidden bg-[#0a0a0c]">
           <img
             src={VALORANT_SPLASH}
             alt=""
-            className="w-full h-full object-cover object-center opacity-50"
+            className={`w-full h-full object-cover object-center transition-opacity duration-500 ${imageLoaded ? 'opacity-50' : 'opacity-0'}`}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a0c]" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-transparent to-transparent opacity-80" />
