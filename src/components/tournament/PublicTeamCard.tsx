@@ -25,7 +25,7 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
             if (trimmed.startsWith('[')) {
                 try {
                     const parsed = JSON.parse(trimmed);
-                    if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+                    if (Array.isArray(parsed)) return parsed.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
                 } catch { /* fall through to comma split */ }
             }
             return trimmed.split(',').map(s => s.trim()).filter(Boolean);

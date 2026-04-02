@@ -608,21 +608,22 @@ const TournamentDetails = () => {
     if (!members) return [];
     if (Array.isArray(members)) {
       return members
-        .map((m) => (typeof m === 'string' ? m : String(m)))
-        .map((s) => s.trim())
+        .map((m) => (typeof m === 'string' ? m : (m?.username || m?.name || '')))
         .filter(Boolean);
     }
     if (typeof members === 'string') {
-      return members
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const trimmed = members.trim();
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) return parsed.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
+        } catch { /* fall through */ }
+      }
+      return trimmed.split(',').map((s) => s.trim()).filter(Boolean);
     }
-    // Attempt to unwrap common shapes like { members: [...] }
     if (typeof members === 'object' && Array.isArray((members as any).members)) {
       return (members as any).members
-        .map((m: any) => (typeof m === 'string' ? m : String(m)))
-        .map((s: string) => s.trim())
+        .map((m: any) => (typeof m === 'string' ? m : (m?.username || m?.name || '')))
         .filter(Boolean);
     }
     return [];

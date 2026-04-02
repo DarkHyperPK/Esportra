@@ -416,8 +416,25 @@ const TournamentDashboard = () => {
     setTeamLoading(true);
     setTeamCaptain(null);
     try {
-      // Parse any pre-saved members; if they look like UUIDs, we will resolve them to profile names
-      const rawTokens = participant.team_members ? participant.team_members.split(',').map(s => s.trim()).filter(Boolean) : [];
+      // Parse any pre-saved members; handle both JSONB array of objects and comma-separated strings
+      const parseTeamMembers = (input: any): string[] => {
+        if (!input) return [];
+        if (Array.isArray(input)) {
+          return input.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
+        }
+        if (typeof input === 'string') {
+          const trimmed = input.trim();
+          if (trimmed.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed)) return parsed.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
+            } catch { /* fall through */ }
+          }
+          return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        return [];
+      };
+      const rawTokens = parseTeamMembers(participant.team_members);
       const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
       const tokensAreIds = rawTokens.some(t => looksLikeUuid(t));
       if (rawTokens.length > 0 && !tokensAreIds) {
@@ -453,10 +470,7 @@ const TournamentDashboard = () => {
       if (tournament?.id && participant.team_name) {
         const regRow = await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants?team_name=${encodeURIComponent(participant.team_name)}`).then(r => (Array.isArray(r) ? r[0] : r)).catch(() => null);
         if (regRow?.team_members) {
-          const raw = Array.isArray(regRow.team_members)
-            ? (regRow.team_members as any[]).map(String)
-            : String(regRow.team_members);
-          const tokens = (Array.isArray(raw) ? raw : raw.split(',')).map((s: string) => s.trim()).filter(Boolean);
+          const tokens = parseTeamMembers(regRow.team_members);
           const looksUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
           const hasPlainNames = tokens.some(t => !looksUuid(t));
           if (tokens.length > 0 && hasPlainNames) {
@@ -857,12 +871,26 @@ const TournamentDashboard = () => {
         (rows || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0, 8)}`);
 
       // Step 0: Check if participant already has resolved readable member names (from fetchTournamentData loop)
-      if (p.team_members && typeof p.team_members === 'string' && p.team_members.trim().length > 0) {
-        const tokens = p.team_members.split(',').map(s => s.trim()).filter(Boolean);
+      if (p.team_members) {
+        const parsedMembers = (() => {
+          if (Array.isArray(p.team_members)) {
+            return p.team_members.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
+          }
+          if (typeof p.team_members === 'string' && p.team_members.trim().length > 0) {
+            const trimmed = p.team_members.trim();
+            if (trimmed.startsWith('[')) {
+              try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) return parsed.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
+              } catch { /* fall through */ }
+            }
+            return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+          }
+          return [];
+        })();
         const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-        // If any token is NOT a UUID, assume these are readable names already resolved
-        if (tokens.some(t => !looksLikeUuid(t))) {
-          members = tokens;
+        if (parsedMembers.length > 0 && parsedMembers.some(t => !looksLikeUuid(t))) {
+          members = parsedMembers;
           console.log('Using already-resolved members from participant.team_members:', members);
         }
       }
@@ -939,8 +967,10 @@ const TournamentDashboard = () => {
       setTeamModalData({ id: teamId, name: p.team_name || 'Team', logo: logo || null, members });
       setTeamModalOpen(true);
     } catch (e) {
-      const safeTeamMembers = typeof p.team_members === 'string' ? p.team_members : '';
-      setTeamModalData({ id: p.team_id || null, name: p.team_name || 'Team', logo: (p as any).team_logo || null, members: safeTeamMembers.split(',').map(s => s.trim()).filter(Boolean) });
+      const fallbackMembers = Array.isArray(p.team_members)
+        ? p.team_members.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean)
+        : typeof p.team_members === 'string' ? p.team_members.split(',').map(s => s.trim()).filter(Boolean) : [];
+      setTeamModalData({ id: p.team_id || null, name: p.team_name || 'Team', logo: (p as any).team_logo || null, members: fallbackMembers });
       setTeamModalOpen(true);
     }
   };
