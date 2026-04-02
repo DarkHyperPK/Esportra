@@ -8,9 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { User, Gamepad2, Share2, Loader2, Save, Edit, ShieldCheck, Globe, MapPin } from "lucide-react";
+import { User, Share2, Loader2, Save, Edit, Globe, MapPin } from "lucide-react";
 import AvatarUploader from "./AvatarUploader";
-import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { getCountryFlag, detectUserCountry, getCountryName, countries, getCountryFlagUrl } from "@/utils/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -26,7 +25,6 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
     const [detecting, setDetecting] = useState(false);
     const [detectionFailed, setDetectionFailed] = useState(false);
     const [showManualSelector, setShowManualSelector] = useState(false);
-    const { riotAccount } = useRiotAccount();
 
     const teamQuery = useQuery({
         queryKey: ['my-teams'],
@@ -125,6 +123,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                 bio: formData.bio,
                 avatar_url: formData.avatar_url,
                 card_image_url: formData.card_image_url,
+                social_links: formData.social_links,
                 riot_tag: formData.riot_tag,
                 steam_tag: formData.steam_tag,
                 country_code: formData.country_code
@@ -157,9 +156,6 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                             <TabsList className="w-full bg-zinc-900/50 border border-zinc-800 p-1">
                                 <TabsTrigger value="general" className="flex-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-rose-500">
                                     <User className="w-4 h-4 mr-2" /> General
-                                </TabsTrigger>
-                                <TabsTrigger value="gaming" className="flex-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-rose-500">
-                                    <Gamepad2 className="w-4 h-4 mr-2" /> Gaming
                                 </TabsTrigger>
                                 <TabsTrigger value="socials" className="flex-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-rose-500">
                                     <Share2 className="w-4 h-4 mr-2" /> Socials
@@ -332,44 +328,6 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="gaming" className="space-y-6 mt-0">
-                                {/* Riot Linked Account Banner */}
-                                {riotAccount && (
-                                    <div className="p-4 border border-red-500/30 bg-red-500/5 rounded-lg space-y-1">
-                                        <div className="flex items-center gap-2 text-red-500 font-bold text-sm">
-                                            <ShieldCheck className="w-4 h-4" />
-                                            Riot Account Linked
-                                            <span className="ml-auto text-[10px] font-mono text-gray-500 bg-zinc-900 px-2 py-0.5 rounded">VERIFIED</span>
-                                        </div>
-                                        <div className="font-mono text-white text-lg">
-                                            {riotAccount.game_name}<span className="text-gray-500">#{riotAccount.tag_line}</span>
-                                        </div>
-                                        <p className="text-[11px] text-gray-500">This ID is pulled from Riot Sign-On and cannot be edited.</p>
-                                    </div>
-                                )}
-                                <div className="grid gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="flex items-center gap-2"><div className="w-2 h-2 bg-red-500 rounded-full" /> Valorant ID (Riot ID)</Label>
-                                        <Input
-                                            placeholder={riotAccount ? `${riotAccount.game_name}#${riotAccount.tag_line}` : "Name#TAG"}
-                                            value={riotAccount ? `${riotAccount.game_name}#${riotAccount.tag_line}` : formData.riot_tag}
-                                            onChange={(e) => handleChange('riot_tag', e.target.value)}
-                                            className="bg-zinc-900/50 border-zinc-800 focus:border-red-500/50 disabled:opacity-60"
-                                            disabled={!!riotAccount}
-                                        />
-                                        {riotAccount && <p className="text-[10px] text-gray-500">Managed by Riot Sign-On</p>}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="flex items-center gap-2"><div className="w-2 h-2 bg-indigo-500 rounded-full" /> Steam ID</Label>
-                                        <Input
-                                            placeholder="STEAM_0:1:12345678"
-                                            value={formData.steam_tag}
-                                            onChange={(e) => handleChange('steam_tag', e.target.value)}
-                                            className="bg-zinc-900/50 border-zinc-800 focus:border-indigo-500/50"
-                                        />
-                                    </div>
-                                </div>
-                            </TabsContent>
 
                             <TabsContent value="socials" className="space-y-6 mt-0">
                                 <div className="grid gap-4">

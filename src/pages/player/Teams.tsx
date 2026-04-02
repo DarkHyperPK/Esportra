@@ -346,33 +346,36 @@ const TeamsPage = () => {
 
   useEffect(() => {
     if (currentTeam) {
-      // Add a small delay to prevent race conditions and allow team data to settle
-      const timer = setTimeout(() => {
-        // Parallelize fetches for better performance
-        Promise.all([
-          fetchTeamRegistrations(),
-          fetchRosters(),
-          isCaptain ? fetchTeamPendingInvites() : Promise.resolve()
-        ]);
-      }, 200);
+      let cancelled = false;
+      const teamId = currentTeam.id;
+
+      // Parallelize fetches
+      Promise.all([
+        fetchTeamRegistrations(),
+        fetchRosters(),
+        isCaptain ? fetchTeamPendingInvites() : Promise.resolve()
+      ]);
+
       // Fetch captain profile for display
       (async () => {
         try {
           if (currentTeam?.owner_id) {
             const data = await apiClient.get<any>(`/api/profiles/${currentTeam.owner_id}`);
-            setOwnerProfile(data || null);
+            if (!cancelled) setOwnerProfile(data || null);
           } else {
-            setOwnerProfile(null);
+            if (!cancelled) setOwnerProfile(null);
           }
         } catch {
-          setOwnerProfile(null);
+          if (!cancelled) setOwnerProfile(null);
         }
       })();
+
       // Fetch full team members with riot/faceit/stats in one API call
       (async () => {
         try {
-          if (!currentTeam?.id) { setTeamMembers([]); return; }
-          const rawMembers = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/members/detailed`);
+          if (!teamId) { if (!cancelled) setTeamMembers([]); return; }
+          const rawMembers = await apiClient.get<any[]>(`/api/teams/${teamId}/members/detailed`);
+          if (cancelled) return;
 
           const membersWithRiot = (rawMembers || []).map((r: any) => ({
             id: r.user_id,
@@ -396,14 +399,13 @@ const TeamsPage = () => {
           }));
 
           setTeamMembers(membersWithRiot);
-          // Riot stats fetching disabled — will be re-enabled with platform stats
-          // fetchStatsForMembers(membersWithRiot);
         } catch (err) {
           console.error("Error fetching team members:", err);
-          setTeamMembers([]);
+          if (!cancelled) setTeamMembers([]);
         }
       })();
-      return () => clearTimeout(timer);
+
+      return () => { cancelled = true; };
     } else {
       // Clear registrations when no team
       setTeamRegistrations([]);

@@ -72,8 +72,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
     fetchNotifications();
 
-    // Poll every 30s for new notifications (SignalR will handle real-time later)
-    const interval = setInterval(fetchNotifications, 30_000);
+    // Poll every 60s for new notifications (SignalR handles real-time)
+    const interval = setInterval(fetchNotifications, 60_000);
     return () => clearInterval(interval);
   }, [user, fetchNotifications]);
 

@@ -106,7 +106,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
 
     handleUserChange();
 
-    // Poll for suspension status every 60s — lightweight check, doesn't update profile state
+    // Poll for suspension status every 5 min — lightweight check
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     if (user?.id) {
@@ -120,7 +120,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
         } catch {
           // Silently ignore polling errors
         }
-      }, 60_000);
+      }, 300_000);
     }
 
     return () => {
