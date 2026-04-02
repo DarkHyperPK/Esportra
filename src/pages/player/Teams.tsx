@@ -21,8 +21,31 @@ import { Plus, Users, Settings, Crown, Trash2, UserMinus, UserPlus, Calendar, Tr
 import esportsGames from '@/data/esportsGames.json';
 import EditTeamDialog from '@/components/player/EditTeamDialog';
 import PlayerCard from '@/components/player/PlayerCard';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { sendEmail } from '@/hooks/useEmail';
 import { fetchGameData } from '@/hooks/useRawgGame';
+
+// Sortable wrapper for PlayerCard (drag-and-drop reorder)
+const SortablePlayerCard: React.FC<{
+  id: string;
+  disabled?: boolean;
+  children: React.ReactNode;
+}> = ({ id, disabled, children }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    cursor: disabled ? 'default' : 'grab',
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+};
 
 const TeamsPage = () => {
   const { user, profile } = useAuth();
@@ -875,6 +898,41 @@ const TeamsPage = () => {
     }
   };
 
+  // Drag-and-drop sensors for playercard reordering
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = async (event: DragEndEvent, roster: any) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !currentTeam?.id) return;
+
+    const members = roster.members || [];
+    const oldIndex = members.findIndex((m: any) => m.user_id === active.id);
+    const newIndex = members.findIndex((m: any) => m.user_id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    // Don't allow moving anything to position 0 (captain) or moving captain
+    if (members[oldIndex]?.user_id === currentTeam.owner_id) return;
+    if (newIndex === 0 && members[0]?.user_id === currentTeam.owner_id) return;
+
+    // Reorder locally
+    const reordered = [...members];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+
+    // Optimistic update
+    setRosters(prev => prev.map(r =>
+      r.id === roster.id ? { ...r, members: reordered } : r
+    ));
+
+    // Persist order
+    try {
+      const order = reordered.map((m: any, i: number) => ({ userId: m.user_id, displayOrder: i }));
+      await apiClient.put(`/api/teams/${currentTeam.id}/members/order`, { order });
+    } catch {
+      toast({ title: 'Failed to save order', variant: 'destructive' });
+    }
+  };
+
   const handleToggleStarter = async (userId: string, currentStatus: boolean) => {
     if (!manageRoster || !currentTeam) return;
     try {
@@ -1449,37 +1507,46 @@ const TeamsPage = () => {
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                  {r.members?.map((member) => (
-                    <PlayerCard
-                      key={`${r.id}-${member.user_id}`}
-                      member={{
-                        user_id: member.user_id,
-                        username: member.username,
-                        avatar_url: member.avatar_url || undefined,
-                        card_image_url: member.card_image_url || undefined,
-                        role: member.user_id === currentTeam?.owner_id ? 'captain' : (teamMembers.find(tm => tm?.user_id === member.user_id)?.role || 'member'),
-                        stats: teamMembers.find(tm => tm?.user_id === member.user_id)?.stats,
-                        game: r.game
-                      }}
-                      isOwner={member.user_id === currentTeam?.owner_id}
-                      isCurrentUser={member.user_id === user?.id}
-                      className="transition-all duration-500 hover:scale-[1.05] hover:z-10"
-                    />
-                  ))}
-                  {/* Vacant Slots */}
-                  {Array.from({ length: Math.max(0, (r.team_size === 5 ? 5 : r.team_size) - (r.members?.length || 0)) }).map((_, i) => (
-                    <div
-                      key={`vacant-${r.id}-${i}`}
-                      className="relative w-full aspect-[3/4] rounded-2xl border border-dashed border-white/5 bg-white/[0.02] flex flex-col items-center justify-center group/vacant hover:bg-white/[0.04] transition-all duration-500"
-                    >
-                      <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-3 group-hover/vacant:border-white/20 transition-colors">
-                        <Users className="w-6 h-6 text-white/10 group-hover/vacant:text-white/20" />
-                      </div>
-                      <span className="text-[10px] uppercase tracking-widest text-white/10 group-hover/vacant:text-white/20 font-bold">Vacant Slot</span>
+                <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(e, r)}>
+                  <SortableContext items={(r.members || []).map((m: any) => m.user_id)} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                      {r.members?.map((member) => (
+                        <SortablePlayerCard
+                          key={`${r.id}-${member.user_id}`}
+                          id={member.user_id}
+                          disabled={member.user_id === currentTeam?.owner_id}
+                        >
+                          <PlayerCard
+                            member={{
+                              user_id: member.user_id,
+                              username: member.username,
+                              avatar_url: member.avatar_url || undefined,
+                              card_image_url: member.card_image_url || undefined,
+                              role: member.user_id === currentTeam?.owner_id ? 'captain' : (teamMembers.find(tm => tm?.user_id === member.user_id)?.role || 'member'),
+                              stats: teamMembers.find(tm => tm?.user_id === member.user_id)?.stats,
+                              game: r.game
+                            }}
+                            isOwner={member.user_id === currentTeam?.owner_id}
+                            isCurrentUser={member.user_id === user?.id}
+                            className="transition-all duration-500 hover:scale-[1.05] hover:z-10"
+                          />
+                        </SortablePlayerCard>
+                      ))}
+                      {/* Vacant Slots */}
+                      {Array.from({ length: Math.max(0, (r.team_size === 5 ? 5 : r.team_size) - (r.members?.length || 0)) }).map((_, i) => (
+                        <div
+                          key={`vacant-${r.id}-${i}`}
+                          className="relative w-full aspect-[3/4] rounded-2xl border border-dashed border-white/5 bg-white/[0.02] flex flex-col items-center justify-center group/vacant hover:bg-white/[0.04] transition-all duration-500"
+                        >
+                          <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-3 group-hover/vacant:border-white/20 transition-colors">
+                            <Users className="w-6 h-6 text-white/10 group-hover/vacant:text-white/20" />
+                          </div>
+                          <span className="text-[10px] uppercase tracking-widest text-white/10 group-hover/vacant:text-white/20 font-bold">Vacant Slot</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                </DndContext>
               </div>
             ))}
           </div>
