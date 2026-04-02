@@ -557,20 +557,7 @@ const CaptainMatchPage = () => {
         },
     });
 
-    // Ref to prevent infinite retry loops on auto-forfeit failures
-    const forfeitAttempted = useRef<string | null>(null);
-
-    // Reset attempt tracker when match changes
-    useEffect(() => {
-        if (activeMatch?.id) {
-            // Only reset if we switched to a different match
-            if (forfeitAttempted.current !== activeMatch.id) {
-                forfeitAttempted.current = null;
-            }
-        }
-    }, [activeMatch?.id]);
-
-    // Auto-forfeit check (client-side trigger)
+    // Check-in hooks (server handles auto-walkovers via background job)
     const {
         isCheckinWindowClosed,
         checkinStatus,
@@ -580,61 +567,6 @@ const CaptainMatchPage = () => {
         activeMatch?.team1?.id,
         activeMatch?.team2?.id
     );
-
-    // Check for auto-forfeit condition
-    useEffect(() => {
-        if (!activeMatch || !activeMatch.scheduledTime || activeMatch.status !== 'pending' || !stageFormat) return;
-
-        const scheduledTime = activeMatch.scheduledTime;
-        // Check config or Default 15 mins
-        const windowMinutes = schedulingConfig?.checkin_window_minutes || 15;
-
-        // Only run if window is closed
-        if (isCheckinWindowClosed(scheduledTime, windowMinutes)) {
-            // Check forfeit conditions
-            const t1In = checkinStatus.team1CheckedIn;
-            const t2In = checkinStatus.team2CheckedIn;
-
-            const handleForfeit = async (forfeitingTeamId: string, winningTeamId: string) => {
-                const rawMatchId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
-
-                // Prevent infinite loop if we already tried this match
-                if (forfeitAttempted.current === rawMatchId) {
-                    return;
-                }
-                forfeitAttempted.current = rawMatchId;
-
-                // Calculate forfeit score based on Best Of
-                const bestOf = activeMatch.bestOf || 1;
-                const winnerScore = bestOf === 1 ? 13 : Math.ceil(bestOf / 2);
-
-                try {
-                    await apiClient.post(`/api/matches/${rawMatchId}/award-walkover`, {
-                        forfeitingTeamId,
-                        winningTeamId,
-                        reason: 'Auto-Forfeit: Missed Check-in Window',
-                        winnerScore,
-                        loserScore: 0,
-                    });
-                    toast({ title: 'Match Finalized', description: 'Auto-forfeit applied due to missed check-in.' });
-                    refetchBracket();
-                } catch (err) {
-                    console.error('Forfeit error:', err);
-                }
-            };
-
-            // If mismatch in check-ins (one checked in, one not)
-            if (t1In && !t2In && activeMatch.team2?.id && activeMatch.team1?.id) {
-                // Team 2 forfeits, Team 1 wins
-                handleForfeit(activeMatch.team2.id, activeMatch.team1.id);
-            } else if (!t1In && t2In && activeMatch.team1?.id && activeMatch.team2?.id) {
-                // Team 1 forfeits, Team 2 wins
-                handleForfeit(activeMatch.team1.id, activeMatch.team2.id);
-            } else if (!t1In && !t2In) {
-                // Double forfeit - Currently just logged, can be expanded to cancel match
-            }
-        }
-    }, [activeMatch, checkinStatus, isCheckinWindowClosed, stageFormat, toast, refetchBracket, schedulingConfig]);
 
     const getRoundName = (round: number, bracketSide?: string) => {
         // Format-aware round naming

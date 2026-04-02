@@ -186,7 +186,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                             <div className="text-center p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-4">
                                 <Clock className="w-6 h-6 text-red-500 mx-auto mb-2" />
                                 <p className="text-red-400 font-bold">Check-in Closed</p>
-                                <p className="text-zinc-400 text-xs mt-1">Match time has passed. Admins will review for forfeit.</p>
+                                <p className="text-zinc-400 text-xs mt-1">Check-in window has closed. A walkover will be awarded automatically.</p>
                             </div>
                         )}
 
