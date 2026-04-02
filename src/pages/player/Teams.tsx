@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { Link } from 'react-router-dom';
 import TeamCreationWizard from '@/components/player/TeamCreationWizard';
+import CaptainJourneyTour from '@/components/player/CaptainJourneyTour';
 import { Plus, Users, Settings, Crown, Trash2, UserMinus, UserPlus, Calendar, Trophy, Gamepad2, Edit, X, Upload, Save, Shield } from 'lucide-react';
 import esportsGames from '@/data/esportsGames.json';
 import EditTeamDialog from '@/components/player/EditTeamDialog';
@@ -106,6 +107,7 @@ const TeamsPage = () => {
   const [showTournamentManagement, setShowTournamentManagement] = useState(false);
   const [showTeamSettings, setShowTeamSettings] = useState(false);
   const [showTeamCreationWizard, setShowTeamCreationWizard] = useState(false);
+  const [showJourneyTour, setShowJourneyTour] = useState(false);
   const [showTeamInviteModal, setShowTeamInviteModal] = useState(false);
   const [teamLogo, setTeamLogo] = useState<File | null>(null);
   const [teamBio, setTeamBio] = useState('');
@@ -1337,7 +1339,13 @@ const TeamsPage = () => {
                   <Button
                     size="lg"
                     className="h-14 px-10 bg-white text-black hover:bg-white/90 rounded-full font-heading font-bold uppercase tracking-widest text-sm transition-all hover:scale-105 shadow-[0_0_40px_rgba(255,255,255,0.3)]"
-                    onClick={() => setShowTeamCreationWizard(true)}
+                    onClick={() => {
+                      if (!localStorage.getItem('esportra_tour_captain_seen')) {
+                        setShowJourneyTour(true);
+                      } else {
+                        setShowTeamCreationWizard(true);
+                      }
+                    }}
                   >
                     Create Team
                   </Button>
@@ -1350,6 +1358,15 @@ const TeamsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Captain Journey Tour */}
+        {showJourneyTour && (
+          <CaptainJourneyTour onComplete={() => {
+            localStorage.setItem('esportra_tour_captain_seen', 'true');
+            setShowJourneyTour(false);
+            setShowTeamCreationWizard(true);
+          }} />
+        )}
 
         {/* Team Creation Wizard Modal */}
         {showTeamCreationWizard && (
