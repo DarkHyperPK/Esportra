@@ -171,6 +171,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                 await apiClient.put(`/api/tournaments/${tournamentId}`, {
                     name:                 data.name,
                     description:          data.description,
+                    status:               data.status || undefined,
                     maxTeams:             data.maxTeams,
                     entryFee:             toMoney(data.entryFee),
                     prizePool:            toMoney(data.prizePool),
