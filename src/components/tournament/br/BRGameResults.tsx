@@ -367,36 +367,36 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                       {ev.teamName}
                     </span>
 
-                    {/* Self-reported stats */}
-                    {ev.placement != null && (
-                      <span className="text-xs text-zinc-500">Placement: <span className="text-zinc-300">{ev.placement}</span></span>
-                    )}
-                    {ev.kills != null && (
-                      <span className="text-xs text-zinc-500">Kills: <span className="text-zinc-300">{ev.kills}</span></span>
-                    )}
+                    {/* Self-reported stats — always show, fallback to "N/A" */}
+                    <span className="text-xs text-zinc-500">Placement: <span className="text-zinc-300">{ev.placement != null ? `#${ev.placement}` : 'N/A'}</span></span>
+                    <span className="text-xs text-zinc-500">Kills: <span className="text-zinc-300">{ev.kills != null ? ev.kills : 'N/A'}</span></span>
 
                     <div className="flex items-center gap-2 ml-auto flex-shrink-0">
                       {/* Scoring inputs inline — for organizers */}
                       {isOrganizer && teamResultIndex >= 0 && (
                         <>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={999}
-                            value={teamResult?.placement ?? 1}
-                            onChange={(e) => updatePlacement(teamResultIndex, parseInt(e.target.value) || 1)}
-                            className="h-7 w-14 text-center text-xs [color-scheme:dark]"
-                            title="Placement"
-                          />
-                          <Input
-                            type="number"
-                            min={0}
-                            max={killCap || 99}
-                            value={teamResult?.kills ?? 0}
-                            onChange={(e) => updateKills(teamResultIndex, parseInt(e.target.value) || 0)}
-                            className="h-7 w-14 text-center text-xs [color-scheme:dark]"
-                            title="Kills"
-                          />
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-zinc-500 uppercase font-semibold">Place</span>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={999}
+                              value={teamResult?.placement ?? 1}
+                              onChange={(e) => updatePlacement(teamResultIndex, parseInt(e.target.value) || 1)}
+                              className="h-7 w-14 text-center text-xs [color-scheme:dark]"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-zinc-500 uppercase font-semibold">Kills</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={killCap || 99}
+                              value={teamResult?.kills ?? 0}
+                              onChange={(e) => updateKills(teamResultIndex, parseInt(e.target.value) || 0)}
+                              className="h-7 w-14 text-center text-xs [color-scheme:dark]"
+                            />
+                          </div>
                         </>
                       )}
 
