@@ -54,7 +54,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
 
   // Sync lobby code when prop updates (e.g., after optimistic update or refetch)
   useEffect(() => {
-    if (initialLobbyCode) setCurrentLobbyCode(initialLobbyCode);
+    setCurrentLobbyCode(initialLobbyCode || '');
   }, [initialLobbyCode]);
 
   const [results, setResults] = useState<{ teamId: string; placement: number; kills: number }[]>(() => {
@@ -63,6 +63,15 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
     }
     return teams.map((t, i) => ({ teamId: t.id, placement: i + 1, kills: 0 }));
   });
+
+  // Sync results when existing results change (e.g., after reset or refetch)
+  useEffect(() => {
+    if (existingResults?.length) {
+      setResults(existingResults.map(r => ({ teamId: r.teamId, placement: r.placement, kills: r.kills })));
+    } else {
+      setResults(teams.map((t, i) => ({ teamId: t.id, placement: i + 1, kills: 0 })));
+    }
+  }, [existingResults, teams]);
 
   const updateKills = (index: number, kills: number) => {
     const capped = killCap ? Math.min(kills, killCap) : kills;

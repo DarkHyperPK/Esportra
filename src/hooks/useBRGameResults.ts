@@ -18,7 +18,7 @@ export type BRGameStatus = 'pending' | 'active' | 'completed';
 interface BRGameData {
   gameNumber: number;
   results: BRTeamResult[];
-  lobbyCode?: string;
+  lobbyCode?: string | null;
   status: BRGameStatus;
   evidence?: BREvidence[];
 }
@@ -165,7 +165,7 @@ export function useBRGameResults({
       saveMutation.mutate({
         gameNumber,
         results: [],
-        lobbyCode: undefined,
+        lobbyCode: null,
         status: 'pending',
         evidence: [],
       });
