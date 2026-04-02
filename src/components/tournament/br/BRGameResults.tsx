@@ -331,7 +331,17 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
             </div>
             <div className="space-y-2">
               {evidence.map((ev) => {
-                const teamResultIndex = results.findIndex(r => r.teamId === ev.teamId);
+                let teamResultIndex = results.findIndex(r => r.teamId === ev.teamId);
+                // Auto-add team to results if they submitted evidence but aren't tracked yet
+                if (teamResultIndex < 0 && isOrganizer) {
+                  const newResults = [...results, {
+                    teamId: ev.teamId,
+                    placement: ev.placement ?? results.length + 1,
+                    kills: ev.kills ?? 0,
+                  }];
+                  setResults(newResults);
+                  teamResultIndex = newResults.length - 1;
+                }
                 const teamResult = teamResultIndex >= 0 ? results[teamResultIndex] : null;
                 const pts = teamResult ? calculatePoints(teamResult.placement, teamResult.kills) : null;
 
@@ -359,8 +369,8 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
 
                     {/* Self-reported stats */}
                     <div className="flex items-center gap-2 text-xs flex-shrink-0">
-                      {ev.placement && <span className="text-zinc-500">Claims #{ev.placement}</span>}
-                      {ev.kills !== undefined && <span className="text-zinc-500">{ev.kills}K</span>}
+                      {ev.placement != null && <span className="text-zinc-500">Claims #{ev.placement}</span>}
+                      {ev.kills != null && <span className="text-zinc-500">{ev.kills}K</span>}
                     </div>
 
                     {/* View Evidence button — opens lightbox */}
@@ -384,8 +394,8 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                     </button>
                   </div>
 
-                  {/* Scoring inputs row */}
-                  {gameStatus === 'active' && teamResultIndex >= 0 && (
+                  {/* Scoring inputs row — show for organizers whenever evidence exists */}
+                  {isOrganizer && teamResultIndex >= 0 && (
                     <div className="flex items-center gap-3 px-3 py-2 border-t border-white/5 bg-black/20">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] text-zinc-500 uppercase font-semibold">Place</span>
