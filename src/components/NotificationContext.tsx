@@ -1,6 +1,9 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
+import { HubConnectionState } from '@microsoft/signalr';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHub } from '@/contexts/SignalRContext';
+import { HubPaths } from '@/lib/signalrClient';
 
 export interface Notification {
   id: string;
@@ -28,8 +31,10 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
+  const hub = useHub(HubPaths.Notification);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const listenersAttached = useRef(false);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -63,18 +68,60 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
+  // Wire up SignalR listeners (replaces polling)
+  useEffect(() => {
+    if (!user || !hub || listenersAttached.current) return;
+
+    const onNewNotification = (payload: Record<string, string>) => {
+      // Prepend new notification and bump unread count; full data comes from a re-fetch
+      const stub: Notification = {
+        id: payload.id ?? crypto.randomUUID(),
+        user_id: user.id,
+        type: payload.type ?? 'general',
+        title: payload.title ?? 'New Notification',
+        message: payload.message ?? '',
+        link: payload.link,
+        is_read: false,
+        created_at: new Date().toISOString(),
+      };
+      setNotifications(prev => [stub, ...prev]);
+      setUnreadCount(prev => prev + 1);
+    };
+
+    const onNotificationRead = (notificationId: string) => {
+      setNotifications(prev => {
+        const updated = prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n);
+        setUnreadCount(updated.filter(n => !n.is_read).length);
+        return updated;
+      });
+    };
+
+    const onAllRead = () => {
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    };
+
+    hub.on('NewNotification', onNewNotification);
+    hub.on('NotificationRead', onNotificationRead);
+    hub.on('AllRead', onAllRead);
+    listenersAttached.current = true;
+
+    return () => {
+      hub.off('NewNotification', onNewNotification);
+      hub.off('NotificationRead', onNotificationRead);
+      hub.off('AllRead', onAllRead);
+      listenersAttached.current = false;
+    };
+  }, [user, hub]);
+
+  // Initial fetch on mount — one-time load of existing notifications
   useEffect(() => {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
       return;
     }
-
     fetchNotifications();
-
-    // Poll every 60s for new notifications (SignalR handles real-time)
-    const interval = setInterval(fetchNotifications, 60_000);
-    return () => clearInterval(interval);
   }, [user, fetchNotifications]);
 
   const markAsRead = async (id: string) => {
@@ -89,9 +136,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     if (String(id).startsWith('invite-')) return;
 
     try {
-      await apiClient.put(`/api/notifications/${id}/read`, {});
+      // Use SignalR for multi-tab sync when connected, fall back to REST
+      if (hub.state === HubConnectionState.Connected) {
+        await hub.invoke('MarkRead', id);
+      } else {
+        await apiClient.put(`/api/notifications/${id}/read`, {});
+      }
     } catch {
-      // Non-critical
+      // Non-critical — optimistic update already applied
     }
   };
 
@@ -101,9 +153,13 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     setUnreadCount(0);
 
     try {
-      await apiClient.put('/api/notifications/read-all', {});
+      if (hub.state === HubConnectionState.Connected) {
+        await hub.invoke('MarkAllRead');
+      } else {
+        await apiClient.put('/api/notifications/read-all', {});
+      }
     } catch {
-      // Non-critical
+      // Non-critical — optimistic update already applied
     }
   };
 
