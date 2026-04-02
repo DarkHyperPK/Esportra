@@ -56,6 +56,8 @@ const EditTournament = () => {
       setParticipantCount(participantCountVal);
 
       // 3. Map to Wizard Data
+      // Use local time helpers to avoid UTC↔local timezone drift on each save cycle.
+      // datetime-local inputs interpret values as local time, so we must load as local too.
       const startDate = new Date(tournamentData.start_date);
       const endDate = new Date(tournamentData.end_date);
       const regDeadline = new Date(tournamentData.registration_deadline);
@@ -64,6 +66,22 @@ const EditTournament = () => {
       // Calculate registration opens (default to 7 days before deadline if not set)
       const regOpensDate = new Date(regDeadline.getTime() - (7 * 24 * 60 * 60 * 1000));
 
+      // Helper: format Date to local YYYY-MM-DD
+      const toLocalDate = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+      // Helper: format Date to local HH:MM
+      const toLocalTime = (d: Date) => {
+        const h = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `${h}:${min}`;
+      };
+      // Helper: format Date to local YYYY-MM-DDTHH:MM (for datetime-local inputs)
+      const toLocalDateTime = (d: Date) => `${toLocalDate(d)}T${toLocalTime(d)}`;
+
       const mappedData: TournamentWizardData = {
         ...DEFAULT_WIZARD_DATA,
         // Step 1: Basic Info
@@ -71,10 +89,10 @@ const EditTournament = () => {
         game: tournamentData.game,
         isOnline: tournamentData.is_online ?? true, // Default to true if null
         visibility: tournamentData.is_public ? 'public' : 'unlisted',
-        startDate: startDate.toISOString().split('T')[0],
-        startTime: startDate.toTimeString().slice(0, 5),
-        endDate: endDate.toISOString().split('T')[0],
-        endTime: endDate.toTimeString().slice(0, 5),
+        startDate: toLocalDate(startDate),
+        startTime: toLocalTime(startDate),
+        endDate: toLocalDate(endDate),
+        endTime: toLocalTime(endDate),
         venue: tournamentData.venue || '',
         status: tournamentData.status || 'draft',
 
@@ -107,8 +125,8 @@ const EditTournament = () => {
         rules: tournamentData.rules || '',
 
         // Step 4: Registration
-        registrationOpens: regOpensDate.toISOString().slice(0, 16),
-        registrationCloses: regDeadline.toISOString().slice(0, 16),
+        registrationOpens: toLocalDateTime(regOpensDate),
+        registrationCloses: toLocalDateTime(regDeadline),
         checkInRequired: tournamentData.check_in_required ?? false,
         checkInWindowMinutes: (() => {
           const fromSettings = (tournamentData.settings as any)?.checkInWindowMinutes;
