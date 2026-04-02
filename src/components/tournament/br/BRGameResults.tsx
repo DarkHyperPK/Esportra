@@ -331,19 +331,8 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
             </div>
             <div className="space-y-2">
               {evidence.map((ev) => {
-                let teamResultIndex = results.findIndex(r => r.teamId === ev.teamId);
-                // Auto-add team to results if they submitted evidence but aren't tracked yet
-                if (teamResultIndex < 0 && isOrganizer) {
-                  const newResults = [...results, {
-                    teamId: ev.teamId,
-                    placement: ev.placement ?? results.length + 1,
-                    kills: ev.kills ?? 0,
-                  }];
-                  setResults(newResults);
-                  teamResultIndex = newResults.length - 1;
-                }
+                const teamResultIndex = results.findIndex(r => r.teamId === ev.teamId);
                 const teamResult = teamResultIndex >= 0 ? results[teamResultIndex] : null;
-                const pts = teamResult ? calculatePoints(teamResult.placement, teamResult.kills) : null;
 
                 return (
                 <div
