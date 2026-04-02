@@ -538,35 +538,41 @@ const TeamsPage = () => {
   };
 
   const fetchRosters = async () => {
-    if (!currentTeam?.id) return;
+    if (!userTeams || userTeams.length === 0) return;
     try {
-      const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/rosters`);
-      const rosterList: Roster[] = (data || []).map((r: any) => {
-        const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
-          .map((m: any) => ({
-            user_id: m.user_id,
-            username: m.username || 'Unknown',
-            avatar_url: m.avatar_url || null,
-            card_image_url: m.card_image_url || null,
-            is_starter: m.is_starter ?? true
-          }));
+      // Fetch rosters for ALL user teams, not just the first one
+      const allRosters: Roster[] = [];
+      for (const team of userTeams) {
+        const data = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
+        const rosterList: Roster[] = (data || []).map((r: any) => {
+          const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
+            .map((m: any) => ({
+              user_id: m.user_id,
+              username: m.username || 'Unknown',
+              avatar_url: m.avatar_url || null,
+              card_image_url: m.card_image_url || null,
+              is_starter: m.is_starter ?? true
+            }));
 
-        // Add captain if not already in members
-        if (currentTeam.owner_id && !members.some(m => m.user_id === currentTeam.owner_id)) {
-          members.unshift({
-            user_id: currentTeam.owner_id,
-            username: ownerProfile?.username || 'Captain',
-            avatar_url: ownerProfile?.avatar_url || null,
-            card_image_url: ownerProfile?.card_image_url || null
-          });
-        }
+          // Add captain if not already in members
+          if (team.owner_id && !members.some(m => m.user_id === team.owner_id)) {
+            const ownerMember = team.members?.find((m: any) => m.id === team.owner_id || m.user_id === team.owner_id);
+            members.unshift({
+              user_id: team.owner_id,
+              username: ownerMember?.username || ownerProfile?.username || 'Captain',
+              avatar_url: ownerMember?.avatar_url || ownerProfile?.avatar_url || null,
+              card_image_url: ownerMember?.card_image_url || ownerProfile?.card_image_url || null
+            });
+          }
 
-        return {
-          id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
-          members, member_count: members.length
-        };
-      });
-      setRosters(rosterList);
+          return {
+            id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
+            members, member_count: members.length
+          };
+        });
+        allRosters.push(...rosterList);
+      }
+      setRosters(allRosters);
     } catch {
       setRosters([]);
     }
