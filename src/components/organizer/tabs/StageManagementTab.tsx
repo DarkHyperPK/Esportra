@@ -350,8 +350,8 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                         // Solo participant
                         return {
                             id: p.id,
-                            name: p.gamer_tag || 'Unknown Player',
-                            logo_url: null
+                            name: p.solo_username || p.gamer_tag || p.team_name || 'Unknown Player',
+                            logo_url: p.solo_avatar_url || null
                         };
                     }
                 }).filter(t => t.id);
