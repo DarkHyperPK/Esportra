@@ -350,9 +350,6 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                   if (matchedTeam) teamResultIndex = results.findIndex(r => r.teamId === matchedTeam.id);
                 }
                 const teamResult = teamResultIndex >= 0 ? results[teamResultIndex] : null;
-                const alreadyApplied = teamResult
-                  && ev.placement != null && teamResult.placement === ev.placement
-                  && ev.kills != null && teamResult.kills === ev.kills;
 
                 return (
                 <div
@@ -381,36 +378,32 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                     <span className="text-xs text-zinc-500">Kills: <span className="text-zinc-300">{ev.kills ?? '—'}</span></span>
 
                     <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-                      {/* Apply button — copies self-reported scores into standings */}
-                      {isOrganizer && ev.placement != null && (
-                        <button
-                          type="button"
-                          disabled={!!alreadyApplied}
-                          onClick={() => {
-                            if (teamResultIndex >= 0) {
-                              updatePlacement(teamResultIndex, ev.placement!);
-                              updateKills(teamResultIndex, ev.kills ?? 0);
-                            } else {
-                              // Find by team name as fallback
-                              const matchedTeam = teams.find(t => t.name === ev.teamName);
-                              const idx = matchedTeam ? results.findIndex(r => r.teamId === matchedTeam.id) : -1;
-                              if (idx >= 0) {
-                                updatePlacement(idx, ev.placement!);
-                                updateKills(idx, ev.kills ?? 0);
-                              }
-                            }
-                            toast({ title: 'Scores Applied', description: `Applied ${ev.teamName}'s reported scores to standings.` });
-                          }}
-                          className={cn(
-                            "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors",
-                            alreadyApplied
-                              ? "text-emerald-400/60 bg-emerald-500/5 cursor-default"
-                              : "text-emerald-300 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/20"
-                          )}
-                        >
-                          <CheckCircle className="w-3 h-3" />
-                          {alreadyApplied ? 'Applied' : 'Apply'}
-                        </button>
+                      {/* Scoring inputs — directly update standings */}
+                      {isOrganizer && teamResultIndex >= 0 && (
+                        <>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-zinc-500 uppercase font-semibold">Place</span>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={999}
+                              value={teamResult?.placement ?? 1}
+                              onChange={(e) => updatePlacement(teamResultIndex, parseInt(e.target.value) || 1)}
+                              className="h-7 w-14 text-center text-xs [color-scheme:dark]"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-zinc-500 uppercase font-semibold">Kills</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={killCap || 99}
+                              value={teamResult?.kills ?? 0}
+                              onChange={(e) => updateKills(teamResultIndex, parseInt(e.target.value) || 0)}
+                              className="h-7 w-14 text-center text-xs [color-scheme:dark]"
+                            />
+                          </div>
+                        </>
                       )}
 
                       {/* View Evidence button — opens lightbox */}
