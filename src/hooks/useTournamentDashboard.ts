@@ -132,7 +132,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 venue:                 t.venue_id ? `Venue ${t.venue_id}` : 'Online',
                 is_online:             !t.venue_id,
                 max_participants:      t.max_teams ?? 0,
-                registration_open:     t.status === 'open',
+                registration_open:     ['open', 'published'].includes(t.status) && (!t.registration_deadline || new Date(t.registration_deadline) > new Date()),
                 current_participants:  t.current_participants ?? result.participants.length,
             };
 
