@@ -343,7 +343,12 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
             </div>
             <div className="space-y-2">
               {evidence.map((ev) => {
-                const teamResultIndex = results.findIndex(r => r.teamId === ev.teamId);
+                // Match by teamId first, fall back to matching by team name
+                let teamResultIndex = results.findIndex(r => r.teamId === ev.teamId);
+                if (teamResultIndex < 0) {
+                  const matchedTeam = teams.find(t => t.name === ev.teamName);
+                  if (matchedTeam) teamResultIndex = results.findIndex(r => r.teamId === matchedTeam.id);
+                }
                 const teamResult = teamResultIndex >= 0 ? results[teamResultIndex] : null;
 
                 return (
