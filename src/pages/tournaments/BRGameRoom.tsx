@@ -572,41 +572,64 @@ const BRGameRoom: React.FC = () => {
                       return (
                         <div
                           key={gameNum}
-                          className="rounded-xl bg-white/[0.02] border border-white/[0.04] overflow-hidden"
+                          className="rounded-2xl bg-white/[0.02] border border-white/[0.04] overflow-hidden"
                         >
-                          <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.04]">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
+                          {/* Header */}
+                          <div className="flex items-center gap-3 px-4 py-3 bg-white/[0.02] border-b border-white/[0.05]">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
                               <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                             </div>
-                            <span className="text-sm font-semibold text-zinc-300">Game {gameNum}</span>
-                            <span className="text-[10px] text-zinc-600 ml-auto">{sorted.length} teams</span>
+                            <span className="text-sm font-bold text-zinc-200">Game {gameNum}</span>
+                            <span className="text-[10px] text-zinc-600 ml-auto font-mono">{sorted.length} players</span>
                           </div>
-                          <div className="divide-y divide-white/[0.03]">
-                            {sorted.map((r, idx) => {
+
+                          {/* Column headers */}
+                          <div className="flex items-center px-4 py-1.5 text-[9px] font-bold uppercase tracking-wider text-zinc-600 border-b border-white/[0.03] bg-white/[0.01]">
+                            <span className="w-6 text-center">#</span>
+                            <span className="flex-1 pl-2">Player</span>
+                            <span className="w-14 text-center">Place</span>
+                            <span className="w-14 text-center">Kills</span>
+                            <span className="w-12 text-right">Pts</span>
+                          </div>
+
+                          {/* Rows */}
+                          <div className="divide-y divide-white/[0.025]">
+                            {sorted.map((r) => {
                               const isUser = userTeam?.id === r.teamId;
                               const teamInfo = brResults.leaderboard.find(e => e.teamId === r.teamId);
                               return (
                                 <div
                                   key={r.teamId}
                                   className={cn(
-                                    "flex items-center gap-3 px-4 py-2 text-xs",
-                                    isUser && "bg-rose-500/5"
+                                    "flex items-center px-4 py-2 text-xs transition-colors",
+                                    isUser ? "bg-rose-500/[0.07] border-l-2 border-l-rose-500" : "hover:bg-white/[0.015]"
                                   )}
                                 >
                                   <span className={cn(
-                                    "w-5 text-center font-bold",
-                                    r.placement === 1 ? "text-amber-400" : r.placement <= 3 ? "text-zinc-300" : "text-zinc-600"
+                                    "w-6 text-center font-bold tabular-nums",
+                                    r.placement === 1 ? "text-amber-400" : r.placement === 2 ? "text-zinc-300" : r.placement === 3 ? "text-orange-400" : "text-zinc-600"
                                   )}>
                                     {r.placement}
                                   </span>
                                   <span className={cn(
-                                    "flex-1 truncate font-medium",
+                                    "flex-1 pl-2 truncate font-semibold",
                                     isUser ? "text-white" : "text-zinc-400"
                                   )}>
                                     {teamInfo?.teamName || r.teamName || 'Unknown'}
+                                    {isUser && <span className="ml-1.5 text-[9px] text-rose-400 font-normal">(you)</span>}
                                   </span>
-                                  <span className="text-zinc-500 w-12 text-center">{r.kills}K</span>
-                                  <span className="text-white font-bold w-10 text-right">{r.totalPoints}</span>
+                                  <span className={cn(
+                                    "w-14 text-center font-bold tabular-nums",
+                                    r.placement === 1 ? "text-amber-400" : "text-zinc-400"
+                                  )}>
+                                    #{r.placement}
+                                  </span>
+                                  <span className="w-14 text-center font-medium tabular-nums text-rose-400">
+                                    {r.kills}
+                                  </span>
+                                  <span className="w-12 text-right font-bold tabular-nums text-white">
+                                    {r.totalPoints}
+                                  </span>
                                 </div>
                               );
                             })}
