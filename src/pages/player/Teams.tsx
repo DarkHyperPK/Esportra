@@ -1382,7 +1382,7 @@ const TeamsPage = () => {
                     <img
                       src={currentTeam.logo_url}
                       alt={`${currentTeam.name} logo`}
-                      className="w-full h-full object-contain p-2"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
                     <Users className="w-10 h-10 text-white/20" />
