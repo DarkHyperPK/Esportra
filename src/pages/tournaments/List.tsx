@@ -5,7 +5,7 @@ import { apiClient } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Users, Calendar, MapPin, Wifi, ChevronDown, X, Search, Flame, Clock, CheckCircle, Archive } from 'lucide-react';
+import { Users, Calendar, MapPin, Wifi, ChevronDown, X, Search, Flame, Clock, CheckCircle, Archive } from 'lucide-react';
 import { Tournament } from '@/types/tournament';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -20,7 +20,6 @@ interface TournamentFilters {
 }
 
 const STATUS_TABS = [
-  { key: '',          label: 'All',       icon: Trophy },
   { key: 'upcoming',  label: 'Upcoming',  icon: Clock },
   { key: 'live',      label: 'Live',      icon: Flame },
   { key: 'completed', label: 'Completed', icon: CheckCircle },
@@ -41,7 +40,7 @@ const TournamentList = () => {
   const { toast } = useToast();
 
   // Filter state — read initial tab from URL
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || '');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'upcoming');
   const [selectedGame, setSelectedGame] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<'' | 'lan' | 'online'>('');
   const [selectedCountry, setSelectedCountry] = useState('');

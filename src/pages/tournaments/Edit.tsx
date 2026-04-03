@@ -117,6 +117,7 @@ const EditTournament = () => {
         logoUrl: tournamentData.logo_url,
         prizePool: tournamentData.prize_pool?.toString() || '0',
         entryFee: tournamentData.entry_fee?.toString() || 'Free',
+        currency: tournamentData.currency || 'USD',
         paymentInstructions: tournamentData.payment_instructions || '',
         description: tournamentData.description || 'Tournament description goes here.',
         discordUrl: '', // Not in DB schema shown

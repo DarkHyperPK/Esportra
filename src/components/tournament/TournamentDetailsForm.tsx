@@ -29,7 +29,7 @@ const TournamentDetailsForm = ({
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Prize Pool (PKR)</label>
+          <label className="block text-sm font-medium mb-2">Prize Pool</label>
           <Input 
             placeholder="e.g., 50000" 
             value={formData.prizePool}
@@ -39,7 +39,7 @@ const TournamentDetailsForm = ({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">Entry Fee (PKR)</label>
+          <label className="block text-sm font-medium mb-2">Entry Fee</label>
           <Input 
             placeholder="Enter amount or type Free" 
             value={formData.entryFee}

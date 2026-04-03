@@ -97,7 +97,7 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
             title: 'Branding & Details',
             icon: <Gamepad2 className="w-5 h-5" />,
             items: [
-                { label: 'Prize Pool', value: data.prizePool ? `PKR ${data.prizePool}` : 'Not set' },
+                { label: 'Prize Pool', value: data.prizePool ? `${data.currency || 'USD'} ${data.prizePool}` : 'Not set' },
                 { label: 'Entry Fee', value: data.entryFee || 'Free' },
                 { label: 'Banner', value: data.bannerUrl ? '✓ Uploaded' : '✗ Not uploaded' },
                 { label: 'Description', value: data.description ? `${data.description.substring(0, 50)}...` : 'Not set' },

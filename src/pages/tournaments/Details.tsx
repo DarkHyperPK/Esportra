@@ -894,6 +894,7 @@ const TournamentDetails = () => {
             game={tournament.game}
             settings={tournament.settings}
             entryFee={tournament.entry_fee}
+            currency={tournament.currency}
             paymentInstructions={tournament.payment_instructions}
             onRegisterSuccess={handleRegistrationSuccess}
             onCancel={() => setShowEditDialog(false)}

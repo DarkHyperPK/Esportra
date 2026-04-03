@@ -35,6 +35,7 @@ interface TeamTournamentRegistrationProps {
     start_date: string;
     entry_fee?: number;
     prize_pool?: number;
+    currency?: string;
     max_teams: number;
     team_size?: number;
     registration_deadline?: string;
@@ -561,7 +562,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                 </div>
                 <div>
                   <span className="text-xs text-gray-500 block mb-1">Entry Fee</span>
-                  <span className="text-white font-medium text-sm">PKR {tournament.entry_fee}</span>
+                  <span className="text-white font-medium text-sm">{tournament.currency || 'USD'} {tournament.entry_fee}</span>
                 </div>
               </div>
             )}
@@ -572,7 +573,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                 </div>
                 <div>
                   <span className="text-xs text-gray-500 block mb-1">Prize Pool</span>
-                  <span className="text-white font-medium text-sm">PKR {tournament.prize_pool}</span>
+                  <span className="text-white font-medium text-sm">{tournament.currency || 'USD'} {tournament.prize_pool}</span>
                 </div>
               </div>
             )}

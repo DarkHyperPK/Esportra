@@ -17,6 +17,7 @@ interface TournamentRegistrationProps {
   structure?: string;
   settings?: any;
   entryFee?: number | string | null;
+  currency?: string;
   paymentInstructions?: string | null;
   onSuccess?: (registration: RegistrationDetails | null) => void;
   isEdit?: boolean;
@@ -33,6 +34,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   structure = 'solo',
   settings,
   entryFee,
+  currency = 'USD',
   paymentInstructions,
   onSuccess,
   isEdit = false,
@@ -204,7 +206,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Payment Required</h3>
-            <p className="text-sm text-zinc-400">Entry Fee: PKR {parsedFee}</p>
+            <p className="text-sm text-zinc-400">Entry Fee: {currency} {parsedFee}</p>
           </div>
         </div>
 

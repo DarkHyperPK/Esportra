@@ -188,6 +188,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     rules:                data.rules || null,
                     paymentInstructions:  data.paymentInstructions || null,
                     region:               data.region || null,
+                    currency:             data.currency || 'USD',
                     settings:             {
                         assistedMatchReporting: data.assistedMatchReporting ?? false,
                         checkInWindowMinutes: data.checkInWindowMinutes || 30,
@@ -262,6 +263,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     rules:                data.rules || null,
                     paymentInstructions:  data.paymentInstructions || null,
                     region:               data.region || null,
+                    currency:             data.currency || 'USD',
                     tournamentType:       data.tournamentType || 'bracket',
                     settings: {
                         assistedMatchReporting: data.assistedMatchReporting ?? false,

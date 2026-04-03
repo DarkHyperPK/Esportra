@@ -52,6 +52,7 @@ export interface TournamentWizardData {
     logoUrl: string | null;
     prizePool: string;
     entryFee: string;
+    currency: string;
     paymentInstructions: string;
     description: string;
     discordUrl: string;
@@ -136,6 +137,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     logoUrl: null,
     prizePool: '',
     entryFee: 'Free',
+    currency: 'USD',
     paymentInstructions: '',
     description: '',
     discordUrl: '',

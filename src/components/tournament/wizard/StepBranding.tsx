@@ -87,13 +87,32 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                 )}
             </div>
 
-            {/* Prize Pool & Entry Fee */}
+            {/* Currency & Prize Pool & Entry Fee */}
             <div className="w-full h-px bg-white/5 my-6" />
+
+            {/* Currency Selector */}
+            <div className="space-y-2 mb-6">
+                <Label htmlFor="currency" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    <DollarSign className="w-4 h-4" />
+                    Currency
+                </Label>
+                <select
+                    id="currency"
+                    value={data.currency || 'USD'}
+                    onChange={(e) => updateData({ currency: e.target.value })}
+                    className="w-full md:w-48 h-10 rounded-md border border-white/10 bg-black/40 text-white px-3 text-sm focus:outline-none focus:border-indigo-500"
+                >
+                    {['USD', 'EUR', 'GBP', 'AED', 'SAR', 'PKR', 'INR', 'TRY', 'EGP', 'QAR', 'MYR', 'SGD', 'BRL', 'JPY'].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                    ))}
+                </select>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-2 md:border-r border-white/10 pr-6">
                     <Label htmlFor="prizePool" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                         <DollarSign className="w-4 h-4" />
-                        Prize Pool (PKR) *
+                        Prize Pool ({data.currency || 'USD'}) *
                     </Label>
                     <Input
                         id="prizePool"
@@ -115,7 +134,6 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                                 id="winnerPrize"
                                 placeholder="60%"
                                 value={(() => {
-                                    // Parse: "1st: 60% | 2nd: 30%" or "1st: 60%, 2nd: 30%"
                                     const match = (data.rewards || '').match(/1st:\s*(\d+)%/i);
                                     return match ? match[1] : '';
                                 })()}
@@ -159,7 +177,7 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                 <div className="space-y-2">
                     <Label htmlFor="entryFee" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                         <DollarSign className="w-4 h-4" />
-                        Entry Fee (PKR)
+                        Entry Fee ({data.currency || 'USD'})
                     </Label>
                     <Input
                         id="entryFee"
