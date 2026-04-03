@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, Loader2, Upload } from 'lucide-react';
+import { Check, Loader2, Upload, X } from 'lucide-react';
 import BannerEditor from '@/components/organizer/BannerEditor';
 
 interface EditTeamDialogProps {
@@ -35,10 +35,12 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
 
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [removeLogo, setRemoveLogo] = useState(false);
 
     // Banner specific state
     const [bannerFile, setBannerFile] = useState<Blob | File | null>(null);
     const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+    const [removeBanner, setRemoveBanner] = useState(false);
     const [showBannerCrop, setShowBannerCrop] = useState(false);
     const [tempBannerDataUrl, setTempBannerDataUrl] = useState<string>('');
 
@@ -53,9 +55,11 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
 
             setLogoFile(null);
             setLogoPreview(team.logo_url || null);
+            setRemoveLogo(false);
 
             setBannerFile(null);
             setBannerPreview(team.banner_url || null);
+            setRemoveBanner(false);
         }
     }, [team, open]);
 
@@ -86,7 +90,20 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
     const handleLogoCropSave = (blob: Blob) => {
         setLogoFile(new File([blob], 'logo.png', { type: blob.type }));
         setLogoPreview(URL.createObjectURL(blob));
+        setRemoveLogo(false);
         setShowLogoCrop(false);
+    };
+
+    const handleRemoveLogo = () => {
+        setLogoFile(null);
+        setLogoPreview(null);
+        setRemoveLogo(true);
+    };
+
+    const handleRemoveBanner = () => {
+        setBannerFile(null);
+        setBannerPreview(null);
+        setRemoveBanner(true);
     };
 
     const handleSave = async () => {
@@ -98,6 +115,8 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
             tag,
             logoFile: logoFile || undefined,
             bannerFile: bannerFile || undefined,
+            removeLogo,
+            removeBanner,
             currentLogoUrl: team.logo_url,
             currentBannerUrl: team.banner_url,
         }, {
@@ -119,7 +138,7 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
                             <div className="w-full h-full bg-gradient-to-r from-esports-purple/20 to-esports-accent/20" />
                         )}
 
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                             <label className="cursor-pointer">
                                 <input type="file" accept="image/*" onChange={handleBannerSelect} className="hidden" />
                                 <div className="bg-white/10 hover:bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2 text-sm font-medium transition-colors">
@@ -127,6 +146,15 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
                                     Edit Banner
                                 </div>
                             </label>
+                            {bannerPreview && (
+                                <button
+                                    onClick={handleRemoveBanner}
+                                    className="bg-red-500/80 hover:bg-red-500 backdrop-blur-md p-2 rounded-full border border-white/20 text-sm font-medium transition-colors"
+                                    title="Remove Banner"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
 
                         {/* Logo Avatar overlaid on Banner */}
@@ -141,6 +169,15 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
                                     <Upload className="h-5 w-5 mb-1" />
                                     <span className="text-[10px] font-medium">Change</span>
                                 </label>
+                                {logoPreview && (
+                                    <button
+                                        onClick={handleRemoveLogo}
+                                        className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity z-10"
+                                        title="Remove Logo"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -13,6 +13,8 @@ export interface EditTeamPayload {
     social_media?: Record<string, string>;
     logoFile?: File;
     bannerFile?: Blob | File; // Can be a Blob from the cropper or a File
+    removeLogo?: boolean;
+    removeBanner?: boolean;
     currentLogoUrl?: string; // To know if we need to replace/update
     currentBannerUrl?: string;
 }
@@ -26,13 +28,19 @@ export const useTeamMutations = () => {
                 teamId,
                 logoFile,
                 bannerFile,
+                removeLogo,
+                removeBanner,
                 currentLogoUrl,
                 currentBannerUrl,
                 ...updateData
             } = payload;
 
-            let newLogoUrl = currentLogoUrl;
-            let newBannerUrl = currentBannerUrl;
+            let newLogoUrl: string | null | undefined = currentLogoUrl;
+            let newBannerUrl: string | null | undefined = currentBannerUrl;
+
+            // Handle removal
+            if (removeLogo) newLogoUrl = null;
+            if (removeBanner) newBannerUrl = null;
 
             // Handle Logo Upload
             if (logoFile) {
@@ -97,10 +105,12 @@ export const useTeamMutations = () => {
             }
 
             // Update the Database Record
-            const finalUpdateData = {
+            const finalUpdateData: Record<string, unknown> = {
                 ...updateData,
-                ...(newLogoUrl !== currentLogoUrl ? { logoUrl: newLogoUrl } : {}),
-                ...(newBannerUrl !== currentBannerUrl ? { bannerUrl: newBannerUrl } : {}),
+                ...(newLogoUrl !== currentLogoUrl && !removeLogo ? { logoUrl: newLogoUrl } : {}),
+                ...(newBannerUrl !== currentBannerUrl && !removeBanner ? { bannerUrl: newBannerUrl } : {}),
+                ...(removeLogo ? { removeLogo: true } : {}),
+                ...(removeBanner ? { removeBanner: true } : {}),
                 updated_at: new Date().toISOString(),
             };
 
