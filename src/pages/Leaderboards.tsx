@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Medal, Crown, ChevronDown, Users, Flame, Target, Award, TrendingUp, Swords, Star, User } from 'lucide-react';
+import { Trophy, Medal, Crown, ChevronDown, Users, Target, Award, TrendingUp, Swords, Star } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { getCountryFlagUrl } from '@/utils/countries';
 import { Globe } from 'lucide-react';
 import EntityAvatar from '@/components/ui/EntityAvatar';
-import { isBattleRoyale } from '@/utils/gameFeatures';
 import { useQuery } from '@tanstack/react-query';
 
 // ── Types ──
@@ -20,30 +19,6 @@ interface TeamStats {
     losses: number;
     win_rate: number;
     tournaments_won: number;
-    br_total_points: number;
-    br_total_kills: number;
-    br_games_played: number;
-    br_first_places: number;
-    rp: number;
-}
-
-interface PlayerStats {
-    id: string;
-    username: string;
-    avatar_url: string | null;
-    country_code: string | null;
-    team_name: string | null;
-    game: string | null;
-    matches_played: number;
-    wins: number;
-    losses: number;
-    win_rate: number;
-    tournaments_won: number;
-    mvps: number;
-    br_total_points: number;
-    br_total_kills: number;
-    br_games_played: number;
-    br_first_places: number;
     rp: number;
 }
 
@@ -68,51 +43,35 @@ const RANK_ICONS = [Crown, Medal, Award];
 
 // ── Page Component ──
 const Leaderboards: React.FC = () => {
-    const [tab, setTab] = useState<'teams' | 'players'>('teams');
-    const [game, setGame] = useState('');
-    const [gameMenuOpen, setGameMenuOpen] = useState(false);
     const [teams, setTeams] = useState<TeamStats[]>([]);
-    const [players, setPlayers] = useState<PlayerStats[]>([]);
     const [country, setCountry] = useState('');
     const [countryMenuOpen, setCountryMenuOpen] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // Fetch filter options (only games/countries with actual leaderboard data)
+    // Fetch filter options
     const { data: filterOptions } = useQuery<LeaderboardFilters>({
         queryKey: ['leaderboard-filters'],
         queryFn: () => apiClient.get<LeaderboardFilters>('/api/leaderboards/filters'),
         staleTime: 5 * 60 * 1000,
     });
 
-    // ── Fetch Leaderboard Data ──
+    // ── Fetch Valorant Team Leaderboard ──
     useEffect(() => {
         setLoading(true);
-
         const fetchData = async () => {
             try {
-                const params = new URLSearchParams();
-                if (game) params.set('game', game);
+                const params = new URLSearchParams({ game: 'Valorant' });
                 if (country) params.set('country', country);
-                const queryStr = params.toString() ? `?${params.toString()}` : '';
-
-                if (tab === 'teams') {
-                    const stats = await apiClient.get<TeamStats[]>(`/api/leaderboards/teams${queryStr}`);
-                    setTeams(stats || []);
-                } else {
-                    const stats = await apiClient.get<PlayerStats[]>(`/api/leaderboards/players${queryStr}`);
-                    setPlayers(stats || []);
-                }
+                const stats = await apiClient.get<TeamStats[]>(`/api/leaderboards/teams?${params.toString()}`);
+                setTeams(stats || []);
             } catch (err) {
                 console.error('Leaderboard fetch error:', err);
             } finally {
                 setLoading(false);
             }
         };
-
         fetchData();
-    }, [game, country, tab]);
-
-    const data = tab === 'teams' ? teams : players;
+    }, [country]);
 
     return (
         <div className="min-h-screen pb-20">
@@ -142,76 +101,18 @@ const Leaderboards: React.FC = () => {
             {/* Controls */}
             <div className="max-w-5xl mx-auto px-4 mb-8">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    {/* Tab Toggle */}
+                    {/* Game Badge */}
                     <div className="flex items-center bg-zinc-900/60 border border-white/10 rounded-2xl p-1 backdrop-blur-md">
-                        <button
-                            onClick={() => setTab('teams')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                                tab === 'teams' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-zinc-500 hover:text-zinc-300'
-                            }`}
-                        >
+                        <div className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-rose-600 text-white shadow-lg shadow-rose-500/20">
                             <Users className="w-3.5 h-3.5" />
-                            Teams
-                        </button>
-                        <button
-                            onClick={() => setTab('players')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                                tab === 'players' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-zinc-500 hover:text-zinc-300'
-                            }`}
-                        >
-                            <User className="w-3.5 h-3.5" />
-                            Players
-                        </button>
+                            Valorant — Teams
+                        </div>
                     </div>
 
-                    {/* Game Filter Dropdown */}
+                    {/* Country Filter Dropdown */}
                     <div className="relative">
                         <button
-                            onClick={() => { setGameMenuOpen(!gameMenuOpen); setCountryMenuOpen(false); }}
-                            className="flex items-center gap-2 bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-rose-500/30 transition-all backdrop-blur-md"
-                        >
-                            <Target className="w-3.5 h-3.5 text-rose-400" />
-                            {game || 'All Games'}
-                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gameMenuOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        <AnimatePresence>
-                            {gameMenuOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                                    className="absolute right-0 mt-2 w-56 bg-zinc-900/95 border border-white/10 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md z-50"
-                                >
-                                    <button
-                                        onClick={() => { setGame(''); setGameMenuOpen(false); }}
-                                        className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all ${!game
-                                            ? 'bg-rose-600/20 text-rose-300'
-                                            : 'text-zinc-400 hover:bg-white/5 hover:text-white'
-                                            }`}
-                                    >
-                                        All Games
-                                    </button>
-                                    {(filterOptions?.games ?? []).map(g => (
-                                        <button
-                                            key={g}
-                                            onClick={() => { setGame(g); setGameMenuOpen(false); }}
-                                            className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all ${game === g
-                                                ? 'bg-rose-600/20 text-rose-300'
-                                                : 'text-zinc-400 hover:bg-white/5 hover:text-white'
-                                                }`}
-                                        >
-                                            {g}
-                                        </button>
-                                    ))}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
-                    {/* Country Filter Dropdown — matching game dropdown style */}
-                    <div className="relative">
-                        <button
-                            onClick={() => { setCountryMenuOpen(!countryMenuOpen); setGameMenuOpen(false); }}
+                            onClick={() => setCountryMenuOpen(!countryMenuOpen)}
                             className="flex items-center gap-2 bg-zinc-900/60 border border-white/10 rounded-2xl px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-rose-500/30 transition-all backdrop-blur-md"
                         >
                             <Globe className="w-3.5 h-3.5 text-rose-400" />
@@ -269,7 +170,7 @@ const Leaderboards: React.FC = () => {
                             className="w-10 h-10 border-2 border-rose-500/30 border-t-rose-500 rounded-full"
                         />
                     </div>
-                ) : data.length === 0 ? (
+                ) : teams.length === 0 ? (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -290,28 +191,23 @@ const Leaderboards: React.FC = () => {
                         {/* Header Row */}
                         <div className="grid grid-cols-[60px,1fr,repeat(4,minmax(60px,100px)),100px] gap-2 px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">
                             <span>Rank</span>
-                            <span>{tab === 'teams' ? 'Team' : 'Player'}</span>
+                            <span>Team</span>
                             <span className="text-center">Played</span>
                             <span className="text-center">Wins</span>
-                            <span className="text-center">Kills</span>
+                            <span className="text-center">Win%</span>
                             <span className="text-center">Trophies</span>
                             <span className="text-right">RP</span>
                         </div>
 
                         {/* Rows */}
                         <AnimatePresence mode="popLayout">
-                            {data.map((entry, idx) => {
+                            {teams.map((entry, idx) => {
                                 const isTopThree = idx < 3;
                                 const RankIcon = isTopThree ? RANK_ICONS[idx] : null;
-                                const isTeam = tab === 'teams';
-                                const e = entry as any;
-                                const totalPlayed = (e.matches_played || 0) + (e.br_games_played || 0);
-                                const totalWins = (e.wins || 0) + (e.br_first_places || 0);
-                                const totalKills = e.br_total_kills || 0;
 
                                 return (
                                     <motion.div
-                                        key={`${entry.id}-${idx}`}
+                                        key={entry.id}
                                         initial={{ opacity: 0, x: -20 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0 }}
@@ -336,44 +232,39 @@ const Leaderboards: React.FC = () => {
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="w-11 h-11 flex-shrink-0 flex items-center justify-center">
                                                 <EntityAvatar
-                                                    src={isTeam ? e.logo_url : e.avatar_url}
-                                                    name={isTeam ? e.name : e.username}
+                                                    src={entry.logo_url}
+                                                    name={entry.name}
                                                     entityId={entry.id}
-                                                    type={isTeam ? 'team' : 'user'}
+                                                    type="team"
                                                     size="w-11 h-11"
                                                 />
                                             </div>
-                                            <div className="min-w-0 flex-1">
-                                                <span className="text-sm font-bold text-white truncate block group-hover:text-rose-300 transition-colors">
-                                                    {isTeam ? e.name : e.username}
-                                                </span>
-                                                {!isTeam && e.team_name && (
-                                                    <span className="text-[10px] text-zinc-500 truncate block">{e.team_name}</span>
-                                                )}
-                                            </div>
+                                            <span className="text-sm font-bold text-white truncate group-hover:text-rose-300 transition-colors">
+                                                {entry.name}
+                                            </span>
                                             {entry.country_code && (
                                                 <img
                                                     src={getCountryFlagUrl(entry.country_code)}
                                                     alt={entry.country_code}
-                                                    className="w-5 h-3.5 object-cover rounded-sm shadow-sm border border-white/5 flex-shrink-0"
+                                                    className="w-5 h-3.5 object-cover rounded-sm shadow-sm border border-white/5"
                                                     title={entry.country_code}
                                                 />
                                             )}
                                         </div>
 
                                         {/* Stats */}
-                                        <span className="text-center text-sm font-bold text-zinc-400 tabular-nums">{totalPlayed}</span>
-                                        <span className="text-center text-sm font-bold text-emerald-400 tabular-nums">{totalWins}</span>
-                                        <span className="text-center text-sm font-bold text-rose-400 tabular-nums">{totalKills}</span>
+                                        <span className="text-center text-sm font-bold text-zinc-400 tabular-nums">{entry.matches_played}</span>
+                                        <span className="text-center text-sm font-bold text-emerald-400 tabular-nums">{entry.wins}</span>
+                                        <span className="text-center text-sm font-bold text-zinc-300 tabular-nums">{entry.win_rate}%</span>
                                         <span className="text-center text-sm font-bold text-yellow-400 tabular-nums flex items-center justify-center gap-1">
-                                            {e.tournaments_won || 0}
+                                            {entry.tournaments_won}
                                             <Trophy className="w-3 h-3 text-yellow-500/60" />
                                         </span>
 
                                         {/* RP */}
                                         <div className="text-right">
                                             <span className={`text-base font-black tabular-nums ${isTopThree ? 'text-rose-400' : 'text-white'}`}>
-                                                {(entry.rp || 0).toLocaleString()}
+                                                {entry.rp.toLocaleString()}
                                             </span>
                                             <span className="text-[9px] font-bold text-zinc-600 ml-1 uppercase">rp</span>
                                         </div>
@@ -399,17 +290,15 @@ const Leaderboards: React.FC = () => {
                         </div>
                         <div>
                             <h3 className="text-sm font-black text-white uppercase tracking-tight">Ranking Points (RP)</h3>
-                            <p className="text-xs text-zinc-500">How rankings are calculated — all game modes combined</p>
+                            <p className="text-xs text-zinc-500">How Valorant team rankings are calculated</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
                             { label: 'Match Win', value: `+${RP_PER_WIN}`, icon: Swords, color: 'text-emerald-400' },
                             { label: 'Match Loss', value: `${RP_PER_LOSS}`, icon: Target, color: 'text-rose-400' },
                             { label: 'Tournament Win', value: `+${RP_PER_TOURNAMENT_WIN}`, icon: Trophy, color: 'text-yellow-400' },
                             { label: 'Match MVP', value: `+${RP_PER_MVP}`, icon: Star, color: 'text-cyan-400' },
-                            { label: 'BR Game Pts', value: '+Total', icon: Flame, color: 'text-amber-400' },
-                            { label: 'BR Kills', value: 'Per Kill', icon: Swords, color: 'text-rose-400' },
                         ].map(item => (
                             <div key={item.label} className="bg-zinc-950/60 rounded-2xl p-4 border border-white/5">
                                 <item.icon className={`w-5 h-5 ${item.color} mb-2`} />
