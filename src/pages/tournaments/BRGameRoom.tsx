@@ -202,17 +202,17 @@ const BRGameRoom: React.FC = () => {
   const activeCode = activeGame ? brResults.getLobbyCode(activeGame) : null;
   const allGamesFinished = brResults.gamesCompleted >= brGameCount;
 
-  // Find user's rank in leaderboard
+  // Find user's rank in leaderboard (match by id or name)
   const userRank = userTeam
-    ? brResults.leaderboard.findIndex(e => e.teamId === userTeam.id) + 1
+    ? brResults.leaderboard.findIndex(e => e.teamId === userTeam.id || e.teamName === userTeam.name) + 1
     : 0;
   const userEntry = userTeam
-    ? brResults.leaderboard.find(e => e.teamId === userTeam.id)
+    ? brResults.leaderboard.find(e => e.teamId === userTeam.id || e.teamName === userTeam.name)
     : null;
 
   // Check if user already submitted evidence for active game
   const userAlreadySubmitted = activeGame && userTeam
-    ? (brResults.getEvidence(activeGame) || []).some(ev => ev.teamId === userTeam.id)
+    ? (brResults.getEvidence(activeGame) || []).some(ev => ev.teamId === userTeam.id || ev.teamName === userTeam.name)
     : false;
 
   return (
@@ -446,8 +446,9 @@ const BRGameRoom: React.FC = () => {
         ) : allGamesFinished || brResults.winner ? (
           /* ─── Tournament Complete ─── */
           (() => {
-            const isWinner = userTeam && brResults.winner?.teamId === userTeam.id;
-            const userRankIdx = userTeam ? brResults.leaderboard.findIndex(e => e.teamId === userTeam.id) : -1;
+            const isWinner = userTeam && brResults.winner
+              && (brResults.winner.teamId === userTeam.id || brResults.winner.teamName === userTeam.name);
+            const userRankIdx = userTeam ? brResults.leaderboard.findIndex(e => e.teamId === userTeam.id || e.teamName === userTeam.name) : -1;
             const userRank = userRankIdx >= 0 ? userRankIdx + 1 : null;
 
             return isWinner ? (
