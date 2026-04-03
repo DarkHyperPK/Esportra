@@ -562,39 +562,55 @@ const BRGameRoom: React.FC = () => {
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="overflow-hidden space-y-2"
+                  className="overflow-hidden space-y-3"
                 >
                   {Array.from({ length: brGameCount }, (_, i) => i + 1)
                     .filter(n => brResults.getGameStatus(n) === 'completed')
                     .map(gameNum => {
                       const results = brResults.getGameResults(gameNum);
-                      const userResult = userTeam ? results?.find(r => r.teamId === userTeam.id) : null;
+                      const sorted = results ? [...results].sort((a, b) => a.placement - b.placement) : [];
                       return (
                         <div
                           key={gameNum}
-                          className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.03] transition-colors"
+                          className="rounded-xl bg-white/[0.02] border border-white/[0.04] overflow-hidden"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.04]">
                             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
                               <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                             </div>
                             <span className="text-sm font-semibold text-zinc-300">Game {gameNum}</span>
+                            <span className="text-[10px] text-zinc-600 ml-auto">{sorted.length} teams</span>
                           </div>
-                          {userResult ? (
-                            <div className="flex items-center gap-3 text-xs">
-                              <span className={cn(
-                                "font-bold px-2 py-0.5 rounded",
-                                userResult.placement === 1 ? "text-amber-400 bg-amber-500/10" :
-                                userResult.placement <= 3 ? "text-zinc-300 bg-white/[0.04]" : "text-zinc-500"
-                              )}>
-                                #{userResult.placement}
-                              </span>
-                              <span className="text-rose-400 font-medium">{userResult.kills} kills</span>
-                              <span className="text-white font-bold">{userResult.totalPoints} pts</span>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-zinc-700 font-mono">No data</span>
-                          )}
+                          <div className="divide-y divide-white/[0.03]">
+                            {sorted.map((r, idx) => {
+                              const isUser = userTeam?.id === r.teamId;
+                              const teamInfo = brResults.leaderboard.find(e => e.teamId === r.teamId);
+                              return (
+                                <div
+                                  key={r.teamId}
+                                  className={cn(
+                                    "flex items-center gap-3 px-4 py-2 text-xs",
+                                    isUser && "bg-rose-500/5"
+                                  )}
+                                >
+                                  <span className={cn(
+                                    "w-5 text-center font-bold",
+                                    r.placement === 1 ? "text-amber-400" : r.placement <= 3 ? "text-zinc-300" : "text-zinc-600"
+                                  )}>
+                                    {r.placement}
+                                  </span>
+                                  <span className={cn(
+                                    "flex-1 truncate font-medium",
+                                    isUser ? "text-white" : "text-zinc-400"
+                                  )}>
+                                    {teamInfo?.teamName || r.teamName || 'Unknown'}
+                                  </span>
+                                  <span className="text-zinc-500 w-12 text-center">{r.kills}K</span>
+                                  <span className="text-white font-bold w-10 text-right">{r.totalPoints}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       );
                     })}
