@@ -42,6 +42,10 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
     const [showBannerCrop, setShowBannerCrop] = useState(false);
     const [tempBannerDataUrl, setTempBannerDataUrl] = useState<string>('');
 
+    // Logo crop state
+    const [showLogoCrop, setShowLogoCrop] = useState(false);
+    const [tempLogoDataUrl, setTempLogoDataUrl] = useState<string>('');
+
     useEffect(() => {
         if (team && open) {
             setName(team.name || '');
@@ -58,8 +62,9 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
     const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setLogoFile(file);
-            setLogoPreview(URL.createObjectURL(file));
+            const url = URL.createObjectURL(file);
+            setTempLogoDataUrl(url);
+            setShowLogoCrop(true);
         }
     };
 
@@ -76,6 +81,12 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
         setBannerFile(blob);
         setBannerPreview(URL.createObjectURL(blob));
         setShowBannerCrop(false);
+    };
+
+    const handleLogoCropSave = (blob: Blob) => {
+        setLogoFile(new File([blob], 'logo.png', { type: blob.type }));
+        setLogoPreview(URL.createObjectURL(blob));
+        setShowLogoCrop(false);
     };
 
     const handleSave = async () => {
@@ -98,7 +109,7 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
 
     return (
         <>
-            <Dialog open={open && !showBannerCrop} onOpenChange={onOpenChange}>
+            <Dialog open={open && !showBannerCrop && !showLogoCrop} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-[700px] border-white/5 bg-[#0a0a0c]/95 backdrop-blur-xl p-0 overflow-hidden max-h-[85vh] flex flex-col">
                     {/* Banner Header inside Dialog */}
                     <div className="relative h-40 bg-zinc-900 group">
@@ -174,6 +185,18 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
                     open={showBannerCrop}
                     onClose={() => setShowBannerCrop(false)}
                     onSave={handleCropSave}
+                />
+            )}
+
+            {/* Logo Crop Editor */}
+            {showLogoCrop && (
+                <BannerEditor
+                    image={tempLogoDataUrl}
+                    open={showLogoCrop}
+                    onClose={() => setShowLogoCrop(false)}
+                    onSave={handleLogoCropSave}
+                    aspect={1}
+                    title="Edit Logo"
                 />
             )}
         </>

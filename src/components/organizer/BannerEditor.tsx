@@ -11,9 +11,11 @@ interface BannerEditorProps {
     open: boolean
     onClose: () => void
     onSave: (blob: Blob) => void
+    aspect?: number
+    title?: string
 }
 
-const BannerEditor: React.FC<BannerEditorProps> = ({ image, open, onClose, onSave }) => {
+const BannerEditor: React.FC<BannerEditorProps> = ({ image, open, onClose, onSave, aspect = 16 / 4, title = "Edit Banner" }) => {
     const [crop, setCrop] = useState({ x: 0, y: 0 })
     const [zoom, setZoom] = useState(1)
     const [brightness, setBrightness] = useState(100)
@@ -44,7 +46,7 @@ const BannerEditor: React.FC<BannerEditorProps> = ({ image, open, onClose, onSav
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
                         <Crop className="w-5 h-5 text-esports-purple" />
-                        Edit Banner
+                        {title}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -53,7 +55,7 @@ const BannerEditor: React.FC<BannerEditorProps> = ({ image, open, onClose, onSav
                         image={image}
                         crop={crop}
                         zoom={zoom}
-                        aspect={16 / 4} // Banner aspect ratio
+                        aspect={aspect}
                         onCropChange={setCrop}
                         onCropComplete={onCropComplete}
                         onZoomChange={setZoom}
