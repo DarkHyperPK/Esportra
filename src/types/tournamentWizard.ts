@@ -26,6 +26,7 @@ export interface TournamentWizardData {
     endDate: string;
     endTime: string;
     venue: string;
+    region: string;
     status: string;
 
     // Step 2: Format & Rules
@@ -109,6 +110,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     endDate: '',
     endTime: '',
     venue: '',
+    region: '',
     status: 'open',
 
     // Step 2

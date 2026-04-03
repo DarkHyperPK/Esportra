@@ -94,6 +94,7 @@ const EditTournament = () => {
         endDate: toLocalDate(endDate),
         endTime: toLocalTime(endDate),
         venue: tournamentData.venue || '',
+        region: tournamentData.region || '',
         status: tournamentData.status || 'draft',
 
         // Step 2: Format & Rules

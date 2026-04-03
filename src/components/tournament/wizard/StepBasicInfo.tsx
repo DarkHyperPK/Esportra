@@ -262,6 +262,28 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                 )}
             </AnimatePresence>
 
+            {/* Region */}
+            <div className="w-full h-px bg-white/5 my-6" />
+            <div className="space-y-2">
+                <Label htmlFor="region" className="text-xs font-bold text-gray-500 uppercase tracking-widest">Region *</Label>
+                <p className="text-xs text-gray-500 mb-2">The server region or geographical area for this tournament.</p>
+                <Select value={data.region} onValueChange={(v) => updateData({ region: v })}>
+                    <SelectTrigger id="region" className={cn(errors.region && 'border-red-500')}>
+                        <SelectValue placeholder="Select region" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="na-east">NA East</SelectItem>
+                        <SelectItem value="na-west">NA West</SelectItem>
+                        <SelectItem value="latam">LATAM</SelectItem>
+                        <SelectItem value="eu">EU</SelectItem>
+                        <SelectItem value="me">ME</SelectItem>
+                        <SelectItem value="sea">SEA</SelectItem>
+                        <SelectItem value="oce">OCE</SelectItem>
+                    </SelectContent>
+                </Select>
+                {errors.region && <p className="text-sm text-red-500">{errors.region}</p>}
+            </div>
+
             {/* Visibility - Simplified to Draft only */}
             <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-4">

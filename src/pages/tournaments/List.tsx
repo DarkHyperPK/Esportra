@@ -46,7 +46,18 @@ const TournamentList = () => {
   const [selectedFormat, setSelectedFormat] = useState<'' | 'lan' | 'online'>('');
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const REGIONS = [
+    { value: 'na-east', label: 'NA East' },
+    { value: 'na-west', label: 'NA West' },
+    { value: 'latam', label: 'LATAM' },
+    { value: 'eu', label: 'EU' },
+    { value: 'me', label: 'ME' },
+    { value: 'sea', label: 'SEA' },
+    { value: 'oce', label: 'OCE' },
+  ];
 
   // Fetch filter options from API
   const { data: filterOptions } = useQuery<TournamentFilters>({
@@ -63,8 +74,9 @@ const TournamentList = () => {
     if (selectedFormat === 'lan') params.set('is_online', 'false');
     if (selectedCountry) params.set('country', selectedCountry);
     if (selectedCity) params.set('city', selectedCity);
+    if (selectedRegion) params.set('region', selectedRegion);
     return params.toString();
-  }, [selectedGame, selectedFormat, selectedCountry, selectedCity]);
+  }, [selectedGame, selectedFormat, selectedCountry, selectedCity, selectedRegion]);
 
   // Fetch tournaments via useQuery (cached, no refetch on tab-switch)
   const { data: allTournaments = [], isLoading: loading } = useQuery<Tournament[]>({
@@ -133,10 +145,11 @@ const TournamentList = () => {
     setSelectedFormat('');
     setSelectedCountry('');
     setSelectedCity('');
+    setSelectedRegion('');
     setSearchQuery('');
   };
 
-  const hasActiveFilters = selectedGame || selectedFormat || selectedCountry || selectedCity || searchQuery;
+  const hasActiveFilters = selectedGame || selectedFormat || selectedCountry || selectedCity || selectedRegion || searchQuery;
 
   // City dropdown only shows when LAN format is selected
   const showCityFilter = selectedFormat === 'lan';
@@ -230,6 +243,21 @@ const TournamentList = () => {
             </button>
           </div>
 
+          {/* Region Dropdown */}
+          <div className="relative">
+            <select
+              value={selectedRegion}
+              onChange={(e) => setSelectedRegion(e.target.value)}
+              className="appearance-none bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-zinc-700 transition-colors"
+            >
+              <option value="">All Regions</option>
+              {REGIONS.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+          </div>
+
           {/* Country Dropdown (LAN only) */}
           {showCityFilter && filterOptions?.countries && filterOptions.countries.length > 0 && (
             <div className="relative">
@@ -321,6 +349,7 @@ const TournamentList = () => {
                   end_date={tournament.end_date}
                   registrationData={isRegistered(tournament.id) ? { id: tournament.id } : null}
                   currentUserId={user?.id}
+                  region={(tournament as any).region}
                 />
               </div>
             ))}

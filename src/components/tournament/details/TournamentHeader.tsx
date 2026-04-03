@@ -116,10 +116,15 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.8, delay: 0.2 }}
                         >
-                            <div className="mb-8 flex justify-center gap-4">
+                            <div className="mb-8 flex flex-wrap justify-center gap-4">
                                 <span className="px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-esports-primary font-mono tracking-[0.2em] uppercase backdrop-blur-md">
                                     GAME: {tournament.game}
                                 </span>
+                                {tournament.region && (
+                                    <span className="px-4 py-1.5 rounded-full border border-amber-500/20 bg-amber-500/5 text-xs text-amber-400 font-mono tracking-[0.2em] uppercase backdrop-blur-md">
+                                        REGION: {{ 'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM', 'eu': 'EU', 'me': 'ME', 'sea': 'SEA', 'oce': 'OCE' }[tournament.region] || tournament.region}
+                                    </span>
+                                )}
                                 <span className={cn(
                                     "px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs font-mono tracking-[0.2em] uppercase backdrop-blur-md",
                                     tournament.status === 'published' ? "text-blue-400" :

@@ -19,6 +19,7 @@ export interface BaseTournament {
     time: string;
     venue: string | null;
     venue_id?: string | null;
+    region?: string | null;
     is_online: boolean;
     max_participants: number;
     team_size: number;

@@ -8,6 +8,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
 import { cn } from '@/lib/utils';
 
+const REGION_LABELS: Record<string, string> = {
+  'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM',
+  'eu': 'EU', 'me': 'ME', 'sea': 'SEA', 'oce': 'OCE',
+};
+
 interface TournamentCardProps {
   id: string;
   name: string;
@@ -34,6 +39,7 @@ interface TournamentCardProps {
   end_date?: string;
   winner_name?: string;
   title_sponsor_name?: string;
+  region?: string;
 }
 
 const TournamentCardInner: React.FC<TournamentCardProps> = ({
@@ -61,6 +67,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   end_date,
   winner_name,
   title_sponsor_name,
+  region,
 }) => {
   const navigate = useNavigate();
   const { currentRole } = useRole();
@@ -213,6 +220,11 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             <span className="text-xs font-bold tracking-widest text-cyan-400 uppercase font-heading">
               {game}
             </span>
+            {region && REGION_LABELS[region] && (
+              <span className="text-[10px] font-bold tracking-wider text-amber-400/80 uppercase px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                {REGION_LABELS[region]}
+              </span>
+            )}
             <div className="h-[1px] flex-grow bg-gradient-to-r from-cyan-400/50 to-transparent" />
           </div>
 

@@ -16,6 +16,7 @@ const basicInfoBase = z.object({
     endDate: z.string().optional(),
     endTime: z.string().optional(),
     venue: z.string().optional(),
+    region: z.string().min(1, 'Please select a region'),
 });
 
 export const basicInfoSchema = basicInfoBase.refine(
