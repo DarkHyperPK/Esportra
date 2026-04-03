@@ -467,6 +467,11 @@ const BRGameRoom: React.FC = () => {
                           <Medal className="w-4 h-4" /> Congratulations! You won!
                         </p>
                       )}
+                      {userTeam && brResults.winner && brResults.winner.teamId !== userTeam.id && (
+                        <p className="text-zinc-400 text-sm mt-1.5 flex items-center gap-1.5">
+                          <Shield className="w-4 h-4 text-zinc-500" /> Good effort! You finished #{brResults.leaderboard.findIndex(e => e.teamId === userTeam.id) + 1 || '—'} overall.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>

@@ -806,21 +806,36 @@ const TournamentDetails = () => {
                   </div>
                 )}
 
+                {/* Champion Banner */}
+                {brResults.winner && (
+                  <div className="relative rounded-2xl overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-amber-500/[0.12] via-amber-400/[0.06] to-amber-500/[0.12]" />
+                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjAgMEwyNSAxMEwzNSAxMEwyNyAxN0wzMCAyN0wyMCAyMkwxMCAyN0wxMyAxN0w1IDEwTDE1IDEwWiIgZmlsbD0icmdiYSgyNTEsMTkxLDM2LDAuMDMpIi8+PC9zdmc+')] opacity-40" />
+                    <div className="relative flex items-center gap-5 p-6 sm:p-8 border border-amber-500/30 rounded-2xl">
+                      <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center flex-shrink-0">
+                        <Trophy className="w-9 h-9 text-amber-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-500/60 mb-1">Tournament Champion</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-white truncate">{brResults.winner.teamName}</h3>
+                        <div className="flex items-center gap-3 mt-1.5 text-sm">
+                          <span className="text-amber-300 font-bold">{brResults.winner.totalPoints} pts</span>
+                          <span className="text-zinc-600">•</span>
+                          <span className="text-zinc-400">{brResults.winner.wins} win{brResults.winner.wins !== 1 ? 's' : ''}</span>
+                          <span className="text-zinc-600">•</span>
+                          <span className="text-zinc-400">{brResults.winner.totalKills} kills</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <BRScoringConfig preset={brScoringPreset} killCap={brKillCap} />
                 <BRLeaderboard
                   entries={brResults.leaderboard}
                   totalGames={brGameCount}
                   gamesCompleted={brResults.gamesCompleted}
                 />
-                {brResults.winner && (
-                  <div className="flex items-center gap-4 p-6 rounded-2xl bg-amber-500/10 border border-amber-500/30">
-                    <Trophy className="w-10 h-10 text-amber-400 flex-shrink-0" />
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Champion</h3>
-                      <p className="text-amber-300 font-medium">{brResults.winner.teamName} — {brResults.winner.totalPoints} points</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </TabsContent>
           ) : (
