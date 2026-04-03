@@ -100,8 +100,7 @@ const TeamsPage = () => {
   const [memberToRemove, setMemberToRemove] = useState<TeamMember>(null);
   const [showTransferCaptaincy, setShowTransferCaptaincy] = useState(false);
   const [showDisbandTeam, setShowDisbandTeam] = useState(false);
-  const [showTeamAnnouncement, setShowTeamAnnouncement] = useState(false);
-  const [announcementText, setAnnouncementText] = useState('');
+
   const [showTeamStats, setShowTeamStats] = useState(false);
   const [showMemberRoles, setShowMemberRoles] = useState(false);
   const [showTournamentManagement, setShowTournamentManagement] = useState(false);
@@ -1101,25 +1100,7 @@ const TeamsPage = () => {
     }
   };
 
-  const handleSendAnnouncement = async () => {
-    if (!currentTeam || !announcementText.trim()) return;
 
-    try {
-      await apiClient.post(`/api/teams/${currentTeam.id}/announce`, { message: announcementText });
-      toast({
-        title: "Success",
-        description: "Announcement sent to all team members.",
-      });
-      setShowTeamAnnouncement(false);
-      setAnnouncementText('');
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send announcement",
-        variant: "destructive",
-      });
-    }
-  };
 
   const searchUsers = async (query: string) => {
     if (query.length < 2) {
@@ -1189,11 +1170,7 @@ const TeamsPage = () => {
     setSelectedUsers(prev => prev.filter(u => u.id !== userId));
   };
 
-  // Refresh team data (useful after tournament registration)
-  const refreshTeamData = async () => {
-    await fetchUserTeams();
-    await fetchTeamRegistrations();
-  };
+
 
   // Check if user can access teams (only players can create/manage teams)
   if (!canCreateTeams) {
@@ -1777,15 +1754,6 @@ const TeamsPage = () => {
 
         {/* Team Actions */}
         <div className="flex justify-center space-x-4">
-          <Button
-            onClick={refreshTeamData}
-            variant="outline"
-            className="border-white/30 text-white hover:bg-white/10"
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Refresh Data
-          </Button>
-
           {!isCaptain && (
             <Button
               onClick={handleLeaveTeam}
@@ -1799,14 +1767,6 @@ const TeamsPage = () => {
 
           {isCaptain && (
             <>
-              <Button
-                onClick={() => setShowTeamAnnouncement(true)}
-                variant="outline"
-                className="border-blue-400 text-blue-400 hover:bg-blue-400/20"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Send Announcement
-              </Button>
               <Button
                 onClick={() => setShowDisbandTeam(true)}
                 variant="outline"
@@ -2535,48 +2495,7 @@ const TeamsPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={showTeamAnnouncement} onOpenChange={setShowTeamAnnouncement}>
-        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-lg shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-3xl p-0 relative z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar">
-          <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
-          <DialogHeader className="p-8 pb-4 relative z-10">
-            <DialogTitle className="text-2xl font-heading font-light uppercase tracking-[0.2em] text-white">Broadcast</DialogTitle>
-            <DialogDescription className="text-white/40 text-[10px] uppercase tracking-widest mt-1">Send an announcement to all members</DialogDescription>
-          </DialogHeader>
 
-          <div className="p-8 pt-4 space-y-6 relative z-10">
-            <div>
-              <Label htmlFor="announcement" className="text-[10px] uppercase tracking-widest text-white/40 mb-3 block">Message Content</Label>
-              <textarea
-                id="announcement"
-                placeholder="Enter your message to the team..."
-                value={announcementText}
-                onChange={(e) => setAnnouncementText(e.target.value)}
-                className="w-full h-40 p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white resize-none focus:outline-none focus:border-indigo-500/50 transition-all font-light placeholder:text-white/10 scrollbar-hide"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => setShowTeamAnnouncement(false)}
-                variant="outline"
-                className="flex-1 border-white/10 text-white/60 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-xs"
-              >
-                DISCARD
-              </Button>
-              <Button
-                onClick={handleSendAnnouncement}
-                disabled={!announcementText.trim()}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white h-12 rounded-xl font-heading font-bold tracking-widest text-xs shadow-xl transition-all hover:scale-[1.02] disabled:opacity-30"
-              >
-                SEND ANNOUNCEMENT
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <EditTeamDialog
         open={showEditTeam}
