@@ -445,39 +445,67 @@ const BRGameRoom: React.FC = () => {
           </motion.div>
         ) : allGamesFinished || brResults.winner ? (
           /* ─── Tournament Complete ─── */
-          <motion.div variants={stagger.item}>
-            <div className="relative rounded-2xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.08] via-transparent to-amber-500/[0.04]" />
-              <Card className="relative bg-[#0a0a0c]/90 backdrop-blur-xl border border-amber-500/20 rounded-2xl">
-                <CardContent className="p-6 sm:p-8">
-                  <div className="flex items-center gap-5">
-                    <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-                      <Trophy className="w-8 h-8 text-amber-400" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-white tracking-tight">Tournament Complete</h2>
-                      {brResults.winner && (
-                        <p className="text-amber-300/80 font-medium text-sm mt-1">
-                          Winner: <span className="text-amber-300 font-bold">{brResults.winner.teamName}</span>
-                          {' '}<span className="text-amber-400/60">— {brResults.winner.totalPoints} pts</span>
-                        </p>
-                      )}
-                      {userTeam && brResults.winner?.teamId === userTeam.id && (
-                        <p className="text-amber-200 text-sm mt-1.5 font-bold flex items-center gap-1.5">
-                          <Medal className="w-4 h-4" /> Congratulations! You won!
-                        </p>
-                      )}
-                      {userTeam && brResults.winner && brResults.winner.teamId !== userTeam.id && (
-                        <p className="text-zinc-400 text-sm mt-1.5 flex items-center gap-1.5">
-                          <Shield className="w-4 h-4 text-zinc-500" /> Good effort! You finished #{brResults.leaderboard.findIndex(e => e.teamId === userTeam.id) + 1 || '—'} overall.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </motion.div>
+          (() => {
+            const isWinner = userTeam && brResults.winner?.teamId === userTeam.id;
+            const userRankIdx = userTeam ? brResults.leaderboard.findIndex(e => e.teamId === userTeam.id) : -1;
+            const userRank = userRankIdx >= 0 ? userRankIdx + 1 : null;
+
+            return isWinner ? (
+              /* ─── Winner Card ─── */
+              <motion.div variants={stagger.item}>
+                <div className="relative rounded-2xl overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-amber-400/[0.06] to-yellow-500/15" />
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.12),transparent_60%)]" />
+                  <Card className="relative bg-[#0a0a0c]/80 backdrop-blur-xl border border-amber-500/30 rounded-2xl">
+                    <CardContent className="p-6 sm:p-8 text-center">
+                      <div className="w-20 h-20 rounded-full bg-amber-500/15 border-2 border-amber-500/30 flex items-center justify-center mx-auto mb-4">
+                        <Trophy className="w-10 h-10 text-amber-400" />
+                      </div>
+                      <h2 className="text-2xl font-black text-amber-300 tracking-tight mb-1">🎉 Congratulations!</h2>
+                      <p className="text-lg font-bold text-white">You are the Champion!</p>
+                      <p className="text-amber-400/70 text-sm mt-2 font-medium">
+                        {brResults.winner!.totalPoints} pts · {brResults.winner!.wins} win{brResults.winner!.wins !== 1 ? 's' : ''} · {brResults.winner!.totalKills} kills
+                      </p>
+                      <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                        <Medal className="w-4 h-4 text-amber-400" />
+                        <span className="text-sm font-bold text-amber-300">1st Place</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </motion.div>
+            ) : (
+              /* ─── Non-Winner Card ─── */
+              <motion.div variants={stagger.item}>
+                <div className="relative rounded-2xl overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-zinc-500/[0.06] via-transparent to-zinc-500/[0.03]" />
+                  <Card className="relative bg-[#0a0a0c]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl">
+                    <CardContent className="p-6 sm:p-8">
+                      <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center flex-shrink-0">
+                          <Trophy className="w-8 h-8 text-zinc-500" />
+                        </div>
+                        <div className="flex-1">
+                          <h2 className="text-xl font-bold text-white tracking-tight">Tournament Complete</h2>
+                          {brResults.winner && (
+                            <p className="text-amber-300/80 font-medium text-sm mt-1">
+                              Winner: <span className="text-amber-300 font-bold">{brResults.winner.teamName}</span>
+                              {' '}<span className="text-amber-400/60">— {brResults.winner.totalPoints} pts</span>
+                            </p>
+                          )}
+                          {userTeam && (
+                            <p className="text-zinc-400 text-sm mt-2 leading-relaxed">
+                              Thank you for participating!{userRank ? ` You finished #${userRank} overall.` : ''} Better luck next time 💪
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </motion.div>
+            );
+          })()
         ) : (
           /* ─── Waiting for Next Game ─── */
           <motion.div variants={stagger.item}>
