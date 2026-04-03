@@ -16,6 +16,7 @@ interface IgdbAssets {
   banners: string[];
   cover: string | null;
   videos: IgdbVideo[];
+  matchedGame?: string | null;
 }
 
 export interface ArtworkPickerProps {
@@ -50,7 +51,11 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!gameName) return;
+    if (!gameName) {
+      setLoading(false);
+      setError('Please select a game first');
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -303,7 +308,7 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
       )}
 
       <p className="text-xs text-zinc-500">
-        Artwork from Esportra Partners
+        Artwork from Esportra Partners{assets?.matchedGame ? ` — ${assets.matchedGame}` : ''}
       </p>
     </div>
   );
