@@ -169,10 +169,10 @@ const TournamentList = () => {
         description: `${tournamentToDelete.name} has been moved to deleted tournaments. You can restore it within 7 days.`,
       });
 
-      // Refresh both lists
-      // Refresh both lists
+      // Refresh all tournament lists (organizer + browse page)
       queryClient.invalidateQueries({ queryKey: ['organizer-tournaments'] });
       queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
+      queryClient.invalidateQueries({ queryKey: ['browse-tournaments'] });
       setDeleteModalOpen(false);
       setTournamentToDelete(null);
       setCascadeWarnings([]);
@@ -199,10 +199,10 @@ const TournamentList = () => {
         description: `${tournamentName} has been restored successfully.`,
       });
 
-      // Refresh both lists
-      // Refresh both lists
+      // Refresh all tournament lists (organizer + browse page)
       queryClient.invalidateQueries({ queryKey: ['organizer-tournaments'] });
       queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
+      queryClient.invalidateQueries({ queryKey: ['browse-tournaments'] });
     } catch (error: any) {
       console.error('Error restoring tournament:', error);
       toast({
@@ -231,6 +231,7 @@ const TournamentList = () => {
       });
 
       queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
+      queryClient.invalidateQueries({ queryKey: ['browse-tournaments'] });
     } catch (error: any) {
       console.error('Error permanently deleting tournament:', error);
       toast({
