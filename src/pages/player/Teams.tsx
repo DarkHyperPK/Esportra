@@ -542,40 +542,44 @@ const TeamsPage = () => {
   const fetchRosters = async () => {
     if (!userTeams || userTeams.length === 0) return;
     try {
-      // Fetch rosters for ALL user teams, not just the first one
       const allRosters: Roster[] = [];
       for (const team of userTeams) {
-        const data = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
-        const rosterList: Roster[] = (data || []).map((r: any) => {
-          const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
-            .map((m: any) => ({
-              user_id: m.user_id,
-              username: m.username || 'Unknown',
-              avatar_url: m.avatar_url || null,
-              card_image_url: m.card_image_url || null,
-              is_starter: m.is_starter ?? true
-            }));
+        try {
+          const data = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
+          const rosterList: Roster[] = (data || []).map((r: any) => {
+            const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
+              .map((m: any) => ({
+                user_id: m.user_id,
+                username: m.username || 'Unknown',
+                avatar_url: m.avatar_url || null,
+                card_image_url: m.card_image_url || null,
+                is_starter: m.is_starter ?? true
+              }));
 
-          // Add captain if not already in members
-          if (team.owner_id && !members.some(m => m.user_id === team.owner_id)) {
-            const ownerMember = team.members?.find((m: any) => m.id === team.owner_id || m.user_id === team.owner_id);
-            members.unshift({
-              user_id: team.owner_id,
-              username: ownerMember?.username || ownerProfile?.username || 'Captain',
-              avatar_url: ownerMember?.avatar_url || ownerProfile?.avatar_url || null,
-              card_image_url: ownerMember?.card_image_url || ownerProfile?.card_image_url || null
-            });
-          }
+            // Add captain if not already in members (use team.members data, no external state dependency)
+            if (team.owner_id && !members.some(m => m.user_id === team.owner_id)) {
+              const ownerMember = team.members?.find((m: any) => m.id === team.owner_id || m.user_id === team.owner_id);
+              members.unshift({
+                user_id: team.owner_id,
+                username: ownerMember?.username || 'Captain',
+                avatar_url: ownerMember?.avatar_url || null,
+                card_image_url: ownerMember?.card_image_url || null
+              });
+            }
 
-          return {
-            id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
-            members, member_count: members.length
-          };
-        });
-        allRosters.push(...rosterList);
+            return {
+              id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
+              members, member_count: members.length
+            };
+          });
+          allRosters.push(...rosterList);
+        } catch (err) {
+          console.error(`Error fetching rosters for team ${team.id}:`, err);
+        }
       }
       setRosters(allRosters);
-    } catch {
+    } catch (err) {
+      console.error('Error in fetchRosters:', err);
       setRosters([]);
     }
   };
@@ -2194,27 +2198,32 @@ const TeamsPage = () => {
                 {/* Member List - Premium Glassmorphic Items */}
                 <div className="space-y-3 max-h-56 overflow-y-auto custom-scrollbar pr-2">
                   {/* Captain (Implicit Member) */}
-                  {currentTeam && ownerProfile && (
+                  {currentTeam && (() => {
+                    const captainData = ownerProfile
+                      || currentTeam.members?.find((m: any) => m.id === currentTeam.owner_id || m.user_id === currentTeam.owner_id)
+                      || { username: 'Captain', avatar_url: undefined };
+                    return (
                     <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.06] border border-white/10 relative overflow-hidden group">
                       <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent" />
                       <div className="flex items-center gap-4 relative z-10">
                         <div className="relative">
                           <Avatar className="w-10 h-10 border-2 border-indigo-500/50 shadow-xl">
-                            <AvatarImage src={ownerProfile.avatar_url} />
-                            <AvatarFallback className="text-xs bg-indigo-900 text-indigo-200">{ownerProfile.username?.charAt(0) || '?'}</AvatarFallback>
+                            <AvatarImage src={captainData.avatar_url} />
+                            <AvatarFallback className="text-xs bg-indigo-900 text-indigo-200">{captainData.username?.charAt(0) || '?'}</AvatarFallback>
                           </Avatar>
                           <Crown className="absolute -top-1 -right-1 w-4 h-4 text-yellow-500 bg-[#0a0a0a] rounded-full p-0.5 border border-white/10" />
                         </div>
                         <div>
-                          <span className="text-sm font-heading font-medium text-white block">{ownerProfile.username || 'Captain'}</span>
+                          <span className="text-sm font-heading font-medium text-white block">{captainData.username || 'Captain'}</span>
                           <span className="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Team Captain</span>
                         </div>
                       </div>
                       <Badge className="bg-white/5 border-white/10 text-white/40 text-[8px] uppercase tracking-tighter relative z-10">Permanent</Badge>
                     </div>
-                  )}
+                    );
+                  })()}
 
-                  {manageMembers.length === 0 && !ownerProfile ? (
+                  {manageMembers.length === 0 && !currentTeam ? (
                     <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed border-white/10 rounded-2xl bg-white/[0.02]">
                       <Users className="w-8 h-8 text-white/10 mb-2" />
                       <p className="text-white/20 text-xs font-light tracking-wide uppercase">Roster is currently empty</p>
