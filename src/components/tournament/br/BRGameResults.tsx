@@ -351,8 +351,8 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
           })}
         </div>
 
-        {/* Player Evidence Submissions */}
-        {isOrganizer && evidence.length > 0 && (
+        {/* Player Evidence Submissions — hidden once game is finalized */}
+        {isOrganizer && evidence.length > 0 && gameStatus !== 'completed' && (
           <div className="mt-5 pt-4 border-t border-white/5">
             <div className="flex items-center gap-2 mb-3">
               <ImageIcon className="w-4 h-4 text-zinc-500" />
