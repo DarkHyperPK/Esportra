@@ -138,6 +138,7 @@ const TournamentList = () => {
                 image_url={tournament.image_url}
                 currentUserId={user?.id}
                 slug={tournament.slug || tournament.id}
+                currency={(tournament as any).currency}
               />
             ))}
           </div>

@@ -238,6 +238,7 @@ const UpcomingTournaments = () => {
                     registrationData={tournament.registrationData}
                     currentUserId={user?.id}
                     slug={tournament.slug}
+                    currency={tournament.currency}
                     start_date={tournament.start_date}
                     end_date={tournament.end_date}
                     winner_name={tournament.winner_name}

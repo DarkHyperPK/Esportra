@@ -40,6 +40,7 @@ interface TournamentCardProps {
   winner_name?: string;
   title_sponsor_name?: string;
   region?: string;
+  currency?: string;
 }
 
 const TournamentCardInner: React.FC<TournamentCardProps> = ({
@@ -68,6 +69,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   winner_name,
   title_sponsor_name,
   region,
+  currency,
 }) => {
   const navigate = useNavigate();
   const { currentRole } = useRole();
@@ -245,7 +247,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             )}
             <div className="flex items-center gap-1.5 text-esports-green font-medium">
               <Trophy className="w-4 h-4" />
-              <span>{prize_pool}</span>
+              <span>{prize_pool} {currency || 'USD'}</span>
             </div>
           </div>
 

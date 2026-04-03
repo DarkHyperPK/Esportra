@@ -349,6 +349,7 @@ const TournamentList = () => {
                   registrationData={isRegistered(tournament.id) ? { id: tournament.id } : null}
                   currentUserId={user?.id}
                   region={(tournament as any).region}
+                  currency={(tournament as any).currency}
                 />
               </div>
             ))}

@@ -303,6 +303,7 @@ const TournamentList = () => {
                     slug={tournament.slug || ''}
                     start_date={tournament.start_date}
                     end_date={tournament.end_date}
+                    currency={tournament.currency}
                     onDelete={() => handleDeleteClick(tournament.id, tournament.name, tournament.status)}
                   />
                 ))}
