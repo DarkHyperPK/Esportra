@@ -8,6 +8,8 @@ const DISMISSED_KEY = 'beta-notice-dismissed';
 const VALORANT_SPLASH = 'https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/splash.png';
 
 const BetaNoticeBanner = () => {
+  // Permanently dismissed via "Don't show again" → localStorage
+  // Session-dismissed via X / backdrop → React state only (resets on hard refresh / new tab)
   const [dismissed, setDismissed] = useState(() => {
     return localStorage.getItem(DISMISSED_KEY) === 'true';
   });
@@ -24,6 +26,10 @@ const BetaNoticeBanner = () => {
   if (dismissed) return null;
 
   const handleDismiss = () => {
+    setDismissed(true);
+  };
+
+  const handleDontShowAgain = () => {
     localStorage.setItem(DISMISSED_KEY, 'true');
     setDismissed(true);
   };
@@ -87,10 +93,10 @@ const BetaNoticeBanner = () => {
           </a>
 
           <button
-            onClick={handleDismiss}
+            onClick={handleDontShowAgain}
             className="text-white/30 hover:text-white/60 text-xs transition-colors"
           >
-            No thanks, continue to site
+            Don't show me again
           </button>
         </div>
       </div>
