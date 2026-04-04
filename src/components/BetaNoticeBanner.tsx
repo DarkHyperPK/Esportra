@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 
-const DISMISSED_KEY = 'beta-notice-dismissed';
+const DISMISSED_KEY = 'beta-notice-permanent-dismiss';
 
 // Valorant Ascent map splash for visual flair
 const VALORANT_SPLASH = 'https://media.valorant-api.com/maps/7eaecc1b-4337-bbf6-6ab9-04b8f06b3319/splash.png';
