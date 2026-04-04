@@ -69,6 +69,7 @@ const VenueManagementTool = React.lazy(() => import("./pages/admin/tools/VenueMa
 const AnalyticsTool = React.lazy(() => import("./pages/admin/tools/Analytics"));
 const SponsorManagementTool = React.lazy(() => import("./pages/admin/tools/SponsorManagement"));
 const LicenseManagementTool = React.lazy(() => import("./pages/admin/tools/LicenseManagement"));
+const TeamManagementTool = React.lazy(() => import("./pages/admin/tools/TeamManagement"));
 
 
 // Venue Owner
@@ -100,6 +101,7 @@ const ADMIN_ROLE_SETS = {
   analytics: ['super_admin', 'ops_admin', 'finance_admin'],
   systemSettings: ['super_admin', 'ops_admin', 'finance_admin'],
   disputes: ['super_admin', 'moderator', 'ops_admin'],
+  superAdmin: ['super_admin'],
 };
 
 // Venues
@@ -299,6 +301,16 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <TournamentManagementTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/tools/team-management" element={
+                  <AdminProtectedRoute
+                    requiredPermission="team:view"
+                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
+                  >
+                    <AdminLayout>
+                      <TeamManagementTool />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />

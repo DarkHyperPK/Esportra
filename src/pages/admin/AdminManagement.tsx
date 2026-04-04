@@ -33,7 +33,8 @@ import {
   Home,
   LogOut,
   Megaphone,
-  Award
+  Award,
+  UsersRound
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -230,6 +231,7 @@ const AdminManagement = () => {
   const quickNavLinks = [
     { label: 'User Management', href: '/admin/tools/user-management', icon: Users, color: 'rose' },
     { label: 'Tournament Management', href: '/admin/tools/tournament-management', icon: Trophy, color: 'amber' },
+    { label: 'Team Management', href: '/admin/tools/team-management', icon: UsersRound, color: 'cyan' },
     { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, color: 'emerald', badge: stats.pendingVenues },
     { label: 'Sponsor CRM', href: '/admin/tools/sponsor-management', icon: Megaphone, color: 'violet' },
 
