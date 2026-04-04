@@ -203,7 +203,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                     <Clock className="w-5 h-5 animate-pulse" />
                                                     PENDING APPROVAL
                                                 </div>
-                                                {(tournament.status === 'published' || tournament.status === 'open') && (
+                                                {isCaptain && (tournament.status === 'published' || tournament.status === 'open') && (
                                                     <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
                                                         WITHDRAW
                                                     </Button>
@@ -228,12 +228,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                 )}
                                             </div>
                                         )}
-                                        {/* Withdraw button for non-captains or other states */}
-                                        {isRegistered && !isCaptain && (tournament.status === 'published' || tournament.status === 'open') && (
-                                            <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
-                                                WITHDRAW ENTRY
-                                            </Button>
-                                        )}
+
                                         {canSelfCheckIn && (
                                             <Button onClick={onCheckIn} disabled={checkInSubmitting} className="ml-4 h-14 md:h-16 px-8 md:px-12 bg-green-600 hover:bg-green-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none animate-pulse">
                                                 CONFIRM PRESENCE
