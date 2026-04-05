@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: 'dist',
-    sourcemap: 'hidden', // Hidden sourcemaps for Sentry error tracking (not exposed to browser)
+    sourcemap: false,
     // Set base path for subdirectory deployment
     // For subdomain demo.esportra.com pointing to public_html/demo/, use '/'
     // If you need a subdirectory path, use '/demo/' instead

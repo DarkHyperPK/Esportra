@@ -13,8 +13,9 @@ interface SEOProps {
 
 const SITE_NAME = 'Esportra';
 const DEFAULT_DESCRIPTION = 'Esportra — the competitive esports tournament platform. Create, join, and manage tournaments for Valorant, CS2, League of Legends, and more.';
-const DEFAULT_IMAGE = 'https://esportra.com/og-image.png';
-const BASE_URL = 'https://esportra.com';
+const BASE_URL = import.meta.env.VITE_APP_URL || 'https://esportra.com';
+const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
+const IS_STAGING = window.location.hostname.includes('staging');
 
 /**
  * Reusable SEO head component. Place at the top of any page component
@@ -31,12 +32,13 @@ const SEO = ({
 }: SEOProps) => {
   const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Competitive Esports Tournament Platform`;
   const canonicalUrl = url ? `${BASE_URL}${url}` : undefined;
+  const shouldNoindex = noindex || IS_STAGING;
 
   return (
     <Helmet>
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
-      {noindex && <meta name="robots" content="noindex,nofollow" />}
+      {shouldNoindex && <meta name="robots" content="noindex,nofollow" />}
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
 
       {/* Open Graph */}

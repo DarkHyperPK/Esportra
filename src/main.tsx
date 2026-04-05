@@ -9,12 +9,16 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 
 // ── Sentry Error Tracking ────────────────────────────────────────────────────
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+const sentryEnv = import.meta.env.VITE_SENTRY_ENVIRONMENT || (import.meta.env.PROD ? 'production' : 'development');
+const isProduction = sentryEnv === 'production';
+
 Sentry.init({
-  dsn: "https://4703ee71e2bd056974b5323646faa4be@o4511166930878464.ingest.de.sentry.io/4511166944837712",
-  environment: import.meta.env.PROD ? 'production' : 'staging',
-  enabled: import.meta.env.PROD || window.location.hostname.includes('staging'),
+  dsn: sentryDsn,
+  environment: sentryEnv,
+  enabled: !!sentryDsn,
   sendDefaultPii: true,
-  tracesSampleRate: 0.1,
+  tracesSampleRate: isProduction ? 0.1 : 1.0,
   replaysOnErrorSampleRate: 1.0,
   replaysSessionSampleRate: 0,
   integrations: [

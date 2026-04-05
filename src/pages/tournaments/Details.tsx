@@ -726,7 +726,7 @@ const TournamentDetails = () => {
           '@context': 'https://schema.org',
           '@type': 'Event',
           name: tournament.name,
-          description: tournament.description,
+          description: tournament.description || `Join ${tournament.name} on Esportra`,
           startDate: tournament.date,
           endDate: tournament.end_date,
           image: tournament.image_url,
