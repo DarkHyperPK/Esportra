@@ -1,4 +1,5 @@
 import { createContext, useContext, ReactNode, useState, useEffect, useMemo } from 'react';
+import * as Sentry from '@sentry/react';
 import { UserProfile, AuthContextType, UserRole } from '@/types/auth';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthState } from '@/hooks/useAuthState';
@@ -86,6 +87,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
             console.log("⚠️ No profile found for authenticated user. User may need to complete profile setup.");
           } else {
             prevProfileIdRef.current = profileResult.id;
+            Sentry.setUser({ id: profileResult.id, username: profileResult.username, email: profileResult.email });
 
             if (profileResult.is_suspended && window.location.pathname !== '/suspended') {
               console.warn("[AuthContext] Active session suspended, redirecting...");
@@ -178,6 +180,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
   const handleSignOut = async (): Promise<void> => {
     await signOut();
     clearProfile();
+    Sentry.setUser(null);
   };
 
   // Role-based utility functions
