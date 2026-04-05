@@ -16,4 +16,4 @@ Disallow: /admin/
 Disallow: /api/
 Disallow: /auth/callback
 
-Sitemap: https://esportra.com/sitemap.xml
+Sitemap: https://backend.esportra.com/sitemap.xml
