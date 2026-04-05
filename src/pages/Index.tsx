@@ -8,10 +8,12 @@ import PlatformPromise from "@/components/landing/PlatformPromise";
 import TheHeartbeat from "@/components/landing/TheHeartbeat";
 import Roadmap from "@/components/landing/Roadmap";
 import PremiumBackground from "@/components/ui/PremiumBackground";
+import SEO from '@/components/SEO';
 
 const Index = () => {
     return (
         <PremiumBackground animated intensity={0.12}>
+            <SEO url="/" />
             <HeroSection />
 
 

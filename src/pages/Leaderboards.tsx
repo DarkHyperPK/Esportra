@@ -6,6 +6,7 @@ import { getCountryFlagUrl } from '@/utils/countries';
 import { Globe } from 'lucide-react';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { useQuery } from '@tanstack/react-query';
+import SEO from '@/components/SEO';
 
 // ── Types ──
 interface TeamStats {
@@ -75,6 +76,11 @@ const Leaderboards: React.FC = () => {
 
     return (
         <div className="min-h-screen pb-20">
+            <SEO
+                title="Leaderboards"
+                description="View top esports players and teams ranked by performance across Valorant, CS2, League of Legends, and more."
+                url="/leaderboards"
+            />
             {/* Hero Header */}
             <div className="relative overflow-hidden pt-10 pb-16 px-4">
                 <div className="absolute inset-0 bg-gradient-to-b from-rose-500/10 via-rose-500/5 to-transparent pointer-events-none" />

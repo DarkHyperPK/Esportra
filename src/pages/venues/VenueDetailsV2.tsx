@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import Footer from '@/components/Footer';
+import SEO from '@/components/SEO';
 
 const MapPicker = React.lazy(() => import('@/components/venues/MapPicker'));
 
@@ -162,6 +163,13 @@ const VenueDetailsV2 = () => {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
+      <SEO
+        title={venue.name}
+        description={venue.description || `${venue.name} — Gaming venue on Esportra`}
+        image={venue.images?.[0]}
+        url={`/venues/${slug}`}
+        type="article"
+      />
       {/* ── Owner status banner ──────────────────────────────────── */}
       {venue.status && venue.status !== 'published' && isOwner && (
         <div className={`px-4 py-3 text-sm text-center font-medium flex items-center justify-center gap-2 ${

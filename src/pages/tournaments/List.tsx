@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { TournamentCard } from '@/components/TournamentCard';
 import { formatDate } from '@/utils/dateFormat';
+import SEO from '@/components/SEO';
 
 interface TournamentFilters {
   cities: string[];
@@ -155,6 +156,11 @@ const TournamentList = () => {
 
   return (
     <div className="min-h-screen bg-esports-dark text-white">
+      <SEO
+        title="Browse Tournaments"
+        description="Find and join esports tournaments for Valorant, CS2, League of Legends, Fortnite, and more. Free and paid competitions."
+        url="/tournaments"
+      />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Tournaments</h1>

@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
+import { HelmetProvider } from 'react-helmet-async'
 import App from './App.tsx'
 import './index.css'
 import React from 'react'
@@ -57,9 +58,11 @@ root.render(
         </button>
       </div>
     </div>}>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
+      </HelmetProvider>
     </Sentry.ErrorBoundary>
   </React.StrictMode>
 )

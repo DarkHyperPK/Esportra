@@ -57,6 +57,7 @@ import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
 import { TournamentSponsorBanner } from '@/components/tournament/TournamentSponsorBanner';
 import { TournamentSponsorTicker } from '@/components/tournament/TournamentSponsorTicker';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
+import SEO from '@/components/SEO';
 
 interface EsportsGame {
   name: string;
@@ -715,6 +716,29 @@ const TournamentDetails = () => {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-esports-primary/30 font-sans overflow-x-hidden">
+      <SEO
+        title={tournament.name}
+        description={tournament.description || `Join ${tournament.name} on Esportra`}
+        image={tournament.image_url || undefined}
+        url={`/tournaments/${slug}`}
+        type="article"
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'Event',
+          name: tournament.name,
+          description: tournament.description,
+          startDate: tournament.date,
+          endDate: tournament.end_date,
+          image: tournament.image_url,
+          eventAttendanceMode: !tournament.is_online
+            ? 'https://schema.org/OfflineEventAttendanceMode'
+            : 'https://schema.org/OnlineEventAttendanceMode',
+          organizer: {
+            '@type': 'Organization',
+            name: tournament.organizer?.username || 'Esportra',
+          },
+        }}
+      />
 
       <TournamentHeader
         tournament={tournament}

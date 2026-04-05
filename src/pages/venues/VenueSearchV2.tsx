@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import SEO from '@/components/SEO';
 
 interface VenueFilters {
   cities: string[];
@@ -104,6 +105,11 @@ const VenueSearchV2 = () => {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col">
+      <SEO
+        title="Find Gaming Venues"
+        description="Discover gaming venues, LAN centers, and esports arenas near you. Book stations and join local tournaments."
+        url="/venues"
+      />
       <main className="flex-grow container mx-auto px-4 md:px-6 max-w-6xl py-8 md:py-12">
 
         {/* Header */}
