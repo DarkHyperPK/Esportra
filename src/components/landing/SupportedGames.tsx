@@ -25,7 +25,6 @@ interface GameAssets {
 }
 
 const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined }) => {
-  const [isHovered, setIsHovered] = useState(false);
   const banner = assets?.banner;
   const videoId = assets?.videoId;
   const cover = assets?.cover;
@@ -35,27 +34,29 @@ const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined
       to={`/tournaments?game=${game.slug}`}
       className="group relative block h-[340px] md:h-[400px] rounded-2xl overflow-hidden"
       aria-label={`Browse ${game.name} tournaments`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Video background on hover, image otherwise */}
-      {isHovered && videoId ? (
-        <iframe
-          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&modestbranding=1`}
-          allow="autoplay"
-          className="absolute inset-0 h-full w-full object-cover scale-150 pointer-events-none"
-          tabIndex={-1}
-        />
-      ) : banner ? (
+      {/* Banner image shown behind iframe as fallback while video loads */}
+      {banner && (
         <img
           src={banner}
           alt=""
           aria-hidden
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[8s] ease-out group-hover:scale-110"
+          className="absolute inset-0 h-full w-full object-cover"
         />
-      ) : (
-        <div className="absolute inset-0 bg-zinc-900 animate-pulse" />
       )}
+
+      {/* Video background — always autoplay, muted, looped */}
+      {videoId ? (
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&modestbranding=1&rel=0`}
+          allow="autoplay; encrypted-media"
+          loading="lazy"
+          className="absolute inset-0 h-full w-full scale-[1.8] pointer-events-none"
+          tabIndex={-1}
+        />
+      ) : !banner ? (
+        <div className="absolute inset-0 bg-zinc-900 animate-pulse" />
+      ) : null}
 
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
