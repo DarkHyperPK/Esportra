@@ -23,6 +23,12 @@ interface GameAssets {
   cover: string | null;
 }
 
+// Use a different IGDB artwork index for games where the default looks bad
+const BANNER_INDEX_OVERRIDES: Record<string, number> = {
+  cs2: 2,
+  tekken8: 1,
+};
+
 const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined }) => {
   const banner = assets?.banner;
   const cover = assets?.cover;
@@ -83,10 +89,12 @@ const SupportedGames = () => {
     games.forEach((game) => {
       fetchGameData(game.name).then((data: CachedGame) => {
         if (!cancelled) {
+          const idx = BANNER_INDEX_OVERRIDES[game.slug] ?? 0;
+          const banner = data.screenshots?.[idx] || data.gameBanner;
           setGameAssets((prev) => ({
             ...prev,
             [game.slug]: {
-              banner: data.gameBanner,
+              banner,
               cover: data.cover,
             },
           }));
@@ -97,43 +105,26 @@ const SupportedGames = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Collect loaded banner URLs for section background collage
-  const banners = Object.values(gameAssets).map((a) => a.banner).filter(Boolean) as string[];
-
   const navClass = "bg-white/5 border-white/10 hover:bg-white/10 text-white disabled:opacity-30";
 
   return (
     <section ref={sectionRef} className="py-32 bg-[#0a0a0a] relative overflow-hidden">
-      {/* Animated ambient glow orbs */}
+      {/* Digital arena grid background */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        <motion.div
-          animate={{ x: [0, 60, 0], y: [0, -40, 0], opacity: [0.12, 0.2, 0.12] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-rose-500/20 blur-[120px]"
+        {/* Perspective grid floor */}
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)",
+            backgroundSize: "60px 60px",
+          }}
         />
-        <motion.div
-          animate={{ x: [0, -50, 0], y: [0, 30, 0], opacity: [0.08, 0.15, 0.08] }}
-          transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", delay: 4 }}
-          className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full bg-blue-500/15 blur-[120px]"
-        />
-        <motion.div
-          animate={{ opacity: [0.05, 0.1, 0.05] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-indigo-500/10 blur-[100px]"
-        />
+        {/* Radial fade — grid fades out at edges */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,#0a0a0a_75%)]" />
+        {/* Subtle center glow to hint at arena spotlight */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[radial-gradient(ellipse_at_center,rgba(244,63,94,0.04)_0%,transparent_60%)]" />
       </div>
-
-      {/* Background collage — blurred game artworks */}
-      {banners.length >= 4 && (
-        <div className="absolute inset-0 grid grid-cols-4 opacity-[0.12] pointer-events-none" aria-hidden>
-          {banners.slice(0, 4).map((url, i) => (
-            <img key={i} src={url} alt="" className="h-full w-full object-cover blur-md saturate-50" />
-          ))}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/30 to-[#0a0a0a]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-transparent to-[#0a0a0a]" />
-        </div>
-      )}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_0%,transparent_70%)] pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Header */}
