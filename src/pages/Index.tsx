@@ -5,6 +5,7 @@ import FeaturesSection from "@/components/landing/FeaturesSection";
 import LogoTicker from "@/components/landing/LogoTicker";
 import TheManifesto from "@/components/landing/TheManifesto";
 import PlatformPromise from "@/components/landing/PlatformPromise";
+import SupportedGames from "@/components/landing/SupportedGames";
 import TheHeartbeat from "@/components/landing/TheHeartbeat";
 import Roadmap from "@/components/landing/Roadmap";
 import PremiumBackground from "@/components/ui/PremiumBackground";
@@ -21,6 +22,7 @@ const Index = () => {
             <LogoTicker />
             <TheManifesto />
             <FeaturesSection />
+            <SupportedGames />
             <TheHeartbeat />
             <PlatformPromise />
             <Roadmap />
