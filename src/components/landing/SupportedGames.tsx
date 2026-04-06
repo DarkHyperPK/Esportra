@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import esportsData from "@/data/esportsGames.json";
-import { fetchGameData } from "@/hooks/useRawgGame";
+import { fetchGameData, type CachedGame } from "@/hooks/useRawgGame";
 import {
   Carousel,
   CarouselContent,
@@ -18,19 +18,37 @@ interface Game {
   logo: string;
 }
 
-const GameCard = ({ game, bg }: { game: Game; bg: string | null | undefined }) => {
-  const loaded = typeof bg === "string";
+interface GameAssets {
+  banner: string | null;
+  cover: string | null;
+  videoId: string | null;
+}
+
+const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const banner = assets?.banner;
+  const videoId = assets?.videoId;
+  const cover = assets?.cover;
 
   return (
     <Link
       to={`/tournaments?game=${game.slug}`}
       className="group relative block h-[340px] md:h-[400px] rounded-2xl overflow-hidden"
       aria-label={`Browse ${game.name} tournaments`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Background image with Ken Burns zoom */}
-      {loaded ? (
+      {/* Video background on hover, image otherwise */}
+      {isHovered && videoId ? (
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&modestbranding=1`}
+          allow="autoplay"
+          className="absolute inset-0 h-full w-full object-cover scale-150 pointer-events-none"
+          tabIndex={-1}
+        />
+      ) : banner ? (
         <img
-          src={bg}
+          src={banner}
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-[8s] ease-out group-hover:scale-110"
@@ -40,20 +58,24 @@ const GameCard = ({ game, bg }: { game: Game; bg: string | null | undefined }) =
       )}
 
       {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
 
-      {/* Card content */}
-      <div className="absolute inset-x-0 bottom-0 p-5 md:p-6 flex flex-col items-start gap-2">
-        <img
-          src={game.logo}
-          alt={`${game.name} logo`}
-          className="h-10 md:h-12 w-auto object-contain drop-shadow-lg"
-        />
-        <div>
-          <p className="text-base md:text-lg font-medium text-white leading-tight">
+      {/* Card content — IGDB cover art as logo */}
+      <div className="absolute inset-x-0 bottom-0 p-5 md:p-6 flex items-end gap-3">
+        {cover ? (
+          <img
+            src={cover}
+            alt={`${game.name} cover`}
+            className="h-20 md:h-24 w-auto rounded-lg shadow-2xl object-cover flex-shrink-0 border border-white/10"
+          />
+        ) : (
+          <div className="h-20 md:h-24 w-14 md:w-16 rounded-lg bg-white/5 animate-pulse flex-shrink-0" />
+        )}
+        <div className="min-w-0">
+          <p className="text-base md:text-lg font-semibold text-white leading-tight truncate">
             {game.name}
           </p>
-          <p className="text-xs text-white/50">{game.category}</p>
+          <p className="text-xs text-white/50 mt-0.5">{game.category}</p>
         </div>
       </div>
     </Link>
@@ -65,14 +87,21 @@ const SupportedGames = () => {
   const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
   const games = esportsData.games as Game[];
 
-  const [backgrounds, setBackgrounds] = useState<Record<string, string | null>>({});
+  const [gameAssets, setGameAssets] = useState<Record<string, GameAssets>>({});
 
   useEffect(() => {
     let cancelled = false;
     games.forEach((game) => {
-      fetchGameData(game.name).then((data) => {
+      fetchGameData(game.name).then((data: CachedGame) => {
         if (!cancelled) {
-          setBackgrounds((prev) => ({ ...prev, [game.slug]: data.gameBanner }));
+          setGameAssets((prev) => ({
+            ...prev,
+            [game.slug]: {
+              banner: data.gameBanner,
+              cover: data.cover,
+              videoId: data.videos?.[0]?.videoId || null,
+            },
+          }));
         }
       });
     });
@@ -118,7 +147,7 @@ const SupportedGames = () => {
                   key={game.slug}
                   className="pl-4 basis-full sm:basis-1/2 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
                 >
-                  <GameCard game={game} bg={backgrounds[game.slug]} />
+                  <GameCard game={game} assets={gameAssets[game.slug]} />
                 </CarouselItem>
               ))}
             </CarouselContent>

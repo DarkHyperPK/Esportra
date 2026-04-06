@@ -23,12 +23,13 @@ interface GameData {
 export interface CachedGame {
     gameLogo: string | null;
     gameBanner: string | null;
+    cover: string | null;            // IGDB official cover art
     screenshots: string[];           // IGDB banners
     rawgScreenshots: string[];       // RAWG screenshots
     videos: IgdbVideo[];
 }
 
-const CACHE_KEY = 'game_assets_cache_v3';
+const CACHE_KEY = 'game_assets_cache_v4';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
 
 function loadPersistedCache(): Map<string, CachedGame> {
@@ -125,6 +126,7 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
             const rawg = rawgResult.status === 'fulfilled' ? rawgResult.value : null;
 
             const igdbBanners = igdb?.banners || [];
+            const igdbCover = igdb?.cover || null;
             const igdbVideos = igdb?.videos || [];
             const rawgLogo = rawg?.logo || null;
             const rawgScreenshots = rawg?.screenshots || [];
@@ -133,6 +135,7 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
             const cached: CachedGame = {
                 gameLogo: rawgLogo || twitchFallback,
                 gameBanner: igdbBanners[0] || rawgLogo || twitchFallback,
+                cover: igdbCover,
                 screenshots: igdbBanners.length > 0
                     ? igdbBanners
                     : [rawgLogo].filter(Boolean) as string[],
@@ -149,6 +152,7 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
             const cached: CachedGame = {
                 gameLogo: fallback,
                 gameBanner: fallback,
+                cover: null,
                 screenshots: fallback ? [fallback] : [],
                 rawgScreenshots: fallback ? [fallback] : [],
                 videos: [],
