@@ -104,17 +104,36 @@ const SupportedGames = () => {
 
   return (
     <section ref={sectionRef} className="py-32 bg-[#0a0a0a] relative overflow-hidden">
+      {/* Animated ambient glow orbs */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        <motion.div
+          animate={{ x: [0, 60, 0], y: [0, -40, 0], opacity: [0.12, 0.2, 0.12] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-rose-500/20 blur-[120px]"
+        />
+        <motion.div
+          animate={{ x: [0, -50, 0], y: [0, 30, 0], opacity: [0.08, 0.15, 0.08] }}
+          transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+          className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full bg-blue-500/15 blur-[120px]"
+        />
+        <motion.div
+          animate={{ opacity: [0.05, 0.1, 0.05] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-indigo-500/10 blur-[100px]"
+        />
+      </div>
+
       {/* Background collage — blurred game artworks */}
       {banners.length >= 4 && (
-        <div className="absolute inset-0 grid grid-cols-4 opacity-[0.06] pointer-events-none" aria-hidden>
+        <div className="absolute inset-0 grid grid-cols-4 opacity-[0.12] pointer-events-none" aria-hidden>
           {banners.slice(0, 4).map((url, i) => (
-            <img key={i} src={url} alt="" className="h-full w-full object-cover blur-sm" />
+            <img key={i} src={url} alt="" className="h-full w-full object-cover blur-md saturate-50" />
           ))}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-transparent to-[#0a0a0a]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/30 to-[#0a0a0a]" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-transparent to-[#0a0a0a]" />
         </div>
       )}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.015)_0%,transparent_70%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_0%,transparent_70%)] pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Header */}
