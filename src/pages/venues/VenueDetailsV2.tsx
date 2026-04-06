@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTrackImpression } from '@/hooks/useVenueImpressions';
 import { useVenueLiveStatus } from '@/hooks/useVenueLiveStatus';
+import { useVenueSeats } from '@/hooks/useVenueSeats';
+import { VenueSeatGrid } from '@/components/venues/VenueSeatGrid';
 import {
   MapPin, Clock, Phone, Mail, Cpu, Monitor, Wifi, Coffee, Car,
   Wind, Zap, Maximize2, Share2, ChevronLeft, ChevronRight,
@@ -112,6 +114,7 @@ const VenueDetailsV2 = () => {
   // Tracking
   const { mutate: trackImpression } = useTrackImpression();
   const liveStatus = useVenueLiveStatus(venue?.id);
+  const seatData = useVenueSeats(venue?.id);
   const tracked = useRef(false);
 
   useEffect(() => { fetchVenue(); }, [slug]);
@@ -208,7 +211,20 @@ const VenueDetailsV2 = () => {
                 <ChevronLeft className="w-4 h-4" /> Back to venues
               </button>
 
-              <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">{venue.name}</h1>
+              <h1 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">
+                {venue.name}
+                {seatData.isOnline ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium ml-3 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 align-middle">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Online
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium ml-3 px-2.5 py-1 rounded-full border border-zinc-700 bg-zinc-800 text-zinc-500 align-middle">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+                    Offline
+                  </span>
+                )}
+              </h1>
 
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-zinc-400">
                 <span className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4 text-rose-500" />{venue.city}, {venue.country}</span>
@@ -248,6 +264,16 @@ const VenueDetailsV2 = () => {
 
           {/* Left column */}
           <div className="lg:col-span-2 space-y-12">
+
+            {/* Live Seat Grid */}
+            <VenueSeatGrid
+              seats={seatData.seats}
+              isOnline={seatData.isOnline}
+              isLoading={seatData.isLoading}
+              freeCount={seatData.freeCount}
+              occupiedCount={seatData.occupiedCount}
+              reservedCount={seatData.reservedCount}
+            />
 
             {/* About */}
             <section>

@@ -48,6 +48,7 @@ export interface VenueBooking {
   special_requests?: string;
   contact_phone?: string;
   contact_email?: string;
+  booking_code?: string;
   created_at: string;
   updated_at: string;
 }
@@ -99,7 +100,8 @@ export const useVenueBooking = ({ venueId, venueName, pricePerHour, availableSta
       });
 
       const total = pricePerHour * formData.hours * formData.stations;
-      toast({ title: 'Booking Created!', description: `Your booking at ${venueName} is confirmed. Total: $${total.toFixed(2)}` });
+      const codeMsg = booking.booking_code ? ` Your code: ${booking.booking_code}` : '';
+      toast({ title: 'Booking Confirmed!', description: `Your booking at ${venueName} is confirmed.${codeMsg} Total: $${total.toFixed(2)}` });
       setOpen(false);
       return booking;
     } catch (err: any) {

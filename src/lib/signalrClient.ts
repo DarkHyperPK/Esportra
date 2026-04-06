@@ -25,6 +25,7 @@ import {
 import { supabase } from '@/lib/supabase';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
+const VENUE_HUB_URL = import.meta.env.VITE_VENUE_HUB_URL ?? '';
 
 // ── Hub connection factory ────────────────────────────────────────────────────
 
@@ -44,6 +45,21 @@ export function buildHubConnection(hubPath: string): HubConnection {
         return session?.access_token ?? '';
       },
     })
+    .withAutomaticReconnect([0, 2_000, 5_000, 10_000, 30_000])
+    .configureLogging(
+      import.meta.env.DEV ? LogLevel.Information : LogLevel.Warning,
+    )
+    .build();
+}
+
+/**
+ * Build a SignalR connection to the venue-hub service (separate from main API).
+ * Used for real-time seat availability. No auth required (public read-only).
+ */
+export function buildVenueHubConnection(hubPath: string): HubConnection {
+  const base = VENUE_HUB_URL || API_BASE_URL;
+  return new HubConnectionBuilder()
+    .withUrl(`${base}${hubPath}`)
     .withAutomaticReconnect([0, 2_000, 5_000, 10_000, 30_000])
     .configureLogging(
       import.meta.env.DEV ? LogLevel.Information : LogLevel.Warning,
@@ -89,4 +105,5 @@ export const HubPaths = {
   Chat          : '/hubs/chat',
   Conversation  : '/hubs/conversations',
   Live          : '/hubs/live',
+  VenueStatus   : '/hubs/venue-status',
 } as const;

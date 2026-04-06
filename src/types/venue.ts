@@ -41,3 +41,14 @@ export interface Venue {
     updated_at?: string;
     distance_km?: number | null;
 }
+
+/** Per-station seat status from the venue-hub real-time feed. */
+export interface SeatStatus {
+  stationId: string;
+  venueId: string;
+  status: 'free' | 'occupied' | 'reserved';
+  sessionType: string | null;
+  displayName: string | null;
+  expiresAt: string | null;
+  updatedAt: string;
+}
