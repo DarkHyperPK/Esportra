@@ -6,6 +6,8 @@ import LogoTicker from "@/components/landing/LogoTicker";
 import TheManifesto from "@/components/landing/TheManifesto";
 import PlatformPromise from "@/components/landing/PlatformPromise";
 import SupportedGames from "@/components/landing/SupportedGames";
+import VenueShowcase from "@/components/landing/VenueShowcase";
+import VenueCallToAction from "@/components/landing/VenueCallToAction";
 import TheHeartbeat from "@/components/landing/TheHeartbeat";
 import Roadmap from "@/components/landing/Roadmap";
 import PremiumBackground from "@/components/ui/PremiumBackground";
@@ -23,6 +25,8 @@ const Index = () => {
             <TheManifesto />
             <FeaturesSection />
             <SupportedGames />
+            <VenueShowcase />
+            <VenueCallToAction />
             <TheHeartbeat />
             <PlatformPromise />
             <Roadmap />

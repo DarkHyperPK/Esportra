@@ -1,0 +1,259 @@
+import { useRef } from "react";
+import { Link } from "react-router-dom";
+import { motion, useInView } from "framer-motion";
+import {
+  Building2,
+  CalendarCheck,
+  TrendingUp,
+  Gamepad2,
+  MapPin,
+  Trophy,
+} from "lucide-react";
+
+interface BenefitCard {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}
+
+const ownerBenefits: BenefitCard[] = [
+  {
+    icon: <Building2 className="w-5 h-5" />,
+    title: "Reach Esports Communities",
+    description:
+      "Connect with tournament organizers and competitive players in your area.",
+  },
+  {
+    icon: <CalendarCheck className="w-5 h-5" />,
+    title: "Smart Booking System",
+    description:
+      "Manage availability, pricing, and bookings from one dashboard.",
+  },
+  {
+    icon: <TrendingUp className="w-5 h-5" />,
+    title: "Grow Your Revenue",
+    description: "Fill empty slots with esports events and LAN parties.",
+  },
+];
+
+const playerBenefits: BenefitCard[] = [
+  {
+    icon: <Gamepad2 className="w-5 h-5" />,
+    title: "Premium Gaming Setups",
+    description:
+      "High-end PCs, consoles, and peripherals ready to compete.",
+  },
+  {
+    icon: <MapPin className="w-5 h-5" />,
+    title: "Venues Near You",
+    description:
+      "Discover gaming spaces in your city with real-time availability.",
+  },
+  {
+    icon: <Trophy className="w-5 h-5" />,
+    title: "LAN Experience",
+    description:
+      "Nothing beats competing side by side. Find your next LAN spot.",
+  },
+];
+
+const containerVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.12 },
+  },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" },
+  },
+};
+
+const BenefitCardItem = ({
+  card,
+  accent,
+}: {
+  card: BenefitCard;
+  accent: "rose" | "cyan";
+}) => {
+  const colorMap = {
+    rose: {
+      iconBg: "bg-rose-500/10",
+      iconBorder: "border-rose-500/20",
+      iconText: "text-rose-400",
+      hoverBorder: "hover:border-rose-500/20",
+    },
+    cyan: {
+      iconBg: "bg-cyan-500/10",
+      iconBorder: "border-cyan-500/20",
+      iconText: "text-cyan-400",
+      hoverBorder: "hover:border-cyan-500/20",
+    },
+  };
+
+  const colors = colorMap[accent];
+
+  return (
+    <motion.div
+      variants={cardVariants}
+      className={`group p-5 bg-white/[0.02] border border-white/5 rounded-2xl ${colors.hoverBorder} transition-all duration-500 hover:bg-white/[0.04]`}
+    >
+      <div className="flex items-start gap-4">
+        <div
+          className={`w-10 h-10 rounded-xl ${colors.iconBg} border ${colors.iconBorder} flex items-center justify-center ${colors.iconText} flex-shrink-0`}
+        >
+          {card.icon}
+        </div>
+        <div className="min-w-0">
+          <h4 className="text-white font-medium text-base mb-1 font-heading">
+            {card.title}
+          </h4>
+          <p className="text-white/40 text-sm leading-relaxed font-light">
+            {card.description}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const VenueShowcase = () => {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
+
+  return (
+    <section
+      ref={sectionRef}
+      className="py-24 md:py-32 bg-[#0a0a0a] relative overflow-hidden"
+    >
+      {/* Background ambience */}
+      <div
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(244,63,94,0.04)_0%,transparent_60%)] pointer-events-none"
+        aria-hidden
+      />
+      <div
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,rgba(6,182,212,0.04)_0%,transparent_60%)] pointer-events-none"
+        aria-hidden
+      />
+
+      <div className="container mx-auto px-4 relative z-10">
+        {/* Section heading */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-16 md:mb-20"
+        >
+          <span className="text-white/30 text-xs md:text-sm tracking-[0.4em] uppercase font-medium block mb-4">
+            Venues &amp; Spaces
+          </span>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-[0.15em] text-white uppercase font-heading mb-6">
+            Where Competitors{" "}
+            <span className="font-medium italic text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-cyan-400">
+              Gather
+            </span>
+          </h2>
+          <p className="text-white/40 text-sm md:text-base font-light font-heading max-w-xl mx-auto">
+            One platform for venue owners to list their spaces and players to
+            discover the perfect arena.
+          </p>
+        </motion.div>
+
+        {/* Split layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 max-w-6xl mx-auto">
+          {/* Left — Venue Owners */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="space-y-6"
+          >
+            {/* Column header */}
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-px flex-1 bg-gradient-to-r from-rose-500/30 to-transparent" />
+              <span className="text-rose-400 text-xs tracking-[0.3em] uppercase font-semibold whitespace-nowrap">
+                For Venue Owners
+              </span>
+              <div className="h-px flex-1 bg-gradient-to-l from-rose-500/30 to-transparent" />
+            </div>
+
+            <h3 className="text-2xl md:text-3xl font-light text-white font-heading text-center lg:text-left">
+              List Your Space
+            </h3>
+
+            {/* Cards */}
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate={isInView ? "visible" : "hidden"}
+              className="space-y-3"
+            >
+              {ownerBenefits.map((card) => (
+                <BenefitCardItem key={card.title} card={card} accent="rose" />
+              ))}
+            </motion.div>
+
+            {/* CTA */}
+            <div className="pt-2 text-center lg:text-left">
+              <Link
+                to="/venues/register"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 text-white text-sm font-medium tracking-wide hover:from-rose-400 hover:to-rose-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(244,63,94,0.3)] hover:-translate-y-0.5"
+              >
+                List Your Venue
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Right — Players */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.35 }}
+            className="space-y-6"
+          >
+            {/* Column header */}
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-px flex-1 bg-gradient-to-r from-cyan-500/30 to-transparent" />
+              <span className="text-cyan-400 text-xs tracking-[0.3em] uppercase font-semibold whitespace-nowrap">
+                For Players
+              </span>
+              <div className="h-px flex-1 bg-gradient-to-l from-cyan-500/30 to-transparent" />
+            </div>
+
+            <h3 className="text-2xl md:text-3xl font-light text-white font-heading text-center lg:text-left">
+              Find Your Arena
+            </h3>
+
+            {/* Cards */}
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate={isInView ? "visible" : "hidden"}
+              className="space-y-3"
+            >
+              {playerBenefits.map((card) => (
+                <BenefitCardItem key={card.title} card={card} accent="cyan" />
+              ))}
+            </motion.div>
+
+            {/* CTA */}
+            <div className="pt-2 text-center lg:text-left">
+              <Link
+                to="/venues"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 text-white text-sm font-medium tracking-wide hover:from-cyan-400 hover:to-cyan-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:-translate-y-0.5"
+              >
+                Explore Venues
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default VenueShowcase;
