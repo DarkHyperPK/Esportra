@@ -39,8 +39,8 @@ const LogoTicker = () => {
                             href={sponsor.website_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => trackClick(sponsor.id)}
-                            onViewportEnter={() => trackImpression(sponsor.id)}
+                            onClick={() => { if (sponsor.id.length === 36) trackClick(sponsor.id); }}
+                            onViewportEnter={() => { if (sponsor.id.length === 36) trackImpression(sponsor.id); }}
                             viewport={{ once: true, amount: 0.5 }}
                             className="group relative transition-transform duration-300 hover:scale-105"
                         >
