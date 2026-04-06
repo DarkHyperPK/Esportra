@@ -115,10 +115,10 @@ const SupportedGames = () => {
         <img
           src={getWebsiteAssetUrl('landing-page-assets/enter-arena.jpg')}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover blur-sm opacity-[0.15] scale-105"
+          className="absolute inset-0 h-full w-full object-cover opacity-[0.35] scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/60 to-[#0a0a0a]" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/80 via-transparent to-[#0a0a0a]/80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/40 to-[#0a0a0a]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/60 via-transparent to-[#0a0a0a]/60" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
