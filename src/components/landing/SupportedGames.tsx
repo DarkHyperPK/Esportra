@@ -21,12 +21,10 @@ interface Game {
 interface GameAssets {
   banner: string | null;
   cover: string | null;
-  videoId: string | null;
 }
 
 const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined }) => {
   const banner = assets?.banner;
-  const videoId = assets?.videoId;
   const cover = assets?.cover;
 
   return (
@@ -35,28 +33,18 @@ const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined
       className="group relative block h-[340px] md:h-[400px] rounded-2xl overflow-hidden"
       aria-label={`Browse ${game.name} tournaments`}
     >
-      {/* Banner image shown behind iframe as fallback while video loads */}
-      {banner && (
+      {/* IGDB banner with Ken Burns zoom on hover */}
+      {banner ? (
         <img
           src={banner}
           alt=""
           aria-hidden
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      )}
-
-      {/* Video background — always autoplay, muted, looped */}
-      {videoId ? (
-        <iframe
-          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&modestbranding=1&rel=0`}
-          allow="autoplay; encrypted-media"
           loading="lazy"
-          className="absolute inset-0 h-full w-full scale-[1.8] pointer-events-none"
-          tabIndex={-1}
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[8s] ease-out group-hover:scale-110"
         />
-      ) : !banner ? (
+      ) : (
         <div className="absolute inset-0 bg-zinc-900 animate-pulse" />
-      ) : null}
+      )}
 
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
@@ -100,7 +88,6 @@ const SupportedGames = () => {
             [game.slug]: {
               banner: data.gameBanner,
               cover: data.cover,
-              videoId: data.videos?.[0]?.videoId || null,
             },
           }));
         }
@@ -110,10 +97,23 @@ const SupportedGames = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Collect loaded banner URLs for section background collage
+  const banners = Object.values(gameAssets).map((a) => a.banner).filter(Boolean) as string[];
+
   const navClass = "bg-white/5 border-white/10 hover:bg-white/10 text-white disabled:opacity-30";
 
   return (
     <section ref={sectionRef} className="py-32 bg-[#0a0a0a] relative overflow-hidden">
+      {/* Background collage — blurred game artworks */}
+      {banners.length >= 4 && (
+        <div className="absolute inset-0 grid grid-cols-4 opacity-[0.06] pointer-events-none" aria-hidden>
+          {banners.slice(0, 4).map((url, i) => (
+            <img key={i} src={url} alt="" className="h-full w-full object-cover blur-sm" />
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-transparent to-[#0a0a0a]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-transparent to-[#0a0a0a]" />
+        </div>
+      )}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.015)_0%,transparent_70%)] pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10">
