@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import esportsData from "@/data/esportsGames.json";
 import { fetchGameData, type CachedGame } from "@/hooks/useRawgGame";
+import { getWebsiteAssetUrl } from "@/lib/storage";
 import {
   Carousel,
   CarouselContent,
@@ -25,7 +26,7 @@ interface GameAssets {
 
 // Use a different IGDB artwork index for games where the default looks bad
 const BANNER_INDEX_OVERRIDES: Record<string, number> = {
-  cs2: 2,
+  cs2: 3,
   tekken8: 1,
 };
 
@@ -109,21 +110,15 @@ const SupportedGames = () => {
 
   return (
     <section ref={sectionRef} className="py-32 bg-[#0a0a0a] relative overflow-hidden">
-      {/* Digital arena grid background */}
+      {/* Arena background image — blurred and darkened */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        {/* Perspective grid floor */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}
+        <img
+          src={getWebsiteAssetUrl('landing-page-assets/enter-arena.jpg')}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover blur-sm opacity-[0.15] scale-105"
         />
-        {/* Radial fade — grid fades out at edges */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,#0a0a0a_75%)]" />
-        {/* Subtle center glow to hint at arena spotlight */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[radial-gradient(ellipse_at_center,rgba(244,63,94,0.04)_0%,transparent_60%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/60 to-[#0a0a0a]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/80 via-transparent to-[#0a0a0a]/80" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
