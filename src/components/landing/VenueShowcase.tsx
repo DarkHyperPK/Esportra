@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import {
@@ -8,7 +8,16 @@ import {
   Gamepad2,
   MapPin,
   Trophy,
+  ShieldCheck,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface BenefitCard {
   icon: React.ReactNode;
@@ -124,6 +133,7 @@ const BenefitCardItem = ({
 const VenueShowcase = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
+  const [showLicenseDialog, setShowLicenseDialog] = useState(false);
 
   return (
     <section
@@ -199,12 +209,12 @@ const VenueShowcase = () => {
 
             {/* CTA */}
             <div className="pt-2 text-center lg:text-left">
-              <Link
-                to="/venues/register"
+              <button
+                onClick={() => setShowLicenseDialog(true)}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 text-white text-sm font-medium tracking-wide hover:from-rose-400 hover:to-rose-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(244,63,94,0.3)] hover:-translate-y-0.5"
               >
                 List Your Venue
-              </Link>
+              </button>
             </div>
           </motion.div>
 
@@ -252,6 +262,38 @@ const VenueShowcase = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* License requirement dialog */}
+      <Dialog open={showLicenseDialog} onOpenChange={setShowLicenseDialog}>
+        <DialogContent className="max-w-md bg-[#121214] border-white/10">
+          <DialogHeader>
+            <div className="mx-auto mb-3 w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+              <ShieldCheck className="w-6 h-6 text-rose-400" />
+            </div>
+            <DialogTitle className="text-center text-white text-xl font-heading">
+              License Required
+            </DialogTitle>
+            <DialogDescription className="text-center text-white/50 text-sm leading-relaxed pt-2">
+              To list a venue on Esportra, you need a verified venue license. This ensures quality and trust for all players booking your space. Apply for your license to get started.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-4">
+            <button
+              onClick={() => setShowLicenseDialog(false)}
+              className="px-5 py-2.5 rounded-xl border border-white/10 text-white/60 text-sm hover:bg-white/5 transition-colors"
+            >
+              Maybe Later
+            </button>
+            <Link
+              to="/verification"
+              onClick={() => setShowLicenseDialog(false)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 text-white text-sm font-medium hover:from-rose-400 hover:to-rose-500 transition-all duration-300"
+            >
+              Apply for License
+            </Link>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };
