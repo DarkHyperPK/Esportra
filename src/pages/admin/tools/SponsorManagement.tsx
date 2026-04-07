@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
+import { csvEscape } from '@/lib/exportUtils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -463,6 +464,37 @@ const SponsorManagement = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-zinc-800 text-zinc-400 hover:text-white"
+                        onClick={() => {
+                            const data = activeTab === 'sponsors' ? sponsors : applications;
+                            if (!data.length) { toast({ title: 'Nothing to export', description: 'No data available.', variant: 'destructive' }); return; }
+                            const csv = activeTab === 'sponsors'
+                                ? [
+                                    ['ID', 'Name', 'Tier', 'Active', 'Website', 'Priority', 'Created'],
+                                    ...sponsors.map((s: any) => [s.id, s.name, s.tier, s.is_active, s.website_url, s.priority, s.created_at ? new Date(s.created_at).toLocaleDateString() : ''].map(csvEscape))
+                                  ].map(row => row.join(',')).join('\n')
+                                : [
+                                    ['ID', 'Company', 'Website', 'Status', 'Submitted'],
+                                    ...applications.map((a: any) => [a.id, a.company_name, a.company_website, a.status, a.created_at ? new Date(a.created_at).toLocaleDateString() : ''].map(csvEscape))
+                                  ].map(row => row.join(',')).join('\n');
+                            const blob = new Blob([csv], { type: 'text/csv' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${activeTab}_export_${new Date().toISOString().split('T')[0]}.csv`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            setTimeout(() => URL.revokeObjectURL(url), 5000);
+                            toast({ title: 'Export complete', description: `${activeTab === 'sponsors' ? 'Sponsors' : 'Applications'} CSV downloaded` });
+                        }}
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        Export CSV
+                    </Button>
                     <div className="flex items-center bg-[#0a0a0c] border border-zinc-800 rounded-lg p-1">
                         <button
                             onClick={() => setActiveTab('applications')}

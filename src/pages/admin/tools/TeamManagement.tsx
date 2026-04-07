@@ -6,8 +6,9 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, UsersRound, Search, Eye, MoreVertical, Calendar,
   Users, Trophy, RefreshCw, Trash2, UserMinus, ArrowRightLeft,
-  Pencil, Shield, Loader2, Gamepad2, Globe, Crown, X
+  Pencil, Shield, Loader2, Gamepad2, Globe, Crown, X, Download
 } from "lucide-react";
+import { csvEscape } from "@/lib/exportUtils";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
@@ -179,6 +180,24 @@ const TeamManagementTool = () => {
 
   const totalPages = Math.ceil(total / limit);
 
+  const exportCSV = () => {
+    if (!teams.length) { toast({ title: 'Nothing to export', description: 'No teams data available.', variant: 'destructive' }); return; }
+    const csv = [
+      ['ID', 'Name', 'Tag', 'Game', 'Members', 'Tournaments', 'Wins', 'Owner', 'Created'],
+      ...teams.map((t: any) => [t.id, t.name, t.tag, t.game, t.member_count || 0, t.tournament_count || 0, t.wins || 0, t.owner_username || '', t.created_at ? new Date(t.created_at).toLocaleDateString() : ''].map(csvEscape))
+    ].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `teams_export_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast({ title: 'Export complete', description: 'Teams CSV downloaded' });
+  };
+
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   // ── Render ──
@@ -200,9 +219,14 @@ const TeamManagementTool = () => {
             <p className="text-zinc-400 text-sm">Manage all teams, members, and participation</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="border-white/10 text-white hover:bg-white/5">
-          <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="border-white/10 text-white hover:bg-white/5">
+            <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportCSV} className="border-zinc-800 text-zinc-400 hover:text-white">
+            <Download className="w-4 h-4 mr-2" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

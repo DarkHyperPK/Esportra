@@ -37,6 +37,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, useAdminBulkUserAction, adminKeys } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/apiClient";
+import { downloadCsvExport } from "@/lib/exportUtils";
 import {
     Dialog,
     DialogContent,
@@ -139,6 +140,7 @@ const UserManagementTool = () => {
     const [sortBy, setSortBy] = useState<string>('created_at');
     const [sortDir, setSortDir] = useState<string>('desc');
     const [showFilters, setShowFilters] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     // Bulk selection state
     const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
@@ -343,27 +345,28 @@ const UserManagementTool = () => {
         }
     };
 
-    const exportUsersCSV = () => {
-        const csv = [
-            ['ID', 'Username', 'Full Name', 'Email', 'Regular Roles', 'Admin Roles', 'Created At'],
-            ...filteredUsers.map(u => [
-                u.id,
-                u.username,
-                u.full_name,
-                u.email,
-                getUserRoles(u).join('; '),
-                (u.admin_roles || []).join('; '),
-                u.created_at
-            ])
-        ].map(row => row.join(',')).join('\n');
-
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+    const handleExport = async () => {
+        if (isExporting) return;
+        setIsExporting(true);
+        try {
+            await downloadCsvExport('/api/admin/export/users', {
+                search: searchTerm,
+                role: roleFilter !== 'all' ? roleFilter : undefined,
+                status: statusFilter !== 'all' ? statusFilter : undefined,
+                country: countryFilter || undefined,
+                verified: verifiedFilter !== 'all' ? verifiedFilter : undefined,
+                has_team: hasTeamFilter !== 'all' ? hasTeamFilter : undefined,
+                joined_from: joinedFrom || undefined,
+                joined_to: joinedTo || undefined,
+                sort_by: sortBy,
+                sort_dir: sortDir,
+            }, `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+            toast({ title: 'Export complete', description: 'Users CSV downloaded' });
+        } catch (err: any) {
+            toast({ title: 'Export failed', description: err.message, variant: 'destructive' });
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     // Get user roles from user_roles array
@@ -499,11 +502,12 @@ const UserManagementTool = () => {
                     </Button>
                     <Button
                         size="sm"
-                        onClick={exportUsersCSV}
+                        onClick={handleExport}
+                        disabled={isExporting}
                         className="bg-rose-500 hover:bg-rose-600 text-white"
                     >
-                        <Download className="w-4 h-4 mr-2" />
-                        Export
+                        {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                        {isExporting ? 'Exporting…' : 'Export'}
                     </Button>
                 </div>
             </motion.header>

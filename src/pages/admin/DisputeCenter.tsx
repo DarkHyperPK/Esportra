@@ -7,13 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MessageSquare, AlertCircle, CheckCircle, XCircle, Clock, Image as ImageIcon, RefreshCw, X, Search, Send, ZoomIn, Shield } from 'lucide-react';
+import { MessageSquare, AlertCircle, CheckCircle, XCircle, Clock, Image as ImageIcon, RefreshCw, X, Search, Send, ZoomIn, Shield, Download, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useHub } from '@/contexts/SignalRContext';
 import { HubPaths } from '@/lib/signalrClient';
+import { downloadCsvExport } from '@/lib/exportUtils';
 
 type Dispute = {
   id: string;
@@ -77,6 +78,7 @@ const DisputeCenter: React.FC = () => {
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [liftingBan, setLiftingBan] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const load = async () => {
     try {
@@ -382,6 +384,21 @@ const DisputeCenter: React.FC = () => {
   const statusDotColor = (status: string) =>
     status === 'open' ? 'bg-yellow-500' : status === 'resolved' ? 'bg-green-500' : status === 'rejected' ? 'bg-red-500' : 'bg-zinc-500';
 
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await downloadCsvExport('/api/admin/export/disputes', {
+        status: activeTab !== 'all' ? activeTab : undefined,
+      }, `disputes_export_${new Date().toISOString().split('T')[0]}.csv`);
+      toast({ title: 'Export complete', description: 'Disputes CSV downloaded' });
+    } catch (err: any) {
+      toast({ title: 'Export failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#050505] py-8 px-6">
       <div className="max-w-[1800px] mx-auto">
@@ -393,15 +410,27 @@ const DisputeCenter: React.FC = () => {
             </div>
             <h1 className="text-white text-2xl font-bold tracking-tight">Dispute Center</h1>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => load()}
-            className="text-zinc-400 hover:text-white hover:bg-white/[0.06] gap-1.5"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={isExporting}
+              className="border-zinc-800 text-zinc-400 hover:text-white"
+            >
+              {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              {isExporting ? 'Exporting…' : 'Export CSV'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => load()}
+              className="text-zinc-400 hover:text-white hover:bg-white/[0.06] gap-1.5"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Stats row */}

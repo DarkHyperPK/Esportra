@@ -27,11 +27,13 @@ import {
   SortDesc,
   Star,
   StarOff,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAdminTournaments, useAdminTournamentUpdate, useAdminBulkTournamentAction } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
+import { downloadCsvExport } from "@/lib/exportUtils";
 import {
   Dialog,
   DialogContent,
@@ -80,6 +82,7 @@ const TournamentManagementTool = () => {
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [modalTab, setModalTab] = useState<'details'>('details');
   const [refreshing, setRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ id: string; status: string; name: string } | null>(null);
 
   // Bulk selection state
@@ -149,19 +152,28 @@ const TournamentManagementTool = () => {
     );
   };
 
-  const exportCSV = () => {
-    const csv = [
-      ['ID', 'Name', 'Game', 'Status', 'Prize Pool', 'Max Teams', 'Start Date'],
-      ...filteredTournaments.map(t => [t.id, t.name, t.game, t.status, t.prize_pool, t.max_teams, t.start_date])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tournaments_export_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await downloadCsvExport('/api/admin/export/tournaments', {
+        search: searchTerm,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        game: gameFilter || undefined,
+        format: formatFilter || undefined,
+        prize_min: prizeMin || undefined,
+        prize_max: prizeMax || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+        sort_by: sortBy,
+        sort_dir: sortDir,
+      }, `tournaments_export_${new Date().toISOString().split('T')[0]}.csv`);
+      toast({ title: 'Export complete', description: 'Tournaments CSV downloaded' });
+    } catch (err: any) {
+      toast({ title: 'Export failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const resetFilters = () => {
@@ -290,11 +302,12 @@ const TournamentManagementTool = () => {
           </Button>
           <Button
             size="sm"
-            onClick={exportCSV}
+            onClick={handleExport}
+            disabled={isExporting}
             className="bg-rose-500 hover:bg-rose-600 text-white"
           >
-            <Download className="w-4 h-4 mr-2" />
-            Export
+            {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            {isExporting ? 'Exporting…' : 'Export'}
           </Button>
         </div>
       </motion.header>
