@@ -221,7 +221,7 @@ function ConnectedAccountsTab() {
         ? `${riotAccount.game_name}#${riotAccount.tag_line}`
         : 'Required for Valorant tournament registration',
       connected: !!riotAccount, loading: riotLoading,
-      icon: <img src="/riot-logo.svg" loading="lazy" alt="Riot" className="w-8 h-8 drop-shadow-md" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
+      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 587.93 165.37" className="w-8 h-8 drop-shadow-md"><path d="M98.77.33L0 46.07l24.61 93.66 18.73-2.3-5.15-58.89 6.15-2.74L54.96 136l32.01-3.93-5.69-65 6.09-2.71 11.68 66.23 32.38-3.98-6.23-71.25 6.16-2.74 12.77 72.43 32.01-3.93V19.71L98.77.33zm2.32 142.05l1.63 9.22 73.42 12.24v-30.68l-75.01 9.22h-.04z" fill="#D13639"/></svg>,
       onConnect: linkRiotAccount, onUnlink: handleUnlinkRiot, unlinking: unlinkingRiot,
       connectClass: 'bg-red-600 hover:bg-red-500',
     },
@@ -231,7 +231,7 @@ function ConnectedAccountsTab() {
         ? faceitAccount.nickname
         : 'Required for CS2 tournament registration',
       connected: !!faceitAccount, loading: faceitLoading,
-      icon: <img src="/faceit-logo.svg" loading="lazy" alt="Faceit" className="w-8 h-8 rounded-full drop-shadow-md" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />,
+      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-8 h-8 drop-shadow-md"><circle cx="256" cy="256" r="256" fill="#FF5500"/><path d="M168.3 158h175.4v44.1H216.4v39.5h111.2v44.1H216.4v72.3h-48.1V158z" fill="#1F1F1F"/></svg>,
       onConnect: linkFaceitAccount, onUnlink: handleUnlinkFaceit, unlinking: unlinkingFaceit,
       connectClass: 'bg-orange-600 hover:bg-orange-500',
     },
@@ -241,7 +241,7 @@ function ConnectedAccountsTab() {
         ? discordIdentity.identity_data?.full_name || discordIdentity.identity_data?.email || 'Linked'
         : 'Link your Discord account',
       connected: !!discordIdentity, loading: false,
-      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" className="w-8 h-8 drop-shadow-md"><path fill="#5865F2" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z" /></svg>,
+      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" className="w-8 h-8 drop-shadow-md"><path fill="#5865F2" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>,
       onConnect: linkDiscord, onUnlink: undefined, unlinking: false,
       connectClass: 'bg-[#5865F2] hover:bg-[#4752C4]',
     },
@@ -279,18 +279,6 @@ function ConnectedAccountsTab() {
           )}
         </div>
       ))}
-
-      {/* Steam — coming soon */}
-      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 flex items-center gap-4 opacity-40">
-        <div className="flex items-center justify-center shrink-0 w-10">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" className="w-8 h-8 opacity-90"><path fill="#ffffff" d="M248 8C111.03 8 0 119.03 0 256s111.03 248 248 248 248-111.03 248-248S384.97 8 248 8zm64.51 245.89v-3.92c0-30.83-25.04-55.87-55.87-55.87-30.84 0-55.88 25.04-55.88 55.87v3.92c0 30.83 25.04 55.87 55.88 55.87 30.83 0 55.87-25.04 55.87-55.87zm-142.3 84.15c0 14.63 11.89 26.51 26.51 26.51 14.63 0 26.52-11.88 26.52-26.51 0-14.62-11.89-26.51-26.52-26.51-14.62 0-26.51 11.89-26.51 26.51zm8.39-95.21v.57c-5.88-5.35-13.88-8.62-22.6-8.62-18.06 0-32.72 14.66-32.72 32.72s14.66 32.72 32.72 32.72c8.73 0 16.73-3.27 22.6-8.62v.57c0 10.96-8.91 19.87-19.87 19.87-10.97 0-19.88-8.91-19.88-19.87s8.91-19.87 19.88-19.87c10.96 0 19.87 8.91 19.87 19.87zm-55.33 62.49c-30.84 0-55.88-25.04-55.88-55.87v-3.92c0-30.84 25.04-55.88 55.88-55.88 30.83 0 55.87 25.04 55.87 55.88v3.92c0 30.83-25.04 55.87-55.87 55.87zm116.32-62.49c10.96 0 19.87 8.91 19.87 19.87s-8.91 19.87-19.87 19.87-19.88-8.91-19.88-19.87 8.92-19.87 19.88-19.87zm.76-32.54c18.06 0 32.71 14.66 32.71 32.71 0 18.06-14.65 32.72-32.71 32.72-18.06 0-32.72-14.66-32.72-32.72 0-18.05 14.66-32.71 32.72-32.71zm56.84 32.54c10.97 0 19.87 8.91 19.87 19.87s-8.9 19.87-19.87 19.87c-10.96 0-19.87-8.91-19.87-19.87s8.91-19.87 19.87-19.87zm-.76-32.54c-18.06 0-32.72 14.66-32.72 32.71 0 18.06 14.66 32.72 32.72 32.72s32.72-14.66 32.72-32.72c0-18.05-14.66-32.71-32.72-32.71z" /></svg>
-        </div>
-        <div className="flex-1">
-          <div className="font-medium text-white text-sm">Steam</div>
-          <div className="text-xs text-gray-500">Coming soon</div>
-        </div>
-        <span className="text-xs text-gray-600 border border-white/10 rounded-full px-2 py-0.5">Soon</span>
-      </div>
     </div>
   );
 }
