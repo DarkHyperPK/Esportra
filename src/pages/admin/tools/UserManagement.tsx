@@ -19,12 +19,18 @@ import {
     Download,
     UserCheck,
     UserX,
-    ExternalLink
+    ExternalLink,
+    MapPin,
+    Globe,
+    Gamepad2,
+    Link2,
+    Loader2,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, adminKeys } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
+import { apiClient } from "@/lib/apiClient";
 import {
     Dialog,
     DialogContent,
@@ -61,7 +67,45 @@ interface User {
     suspension_reason?: string | null;
     suspension_type?: string | null;
     user_roles?: UserRole[];
-    admin_roles?: string[]; // Array of role names
+    admin_roles?: string[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface UserDetail {
+    profile: {
+        id: string;
+        username: string | null;
+        full_name: string | null;
+        email: string | null;
+        avatar_url: string | null;
+        bio: string | null;
+        location: string | null;
+        country_code: string | null;
+        date_of_birth: string | null;
+        riot_tag: string | null;
+        faceit_nickname: string | null;
+        social_links: Record<string, string> | null;
+        card_image_url: string | null;
+        banner_url: string | null;
+        is_verified: boolean;
+        is_admin: boolean;
+        admin_roles: string[] | null;
+        is_suspended: boolean;
+        suspension_reason: string | null;
+        suspension_type: string | null;
+        suspension_until: string | null;
+        settings: Record<string, unknown> | null;
+        created_at: string;
+        updated_at: string | null;
+    };
+    licenses: { id: string; license_id: string; license_type: string; status: string; issued_at: string; expires_at: string | null; notes: string | null }[];
+    user_roles: { role: string; is_active: boolean }[];
+    verified_roles: { role: string; status: string; is_active: boolean; verified_at: string | null }[];
+    organizations: { id: string; name: string; slug: string; logo_url: string | null }[];
+    venues: { id: string; name: string; city: string | null; country: string | null; status: string }[];
+    tournaments: { id: string; name: string; game: string | null; status: string }[];
+    connected_accounts: { provider: string; provider_id: string; created_at: string; updated_at: string | null }[];
+    teams: { id: string; name: string; tag: string | null; logo_url: string | null; role: string }[];
 }
 
 const USERS_PER_PAGE = 25;
@@ -74,6 +118,8 @@ const UserManagementTool = () => {
     const [searchInput, setSearchInput] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [userDetail, setUserDetail] = useState<UserDetail | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
     const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [page, setPage] = useState(0);
@@ -132,7 +178,22 @@ const UserManagementTool = () => {
         return () => clearTimeout(timer);
     }, [searchInput]);
 
-    const handleRefresh = async () => {
+    // Fetch full user detail when a user is selected
+    useEffect(() => {
+        if (!selectedUser || suspendDialogOpen) {
+            setUserDetail(null);
+            return;
+        }
+        let cancelled = false;
+        setDetailLoading(true);
+        apiClient.get<UserDetail>(`/api/admin/users/${selectedUser.id}/detail`)
+            .then(data => { if (!cancelled) setUserDetail(data); })
+            .catch(() => { if (!cancelled) setUserDetail(null); })
+            .finally(() => { if (!cancelled) setDetailLoading(false); });
+        return () => { cancelled = true; };
+    }, [selectedUser, suspendDialogOpen]);
+
+    const handleRefresh= async () => {
         setRefreshing(true);
         await Promise.all([
             usersQuery.refetch(),
@@ -675,14 +736,236 @@ const UserManagementTool = () => {
 
             {/* User Detail Modal */}
             <Dialog open={!!selectedUser && !suspendDialogOpen} onOpenChange={() => setSelectedUser(null)}>
-                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl">
+                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-4xl max-h-[85vh] overflow-y-auto custom-scrollbar">
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">
                             <Users className="w-5 h-5 text-rose-500" />
                             User Details
                         </DialogTitle>
                     </DialogHeader>
-                    {selectedUser && (
+
+                    {detailLoading && (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-6 h-6 text-rose-500 animate-spin" />
+                        </div>
+                    )}
+
+                    {!detailLoading && userDetail && (() => {
+                        const p = userDetail.profile;
+                        return (
+                            <div className="space-y-4">
+                                {/* Basic Info Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {[
+                                        { label: 'Full Name', value: p.full_name },
+                                        { label: 'Username', value: p.username },
+                                        { label: 'Email', value: p.email },
+                                        { label: 'Country', value: p.country_code || null },
+                                        { label: 'Location', value: p.location },
+                                        { label: 'Date of Birth', value: p.date_of_birth ? new Date(p.date_of_birth).toLocaleDateString() : null },
+                                        { label: 'Joined', value: new Date(p.created_at).toLocaleDateString() },
+                                        { label: 'Last Updated', value: p.updated_at ? new Date(p.updated_at).toLocaleDateString() : null },
+                                    ].map((item) => (
+                                        <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50">
+                                            <p className="text-xs text-zinc-500 uppercase">{item.label}</p>
+                                            <p className="text-white text-sm mt-1">{item.value || 'N/A'}</p>
+                                        </div>
+                                    ))}
+                                    <div className="p-3 rounded-xl bg-zinc-900/50">
+                                        <p className="text-xs text-zinc-500 uppercase">Verified</p>
+                                        <div className="mt-1">{p.is_verified
+                                            ? <Badge className="bg-green-500/10 text-green-400 border-green-500/20 border">Verified</Badge>
+                                            : <Badge className="bg-zinc-500/10 text-zinc-400 border-zinc-500/20 border">Unverified</Badge>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Suspension Status */}
+                                {p.is_suspended && (
+                                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                                        <p className="text-xs text-red-400 uppercase mb-1">⚠ Suspended</p>
+                                        <p className="text-sm text-white">{p.suspension_reason || 'No reason provided'}</p>
+                                        <div className="flex gap-4 mt-1 text-xs text-zinc-400">
+                                            {p.suspension_type && <span>Type: {p.suspension_type}</span>}
+                                            {p.suspension_until && <span>Until: {new Date(p.suspension_until).toLocaleDateString()}</span>}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Bio */}
+                                {p.bio && (
+                                    <div className="p-3 rounded-xl bg-zinc-900/50">
+                                        <p className="text-xs text-zinc-500 uppercase mb-1">Bio</p>
+                                        <p className="text-sm text-zinc-300">{p.bio}</p>
+                                    </div>
+                                )}
+
+                                {/* Connected Accounts */}
+                                {userDetail.connected_accounts.length > 0 && (
+                                    <div className="p-3 rounded-xl bg-zinc-900/50">
+                                        <p className="text-xs text-zinc-500 uppercase mb-2">Connected Accounts</p>
+                                        <div className="flex gap-2 flex-wrap">
+                                            {userDetail.connected_accounts.map((acc) => (
+                                                <Badge key={acc.provider} className="bg-zinc-800 text-zinc-300 border-zinc-700 border capitalize gap-1">
+                                                    <Globe className="w-3 h-3" />
+                                                    {acc.provider}
+                                                    <span className="text-zinc-500 text-[10px]">({acc.provider_id})</span>
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Gaming Tags */}
+                                {(p.riot_tag || p.faceit_nickname) && (
+                                    <div className="p-3 rounded-xl bg-zinc-900/50">
+                                        <p className="text-xs text-zinc-500 uppercase mb-2">Gaming Tags</p>
+                                        <div className="flex gap-3 flex-wrap">
+                                            {p.riot_tag && (
+                                                <span className="text-sm text-zinc-300 flex items-center gap-1">
+                                                    <Gamepad2 className="w-3.5 h-3.5 text-red-400" /> Riot: {p.riot_tag}
+                                                </span>
+                                            )}
+                                            {p.faceit_nickname && (
+                                                <span className="text-sm text-zinc-300 flex items-center gap-1">
+                                                    <Gamepad2 className="w-3.5 h-3.5 text-orange-400" /> Faceit: {p.faceit_nickname}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Social Links */}
+                                {p.social_links && Object.keys(p.social_links).length > 0 && (
+                                    <div className="p-3 rounded-xl bg-zinc-900/50">
+                                        <p className="text-xs text-zinc-500 uppercase mb-2">Social Links</p>
+                                        <div className="flex gap-2 flex-wrap">
+                                            {Object.entries(p.social_links).map(([platform, url]) => (
+                                                <a key={platform} href={url as string} target="_blank" rel="noopener noreferrer"
+                                                   className="text-sm text-rose-400 hover:text-rose-300 flex items-center gap-1 bg-zinc-800 px-2 py-1 rounded-lg">
+                                                    <Link2 className="w-3 h-3" /> {platform}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Teams */}
+                                {userDetail.teams.length > 0 && (
+                                    <div className="p-3 rounded-xl bg-zinc-900/50">
+                                        <p className="text-xs text-zinc-500 uppercase mb-2">Teams</p>
+                                        <div className="space-y-2">
+                                            {userDetail.teams.map((team) => (
+                                                <div key={team.id} className="flex items-center gap-3 bg-zinc-800/50 p-2 rounded-lg">
+                                                    {team.logo_url ? (
+                                                        <img src={team.logo_url} alt={team.name} className="w-6 h-6 rounded object-cover" />
+                                                    ) : (
+                                                        <div className="w-6 h-6 rounded bg-zinc-700 flex items-center justify-center text-[10px] text-zinc-400">{team.name?.[0]}</div>
+                                                    )}
+                                                    <span className="text-sm text-white">{team.name}</span>
+                                                    {team.tag && <span className="text-xs text-zinc-500">[{team.tag}]</span>}
+                                                    <Badge className="ml-auto bg-zinc-700 text-zinc-300 border-0 text-[10px] capitalize">{team.role}</Badge>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Regular Roles */}
+                                <div className="p-3 rounded-xl bg-zinc-900/50">
+                                    <p className="text-xs text-zinc-500 uppercase mb-2">Roles</p>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {userDetail.user_roles.filter(r => r.is_active).map((r) => (
+                                            <Badge key={r.role} className={`${getRoleBadge(r.role)} border capitalize`}>
+                                                {r.role}
+                                            </Badge>
+                                        ))}
+                                        {userDetail.user_roles.filter(r => r.is_active).length === 0 && (
+                                            <span className="text-sm text-zinc-500">No roles assigned</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Admin Roles */}
+                                {p.admin_roles && p.admin_roles.length > 0 && (
+                                    <div className="p-3 rounded-xl bg-zinc-900/50">
+                                        <p className="text-xs text-zinc-500 uppercase mb-2">Admin Roles</p>
+                                        <div className="flex gap-2 flex-wrap">
+                                            {p.admin_roles.map((role) => (
+                                                <Badge key={role} className={`${getRoleBadge(role, true)} border capitalize`}>
+                                                    {role.replace('_', ' ')}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Licenses */}
+                                {userDetail.licenses.length > 0 && (
+                                    <div className="p-3 rounded-xl bg-zinc-900/50">
+                                        <p className="text-xs text-zinc-500 uppercase mb-2">Licenses</p>
+                                        <div className="space-y-1">
+                                            {userDetail.licenses.map((lic) => (
+                                                <div key={lic.id} className="flex items-center justify-between text-sm">
+                                                    <span className="text-zinc-300 capitalize">{lic.license_type}</span>
+                                                    <Badge className={lic.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20 border' : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20 border'}>
+                                                        {lic.status}
+                                                    </Badge>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Organizations & Venues */}
+                                {(userDetail.organizations.length > 0 || userDetail.venues.length > 0) && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {userDetail.organizations.length > 0 && (
+                                            <div className="p-3 rounded-xl bg-zinc-900/50">
+                                                <p className="text-xs text-zinc-500 uppercase mb-2">Organizations</p>
+                                                {userDetail.organizations.map((org) => (
+                                                    <p key={org.id} className="text-sm text-zinc-300">{org.name}</p>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {userDetail.venues.length > 0 && (
+                                            <div className="p-3 rounded-xl bg-zinc-900/50">
+                                                <p className="text-xs text-zinc-500 uppercase mb-2">Venues</p>
+                                                {userDetail.venues.map((v) => (
+                                                    <p key={v.id} className="text-sm text-zinc-300">{v.name} ({v.status})</p>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Tournaments */}
+                                {userDetail.tournaments.length > 0 && (
+                                    <div className="p-3 rounded-xl bg-zinc-900/50">
+                                        <p className="text-xs text-zinc-500 uppercase mb-2">Tournaments ({userDetail.tournaments.length})</p>
+                                        <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                                            {userDetail.tournaments.map((t) => (
+                                                <div key={t.id} className="flex items-center justify-between text-sm">
+                                                    <span className="text-zinc-300 truncate mr-2">{t.name}</span>
+                                                    <Badge className="bg-zinc-700 text-zinc-300 border-0 text-[10px] shrink-0">{t.status}</Badge>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <Button
+                                    className="w-full bg-rose-500 hover:bg-rose-600"
+                                    onClick={() => handleViewProfile(p.username)}
+                                >
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    View Full Profile
+                                </Button>
+                            </div>
+                        );
+                    })()}
+
+                    {!detailLoading && !userDetail && selectedUser && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 {[
@@ -697,33 +980,6 @@ const UserManagementTool = () => {
                                     </div>
                                 ))}
                             </div>
-
-                            {/* Regular Roles */}
-                            <div className="p-3 rounded-xl bg-zinc-900/50">
-                                <p className="text-xs text-zinc-500 uppercase mb-2">Regular Roles</p>
-                                <div className="flex gap-2 flex-wrap">
-                                    {getUserRoles(selectedUser).map((role) => (
-                                        <Badge key={role} className={`${getRoleBadge(role)} border capitalize`}>
-                                            {role}
-                                        </Badge>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Admin Roles */}
-                            {selectedUser.admin_roles && selectedUser.admin_roles.length > 0 && (
-                                <div className="p-3 rounded-xl bg-zinc-900/50">
-                                    <p className="text-xs text-zinc-500 uppercase mb-2">Admin Roles</p>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {selectedUser.admin_roles.map((role) => (
-                                            <Badge key={role} className={`${getRoleBadge(role, true)} border capitalize`}>
-                                                {role.replace('_', ' ')}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
                             <Button
                                 className="w-full bg-rose-500 hover:bg-rose-600"
                                 onClick={() => handleViewProfile(selectedUser.username)}
