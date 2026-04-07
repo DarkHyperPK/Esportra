@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,12 @@ import {
   XCircle,
   Play,
   Pause,
-  Ban
+  Ban,
+  Filter,
+  ChevronDown,
+  ChevronUp,
+  SortAsc,
+  SortDesc
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAdminTournaments, useAdminTournamentUpdate } from "@/hooks/useAdminQueries";
@@ -51,17 +56,68 @@ interface Tournament {
 
 const TournamentManagementTool = () => {
   const { toast } = useToast();
-  const { data, isLoading, refetch } = useAdminTournaments();
-  const updateTournament = useAdminTournamentUpdate();
-  const tournaments = (data ?? []) as Tournament[];
-  const loading = isLoading;
+
+  // Filter & pagination state
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [gameInput, setGameInput] = useState<string>('');
+  const [gameFilter, setGameFilter] = useState<string>('');
+  const [formatFilter, setFormatFilter] = useState<string>('');
+  const [prizeMin, setPrizeMin] = useState<string>('');
+  const [prizeMax, setPrizeMax] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('created_at');
+  const [sortDir, setSortDir] = useState<string>('desc');
+  const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [modalTab, setModalTab] = useState<'details'>('details');
   const [refreshing, setRefreshing] = useState(false);
 
-  const handleRefresh = () => {
+  // Server-side filtered query
+  const { data, isLoading, refetch } = useAdminTournaments({
+    page,
+    limit: 50,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    search: searchTerm || undefined,
+    game: gameFilter || undefined,
+    format: formatFilter || undefined,
+    prize_min: prizeMin ? Number(prizeMin) : undefined,
+    prize_max: prizeMax ? Number(prizeMax) : undefined,
+    date_from: dateFrom || undefined,
+    date_to: dateTo || undefined,
+    sort_by: sortBy,
+    sort_dir: sortDir,
+  });
+  const updateTournament = useAdminTournamentUpdate();
+
+  // Handle both old format (array) and new format ({ data, total })
+  const tournaments = (Array.isArray(data) ? data : data?.data ?? []) as Tournament[];
+  const totalTournaments = Array.isArray(data) ? data.length : data?.total ?? tournaments.length;
+  const totalPages = Math.ceil(totalTournaments / 50);
+  const loading = isLoading;
+
+  // Debounce search input → searchTerm (triggers server query)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      setSearchTerm(searchInput);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Debounce game filter input → gameFilter (triggers server query)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      setGameFilter(gameInput);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [gameInput]);
+
+  const handleRefresh= () => {
     setRefreshing(true);
     refetch().finally(() => setRefreshing(false));
   };
@@ -92,16 +148,37 @@ const TournamentManagementTool = () => {
     URL.revokeObjectURL(url);
   };
 
-  const filteredTournaments = tournaments.filter(t => {
-    const matchesSearch = !searchTerm ||
-      t.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.game?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const resetFilters = () => {
+    setSearchTerm('');
+    setSearchInput('');
+    setStatusFilter('all');
+    setGameInput('');
+    setGameFilter('');
+    setFormatFilter('');
+    setPrizeMin('');
+    setPrizeMax('');
+    setDateFrom('');
+    setDateTo('');
+    setSortBy('created_at');
+    setSortDir('desc');
+    setPage(1);
+  };
+
+  const activeFilterCount = [
+    statusFilter !== 'all',
+    gameFilter !== '',
+    formatFilter !== '',
+    prizeMin !== '',
+    prizeMax !== '',
+    dateFrom !== '',
+    dateTo !== '',
+  ].filter(Boolean).length;
+
+  // Server-side filtering — no client filter needed
+  const filteredTournaments = tournaments;
 
   const stats = {
-    total: tournaments.length,
+    total: totalTournaments,
     active: tournaments.filter(t => t.status === 'ongoing' || t.status === 'active').length,
     upcoming: tournaments.filter(t => t.status === 'registration' || t.status === 'upcoming').length,
     completed: tournaments.filter(t => t.status === 'completed').length,
@@ -204,8 +281,8 @@ const TournamentManagementTool = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
           <Input
             placeholder="Search tournaments..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9 bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
           />
         </div>
@@ -215,13 +292,133 @@ const TournamentManagementTool = () => {
               key={status}
               variant="outline"
               size="sm"
-              onClick={() => setStatusFilter(status)}
+              onClick={() => { setStatusFilter(status); setPage(1); }}
               className={`border-zinc-800 capitalize ${statusFilter === status ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 'text-zinc-400'}`}
             >
               {status === 'all' ? 'All Status' : status}
             </Button>
           ))}
         </div>
+      </motion.div>
+
+      {/* Advanced Filters */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="mb-6">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowFilters(!showFilters)}
+          className="border-zinc-800 text-zinc-400 hover:text-white mb-3"
+        >
+          <Filter className="w-4 h-4 mr-2" />
+          Advanced Filters
+          {activeFilterCount > 0 && (
+            <Badge className="ml-2 bg-rose-500/20 text-rose-400 text-xs">{activeFilterCount}</Badge>
+          )}
+          {showFilters ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
+        </Button>
+
+        {showFilters && (
+          <div className="p-4 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Game</label>
+                <Input
+                  placeholder="e.g. Valorant, CS2"
+                  value={gameInput}
+                  onChange={(e) => setGameInput(e.target.value)}
+                  className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Format</label>
+                <select
+                  value={formatFilter}
+                  onChange={(e) => { setFormatFilter(e.target.value); setPage(1); }}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
+                >
+                  <option value="">All Formats</option>
+                  <option value="single_elimination">Single Elimination</option>
+                  <option value="double_elimination">Double Elimination</option>
+                  <option value="round_robin">Round Robin</option>
+                  <option value="swiss">Swiss</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Min Prize Pool</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={prizeMin}
+                  onChange={(e) => { setPrizeMin(e.target.value); setPage(1); }}
+                  className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Max Prize Pool</label>
+                <Input
+                  type="number"
+                  placeholder="Any"
+                  value={prizeMax}
+                  onChange={(e) => { setPrizeMax(e.target.value); setPage(1); }}
+                  className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Created From</label>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                  className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Created To</label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                  className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Sort By</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
+                >
+                  <option value="created_at">Created Date</option>
+                  <option value="start_date">Start Date</option>
+                  <option value="prize_pool">Prize Pool</option>
+                  <option value="name">Name</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1 block">Order</label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
+                  className="w-full border-zinc-800 text-zinc-400 hover:text-white"
+                >
+                  {sortDir === 'desc' ? <SortDesc className="w-4 h-4 mr-2" /> : <SortAsc className="w-4 h-4 mr-2" />}
+                  {sortDir === 'desc' ? 'Newest First' : 'Oldest First'}
+                </Button>
+              </div>
+            </div>
+            {activeFilterCount > 0 && (
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" onClick={resetFilters} className="text-zinc-400 hover:text-white">
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Reset All Filters ({activeFilterCount})
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </motion.div>
 
       {/* Tournaments Table */}
@@ -261,7 +458,7 @@ const TournamentManagementTool = () => {
                   </td>
                 </tr>
               ) : (
-                filteredTournaments.slice(0, 100).map((tournament, idx) => (
+                filteredTournaments.map((tournament, idx) => (
                   <motion.tr
                     key={tournament.id}
                     initial={{ opacity: 0 }}
@@ -339,6 +536,35 @@ const TournamentManagementTool = () => {
           </table>
         </div>
       </motion.div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <p className="text-sm text-zinc-500">
+            Page {page} of {totalPages} ({totalTournaments} tournaments)
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page <= 1}
+              className="border-zinc-800 text-zinc-400"
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page >= totalPages}
+              className="border-zinc-800 text-zinc-400"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Tournament Detail Modal */}
       <Dialog open={!!selectedTournament} onOpenChange={() => { setSelectedTournament(null); setModalTab('details'); }}>

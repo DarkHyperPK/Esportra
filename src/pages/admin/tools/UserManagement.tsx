@@ -25,6 +25,11 @@ import {
     Gamepad2,
     Link2,
     Loader2,
+    Filter,
+    ChevronDown,
+    ChevronUp,
+    SortAsc,
+    SortDesc,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -123,6 +128,15 @@ const UserManagementTool = () => {
     const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [page, setPage] = useState(0);
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [countryFilter, setCountryFilter] = useState<string>('');
+    const [verifiedFilter, setVerifiedFilter] = useState<string>('all');
+    const [hasTeamFilter, setHasTeamFilter] = useState<string>('all');
+    const [joinedFrom, setJoinedFrom] = useState<string>('');
+    const [joinedTo, setJoinedTo] = useState<string>('');
+    const [sortBy, setSortBy] = useState<string>('created_at');
+    const [sortDir, setSortDir] = useState<string>('desc');
+    const [showFilters, setShowFilters] = useState(false);
 
     // Suspend Form State
     const [suspensionType, setSuspensionType] = useState<string>('Standard');
@@ -135,6 +149,14 @@ const UserManagementTool = () => {
         offset: page * USERS_PER_PAGE,
         search: searchTerm || undefined,
         role: roleFilter !== 'all' ? roleFilter : undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        country: countryFilter || undefined,
+        verified: verifiedFilter !== 'all' ? verifiedFilter : undefined,
+        has_team: hasTeamFilter !== 'all' ? hasTeamFilter : undefined,
+        joined_from: joinedFrom || undefined,
+        joined_to: joinedTo || undefined,
+        sort_by: sortBy,
+        sort_dir: sortDir,
     });
     const rolesQuery = useAdminRoleDefinitions();
     const adminUserRolesQuery = useAdminUserRoleAssignments();
@@ -202,6 +224,31 @@ const UserManagementTool = () => {
         ]);
         setRefreshing(false);
     };
+
+    const resetFilters = () => {
+        setSearchInput('');
+        setSearchTerm('');
+        setRoleFilter('all');
+        setStatusFilter('all');
+        setCountryFilter('');
+        setVerifiedFilter('all');
+        setHasTeamFilter('all');
+        setJoinedFrom('');
+        setJoinedTo('');
+        setSortBy('created_at');
+        setSortDir('desc');
+        setPage(0);
+    };
+
+    const activeFilterCount = [
+        roleFilter !== 'all',
+        statusFilter !== 'all',
+        countryFilter !== '',
+        verifiedFilter !== 'all',
+        hasTeamFilter !== 'all',
+        joinedFrom !== '',
+        joinedTo !== '',
+    ].filter(Boolean).length;
 
     const handleViewProfile = (username: string | null) => {
         if (!username) {
@@ -461,6 +508,155 @@ const UserManagementTool = () => {
                         </Button>
                     ))}
                 </div>
+            </motion.div>
+
+            {/* Advanced Filters */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.25 }}
+                className="mb-6"
+            >
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="border-zinc-800 text-zinc-400 hover:text-white mb-3"
+                >
+                    <Filter className="w-4 h-4 mr-2" />
+                    Advanced Filters
+                    {activeFilterCount > 0 && (
+                        <Badge className="ml-2 bg-rose-500/20 text-rose-400 text-xs">{activeFilterCount}</Badge>
+                    )}
+                    {showFilters ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
+                </Button>
+
+                {showFilters && (
+                    <div className="p-4 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* Status Filter */}
+                            <div>
+                                <label className="text-xs text-zinc-500 mb-1 block">Status</label>
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+                                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
+                                >
+                                    <option value="all">All Status</option>
+                                    <option value="active">Active</option>
+                                    <option value="suspended">Suspended</option>
+                                </select>
+                            </div>
+
+                            {/* Verified Filter */}
+                            <div>
+                                <label className="text-xs text-zinc-500 mb-1 block">Verification</label>
+                                <select
+                                    value={verifiedFilter}
+                                    onChange={(e) => { setVerifiedFilter(e.target.value); setPage(0); }}
+                                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
+                                >
+                                    <option value="all">All</option>
+                                    <option value="true">Verified</option>
+                                    <option value="false">Not Verified</option>
+                                </select>
+                            </div>
+
+                            {/* Has Team Filter */}
+                            <div>
+                                <label className="text-xs text-zinc-500 mb-1 block">Team Status</label>
+                                <select
+                                    value={hasTeamFilter}
+                                    onChange={(e) => { setHasTeamFilter(e.target.value); setPage(0); }}
+                                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
+                                >
+                                    <option value="all">All</option>
+                                    <option value="true">Has Team</option>
+                                    <option value="false">No Team</option>
+                                </select>
+                            </div>
+
+                            {/* Country Filter */}
+                            <div>
+                                <label className="text-xs text-zinc-500 mb-1 block">Country Code</label>
+                                <Input
+                                    placeholder="e.g. AE, US, GB"
+                                    value={countryFilter}
+                                    onChange={(e) => { setCountryFilter(e.target.value.toUpperCase()); setPage(0); }}
+                                    maxLength={2}
+                                    className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* Joined From */}
+                            <div>
+                                <label className="text-xs text-zinc-500 mb-1 block">Joined From</label>
+                                <Input
+                                    type="date"
+                                    value={joinedFrom}
+                                    onChange={(e) => { setJoinedFrom(e.target.value); setPage(0); }}
+                                    className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
+                                />
+                            </div>
+
+                            {/* Joined To */}
+                            <div>
+                                <label className="text-xs text-zinc-500 mb-1 block">Joined To</label>
+                                <Input
+                                    type="date"
+                                    value={joinedTo}
+                                    onChange={(e) => { setJoinedTo(e.target.value); setPage(0); }}
+                                    className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
+                                />
+                            </div>
+
+                            {/* Sort By */}
+                            <div>
+                                <label className="text-xs text-zinc-500 mb-1 block">Sort By</label>
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
+                                >
+                                    <option value="created_at">Join Date</option>
+                                    <option value="username">Username</option>
+                                    <option value="updated_at">Last Active</option>
+                                </select>
+                            </div>
+
+                            {/* Sort Direction */}
+                            <div>
+                                <label className="text-xs text-zinc-500 mb-1 block">Order</label>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
+                                    className="w-full border-zinc-800 text-zinc-400 hover:text-white"
+                                >
+                                    {sortDir === 'desc' ? <SortDesc className="w-4 h-4 mr-2" /> : <SortAsc className="w-4 h-4 mr-2" />}
+                                    {sortDir === 'desc' ? 'Newest First' : 'Oldest First'}
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Reset Button */}
+                        {activeFilterCount > 0 && (
+                            <div className="flex justify-end">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={resetFilters}
+                                    className="text-zinc-400 hover:text-white"
+                                >
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    Reset All Filters ({activeFilterCount})
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </motion.div>
 
             {/* Users Table */}

@@ -9,7 +9,7 @@ export const adminKeys = {
   analytics: () => [...adminKeys.all, 'analytics'] as const,
   systemStats: () => [...adminKeys.all, 'system-stats'] as const,
 
-  users: (params?: { limit?: number; offset?: number; search?: string; role?: string }) =>
+  users: (params?: Record<string, any>) =>
     [...adminKeys.all, 'users', params ?? {}] as const,
   userRoles: () => [...adminKeys.all, 'user-roles'] as const,
   adminRoles: () => [...adminKeys.all, 'roles'] as const,
@@ -83,6 +83,14 @@ interface AdminUsersParams {
   offset?: number;
   search?: string;
   role?: string;
+  status?: string;
+  country?: string;
+  joined_from?: string;
+  joined_to?: string;
+  verified?: string;
+  has_team?: string;
+  sort_by?: string;
+  sort_dir?: string;
 }
 
 interface AdminUsersResponse {
@@ -101,9 +109,17 @@ export const useAdminUsersList = (params: AdminUsersParams = {}) =>
       if (params.offset !== undefined) qs.set('offset', String(params.offset));
       if (params.search) qs.set('search', params.search);
       if (params.role) qs.set('role', params.role);
+      if (params.status) qs.set('status', params.status);
+      if (params.country) qs.set('country', params.country);
+      if (params.joined_from) qs.set('joined_from', params.joined_from);
+      if (params.joined_to) qs.set('joined_to', params.joined_to);
+      if (params.verified) qs.set('verified', params.verified);
+      if (params.has_team) qs.set('has_team', params.has_team);
+      if (params.sort_by) qs.set('sort_by', params.sort_by);
+      if (params.sort_dir) qs.set('sort_dir', params.sort_dir);
       return apiClient.get<AdminUsersResponse>(`/api/admin/users?${qs}`);
     },
-    staleTime: 1000 * 30, // 30 seconds — admin data changes frequently
+    staleTime: 1000 * 30,
   });
 
 // ── Roles ───────────────────────────────────────────────────────────────────
@@ -122,10 +138,40 @@ export const useAdminUserRoleAssignments = () =>
   });
 
 // ── Tournaments ─────────────────────────────────────────────────────────────
-export const useAdminTournaments = () =>
+interface AdminTournamentsParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  search?: string;
+  game?: string;
+  format?: string;
+  prize_min?: number;
+  prize_max?: number;
+  date_from?: string;
+  date_to?: string;
+  sort_by?: string;
+  sort_dir?: string;
+}
+
+export const useAdminTournaments = (params: AdminTournamentsParams = {}) =>
   useQuery({
-    queryKey: adminKeys.tournaments(),
-    queryFn: () => apiClient.get<any[]>('/api/admin/tournaments?limit=100&order=created_at.desc'),
+    queryKey: [...adminKeys.tournaments(), params],
+    queryFn: () => {
+      const qs = new URLSearchParams();
+      if (params.page) qs.set('page', String(params.page));
+      if (params.limit) qs.set('limit', String(params.limit));
+      if (params.status) qs.set('status', params.status);
+      if (params.search) qs.set('search', params.search);
+      if (params.game) qs.set('game', params.game);
+      if (params.format) qs.set('format', params.format);
+      if (params.prize_min !== undefined) qs.set('prize_min', String(params.prize_min));
+      if (params.prize_max !== undefined) qs.set('prize_max', String(params.prize_max));
+      if (params.date_from) qs.set('date_from', params.date_from);
+      if (params.date_to) qs.set('date_to', params.date_to);
+      if (params.sort_by) qs.set('sort_by', params.sort_by);
+      if (params.sort_dir) qs.set('sort_dir', params.sort_dir);
+      return apiClient.get<{ data: any[]; total: number }>(`/api/admin/tournaments?${qs}`);
+    },
     staleTime: 1000 * 30,
   });
 
