@@ -617,7 +617,7 @@ const UserManagementTool = () => {
                                 <label className="text-xs text-zinc-500 mb-1 block">Sort By</label>
                                 <select
                                     value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value)}
+                                    onChange={(e) => { setSortBy(e.target.value); setPage(0); }}
                                     className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
                                 >
                                     <option value="created_at">Join Date</option>
@@ -632,7 +632,7 @@ const UserManagementTool = () => {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
+                                    onClick={() => { setSortDir(sortDir === 'desc' ? 'asc' : 'desc'); setPage(0); }}
                                     className="w-full border-zinc-800 text-zinc-400 hover:text-white"
                                 >
                                     {sortDir === 'desc' ? <SortDesc className="w-4 h-4 mr-2" /> : <SortAsc className="w-4 h-4 mr-2" />}
@@ -658,6 +658,19 @@ const UserManagementTool = () => {
                     </div>
                 )}
             </motion.div>
+
+            {usersQuery.error && (
+                <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="mb-6 p-6 rounded-2xl bg-red-500/5 border border-red-500/20 flex flex-col items-center gap-3"
+                >
+                    <Ban className="w-8 h-8 text-red-400" />
+                    <p className="text-red-400 font-medium">Failed to load users</p>
+                    <Button variant="outline" size="sm" onClick={() => usersQuery.refetch()} className="border-red-500/30 text-red-400 hover:bg-red-500/10">
+                        Retry
+                    </Button>
+                </motion.div>
+            )}
 
             {/* Users Table */}
             <motion.div

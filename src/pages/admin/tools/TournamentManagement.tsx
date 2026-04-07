@@ -75,9 +75,10 @@ const TournamentManagementTool = () => {
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [modalTab, setModalTab] = useState<'details'>('details');
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ id: string; status: string; name: string } | null>(null);
 
   // Server-side filtered query
-  const { data, isLoading, refetch } = useAdminTournaments({
+  const { data, isLoading, error, refetch } = useAdminTournaments({
     page,
     limit: 50,
     status: statusFilter !== 'all' ? statusFilter : undefined,
@@ -177,11 +178,12 @@ const TournamentManagementTool = () => {
   // Server-side filtering — no client filter needed
   const filteredTournaments = tournaments;
 
+  const statusCountsFromServer = (!Array.isArray(data) && data?.statusCounts) || {};
   const stats = {
     total: totalTournaments,
-    active: tournaments.filter(t => t.status === 'ongoing' || t.status === 'active').length,
-    upcoming: tournaments.filter(t => t.status === 'registration' || t.status === 'upcoming').length,
-    completed: tournaments.filter(t => t.status === 'completed').length,
+    active: (statusCountsFromServer['ongoing'] || 0) + (statusCountsFromServer['active'] || 0) + (statusCountsFromServer['open'] || 0) + (statusCountsFromServer['check_in'] || 0),
+    upcoming: (statusCountsFromServer['registration'] || 0) + (statusCountsFromServer['upcoming'] || 0) + (statusCountsFromServer['draft'] || 0),
+    completed: statusCountsFromServer['completed'] || 0,
   };
 
   const getStatusBadge = (status: string) => {
@@ -387,7 +389,7 @@ const TournamentManagementTool = () => {
                 <label className="text-xs text-zinc-500 mb-1 block">Sort By</label>
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
                   className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
                 >
                   <option value="created_at">Created Date</option>
@@ -401,7 +403,7 @@ const TournamentManagementTool = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
+                  onClick={() => { setSortDir(sortDir === 'desc' ? 'asc' : 'desc'); setPage(1); }}
                   className="w-full border-zinc-800 text-zinc-400 hover:text-white"
                 >
                   {sortDir === 'desc' ? <SortDesc className="w-4 h-4 mr-2" /> : <SortAsc className="w-4 h-4 mr-2" />}
@@ -420,6 +422,19 @@ const TournamentManagementTool = () => {
           </div>
         )}
       </motion.div>
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="mb-6 p-6 rounded-2xl bg-red-500/5 border border-red-500/20 flex flex-col items-center gap-3"
+        >
+          <Ban className="w-8 h-8 text-red-400" />
+          <p className="text-red-400 font-medium">Failed to load tournaments</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-500/30 text-red-400 hover:bg-red-500/10">
+            Retry
+          </Button>
+        </motion.div>
+      )}
 
       {/* Tournaments Table */}
       <motion.div
@@ -514,14 +529,14 @@ const TournamentManagementTool = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-amber-400 focus:text-amber-300 focus:bg-amber-500/10"
-                            onClick={() => handleStatusChange(tournament.id, 'completed')}
+                            onClick={() => setConfirmAction({ id: tournament.id, status: 'completed', name: tournament.name })}
                           >
                             <CheckCircle className="w-4 h-4 mr-2" />
                             Mark Completed
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
-                            onClick={() => handleStatusChange(tournament.id, 'cancelled')}
+                            onClick={() => setConfirmAction({ id: tournament.id, status: 'cancelled', name: tournament.name })}
                           >
                             <Ban className="w-4 h-4 mr-2" />
                             Cancel
@@ -610,6 +625,35 @@ const TournamentManagementTool = () => {
               ))}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Confirm Action</DialogTitle>
+          </DialogHeader>
+          <p className="text-zinc-400 text-sm">
+            Are you sure you want to {confirmAction?.status === 'cancelled' ? 'cancel' : 'mark as completed'} <span className="text-white font-medium">{confirmAction?.name}</span>? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" size="sm" onClick={() => setConfirmAction(null)} className="border-zinc-800 text-zinc-400">
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                if (confirmAction) {
+                  handleStatusChange(confirmAction.id, confirmAction.status);
+                  setConfirmAction(null);
+                }
+              }}
+              className={confirmAction?.status === 'cancelled' ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white'}
+            >
+              {confirmAction?.status === 'cancelled' ? 'Cancel Tournament' : 'Mark Completed'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
