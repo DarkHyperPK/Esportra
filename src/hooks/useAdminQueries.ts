@@ -26,6 +26,9 @@ export const adminKeys = {
   verificationRequests: () => [...adminKeys.all, 'verification-requests'] as const,
   recentUsers: (limit?: number) => [...adminKeys.all, 'recent-users', limit] as const,
   recentTournaments: (limit?: number) => [...adminKeys.all, 'recent-tournaments', limit] as const,
+  dashboardStats: () => [...adminKeys.all, 'dashboard-stats'] as const,
+  activityFeed: (limit?: number) => [...adminKeys.all, 'activity-feed', limit] as const,
+  trends: (days?: number) => [...adminKeys.all, 'trends', days] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -50,7 +53,31 @@ export const useAdminSystemStats = () =>
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 
-// ── Users (paginated) ───────────────────────────────────────────────────────
+// ── Dashboard ───────────────────────────────────────────────────────────────
+export const useAdminDashboardStats = () =>
+  useQuery({
+    queryKey: adminKeys.dashboardStats(),
+    queryFn: () => apiClient.get<any>('/api/admin/dashboard-stats'),
+    staleTime: 1000 * 30, // 30 seconds
+    refetchInterval: 1000 * 60, // auto-refresh every minute
+  });
+
+export const useAdminActivityFeed = (limit: number = 20) =>
+  useQuery({
+    queryKey: adminKeys.activityFeed(limit),
+    queryFn: () => apiClient.get<any[]>(`/api/admin/activity-feed?limit=${limit}`),
+    staleTime: 1000 * 15, // 15 seconds
+    refetchInterval: 1000 * 30, // auto-refresh every 30s
+  });
+
+export const useAdminTrends = (days: number = 30) =>
+  useQuery({
+    queryKey: adminKeys.trends(days),
+    queryFn: () => apiClient.get<{ userSignups: any[]; tournamentCreations: any[] }>(`/api/admin/trends?days=${days}`),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+// ── Users (paginated)───────────────────────────────────────────────────────
 interface AdminUsersParams {
   limit?: number;
   offset?: number;
