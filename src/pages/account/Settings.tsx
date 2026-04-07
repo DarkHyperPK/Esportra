@@ -9,7 +9,7 @@ import { useFaceitAccount } from '@/hooks/useFaceitAccount';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { useVenueSearch } from '@/hooks/useVenueSearch';
 import {
-  Loader2, Copy, Check, Shield, Link2, Link2Off, Award, Monitor,
+  Loader2, Copy, Check, Shield, Link2, Link2Off, Award, Monitor, Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,12 +56,13 @@ const LICENSE_STATUS_CLASS: Record<string, string> = {
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
-type Tab = 'connected_accounts' | 'licenses' | 'desktop_pairing' | 'security';
+type Tab = 'connected_accounts' | 'notifications' | 'licenses' | 'desktop_pairing' | 'security';
 
 interface NavItem { key: Tab; label: string; icon: React.ReactNode; description: string; venueOwnerOnly?: boolean }
 
 const NAV: NavItem[] = [
   { key: 'connected_accounts', label: 'Connected Accounts', description: 'Riot, Faceit, Discord', icon: <Link2 className="w-4 h-4" /> },
+  { key: 'notifications', label: 'Notifications', description: 'Discord DM alerts', icon: <Bell className="w-4 h-4" /> },
   { key: 'licenses', label: 'My Licenses', description: 'Professional license IDs', icon: <Award className="w-4 h-4" /> },
   { key: 'desktop_pairing', label: 'Desktop Pairing', description: 'Venue hub pairing tokens', venueOwnerOnly: true, icon: <Monitor className="w-4 h-4" /> },
   { key: 'security', label: 'Security', description: 'Password & account safety', icon: <Shield className="w-4 h-4" /> },
@@ -158,6 +159,7 @@ export default function AccountSettings() {
             </div>
 
             {activeTab === 'connected_accounts' && <ConnectedAccountsTab />}
+            {activeTab === 'notifications' && <NotificationsTab />}
             {activeTab === 'licenses' && <LicensesTab userId={user?.id} />}
             {activeTab === 'desktop_pairing' && ownsVenues && <DesktopPairingTab userId={user?.id} />}
             {activeTab === 'security' && <SecurityTab />}
@@ -288,6 +290,106 @@ function ConnectedAccountsTab() {
           <div className="text-xs text-gray-500">Coming soon</div>
         </div>
         <span className="text-xs text-gray-600 border border-white/10 rounded-full px-2 py-0.5">Soon</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Notifications ──────────────────────────────────────────────────────
+
+function NotificationsTab() {
+  const { toast } = useToast();
+  const [toggling, setToggling] = useState(false);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['discord-dm-prefs'],
+    queryFn: () => apiClient.get<{ discord_dm_enabled: boolean; has_discord: boolean }>('/api/profiles/me/discord-dm'),
+  });
+
+  const handleToggle = async () => {
+    if (!data) return;
+
+    // If enabling and no Discord linked, warn
+    if (!data.discord_dm_enabled && !data.has_discord) {
+      toast({ title: 'Link Discord first', description: 'Go to Connected Accounts and link your Discord.', variant: 'destructive' });
+      return;
+    }
+
+    setToggling(true);
+    try {
+      await apiClient.put('/api/profiles/me/discord-dm', { enabled: !data.discord_dm_enabled });
+      await refetch();
+      toast({ title: data.discord_dm_enabled ? 'Discord DMs disabled' : 'Discord DMs enabled' });
+    } catch (err) {
+      toast({ title: 'Failed to update', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-rose-400" /></div>;
+
+  const enabled = data?.discord_dm_enabled ?? false;
+  const hasDiscord = data?.has_discord ?? false;
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[#5865F2]/20 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#5865F2]" fill="currentColor">
+                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-white font-medium">Discord DM Notifications</h3>
+              <p className="text-sm text-gray-400">
+                {hasDiscord
+                  ? 'Get match alerts, check-in reminders, and tournament updates as Discord DMs.'
+                  : 'Link your Discord account first to enable DM notifications.'}
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant={enabled ? 'destructive' : 'default'}
+            onClick={handleToggle}
+            disabled={toggling || (!hasDiscord && !enabled)}
+            className={!enabled ? 'bg-[#5865F2] hover:bg-[#4752C4] text-white' : ''}
+          >
+            {toggling ? <Loader2 className="w-4 h-4 animate-spin" /> : enabled ? 'Disable' : 'Enable'}
+          </Button>
+        </div>
+
+        {enabled && (
+          <div className="mt-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
+            <p className="text-sm text-emerald-400">
+              ✅ Discord DMs are active. You'll receive alerts for: match ready, check-in reminders,
+              result reports, disputes, and tournament updates.
+            </p>
+          </div>
+        )}
+
+        {!hasDiscord && (
+          <div className="mt-4 rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
+            <p className="text-sm text-amber-400">
+              ⚠️ You need to link your Discord account in Connected Accounts before enabling DM notifications.
+              You must also be a member of the <a href="https://discord.gg/ZMBvC5vjRF" target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-300">Esportra Discord server</a>.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
+        <h4 className="text-white font-medium mb-3">What you'll receive</h4>
+        <ul className="space-y-2 text-sm text-gray-400">
+          <li className="flex items-center gap-2">🎮 <span>Match ready — your match is set up and waiting</span></li>
+          <li className="flex items-center gap-2">⏰ <span>Check-in reminders — don't miss your window</span></li>
+          <li className="flex items-center gap-2">📊 <span>Result reported — scores submitted for your match</span></li>
+          <li className="flex items-center gap-2">🚨 <span>Disputes — result challenged or resolved</span></li>
+          <li className="flex items-center gap-2">🏆 <span>Tournament updates — registration confirmed, tournament starting</span></li>
+        </ul>
       </div>
     </div>
   );
