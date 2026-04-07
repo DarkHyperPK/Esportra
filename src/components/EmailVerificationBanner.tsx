@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, Mail, X } from "lucide-react";
+import { AlertTriangle, Mail } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -12,7 +12,7 @@ const EmailVerificationBanner = () => {
   const [dismissed, setDismissed] = useState(false);
   const [resending, setResending] = useState(false);
 
-  if (loading || !user || isEmailVerified || dismissed) return null;
+  if (loading || !user || isEmailVerified) return null;
 
   const handleResend = async () => {
     if (resending) return;
@@ -37,7 +37,7 @@ const EmailVerificationBanner = () => {
         <div className="flex items-center gap-2 text-amber-400 text-sm">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>
-            Your email is not verified. Some features are restricted.
+            Account not verified. Check your email or spam folder to verify your account.
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -54,13 +54,6 @@ const EmailVerificationBanner = () => {
             className="text-xs font-medium text-amber-300 hover:text-amber-200 px-2 py-1.5 rounded-lg transition-colors"
           >
             Verify now
-          </button>
-          <button
-            onClick={() => setDismissed(true)}
-            className="text-amber-500/60 hover:text-amber-400 p-1 rounded transition-colors"
-            aria-label="Dismiss"
-          >
-            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
