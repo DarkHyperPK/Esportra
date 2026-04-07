@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     ArrowLeft,
     Users,
@@ -30,10 +30,11 @@ import {
     ChevronUp,
     SortAsc,
     SortDesc,
+    AlertTriangle,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, adminKeys } from "@/hooks/useAdminQueries";
+import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, useAdminBulkUserAction, adminKeys } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/apiClient";
 import {
@@ -49,6 +50,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface UserRole {
     role: string;
@@ -138,6 +140,12 @@ const UserManagementTool = () => {
     const [sortDir, setSortDir] = useState<string>('desc');
     const [showFilters, setShowFilters] = useState(false);
 
+    // Bulk selection state
+    const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+    const [bulkConfirm, setBulkConfirm] = useState<{ action: string; reason?: string } | null>(null);
+    const [bulkSuspendReason, setBulkSuspendReason] = useState('');
+    const bulkAction = useAdminBulkUserAction();
+
     // Suspend Form State
     const [suspensionType, setSuspensionType] = useState<string>('Standard');
     const [suspensionDuration, setSuspensionDuration] = useState<string>('1 week');
@@ -164,6 +172,11 @@ const UserManagementTool = () => {
     const unsuspendMutation = useAdminUserUnsuspend();
 
     const isLoading = usersQuery.isLoading;
+
+    // Clear selection when page/filters change to prevent invisible stale selections
+    useEffect(() => {
+        setSelectedUserIds(new Set());
+    }, [page, searchTerm, roleFilter, statusFilter, sortBy, sortDir]);
 
     // Derive enriched users from the three queries
     const profiles = usersQuery.data?.users ?? [];
@@ -381,6 +394,49 @@ const UserManagementTool = () => {
 
     const filteredUsers = users;
 
+    // Bulk selection helpers
+    const toggleSelectUser = (userId: string) => {
+        setSelectedUserIds(prev => {
+            const next = new Set(prev);
+            if (next.has(userId)) next.delete(userId);
+            else next.add(userId);
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedUserIds.size === filteredUsers.length) {
+            setSelectedUserIds(new Set());
+        } else {
+            setSelectedUserIds(new Set(filteredUsers.map((u: any) => u.id)));
+        }
+    };
+
+    const clearSelection = () => setSelectedUserIds(new Set());
+
+    const handleBulkAction = async (action: string, reason?: string) => {
+        if (selectedUserIds.size === 0) return;
+        // Destructive actions require confirmation
+        if (action === 'suspend') {
+            setBulkConfirm({ action });
+            return;
+        }
+        await bulkAction.mutateAsync({ userIds: Array.from(selectedUserIds), action, reason });
+        clearSelection();
+    };
+
+    const confirmBulkAction = async () => {
+        if (!bulkConfirm || selectedUserIds.size === 0) return;
+        await bulkAction.mutateAsync({
+            userIds: Array.from(selectedUserIds),
+            action: bulkConfirm.action,
+            reason: bulkSuspendReason || 'Bulk suspended by admin',
+        });
+        clearSelection();
+        setBulkConfirm(null);
+        setBulkSuspendReason('');
+    };
+
     const totalPages = Math.ceil(totalUsers / USERS_PER_PAGE);
 
     const stats = {
@@ -405,7 +461,7 @@ const UserManagementTool = () => {
     };
 
     return (
-        <div className="min-h-screen p-4 lg:p-8">
+        <div className={`min-h-screen p-4 lg:p-8 ${selectedUserIds.size > 0 ? 'pb-24' : ''}`}>
             {/* Header */}
             <motion.header
                 initial={{ opacity: 0, y: -20 }}
@@ -683,6 +739,13 @@ const UserManagementTool = () => {
                     <table className="w-full">
                         <thead>
                             <tr className="bg-zinc-900/50">
+                                <th className="px-4 py-3 w-10">
+                                    <Checkbox
+                                        checked={selectedUserIds.size === filteredUsers.length ? true : selectedUserIds.size > 0 ? "indeterminate" : false}
+                                        onCheckedChange={toggleSelectAll}
+                                        className="border-zinc-600"
+                                    />
+                                </th>
                                 <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">User</th>
                                 <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Email</th>
                                 <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Regular Roles</th>
@@ -694,7 +757,7 @@ const UserManagementTool = () => {
                         <tbody className="divide-y divide-zinc-800/50">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-12">
+                                    <td colSpan={7} className="text-center py-12">
                                         <div className="flex items-center justify-center gap-2 text-zinc-500">
                                             <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
                                             Loading users...
@@ -703,7 +766,7 @@ const UserManagementTool = () => {
                                 </tr>
                             ) : filteredUsers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-12 text-zinc-500">
+                                    <td colSpan={7} className="text-center py-12 text-zinc-500">
                                         No users found
                                     </td>
                                 </tr>
@@ -716,6 +779,13 @@ const UserManagementTool = () => {
                                         transition={{ delay: idx * 0.01 }}
                                         className="hover:bg-zinc-900/30 transition-colors"
                                     >
+                                        <td className="px-4 py-4">
+                                            <Checkbox
+                                                checked={selectedUserIds.has(user.id)}
+                                                onCheckedChange={() => toggleSelectUser(user.id)}
+                                                className="border-zinc-600"
+                                            />
+                                        </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center overflow-hidden relative">
@@ -827,6 +897,87 @@ const UserManagementTool = () => {
                     </table>
                 </div>
             </motion.div>
+
+            {/* Bulk Action Floating Bar */}
+            <AnimatePresence>
+                {selectedUserIds.size > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3 rounded-2xl bg-zinc-900/95 border border-zinc-700/50 backdrop-blur-xl shadow-2xl"
+                    >
+                        <span className="text-sm text-zinc-300 font-medium mr-2">
+                            {selectedUserIds.size} selected
+                        </span>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                            onClick={() => handleBulkAction('suspend')}
+                            disabled={bulkAction.isPending}
+                        >
+                            <Ban className="w-3.5 h-3.5 mr-1.5" />
+                            Suspend
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                            onClick={() => handleBulkAction('unsuspend')}
+                            disabled={bulkAction.isPending}
+                        >
+                            <UserCheck className="w-3.5 h-3.5 mr-1.5" />
+                            Unsuspend
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-zinc-600 text-zinc-400 hover:bg-zinc-800"
+                            onClick={clearSelection}
+                        >
+                            Clear
+                        </Button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Bulk Suspend Confirmation Dialog */}
+            <Dialog open={!!bulkConfirm} onOpenChange={(open) => { if (!open) { setBulkConfirm(null); setBulkSuspendReason(''); } }}>
+                <DialogContent className="bg-[#0a0a0c] border-zinc-800 text-white max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            Confirm Bulk Suspend
+                        </DialogTitle>
+                    </DialogHeader>
+                    <p className="text-zinc-400 text-sm">
+                        You are about to suspend <span className="text-white font-medium">{selectedUserIds.size} user(s)</span>. This will immediately lock them out of the platform.
+                    </p>
+                    <div className="mt-2">
+                        <label className="text-xs text-zinc-500 uppercase">Reason</label>
+                        <Input
+                            value={bulkSuspendReason}
+                            onChange={(e) => setBulkSuspendReason(e.target.value)}
+                            placeholder="Enter suspension reason..."
+                            className="mt-1 bg-zinc-900 border-zinc-800 text-white"
+                        />
+                    </div>
+                    <DialogFooter className="mt-4">
+                        <Button variant="outline" size="sm" onClick={() => { setBulkConfirm(null); setBulkSuspendReason(''); }} className="border-zinc-800 text-zinc-400">
+                            Cancel
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={confirmBulkAction}
+                            disabled={bulkAction.isPending}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            {bulkAction.isPending ? 'Suspending...' : `Suspend ${selectedUserIds.size} User(s)`}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Pagination */}
             {totalPages > 1 && (

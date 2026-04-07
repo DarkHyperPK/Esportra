@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Trophy,
@@ -24,16 +24,20 @@ import {
   ChevronDown,
   ChevronUp,
   SortAsc,
-  SortDesc
+  SortDesc,
+  Star,
+  StarOff,
+  AlertTriangle
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useAdminTournaments, useAdminTournamentUpdate } from "@/hooks/useAdminQueries";
+import { useAdminTournaments, useAdminTournamentUpdate, useAdminBulkTournamentAction } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -41,6 +45,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Tournament {
   id: string;
@@ -77,6 +82,11 @@ const TournamentManagementTool = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ id: string; status: string; name: string } | null>(null);
 
+  // Bulk selection state
+  const [selectedTournamentIds, setSelectedTournamentIds] = useState<Set<string>>(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState<{ action: string } | null>(null);
+  const bulkAction = useAdminBulkTournamentAction();
+
   // Server-side filtered query
   const { data, isLoading, error, refetch } = useAdminTournaments({
     page,
@@ -99,6 +109,11 @@ const TournamentManagementTool = () => {
   const totalTournaments = Array.isArray(data) ? data.length : data?.total ?? tournaments.length;
   const totalPages = Math.ceil(totalTournaments / 50);
   const loading = isLoading;
+
+  // Clear selection when page/filters change to prevent invisible stale selections
+  useEffect(() => {
+    setSelectedTournamentIds(new Set());
+  }, [page, searchTerm, statusFilter, sortBy, sortDir]);
 
   // Debounce search input → searchTerm (triggers server query)
   useEffect(() => {
@@ -178,6 +193,44 @@ const TournamentManagementTool = () => {
   // Server-side filtering — no client filter needed
   const filteredTournaments = tournaments;
 
+  // Bulk selection helpers
+  const toggleSelectTournament = (id: string) => {
+    setSelectedTournamentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllTournaments = () => {
+    if (selectedTournamentIds.size === filteredTournaments.length) {
+      setSelectedTournamentIds(new Set());
+    } else {
+      setSelectedTournamentIds(new Set(filteredTournaments.map((t: any) => t.id)));
+    }
+  };
+
+  const clearTournamentSelection = () => setSelectedTournamentIds(new Set());
+
+  const handleBulkTournamentAction = async (action: string) => {
+    if (selectedTournamentIds.size === 0) return;
+    // Destructive actions require confirmation
+    if (action === 'cancel') {
+      setBulkConfirm({ action });
+      return;
+    }
+    await bulkAction.mutateAsync({ tournamentIds: Array.from(selectedTournamentIds), action });
+    clearTournamentSelection();
+  };
+
+  const confirmBulkTournamentAction = async () => {
+    if (!bulkConfirm || selectedTournamentIds.size === 0) return;
+    await bulkAction.mutateAsync({ tournamentIds: Array.from(selectedTournamentIds), action: bulkConfirm.action });
+    clearTournamentSelection();
+    setBulkConfirm(null);
+  };
+
   const statusCountsFromServer = (!Array.isArray(data) && data?.statusCounts) || {};
   const stats = {
     total: totalTournaments,
@@ -199,7 +252,7 @@ const TournamentManagementTool = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
+    <div className={`min-h-screen p-4 lg:p-8 ${selectedTournamentIds.size > 0 ? 'pb-24' : ''}`}>
       {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
@@ -447,6 +500,13 @@ const TournamentManagementTool = () => {
           <table className="w-full">
             <thead>
               <tr className="bg-zinc-900/50">
+                <th className="px-4 py-3 w-10">
+                  <Checkbox
+                    checked={selectedTournamentIds.size === filteredTournaments.length ? true : selectedTournamentIds.size > 0 ? "indeterminate" : false}
+                    onCheckedChange={toggleSelectAllTournaments}
+                    className="border-zinc-600"
+                  />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Tournament</th>
                 <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Game</th>
                 <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Status</th>
@@ -459,7 +519,7 @@ const TournamentManagementTool = () => {
             <tbody className="divide-y divide-zinc-800/50">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12">
+                  <td colSpan={8} className="text-center py-12">
                     <div className="flex items-center justify-center gap-2 text-zinc-500">
                       <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
                       Loading tournaments...
@@ -468,7 +528,7 @@ const TournamentManagementTool = () => {
                 </tr>
               ) : filteredTournaments.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-zinc-500">
+                  <td colSpan={8} className="text-center py-12 text-zinc-500">
                     No tournaments found
                   </td>
                 </tr>
@@ -481,6 +541,13 @@ const TournamentManagementTool = () => {
                     transition={{ delay: idx * 0.01 }}
                     className="hover:bg-zinc-900/30 transition-colors"
                   >
+                    <td className="px-4 py-4">
+                      <Checkbox
+                        checked={selectedTournamentIds.has(tournament.id)}
+                        onCheckedChange={() => toggleSelectTournament(tournament.id)}
+                        className="border-zinc-600"
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
@@ -551,6 +618,70 @@ const TournamentManagementTool = () => {
           </table>
         </div>
       </motion.div>
+
+      {/* Bulk Action Floating Bar */}
+      <AnimatePresence>
+        {selectedTournamentIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3 rounded-2xl bg-zinc-900/95 border border-zinc-700/50 backdrop-blur-xl shadow-2xl"
+          >
+            <span className="text-sm text-zinc-300 font-medium mr-2">
+              {selectedTournamentIds.size} selected
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+              onClick={() => handleBulkTournamentAction('approve')}
+              disabled={bulkAction.isPending}
+            >
+              <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+              onClick={() => handleBulkTournamentAction('cancel')}
+              disabled={bulkAction.isPending}
+            >
+              <Ban className="w-3.5 h-3.5 mr-1.5" />
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+              onClick={() => handleBulkTournamentAction('feature')}
+              disabled={bulkAction.isPending}
+            >
+              <Star className="w-3.5 h-3.5 mr-1.5" />
+              Feature
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-zinc-500/30 text-zinc-400 hover:bg-zinc-800"
+              onClick={() => handleBulkTournamentAction('unfeature')}
+              disabled={bulkAction.isPending}
+            >
+              <StarOff className="w-3.5 h-3.5 mr-1.5" />
+              Unfeature
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-zinc-600 text-zinc-400 hover:bg-zinc-800"
+              onClick={clearTournamentSelection}
+            >
+              Clear
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -654,6 +785,34 @@ const TournamentManagementTool = () => {
               {confirmAction?.status === 'cancelled' ? 'Cancel Tournament' : 'Mark Completed'}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Cancel Confirmation Dialog */}
+      <Dialog open={!!bulkConfirm} onOpenChange={(open) => { if (!open) setBulkConfirm(null); }}>
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              Confirm Bulk Cancel
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-zinc-400 text-sm">
+            You are about to cancel <span className="text-white font-medium">{selectedTournamentIds.size} tournament(s)</span>. This action cannot be undone.
+          </p>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" size="sm" onClick={() => setBulkConfirm(null)} className="border-zinc-800 text-zinc-400">
+              Go Back
+            </Button>
+            <Button
+              size="sm"
+              onClick={confirmBulkTournamentAction}
+              disabled={bulkAction.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {bulkAction.isPending ? 'Cancelling...' : `Cancel ${selectedTournamentIds.size} Tournament(s)`}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

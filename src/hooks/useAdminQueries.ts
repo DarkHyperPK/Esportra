@@ -362,3 +362,44 @@ export const useAdminUserRoleUpdate = () => {
     },
   });
 };
+
+export const useAdminBulkUserAction = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ userIds, action, reason }: { userIds: string[]; action: string; reason?: string }) =>
+      apiClient.post<{ success: boolean; affected: number }>('/api/admin/users/bulk-action', {
+        userIds,
+        action,
+        reason,
+      }),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      toast({ title: `Bulk ${variables.action} complete`, description: `${data.affected} user(s) affected` });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Bulk action failed', description: error.message, variant: 'destructive' });
+    },
+  });
+};
+
+export const useAdminBulkTournamentAction = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ tournamentIds, action }: { tournamentIds: string[]; action: string }) =>
+      apiClient.post<{ success: boolean; affected: number }>('/api/admin/tournaments/bulk-action', {
+        tournamentIds,
+        action,
+      }),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      toast({ title: `Bulk ${variables.action} complete`, description: `${data.affected} tournament(s) affected` });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Bulk action failed', description: error.message, variant: 'destructive' });
+    },
+  });
+};
