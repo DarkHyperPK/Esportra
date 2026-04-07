@@ -54,8 +54,6 @@ import { useGameTerminology } from '@/hooks/useGameTerminology';
 import { useBRGameResults } from '@/hooks/useBRGameResults';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
-import { TournamentSponsorBanner } from '@/components/tournament/TournamentSponsorBanner';
-import { TournamentSponsorTicker } from '@/components/tournament/TournamentSponsorTicker';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import SEO from '@/components/SEO';
 
@@ -756,9 +754,6 @@ const TournamentDetails = () => {
         awaitingApproval={awaitingApproval}
       />
 
-      {/* Tournament Sponsor Banner */}
-      <TournamentSponsorBanner tournamentId={tournament.id} />
-
       {/* --- TABS NAVIGATION (Sticky) --- */}
       {/* --- TABS NAVIGATION (Sticky) --- */}
       <div className="relative z-30 -mt-20">
@@ -891,9 +886,6 @@ const TournamentDetails = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Sponsor Ticker */}
-      <TournamentSponsorTicker tournamentId={tournament.id} />
 
       <Footer />
 

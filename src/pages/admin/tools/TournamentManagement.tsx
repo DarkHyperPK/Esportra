@@ -22,7 +22,6 @@ import {
   Ban
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import TournamentSponsorManager from "@/components/admin/TournamentSponsorManager";
 import { useAdminTournaments, useAdminTournamentUpdate } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -59,7 +58,7 @@ const TournamentManagementTool = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
-  const [modalTab, setModalTab] = useState<'details' | 'sponsors'>('details');
+  const [modalTab, setModalTab] = useState<'details'>('details');
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = () => {
@@ -353,7 +352,7 @@ const TournamentManagementTool = () => {
 
           {/* Tabs */}
           <div className="flex gap-1 border-b border-zinc-800 mb-4">
-            {(['details', 'sponsors'] as const).map(tab => (
+            {(['details'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setModalTab(tab)}
@@ -384,13 +383,6 @@ const TournamentManagementTool = () => {
                 </div>
               ))}
             </div>
-          )}
-
-          {selectedTournament && modalTab === 'sponsors' && (
-            <TournamentSponsorManager
-              tournamentId={selectedTournament.id}
-              tournamentName={selectedTournament.name}
-            />
           )}
         </DialogContent>
       </Dialog>
