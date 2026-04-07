@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
 const Callback = () => {
@@ -16,6 +17,15 @@ const Callback = () => {
       if (!session) {
         navigate('/auth/signin');
         return;
+      }
+
+      // Auto-join Esportra Discord server if user linked Discord and we have provider token
+      if (session.provider_token && session.user?.app_metadata?.provider === 'discord') {
+        try {
+          await apiClient.post('/api/profiles/me/discord-join', { providerToken: session.provider_token });
+        } catch {
+          // Non-critical — don't block login flow
+        }
       }
 
       // Check for suspension
