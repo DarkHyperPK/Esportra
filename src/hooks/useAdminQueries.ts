@@ -574,3 +574,109 @@ export const useUpdateSystemSettings = () => {
     },
   });
 };
+
+// ── Role Builder ────────────────────────────────────────────────────────────
+
+interface AdminPermission {
+  id: string;
+  name: string;
+  description: string;
+  resource: string;
+  action: string;
+}
+
+interface AdminRoleDetail {
+  id: string;
+  name: string;
+  key: string;
+  description: string;
+  created_at: string;
+  permissions: AdminPermission[];
+  user_count: number;
+}
+
+interface AdminRoleSummary {
+  id: string;
+  name: string;
+  key: string;
+  description: string;
+  created_at: string;
+  permission_count: number;
+  user_count: number;
+}
+
+export const useAdminPermissions = () =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'permissions'],
+    queryFn: () => apiClient.get<AdminPermission[]>('/api/admin/permissions'),
+    staleTime: 1000 * 60 * 10,
+  });
+
+export const useAdminRoles = () =>
+  useQuery({
+    queryKey: adminKeys.adminRoles(),
+    queryFn: () => apiClient.get<AdminRoleSummary[]>('/api/admin/roles'),
+    staleTime: 1000 * 60,
+  });
+
+export const useAdminRoleDetail = (roleId: string) =>
+  useQuery({
+    queryKey: [...adminKeys.adminRoles(), roleId],
+    queryFn: () => apiClient.get<AdminRoleDetail>(`/api/admin/roles/${roleId}`),
+    enabled: !!roleId,
+    staleTime: 1000 * 60,
+  });
+
+export const useCreateAdminRole = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (data: { name: string; key: string; description: string; permissionIds: string[] }) =>
+      apiClient.post('/api/admin/roles', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.adminRoles() });
+      toast({ title: 'Role created', description: 'New admin role has been created.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({ title: 'Failed to create role', description: body?.error || (error as Error)?.message || 'Unknown error', variant: 'destructive' });
+    },
+  });
+};
+
+export const useUpdateAdminRole = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({ roleId, ...data }: { roleId: string; name: string; description: string; permissionIds: string[] }) =>
+      apiClient.put(`/api/admin/roles/${roleId}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.adminRoles() });
+      toast({ title: 'Role updated', description: 'Role permissions have been updated.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({ title: 'Failed to update role', description: body?.error || (error as Error)?.message || 'Unknown error', variant: 'destructive' });
+    },
+  });
+};
+
+export const useDeleteAdminRole = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (roleId: string) =>
+      apiClient.delete(`/api/admin/roles/${roleId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.adminRoles() });
+      toast({ title: 'Role deleted', description: 'Custom role has been removed.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({ title: 'Failed to delete role', description: body?.error || (error as Error)?.message || 'Unknown error', variant: 'destructive' });
+    },
+  });
+};

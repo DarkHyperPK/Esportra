@@ -71,6 +71,7 @@ const SponsorManagementTool = React.lazy(() => import("./pages/admin/tools/Spons
 const LicenseManagementTool = React.lazy(() => import("./pages/admin/tools/LicenseManagement"));
 const TeamManagementTool = React.lazy(() => import("./pages/admin/tools/TeamManagement"));
 const AlertsManagementTool = React.lazy(() => import("./pages/admin/tools/AlertsManagement"));
+const RoleBuilderTool = React.lazy(() => import("./pages/admin/tools/RoleBuilder"));
 
 
 // Venue Owner
@@ -406,6 +407,18 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <AdminRoleManagement />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                {/* Role Builder - Super Admin Only */}
+                <Route path="/admin/tools/role-builder" element={
+                  <AdminProtectedRoute
+                    requiredPermission="admin:assign_roles"
+                    requiredRoles={['super_admin']}
+                  >
+                    <AdminLayout>
+                      <RoleBuilderTool />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />
