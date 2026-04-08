@@ -31,6 +31,8 @@ export const adminKeys = {
   trends: (days?: number) => [...adminKeys.all, 'trends', days] as const,
   alerts: (params?: Record<string, any>) => [...adminKeys.all, 'alerts', params ?? {}] as const,
   alertSummary: () => [...adminKeys.all, 'alert-summary'] as const,
+  entityHistory: (targetType: string, targetId: string, page?: number) =>
+    [...adminKeys.all, 'entity-history', targetType, targetId, page] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -495,5 +497,31 @@ export const useBulkAcknowledgeAlerts = () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.alerts() });
       queryClient.invalidateQueries({ queryKey: adminKeys.alertSummary() });
     },
+  });
+};
+
+// ── Entity Change History ───────────────────────────────────────────────────
+
+interface EntityHistoryEntry {
+  id: string;
+  admin_id: string;
+  admin_name: string;
+  action_type: string;
+  target_type: string;
+  target_id: string;
+  target_name?: string;
+  details: Record<string, any> | null;
+  severity?: string;
+  created_at: string;
+}
+
+export const useEntityHistory = (targetType: string, targetId: string, page: number = 1, limit: number = 15) => {
+  return useQuery({
+    queryKey: adminKeys.entityHistory(targetType, targetId, page),
+    queryFn: () => apiClient.get<{ data: EntityHistoryEntry[]; total: number; page: number; limit: number }>(
+      `/api/admin/entity-history/${targetType}/${targetId}?page=${page}&limit=${limit}`
+    ),
+    enabled: !!targetType && !!targetId,
+    staleTime: 1000 * 30,
   });
 };

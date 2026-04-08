@@ -28,12 +28,14 @@ import {
   Star,
   StarOff,
   AlertTriangle,
-  Loader2
+  Loader2,
+  History
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAdminTournaments, useAdminTournamentUpdate, useAdminBulkTournamentAction } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import { downloadCsvExport } from "@/lib/exportUtils";
+import EntityHistoryTimeline from '@/components/admin/EntityHistoryTimeline';
 import {
   Dialog,
   DialogContent,
@@ -767,6 +769,17 @@ const TournamentManagementTool = () => {
                   <p className="text-white text-sm mt-1">{item.value}</p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Change History */}
+          {selectedTournament && (
+            <div className="mt-6 border-t border-zinc-800 pt-4">
+              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <History className="w-4 h-4 text-zinc-400" />
+                Change History
+              </h3>
+              <EntityHistoryTimeline targetType="Tournament" targetId={selectedTournament.id} />
             </div>
           )}
         </DialogContent>

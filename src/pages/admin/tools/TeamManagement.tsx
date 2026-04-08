@@ -6,13 +6,14 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, UsersRound, Search, Eye, MoreVertical, Calendar,
   Users, Trophy, RefreshCw, Trash2, UserMinus, ArrowRightLeft,
-  Pencil, Shield, Loader2, Gamepad2, Globe, Crown, X, Download
+  Pencil, Shield, Loader2, Gamepad2, Globe, Crown, X, Download, History
 } from "lucide-react";
 import { csvEscape } from "@/lib/exportUtils";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
+import EntityHistoryTimeline from '@/components/admin/EntityHistoryTimeline';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
@@ -99,7 +100,7 @@ const TeamManagementTool = () => {
 
   // Detail dialog
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
-  const [detailTab, setDetailTab] = useState<'members' | 'tournaments' | 'leaderboard'>('members');
+  const [detailTab, setDetailTab] = useState<'members' | 'tournaments' | 'leaderboard' | 'history'>('members');
 
   // Confirm dialogs
   const [disbandTeam, setDisbandTeam] = useState<TeamRow | null>(null);
@@ -408,6 +409,9 @@ const TeamManagementTool = () => {
                 <TabsTrigger value="leaderboard" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
                   Leaderboard
                 </TabsTrigger>
+                <TabsTrigger value="history" className="text-xs data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
+                  History
+                </TabsTrigger>
               </TabsList>
 
               {/* Members Tab */}
@@ -508,6 +512,10 @@ const TeamManagementTool = () => {
                 ) : (
                   <p className="text-zinc-500 text-center py-8">No match data available</p>
                 )}
+              </TabsContent>
+
+              <TabsContent value="history" className="mt-0">
+                <EntityHistoryTimeline targetType="Team" targetId={selectedTeamId!} />
               </TabsContent>
             </Tabs>
           ) : null}

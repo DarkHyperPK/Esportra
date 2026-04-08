@@ -31,6 +31,7 @@ import {
     SortAsc,
     SortDesc,
     AlertTriangle,
+    History,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,6 +39,7 @@ import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/apiClient";
 import { downloadCsvExport } from "@/lib/exportUtils";
+import EntityHistoryTimeline from '@/components/admin/EntityHistoryTimeline';
 import {
     Dialog,
     DialogContent,
@@ -1351,6 +1353,17 @@ const UserManagementTool = () => {
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Full Profile
                             </Button>
+                        </div>
+                    )}
+
+                    {/* Change History */}
+                    {selectedUser && (
+                        <div className="mt-6 border-t border-zinc-800 pt-4">
+                            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                                <History className="w-4 h-4 text-zinc-400" />
+                                Change History
+                            </h3>
+                            <EntityHistoryTimeline targetType="User" targetId={selectedUser.id} />
                         </div>
                     )}
                 </DialogContent>
