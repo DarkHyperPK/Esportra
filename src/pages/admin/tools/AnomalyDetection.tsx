@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertTriangle,
@@ -324,7 +324,7 @@ const EventCard = ({ event, onResolve }: EventCardProps) => {
           <span className="flex items-center gap-1 text-emerald-500/70">
             <CheckCircle className="w-3 h-3" />
             Resolved {timeAgo(event.resolvedAt)}
-            {event.resolvedBy && ` by ${event.resolvedBy}`}
+            {event.resolvedByUsername && ` by ${event.resolvedByUsername}`}
           </span>
         )}
       </div>
@@ -346,15 +346,15 @@ const EditRuleDialog = ({ rule, onClose }: EditRuleDialogProps) => {
   const [severity, setSeverity] = useState('');
   const updateRule = useUpdateAnomalyRule();
 
-  // Sync form when rule changes
-  useState(() => {
+  // Sync form fields whenever the rule prop changes (e.g. opening a different rule)
+  useEffect(() => {
     if (rule) {
       setThreshold(String(rule.thresholdCount));
       setWindow(String(rule.windowMinutes));
       setCooldown(String(rule.cooldownMinutes));
       setSeverity(rule.severity);
     }
-  });
+  }, [rule]);
 
   // Reset on open
   const handleOpenChange = (open: boolean) => {
@@ -606,11 +606,10 @@ const AnomaliesTab = () => {
   const events = data?.items ?? [];
   const total = data?.total ?? 0;
 
-  // Derive stats from current page — backend should ideally provide these,
-  // but we compute from the unfiltered total (rough) or current page items
-  const unresolvedCount = events.filter((e) => !e.isResolved).length;
-  const criticalCount = events.filter((e) => e.severity === 'critical' && !e.isResolved).length;
-  const highCount = events.filter((e) => e.severity === 'high' && !e.isResolved).length;
+  // Use server-provided aggregate totals — these span all pages, not just the current one.
+  const unresolvedCount = data?.unresolvedTotal ?? 0;
+  const criticalCount   = data?.criticalTotal   ?? 0;
+  const highCount       = data?.highTotal        ?? 0;
 
   return (
     <div className="space-y-5">

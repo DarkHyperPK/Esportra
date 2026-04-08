@@ -1410,6 +1410,7 @@ export interface AnomalyEvent {
   detectedAt: string;
   resolvedAt: string | null;
   resolvedBy: string | null;
+  resolvedByUsername: string | null;
   isResolved: boolean;
   details: Record<string, unknown> | null;
 }
@@ -1432,6 +1433,12 @@ interface AnomaliesResponse {
   total: number;
   page: number;
   limit: number;
+  /** Total unresolved events across all pages. */
+  unresolvedTotal: number;
+  /** Total unresolved critical-severity events across all pages. */
+  criticalTotal: number;
+  /** Total unresolved high-severity events across all pages. */
+  highTotal: number;
 }
 
 interface ScanResult {
@@ -1447,7 +1454,7 @@ export const useAnomalies = (params?: Record<string, string>) =>
       const qs = new URLSearchParams(params ?? {});
       return apiClient.get<AnomaliesResponse>(`/api/admin/anomalies?${qs}`);
     },
-    staleTime: 1000 * 60,
+    staleTime: 1000 * 30, // 30s — must be less than the 60s refetchInterval
     refetchInterval: 60000,
   });
 
