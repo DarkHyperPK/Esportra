@@ -209,13 +209,13 @@ function runStatusBadge(status: string | null) {
 function frequencyLabel(schedule: ReportSchedule): string {
   switch (schedule.frequency) {
     case "daily":
-      return `Daily at ${schedule.timeOfDay}`;
+      return `Daily at ${schedule.timeOfDay.slice(0, 5)}`;
     case "weekly": {
       const day = DAYS_OF_WEEK.find((d) => d.value === String(schedule.dayOfWeek))?.label ?? "?";
-      return `Every ${day} at ${schedule.timeOfDay}`;
+      return `Every ${day} at ${schedule.timeOfDay.slice(0, 5)}`;
     }
     case "monthly":
-      return `Monthly on day ${schedule.dayOfMonth ?? "?"} at ${schedule.timeOfDay}`;
+      return `Monthly on day ${schedule.dayOfMonth ?? "?"} at ${schedule.timeOfDay.slice(0, 5)}`;
     default:
       return schedule.frequency;
   }
@@ -712,12 +712,17 @@ function ScheduleDialog({ open, onOpenChange, editing }: ScheduleDialogProps) {
     if (Object.values(errs).some(Boolean)) { setErrors(errs); return; }
 
     if (editing) {
-      await updateMutation.mutateAsync({
-        id: editing.id,
-        name: form.name.trim(),
-        recipients: form.recipients.split(",").map((e) => e.trim()).filter(Boolean),
-        format: form.format,
-      });
+      try {
+        await updateMutation.mutateAsync({
+          id: editing.id,
+          name: form.name.trim(),
+          recipients: form.recipients.split(",").map((e) => e.trim()).filter(Boolean),
+          format: form.format,
+        });
+        onOpenChange(false);
+      } catch {
+        // onError already shows toast
+      }
     } else {
       const payload: Parameters<typeof createMutation.mutateAsync>[0] = {
         name: form.name.trim(),
@@ -729,9 +734,13 @@ function ScheduleDialog({ open, onOpenChange, editing }: ScheduleDialogProps) {
       };
       if (form.frequency === "weekly") payload.dayOfWeek = Number(form.dayOfWeek);
       if (form.frequency === "monthly") payload.dayOfMonth = Number(form.dayOfMonth);
-      await createMutation.mutateAsync(payload);
+      try {
+        await createMutation.mutateAsync(payload);
+        onOpenChange(false);
+      } catch {
+        // onError already shows toast
+      }
     }
-    onOpenChange(false);
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
