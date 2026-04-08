@@ -53,6 +53,10 @@ export const adminKeys = {
 
   reportSchedules: () => ['admin', 'report-schedules'] as const,
   reportHistory: (id: string) => ['admin', 'report-history', id] as const,
+
+  gdprRequests: (params?: Record<string, string>) => ['admin', 'gdpr-requests', params] as const,
+  gdprStats: () => ['admin', 'gdpr-stats'] as const,
+  consentRecords: (params?: Record<string, string>) => ['admin', 'consent-records', params] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -1235,6 +1239,154 @@ export const useRunReportNow = () => {
       toast({
         title: 'Failed to run report',
         description: body?.error || (error as Error)?.message || 'Could not trigger report run.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// ── GDPR & Compliance ────────────────────────────────────────────────────────
+
+export interface GdprRequest {
+  id: string;
+  userId: string;
+  username: string | null;
+  email: string | null;
+  requestType: string;
+  status: string;
+  requestedAt: string;
+  processedAt: string | null;
+  processedByUsername: string | null;
+  notes: string;
+  downloadUrl: string | null;
+  expiresAt: string | null;
+}
+
+export interface GdprStats {
+  pendingRequests: number;
+  completedToday: number;
+  exportRequests: number;
+  deletionRequests: number;
+  avgProcessingDays: number;
+}
+
+export interface ConsentRecord {
+  id: string;
+  userId: string;
+  username: string | null;
+  consentType: string;
+  granted: boolean;
+  ipAddress: string | null;
+  recordedAt: string;
+  version: string;
+}
+
+export interface GdprRequestsResponse {
+  requests: GdprRequest[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface ConsentRecordsResponse {
+  records: ConsentRecord[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export const useGdprRequests = (params?: Record<string, string>) =>
+  useQuery({
+    queryKey: adminKeys.gdprRequests(params),
+    queryFn: () => {
+      const qs = new URLSearchParams(params ?? {});
+      return apiClient.get<GdprRequestsResponse>(`/api/admin/gdpr/requests?${qs}`);
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+export const useGdprStats = () =>
+  useQuery({
+    queryKey: adminKeys.gdprStats(),
+    queryFn: () => apiClient.get<GdprStats>('/api/admin/gdpr/stats'),
+    staleTime: 1000 * 60 * 5,
+  });
+
+export const useConsentRecords = (params?: Record<string, string>) =>
+  useQuery({
+    queryKey: adminKeys.consentRecords(params),
+    queryFn: () => {
+      const qs = new URLSearchParams(params ?? {});
+      return apiClient.get<ConsentRecordsResponse>(`/api/admin/gdpr/consent-records?${qs}`);
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+export const useProcessGdprRequest = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, action, notes }: { id: string; action: 'approve' | 'reject'; notes?: string }) =>
+      apiClient.post(`/api/admin/gdpr/requests/${id}/process`, { action, notes }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.gdprRequests() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.gdprStats() });
+      toast({
+        title: vars.action === 'approve' ? 'Request approved' : 'Request rejected',
+        description: vars.action === 'approve'
+          ? 'The GDPR request has been approved and will be processed.'
+          : 'The GDPR request has been rejected.',
+      });
+    },
+    onError: (error: unknown) => {
+      const body = (error as { body?: { error?: string } })?.body;
+      toast({
+        title: 'Action failed',
+        description: body?.error || (error as Error)?.message || 'Could not process GDPR request.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useSubmitGdprRequest = () => {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: { requestType: 'export' | 'deletion' }) =>
+      apiClient.post('/api/gdpr/request', data),
+    onSuccess: () => {
+      toast({
+        title: 'Request submitted',
+        description: 'Your data request has been submitted and will be reviewed shortly.',
+      });
+    },
+    onError: (error: unknown) => {
+      const body = (error as { body?: { error?: string } })?.body;
+      toast({
+        title: 'Submission failed',
+        description: body?.error || (error as Error)?.message || 'Could not submit GDPR request.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useRecordConsent = () => {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: { consentType: string; granted: boolean; version: string }) =>
+      apiClient.post('/api/consent', data),
+    onSuccess: () => {
+      toast({ title: 'Consent recorded', description: 'Your consent preferences have been saved.' });
+    },
+    onError: (error: unknown) => {
+      const body = (error as { body?: { error?: string } })?.body;
+      toast({
+        title: 'Failed to record consent',
+        description: body?.error || (error as Error)?.message || 'Could not save consent preferences.',
         variant: 'destructive',
       });
     },

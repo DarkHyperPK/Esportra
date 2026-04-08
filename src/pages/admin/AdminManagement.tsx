@@ -341,6 +341,7 @@ const AdminManagement = () => {
     { label: 'Session Management', href: '/admin/tools/sessions', icon: Monitor, color: 'cyan' },
     { label: 'IP Allowlist', href: '/admin/tools/ip-allowlist', icon: Globe, color: 'emerald' },
   { label: 'Scheduled Reports', href: '/admin/tools/scheduled-reports', icon: CalendarClock, color: 'violet' },
+  { label: 'GDPR Compliance', href: '/admin/tools/gdpr', icon: FileText, color: 'rose' },
   ];
 
   const getColorClasses = (color: string) => {

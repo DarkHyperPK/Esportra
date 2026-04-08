@@ -76,6 +76,7 @@ const ContentModerationTool = React.lazy(() => import("./pages/admin/tools/Conte
 const SessionManagementTool = React.lazy(() => import("./pages/admin/tools/SessionManagement"));
 const IpAllowlistTool = React.lazy(() => import("./pages/admin/tools/IpAllowlist"));
 const ScheduledReports = React.lazy(() => import("./pages/admin/tools/ScheduledReports"));
+const GdprCompliance = React.lazy(() => import("./pages/admin/tools/GdprCompliance"));
 
 
 // Venue Owner
@@ -470,6 +471,17 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <ScheduledReports />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                <Route path="/admin/tools/gdpr" element={
+                  <AdminProtectedRoute
+                    requiredPermission="admin:view"
+                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
+                  >
+                    <AdminLayout>
+                      <GdprCompliance />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />
