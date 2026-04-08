@@ -47,6 +47,9 @@ export const adminKeys = {
   sessionAudit: (params?: Record<string, string>) =>
     ['admin', 'sessions-audit', params ?? {}] as const,
   onlineCount: () => ['admin', 'online-count'] as const,
+
+  ipAllowlist: () => ['admin', 'ip-allowlist'] as const,
+  ipAllowlistStatus: () => ['admin', 'ip-allowlist-status'] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -930,6 +933,139 @@ export const useRevokeSession = () => {
       toast({
         title: 'Revoke failed',
         description: body?.error || (error as Error)?.message || 'Failed to revoke session.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// ── IP Allowlist ────────────────────────────────────────────────────────────
+
+export interface IpAllowlistEntry {
+  id: string;
+  ip_address: string;
+  label: string;
+  created_by: string | null;
+  created_by_username: string | null;
+  created_at: string;
+  expires_at: string | null;
+  is_active: boolean;
+}
+
+export interface IpAllowlistStatus {
+  enabled: boolean;
+  totalEntries: number;
+  activeEntries: number;
+}
+
+export const useIpAllowlist = () =>
+  useQuery({
+    queryKey: adminKeys.ipAllowlist(),
+    queryFn: () => apiClient.get<IpAllowlistEntry[]>('/api/admin/ip-allowlist'),
+    staleTime: 1000 * 60,
+  });
+
+export const useIpAllowlistStatus = () =>
+  useQuery({
+    queryKey: adminKeys.ipAllowlistStatus(),
+    queryFn: () => apiClient.get<IpAllowlistStatus>('/api/admin/ip-allowlist/status'),
+    staleTime: 1000 * 30,
+  });
+
+export const useAddIpAllowlist = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: { ipAddress: string; label?: string; expiresAt?: string }) =>
+      apiClient.post('/api/admin/ip-allowlist', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.ipAllowlist() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.ipAllowlistStatus() });
+      toast({ title: 'IP added', description: 'IP address has been added to the allowlist.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Failed to add IP',
+        description: body?.error || (error as Error)?.message || 'Could not add IP address.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateIpAllowlist = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; label?: string; isActive?: boolean; expiresAt?: string | null }) =>
+      apiClient.put(`/api/admin/ip-allowlist/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.ipAllowlist() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.ipAllowlistStatus() });
+      toast({ title: 'IP updated', description: 'IP allowlist entry has been updated.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Failed to update IP',
+        description: body?.error || (error as Error)?.message || 'Could not update IP entry.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteIpAllowlist = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/api/admin/ip-allowlist/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.ipAllowlist() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.ipAllowlistStatus() });
+      toast({ title: 'IP deleted', description: 'IP address has been removed from the allowlist.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Failed to delete IP',
+        description: body?.error || (error as Error)?.message || 'Could not remove IP address.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useToggleIpAllowlist = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: () => apiClient.post<IpAllowlistStatus>('/api/admin/ip-allowlist/toggle', {}),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.ipAllowlistStatus() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.ipAllowlist() });
+      const enabled = data?.enabled;
+      toast({
+        title: enabled ? 'IP allowlist enabled' : 'IP allowlist disabled',
+        description: enabled
+          ? 'Only allowlisted IPs can now access the admin panel.'
+          : 'All IPs can now access the admin panel.',
+      });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Toggle failed',
+        description: body?.error || (error as Error)?.message || 'Could not toggle IP allowlist.',
         variant: 'destructive',
       });
     },

@@ -338,6 +338,7 @@ const AdminManagement = () => {
     { label: 'Role Builder', href: '/admin/tools/role-builder', icon: ShieldPlus, color: 'rose' },
     { label: 'Content Moderation', href: '/admin/tools/moderation', icon: Shield, color: 'amber' },
     { label: 'Session Management', href: '/admin/tools/sessions', icon: Monitor, color: 'cyan' },
+    { label: 'IP Allowlist', href: '/admin/tools/ip-allowlist', icon: Globe, color: 'emerald' },
   ];
 
   const getColorClasses = (color: string) => {
