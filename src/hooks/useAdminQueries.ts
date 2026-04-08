@@ -34,6 +34,10 @@ export const adminKeys = {
   entityHistory: (targetType: string, targetId: string, page?: number) =>
     [...adminKeys.all, 'entity-history', targetType, targetId, page] as const,
 
+  moderationQueue: (params?: Record<string, string>) =>
+    ['admin', 'moderation-queue', params ?? {}] as const,
+  moderationStats: () => ['admin', 'moderation-stats'] as const,
+
   systemSettings: (category?: string) =>
     [...adminKeys.all, 'system-settings', category ?? 'all'] as const,
   adminPermissions: () => [...adminKeys.all, 'permissions'] as const,
@@ -678,6 +682,141 @@ export const useDeleteAdminRole = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
       const body = (error as any)?.body;
       toast({ title: 'Failed to delete role', description: body?.error || (error as Error)?.message || 'Unknown error', variant: 'destructive' });
+    },
+  });
+};
+
+// ── Content Moderation ──────────────────────────────────────────────────────
+
+export interface ModerationItem {
+  id: string;
+  content_type: string;
+  content_id: string;
+  field_name: string;
+  content_text: string | null;
+  content_url: string | null;
+  reported_by: string | null;
+  reporter_username: string | null;
+  reporter_avatar_url: string | null;
+  reported_reason: string;
+  status: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_notes: string;
+  auto_flagged: boolean;
+  created_at: string;
+}
+
+export interface ModerationStats {
+  pending: number;
+  approved: number;
+  rejected: number;
+  total: number;
+}
+
+interface ModerationQueueParams {
+  status?: string;
+  content_type?: string;
+  page?: number;
+  limit?: number;
+}
+
+interface ModerationQueueResponse {
+  items: ModerationItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export const useModerationQueue = (params: ModerationQueueParams = {}) => {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set('status', params.status);
+  if (params.content_type) qs.set('content_type', params.content_type);
+  if (params.page) qs.set('page', String(params.page));
+  if (params.limit) qs.set('limit', String(params.limit));
+  const query = qs.toString() ? `?${qs}` : '';
+
+  return useQuery({
+    queryKey: adminKeys.moderationQueue(params as Record<string, string>),
+    queryFn: () => apiClient.get<ModerationQueueResponse>(`/api/admin/moderation-queue${query}`),
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+};
+
+export const useModerationStats = () =>
+  useQuery({
+    queryKey: adminKeys.moderationStats(),
+    queryFn: () => apiClient.get<ModerationStats>('/api/admin/moderation-queue/stats'),
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+
+export const useReviewModeration = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, action, notes }: { id: string; action: string; notes?: string }) =>
+      apiClient.post(`/api/admin/moderation-queue/${id}/review`, { action, notes }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.moderationQueue() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.moderationStats() });
+      toast({
+        title: variables.action === 'approve' ? 'Content approved' : 'Content rejected',
+        description: `Item has been ${variables.action === 'approve' ? 'approved' : 'rejected'} successfully.`,
+      });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Review failed',
+        description: body?.error || (error as Error)?.message || 'Failed to review content.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDismissModeration = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/api/admin/moderation-queue/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.moderationQueue() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.moderationStats() });
+      toast({ title: 'Item dismissed', description: 'Moderation item has been removed.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Dismiss failed',
+        description: body?.error || (error as Error)?.message || 'Failed to dismiss item.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useReportContent = () => {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: { contentType: string; contentId: string; fieldName: string; reason: string }) =>
+      apiClient.post('/api/report-content', data),
+    onSuccess: () => {
+      toast({ title: 'Content reported', description: 'Thank you — our team will review this shortly.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Report failed',
+        description: body?.error || (error as Error)?.message || 'Failed to submit report.',
+        variant: 'destructive',
+      });
     },
   });
 };

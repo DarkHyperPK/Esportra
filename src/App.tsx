@@ -72,6 +72,7 @@ const LicenseManagementTool = React.lazy(() => import("./pages/admin/tools/Licen
 const TeamManagementTool = React.lazy(() => import("./pages/admin/tools/TeamManagement"));
 const AlertsManagementTool = React.lazy(() => import("./pages/admin/tools/AlertsManagement"));
 const RoleBuilderTool = React.lazy(() => import("./pages/admin/tools/RoleBuilder"));
+const ContentModerationTool = React.lazy(() => import("./pages/admin/tools/ContentModeration"));
 
 
 // Venue Owner
@@ -419,6 +420,18 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <RoleBuilderTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                {/* Content Moderation - Moderators + Admins */}
+                <Route path="/admin/tools/moderation" element={
+                  <AdminProtectedRoute
+                    requiredPermission="user:view"
+                    requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
+                  >
+                    <AdminLayout>
+                      <ContentModerationTool />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />

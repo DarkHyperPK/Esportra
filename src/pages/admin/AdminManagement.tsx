@@ -335,6 +335,7 @@ const AdminManagement = () => {
     { label: 'Audit Logs', href: '/admin/audit', icon: FileText, color: 'zinc' },
     { label: 'Admin Access', href: '/admin/access', icon: UserCheck, color: 'rose' },
     { label: 'Role Builder', href: '/admin/tools/role-builder', icon: ShieldPlus, color: 'rose' },
+    { label: 'Content Moderation', href: '/admin/tools/moderation', icon: Shield, color: 'amber' },
   ];
 
   const getColorClasses = (color: string) => {
