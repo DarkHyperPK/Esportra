@@ -37,7 +37,8 @@ import {
   UsersRound,
   Bell,
   ShieldPlus,
-  Monitor
+  Monitor,
+  CalendarClock,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -339,6 +340,7 @@ const AdminManagement = () => {
     { label: 'Content Moderation', href: '/admin/tools/moderation', icon: Shield, color: 'amber' },
     { label: 'Session Management', href: '/admin/tools/sessions', icon: Monitor, color: 'cyan' },
     { label: 'IP Allowlist', href: '/admin/tools/ip-allowlist', icon: Globe, color: 'emerald' },
+  { label: 'Scheduled Reports', href: '/admin/tools/scheduled-reports', icon: CalendarClock, color: 'violet' },
   ];
 
   const getColorClasses = (color: string) => {

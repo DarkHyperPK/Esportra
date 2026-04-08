@@ -75,6 +75,7 @@ const RoleBuilderTool = React.lazy(() => import("./pages/admin/tools/RoleBuilder
 const ContentModerationTool = React.lazy(() => import("./pages/admin/tools/ContentModeration"));
 const SessionManagementTool = React.lazy(() => import("./pages/admin/tools/SessionManagement"));
 const IpAllowlistTool = React.lazy(() => import("./pages/admin/tools/IpAllowlist"));
+const ScheduledReports = React.lazy(() => import("./pages/admin/tools/ScheduledReports"));
 
 
 // Venue Owner
@@ -458,6 +459,17 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <IpAllowlistTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                <Route path="/admin/tools/scheduled-reports" element={
+                  <AdminProtectedRoute
+                    requiredPermission="admin:view"
+                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
+                  >
+                    <AdminLayout>
+                      <ScheduledReports />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />

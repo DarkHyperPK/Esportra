@@ -50,6 +50,9 @@ export const adminKeys = {
 
   ipAllowlist: () => ['admin', 'ip-allowlist'] as const,
   ipAllowlistStatus: () => ['admin', 'ip-allowlist-status'] as const,
+
+  reportSchedules: () => ['admin', 'report-schedules'] as const,
+  reportHistory: (id: string) => ['admin', 'report-history', id] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -1066,6 +1069,172 @@ export const useToggleIpAllowlist = () => {
       toast({
         title: 'Toggle failed',
         description: body?.error || (error as Error)?.message || 'Could not toggle IP allowlist.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// ── Scheduled Reports ────────────────────────────────────────────────────────
+
+export interface ReportSchedule {
+  id: string;
+  name: string;
+  reportType: string;
+  frequency: string;
+  dayOfWeek: number | null;
+  dayOfMonth: number | null;
+  timeOfDay: string;
+  recipients: string[];
+  format: string;
+  isActive: boolean;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
+  createdAt: string;
+  lastRunStatus: string | null;
+  lastRunRowCount: number | null;
+}
+
+export interface ReportRunLog {
+  id: string;
+  scheduleId: string;
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+  rowCount: number | null;
+  fileSizeBytes: number | null;
+  errorMessage: string | null;
+  downloadUrl: string | null;
+  triggeredBy: string;
+}
+
+interface ReportHistoryParams {
+  page?: number;
+  limit?: number;
+}
+
+interface ReportHistoryResponse {
+  items: ReportRunLog[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export const useReportSchedules = () =>
+  useQuery({
+    queryKey: adminKeys.reportSchedules(),
+    queryFn: () => apiClient.get<ReportSchedule[]>('/api/admin/report-schedules'),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+export const useReportHistory = (id: string, params: ReportHistoryParams = {}) => {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set('page', String(params.page));
+  if (params.limit) qs.set('limit', String(params.limit));
+  const query = qs.toString() ? `?${qs}` : '';
+
+  return useQuery({
+    queryKey: [...adminKeys.reportHistory(id), params],
+    queryFn: () => apiClient.get<ReportHistoryResponse>(`/api/admin/report-schedules/${id}/history${query}`),
+    enabled: !!id,
+    staleTime: 1000 * 60 * 2,
+  });
+};
+
+export const useCreateReportSchedule = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      reportType: string;
+      frequency: string;
+      dayOfWeek?: number;
+      dayOfMonth?: number;
+      timeOfDay: string;
+      recipients: string[];
+      format: string;
+      filters?: Record<string, unknown>;
+    }) => apiClient.post<ReportSchedule>('/api/admin/report-schedules', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.reportSchedules() });
+      toast({ title: 'Schedule created', description: 'Report schedule has been created successfully.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as { body?: { error?: string } })?.body;
+      toast({
+        title: 'Failed to create schedule',
+        description: body?.error || (error as Error)?.message || 'Could not create report schedule.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateReportSchedule = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; isActive?: boolean; recipients?: string[]; format?: string }) =>
+      apiClient.put<ReportSchedule>(`/api/admin/report-schedules/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.reportSchedules() });
+      toast({ title: 'Schedule updated', description: 'Report schedule has been updated.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as { body?: { error?: string } })?.body;
+      toast({
+        title: 'Failed to update schedule',
+        description: body?.error || (error as Error)?.message || 'Could not update report schedule.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteReportSchedule = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/api/admin/report-schedules/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.reportSchedules() });
+      toast({ title: 'Schedule deleted', description: 'Report schedule has been removed.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as { body?: { error?: string } })?.body;
+      toast({
+        title: 'Failed to delete schedule',
+        description: body?.error || (error as Error)?.message || 'Could not delete report schedule.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useRunReportNow = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => apiClient.post(`/api/admin/report-schedules/${id}/run`, {}),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.reportSchedules() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.reportHistory(id) });
+      toast({ title: 'Report triggered', description: 'Report is now running. Check history for results.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as { body?: { error?: string } })?.body;
+      toast({
+        title: 'Failed to run report',
+        description: body?.error || (error as Error)?.message || 'Could not trigger report run.',
         variant: 'destructive',
       });
     },
