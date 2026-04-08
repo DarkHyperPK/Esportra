@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import {
   Clock, User, Shield, AlertTriangle, CheckCircle,
   XCircle, Pencil, Trash2, Ban, UserCheck, Star,
-  ChevronLeft, ChevronRight, Loader2, History
+  ChevronLeft, ChevronRight, Loader2, History,
+  type LucideIcon
 } from 'lucide-react';
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
   targetId: string;
 }
 
-const actionConfig: Record<string, { icon: any; color: string; label: string }> = {
+const actionConfig: Record<string, { icon: LucideIcon; color: string; label: string }> = {
   create: { icon: CheckCircle, color: 'text-green-500', label: 'Created' },
   update: { icon: Pencil, color: 'text-blue-400', label: 'Updated' },
   delete: { icon: Trash2, color: 'text-red-500', label: 'Deleted' },
@@ -39,7 +40,8 @@ export default function EntityHistoryTimeline({ targetType, targetId }: Props) {
 
   const entries = data?.data ?? [];
   const total = data?.total ?? 0;
-  const totalPages = Math.ceil(total / 15);
+  const pageSize = data?.limit ?? 15;
+  const totalPages = Math.ceil(total / pageSize);
 
   const formatDate = (d: string) => {
     const date = new Date(d);
@@ -87,7 +89,7 @@ export default function EntityHistoryTimeline({ targetType, targetId }: Props) {
         {/* Vertical line */}
         <div className="absolute left-[19px] top-4 bottom-4 w-px bg-zinc-800" />
 
-        {entries.map((entry: any) => {
+        {entries.map((entry) => {
           const config = getConfig(entry.action_type);
           const Icon = config.icon;
           const details = entry.details && typeof entry.details === 'object' ? entry.details : null;
