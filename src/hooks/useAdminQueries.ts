@@ -33,6 +33,9 @@ export const adminKeys = {
   alertSummary: () => [...adminKeys.all, 'alert-summary'] as const,
   entityHistory: (targetType: string, targetId: string, page?: number) =>
     [...adminKeys.all, 'entity-history', targetType, targetId, page] as const,
+
+  systemSettings: (category?: string) =>
+    [...adminKeys.all, 'system-settings', category ?? 'all'] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -523,5 +526,48 @@ export const useEntityHistory = (targetType: string, targetId: string, page: num
     ),
     enabled: !!targetType && !!targetId,
     staleTime: 1000 * 30,
+  });
+};
+
+// ── System Settings ─────────────────────────────────────────────────────────
+
+export interface SystemSetting {
+  key: string;
+  value: string;
+  category: string;
+  label: string;
+  description: string;
+  data_type: 'string' | 'boolean' | 'number' | 'email' | 'url';
+  is_sensitive: boolean;
+  updated_at: string;
+}
+
+export const useSystemSettings = (category?: string) =>
+  useQuery({
+    queryKey: [...adminKeys.all, 'system-settings', category ?? 'all'] as const,
+    queryFn: () => {
+      const path = category
+        ? `/api/admin/system-settings?category=${encodeURIComponent(category)}`
+        : '/api/admin/system-settings';
+      return apiClient.get<SystemSetting[]>(path);
+    },
+    staleTime: 1000 * 60, // 1 minute
+  });
+
+export const useUpdateSystemSettings = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (settings: { key: string; value: string }[]) =>
+      apiClient.put('/api/admin/system-settings', { settings }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'system-settings'] });
+      toast({ title: 'Settings saved', description: 'System settings have been updated successfully.' });
+    },
+    onError: (error: any) => {
+      const message = error?.body?.message || error?.message || 'Failed to save settings.';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    },
   });
 };
