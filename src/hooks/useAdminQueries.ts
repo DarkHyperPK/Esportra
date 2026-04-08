@@ -698,6 +698,7 @@ export interface ModerationItem {
   reported_by: string | null;
   reporter_username: string | null;
   reporter_avatar_url: string | null;
+  reporter_full_name: string | null;
   reported_reason: string;
   status: string;
   reviewed_by: string | null;

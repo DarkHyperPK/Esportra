@@ -30,6 +30,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -476,6 +486,9 @@ const ContentModeration = () => {
   const [reviewAction, setReviewAction] = useState<"approve" | "reject">("approve");
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // Dismiss confirmation state
+  const [dismissTarget, setDismissTarget] = useState<string | null>(null);
+
   const queryParams = {
     ...(statusFilter !== "all" ? { status: statusFilter } : {}),
     ...(typeFilter !== "all" ? { content_type: typeFilter } : {}),
@@ -483,7 +496,7 @@ const ContentModeration = () => {
     limit: ITEMS_PER_PAGE,
   };
 
-  const { data, isLoading, refetch } = useModerationQueue(queryParams);
+  const { data, isLoading, error, refetch } = useModerationQueue(queryParams);
   const reviewMutation = useReviewModeration();
   const dismissMutation = useDismissModeration();
 
@@ -505,10 +518,17 @@ const ContentModeration = () => {
 
   const handleDismiss = useCallback(
     (id: string) => {
-      dismissMutation.mutate(id);
+      setDismissTarget(id);
     },
-    [dismissMutation]
+    []
   );
+
+  const handleConfirmDismiss = useCallback(() => {
+    if (!dismissTarget) return;
+    dismissMutation.mutate(dismissTarget, {
+      onSettled: () => setDismissTarget(null),
+    });
+  }, [dismissTarget, dismissMutation]);
 
   const handleConfirmReview = useCallback(
     (notes: string) => {
@@ -619,6 +639,27 @@ const ContentModeration = () => {
       {/* Content Grid */}
       {isLoading ? (
         <ModerationSkeleton />
+      ) : error ? (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center justify-center py-20 text-center"
+        >
+          <AlertTriangle className="w-12 h-12 text-rose-500 mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">Failed to load moderation queue</h3>
+          <p className="text-sm text-zinc-500 mb-6 max-w-md">
+            {(error as Error)?.message || "An unexpected error occurred while fetching the moderation queue."}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </motion.div>
       ) : items.length === 0 ? (
         <EmptyState />
       ) : (
@@ -715,6 +756,33 @@ const ContentModeration = () => {
         onConfirm={handleConfirmReview}
         isSubmitting={reviewMutation.isPending}
       />
+
+      {/* Dismiss Confirmation Dialog */}
+      <AlertDialog open={dismissTarget !== null} onOpenChange={(open) => { if (!open) setDismissTarget(null); }}>
+        <AlertDialogContent className="bg-[#121214] border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Dismiss moderation item?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Are you sure you want to dismiss this item? This will remove it from the moderation queue permanently.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-zinc-800 text-zinc-400 hover:text-white"
+              disabled={dismissMutation.isPending}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDismiss}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              disabled={dismissMutation.isPending}
+            >
+              {dismissMutation.isPending ? "Dismissing…" : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
