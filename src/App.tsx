@@ -77,6 +77,7 @@ const SessionManagementTool = React.lazy(() => import("./pages/admin/tools/Sessi
 const IpAllowlistTool = React.lazy(() => import("./pages/admin/tools/IpAllowlist"));
 const ScheduledReports = React.lazy(() => import("./pages/admin/tools/ScheduledReports"));
 const GdprCompliance = React.lazy(() => import("./pages/admin/tools/GdprCompliance"));
+const AnomalyDetection = React.lazy(() => import("./pages/admin/tools/AnomalyDetection"));
 
 
 // Venue Owner
@@ -482,6 +483,18 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <GdprCompliance />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                {/* Anomaly Detection - Super Admin + Ops */}
+                <Route path="/admin/tools/anomaly-detection" element={
+                  <AdminProtectedRoute
+                    requiredPermission="system:audit"
+                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
+                  >
+                    <AdminLayout>
+                      <AnomalyDetection />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />

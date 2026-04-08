@@ -39,6 +39,7 @@ import {
   ShieldPlus,
   Monitor,
   CalendarClock,
+  Zap,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -342,6 +343,7 @@ const AdminManagement = () => {
     { label: 'IP Allowlist', href: '/admin/tools/ip-allowlist', icon: Globe, color: 'emerald' },
   { label: 'Scheduled Reports', href: '/admin/tools/scheduled-reports', icon: CalendarClock, color: 'violet' },
   { label: 'GDPR Compliance', href: '/admin/tools/gdpr', icon: FileText, color: 'rose' },
+  { label: 'Anomaly Detection', href: '/admin/tools/anomaly-detection', icon: Zap, color: 'orange' },
   ];
 
   const getColorClasses = (color: string) => {
@@ -355,6 +357,7 @@ const AdminManagement = () => {
       cyan: { bg: 'bg-cyan-500/10', text: 'text-cyan-500', border: 'border-cyan-500/30' },
       zinc: { bg: 'bg-zinc-500/10', text: 'text-zinc-400', border: 'border-zinc-500/30' },
       green: { bg: 'bg-green-500/10', text: 'text-green-500', border: 'border-green-500/30' },
+      orange: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30' },
     };
     return colors[color] || colors.rose;
   };

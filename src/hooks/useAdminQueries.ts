@@ -57,6 +57,9 @@ export const adminKeys = {
   gdprRequests: (params?: Record<string, string>) => ['admin', 'gdpr-requests', params] as const,
   gdprStats: () => ['admin', 'gdpr-stats'] as const,
   consentRecords: (params?: Record<string, string>) => ['admin', 'consent-records', params] as const,
+
+  anomalies: (params?: Record<string, string>) => ['admin', 'anomalies', params] as const,
+  anomalyRules: () => ['admin', 'anomaly-rules'] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -1387,6 +1390,149 @@ export const useRecordConsent = () => {
       toast({
         title: 'Failed to record consent',
         description: body?.error || (error as Error)?.message || 'Could not save consent preferences.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// ── Anomaly Detection ────────────────────────────────────────────────────────
+
+export interface AnomalyEvent {
+  id: string;
+  ruleId: string;
+  ruleName: string;
+  metric: string;
+  severity: string;
+  countObserved: number;
+  thresholdCount: number;
+  windowMinutes: number;
+  detectedAt: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  isResolved: boolean;
+  details: Record<string, unknown> | null;
+}
+
+export interface AnomalyRule {
+  id: string;
+  name: string;
+  metric: string;
+  thresholdCount: number;
+  windowMinutes: number;
+  severity: string;
+  isActive: boolean;
+  lastTriggeredAt: string | null;
+  cooldownMinutes: number;
+  createdAt: string;
+}
+
+interface AnomaliesResponse {
+  items: AnomalyEvent[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+interface ScanResult {
+  scannedRules: number;
+  detectedCount: number;
+  detectedEvents: AnomalyEvent[];
+}
+
+export const useAnomalies = (params?: Record<string, string>) =>
+  useQuery({
+    queryKey: adminKeys.anomalies(params),
+    queryFn: () => {
+      const qs = new URLSearchParams(params ?? {});
+      return apiClient.get<AnomaliesResponse>(`/api/admin/anomalies?${qs}`);
+    },
+    staleTime: 1000 * 60,
+    refetchInterval: 60000,
+  });
+
+export const useAnomalyRules = () =>
+  useQuery({
+    queryKey: adminKeys.anomalyRules(),
+    queryFn: () => apiClient.get<AnomalyRule[]>('/api/admin/anomalies/rules'),
+    staleTime: 1000 * 60 * 2,
+  });
+
+export const useUpdateAnomalyRule = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...data
+    }: {
+      id: string;
+      thresholdCount?: number;
+      windowMinutes?: number;
+      severity?: string;
+      isActive?: boolean;
+      cooldownMinutes?: number;
+    }) => apiClient.put(`/api/admin/anomalies/rules/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.anomalyRules() });
+      toast({ title: 'Rule updated', description: 'Detection rule has been updated successfully.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Update failed',
+        description: body?.error || (error as Error)?.message || 'Could not update detection rule.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useResolveAnomaly = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
+      apiClient.post(`/api/admin/anomalies/${id}/resolve`, { notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.anomalies() });
+      toast({ title: 'Anomaly resolved', description: 'The anomaly event has been marked as resolved.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Resolve failed',
+        description: body?.error || (error as Error)?.message || 'Could not resolve anomaly.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useScanAnomalies = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: () => apiClient.post<ScanResult>('/api/admin/anomalies/scan', {}),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.anomalies() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.anomalyRules() });
+      toast({
+        title: 'Scan complete',
+        description: `Scanned ${data?.scannedRules ?? 0} rules — ${data?.detectedCount ?? 0} anomalies detected.`,
+      });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Scan failed',
+        description: body?.error || (error as Error)?.message || 'Could not complete anomaly scan.',
         variant: 'destructive',
       });
     },
