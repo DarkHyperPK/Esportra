@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Globe, UserPlus, Trophy, Shield, HardDrive, Bell,
@@ -346,6 +346,14 @@ const SystemSettings = () => {
   const updateMutation = useUpdateSystemSettings();
   const changeCount = modifiedSettings.size;
   const hasChanges = changeCount > 0;
+
+  // Warn on page leave with unsaved changes
+  useEffect(() => {
+    if (!hasChanges) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasChanges]);
 
   const handleValueChange = useCallback((key: string, value: string) => {
     setModifiedSettings((prev) => {

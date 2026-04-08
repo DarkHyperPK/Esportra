@@ -565,9 +565,12 @@ export const useUpdateSystemSettings = () => {
       queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'system-settings'] });
       toast({ title: 'Settings saved', description: 'System settings have been updated successfully.' });
     },
-    onError: (error: any) => {
-      const message = error?.body?.message || error?.message || 'Failed to save settings.';
-      toast({ title: 'Error', description: message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      const message = body?.error || body?.message || (error as Error)?.message || 'Failed to save settings.';
+      const details = Array.isArray(body?.details) ? body.details.join(', ') : null;
+      toast({ title: 'Save failed', description: details || message, variant: 'destructive' });
     },
   });
 };
