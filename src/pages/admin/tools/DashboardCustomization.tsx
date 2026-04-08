@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -74,7 +74,8 @@ function mergePreferences(
 ): WidgetConfig[] {
   const savedIds = new Set(saved.map((s) => s.widgetId));
   const merged = [...saved];
-  let nextPos = saved.length;
+  // Use max existing position + 1 so new catalog widgets don't collide with saved ones
+  let nextPos = saved.length > 0 ? Math.max(...saved.map(s => s.position)) + 1 : 0;
   for (const w of widgets) {
     if (!savedIds.has(w.id)) {
       merged.push({
@@ -322,14 +323,18 @@ export default function DashboardCustomization() {
   const [activeCategory, setActiveCategory] = useState<Category>('All');
 
   // Seed layout once data arrives
+  // isSeeded prevents background refetches from overwriting unsaved edits
+  const isSeeded = useRef(false);
   useEffect(() => {
-    if (!widgets.length) return;
+    if (!widgets.length || loadingPrefs) return;
+    if (isSeeded.current) return; // Don't overwrite unsaved edits on background refetch
     const merged = prefsRaw?.layout
       ? mergePreferences(prefsRaw.layout, widgets)
       : buildDefaultLayout(widgets);
     setLayout(merged);
     setSavedLayout(merged);
-  }, [widgets, prefsRaw]);
+    isSeeded.current = true;
+  }, [widgets, prefsRaw, loadingPrefs]);
 
   // ── Dirty tracking ──────────────────────────────────────────────────────────
   const isDirty = useMemo(() => !layoutsEqual(layout, savedLayout), [layout, savedLayout]);
