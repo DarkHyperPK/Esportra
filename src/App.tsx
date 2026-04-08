@@ -78,6 +78,7 @@ const IpAllowlistTool = React.lazy(() => import("./pages/admin/tools/IpAllowlist
 const ScheduledReports = React.lazy(() => import("./pages/admin/tools/ScheduledReports"));
 const GdprCompliance = React.lazy(() => import("./pages/admin/tools/GdprCompliance"));
 const AnomalyDetection = React.lazy(() => import("./pages/admin/tools/AnomalyDetection"));
+const DashboardCustomization = React.lazy(() => import("./pages/admin/tools/DashboardCustomization"));
 
 
 // Venue Owner
@@ -495,6 +496,18 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <AnomalyDetection />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                {/* Dashboard Customization */}
+                <Route path="tools/dashboard-customization" element={
+                  <AdminProtectedRoute
+                    requiredPermission="admin:view"
+                    requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
+                  >
+                    <AdminLayout>
+                      <DashboardCustomization />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />

@@ -60,6 +60,9 @@ export const adminKeys = {
 
   anomalies: (params?: Record<string, string>) => ['admin', 'anomalies', params] as const,
   anomalyRules: () => ['admin', 'anomaly-rules'] as const,
+
+  dashboardWidgets: () => ['admin', 'dashboard-widgets'] as const,
+  dashboardPreferences: () => ['admin', 'dashboard-preferences'] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -1540,6 +1543,69 @@ export const useScanAnomalies = () => {
       toast({
         title: 'Scan failed',
         description: body?.error || (error as Error)?.message || 'Could not complete anomaly scan.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+
+// ── Dashboard Customization ──────────────────────────────────────────────────
+
+export interface DashboardWidget {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  defaultRefreshInterval: number;
+}
+
+export interface WidgetConfig {
+  widgetId: string;
+  position: number;
+  visible: boolean;
+  refreshInterval: number | null;
+}
+
+export interface DashboardPreferences {
+  layout: WidgetConfig[];
+  isDefault?: boolean;
+}
+
+export const useDashboardWidgets = () =>
+  useQuery({
+    queryKey: adminKeys.dashboardWidgets(),
+    queryFn: () => apiClient.get<DashboardWidget[]>('/api/admin/dashboard/widgets'),
+    staleTime: Infinity,
+  });
+
+export const useDashboardPreferences = () =>
+  useQuery({
+    queryKey: adminKeys.dashboardPreferences(),
+    queryFn: () => apiClient.get<DashboardPreferences>('/api/admin/dashboard/preferences'),
+    staleTime: 1000 * 60 * 5,
+  });
+
+export const useSaveDashboardPreferences = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: { layout: WidgetConfig[] }) =>
+      apiClient.put<DashboardPreferences>('/api/admin/dashboard/preferences', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.dashboardPreferences() });
+      toast({
+        title: 'Layout saved',
+        description: 'Your dashboard layout has been updated.',
+      });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Save failed',
+        description: body?.error || (error as Error)?.message || 'Could not save dashboard preferences.',
         variant: 'destructive',
       });
     },
