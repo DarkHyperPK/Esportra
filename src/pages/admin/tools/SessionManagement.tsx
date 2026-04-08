@@ -1,0 +1,704 @@
+import { useState, useCallback } from "react";
+import { motion } from "framer-motion";
+import {
+  Users,
+  Shield,
+  LogOut,
+  Clock,
+  Activity,
+  Search,
+  Monitor,
+  Globe,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  AlertTriangle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  useActiveSessions,
+  useSessionAudit,
+  useOnlineCount,
+  useRevokeSession,
+} from "@/hooks/useAdminQueries";
+import type { ActiveSession, SessionAuditEntry } from "@/hooks/useAdminQueries";
+import { useAuth } from "@/contexts/AuthContext";
+
+// ── Constants ───────────────────────────────────────────────────────────────
+
+const ITEMS_PER_PAGE = 12;
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return "Never";
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diff = now - then;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return "Just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function getInitials(name: string | null, email: string): string {
+  if (name) {
+    return name
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
+}
+
+function truncateUA(ua: string | null, maxLen = 40): string {
+  if (!ua) return "—";
+  return ua.length > maxLen ? ua.slice(0, maxLen) + "…" : ua;
+}
+
+// ── Skeleton Components ─────────────────────────────────────────────────────
+
+function StatsBarSkeleton() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {[1, 2].map((i) => (
+        <div
+          key={i}
+          className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-5"
+        >
+          <Skeleton className="h-4 w-24 mb-3" />
+          <Skeleton className="h-8 w-16" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SessionTableSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 flex items-center gap-4"
+        >
+          <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-56" />
+          </div>
+          <Skeleton className="h-8 w-24" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AuditTableSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 space-y-2"
+        >
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <Skeleton className="h-3 w-48" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Empty / Error States ────────────────────────────────────────────────────
+
+function EmptyState({ message, icon: Icon }: { message: string; icon: React.ElementType }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 flex items-center justify-center mb-4">
+        <Icon className="w-8 h-8 text-zinc-600" />
+      </div>
+      <p className="text-zinc-500 text-sm">{message}</p>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
+        <AlertTriangle className="w-8 h-8 text-red-400" />
+      </div>
+      <p className="text-zinc-400 text-sm mb-4">{message}</p>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onRetry}
+        className="border-zinc-700 text-zinc-300 hover:text-white"
+      >
+        <RefreshCw className="w-4 h-4 mr-2" />
+        Retry
+      </Button>
+    </div>
+  );
+}
+
+// ── Pagination ──────────────────────────────────────────────────────────────
+
+function Pagination({
+  page,
+  total,
+  limit,
+  onPageChange,
+}: {
+  page: number;
+  total: number;
+  limit: number;
+  onPageChange: (p: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between pt-4">
+      <p className="text-xs text-zinc-500">
+        Page {page} of {totalPages} · {total} total
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+          className="border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30"
+          aria-label="Previous page"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+          className="border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30"
+          aria-label="Next page"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Stats Bar ───────────────────────────────────────────────────────────────
+
+function StatsBar() {
+  const { data: onlineData, isLoading: onlineLoading } = useOnlineCount();
+  const {
+    data: sessionsData,
+    isLoading: sessionsLoading,
+  } = useActiveSessions({ page: 1, limit: 1 });
+
+  if (onlineLoading || sessionsLoading) return <StatsBarSkeleton />;
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Online Now */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-5"
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+          </span>
+          <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+            Online Now
+          </span>
+        </div>
+        <p className="text-3xl font-black text-white" aria-live="polite">
+          {onlineData?.count ?? 0}
+        </p>
+      </motion.div>
+
+      {/* Total Registered */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-5"
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <Users className="w-4 h-4 text-zinc-500" />
+          <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+            Total Users
+          </span>
+        </div>
+        <p className="text-3xl font-black text-white">
+          {sessionsData?.total ?? 0}
+        </p>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Active Sessions Tab ─────────────────────────────────────────────────────
+
+function ActiveSessionsTab() {
+  const { profile } = useAuth();
+  const currentUserId = profile?.id;
+
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  // Revoke dialog state
+  const [revokeTarget, setRevokeTarget] = useState<ActiveSession | null>(null);
+  const [revokeReason, setRevokeReason] = useState("");
+
+  const revokeMutation = useRevokeSession();
+
+  // Debounce search
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearch(value);
+      setPage(1);
+      const timer = setTimeout(() => setDebouncedSearch(value), 300);
+      return () => clearTimeout(timer);
+    },
+    []
+  );
+
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+  } = useActiveSessions({
+    page,
+    limit: ITEMS_PER_PAGE,
+    search: debouncedSearch || undefined,
+  });
+
+  const handleRevoke = () => {
+    if (!revokeTarget) return;
+    revokeMutation.mutate(
+      { userId: revokeTarget.userId, reason: revokeReason || undefined },
+      {
+        onSettled: () => {
+          setRevokeTarget(null);
+          setRevokeReason("");
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <Input
+          placeholder="Search by email or username…"
+          value={search}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="pl-10 bg-[#0a0a0c] border-white/5 text-white placeholder:text-zinc-600 focus:border-rose-500/40"
+          aria-label="Search sessions"
+        />
+      </div>
+
+      {/* Content */}
+      {isLoading ? (
+        <SessionTableSkeleton />
+      ) : error ? (
+        <ErrorState message="Failed to load active sessions." onRetry={refetch} />
+      ) : !data?.items?.length ? (
+        <EmptyState message="No active sessions found." icon={Monitor} />
+      ) : (
+        <>
+          <div className="space-y-3">
+            {data.items.map((session, idx) => {
+              const isOwnSession = session.userId === currentUserId;
+              return (
+                <motion.div
+                  key={session.userId}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.03 }}
+                  className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:border-white/10 transition-colors"
+                >
+                  {/* Avatar + Info */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Avatar className="h-10 w-10 shrink-0">
+                      <AvatarImage src={session.avatarUrl ?? undefined} alt="" />
+                      <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs font-semibold">
+                        {getInitials(session.fullName, session.email)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-white truncate">
+                          {session.username ?? session.email}
+                        </p>
+                        {isOwnSession && (
+                          <Badge className="bg-cyan-500/10 text-cyan-400 border-cyan-500/20 text-[10px] px-1.5 py-0">
+                            You
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500 truncate">{session.email}</p>
+                    </div>
+                  </div>
+
+                  {/* Roles */}
+                  <div className="flex flex-wrap gap-1.5 shrink-0">
+                    {session.roles.map((role) => (
+                      <Badge
+                        key={role}
+                        className="bg-rose-500/10 text-rose-400 border-rose-500/20 text-[10px] px-1.5 py-0"
+                      >
+                        <Shield className="w-3 h-3 mr-1" />
+                        {role.replace(/_/g, " ")}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {/* Last Sign-In */}
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-500 shrink-0">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{timeAgo(session.lastSignInAt)}</span>
+                  </div>
+
+                  {/* Created */}
+                  <div className="hidden lg:flex items-center gap-1.5 text-xs text-zinc-500 shrink-0">
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>{formatDate(session.createdAt)}</span>
+                  </div>
+
+                  {/* Revoke Button */}
+                  {!isOwnSession && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRevokeTarget(session)}
+                      className="border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/40 shrink-0"
+                    >
+                      <LogOut className="w-3.5 h-3.5 mr-1.5" />
+                      Revoke
+                    </Button>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <Pagination
+            page={data.page}
+            total={data.total}
+            limit={data.limit}
+            onPageChange={setPage}
+          />
+        </>
+      )}
+
+      {/* Revoke Confirmation Dialog */}
+      <AlertDialog
+        open={!!revokeTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRevokeTarget(null);
+            setRevokeReason("");
+          }
+        }}
+      >
+        <AlertDialogContent className="bg-[#121214] border-white/10 max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <LogOut className="w-5 h-5 text-red-400" />
+              Force Logout User
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Are you sure you want to force logout{" "}
+              <span className="text-white font-semibold">
+                {revokeTarget?.username ?? revokeTarget?.email}
+              </span>
+              ? Their active session will be immediately terminated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-2 py-2">
+            <label
+              htmlFor="revoke-reason"
+              className="text-xs font-medium text-zinc-400"
+            >
+              Reason (optional)
+            </label>
+            <Textarea
+              id="revoke-reason"
+              value={revokeReason}
+              onChange={(e) => setRevokeReason(e.target.value)}
+              placeholder="Why are you revoking this session?"
+              className="bg-[#0a0a0c] border-white/10 text-white placeholder:text-zinc-600 resize-none"
+              rows={3}
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRevoke}
+              disabled={revokeMutation.isPending}
+              className="bg-red-600 text-white hover:bg-red-700 border-0"
+            >
+              {revokeMutation.isPending ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Revoking…
+                </>
+              ) : (
+                <>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Revoke Session
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// ── Session Audit Tab ───────────────────────────────────────────────────────
+
+function SessionAuditTab() {
+  const [userIdFilter, setUserIdFilter] = useState("");
+  const [debouncedUserId, setDebouncedUserId] = useState("");
+  const [page, setPage] = useState(1);
+
+  const handleFilterChange = useCallback((value: string) => {
+    setUserIdFilter(value);
+    setPage(1);
+    const timer = setTimeout(() => setDebouncedUserId(value), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const { data, isLoading, error, refetch } = useSessionAudit({
+    page,
+    limit: ITEMS_PER_PAGE,
+    userId: debouncedUserId || undefined,
+  });
+
+  const getActionBadge = (actionType: string) => {
+    const lower = actionType.toLowerCase();
+    if (lower.includes("login") || lower.includes("sign_in") || lower.includes("signin")) {
+      return (
+        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] px-2 py-0.5">
+          <LogOut className="w-3 h-3 mr-1 rotate-180" />
+          Login
+        </Badge>
+      );
+    }
+    if (lower.includes("logout") || lower.includes("sign_out") || lower.includes("signout") || lower.includes("revoke")) {
+      return (
+        <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px] px-2 py-0.5">
+          <LogOut className="w-3 h-3 mr-1" />
+          Logout
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-zinc-500/10 text-zinc-400 border-zinc-500/20 text-[10px] px-2 py-0.5">
+        <Activity className="w-3 h-3 mr-1" />
+        {actionType}
+      </Badge>
+    );
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Filter */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <Input
+          placeholder="Filter by user ID…"
+          value={userIdFilter}
+          onChange={(e) => handleFilterChange(e.target.value)}
+          className="pl-10 bg-[#0a0a0c] border-white/5 text-white placeholder:text-zinc-600 focus:border-rose-500/40"
+          aria-label="Filter audit by user ID"
+        />
+      </div>
+
+      {/* Content */}
+      {isLoading ? (
+        <AuditTableSkeleton />
+      ) : error ? (
+        <ErrorState message="Failed to load audit log." onRetry={refetch} />
+      ) : !data?.items?.length ? (
+        <EmptyState message="No audit entries found." icon={Activity} />
+      ) : (
+        <>
+          <div className="space-y-3">
+            {data.items.map((entry, idx) => (
+              <motion.div
+                key={entry.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.03 }}
+                className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 space-y-3 hover:border-white/10 transition-colors"
+              >
+                {/* Top row: time + action + user */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  {getActionBadge(entry.actionType)}
+
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm text-white font-medium truncate">
+                      {entry.actorUsername ?? entry.actorEmail ?? entry.actorId}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-500 sm:ml-auto shrink-0">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{timeAgo(entry.createdAt)}</span>
+                  </div>
+                </div>
+
+                {/* Details row */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs text-zinc-500">
+                  {entry.ipAddress && (
+                    <div className="flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>{entry.ipAddress}</span>
+                    </div>
+                  )}
+                  {entry.userAgent && (
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Monitor className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate" title={entry.userAgent}>
+                        {truncateUA(entry.userAgent)}
+                      </span>
+                    </div>
+                  )}
+                  {entry.details && (
+                    <div className="text-zinc-400 italic truncate">
+                      {entry.details}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <Pagination
+            page={data.page}
+            total={data.total}
+            limit={data.limit}
+            onPageChange={setPage}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ───────────────────────────────────────────────────────────────
+
+export default function SessionManagement() {
+  return (
+    <div className="min-h-screen bg-[#050505] p-4 lg:p-8">
+      <div className="max-w-[1400px] mx-auto space-y-8">
+        {/* Header */}
+        <motion.header
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center">
+              <Monitor className="w-6 h-6 text-cyan-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white font-[Poppins]">
+                Session Management
+              </h1>
+              <p className="text-zinc-500 text-sm">
+                Monitor active sessions and audit authentication activity
+              </p>
+            </div>
+          </div>
+        </motion.header>
+
+        {/* Stats */}
+        <StatsBar />
+
+        {/* Tabs */}
+        <Tabs defaultValue="active" className="space-y-6">
+          <TabsList className="bg-[#0a0a0c] border border-white/5 p-1 rounded-xl">
+            <TabsTrigger
+              value="active"
+              className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-zinc-400 rounded-lg text-sm px-4 py-2"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Active Sessions
+            </TabsTrigger>
+            <TabsTrigger
+              value="audit"
+              className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-zinc-400 rounded-lg text-sm px-4 py-2"
+            >
+              <Activity className="w-4 h-4 mr-2" />
+              Session Audit
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active">
+            <ActiveSessionsTab />
+          </TabsContent>
+
+          <TabsContent value="audit">
+            <SessionAuditTab />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}

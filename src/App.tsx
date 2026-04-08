@@ -73,6 +73,7 @@ const TeamManagementTool = React.lazy(() => import("./pages/admin/tools/TeamMana
 const AlertsManagementTool = React.lazy(() => import("./pages/admin/tools/AlertsManagement"));
 const RoleBuilderTool = React.lazy(() => import("./pages/admin/tools/RoleBuilder"));
 const ContentModerationTool = React.lazy(() => import("./pages/admin/tools/ContentModeration"));
+const SessionManagementTool = React.lazy(() => import("./pages/admin/tools/SessionManagement"));
 
 
 // Venue Owner
@@ -432,6 +433,18 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <ContentModerationTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                {/* Session Management - Super Admin + Ops */}
+                <Route path="/admin/tools/sessions" element={
+                  <AdminProtectedRoute
+                    requiredPermission="user:view"
+                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
+                  >
+                    <AdminLayout>
+                      <SessionManagementTool />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />

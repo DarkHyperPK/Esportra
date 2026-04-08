@@ -36,7 +36,8 @@ import {
   Award,
   UsersRound,
   Bell,
-  ShieldPlus
+  ShieldPlus,
+  Monitor
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -336,6 +337,7 @@ const AdminManagement = () => {
     { label: 'Admin Access', href: '/admin/access', icon: UserCheck, color: 'rose' },
     { label: 'Role Builder', href: '/admin/tools/role-builder', icon: ShieldPlus, color: 'rose' },
     { label: 'Content Moderation', href: '/admin/tools/moderation', icon: Shield, color: 'amber' },
+    { label: 'Session Management', href: '/admin/tools/sessions', icon: Monitor, color: 'cyan' },
   ];
 
   const getColorClasses = (color: string) => {

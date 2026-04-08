@@ -41,6 +41,12 @@ export const adminKeys = {
   systemSettings: (category?: string) =>
     [...adminKeys.all, 'system-settings', category ?? 'all'] as const,
   adminPermissions: () => [...adminKeys.all, 'permissions'] as const,
+
+  activeSessions: (params?: Record<string, string>) =>
+    ['admin', 'sessions-active', params ?? {}] as const,
+  sessionAudit: (params?: Record<string, string>) =>
+    ['admin', 'sessions-audit', params ?? {}] as const,
+  onlineCount: () => ['admin', 'online-count'] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -816,6 +822,106 @@ export const useReportContent = () => {
       toast({
         title: 'Report failed',
         description: body?.error || (error as Error)?.message || 'Failed to submit report.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// ── Session Management ──────────────────────────────────────────────────────
+
+export interface ActiveSession {
+  userId: string;
+  email: string;
+  username: string | null;
+  fullName: string | null;
+  avatarUrl: string | null;
+  roles: string[];
+  lastSignInAt: string | null;
+  createdAt: string;
+}
+
+export interface SessionAuditEntry {
+  id: string;
+  actionType: string;
+  actorId: string;
+  actorEmail: string | null;
+  actorUsername: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  details: string | null;
+  createdAt: string;
+}
+
+interface ActiveSessionsResponse {
+  items: ActiveSession[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+interface SessionAuditResponse {
+  items: SessionAuditEntry[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export const useActiveSessions = (params: { page?: number; limit?: number; search?: string } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set('page', String(params.page));
+  if (params.limit) qs.set('limit', String(params.limit));
+  if (params.search) qs.set('search', params.search);
+  const query = qs.toString() ? `?${qs}` : '';
+
+  return useQuery({
+    queryKey: adminKeys.activeSessions(params as Record<string, string>),
+    queryFn: () => apiClient.get<ActiveSessionsResponse>(`/api/admin/sessions/active${query}`),
+    staleTime: 1000 * 60 * 2,
+  });
+};
+
+export const useSessionAudit = (params: { page?: number; limit?: number; userId?: string } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set('page', String(params.page));
+  if (params.limit) qs.set('limit', String(params.limit));
+  if (params.userId) qs.set('userId', params.userId);
+  const query = qs.toString() ? `?${qs}` : '';
+
+  return useQuery({
+    queryKey: adminKeys.sessionAudit(params as Record<string, string>),
+    queryFn: () => apiClient.get<SessionAuditResponse>(`/api/admin/sessions/audit${query}`),
+    staleTime: 1000 * 60 * 2,
+  });
+};
+
+export const useOnlineCount = () =>
+  useQuery({
+    queryKey: adminKeys.onlineCount(),
+    queryFn: () => apiClient.get<{ count: number }>('/api/admin/sessions/online-count'),
+    staleTime: 1000 * 30,
+    refetchInterval: 30000,
+  });
+
+export const useRevokeSession = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ userId, reason }: { userId: string; reason?: string }) =>
+      apiClient.post(`/api/admin/sessions/${userId}/revoke`, { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.activeSessions() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.onlineCount() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.sessionAudit() });
+      toast({ title: 'Session revoked', description: 'User has been forcefully logged out.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Revoke failed',
+        description: body?.error || (error as Error)?.message || 'Failed to revoke session.',
         variant: 'destructive',
       });
     },
