@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -297,12 +297,13 @@ function ActiveSessionsTab() {
   const revokeMutation = useRevokeSession();
 
   // Debounce search
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const handleSearchChange = useCallback(
     (value: string) => {
       setSearch(value);
       setPage(1);
-      const timer = setTimeout(() => setDebouncedSearch(value), 300);
-      return () => clearTimeout(timer);
+      clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = setTimeout(() => setDebouncedSearch(value), 300);
     },
     []
   );
@@ -516,11 +517,12 @@ function SessionAuditTab() {
   const [debouncedUserId, setDebouncedUserId] = useState("");
   const [page, setPage] = useState(1);
 
+  const auditTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const handleFilterChange = useCallback((value: string) => {
     setUserIdFilter(value);
     setPage(1);
-    const timer = setTimeout(() => setDebouncedUserId(value), 300);
-    return () => clearTimeout(timer);
+    clearTimeout(auditTimerRef.current);
+    auditTimerRef.current = setTimeout(() => setDebouncedUserId(value), 300);
   }, []);
 
   const { data, isLoading, error, refetch } = useSessionAudit({

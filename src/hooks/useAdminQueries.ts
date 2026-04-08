@@ -909,12 +909,20 @@ export const useRevokeSession = () => {
 
   return useMutation({
     mutationFn: ({ userId, reason }: { userId: string; reason?: string }) =>
-      apiClient.post(`/api/admin/sessions/${userId}/revoke`, { reason }),
-    onSuccess: () => {
+      apiClient.post<{ success: boolean; partial?: boolean; message?: string }>(
+        `/api/admin/sessions/${userId}/revoke`, { reason }),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: adminKeys.activeSessions() });
       queryClient.invalidateQueries({ queryKey: adminKeys.onlineCount() });
       queryClient.invalidateQueries({ queryKey: adminKeys.sessionAudit() });
-      toast({ title: 'Session revoked', description: 'User has been forcefully logged out.' });
+      if (data?.partial) {
+        toast({
+          title: 'Session partially revoked',
+          description: data.message ?? 'Auth token invalidation failed, but cache was evicted.',
+        });
+      } else {
+        toast({ title: 'Session revoked', description: 'User has been forcefully logged out.' });
+      }
     },
     onError: (error: unknown) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
