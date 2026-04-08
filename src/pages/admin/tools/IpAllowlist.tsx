@@ -52,7 +52,7 @@ import { Link } from "react-router-dom";
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const IP_REGEX = /^(?:(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?|[a-fA-F0-9:]+(?:\/\d{1,3})?)$/;
+const IP_REGEX = /^(?:(?:\d{1,3}\.){3}\d{1,3}|[a-fA-F0-9:]+)$/;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -82,8 +82,8 @@ function isExpired(expiresAt: string | null): boolean {
 }
 
 function getEntryStatus(entry: IpAllowlistEntry): "active" | "inactive" | "expired" {
-  if (entry.expires_at && isExpired(entry.expires_at)) return "expired";
-  return entry.is_active ? "active" : "inactive";
+  if (entry.expiresAt && isExpired(entry.expiresAt)) return "expired";
+  return entry.isActive ? "active" : "inactive";
 }
 
 // ── Skeleton Components ─────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ function IpEntryCard({
       <div className="flex flex-col gap-3 sm:hidden">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-sm text-white font-medium truncate">{entry.ip_address}</p>
+            <p className="font-mono text-sm text-white font-medium truncate">{entry.ipAddress}</p>
             {entry.label && (
               <p className="text-xs text-zinc-400 mt-0.5 truncate">{entry.label}</p>
             )}
@@ -205,21 +205,21 @@ function IpEntryCard({
         </div>
 
         <div className="flex items-center gap-3 text-xs text-zinc-500">
-          {entry.created_by_username && (
+          {entry.createdByUsername && (
             <span className="flex items-center gap-1">
               <User className="h-3 w-3" />
-              {entry.created_by_username}
+              {entry.createdByUsername}
             </span>
           )}
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            {formatDate(entry.created_at)}
+            {formatDate(entry.createdAt)}
           </span>
         </div>
 
-        {entry.expires_at && (
-          <p className={`text-xs ${isExpired(entry.expires_at) ? "text-amber-400" : "text-zinc-500"}`}>
-            {isExpired(entry.expires_at) ? "Expired" : "Expires"}: {formatDate(entry.expires_at)}
+        {entry.expiresAt && (
+          <p className={`text-xs ${isExpired(entry.expiresAt) ? "text-amber-400" : "text-zinc-500"}`}>
+            {isExpired(entry.expiresAt) ? "Expired" : "Expires"}: {formatDate(entry.expiresAt)}
           </p>
         )}
 
@@ -229,7 +229,7 @@ function IpEntryCard({
             variant="ghost"
             className="h-8 flex-1 text-zinc-400 hover:text-white hover:bg-white/5"
             onClick={() => onEdit(entry)}
-            aria-label={`Edit IP ${entry.ip_address}`}
+            aria-label={`Edit IP ${entry.ipAddress}`}
           >
             <Pencil className="h-3.5 w-3.5 mr-1.5" />
             Edit
@@ -238,22 +238,22 @@ function IpEntryCard({
             size="sm"
             variant="ghost"
             className={`h-8 flex-1 ${
-              entry.is_active
+              entry.isActive
                 ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
                 : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
             }`}
             onClick={() => onToggle(entry)}
-            aria-label={entry.is_active ? `Deactivate IP ${entry.ip_address}` : `Activate IP ${entry.ip_address}`}
+            aria-label={entry.isActive ? `Deactivate IP ${entry.ipAddress}` : `Activate IP ${entry.ipAddress}`}
           >
-            {entry.is_active ? <XCircle className="h-3.5 w-3.5 mr-1.5" /> : <CheckCircle className="h-3.5 w-3.5 mr-1.5" />}
-            {entry.is_active ? "Deactivate" : "Activate"}
+            {entry.isActive ? <XCircle className="h-3.5 w-3.5 mr-1.5" /> : <CheckCircle className="h-3.5 w-3.5 mr-1.5" />}
+            {entry.isActive ? "Deactivate" : "Activate"}
           </Button>
           <Button
             size="sm"
             variant="ghost"
             className="h-8 text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2"
             onClick={() => onDelete(entry)}
-            aria-label={`Delete IP ${entry.ip_address}`}
+            aria-label={`Delete IP ${entry.ipAddress}`}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -264,24 +264,24 @@ function IpEntryCard({
       <div className="hidden sm:flex sm:items-center gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <p className="font-mono text-sm text-white font-medium">{entry.ip_address}</p>
+            <p className="font-mono text-sm text-white font-medium">{entry.ipAddress}</p>
             <StatusBadge status={status} />
           </div>
           <div className="flex items-center gap-4 mt-1.5 text-xs text-zinc-500">
             {entry.label && <span className="text-zinc-400">{entry.label}</span>}
-            {entry.created_by_username && (
+            {entry.createdByUsername && (
               <span className="flex items-center gap-1">
                 <User className="h-3 w-3" />
-                {entry.created_by_username}
+                {entry.createdByUsername}
               </span>
             )}
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {formatDate(entry.created_at)}
+              {formatDate(entry.createdAt)}
             </span>
-            {entry.expires_at && (
-              <span className={isExpired(entry.expires_at) ? "text-amber-400" : ""}>
-                {isExpired(entry.expires_at) ? "Expired" : "Expires"}: {formatDate(entry.expires_at)}
+            {entry.expiresAt && (
+              <span className={isExpired(entry.expiresAt) ? "text-amber-400" : ""}>
+                {isExpired(entry.expiresAt) ? "Expired" : "Expires"}: {formatDate(entry.expiresAt)}
               </span>
             )}
           </div>
@@ -293,7 +293,7 @@ function IpEntryCard({
             variant="ghost"
             className="h-8 w-8 p-0 text-zinc-400 hover:text-white hover:bg-white/5"
             onClick={() => onEdit(entry)}
-            aria-label={`Edit IP ${entry.ip_address}`}
+            aria-label={`Edit IP ${entry.ipAddress}`}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -301,21 +301,21 @@ function IpEntryCard({
             size="sm"
             variant="ghost"
             className={`h-8 w-8 p-0 ${
-              entry.is_active
+              entry.isActive
                 ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
                 : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
             }`}
             onClick={() => onToggle(entry)}
-            aria-label={entry.is_active ? `Deactivate IP ${entry.ip_address}` : `Activate IP ${entry.ip_address}`}
+            aria-label={entry.isActive ? `Deactivate IP ${entry.ipAddress}` : `Activate IP ${entry.ipAddress}`}
           >
-            {entry.is_active ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+            {entry.isActive ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
           </Button>
           <Button
             size="sm"
             variant="ghost"
             className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
             onClick={() => onDelete(entry)}
-            aria-label={`Delete IP ${entry.ip_address}`}
+            aria-label={`Delete IP ${entry.ipAddress}`}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -341,10 +341,10 @@ function IpFormDialog({
   isPending: boolean;
 }) {
   const isEdit = !!entry;
-  const [ipAddress, setIpAddress] = useState(entry?.ip_address ?? "");
+  const [ipAddress, setIpAddress] = useState(entry?.ipAddress ?? "");
   const [label, setLabel] = useState(entry?.label ?? "");
   const [expiresAt, setExpiresAt] = useState(
-    entry?.expires_at ? new Date(entry.expires_at).toISOString().slice(0, 16) : ""
+    entry?.expiresAt ? new Date(entry.expiresAt).toISOString().slice(0, 16) : ""
   );
   const [ipError, setIpError] = useState("");
 
@@ -352,9 +352,9 @@ function IpFormDialog({
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) {
-        setIpAddress(entry?.ip_address ?? "");
+        setIpAddress(entry?.ipAddress ?? "");
         setLabel(entry?.label ?? "");
-        setExpiresAt(entry?.expires_at ? new Date(entry.expires_at).toISOString().slice(0, 16) : "");
+        setExpiresAt(entry?.expiresAt ? new Date(entry.expiresAt).toISOString().slice(0, 16) : "");
         setIpError("");
       }
       onOpenChange(nextOpen);
@@ -407,13 +407,13 @@ function IpFormDialog({
             </Label>
             {isEdit ? (
               <p className="font-mono text-sm text-zinc-400 bg-zinc-800/50 rounded-lg px-3 py-2 border border-white/5">
-                {entry.ip_address}
+                {entry.ipAddress}
               </p>
             ) : (
               <>
                 <Input
                   id="ip-address"
-                  placeholder="192.168.1.1 or 10.0.0.0/24"
+                  placeholder="e.g. 192.168.1.1"
                   value={ipAddress}
                   onChange={(e) => {
                     setIpAddress(e.target.value);
@@ -576,7 +576,7 @@ function DeleteConfirmDialog({
           <AlertDialogDescription className="text-zinc-400 space-y-2">
             <span className="block">
               Are you sure you want to remove{" "}
-              <span className="font-mono text-white">{entry?.ip_address}</span>
+              <span className="font-mono text-white">{entry?.ipAddress}</span>
               {entry?.label ? ` (${entry.label})` : ""} from the allowlist?
             </span>
             {isLastActive && allowlistEnabled && (
@@ -680,9 +680,9 @@ export default function IpAllowlist() {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
-      entry.ip_address.toLowerCase().includes(q) ||
+      entry.ipAddress.toLowerCase().includes(q) ||
       (entry.label && entry.label.toLowerCase().includes(q)) ||
-      (entry.created_by_username && entry.created_by_username.toLowerCase().includes(q))
+      (entry.createdByUsername && entry.createdByUsername.toLowerCase().includes(q))
     );
   });
 
@@ -725,7 +725,7 @@ export default function IpAllowlist() {
     (entry: IpAllowlistEntry) => {
       updateMutation.mutate({
         id: entry.id,
-        isActive: !entry.is_active,
+        isActive: !entry.isActive,
       });
     },
     [updateMutation]

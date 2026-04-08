@@ -943,13 +943,13 @@ export const useRevokeSession = () => {
 
 export interface IpAllowlistEntry {
   id: string;
-  ip_address: string;
+  ipAddress: string;
   label: string;
-  created_by: string | null;
-  created_by_username: string | null;
-  created_at: string;
-  expires_at: string | null;
-  is_active: boolean;
+  createdBy: string | null;
+  createdByUsername: string | null;
+  createdAt: string;
+  expiresAt: string | null;
+  isActive: boolean;
 }
 
 export interface IpAllowlistStatus {
