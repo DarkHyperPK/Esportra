@@ -29,6 +29,8 @@ export const adminKeys = {
   dashboardStats: () => [...adminKeys.all, 'dashboard-stats'] as const,
   activityFeed: (limit?: number) => [...adminKeys.all, 'activity-feed', limit] as const,
   trends: (days?: number) => [...adminKeys.all, 'trends', days] as const,
+  alerts: (params?: Record<string, any>) => [...adminKeys.all, 'alerts', params ?? {}] as const,
+  alertSummary: () => [...adminKeys.all, 'alert-summary'] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -400,6 +402,98 @@ export const useAdminBulkTournamentAction = () => {
     },
     onError: (error: Error) => {
       toast({ title: 'Bulk action failed', description: error.message, variant: 'destructive' });
+    },
+  });
+};
+
+// ── Admin Alerts ────────────────────────────────────────────────────────────
+
+interface AlertSummary {
+  active_count: number;
+  critical_count: number;
+  warning_count: number;
+  info_count: number;
+  acknowledged_count: number;
+}
+
+interface AdminAlert {
+  id: string;
+  type: string;
+  severity: string;
+  title: string;
+  message: string | null;
+  data: Record<string, any>;
+  status: string;
+  acknowledged_by: string | null;
+  acknowledged_by_name: string | null;
+  acknowledged_at: string | null;
+  resolved_by: string | null;
+  resolved_by_name: string | null;
+  resolved_at: string | null;
+  created_at: string;
+}
+
+interface AdminAlertsParams {
+  status?: string;
+  severity?: string;
+  type?: string;
+  page?: number;
+  limit?: number;
+}
+
+export const useAdminAlertSummary = () =>
+  useQuery({
+    queryKey: adminKeys.alertSummary(),
+    queryFn: () => apiClient.get<AlertSummary>('/api/admin/alerts/summary'),
+    staleTime: 1000 * 15,
+    refetchInterval: 1000 * 30,
+  });
+
+export const useAdminAlerts = (params: AdminAlertsParams = {}) => {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set('status', params.status);
+  if (params.severity) qs.set('severity', params.severity);
+  if (params.type) qs.set('type', params.type);
+  if (params.page) qs.set('page', String(params.page));
+  if (params.limit) qs.set('limit', String(params.limit));
+  const query = qs.toString() ? `?${qs}` : '';
+
+  return useQuery({
+    queryKey: adminKeys.alerts(params),
+    queryFn: () => apiClient.get<{ data: AdminAlert[]; total: number; page: number; limit: number }>(`/api/admin/alerts${query}`),
+    staleTime: 1000 * 15,
+  });
+};
+
+export const useAcknowledgeAlert = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.put<{ success: boolean }>(`/api/admin/alerts/${id}/acknowledge`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.alerts() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.alertSummary() });
+    },
+  });
+};
+
+export const useResolveAlert = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.put<{ success: boolean }>(`/api/admin/alerts/${id}/resolve`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.alerts() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.alertSummary() });
+    },
+  });
+};
+
+export const useBulkAcknowledgeAlerts = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (alertIds: string[]) => apiClient.put<{ success: boolean; updated: number }>('/api/admin/alerts/bulk-acknowledge', { alertIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.alerts() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.alertSummary() });
     },
   });
 };

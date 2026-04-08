@@ -70,6 +70,7 @@ const AnalyticsTool = React.lazy(() => import("./pages/admin/tools/Analytics"));
 const SponsorManagementTool = React.lazy(() => import("./pages/admin/tools/SponsorManagement"));
 const LicenseManagementTool = React.lazy(() => import("./pages/admin/tools/LicenseManagement"));
 const TeamManagementTool = React.lazy(() => import("./pages/admin/tools/TeamManagement"));
+const AlertsManagementTool = React.lazy(() => import("./pages/admin/tools/AlertsManagement"));
 
 
 // Venue Owner
@@ -311,6 +312,16 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <TeamManagementTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/tools/alerts" element={
+                  <AdminProtectedRoute
+                    requiredPermission="system:audit"
+                    requiredRoles={ADMIN_ROLE_SETS.auditAccess}
+                  >
+                    <AdminLayout>
+                      <AlertsManagementTool />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />
