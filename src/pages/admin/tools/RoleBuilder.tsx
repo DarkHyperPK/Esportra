@@ -526,7 +526,7 @@ function RoleFormDialog({
 
   const canSubmit =
     name.trim().length >= 2 &&
-    key.trim().length >= 2 &&
+    key.trim().length >= 3 &&
     selectedPermissionIds.size > 0 &&
     !isSaving;
 
@@ -606,7 +606,7 @@ function RoleFormDialog({
                   placeholder="e.g. content_manager"
                   disabled={isEditing}
                   className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-600 font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:border-rose-500/50 focus:ring-rose-500/20"
-                  maxLength={30}
+                  maxLength={50}
                 />
                 {!isEditing && (
                   <p className="text-[11px] text-zinc-600">

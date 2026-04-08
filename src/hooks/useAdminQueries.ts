@@ -36,6 +36,7 @@ export const adminKeys = {
 
   systemSettings: (category?: string) =>
     [...adminKeys.all, 'system-settings', category ?? 'all'] as const,
+  adminPermissions: () => [...adminKeys.all, 'permissions'] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -607,7 +608,7 @@ interface AdminRoleSummary {
 
 export const useAdminPermissions = () =>
   useQuery({
-    queryKey: [...adminKeys.all, 'permissions'],
+    queryKey: adminKeys.adminPermissions(),
     queryFn: () => apiClient.get<AdminPermission[]>('/api/admin/permissions'),
     staleTime: 1000 * 60 * 10,
   });
