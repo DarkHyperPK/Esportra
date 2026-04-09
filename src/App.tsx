@@ -501,7 +501,7 @@ const AppContent = React.memo(() => {
                 } />
 
                 {/* Dashboard Customization */}
-                <Route path="tools/dashboard-customization" element={
+                <Route path="/admin/tools/dashboard-customization" element={
                   <AdminProtectedRoute
                     requiredPermission="admin:view"
                     requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
