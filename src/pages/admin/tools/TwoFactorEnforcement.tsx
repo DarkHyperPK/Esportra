@@ -57,8 +57,10 @@ import { Link } from "react-router-dom";
 
 const KNOWN_ROLES = [
   { key: "super_admin", label: "Super Admin" },
+  { key: "ops_admin", label: "Ops Admin" },
   { key: "moderator", label: "Moderator" },
-  { key: "support", label: "Support" },
+  { key: "finance_admin", label: "Finance Admin" },
+  { key: "support_admin", label: "Support Admin" },
 ];
 
 const PER_PAGE = 15;
