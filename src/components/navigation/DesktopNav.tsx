@@ -87,6 +87,13 @@ const DesktopNav = ({
         Partners
       </Link>
 
+      {/* Admin Dashboard link — visible to all admins */}
+      {admin.isAdmin && (
+        <Link to="/admin/dashboard" className="text-base font-semibold text-rose-400 transition-colors hover:text-rose-300">
+          Admin
+        </Link>
+      )}
+
 
       {user ? (
         <>

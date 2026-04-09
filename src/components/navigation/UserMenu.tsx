@@ -289,6 +289,14 @@ const UserMenu = ({
           <FramerDropdownSeparator />
 
           <div className="px-1 py-1 space-y-0.5">
+            {admin.isAdmin && (
+              <>
+                <FramerDropdownItem to="/admin/dashboard">
+                  Admin Dashboard
+                </FramerDropdownItem>
+              </>
+            )}
+
             {admin.isAdmin && admin.roles.includes('super_admin') && (
               <>
                 <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>

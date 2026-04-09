@@ -246,7 +246,7 @@ const MobileNav = ({
                 </div>
 
                 {/* Role-Specific Navigation */}
-                {profile?.role === 'admin' && (
+                {admin.isAdmin && (
                   <div className="mb-3 space-y-1">
                     <Link to="/admin/dashboard" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                       Admin Panel
