@@ -36,7 +36,7 @@ const DesktopNav = ({
         <FramerDropdownContent className="min-w-[220px]">
           <FramerDropdownItem to="/venues/search">Find Venues</FramerDropdownItem>
           <FramerDropdownItem to="/venues/featured">Featured Venues</FramerDropdownItem>
-          {(userRole === 'venue_owner' || isSuperAdmin) && (
+          {(userRole === 'venue_owner' || isSuperAdmin || admin.hasPermission('venues:view')) && (
             <>
               <FramerDropdownItem to="/venues/list-venue">List Your Venue</FramerDropdownItem>
               <FramerDropdownItem to="/venues/dashboard">Venue Dashboard</FramerDropdownItem>
@@ -53,7 +53,7 @@ const DesktopNav = ({
         </FramerDropdownTrigger>
         <FramerDropdownContent className="min-w-[220px]">
           <FramerDropdownItem to="/tournaments">Browse Tournaments</FramerDropdownItem>
-          {(userRole === 'organizer' || isSuperAdmin) && (
+          {(userRole === 'organizer' || isSuperAdmin || admin.hasPermission('tournaments:create')) && (
             <>
               <div className="h-px bg-white/10 my-1 mx-2" />
               <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>

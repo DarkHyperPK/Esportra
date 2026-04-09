@@ -93,7 +93,7 @@ const MobileNav = ({
                     <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
                       <Link to="/venues/search" className={subLinkClass} onClick={onClose}>Find Venues</Link>
                       <Link to="/venues/featured" className={subLinkClass} onClick={onClose}>Featured Venues</Link>
-                      {(userRole === 'venue_owner' || isSuperAdmin) && (
+                      {(userRole === 'venue_owner' || isSuperAdmin || admin.hasPermission('venues:view')) && (
                         <>
                           <Link to="/venues/list-venue" className={subLinkClass} onClick={onClose}>List Your Venue</Link>
                           <Link to="/venues/dashboard" className={subLinkClass} onClick={onClose}>Venue Dashboard</Link>
@@ -132,7 +132,7 @@ const MobileNav = ({
                     >
                     <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
                       <Link to="/tournaments" className={subLinkClass} onClick={onClose}>Browse Tournaments</Link>
-                      {(userRole === 'organizer' || isSuperAdmin) && (
+                      {(userRole === 'organizer' || isSuperAdmin || admin.hasPermission('tournaments:create')) && (
                         <>
                           <div className="h-px bg-white/10 my-1 mx-2" />
                           <Link to="/organizer/tournaments" className={subLinkClass} onClick={onClose}>Manage Tournaments</Link>

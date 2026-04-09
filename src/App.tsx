@@ -285,7 +285,7 @@ const AppContent = React.memo(() => {
 
                 {/* Admin Dashboard Routes */}
                 <Route path="/admin/dashboard" element={
-                  <AdminProtectedRoute requiredRoles={ADMIN_ROLE_SETS.anyAdmin}>
+                  <AdminProtectedRoute>
                     <AdminLayout>
                       <AdminManagement />
                     </AdminLayout>

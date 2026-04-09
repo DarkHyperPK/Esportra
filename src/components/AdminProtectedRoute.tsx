@@ -26,11 +26,16 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
   if (!admin.isAdmin) return <Navigate to="/unauthorized" replace />;
 
   const required = requiredPermission || permission;
-  if (required && !admin.hasPermission(required)) {
-    return <Navigate to="/unauthorized" replace />;
-  }
 
-  if (requiredRoles && requiredRoles.length > 0) {
+  // Permission check takes precedence — if user has the required permission
+  // (resolved from DB, including custom roles), skip the role name check.
+  if (required) {
+    if (!admin.hasPermission(required)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
+    // Permission passed — no need to also match a hardcoded role name
+  } else if (requiredRoles && requiredRoles.length > 0) {
+    // No permission specified — fall back to role name check
     const hasRequiredRole =
       admin.roles.includes('super_admin') ||
       requiredRoles.some((role) => admin.roles.includes(role));

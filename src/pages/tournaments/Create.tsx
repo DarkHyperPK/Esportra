@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { apiClient } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -13,14 +14,17 @@ import { motion } from 'framer-motion';
 const CreateTournament = () => {
   const { user } = useAuth();
   const { canCreateTournaments, currentRole } = useRole();
+  const admin = useAdmin();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [hasOrganization, setHasOrganization] = useState(false);
 
+  const canCreate = canCreateTournaments || admin.hasPermission('tournaments:create');
+
   // Check if user has an organization
   useEffect(() => {
     const checkOrganization = async () => {
-      if (!user?.id || currentRole !== 'organizer') {
+      if (!user?.id || (currentRole !== 'organizer' && !admin.hasPermission('tournaments:create'))) {
         setLoading(false);
         return;
       }
@@ -34,7 +38,7 @@ const CreateTournament = () => {
       }
     };
     checkOrganization();
-  }, [user?.id, currentRole]);
+  }, [user?.id, currentRole, admin]);
 
   if (!user) {
     return (
@@ -52,7 +56,7 @@ const CreateTournament = () => {
     );
   }
 
-  if (!canCreateTournaments) {
+  if (!canCreate) {
     return (
       <div className="min-h-screen bg-transparent text-white flex flex-col">
         <main className="flex-grow container mx-auto px-4 py-8">
@@ -86,8 +90,8 @@ const CreateTournament = () => {
     );
   }
 
-  // No organization - show gate
-  if (!hasOrganization) {
+  // No organization - show gate (skip for admins with tournament permissions)
+  if (!hasOrganization && !admin.hasPermission('tournaments:create')) {
     return (
       <div className="min-h-screen bg-esports-dark text-white flex flex-col">
         {/* Background Effects */}

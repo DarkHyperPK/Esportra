@@ -297,10 +297,15 @@ const UserMenu = ({
               </>
             )}
 
-            {admin.isAdmin && admin.roles.includes('super_admin') && (
+            {admin.isAdmin && admin.hasPermission('tournaments:create') && (
               <>
                 <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
                 <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
+              </>
+            )}
+
+            {admin.isAdmin && admin.hasPermission('venues:view') && (
+              <>
                 <FramerDropdownItem to="/venues/dashboard">Venue Dashboard</FramerDropdownItem>
                 <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
               </>
