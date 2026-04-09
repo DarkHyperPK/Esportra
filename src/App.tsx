@@ -79,6 +79,7 @@ const ScheduledReports = React.lazy(() => import("./pages/admin/tools/ScheduledR
 const GdprCompliance = React.lazy(() => import("./pages/admin/tools/GdprCompliance"));
 const AnomalyDetection = React.lazy(() => import("./pages/admin/tools/AnomalyDetection"));
 const DashboardCustomization = React.lazy(() => import("./pages/admin/tools/DashboardCustomization"));
+const TwoFactorEnforcement = React.lazy(() => import("./pages/admin/tools/TwoFactorEnforcement"));
 
 
 // Venue Owner
@@ -508,6 +509,18 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <DashboardCustomization />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                {/* 2FA Enforcement */}
+                <Route path="/admin/tools/two-factor" element={
+                  <AdminProtectedRoute
+                    requiredPermission="admin:view"
+                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
+                  >
+                    <AdminLayout>
+                      <TwoFactorEnforcement />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />

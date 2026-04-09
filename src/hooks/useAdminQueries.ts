@@ -63,6 +63,12 @@ export const adminKeys = {
 
   dashboardWidgets: () => ['admin', 'dashboard-widgets'] as const,
   dashboardPreferences: () => ['admin', 'dashboard-preferences'] as const,
+
+  twoFa: {
+    status: () => [...adminKeys.all, 'twofa', 'status'] as const,
+    users: (page: number, perPage: number, roleKey: string, mfaStatus: string) =>
+      [...adminKeys.all, 'twofa', 'users', page, perPage, roleKey, mfaStatus] as const,
+  },
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -1606,6 +1612,122 @@ export const useSaveDashboardPreferences = () => {
       toast({
         title: 'Save failed',
         description: body?.error || (error as Error)?.message || 'Could not save dashboard preferences.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// ── Phase 16: 2FA Enforcement ────────────────────────────────────────────────
+
+export interface TwoFactorFactor {
+  id: string;
+  type: string;
+  status: string;
+  friendlyName?: string;
+  createdAt: string;
+}
+
+export interface TwoFactorUser {
+  userId: string;
+  email: string;
+  fullName: string;
+  avatarUrl?: string;
+  roleKey: string;
+  roleName: string;
+  mfaEnabled: boolean;
+  mfaFactors: TwoFactorFactor[];
+  requiresMfa: boolean;
+}
+
+export interface TwoFactorStatus {
+  enforcementEnabled: boolean;
+  requiredRoles: string[];
+  totalAdmins: number;
+  mfaEnabledCount: number;
+  note?: string;
+}
+
+export interface TwoFactorSettings {
+  enforcementEnabled: boolean;
+  requiredRoles: string[];
+}
+
+interface TwoFactorUsersResponse {
+  users: TwoFactorUser[];
+  total: number;
+  page: number;
+  perPage: number;
+}
+
+export const use2faStatus = () =>
+  useQuery({
+    queryKey: adminKeys.twoFa.status(),
+    queryFn: () => apiClient.get<TwoFactorStatus>('/api/admin/2fa/status'),
+    staleTime: 1000 * 60,
+  });
+
+export const use2faUsers = (
+  page: number = 1,
+  perPage: number = 20,
+  roleKey: string = '',
+  mfaStatus: string = '',
+) =>
+  useQuery({
+    queryKey: adminKeys.twoFa.users(page, perPage, roleKey, mfaStatus),
+    queryFn: () => {
+      const qs = new URLSearchParams();
+      qs.set('page', String(page));
+      qs.set('perPage', String(perPage));
+      if (roleKey) qs.set('roleKey', roleKey);
+      if (mfaStatus) qs.set('mfaStatus', mfaStatus);
+      return apiClient.get<TwoFactorUsersResponse>(`/api/admin/2fa/users?${qs}`);
+    },
+    staleTime: 1000 * 30,
+  });
+
+export const useSave2faSettings = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: TwoFactorSettings) =>
+      apiClient.post('/api/admin/2fa/settings', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.twoFa.status() });
+      toast({ title: '2FA settings saved', description: 'Enforcement configuration has been updated.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Save failed',
+        description: body?.error || (error as Error)?.message || 'Could not save 2FA settings.',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useDeleteMfaFactor = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ userId, factorId }: { userId: string; factorId: string }) =>
+      apiClient.delete(`/api/admin/2fa/users/${userId}/factors/${factorId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.twoFa.status() });
+      // Invalidate all twoFa users queries regardless of pagination/filter params
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'twofa', 'users'] });
+      toast({ title: 'Factor removed', description: 'The MFA factor has been force-removed.' });
+    },
+    onError: (error: unknown) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+      const body = (error as any)?.body;
+      toast({
+        title: 'Remove failed',
+        description: body?.error || (error as Error)?.message || 'Could not remove MFA factor.',
         variant: 'destructive',
       });
     },

@@ -346,6 +346,7 @@ const AdminManagement = () => {
   { label: 'GDPR Compliance', href: '/admin/tools/gdpr', icon: FileText, color: 'rose' },
   { label: 'Anomaly Detection', href: '/admin/tools/anomaly-detection', icon: Zap, color: 'orange' },
   { label: 'Dashboard Layout', href: '/admin/tools/dashboard-customization', icon: LayoutDashboard, color: 'blue' },
+  { label: '2FA Enforcement', href: '/admin/tools/two-factor', icon: Shield, color: 'rose' },
   ];
 
   const getColorClasses = (color: string) => {
