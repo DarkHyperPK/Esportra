@@ -40,7 +40,6 @@ import {
   Monitor,
   CalendarClock,
   Zap,
-  LayoutDashboard,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -342,7 +341,7 @@ const AdminManagement = () => {
     { label: 'Scheduled Reports', href: '/admin/tools/scheduled-reports', icon: CalendarClock, permission: 'system:settings' },
     { label: 'GDPR Compliance', href: '/admin/tools/gdpr', icon: FileText, permission: 'system:settings' },
     { label: 'Anomaly Detection', href: '/admin/tools/anomaly-detection', icon: Zap, permission: 'system:settings' },
-    { label: 'Dashboard Layout', href: '/admin/tools/dashboard-customization', icon: LayoutDashboard, permission: 'system:audit' },
+
   ].filter(link => hasPermission(link.permission));
 
 
