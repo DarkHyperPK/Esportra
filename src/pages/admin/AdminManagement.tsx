@@ -16,15 +16,20 @@ import {
   BarChart3,
   UserCheck,
   Activity,
+  ChevronRight,
+  Sparkles,
   RefreshCw,
   Download,
   Search,
   Eye,
+  Clock,
   CheckCircle,
   AlertTriangle,
   TrendingUp,
   Calendar,
   Globe,
+  ArrowUpRight,
+  ArrowDownRight,
   Home,
   LogOut,
   Megaphone,
@@ -342,58 +347,42 @@ const AdminManagement = () => {
 
 
 
-  // -- Navigation groups derived from quickNavLinks --
-  const navGroups = useMemo(() => {
-    const groupDefs: { group: string; labels: string[] }[] = [
-      { group: 'MANAGEMENT', labels: ['User Management', 'Tournament Management', 'Team Management', 'Venue Management', 'Sponsor CRM'] },
-      { group: 'OPERATIONS', labels: ['Verification System', 'License Management', 'Dispute Center', 'Alert Center'] },
-      { group: 'INTELLIGENCE', labels: ['Analytics', 'Audit Logs'] },
-      { group: 'SYSTEM', labels: ['Admin Access', 'Role Builder', 'Content Moderation', 'Session Management', 'IP Allowlist', 'Scheduled Reports', 'GDPR Compliance', 'Anomaly Detection', 'Dashboard Layout'] },
-    ];
-    return groupDefs.map(def => ({
-      group: def.group,
-      items: def.labels
-        .map(label => quickNavLinks.find(l => l.label === label))
-        .filter(Boolean) as typeof quickNavLinks,
-    })).filter(g => g.items.length > 0);
-  }, [quickNavLinks]);
-
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* ── Top Bar ── */}
-      <header className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800 bg-[#050505] shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-0.5 h-6 bg-rose-500" />
-          <h1 className="text-sm font-bold tracking-widest text-white uppercase font-mono">Control Center</h1>
+    <div className="min-h-screen p-4 lg:p-8">
+      {/* Top Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-10 rounded-sm bg-rose-500" />
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white uppercase">
+              Admin Dashboard
+            </h1>
+            <p className="text-zinc-600 text-xs font-mono tracking-wider uppercase">Platform management & analytics</p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {/* Role badge + username */}
-          <div className="hidden md:flex items-center gap-2 mr-2">
-            <Badge className="bg-zinc-800 text-zinc-400 text-[10px] border-0 rounded font-mono uppercase px-1.5 py-0 h-5">
-              {roles?.[0] || 'admin'}
-            </Badge>
-            <span className="text-xs text-zinc-400 font-medium">{profile?.full_name || profile?.username}</span>
-          </div>
-
-          <div className="h-5 w-px bg-zinc-800 hidden md:block" />
-
+        <div className="flex items-center gap-3">
           {/* Alert Bell */}
           <div className="relative">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setShowAlertPanel(!showAlertPanel)}
-              className="text-zinc-500 hover:text-white h-8 w-8 p-0 relative"
-              aria-label="Alerts"
+              className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30 relative"
             >
-              <Bell className="w-3.5 h-3.5" />
+              <Bell className="w-4 h-4" />
               {(alertSummary?.active_count ?? 0) > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
                   {alertSummary!.active_count > 99 ? '99+' : alertSummary!.active_count}
                 </span>
               )}
             </Button>
+
+            {/* Alert Dropdown Panel */}
             <AnimatePresence>
               {showAlertPanel && (
                 <>
@@ -405,241 +394,252 @@ const AdminManagement = () => {
           </div>
 
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="text-zinc-500 hover:text-white h-8 w-8 p-0"
-            aria-label="Refresh data"
+            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
 
           <Link to="/">
-            <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-white h-8 w-8 p-0" aria-label="Home">
-              <Home className="w-3.5 h-3.5" />
+            <Button variant="outline" size="sm" className="border-zinc-800 text-zinc-400 hover:text-white">
+              <Home className="w-4 h-4 mr-2" />
+              Home
             </Button>
           </Link>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={signOut}
-            className="text-zinc-500 hover:text-red-400 h-8 w-8 p-0"
-            aria-label="Sign out"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </header>
+          <div className="h-8 w-px bg-zinc-800" />
 
-      {/* ── Metrics Strip ── */}
-      <div className="flex items-stretch border-b border-zinc-800 bg-[#050505] shrink-0 overflow-x-auto">
-        {statCards.map((stat, idx) => (
-          <div
-            key={stat.label}
-            className={`flex flex-col justify-center px-5 py-2.5 min-w-[120px] ${idx < statCards.length - 1 ? 'border-r border-zinc-800' : ''}`}
-          >
-            <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 leading-none">{stat.label}</span>
-            <span className="text-lg font-bold font-mono text-white leading-tight mt-0.5">
-              {loading ? <span className="text-zinc-600">--</span> : typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Main Two-Column Layout ── */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left Sidebar Nav */}
-        <nav className="hidden lg:flex flex-col w-60 border-r border-zinc-800 bg-[#050505] overflow-y-auto shrink-0 py-3">
-          {navGroups.map((group, gIdx) => (
-            <div key={group.group} className={gIdx > 0 ? 'mt-2' : ''}>
-              <div className="px-3 pt-2 pb-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">{group.group}</span>
-              </div>
-              <div className="border-t border-zinc-800/60 mx-3 mb-1" />
-              {group.items.map(link => (
-                <Link key={link.href} to={link.href} className="block">
-                  <div className="flex items-center gap-2 px-3 py-1.5 text-sm text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 transition-colors cursor-pointer group">
-                    <link.icon className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 transition-colors shrink-0" />
-                    <span className="truncate">{link.label}</span>
-                    {link.badge ? (
-                      <Badge className="ml-auto bg-rose-500/15 text-rose-400 text-[10px] border-0 rounded px-1.5 py-0 h-4 font-mono">{link.badge}</Badge>
-                    ) : null}
-                  </div>
-                </Link>
-              ))}
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden md:block">
+              <p className="text-xs text-zinc-500">Signed in as</p>
+              <p className="text-sm font-medium text-white">{profile?.full_name || profile?.username}</p>
             </div>
-          ))}
-        </nav>
+            <div className="w-8 h-8 rounded-md bg-zinc-800 flex items-center justify-center">
+              <Users className="w-4 h-4 text-zinc-400" />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              className="text-zinc-500 hover:text-red-400"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </motion.header>
 
-        {/* Mobile nav (collapsible row below metrics on small screens) */}
-        <div className="lg:hidden border-b border-zinc-800 bg-[#050505] overflow-x-auto">
-          <div className="flex items-center gap-1 px-3 py-2">
-            {quickNavLinks.map(link => (
+      {/* Stats Grid */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8"
+      >
+        {statCards.map((stat, idx) => {
+          return (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 * idx }}
+              className="p-4 rounded-md bg-[#0a0a0c] border border-zinc-800/50 hover:bg-zinc-900/80 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <stat.icon className="w-4 h-4 text-zinc-500" />
+              </div>
+              <p className="text-2xl font-bold text-white tracking-tight">
+                {loading ? '...' : typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
+              </p>
+              <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider mt-1">{stat.label}</p>
+            </motion.div>
+          );
+        })}
+      </motion.section>
+
+      {/* Quick Navigation */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="mb-8"
+      >
+        <h2 className="text-xs font-mono text-zinc-600 uppercase tracking-widest mb-3">Quick Access</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+          {quickNavLinks.map((link) => {
+            return (
               <Link key={link.href} to={link.href}>
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 transition-colors whitespace-nowrap">
-                  <link.icon className="w-3 h-3 shrink-0" />
-                  <span>{link.label}</span>
+                <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-md border border-zinc-800/50 bg-[#0a0a0c] text-zinc-300 hover:bg-zinc-900 hover:border-zinc-700 transition-colors cursor-pointer group">
+                  <link.icon className="w-4 h-4 text-zinc-500 group-hover:text-zinc-400 transition-colors shrink-0" />
+                  <span className="text-sm truncate">{link.label}</span>
                   {link.badge ? (
-                    <Badge className="bg-rose-500/15 text-rose-400 text-[9px] border-0 rounded px-1 py-0 h-3.5 font-mono">{link.badge}</Badge>
+                    <Badge className="ml-auto bg-rose-500/15 text-rose-400 text-[10px] border-0 px-1.5 py-0 h-5">{link.badge}</Badge>
                   ) : null}
                 </div>
               </Link>
-            ))}
-          </div>
+            );
+          })}
         </div>
+      </motion.section>
 
-        {/* Right Column — Main Content */}
-        <main className="flex-1 min-w-0 overflow-y-auto flex flex-col">
-          {/* Activity Feed */}
-          <section className="border-b border-zinc-800">
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-zinc-800/50">
-              <Activity className="w-3.5 h-3.5 text-zinc-600" />
-              <h2 className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">Recent Activity</h2>
-              <div className="flex items-center gap-1 ml-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                </span>
-                <span className="text-[10px] text-emerald-500 font-mono">Live</span>
-              </div>
-            </div>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Activity Feed */}
+        <motion.section
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          className="lg:col-span-1 rounded-md bg-[#0a0a0c] border border-zinc-800/50 p-5"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-white font-semibold flex items-center gap-2">
+              <Activity className="w-4 h-4 text-zinc-500" />
+              Activity Feed
+            </h3>
+            <span className="text-xs text-zinc-500">Live</span>
+          </div>
 
-            <div className="max-h-[300px] overflow-y-auto">
-              {recentActivities.length === 0 ? (
-                <p className="text-zinc-600 text-xs text-center py-6 font-mono">No recent activity</p>
-              ) : (
-                recentActivities.slice(0, 8).map((activity, idx) => (
-                  <div
+          <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
+            {recentActivities.length === 0 ? (
+              <p className="text-zinc-500 text-sm text-center py-8">No recent activity</p>
+            ) : (
+              recentActivities.map((activity, idx) => {
+                return (
+                  <motion.div
                     key={activity.id + idx}
-                    className={`flex items-center gap-3 px-4 py-1.5 hover:bg-zinc-900/40 transition-colors ${idx % 2 === 0 ? 'bg-transparent' : 'bg-zinc-900/20'}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="flex items-start gap-3 px-3 py-2.5 rounded-md hover:bg-zinc-900/60 transition-colors"
                   >
-                    <activity.icon className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
-                    <span className="text-xs text-zinc-400 truncate flex-1">
-                      <span className="text-zinc-300">{activity.title}</span>
-                      <span className="text-zinc-600 mx-1">·</span>
-                      {activity.description}
-                    </span>
-                    <span className="text-[10px] text-zinc-600 font-mono shrink-0">{formatTimeAgo(activity.time)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
+                    <activity.icon className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-zinc-500">{activity.title}</p>
+                      <p className="text-sm text-white truncate">{activity.description}</p>
+                    </div>
+                    <span className="text-xs text-zinc-600 shrink-0">{formatTimeAgo(activity.time)}</span>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+        </motion.section>
 
-          {/* Audit Log Table */}
-          <section className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800/50 shrink-0">
-              <div className="flex items-center gap-2">
-                <FileText className="w-3.5 h-3.5 text-zinc-600" />
-                <h2 className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">Audit Log</h2>
-                <Badge className="bg-zinc-800 text-zinc-500 text-[10px] border-0 rounded px-1.5 py-0 h-4 font-mono">
-                  {auditLogs.length}
-                </Badge>
-              </div>
+        {/* Audit Logs */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="lg:col-span-2 rounded-md bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
+        >
+          <div className="p-5 border-b border-zinc-800/50">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <FileText className="w-4 h-4 text-zinc-500" />
+                Audit Logs
+                <Badge className="bg-zinc-800 text-zinc-400 text-xs">{auditLogs.length}</Badge>
+              </h3>
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-600" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <Input
-                    placeholder="Search..."
+                    placeholder="Search logs..."
                     value={auditSearch}
                     onChange={(e) => setAuditSearch(e.target.value)}
-                    className="pl-7 h-7 w-40 bg-transparent border-zinc-800 focus:border-rose-500/50 text-xs rounded"
+                    className="pl-9 w-48 bg-zinc-900/50 border-zinc-800 focus:border-rose-500 text-sm"
                   />
                 </div>
                 <Button
                   size="sm"
                   onClick={exportAuditCSV}
-                  variant="ghost"
-                  className="text-zinc-500 hover:text-white h-7 px-2 text-xs"
+                  className="bg-rose-500 hover:bg-rose-600 text-white"
                 >
-                  <Download className="w-3 h-3 mr-1" />
+                  <Download className="w-4 h-4 mr-1" />
                   Export
                 </Button>
               </div>
             </div>
+          </div>
 
-            {/* Table header */}
-            <div className="grid grid-cols-[100px_120px_100px_1fr_40px] gap-2 px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest text-zinc-600 border-b border-zinc-800/50 shrink-0 bg-zinc-900/20">
-              <span>Date</span>
-              <span>Action</span>
-              <span>Admin</span>
-              <span>Target</span>
-              <span></span>
-            </div>
-
-            {/* Table body */}
-            <div className="flex-1 overflow-y-auto max-h-[500px]">
-              {auditLoading ? (
-                <div className="flex items-center justify-center py-10">
-                  <div className="w-4 h-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : filteredLogs.length === 0 ? (
-                <p className="text-zinc-600 text-xs text-center py-10 font-mono">No audit logs found</p>
-              ) : (
-                filteredLogs.slice(0, 50).map((log, idx) => (
+          <div className="max-h-[400px] overflow-y-auto">
+            {auditLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : filteredLogs.length === 0 ? (
+              <p className="text-zinc-500 text-center py-12">No audit logs found</p>
+            ) : (
+              <div className="divide-y divide-zinc-800/50">
+                {filteredLogs.slice(0, 50).map((log) => (
                   <div
                     key={log.id}
                     onClick={() => setSelectedLog(log)}
-                    className={`grid grid-cols-[100px_120px_100px_1fr_40px] gap-2 px-4 py-1.5 cursor-pointer hover:bg-zinc-800/40 transition-colors items-center ${idx % 2 === 1 ? 'bg-zinc-900/30' : ''}`}
+                    className="px-5 py-3 hover:bg-zinc-900/50 cursor-pointer transition-colors flex items-center gap-4"
                   >
-                    <div className="font-mono text-[11px] text-zinc-500 leading-tight">
-                      <div>{new Date(log.created_at).toLocaleDateString()}</div>
-                      <div className="text-zinc-700">{new Date(log.created_at).toLocaleTimeString()}</div>
+                    <div className="w-16 shrink-0">
+                      <p className="text-xs text-zinc-500">{new Date(log.created_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-zinc-600">{new Date(log.created_at).toLocaleTimeString()}</p>
                     </div>
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium uppercase w-fit ${getActionColor(log.action_type)}`}>
+                    <span className={`px-2 py-1 rounded-md text-xs font-medium uppercase ${getActionColor(log.action_type)}`}>
                       {log.action_type?.replace('_', ' ')}
                     </span>
-                    <span className="text-xs text-zinc-500 truncate">{log.admin_name || 'System'}</span>
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-xs text-zinc-400 capitalize">{log.target_type}</span>
-                      <span className="text-zinc-700">·</span>
-                      <span className="text-[11px] text-zinc-600 truncate font-mono">{log.target_name || log.target_id?.slice(0, 12)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-zinc-500 font-medium">{log.admin_name || 'System'}</span>
+                        <span className="text-[10px] text-zinc-600">→</span>
+                        <span className="text-xs text-zinc-400 capitalize">{log.target_type}</span>
+                      </div>
+                      <p className="text-[10px] text-zinc-600 truncate">
+                        {log.target_name || log.target_id?.slice(0, 12)}
+                      </p>
                     </div>
-                    <Eye className="w-3.5 h-3.5 text-zinc-700 hover:text-zinc-400 transition-colors justify-self-end" />
+                    <Eye className="w-4 h-4 text-zinc-600" />
                   </div>
-                ))
-              )}
-            </div>
-          </section>
-        </main>
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.section>
       </div>
 
-      {/* Audit Log Detail Modal (unchanged) */}
+      {/* Audit Log Detail Modal */}
       <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
-        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl rounded">
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2 text-sm">
-              <FileText className="w-4 h-4 text-zinc-400" />
+            <DialogTitle className="text-white flex items-center gap-2">
+              <FileText className="w-5 h-5 text-zinc-400" />
               Audit Log Details
             </DialogTitle>
           </DialogHeader>
           {selectedLog && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-2.5 rounded bg-zinc-900/50">
-                  <p className="text-[10px] text-zinc-500 uppercase font-mono">Action</p>
-                  <p className={`text-sm font-medium mt-0.5 ${getActionColor(selectedLog.action_type).split(' ')[0]}`}>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-md bg-zinc-900/50">
+                  <p className="text-xs text-zinc-500 uppercase">Action</p>
+                  <p className={`text-sm font-medium mt-1 ${getActionColor(selectedLog.action_type).split(' ')[0]}`}>
                     {selectedLog.action_type?.replace('_', ' ')}
                   </p>
                 </div>
-                <div className="p-2.5 rounded bg-zinc-900/50">
-                  <p className="text-[10px] text-zinc-500 uppercase font-mono">Timestamp</p>
-                  <p className="text-white text-xs mt-0.5 font-mono">{new Date(selectedLog.created_at).toLocaleString()}</p>
+                <div className="p-3 rounded-md bg-zinc-900/50">
+                  <p className="text-xs text-zinc-500 uppercase">Timestamp</p>
+                  <p className="text-white text-sm mt-1">{new Date(selectedLog.created_at).toLocaleString()}</p>
                 </div>
-                <div className="p-2.5 rounded bg-zinc-900/50">
-                  <p className="text-[10px] text-zinc-500 uppercase font-mono">Admin</p>
-                  <p className="text-white text-xs mt-0.5">{selectedLog.admin_name || 'System'}</p>
+                <div className="p-3 rounded-md bg-zinc-900/50">
+                  <p className="text-xs text-zinc-500 uppercase">Admin</p>
+                  <p className="text-white text-sm mt-1">{selectedLog.admin_name || 'System'}</p>
                 </div>
-                <div className="p-2.5 rounded bg-zinc-900/50">
-                  <p className="text-[10px] text-zinc-500 uppercase font-mono">Target</p>
-                  <p className="text-white text-xs mt-0.5">{selectedLog.target_type} / {selectedLog.target_name || selectedLog.target_id?.slice(0, 12)}</p>
+                <div className="p-3 rounded-md bg-zinc-900/50">
+                  <p className="text-xs text-zinc-500 uppercase">Target</p>
+                  <p className="text-white text-sm mt-1">{selectedLog.target_type} / {selectedLog.target_name || selectedLog.target_id?.slice(0, 12)}</p>
                 </div>
               </div>
-              <div className="p-2.5 rounded bg-zinc-900/50">
-                <p className="text-[10px] text-zinc-500 uppercase font-mono mb-1.5">Details</p>
-                <pre className="text-xs text-zinc-300 overflow-x-auto font-mono bg-zinc-950 p-3 rounded max-h-48">
+              <div className="p-3 rounded-md bg-zinc-900/50">
+                <p className="text-xs text-zinc-500 uppercase mb-2">Details</p>
+                <pre className="text-sm text-zinc-300 overflow-x-auto font-mono bg-zinc-950 p-4 rounded-md max-h-48">
                   {JSON.stringify(selectedLog.details, null, 2)}
                 </pre>
               </div>
