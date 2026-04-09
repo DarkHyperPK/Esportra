@@ -21,6 +21,7 @@ import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle,
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { formatDate, formatTime } from '@/utils/dateFormat';
 import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { Tournament, BaseTournament, TournamentRegistration, RegistrationStatus, RegistrationType } from '@/types/tournament';
@@ -123,6 +124,7 @@ const TournamentDetails = () => {
   const { toast } = useToast();
   const { user, profile } = useAuth();
   const { currentRole } = useRole();
+  const admin = useAdmin();
   const requireVerification = useRequireVerification();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
@@ -154,7 +156,7 @@ const TournamentDetails = () => {
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
   const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
 
-  const isOrganizer = currentRole === 'organizer' && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id);
+  const isOrganizer = (currentRole === 'organizer' && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id)) || admin.hasPermission('tournaments:edit');
   const requiresCheckIn = Boolean(tournament?.check_in_required);
   const checkInDeadlineDate = tournament?.check_in_deadline ? new Date(tournament.check_in_deadline) : null;
   const registrationStatus = (registrationDetails?.status || '').toLowerCase();

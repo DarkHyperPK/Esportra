@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/apiClient';
 import { buildHubConnection, startWithRetry, HubPaths } from '@/lib/signalrClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { useToast } from '@/hooks/use-toast';
 import { valorantTables } from '@/utils/gameTables';
 import { vetoService, BestOf, TeamSide, VetoService } from '@/services/vetoService';
@@ -289,6 +290,7 @@ export const useMapVetoMachine = ({
 }: UseMapVetoMachineProps) => {
     const { user } = useAuth();
     const { currentRole, switchRole } = useRole();
+    const adminCtx = useAdmin();
     const { toast } = useToast();
 
     // State
@@ -322,8 +324,10 @@ export const useMapVetoMachine = ({
     const lastResetBestOfRef = useRef<number | null>(null);
     const initInProgressRef = useRef(false); // Guard against duplicate init calls
 
+    const hasAdminTournamentPerm = adminCtx.hasPermission('tournaments:edit');
+
     // Derived State
-    const [isOrganizer, setIsOrganizer] = useState(currentRole === 'organizer');
+    const [isOrganizer, setIsOrganizer] = useState(currentRole === 'organizer' || hasAdminTournamentPerm);
     const [isCaptain, setIsCaptain] = useState(false);
     const [userTeamId, setUserTeamId] = useState<string | null>(null);
     const [isTeam1Captain, setIsTeam1Captain] = useState(false);
@@ -331,8 +335,8 @@ export const useMapVetoMachine = ({
 
     // Sync isOrganizer with context
     useEffect(() => {
-        setIsOrganizer(currentRole === 'organizer');
-    }, [currentRole]);
+        setIsOrganizer(currentRole === 'organizer' || hasAdminTournamentPerm);
+    }, [currentRole, hasAdminTournamentPerm]);
 
     // Check user permissions
     useEffect(() => {

@@ -37,9 +37,16 @@ const ProtectedRoute = ({
 
     // Super admin can access all routes
     const isSuperAdmin = admin.isAdmin && admin.roles.includes('super_admin');
-    const hasPermission = isSuperAdmin || (!!effectiveRole && allowedRoles.includes(effectiveRole));
+    const hasRole = !!effectiveRole && allowedRoles.includes(effectiveRole);
 
-    if (!hasPermission) {
+    // Admins with matching DB permissions can also access role-gated routes
+    const hasAdminPerm = admin.isAdmin && allowedRoles.some(role => {
+      if (role === 'organizer') return admin.hasPermission('tournaments:create') || admin.hasPermission('tournaments:edit');
+      if (role === 'venue_owner') return admin.hasPermission('venues:view') || admin.hasPermission('venues:approve');
+      return false;
+    });
+
+    if (!isSuperAdmin && !hasRole && !hasAdminPerm) {
       return <Navigate to="/unauthorized" />;
     }
   }

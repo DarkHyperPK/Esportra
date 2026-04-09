@@ -59,10 +59,10 @@ const statusMeta: Record<string, { label: string; className: string; icon: React
 const DisputeCenter: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { roles } = useAdmin();
+  const { roles, hasPermission } = useAdmin();
   const conn = useHub(HubPaths.Match);
   const isSuperAdmin = roles.includes('super_admin');
-  const canHandleDisputes = isSuperAdmin || roles.includes('moderator') || roles.includes('ops_admin');
+  const canHandleDisputes = isSuperAdmin || roles.includes('moderator') || roles.includes('ops_admin') || hasPermission('disputes:resolve');
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'tournament' | 'general'>('all');

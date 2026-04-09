@@ -4,6 +4,7 @@ import { LoadingSpinner } from '@/components/effects/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { apiClient } from '@/lib/apiClient';
 import { useQuery } from '@tanstack/react-query';
 import Footer from '@/components/Footer';
@@ -21,6 +22,7 @@ const TournamentBrackets = () => {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const { currentRole } = useRole();
+  const admin = useAdmin();
 
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
@@ -83,7 +85,7 @@ const TournamentBrackets = () => {
   });
 
   // 3. Permissions
-  const isOrganizerRole = currentRole === 'organizer';
+  const isOrganizerRole = currentRole === 'organizer' || admin.hasPermission('tournaments:edit');
   const isOrganizerOwner = useMemo(() =>
     isOrganizerRole && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id),
     [isOrganizerRole, user?.id, tournament?.organization?.owner_id]

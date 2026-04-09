@@ -764,8 +764,9 @@ function DeleteRoleDialog({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 const RoleBuilder = () => {
-  const { roles: adminRoles } = useAdmin();
+  const { roles: adminRoles, hasPermission } = useAdmin();
   const isSuperAdmin = adminRoles.includes("super_admin");
+  const canManageRoles = isSuperAdmin || hasPermission('system:settings');
 
   const { data: roles, isLoading, error, refetch } = useAdminRoles();
 
@@ -862,7 +863,7 @@ const RoleBuilder = () => {
             >
               <RefreshCw className="w-4 h-4" />
             </Button>
-            {isSuperAdmin && (
+            {canManageRoles && (
               <Button
                 onClick={handleCreate}
                 className="bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white shadow-lg shadow-rose-500/20"
@@ -950,7 +951,7 @@ const RoleBuilder = () => {
                       key={role.id}
                       role={role}
                       isProtected
-                      isSuperAdmin={isSuperAdmin}
+                      isSuperAdmin={canManageRoles}
                       onEdit={() => {}}
                       onDelete={() => {}}
                     />
@@ -983,7 +984,7 @@ const RoleBuilder = () => {
                   Create a custom role to define granular access for your admin
                   team.
                 </p>
-                {isSuperAdmin && (
+                {canManageRoles && (
                   <Button
                     onClick={handleCreate}
                     variant="outline"
@@ -1002,7 +1003,7 @@ const RoleBuilder = () => {
                       key={role.id}
                       role={role}
                       isProtected={false}
-                      isSuperAdmin={isSuperAdmin}
+                      isSuperAdmin={canManageRoles}
                       onEdit={() => handleEdit(role.id)}
                       onDelete={() => handleDeletePrompt(role)}
                     />

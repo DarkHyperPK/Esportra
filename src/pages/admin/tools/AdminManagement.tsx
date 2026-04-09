@@ -73,8 +73,9 @@ const AdminRoleManagement: React.FC = () => {
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showRevokeDialog, setShowRevokeDialog] = useState(false);
 
-  // Check if current user is super admin
+  // Check if current user can manage admins
   const isSuperAdmin = admin.roles.includes('super_admin');
+  const canManageAdmins = isSuperAdmin || admin.hasPermission('system:settings');
 
   // Queries
   const { data: adminRolesData } = useAdminRoleDefinitions();
@@ -83,7 +84,7 @@ const AdminRoleManagement: React.FC = () => {
   const { data: adminProfiles, isLoading } = useQuery({
     queryKey: adminUsersKey,
     queryFn: () => apiClient.get<any[]>('/api/admin/users?is_admin=true&order=created_at.desc'),
-    enabled: isSuperAdmin,
+    enabled: canManageAdmins,
     staleTime: 1000 * 30,
   });
 
@@ -401,7 +402,7 @@ const AdminRoleManagement: React.FC = () => {
     return matchesSearch && matchesRole;
   });
 
-  if (!isSuperAdmin) {
+  if (!canManageAdmins) {
     return (
       <Card className="bg-gray-800 border-gray-700">
         <CardContent className="p-6 text-center">

@@ -325,28 +325,28 @@ const AdminManagement = () => {
   ];
 
   const quickNavLinks = [
-    { label: 'User Management', href: '/admin/tools/user-management', icon: Users, color: 'rose' },
-    { label: 'Tournament Management', href: '/admin/tools/tournament-management', icon: Trophy, color: 'amber' },
-    { label: 'Team Management', href: '/admin/tools/team-management', icon: UsersRound, color: 'cyan' },
-    { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, color: 'emerald', badge: stats.pendingVenues },
-    { label: 'Sponsor CRM', href: '/admin/tools/sponsor-management', icon: Megaphone, color: 'violet' },
+    { label: 'User Management', href: '/admin/tools/user-management', icon: Users, color: 'rose', permission: 'users:view' },
+    { label: 'Tournament Management', href: '/admin/tools/tournament-management', icon: Trophy, color: 'amber', permission: 'tournaments:view' },
+    { label: 'Team Management', href: '/admin/tools/team-management', icon: UsersRound, color: 'cyan', permission: 'users:view' },
+    { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, color: 'emerald', badge: stats.pendingVenues, permission: 'venues:view' },
+    { label: 'Sponsor CRM', href: '/admin/tools/sponsor-management', icon: Megaphone, color: 'violet', permission: 'system:settings' },
 
-    { label: 'Verification System', href: '/admin/tools/verification-system', icon: Shield, color: 'red', badge: stats.pendingVerifications },
-    { label: 'License Management', href: '/admin/tools/license-management', icon: Award, color: 'violet', badge: stats.pendingLicenses },
-    { label: 'Dispute Center', href: '/admin/disputes', icon: AlertTriangle, color: 'amber' },
-    { label: 'Alert Center', href: '/admin/tools/alerts', icon: Bell, color: 'amber' },
-    { label: 'Analytics', href: '/admin/tools/analytics', icon: BarChart3, color: 'blue' },
-    { label: 'Audit Logs', href: '/admin/audit', icon: FileText, color: 'zinc' },
-    { label: 'Admin Access', href: '/admin/access', icon: UserCheck, color: 'rose' },
-    { label: 'Role Builder', href: '/admin/tools/role-builder', icon: ShieldPlus, color: 'rose' },
-    { label: 'Content Moderation', href: '/admin/tools/moderation', icon: Shield, color: 'amber' },
-    { label: 'Session Management', href: '/admin/tools/sessions', icon: Monitor, color: 'cyan' },
-    { label: 'IP Allowlist', href: '/admin/tools/ip-allowlist', icon: Globe, color: 'emerald' },
-  { label: 'Scheduled Reports', href: '/admin/tools/scheduled-reports', icon: CalendarClock, color: 'violet' },
-  { label: 'GDPR Compliance', href: '/admin/tools/gdpr', icon: FileText, color: 'rose' },
-  { label: 'Anomaly Detection', href: '/admin/tools/anomaly-detection', icon: Zap, color: 'orange' },
-  { label: 'Dashboard Layout', href: '/admin/tools/dashboard-customization', icon: LayoutDashboard, color: 'blue' },
-  ];
+    { label: 'Verification System', href: '/admin/tools/verification-system', icon: Shield, color: 'red', badge: stats.pendingVerifications, permission: 'users:edit' },
+    { label: 'License Management', href: '/admin/tools/license-management', icon: Award, color: 'violet', badge: stats.pendingLicenses, permission: 'users:view' },
+    { label: 'Dispute Center', href: '/admin/disputes', icon: AlertTriangle, color: 'amber', permission: 'disputes:view' },
+    { label: 'Alert Center', href: '/admin/tools/alerts', icon: Bell, color: 'amber', permission: 'system:audit' },
+    { label: 'Analytics', href: '/admin/tools/analytics', icon: BarChart3, color: 'blue', permission: 'analytics:view' },
+    { label: 'Audit Logs', href: '/admin/audit', icon: FileText, color: 'zinc', permission: 'system:audit' },
+    { label: 'Admin Access', href: '/admin/access', icon: UserCheck, color: 'rose', permission: 'system:settings' },
+    { label: 'Role Builder', href: '/admin/tools/role-builder', icon: ShieldPlus, color: 'rose', permission: 'system:settings' },
+    { label: 'Content Moderation', href: '/admin/tools/moderation', icon: Shield, color: 'amber', permission: 'content:moderate' },
+    { label: 'Session Management', href: '/admin/tools/sessions', icon: Monitor, color: 'cyan', permission: 'system:settings' },
+    { label: 'IP Allowlist', href: '/admin/tools/ip-allowlist', icon: Globe, color: 'emerald', permission: 'system:settings' },
+    { label: 'Scheduled Reports', href: '/admin/tools/scheduled-reports', icon: CalendarClock, color: 'violet', permission: 'system:settings' },
+    { label: 'GDPR Compliance', href: '/admin/tools/gdpr', icon: FileText, color: 'rose', permission: 'system:settings' },
+    { label: 'Anomaly Detection', href: '/admin/tools/anomaly-detection', icon: Zap, color: 'orange', permission: 'system:settings' },
+    { label: 'Dashboard Layout', href: '/admin/tools/dashboard-customization', icon: LayoutDashboard, color: 'blue', permission: 'system:audit' },
+  ].filter(link => hasPermission(link.permission));
 
   const getColorClasses = (color: string) => {
     const colors: Record<string, { bg: string; text: string; border: string }> = {

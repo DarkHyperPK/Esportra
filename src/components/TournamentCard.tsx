@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, Trophy, CheckCircle, Clock, MapPin, Eye } from 'lucide-react';
 import { useRole } from '@/contexts/RoleContext';
+import { useAdmin } from '@/contexts/AdminContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
 import { cn } from '@/lib/utils';
@@ -73,8 +74,9 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const { currentRole } = useRole();
+  const admin = useAdmin();
   const ownerId = organizer_id || user_id;
-  const isOrganizer = currentRole === 'organizer' && currentUserId && ownerId && currentUserId === ownerId;
+  const isOrganizer = (currentRole === 'organizer' && currentUserId && ownerId && currentUserId === ownerId) || admin.hasPermission('tournaments:edit');
   const [isHovered, setIsHovered] = useState(false);
   const [bannerFailed, setBannerFailed] = useState(false);
 
