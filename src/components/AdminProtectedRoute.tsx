@@ -3,7 +3,6 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { ProfileLoading } from './profile/ProfileLoading';
-import MfaGate from '@/components/MfaGate';
 
 interface AdminProtectedRouteProps {
   children: React.ReactNode;
@@ -41,9 +40,7 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
     }
   }
 
-  // Backend-driven MFA gate — checks enforcement status + enrolled factors
-  return <MfaGate>{children}</MfaGate>;
+  return <>{children}</>;
 };
 
 export default AdminProtectedRoute;
-

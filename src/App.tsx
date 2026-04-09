@@ -28,11 +28,8 @@ import Navbar from "@/components/Navbar";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import BetaNoticeBanner from "@/components/BetaNoticeBanner";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
-import MfaGate from "@/components/MfaGate";
 // import AdminLayout from "@/components/admin/AdminLayout";
 const AdminLayout = React.lazy(() => import("@/components/admin/AdminLayout"));
-const MfaSetup = React.lazy(() => import("./pages/MfaSetup"));
-const MfaChallenge = React.lazy(() => import("./pages/MfaChallenge"));
 
 // Lazy Load Pages
 const Index = React.lazy(() => import("./pages/Index"));
@@ -82,7 +79,6 @@ const ScheduledReports = React.lazy(() => import("./pages/admin/tools/ScheduledR
 const GdprCompliance = React.lazy(() => import("./pages/admin/tools/GdprCompliance"));
 const AnomalyDetection = React.lazy(() => import("./pages/admin/tools/AnomalyDetection"));
 const DashboardCustomization = React.lazy(() => import("./pages/admin/tools/DashboardCustomization"));
-const TwoFactorEnforcement = React.lazy(() => import("./pages/admin/tools/TwoFactorEnforcement"));
 
 
 // Venue Owner
@@ -215,18 +211,6 @@ const AppContent = React.memo(() => {
                 <Route path="/auth/reset-password" element={<ResetPassword />} />
                 <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/suspended" element={<Suspended />} />
-
-                {/* MFA Routes — accessible before admin MFA gate */}
-                <Route path="/mfa/setup" element={
-                  <ProtectedRoute>
-                    <MfaSetup />
-                  </ProtectedRoute>
-                } />
-                <Route path="/mfa/challenge" element={
-                  <ProtectedRoute>
-                    <MfaChallenge />
-                  </ProtectedRoute>
-                } />
 
                 {/* Admin Routes */}
                 <Route path="/admin" element={
@@ -524,18 +508,6 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <DashboardCustomization />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                {/* 2FA Enforcement */}
-                <Route path="/admin/tools/two-factor" element={
-                  <AdminProtectedRoute
-                    requiredPermission="admin:view"
-                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
-                  >
-                    <AdminLayout>
-                      <TwoFactorEnforcement />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />
