@@ -69,7 +69,6 @@ interface RecentActivity {
   description: string;
   time: string;
   icon: any;
-  color: string;
 }
 
 function AlertDropdownPanel({ onClose }: { onClose: () => void }) {
@@ -102,7 +101,7 @@ function AlertDropdownPanel({ onClose }: { onClose: () => void }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.95 }}
       transition={{ duration: 0.15 }}
-      className="absolute right-0 top-full mt-2 w-[380px] bg-[#0a0a0c] border border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden"
+      className="absolute right-0 top-full mt-2 w-[380px] bg-[#0a0a0c] border border-zinc-800 rounded-md shadow-2xl z-50 overflow-hidden"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
         <h3 className="text-sm font-semibold text-white">Admin Alerts</h3>
@@ -221,7 +220,6 @@ const AdminManagement = () => {
         description: user.full_name || user.username || 'Unknown',
         time: user.created_at,
         icon: Users,
-        color: 'rose',
       });
     });
 
@@ -237,7 +235,6 @@ const AdminManagement = () => {
         description: t.name || 'Untitled',
         time: t.created_at,
         icon: Trophy,
-        color: 'amber',
       });
     });
 
@@ -316,53 +313,39 @@ const AdminManagement = () => {
   };
 
   const statCards = [
-    { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'rose' },
-    { label: 'Active Venues', value: stats.activeVenues, icon: MapPin, color: 'emerald' },
-    { label: 'Tournaments', value: stats.activeTournaments, icon: Trophy, color: 'amber' },
-    { label: 'Bookings', value: stats.totalBookings, icon: Calendar, color: 'blue' },
-    { label: 'Pending', value: stats.pendingVerifications, icon: Shield, color: 'red' },
-    { label: 'New Today', value: stats.newUsersToday, icon: TrendingUp, color: 'cyan' },
+    { label: 'Total Users', value: stats.totalUsers, icon: Users },
+    { label: 'Active Venues', value: stats.activeVenues, icon: MapPin },
+    { label: 'Tournaments', value: stats.activeTournaments, icon: Trophy },
+    { label: 'Bookings', value: stats.totalBookings, icon: Calendar },
+    { label: 'Pending', value: stats.pendingVerifications, icon: Shield },
+    { label: 'New Today', value: stats.newUsersToday, icon: TrendingUp },
   ];
 
   const quickNavLinks = [
-    { label: 'User Management', href: '/admin/tools/user-management', icon: Users, color: 'rose', permission: 'users:view' },
-    { label: 'Tournament Management', href: '/admin/tools/tournament-management', icon: Trophy, color: 'amber', permission: 'tournaments:view' },
-    { label: 'Team Management', href: '/admin/tools/team-management', icon: UsersRound, color: 'cyan', permission: 'users:view' },
-    { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, color: 'emerald', badge: stats.pendingVenues, permission: 'venues:view' },
-    { label: 'Sponsor CRM', href: '/admin/tools/sponsor-management', icon: Megaphone, color: 'violet', permission: 'system:settings' },
+    { label: 'User Management', href: '/admin/tools/user-management', icon: Users, permission: 'users:view' },
+    { label: 'Tournament Management', href: '/admin/tools/tournament-management', icon: Trophy, permission: 'tournaments:view' },
+    { label: 'Team Management', href: '/admin/tools/team-management', icon: UsersRound, permission: 'users:view' },
+    { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, badge: stats.pendingVenues, permission: 'venues:view' },
+    { label: 'Sponsor CRM', href: '/admin/tools/sponsor-management', icon: Megaphone, permission: 'system:settings' },
 
-    { label: 'Verification System', href: '/admin/tools/verification-system', icon: Shield, color: 'red', badge: stats.pendingVerifications, permission: 'users:edit' },
-    { label: 'License Management', href: '/admin/tools/license-management', icon: Award, color: 'violet', badge: stats.pendingLicenses, permission: 'users:view' },
-    { label: 'Dispute Center', href: '/admin/disputes', icon: AlertTriangle, color: 'amber', permission: 'disputes:view' },
-    { label: 'Alert Center', href: '/admin/tools/alerts', icon: Bell, color: 'amber', permission: 'system:audit' },
-    { label: 'Analytics', href: '/admin/tools/analytics', icon: BarChart3, color: 'blue', permission: 'analytics:view' },
-    { label: 'Audit Logs', href: '/admin/audit', icon: FileText, color: 'zinc', permission: 'system:audit' },
-    { label: 'Admin Access', href: '/admin/access', icon: UserCheck, color: 'rose', permission: 'system:settings' },
-    { label: 'Role Builder', href: '/admin/tools/role-builder', icon: ShieldPlus, color: 'rose', permission: 'system:settings' },
-    { label: 'Content Moderation', href: '/admin/tools/moderation', icon: Shield, color: 'amber', permission: 'content:moderate' },
-    { label: 'Session Management', href: '/admin/tools/sessions', icon: Monitor, color: 'cyan', permission: 'system:settings' },
-    { label: 'IP Allowlist', href: '/admin/tools/ip-allowlist', icon: Globe, color: 'emerald', permission: 'system:settings' },
-    { label: 'Scheduled Reports', href: '/admin/tools/scheduled-reports', icon: CalendarClock, color: 'violet', permission: 'system:settings' },
-    { label: 'GDPR Compliance', href: '/admin/tools/gdpr', icon: FileText, color: 'rose', permission: 'system:settings' },
-    { label: 'Anomaly Detection', href: '/admin/tools/anomaly-detection', icon: Zap, color: 'orange', permission: 'system:settings' },
-    { label: 'Dashboard Layout', href: '/admin/tools/dashboard-customization', icon: LayoutDashboard, color: 'blue', permission: 'system:audit' },
+    { label: 'Verification System', href: '/admin/tools/verification-system', icon: Shield, badge: stats.pendingVerifications, permission: 'users:edit' },
+    { label: 'License Management', href: '/admin/tools/license-management', icon: Award, badge: stats.pendingLicenses, permission: 'users:view' },
+    { label: 'Dispute Center', href: '/admin/disputes', icon: AlertTriangle, permission: 'disputes:view' },
+    { label: 'Alert Center', href: '/admin/tools/alerts', icon: Bell, permission: 'system:audit' },
+    { label: 'Analytics', href: '/admin/tools/analytics', icon: BarChart3, permission: 'analytics:view' },
+    { label: 'Audit Logs', href: '/admin/audit', icon: FileText, permission: 'system:audit' },
+    { label: 'Admin Access', href: '/admin/access', icon: UserCheck, permission: 'system:settings' },
+    { label: 'Role Builder', href: '/admin/tools/role-builder', icon: ShieldPlus, permission: 'system:settings' },
+    { label: 'Content Moderation', href: '/admin/tools/moderation', icon: Shield, permission: 'content:moderate' },
+    { label: 'Session Management', href: '/admin/tools/sessions', icon: Monitor, permission: 'system:settings' },
+    { label: 'IP Allowlist', href: '/admin/tools/ip-allowlist', icon: Globe, permission: 'system:settings' },
+    { label: 'Scheduled Reports', href: '/admin/tools/scheduled-reports', icon: CalendarClock, permission: 'system:settings' },
+    { label: 'GDPR Compliance', href: '/admin/tools/gdpr', icon: FileText, permission: 'system:settings' },
+    { label: 'Anomaly Detection', href: '/admin/tools/anomaly-detection', icon: Zap, permission: 'system:settings' },
+    { label: 'Dashboard Layout', href: '/admin/tools/dashboard-customization', icon: LayoutDashboard, permission: 'system:audit' },
   ].filter(link => hasPermission(link.permission));
 
-  const getColorClasses = (color: string) => {
-    const colors: Record<string, { bg: string; text: string; border: string }> = {
-      rose: { bg: 'bg-rose-500/10', text: 'text-rose-500', border: 'border-rose-500/30' },
-      amber: { bg: 'bg-amber-500/10', text: 'text-amber-500', border: 'border-amber-500/30' },
-      emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', border: 'border-emerald-500/30' },
-      violet: { bg: 'bg-violet-500/10', text: 'text-violet-500', border: 'border-violet-500/30' },
-      red: { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/30' },
-      blue: { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/30' },
-      cyan: { bg: 'bg-cyan-500/10', text: 'text-cyan-500', border: 'border-cyan-500/30' },
-      zinc: { bg: 'bg-zinc-500/10', text: 'text-zinc-400', border: 'border-zinc-500/30' },
-      green: { bg: 'bg-green-500/10', text: 'text-green-500', border: 'border-green-500/30' },
-      orange: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30' },
-    };
-    return colors[color] || colors.rose;
-  };
+
 
   return (
     <div className="min-h-screen p-4 lg:p-8">
@@ -372,15 +355,13 @@ const AdminManagement = () => {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8"
       >
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center">
-            <Shield className="w-6 h-6 text-rose-500" />
-          </div>
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-10 rounded-sm bg-rose-500" />
           <div>
-            <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white">
+            <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white uppercase">
               Admin Dashboard
             </h1>
-            <p className="text-zinc-500 text-sm">Platform management & analytics</p>
+            <p className="text-zinc-600 text-xs font-mono tracking-wider uppercase">Platform management & analytics</p>
           </div>
         </div>
 
@@ -437,8 +418,8 @@ const AdminManagement = () => {
               <p className="text-xs text-zinc-500">Signed in as</p>
               <p className="text-sm font-medium text-white">{profile?.full_name || profile?.username}</p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-rose-500" />
+            <div className="w-8 h-8 rounded-md bg-zinc-800 flex items-center justify-center">
+              <Users className="w-4 h-4 text-zinc-400" />
             </div>
             <Button
               variant="ghost"
@@ -457,28 +438,24 @@ const AdminManagement = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8"
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8"
       >
         {statCards.map((stat, idx) => {
-          const colorClasses = getColorClasses(stat.color);
           return (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * idx }}
-              whileHover={{ y: -2, scale: 1.02 }}
-              className="p-4 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all"
+              className="p-4 rounded-md bg-[#0a0a0c] border border-zinc-800/50 hover:bg-zinc-900/80 transition-colors"
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className={`w-8 h-8 rounded-lg ${colorClasses.bg} flex items-center justify-center`}>
-                  <stat.icon className={`w-4 h-4 ${colorClasses.text}`} />
-                </div>
+              <div className="flex items-center justify-between mb-3">
+                <stat.icon className="w-4 h-4 text-zinc-500" />
               </div>
-              <p className="text-xl font-bold text-white">
-                {loading ? '...' : stat.isString ? stat.value : typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
+              <p className="text-2xl font-bold text-white tracking-tight">
+                {loading ? '...' : typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
               </p>
-              <p className="text-xs text-zinc-500 truncate">{stat.label}</p>
+              <p className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider mt-1">{stat.label}</p>
             </motion.div>
           );
         })}
@@ -491,23 +468,18 @@ const AdminManagement = () => {
         transition={{ delay: 0.2 }}
         className="mb-8"
       >
-        <h2 className="text-sm font-mono text-zinc-500 uppercase tracking-wider mb-3">Quick Access</h2>
-        <div className="flex flex-wrap gap-2">
+        <h2 className="text-xs font-mono text-zinc-600 uppercase tracking-widest mb-3">Quick Access</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
           {quickNavLinks.map((link) => {
-            const colorClasses = getColorClasses(link.color);
             return (
               <Link key={link.href} to={link.href}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`border-zinc-800 text-zinc-300 hover:${colorClasses.border} hover:${colorClasses.text} transition-all`}
-                >
-                  <link.icon className={`w-4 h-4 mr-2 ${colorClasses.text}`} />
-                  {link.label}
+                <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-md border border-zinc-800/50 bg-[#0a0a0c] text-zinc-300 hover:bg-zinc-900 hover:border-zinc-700 transition-colors cursor-pointer group">
+                  <link.icon className="w-4 h-4 text-zinc-500 group-hover:text-zinc-400 transition-colors shrink-0" />
+                  <span className="text-sm truncate">{link.label}</span>
                   {link.badge ? (
-                    <Badge className="ml-2 bg-red-500 text-white text-xs">{link.badge}</Badge>
+                    <Badge className="ml-auto bg-rose-500/15 text-rose-400 text-[10px] border-0 px-1.5 py-0 h-5">{link.badge}</Badge>
                   ) : null}
-                </Button>
+                </div>
               </Link>
             );
           })}
@@ -521,35 +493,32 @@ const AdminManagement = () => {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
-          className="lg:col-span-1 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-5"
+          className="lg:col-span-1 rounded-md bg-[#0a0a0c] border border-zinc-800/50 p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white font-semibold flex items-center gap-2">
-              <Activity className="w-4 h-4 text-rose-500" />
+              <Activity className="w-4 h-4 text-zinc-500" />
               Activity Feed
             </h3>
             <span className="text-xs text-zinc-500">Live</span>
           </div>
 
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+          <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
             {recentActivities.length === 0 ? (
               <p className="text-zinc-500 text-sm text-center py-8">No recent activity</p>
             ) : (
               recentActivities.map((activity, idx) => {
-                const colorClasses = getColorClasses(activity.color);
                 return (
                   <motion.div
                     key={activity.id + idx}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/50 hover:bg-zinc-900 transition-colors"
+                    className="flex items-start gap-3 px-3 py-2.5 rounded-md hover:bg-zinc-900/60 transition-colors"
                   >
-                    <div className={`w-8 h-8 rounded-lg ${colorClasses.bg} flex items-center justify-center shrink-0`}>
-                      <activity.icon className={`w-4 h-4 ${colorClasses.text}`} />
-                    </div>
+                    <activity.icon className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-zinc-400">{activity.title}</p>
+                      <p className="text-xs text-zinc-500">{activity.title}</p>
                       <p className="text-sm text-white truncate">{activity.description}</p>
                     </div>
                     <span className="text-xs text-zinc-600 shrink-0">{formatTimeAgo(activity.time)}</span>
@@ -565,12 +534,12 @@ const AdminManagement = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="lg:col-span-2 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
+          className="lg:col-span-2 rounded-md bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
         >
           <div className="p-5 border-b border-zinc-800/50">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h3 className="text-white font-semibold flex items-center gap-2">
-                <FileText className="w-4 h-4 text-indigo-500" />
+                <FileText className="w-4 h-4 text-zinc-500" />
                 Audit Logs
                 <Badge className="bg-zinc-800 text-zinc-400 text-xs">{auditLogs.length}</Badge>
               </h3>
@@ -605,12 +574,9 @@ const AdminManagement = () => {
               <p className="text-zinc-500 text-center py-12">No audit logs found</p>
             ) : (
               <div className="divide-y divide-zinc-800/50">
-                {filteredLogs.slice(0, 50).map((log, idx) => (
-                  <motion.div
+                {filteredLogs.slice(0, 50).map((log) => (
+                  <div
                     key={log.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: idx * 0.01 }}
                     onClick={() => setSelectedLog(log)}
                     className="px-5 py-3 hover:bg-zinc-900/50 cursor-pointer transition-colors flex items-center gap-4"
                   >
@@ -632,7 +598,7 @@ const AdminManagement = () => {
                       </p>
                     </div>
                     <Eye className="w-4 h-4 text-zinc-600" />
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             )}
@@ -645,35 +611,35 @@ const AdminManagement = () => {
         <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
-              <FileText className="w-5 h-5 text-rose-500" />
+              <FileText className="w-5 h-5 text-zinc-400" />
               Audit Log Details
             </DialogTitle>
           </DialogHeader>
           {selectedLog && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-xl bg-zinc-900/50">
+                <div className="p-3 rounded-md bg-zinc-900/50">
                   <p className="text-xs text-zinc-500 uppercase">Action</p>
                   <p className={`text-sm font-medium mt-1 ${getActionColor(selectedLog.action_type).split(' ')[0]}`}>
                     {selectedLog.action_type?.replace('_', ' ')}
                   </p>
                 </div>
-                <div className="p-3 rounded-xl bg-zinc-900/50">
+                <div className="p-3 rounded-md bg-zinc-900/50">
                   <p className="text-xs text-zinc-500 uppercase">Timestamp</p>
                   <p className="text-white text-sm mt-1">{new Date(selectedLog.created_at).toLocaleString()}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-zinc-900/50">
+                <div className="p-3 rounded-md bg-zinc-900/50">
                   <p className="text-xs text-zinc-500 uppercase">Admin</p>
                   <p className="text-white text-sm mt-1">{selectedLog.admin_name || 'System'}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-zinc-900/50">
+                <div className="p-3 rounded-md bg-zinc-900/50">
                   <p className="text-xs text-zinc-500 uppercase">Target</p>
                   <p className="text-white text-sm mt-1">{selectedLog.target_type} / {selectedLog.target_name || selectedLog.target_id?.slice(0, 12)}</p>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-zinc-900/50">
+              <div className="p-3 rounded-md bg-zinc-900/50">
                 <p className="text-xs text-zinc-500 uppercase mb-2">Details</p>
-                <pre className="text-sm text-zinc-300 overflow-x-auto font-mono bg-zinc-950 p-4 rounded-lg max-h-48">
+                <pre className="text-sm text-zinc-300 overflow-x-auto font-mono bg-zinc-950 p-4 rounded-md max-h-48">
                   {JSON.stringify(selectedLog.details, null, 2)}
                 </pre>
               </div>
