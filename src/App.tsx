@@ -28,8 +28,11 @@ import Navbar from "@/components/Navbar";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import BetaNoticeBanner from "@/components/BetaNoticeBanner";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
+import MfaGate from "@/components/MfaGate";
 // import AdminLayout from "@/components/admin/AdminLayout";
 const AdminLayout = React.lazy(() => import("@/components/admin/AdminLayout"));
+const MfaSetup = React.lazy(() => import("./pages/MfaSetup"));
+const MfaChallenge = React.lazy(() => import("./pages/MfaChallenge"));
 
 // Lazy Load Pages
 const Index = React.lazy(() => import("./pages/Index"));
@@ -212,6 +215,18 @@ const AppContent = React.memo(() => {
                 <Route path="/auth/reset-password" element={<ResetPassword />} />
                 <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/suspended" element={<Suspended />} />
+
+                {/* MFA Routes — accessible before admin MFA gate */}
+                <Route path="/mfa/setup" element={
+                  <ProtectedRoute>
+                    <MfaSetup />
+                  </ProtectedRoute>
+                } />
+                <Route path="/mfa/challenge" element={
+                  <ProtectedRoute>
+                    <MfaChallenge />
+                  </ProtectedRoute>
+                } />
 
                 {/* Admin Routes */}
                 <Route path="/admin" element={

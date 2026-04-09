@@ -89,6 +89,13 @@ async function fetchWithAuth(
       const text = await response.text();
       try { body = JSON.parse(text); } catch { body = text; }
     } catch { body = null; }
+
+    // Detect MFA-required error from backend and redirect to MFA flow
+    if (response.status === 403 && typeof body === 'object' && body !== null && (body as Record<string, unknown>).error === 'mfa_required') {
+      window.location.href = '/mfa/challenge';
+      throw new ApiError(403, body, 'MFA required');
+    }
+
     throw new ApiError(response.status, body, `API ${response.status}: ${path}`);
   }
 
