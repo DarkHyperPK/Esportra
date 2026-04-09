@@ -15,39 +15,32 @@ export interface AdminRole {
   permissions: AdminPermission[];
 }
 
-// Define all available permissions
+// Define all available permissions — keys use PLURAL resource names to match the DB
 export const ADMIN_PERMISSIONS: Record<string, AdminPermission> = {
   // User Management
-  'user:view': {
-    key: 'user:view',
+  'users:view': {
+    key: 'users:view',
     name: 'View Users',
     description: 'View user profiles and information',
     resource: 'users',
     action: 'read'
   },
-  'user:edit': {
-    key: 'user:edit',
+  'users:edit': {
+    key: 'users:edit',
     name: 'Edit Users',
     description: 'Edit user profiles and information',
     resource: 'users',
     action: 'update'
   },
-  'user:ban': {
-    key: 'user:ban',
+  'users:ban': {
+    key: 'users:ban',
     name: 'Ban Users',
-    description: 'Ban users from the platform',
+    description: 'Ban or suspend users from the platform',
     resource: 'users',
     action: 'update'
   },
-  'user:suspend': {
-    key: 'user:suspend',
-    name: 'Suspend Users',
-    description: 'Temporarily suspend user accounts',
-    resource: 'users',
-    action: 'update'
-  },
-  'user:delete': {
-    key: 'user:delete',
+  'users:delete': {
+    key: 'users:delete',
     name: 'Delete Users',
     description: 'Permanently delete user accounts',
     resource: 'users',
@@ -55,43 +48,29 @@ export const ADMIN_PERMISSIONS: Record<string, AdminPermission> = {
   },
 
   // Tournament Management
-  'tournament:view': {
-    key: 'tournament:view',
+  'tournaments:view': {
+    key: 'tournaments:view',
     name: 'View Tournaments',
     description: 'View tournament information',
     resource: 'tournaments',
     action: 'read'
   },
-  'tournament:create': {
-    key: 'tournament:create',
+  'tournaments:create': {
+    key: 'tournaments:create',
     name: 'Create Tournaments',
     description: 'Create new tournaments',
     resource: 'tournaments',
     action: 'create'
   },
-  'tournament:edit': {
-    key: 'tournament:edit',
+  'tournaments:edit': {
+    key: 'tournaments:edit',
     name: 'Edit Tournaments',
-    description: 'Edit tournament information',
+    description: 'Edit, approve, and feature tournament information',
     resource: 'tournaments',
     action: 'update'
   },
-  'tournament:approve': {
-    key: 'tournament:approve',
-    name: 'Approve Tournaments',
-    description: 'Approve tournament submissions',
-    resource: 'tournaments',
-    action: 'update'
-  },
-  'tournament:feature': {
-    key: 'tournament:feature',
-    name: 'Feature Tournaments',
-    description: 'Feature tournaments on the platform',
-    resource: 'tournaments',
-    action: 'update'
-  },
-  'tournament:delete': {
-    key: 'tournament:delete',
+  'tournaments:delete': {
+    key: 'tournaments:delete',
     name: 'Delete Tournaments',
     description: 'Delete tournaments',
     resource: 'tournaments',
@@ -99,164 +78,110 @@ export const ADMIN_PERMISSIONS: Record<string, AdminPermission> = {
   },
 
   // Venue Management
-  'venue:view': {
-    key: 'venue:view',
+  'venues:view': {
+    key: 'venues:view',
     name: 'View Venues',
     description: 'View venue information',
     resource: 'venues',
     action: 'read'
   },
-  'venue:create': {
-    key: 'venue:create',
-    name: 'Create Venues',
-    description: 'Create new venues',
-    resource: 'venues',
-    action: 'create'
-  },
-  'venue:edit': {
-    key: 'venue:edit',
-    name: 'Edit Venues',
-    description: 'Edit venue information',
-    resource: 'venues',
-    action: 'update'
-  },
-  'venue:approve': {
-    key: 'venue:approve',
+  'venues:approve': {
+    key: 'venues:approve',
     name: 'Approve Venues',
-    description: 'Approve venue submissions',
+    description: 'Approve and verify venue submissions',
     resource: 'venues',
     action: 'update'
   },
-  'venue:verify': {
-    key: 'venue:verify',
-    name: 'Verify Venues',
-    description: 'Verify venue authenticity',
-    resource: 'venues',
-    action: 'update'
-  },
-  'venue:delete': {
-    key: 'venue:delete',
+  'venues:delete': {
+    key: 'venues:delete',
     name: 'Delete Venues',
     description: 'Delete venues',
     resource: 'venues',
     action: 'delete'
   },
 
-  // Verification Management
-  'verification:view': {
-    key: 'verification:view',
-    name: 'View Verifications',
-    description: 'View verification requests',
-    resource: 'verification',
-    action: 'read'
-  },
-  'verification:approve': {
-    key: 'verification:approve',
-    name: 'Approve Verifications',
-    description: 'Approve verification requests',
-    resource: 'verification',
-    action: 'update'
-  },
-  'verification:reject': {
-    key: 'verification:reject',
-    name: 'Reject Verifications',
-    description: 'Reject verification requests',
-    resource: 'verification',
+  // Dispute Management
+  'disputes:resolve': {
+    key: 'disputes:resolve',
+    name: 'Resolve Disputes',
+    description: 'Review and resolve user disputes',
+    resource: 'disputes',
     action: 'update'
   },
 
-  // Team Management
-  'team:view': {
-    key: 'team:view',
-    name: 'View Teams',
-    description: 'View team information',
-    resource: 'teams',
+  // Sponsor / Content
+  'sponsors:view': {
+    key: 'sponsors:view',
+    name: 'View Sponsors',
+    description: 'View sponsor information',
+    resource: 'sponsors',
     action: 'read'
   },
-  'team:edit': {
-    key: 'team:edit',
-    name: 'Edit Teams',
-    description: 'Edit team information',
-    resource: 'teams',
+  'content:moderate': {
+    key: 'content:moderate',
+    name: 'Moderate Content',
+    description: 'Review and moderate platform content',
+    resource: 'content',
     action: 'update'
-  },
-  'team:delete': {
-    key: 'team:delete',
-    name: 'Delete Teams',
-    description: 'Delete teams',
-    resource: 'teams',
-    action: 'delete'
   },
 
   // System Management
-  'audit:view': {
-    key: 'audit:view',
+  'system:audit': {
+    key: 'system:audit',
     name: 'View Audit Logs',
-    description: 'View system audit logs',
-    resource: 'audit',
+    description: 'View system audit logs and analytics',
+    resource: 'system',
     action: 'read'
   },
-  'settings:view': {
-    key: 'settings:view',
-    name: 'View Settings',
-    description: 'View system settings',
-    resource: 'settings',
+  'system:settings': {
+    key: 'system:settings',
+    name: 'Manage Settings',
+    description: 'View and edit system settings, manage admin roles',
+    resource: 'system',
+    action: 'manage'
+  },
+
+  // Analytics
+  'analytics:view': {
+    key: 'analytics:view',
+    name: 'View Analytics',
+    description: 'View platform analytics and reports',
+    resource: 'analytics',
     action: 'read'
-  },
-  'settings:edit': {
-    key: 'settings:edit',
-    name: 'Edit Settings',
-    description: 'Edit system settings',
-    resource: 'settings',
-    action: 'update'
-  },
-  'admin:manage': {
-    key: 'admin:manage',
-    name: 'Manage Admins',
-    description: 'Manage admin roles and permissions',
-    resource: 'admin',
-    action: 'manage'
-  },
-  'admin:assign_roles': {
-    key: 'admin:assign_roles',
-    name: 'Assign Roles',
-    description: 'Assign admin roles to users',
-    resource: 'admin',
-    action: 'manage'
   }
 };
 
-// Define role-based permission mappings
+// Define role-based permission mappings — keys use PLURAL resource names to match DB
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
   'super_admin': Object.keys(ADMIN_PERMISSIONS), // Super admin gets all permissions
   'ops_admin': [
-    'tournament:view', 'tournament:create', 'tournament:edit', 'tournament:approve', 'tournament:feature', 'tournament:delete',
-    'venue:view', 'venue:create', 'venue:edit', 'venue:approve', 'venue:verify', 'venue:delete',
-    'verification:view', 'verification:approve', 'verification:reject',
-    'team:view', 'team:edit', 'team:delete',
-    'user:view', 'user:edit',
-    'audit:view', 'settings:view',
-    'dispute:resolve'
+    'tournaments:view', 'tournaments:create', 'tournaments:edit', 'tournaments:delete',
+    'venues:view', 'venues:approve', 'venues:delete',
+    'users:view', 'users:edit',
+    'system:audit',
+    'disputes:resolve',
+    'sponsors:view',
+    'analytics:view'
   ],
   'finance_admin': [
-    'user:view', 'user:edit',
-    'audit:view',
-    'settings:view'
+    'users:view', 'users:edit',
+    'system:audit',
+    'system:settings',
+    'analytics:view'
   ],
   'moderator': [
-    'user:view', 'user:edit', 'user:suspend',
-    'tournament:view', 'tournament:edit',
-    'team:view', 'team:edit',
-    'audit:view',
-    'dispute:resolve'
+    'users:view', 'users:edit', 'users:ban',
+    'tournaments:view', 'tournaments:edit',
+    'system:audit',
+    'disputes:resolve',
+    'content:moderate'
   ],
   'support_admin': [
-    'user:view', 'user:edit',
-    'verification:view', 'verification:approve', 'verification:reject',
-    'tournament:view',
-    'venue:view',
-    'team:view',
-    'audit:view'
+    'users:view', 'users:edit',
+    'tournaments:view',
+    'venues:view',
+    'system:audit',
+    'disputes:resolve'
   ]
 };
 

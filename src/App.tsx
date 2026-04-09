@@ -295,7 +295,7 @@ const AppContent = React.memo(() => {
                 {/* Admin Tool Routes */}
                 <Route path="/admin/tools/user-management" element={
                   <AdminProtectedRoute
-                    requiredPermission="user:view"
+                    requiredPermission="users:view"
                     requiredRoles={ADMIN_ROLE_SETS.userManagement}
                   >
                     <AdminLayout>
@@ -305,7 +305,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/tournament-management" element={
                   <AdminProtectedRoute
-                    requiredPermission="tournament:view"
+                    requiredPermission="tournaments:view"
                     requiredRoles={ADMIN_ROLE_SETS.tournamentManagement}
                   >
                     <AdminLayout>
@@ -315,7 +315,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/team-management" element={
                   <AdminProtectedRoute
-                    requiredPermission="team:view"
+                    requiredPermission="users:view"
                     requiredRoles={ADMIN_ROLE_SETS.superAdmin}
                   >
                     <AdminLayout>
@@ -335,7 +335,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/venue-management" element={
                   <AdminProtectedRoute
-                    requiredPermission="venue:view"
+                    requiredPermission="venues:view"
                     requiredRoles={ADMIN_ROLE_SETS.venueManagement}
                   >
                     <AdminLayout>
@@ -345,7 +345,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/verification-system" element={
                   <AdminProtectedRoute
-                    requiredPermission="verification:view"
+                    requiredPermission="users:view"
                     requiredRoles={ADMIN_ROLE_SETS.verification}
                   >
                     <AdminLayout>
@@ -355,7 +355,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/audit-logs" element={
                   <AdminProtectedRoute
-                    requiredPermission="audit:view"
+                    requiredPermission="system:audit"
                     requiredRoles={ADMIN_ROLE_SETS.auditAccess}
                   >
                     <AdminLayout>
@@ -365,7 +365,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/analytics" element={
                   <AdminProtectedRoute
-                    requiredPermission="audit:view"
+                    requiredPermission="system:audit"
                     requiredRoles={ADMIN_ROLE_SETS.analytics}
                   >
                     <AdminLayout>
@@ -375,7 +375,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/sponsor-management" element={
                   <AdminProtectedRoute
-                    requiredPermission="settings:view"
+                    requiredPermission="system:settings"
                     requiredRoles={ADMIN_ROLE_SETS.systemSettings}
                   >
                     <AdminLayout>
@@ -386,7 +386,7 @@ const AppContent = React.memo(() => {
 
                 <Route path="/admin/tools/license-management" element={
                   <AdminProtectedRoute
-                    requiredPermission="verification:review"
+                    requiredPermission="users:view"
                     requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
                   >
                     <AdminLayout>
@@ -397,7 +397,7 @@ const AppContent = React.memo(() => {
 
                 <Route path="/admin/tools/system-settings" element={
                   <AdminProtectedRoute
-                    requiredPermission="settings:view"
+                    requiredPermission="system:settings"
                     requiredRoles={ADMIN_ROLE_SETS.systemSettings}
                   >
                     <AdminLayout>
@@ -409,7 +409,7 @@ const AppContent = React.memo(() => {
                 {/* Admin Management - Super Admin Only */}
                 <Route path="/admin/tools/admin-management" element={
                   <AdminProtectedRoute
-                    requiredPermission="admin:assign_roles"
+                    requiredPermission="system:settings"
                     requiredRoles={['super_admin']}
                   >
                     <AdminLayout>
@@ -421,7 +421,7 @@ const AppContent = React.memo(() => {
                 {/* Role Builder - Super Admin Only */}
                 <Route path="/admin/tools/role-builder" element={
                   <AdminProtectedRoute
-                    requiredPermission="admin:assign_roles"
+                    requiredPermission="system:settings"
                     requiredRoles={['super_admin']}
                   >
                     <AdminLayout>
@@ -433,7 +433,7 @@ const AppContent = React.memo(() => {
                 {/* Content Moderation - Moderators + Admins */}
                 <Route path="/admin/tools/moderation" element={
                   <AdminProtectedRoute
-                    requiredPermission="user:view"
+                    requiredPermission="users:view"
                     requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
                   >
                     <AdminLayout>
@@ -445,7 +445,7 @@ const AppContent = React.memo(() => {
                 {/* Session Management - Super Admin + Ops */}
                 <Route path="/admin/tools/sessions" element={
                   <AdminProtectedRoute
-                    requiredPermission="user:view"
+                    requiredPermission="users:view"
                     requiredRoles={ADMIN_ROLE_SETS.superAdmin}
                   >
                     <AdminLayout>
@@ -457,7 +457,7 @@ const AppContent = React.memo(() => {
                 {/* IP Allowlist - Super Admin */}
                 <Route path="/admin/tools/ip-allowlist" element={
                   <AdminProtectedRoute
-                    requiredPermission="user:view"
+                    requiredPermission="users:view"
                     requiredRoles={ADMIN_ROLE_SETS.superAdmin}
                   >
                     <AdminLayout>
@@ -468,7 +468,7 @@ const AppContent = React.memo(() => {
 
                 <Route path="/admin/tools/scheduled-reports" element={
                   <AdminProtectedRoute
-                    requiredPermission="admin:view"
+                    requiredPermission="system:audit"
                     requiredRoles={ADMIN_ROLE_SETS.superAdmin}
                   >
                     <AdminLayout>
@@ -479,7 +479,7 @@ const AppContent = React.memo(() => {
 
                 <Route path="/admin/tools/gdpr" element={
                   <AdminProtectedRoute
-                    requiredPermission="admin:view"
+                    requiredPermission="system:audit"
                     requiredRoles={ADMIN_ROLE_SETS.superAdmin}
                   >
                     <AdminLayout>
@@ -503,7 +503,7 @@ const AppContent = React.memo(() => {
                 {/* Dashboard Customization */}
                 <Route path="/admin/tools/dashboard-customization" element={
                   <AdminProtectedRoute
-                    requiredPermission="admin:view"
+                    requiredPermission="system:audit"
                     requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
                   >
                     <AdminLayout>
@@ -515,7 +515,7 @@ const AppContent = React.memo(() => {
                 {/* Legacy Admin Routes (for backward compatibility) */}
                 <Route path="/admin/access" element={
                   <AdminProtectedRoute
-                    requiredPermission="admin:assign_roles"
+                    requiredPermission="system:settings"
                     requiredRoles={['super_admin']}
                   >
                     <AdminLayout>
@@ -525,7 +525,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/disputes" element={
                   <AdminProtectedRoute
-                    requiredPermission="dispute:resolve"
+                    requiredPermission="disputes:resolve"
                     requiredRoles={ADMIN_ROLE_SETS.disputes}
                   >
                     <DisputeCenter />
@@ -533,7 +533,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/settings" element={
                   <AdminProtectedRoute
-                    requiredPermission="settings:edit"
+                    requiredPermission="system:settings"
                     requiredRoles={ADMIN_ROLE_SETS.systemSettings}
                   >
                     <AdminLayout>
@@ -543,7 +543,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/verification" element={
                   <AdminProtectedRoute
-                    requiredPermission="verification:view"
+                    requiredPermission="users:view"
                     requiredRoles={ADMIN_ROLE_SETS.verification}
                   >
                     <AdminLayout>
@@ -553,7 +553,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/audit" element={
                   <AdminProtectedRoute
-                    requiredPermission="audit:view"
+                    requiredPermission="system:audit"
                     requiredRoles={ADMIN_ROLE_SETS.auditAccess}
                   >
                     <AdminLayout>
@@ -563,7 +563,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/users" element={
                   <AdminProtectedRoute
-                    requiredPermission="user:view"
+                    requiredPermission="users:view"
                     requiredRoles={ADMIN_ROLE_SETS.userManagement}
                   >
                     <AdminLayout>

@@ -47,30 +47,44 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const normalizeRole = (role?: string | null) =>
         role ? role.toLowerCase().replace(/\s+/g, '_') : null;
 
-      // Single API call replaces 3 Supabase queries (profile + admin_user_roles + admin_roles)
-      // The profile's admin_roles column is the canonical source of role names
+      // Fetch profile for is_admin flag
       const profile = await apiClient.get<{
         is_admin: boolean;
         admin_roles: string[] | null;
       }>('/api/profiles/me');
 
-      const profileRoles = (profile?.admin_roles || [])
-        .map(normalizeRole)
-        .filter((role): role is string => !!role);
-
-      const isUserAdmin = !!profile?.is_admin || profileRoles.length > 0;
-
+      const isUserAdmin = !!profile?.is_admin;
       setIsAdmin(isUserAdmin);
-      setRoles(profileRoles);
 
-      const rolePermissions = new Set<string>();
+      if (isUserAdmin) {
+        try {
+          // Primary source: backend resolves roles + permissions from DB (plural resource names)
+          const ctx = await apiClient.get<{
+            adminRoles: string[];
+            permissions: string[];
+          }>('/api/admin/my-context');
 
-      profileRoles.forEach(role => {
-        const rolePerms = ROLE_PERMISSIONS[role] || [];
-        rolePerms.forEach(perm => rolePermissions.add(perm));
-      });
+          setRoles(ctx.adminRoles || []);
+          setPermissions(ctx.permissions || []);
+        } catch {
+          // Fallback: derive from profile's admin_roles + hardcoded ROLE_PERMISSIONS map
+          const profileRoles = (profile?.admin_roles || [])
+            .map(normalizeRole)
+            .filter((role): role is string => !!role);
 
-      setPermissions(Array.from(rolePermissions));
+          setRoles(profileRoles);
+
+          const rolePermissions = new Set<string>();
+          profileRoles.forEach(role => {
+            const rolePerms = ROLE_PERMISSIONS[role] || [];
+            rolePerms.forEach(perm => rolePermissions.add(perm));
+          });
+          setPermissions(Array.from(rolePermissions));
+        }
+      } else {
+        setRoles([]);
+        setPermissions([]);
+      }
 
     } catch (error) {
       setRoles([]);

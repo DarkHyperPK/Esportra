@@ -138,7 +138,7 @@ const TournamentManagement: React.FC = () => {
   }, [currentPage, filterStatus, filterGame, searchTerm]);
 
   const handleModerationAction = async () => {
-    if (!admin.hasPermission('tournament:approve')) {
+    if (!admin.hasPermission('tournaments:edit')) {
       toast({ title: 'Forbidden', description: 'You do not have permission.', variant: 'destructive' });
       return;
     }
@@ -197,7 +197,7 @@ const TournamentManagement: React.FC = () => {
   };
 
   const handleDeleteTournament = async (tournamentId: string, tournamentTitle: string) => {
-    if (!admin.hasPermission('tournament:reject')) {
+    if (!admin.hasPermission('tournaments:delete')) {
       toast({ title: 'Forbidden', description: 'You do not have permission.', variant: 'destructive' });
       return;
     }
