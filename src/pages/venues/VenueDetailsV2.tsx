@@ -18,7 +18,9 @@ import { useToast } from '@/hooks/use-toast';
 import Footer from '@/components/Footer';
 import SEO from '@/components/SEO';
 
-const MapPicker = React.lazy(() => import('@/components/venues/MapPicker'));
+import { lazyWithRetry } from '@/utils/lazyWithRetry';
+
+const MapPicker = lazyWithRetry(() => import('@/components/venues/MapPicker'));
 
 // ── Amenity icons + labels ──────────────────────────────────────────
 const AMENITIES: Record<string, { icon: React.ElementType; label: string }> = {

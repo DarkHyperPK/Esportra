@@ -33,7 +33,9 @@ import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import CitySearch from '@/components/venues/CitySearch';
 import GamesPicker from '@/components/venues/GamesPicker';
 
-const MapPicker = React.lazy(() => import('@/components/venues/MapPicker'));
+import { lazyWithRetry } from '@/utils/lazyWithRetry';
+
+const MapPicker = lazyWithRetry(() => import('@/components/venues/MapPicker'));
 
 // Icons mapping for amenities
 const AMENITIES_LIST = [

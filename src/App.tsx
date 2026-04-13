@@ -28,77 +28,73 @@ import Navbar from "@/components/Navbar";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import BetaNoticeBanner from "@/components/BetaNoticeBanner";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
-// import AdminLayout from "@/components/admin/AdminLayout";
-const AdminLayout = React.lazy(() => import("@/components/admin/AdminLayout"));
+import { lazyWithRetry } from "@/utils/lazyWithRetry";
+
+const AdminLayout = lazyWithRetry(() => import("@/components/admin/AdminLayout"));
 
 // Lazy Load Pages
-const Index = React.lazy(() => import("./pages/Index"));
-const NotFound = React.lazy(() => import("./pages/NotFound"));
-const Unauthorized = React.lazy(() => import("./pages/Unauthorized"));
-const SignUp = React.lazy(() => import("./pages/auth/SignUp"));
-const SignIn = React.lazy(() => import("./pages/auth/SignIn"));
-// Profile removed
-const Callback = React.lazy(() => import("./pages/auth/Callback"));
-const SetPassword = React.lazy(() => import("./pages/auth/SetPassword"));
-const ForgotPassword = React.lazy(() => import("./pages/auth/ForgotPassword"));
-const ResetPassword = React.lazy(() => import("./pages/auth/ResetPassword"));
-const VerifyEmail = React.lazy(() => import("./pages/auth/VerifyEmail"));
-const Suspended = React.lazy(() => import("./pages/auth/Suspended"));
+const Index = lazyWithRetry(() => import("./pages/Index"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
+const SignUp = lazyWithRetry(() => import("./pages/auth/SignUp"));
+const SignIn = lazyWithRetry(() => import("./pages/auth/SignIn"));
+const Callback = lazyWithRetry(() => import("./pages/auth/Callback"));
+const SetPassword = lazyWithRetry(() => import("./pages/auth/SetPassword"));
+const ForgotPassword = lazyWithRetry(() => import("./pages/auth/ForgotPassword"));
+const ResetPassword = lazyWithRetry(() => import("./pages/auth/ResetPassword"));
+const VerifyEmail = lazyWithRetry(() => import("./pages/auth/VerifyEmail"));
+const Suspended = lazyWithRetry(() => import("./pages/auth/Suspended"));
 
-
-// User 
-// UserDashboard removed - redundant with PlayerDashboard
-const PlayerProfile = React.lazy(() => import("./pages/player/Profile"));
-const StaffInvitesPage = React.lazy(() => import("./pages/user/StaffInvites"));
-const RaiseDispute = React.lazy(() => import("./pages/user/RaiseDispute"));
-const MyDisputes = React.lazy(() => import("./pages/user/MyDisputes"));
-const StaffDashboard = React.lazy(() => import("./pages/staff/StaffDashboard"));
-const TeamsPage = React.lazy(() => import("./pages/player/Teams"));
+// User
+const PlayerProfile = lazyWithRetry(() => import("./pages/player/Profile"));
+const StaffInvitesPage = lazyWithRetry(() => import("./pages/user/StaffInvites"));
+const RaiseDispute = lazyWithRetry(() => import("./pages/user/RaiseDispute"));
+const MyDisputes = lazyWithRetry(() => import("./pages/user/MyDisputes"));
+const StaffDashboard = lazyWithRetry(() => import("./pages/staff/StaffDashboard"));
+const TeamsPage = lazyWithRetry(() => import("./pages/player/Teams"));
 
 // Admin
-const AdminManagement = React.lazy(() => import("./pages/admin/AdminManagement"));
-const AdminAccess = React.lazy(() => import("./pages/admin/AdminAccess"));
-const AdminRoleManagement = React.lazy(() => import("./pages/admin/tools/AdminManagement"));
-const DisputeCenter = React.lazy(() => import("./pages/admin/DisputeCenter"));
-const SystemSettings = React.lazy(() => import("./pages/admin/SystemSettings"));
-const VerificationSystemTool = React.lazy(() => import("./pages/admin/tools/VerificationSystem"));
-const AuditLogsTool = React.lazy(() => import("./pages/admin/tools/AuditLogs"));
-const UserManagementTool = React.lazy(() => import("./pages/admin/tools/UserManagement"));
-const TournamentManagementTool = React.lazy(() => import("./pages/admin/tools/TournamentManagement"));
-const VenueManagementTool = React.lazy(() => import("./pages/admin/tools/VenueManagement"));
-const AnalyticsTool = React.lazy(() => import("./pages/admin/tools/Analytics"));
-const SponsorManagementTool = React.lazy(() => import("./pages/admin/tools/SponsorManagement"));
-const LicenseManagementTool = React.lazy(() => import("./pages/admin/tools/LicenseManagement"));
-const TeamManagementTool = React.lazy(() => import("./pages/admin/tools/TeamManagement"));
-const AlertsManagementTool = React.lazy(() => import("./pages/admin/tools/AlertsManagement"));
-const RoleBuilderTool = React.lazy(() => import("./pages/admin/tools/RoleBuilder"));
-const ContentModerationTool = React.lazy(() => import("./pages/admin/tools/ContentModeration"));
-const SessionManagementTool = React.lazy(() => import("./pages/admin/tools/SessionManagement"));
-const IpAllowlistTool = React.lazy(() => import("./pages/admin/tools/IpAllowlist"));
-const ScheduledReports = React.lazy(() => import("./pages/admin/tools/ScheduledReports"));
-const GdprCompliance = React.lazy(() => import("./pages/admin/tools/GdprCompliance"));
-const AnomalyDetection = React.lazy(() => import("./pages/admin/tools/AnomalyDetection"));
-
-
+const AdminManagement = lazyWithRetry(() => import("./pages/admin/AdminManagement"));
+const AdminAccess = lazyWithRetry(() => import("./pages/admin/AdminAccess"));
+const AdminRoleManagement = lazyWithRetry(() => import("./pages/admin/tools/AdminManagement"));
+const DisputeCenter = lazyWithRetry(() => import("./pages/admin/DisputeCenter"));
+const SystemSettings = lazyWithRetry(() => import("./pages/admin/SystemSettings"));
+const VerificationSystemTool = lazyWithRetry(() => import("./pages/admin/tools/VerificationSystem"));
+const AuditLogsTool = lazyWithRetry(() => import("./pages/admin/tools/AuditLogs"));
+const UserManagementTool = lazyWithRetry(() => import("./pages/admin/tools/UserManagement"));
+const TournamentManagementTool = lazyWithRetry(() => import("./pages/admin/tools/TournamentManagement"));
+const VenueManagementTool = lazyWithRetry(() => import("./pages/admin/tools/VenueManagement"));
+const AnalyticsTool = lazyWithRetry(() => import("./pages/admin/tools/Analytics"));
+const SponsorManagementTool = lazyWithRetry(() => import("./pages/admin/tools/SponsorManagement"));
+const LicenseManagementTool = lazyWithRetry(() => import("./pages/admin/tools/LicenseManagement"));
+const TeamManagementTool = lazyWithRetry(() => import("./pages/admin/tools/TeamManagement"));
+const AlertsManagementTool = lazyWithRetry(() => import("./pages/admin/tools/AlertsManagement"));
+const RoleBuilderTool = lazyWithRetry(() => import("./pages/admin/tools/RoleBuilder"));
+const ContentModerationTool = lazyWithRetry(() => import("./pages/admin/tools/ContentModeration"));
+const SessionManagementTool = lazyWithRetry(() => import("./pages/admin/tools/SessionManagement"));
+const IpAllowlistTool = lazyWithRetry(() => import("./pages/admin/tools/IpAllowlist"));
+const ScheduledReports = lazyWithRetry(() => import("./pages/admin/tools/ScheduledReports"));
+const GdprCompliance = lazyWithRetry(() => import("./pages/admin/tools/GdprCompliance"));
+const AnomalyDetection = lazyWithRetry(() => import("./pages/admin/tools/AnomalyDetection"));
 
 // Venue Owner
-const VenueOwnerDashboard = React.lazy(() => import("./pages/venue-owner/Dashboard"));
+const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dashboard"));
 
 // Tournament Organizer
-const OrganizerDashboard = React.lazy(() => import("./pages/organizer/Dashboard"));
-const TournamentList = React.lazy(() => import("./pages/organizer/TournamentList"));
-const ManageTournaments = React.lazy(() => import("./pages/organizer/ManageTournaments"));
-const TournamentManage = React.lazy(() => import("./pages/organizer/TournamentManage"));
-const EditTournament = React.lazy(() => import("./pages/tournaments/Edit"));
-const TournamentBrackets = React.lazy(() => import("./pages/tournaments/Brackets"));
-const TournamentDetailsUser = React.lazy(() => import("./pages/tournaments/Details"));
-const TournamentDetails = React.lazy(() => import("./pages/admin/TournamentDetails"));
-const CaptainMatchPage = React.lazy(() => import("./pages/tournaments/CaptainMatchPage"));
-const BRGameRoom = React.lazy(() => import("./pages/tournaments/BRGameRoom"));
-const ManageBracketPage = React.lazy(() => import("./pages/organizer/ManageBracketPage"));
-const FullscreenBracketPage = React.lazy(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
-const OrganizationPublicProfile = React.lazy(() => import("./pages/org/PublicProfile"));
-const OrganizationWizard = React.lazy(() => import("./pages/organizer/OrganizationWizard"));
+const OrganizerDashboard = lazyWithRetry(() => import("./pages/organizer/Dashboard"));
+const TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentList"));
+const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
+const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
+const EditTournament = lazyWithRetry(() => import("./pages/tournaments/Edit"));
+const TournamentBrackets = lazyWithRetry(() => import("./pages/tournaments/Brackets"));
+const TournamentDetailsUser = lazyWithRetry(() => import("./pages/tournaments/Details"));
+const TournamentDetails = lazyWithRetry(() => import("./pages/admin/TournamentDetails"));
+const CaptainMatchPage = lazyWithRetry(() => import("./pages/tournaments/CaptainMatchPage"));
+const BRGameRoom = lazyWithRetry(() => import("./pages/tournaments/BRGameRoom"));
+const ManageBracketPage = lazyWithRetry(() => import("./pages/organizer/ManageBracketPage"));
+const FullscreenBracketPage = lazyWithRetry(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
+const OrganizationPublicProfile = lazyWithRetry(() => import("./pages/org/PublicProfile"));
+const OrganizationWizard = lazyWithRetry(() => import("./pages/organizer/OrganizationWizard"));
 
 const ADMIN_ROLE_SETS = {
   anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
@@ -114,50 +110,48 @@ const ADMIN_ROLE_SETS = {
 };
 
 // Venues
-const VenueSearch = React.lazy(() => import("./pages/venues/VenueSearchV2"));
-const FeaturedVenues = React.lazy(() => import("./pages/venues/Featured"));
-const VenueDetails = React.lazy(() => import("./pages/venues/VenueDetailsV2"));
-const ManageVenues = React.lazy(() => import("./pages/venues/ManageVenues"));
-const ListVenue = React.lazy(() => import("./pages/venues/ListVenue"));
-const EditVenue = React.lazy(() => import("./pages/venues/EditVenue"));
+const VenueSearch = lazyWithRetry(() => import("./pages/venues/VenueSearchV2"));
+const FeaturedVenues = lazyWithRetry(() => import("./pages/venues/Featured"));
+const VenueDetails = lazyWithRetry(() => import("./pages/venues/VenueDetailsV2"));
+const ManageVenues = lazyWithRetry(() => import("./pages/venues/ManageVenues"));
+const ListVenue = lazyWithRetry(() => import("./pages/venues/ListVenue"));
+const EditVenue = lazyWithRetry(() => import("./pages/venues/EditVenue"));
 
 // Tournaments
-const BrowseTournaments = React.lazy(() => import("./pages/tournaments/List"));
-const CreateTournament = React.lazy(() => import("./pages/tournaments/Create"));
+const BrowseTournaments = lazyWithRetry(() => import("./pages/tournaments/List"));
+const CreateTournament = lazyWithRetry(() => import("./pages/tournaments/Create"));
 
 // About
-const ContactPage = React.lazy(() => import("./pages/about/Contact"));
-const FAQPage = React.lazy(() => import("./pages/about/FAQ"));
-const AboutPage = React.lazy(() => import("./pages/About"));
-const PrivacyPage = React.lazy(() => import("./pages/Privacy"));
-const TermsPage = React.lazy(() => import("./pages/Terms"));
-const ContactStandalone = React.lazy(() => import("./pages/Contact"));
-const Partners = React.lazy(() => import("./pages/Partners"));
-const BeAPartner = React.lazy(() => import("./pages/BeAPartner"));
+const ContactPage = lazyWithRetry(() => import("./pages/about/Contact"));
+const FAQPage = lazyWithRetry(() => import("./pages/about/FAQ"));
+const AboutPage = lazyWithRetry(() => import("./pages/About"));
+const PrivacyPage = lazyWithRetry(() => import("./pages/Privacy"));
+const TermsPage = lazyWithRetry(() => import("./pages/Terms"));
+const ContactStandalone = lazyWithRetry(() => import("./pages/Contact"));
+const Partners = lazyWithRetry(() => import("./pages/Partners"));
+const BeAPartner = lazyWithRetry(() => import("./pages/BeAPartner"));
 
 // Guides
-const HelpCenter = React.lazy(() => import("./pages/guides/HelpCenter"));
-const OrganizerGuide = React.lazy(() => import("./pages/guides/OrganizerGuide"));
-
-// App Download removed
+const HelpCenter = lazyWithRetry(() => import("./pages/guides/HelpCenter"));
+const OrganizerGuide = lazyWithRetry(() => import("./pages/guides/OrganizerGuide"));
 
 // Notifications
-const NotificationsPage = React.lazy(() => import("./pages/notifications/Notifications"));
+const NotificationsPage = lazyWithRetry(() => import("./pages/notifications/Notifications"));
 
 // Account Settings
-const AccountSettings = React.lazy(() => import("./pages/account/Settings"));
+const AccountSettings = lazyWithRetry(() => import("./pages/account/Settings"));
 
-const TournamentHistoryPage = React.lazy(() => import('./pages/TournamentHistory'));
-const Leaderboards = React.lazy(() => import('./pages/Leaderboards'));
-const PlayerHistory = React.lazy(() => import('./pages/player/History'));
-const VerificationStatus = React.lazy(() => import('./pages/VerificationStatus'));
-const OrganizerDisputesPage = React.lazy(() => import('./pages/organizer/Disputes'));
-const MapVetoToken = React.lazy(() => import('./pages/tournaments/MapVetoToken'));
-const RiotTest = React.lazy(() => import("./pages/debug/RiotTest"));
-const FaceitTest = React.lazy(() => import("./pages/debug/FaceitTest"));
-const IgdbTest = React.lazy(() => import("./pages/debug/IgdbTest"));
-const FaceitOAuthCallback = React.lazy(() => import("./pages/auth/FaceitOAuthCallback"));
-const RiotOAuthCallback   = React.lazy(() => import("./pages/auth/RiotOAuthCallback"));
+const TournamentHistoryPage = lazyWithRetry(() => import('./pages/TournamentHistory'));
+const Leaderboards = lazyWithRetry(() => import('./pages/Leaderboards'));
+const PlayerHistory = lazyWithRetry(() => import('./pages/player/History'));
+const VerificationStatus = lazyWithRetry(() => import('./pages/VerificationStatus'));
+const OrganizerDisputesPage = lazyWithRetry(() => import('./pages/organizer/Disputes'));
+const MapVetoToken = lazyWithRetry(() => import('./pages/tournaments/MapVetoToken'));
+const RiotTest = lazyWithRetry(() => import("./pages/debug/RiotTest"));
+const FaceitTest = lazyWithRetry(() => import("./pages/debug/FaceitTest"));
+const IgdbTest = lazyWithRetry(() => import("./pages/debug/IgdbTest"));
+const FaceitOAuthCallback = lazyWithRetry(() => import("./pages/auth/FaceitOAuthCallback"));
+const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
 
 import { getWebsiteAssetUrl } from "@/lib/storage";
 

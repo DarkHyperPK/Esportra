@@ -16,7 +16,9 @@ import {
 } from 'lucide-react';
 import { Venue } from '@/types/venue';
 
-const MapPicker = React.lazy(() => import('@/components/venues/MapPicker'));
+import { lazyWithRetry } from '@/utils/lazyWithRetry';
+
+const MapPicker = lazyWithRetry(() => import('@/components/venues/MapPicker'));
 
 const AMENITIES_LIST = [
   { id: 'wifi', label: 'High-Speed WiFi', icon: Wifi },
