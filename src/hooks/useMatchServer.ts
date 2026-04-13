@@ -2,7 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { HubConnectionState } from '@microsoft/signalr';
-import type { HubConnection } from '@microsoft/signalr';
+import { useHub } from '@/contexts/SignalRContext';
+import { HubPaths } from '@/lib/signalrClient';
 
 interface GameServer {
   matchId: string;
@@ -24,8 +25,9 @@ interface GameServer {
   };
 }
 
-export const useMatchServer = (matchId: string | undefined, matchHubConnection?: HubConnection | null) => {
+export const useMatchServer = (matchId: string | undefined) => {
   const queryClient = useQueryClient();
+  const conn = useHub(HubPaths.Match);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['match-server', matchId],
@@ -48,9 +50,9 @@ export const useMatchServer = (matchId: string | undefined, matchHubConnection?:
   const is404 = !!(error && ((error as any)?.status === 404 || (error as any)?.message?.includes('404')));
   const isRealError = !!error && !is404;
 
-  // Listen for SignalR server events
+  // Listen for SignalR server events via the shared MatchHub connection
   useEffect(() => {
-    if (!matchHubConnection || matchHubConnection.state !== HubConnectionState.Connected) return;
+    if (!matchId || conn.state !== HubConnectionState.Connected) return;
 
     const onProvisioned = () => {
       queryClient.invalidateQueries({ queryKey: ['match-server', matchId] });
@@ -59,14 +61,14 @@ export const useMatchServer = (matchId: string | undefined, matchHubConnection?:
       queryClient.invalidateQueries({ queryKey: ['match-server', matchId] });
     };
 
-    matchHubConnection.on('ServerProvisioned', onProvisioned);
-    matchHubConnection.on('ServerDeleted', onDeleted);
+    conn.on('ServerProvisioned', onProvisioned);
+    conn.on('ServerDeleted', onDeleted);
 
     return () => {
-      matchHubConnection.off('ServerProvisioned', onProvisioned);
-      matchHubConnection.off('ServerDeleted', onDeleted);
+      conn.off('ServerProvisioned', onProvisioned);
+      conn.off('ServerDeleted', onDeleted);
     };
-  }, [matchHubConnection, matchId, queryClient]);
+  }, [conn, matchId, queryClient]);
 
   const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text);

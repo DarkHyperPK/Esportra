@@ -3,15 +3,13 @@ import { Server, Copy, ExternalLink, Loader2, AlertCircle, Monitor, RefreshCw } 
 import { Button } from '@/components/ui/button';
 import { useMatchServer } from '@/hooks/useMatchServer';
 import { useToast } from '@/hooks/use-toast';
-import type { HubConnection } from '@microsoft/signalr';
 
 interface ServerConnectionCardProps {
   matchId: string;
-  matchHubConnection?: HubConnection | null;
 }
 
-const ServerConnectionCard: React.FC<ServerConnectionCardProps> = ({ matchId, matchHubConnection }) => {
-  const { server, isLoading, is404, isRealError, refetch, copyToClipboard } = useMatchServer(matchId, matchHubConnection);
+const ServerConnectionCard: React.FC<ServerConnectionCardProps> = ({ matchId }) => {
+  const { server, isLoading, is404, isRealError, refetch, copyToClipboard } = useMatchServer(matchId);
   const { toast } = useToast();
 
   const handleCopy = (text: string, label: string) => {
