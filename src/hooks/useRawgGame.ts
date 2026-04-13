@@ -81,29 +81,42 @@ interface IgdbAssetsResponse {
     videos: IgdbVideo[];
 }
 
-export async function fetchGameData(gameName: string): Promise<CachedGame> {
-    const cacheKey = gameName.trim().toLowerCase();
+interface FetchGameDataOptions {
+    /** Skip RAWG search + screenshot calls (saves 2 API calls per game) */
+    skipRawg?: boolean;
+}
 
-    // Return cached result
-    if (gameCache.has(cacheKey)) return gameCache.get(cacheKey)!;
+export async function fetchGameData(
+    gameName: string,
+    options?: FetchGameDataOptions,
+): Promise<CachedGame> {
+    const cacheKey = gameName.trim().toLowerCase();
+    const skipRawg = options?.skipRawg ?? false;
+
+    // Return cached result (but only if it has RAWG data, or caller doesn't need it)
+    const cached = gameCache.get(cacheKey);
+    if (cached && (skipRawg || cached.rawgScreenshots.length > 0)) {
+        return cached;
+    }
 
     // Deduplicate in-flight requests for the same game
-    if (pendingFetches.has(cacheKey)) return pendingFetches.get(cacheKey)!;
+    const pendingKey = `${cacheKey}:${skipRawg ? 'igdb' : 'full'}`;
+    if (pendingFetches.has(pendingKey)) return pendingFetches.get(pendingKey)!;
 
     const promise = (async (): Promise<CachedGame> => {
         try {
-            // Fetch IGDB assets and RAWG search in parallel
-            const [igdbResult, rawgResult] = await Promise.allSettled([
-                apiClient.get<IgdbAssetsResponse>(
-                    `/api/games/igdb-assets?game=${encodeURIComponent(gameName)}`
-                ),
-                (async () => {
+            const igdbPromise = apiClient.get<IgdbAssetsResponse>(
+                `/api/games/igdb-assets?game=${encodeURIComponent(gameName)}`
+            );
+
+            const rawgPromise = skipRawg
+                ? Promise.resolve(null)
+                : (async () => {
                     const searchName = getRawgGameName(gameName);
                     const raw = await rawgSearchGames(searchName);
                     const result = raw?.data ?? raw;
                     if (!result?.results?.length) return null;
                     const game = result.results[0];
-                    // Fetch RAWG screenshots for card carousel
                     let ssImages: string[] = [];
                     if (game.id) {
                         try {
@@ -119,8 +132,9 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
                         logo: game.background_image as string | null,
                         screenshots: ssImages.length > 0 ? ssImages : (game.background_image ? [game.background_image] : []),
                     };
-                })()
-            ]);
+                })();
+
+            const [igdbResult, rawgResult] = await Promise.allSettled([igdbPromise, rawgPromise]);
 
             const igdb = igdbResult.status === 'fulfilled' ? igdbResult.value : null;
             const rawg = rawgResult.status === 'fulfilled' ? rawgResult.value : null;
@@ -132,7 +146,7 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
             const rawgScreenshots = rawg?.screenshots || [];
             const twitchFallback = getTwitchFallback(gameName);
 
-            const cached: CachedGame = {
+            const result: CachedGame = {
                 gameLogo: rawgLogo || twitchFallback,
                 gameBanner: igdbBanners[0] || rawgLogo || twitchFallback,
                 cover: igdbCover,
@@ -144,12 +158,12 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
                     : [rawgLogo].filter(Boolean) as string[],
                 videos: igdbVideos,
             };
-            gameCache.set(cacheKey, cached);
+            gameCache.set(cacheKey, result);
             persistCache();
-            return cached;
+            return result;
         } catch {
             const fallback = getTwitchFallback(gameName);
-            const cached: CachedGame = {
+            const result: CachedGame = {
                 gameLogo: fallback,
                 gameBanner: fallback,
                 cover: null,
@@ -157,15 +171,15 @@ export async function fetchGameData(gameName: string): Promise<CachedGame> {
                 rawgScreenshots: fallback ? [fallback] : [],
                 videos: [],
             };
-            gameCache.set(cacheKey, cached);
+            gameCache.set(cacheKey, result);
             persistCache();
-            return cached;
+            return result;
         } finally {
-            pendingFetches.delete(cacheKey);
+            pendingFetches.delete(pendingKey);
         }
     })();
 
-    pendingFetches.set(cacheKey, promise);
+    pendingFetches.set(pendingKey, promise);
     return promise;
 }
 

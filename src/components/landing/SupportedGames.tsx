@@ -88,7 +88,7 @@ const SupportedGames = () => {
   useEffect(() => {
     let cancelled = false;
     games.forEach((game) => {
-      fetchGameData(game.name).then((data: CachedGame) => {
+      fetchGameData(game.name, { skipRawg: true }).then((data: CachedGame) => {
         if (!cancelled) {
           const idx = BANNER_INDEX_OVERRIDES[game.slug] ?? 0;
           const banner = data.screenshots?.[idx] || data.gameBanner;
