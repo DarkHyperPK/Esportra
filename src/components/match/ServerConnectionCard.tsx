@@ -1,5 +1,5 @@
 import React from 'react';
-import { Server, Copy, ExternalLink, Loader2, AlertCircle, Monitor } from 'lucide-react';
+import { Server, Copy, ExternalLink, Loader2, AlertCircle, Monitor, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMatchServer } from '@/hooks/useMatchServer';
 import { useToast } from '@/hooks/use-toast';
@@ -11,7 +11,7 @@ interface ServerConnectionCardProps {
 }
 
 const ServerConnectionCard: React.FC<ServerConnectionCardProps> = ({ matchId, matchHubConnection }) => {
-  const { server, isLoading, error, copyToClipboard } = useMatchServer(matchId, matchHubConnection);
+  const { server, isLoading, is404, isRealError, refetch, copyToClipboard } = useMatchServer(matchId, matchHubConnection);
   const { toast } = useToast();
 
   const handleCopy = (text: string, label: string) => {
@@ -30,8 +30,24 @@ const ServerConnectionCard: React.FC<ServerConnectionCardProps> = ({ matchId, ma
     );
   }
 
-  // No server yet — could still be provisioning
-  if (error || !server) {
+  // Real API error (not 404)
+  if (isRealError) {
+    return (
+      <div className="rounded-xl border border-red-500/10 bg-white/[0.02] p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <AlertCircle className="w-5 h-5 text-red-400" />
+          <h3 className="text-sm font-semibold text-white">Game Server</h3>
+        </div>
+        <p className="text-xs text-red-400 mb-3">Failed to load server info. Please try again.</p>
+        <Button variant="ghost" size="sm" className="text-xs text-zinc-400" onClick={() => refetch()}>
+          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Retry
+        </Button>
+      </div>
+    );
+  }
+
+  // No server yet — still provisioning (404 or null data)
+  if (is404 || !server) {
     return (
       <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5">
         <div className="flex items-center gap-3 mb-3">

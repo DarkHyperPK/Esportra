@@ -32,8 +32,21 @@ export const useMatchServer = (matchId: string | undefined, matchHubConnection?:
     queryFn: () => apiClient.get<GameServer>(`/api/matches/${matchId}/server`),
     enabled: !!matchId,
     staleTime: 1000 * 30, // 30s
-    retry: false,
+    retry: (count, err) => {
+      // Don't retry 404s (server not provisioned yet) — but retry transient errors once
+      if ((err as any)?.status === 404 || (err as any)?.message?.includes('404')) return false;
+      return count < 1;
+    },
+    refetchInterval: (query) => {
+      // Poll every 10s while no server found (waiting for auto-provision)
+      if (query.state.error || !query.state.data) return 10_000;
+      return false;
+    },
   });
+
+  // Determine if this is a "not found" (still provisioning) vs a real error
+  const is404 = !!(error && ((error as any)?.status === 404 || (error as any)?.message?.includes('404')));
+  const isRealError = !!error && !is404;
 
   // Listen for SignalR server events
   useEffect(() => {
@@ -62,6 +75,8 @@ export const useMatchServer = (matchId: string | undefined, matchHubConnection?:
   return {
     server: data?.server ?? null,
     isLoading,
+    is404,
+    isRealError,
     error,
     refetch,
     copyToClipboard,
