@@ -265,6 +265,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     region:               data.region || null,
                     currency:             data.currency || 'USD',
                     tournamentType:       data.tournamentType || 'bracket',
+                    serverRegion:         data.serverRegion || null,
                     settings: {
                         assistedMatchReporting: data.assistedMatchReporting ?? false,
                         checkInWindowMinutes: data.checkInWindowMinutes || 30,

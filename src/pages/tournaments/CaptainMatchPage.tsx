@@ -36,6 +36,7 @@ import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 import { useBracketRealtime } from '@/hooks/useBracketRealtime';
 import { useMatchRealtime } from '@/hooks/useMatchRealtime';
 import { useVetoRealtime } from '@/hooks/useVetoRealtime';
+import ServerConnectionCard from '@/components/match/ServerConnectionCard';
 
 const repo = new MatchRepository();
 
@@ -885,6 +886,12 @@ const CaptainMatchPage = () => {
                                                 <Swords className="w-3.5 h-3.5 shrink-0" />
                                                 <span>Complete Map Veto to unlock result reporting</span>
                                             </div>
+                                        )}
+
+                                        {/* CS2 Server Connection — show after veto completes */}
+                                        {rawMatchId && isMatchLive && isVetoCompleted &&
+                                         (tournament?.game?.toLowerCase() === 'counter-strike 2' || tournament?.game?.toLowerCase() === 'cs2') && (
+                                            <ServerConnectionCard matchId={rawMatchId} />
                                         )}
 
                                         {/* Valorant Auto-Report — only when veto completed (or veto disabled) */}
