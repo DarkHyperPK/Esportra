@@ -110,7 +110,9 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         <SelectValue placeholder="Select a game" />
                     </SelectTrigger>
                     <SelectContent>
-                        {esportsGames.games.map((game) => (
+                        {esportsGames.games
+                            .filter((game) => game.slug !== 'cs2')
+                            .map((game) => (
                             <SelectItem
                                 key={game.name}
                                 value={game.name}
