@@ -521,7 +521,6 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 <SelectValue placeholder="Select max teams" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="0">Unlimited</SelectItem>
                                 <SelectItem value="4">4 Teams</SelectItem>
                                 <SelectItem value="8">8 Teams</SelectItem>
                                 <SelectItem value="16">16 Teams</SelectItem>
@@ -529,12 +528,12 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 <SelectItem value="64">64 Teams</SelectItem>
                                 <SelectItem value="128">128 Teams</SelectItem>
                                 <SelectItem value="256">256 Teams</SelectItem>
+                                <SelectItem value="512">512 Teams</SelectItem>
+                                <SelectItem value="1024">1024 Teams</SelectItem>
                             </SelectContent>
                         </Select>
                         <p className="text-sm text-gray-400">
-                            {data.maxTeams === 0
-                                ? "No limit on registrations. Bracket will auto-size based on registered teams."
-                                : "If fewer teams register, the bracket will automatically adjust."}
+                            If fewer teams register, the bracket will automatically adjust.
                         </p>
                     </div>
 
