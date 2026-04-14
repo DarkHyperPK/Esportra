@@ -640,7 +640,6 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/tournaments/edit/:slug" element={<EditTournament />} />
                 <Route path="/tournaments/:slug/brackets" element={<TournamentBrackets />} />
-                <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />
                 <Route path="/tournaments/:slug/captain-match/:matchId?" element={
                   <ProtectedRoute>
                     <CaptainMatchPage />
@@ -702,6 +701,9 @@ const AppContent = React.memo(() => {
                 {/* Catch-all route */}
                 <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
               </Route >
+
+              {/* Fullscreen bracket — outside layout to hide navbar/banners */}
+              <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />
             </Routes >
           </SuspensionGuard>
         </React.Suspense >

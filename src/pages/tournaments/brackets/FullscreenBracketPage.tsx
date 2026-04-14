@@ -91,7 +91,7 @@ const FullscreenBracketPage = () => {
     };
 
     return (
-        <div className="w-screen h-screen bg-transparent overflow-hidden relative font-sans">
+        <div className="fixed inset-0 z-[9999] bg-[#050505] overflow-hidden font-sans">
             {/* Back Navigation */}
             <div className="absolute top-6 left-6 z-50">
                 <Button
