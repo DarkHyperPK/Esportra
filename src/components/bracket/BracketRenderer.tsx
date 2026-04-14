@@ -257,30 +257,6 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                             />
                         );
                     })}
-                    {matches.map(match => {
-                        if (!match.loserNextMatchId) return null;
-                        const sourcePos = matchPositions[match.id] || matchPositions[getRawId(String(match.id))];
-                        const targetPos = matchPositions[match.loserNextMatchId] || matchPositions[getRawId(match.loserNextMatchId)];
-                        if (!sourcePos || !targetPos) return null;
-
-                        const startX = sourcePos.x + cardWidth;
-                        const startY = sourcePos.y + cardHeight / 2;
-                        const endX = targetPos.x;
-                        const endY = targetPos.y + cardHeight / 2;
-                        const midX = startX + (endX - startX) / 2;
-
-                        return (
-                            <path
-                                key={`edge-l-${match.id}`}
-                                d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
-                                fill="none"
-                                stroke="#ef4444"
-                                strokeWidth="2"
-                                strokeDasharray="6 4"
-                                className="opacity-40"
-                            />
-                        );
-                    })}
                 </svg>
             )}
             {/* Winners Bracket Heading */}
