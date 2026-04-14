@@ -424,7 +424,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     bracketSize = Math.ceil(Number(stage.capacity) / groupSize);
                     console.log('[StageManagement] Auto-calculated RR group_count:', bracketSize, 'from capacity:', stage.capacity);
                 } else {
-                    bracketSize = Math.ceil(teams.length / 4);
+                    bracketSize = Math.max(1, Math.ceil(teams.length / 4));
                     console.log('[StageManagement] Fallback RR group_count:', bracketSize, 'from teams:', teams.length);
                 }
             } else {
