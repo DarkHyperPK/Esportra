@@ -309,7 +309,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         try {
             // Get teams/participants for this stage
             let teams: Array<{ id: string; name: string; logo_url?: string | null }> = [];
-
+            let bracketSize: number | undefined = undefined;
             // Check stage config for check-in filtering
             const stageConf = typeof stage.config === 'string'
                 ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()
@@ -397,7 +397,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             // Generate based on stage format
             const format = stage.format || 'single_elimination';
             let generator;
-            let bracketSize: number | undefined = undefined;
 
             // Bracket Size remains undefined to allow auto-sizing based on participant count
 
