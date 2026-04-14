@@ -228,6 +228,61 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
             className="relative"
             style={{ width: totalWidth, height: filteredListPositions ? filteredListPositions.height : totalHeight, minWidth: '100%' }}
         >
+            {/* Connector Lines (SVG) — only in full bracket view */}
+            {activeFilter.type === 'all' && (
+                <svg
+                    className="absolute top-0 left-0 pointer-events-none overflow-visible"
+                    style={{ width: totalWidth, height: totalHeight }}
+                >
+                    {matches.map(match => {
+                        if (!match.nextMatchId) return null;
+                        const sourcePos = matchPositions[match.id] || matchPositions[getRawId(String(match.id))];
+                        const targetPos = matchPositions[match.nextMatchId] || matchPositions[getRawId(match.nextMatchId)];
+                        if (!sourcePos || !targetPos) return null;
+
+                        const startX = sourcePos.x + cardWidth;
+                        const startY = sourcePos.y + cardHeight / 2;
+                        const endX = targetPos.x;
+                        const endY = targetPos.y + cardHeight / 2;
+                        const midX = startX + (endX - startX) / 2;
+
+                        return (
+                            <path
+                                key={`edge-w-${match.id}`}
+                                d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
+                                fill="none"
+                                stroke="#475569"
+                                strokeWidth="2"
+                                className="opacity-50"
+                            />
+                        );
+                    })}
+                    {matches.map(match => {
+                        if (!match.loserNextMatchId) return null;
+                        const sourcePos = matchPositions[match.id] || matchPositions[getRawId(String(match.id))];
+                        const targetPos = matchPositions[match.loserNextMatchId] || matchPositions[getRawId(match.loserNextMatchId)];
+                        if (!sourcePos || !targetPos) return null;
+
+                        const startX = sourcePos.x + cardWidth;
+                        const startY = sourcePos.y + cardHeight / 2;
+                        const endX = targetPos.x;
+                        const endY = targetPos.y + cardHeight / 2;
+                        const midX = startX + (endX - startX) / 2;
+
+                        return (
+                            <path
+                                key={`edge-l-${match.id}`}
+                                d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
+                                fill="none"
+                                stroke="#ef4444"
+                                strokeWidth="2"
+                                strokeDasharray="6 4"
+                                className="opacity-40"
+                            />
+                        );
+                    })}
+                </svg>
+            )}
             {/* Winners Bracket Heading */}
             {(activeFilter.type === 'all' || activeFilter.type === 'winners') &&
                 matches.some(m => m.bracketSide === 'winners') &&

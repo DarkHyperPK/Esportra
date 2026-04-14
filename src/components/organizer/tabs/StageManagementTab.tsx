@@ -369,15 +369,10 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 })).filter(t => t.id);
             }
 
-            if (teams.length < 2) {
-                toast({
-                    title: 'Not Enough Teams',
-                    description: useCheckInOnly
-                        ? 'Need at least 2 checked-in teams to generate matches. Ensure participants have checked in.'
-                        : 'Need at least 2 registered teams to generate matches.',
-                    variant: 'destructive'
-                });
-                return;
+            if (teams.length === 0) {
+                // Allow empty bracket generation using stage capacity for sizing
+                const capacity = stage.capacity || 8;
+                bracketSize = Math.pow(2, Math.ceil(Math.log2(capacity)));
             }
 
             // Clean up any existing bracket for this stage before re-generating
@@ -509,7 +504,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             setHasBrackets(prev => ({ ...prev, [stageId]: true }));
 
             // Runtime BYE warning (Medium Priority)
-            if (format === 'single_elimination' || format === 'double_elimination') {
+            if ((format === 'single_elimination' || format === 'double_elimination') && teams.length > 0) {
                 const actualBracketSize = Math.pow(2, Math.ceil(Math.log2(teams.length)));
                 const byeCount = actualBracketSize - teams.length;
                 const byePercentage = (byeCount / actualBracketSize) * 100;
