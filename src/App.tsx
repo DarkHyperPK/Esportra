@@ -175,20 +175,26 @@ const AppContent = React.memo(() => {
   return (
     <>
       {/* Global Background - Video Only (Seamless Loop) */}
-      <div className="fixed inset-0 w-full h-full z-0">
-        <SeamlessVideoLoop
-          src={BG_VIDEO_URL}
-          className="mix-blend-screen opacity-40"
-          style={{ filter: 'contrast(1.2) saturation(1.1)' }}
+      {!location.pathname.endsWith('/brackets/fullscreen') && (
+        <div className="fixed inset-0 w-full h-full z-0">
+          <SeamlessVideoLoop
+            src={BG_VIDEO_URL}
+            className="mix-blend-screen opacity-40"
+            style={{ filter: 'contrast(1.2) saturation(1.1)' }}
 
-        />
-      </div>
+          />
+        </div>
+      )}
 
       <Toaster />
       <Sonner />
-      <Navbar />
-      <BetaNoticeBanner />
-      <EmailVerificationBanner />
+      {!location.pathname.endsWith('/brackets/fullscreen') && (
+        <>
+          <Navbar />
+          <BetaNoticeBanner />
+          <EmailVerificationBanner />
+        </>
+      )}
       <div className="relative z-10">
         <React.Suspense fallback={<PremiumLoadingScreen />}>
           <SuspensionGuard>
