@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLicenses } from '@/hooks/useLicenses';
 import { useFaceitAccount } from '@/hooks/useFaceitAccount';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
+import { useSteamAccount } from '@/hooks/useSteamAccount';
 import { useVenueSearch } from '@/hooks/useVenueSearch';
 import {
   Loader2, Copy, Check, Shield, Link2, Link2Off, Award, Monitor, Bell,
@@ -61,7 +62,7 @@ type Tab = 'connected_accounts' | 'notifications' | 'licenses' | 'desktop_pairin
 interface NavItem { key: Tab; label: string; icon: React.ReactNode; description: string; venueOwnerOnly?: boolean }
 
 const NAV: NavItem[] = [
-  { key: 'connected_accounts', label: 'Connected Accounts', description: 'Riot, Faceit, Discord', icon: <Link2 className="w-4 h-4" /> },
+  { key: 'connected_accounts', label: 'Connected Accounts', description: 'Steam, Riot, Faceit, Discord', icon: <Link2 className="w-4 h-4" /> },
   { key: 'notifications', label: 'Notifications', description: 'Discord DM alerts', icon: <Bell className="w-4 h-4" /> },
   { key: 'licenses', label: 'My Licenses', description: 'Professional license IDs', icon: <Award className="w-4 h-4" /> },
   { key: 'desktop_pairing', label: 'Desktop Pairing', description: 'Venue hub pairing tokens', venueOwnerOnly: true, icon: <Monitor className="w-4 h-4" /> },
@@ -112,6 +113,20 @@ export default function AccountSettings() {
         queryClient.invalidateQueries({ queryKey: ['faceit-account', user?.id] });
       } else {
         toast({ title: 'Faceit Linking Failed', description: (params.get('reason') || 'unknown').replace(/_/g, ' '), variant: 'destructive' });
+      }
+    }
+
+    // ── Steam OpenID result ──
+    const steamLinked = params.get('steam');
+    if (steamLinked) {
+      setActiveTab('connected_accounts');
+      window.history.replaceState({}, '', window.location.pathname);
+      if (steamLinked === 'linked') {
+        toast({ title: 'Steam Account Linked!' });
+        localStorage.setItem('steam_just_linked', Date.now().toString());
+        queryClient.invalidateQueries({ queryKey: ['steam-account', user?.id] });
+      } else if (steamLinked === 'error') {
+        toast({ title: 'Steam Linking Failed', description: (params.get('reason') || 'unknown').replace(/_/g, ' '), variant: 'destructive' });
       }
     }
   }, []);
@@ -178,9 +193,11 @@ function ConnectedAccountsTab() {
   const { toast } = useToast();
   const { riotAccount, isLoading: riotLoading, linkRiotAccount, unlinkRiotAccount } = useRiotAccount();
   const { faceitAccount, isLoading: faceitLoading, linkFaceitAccount, unlinkFaceitAccount } = useFaceitAccount();
+  const { steamAccount, isLoading: steamLoading, linkSteamAccount, unlinkSteamAccount } = useSteamAccount();
   const [discordIdentity, setDiscordIdentity] = useState<any>(null);
   const [unlinkingRiot, setUnlinkingRiot] = useState(false);
   const [unlinkingFaceit, setUnlinkingFaceit] = useState(false);
+  const [unlinkingSteam, setUnlinkingSteam] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -209,6 +226,16 @@ function ConnectedAccountsTab() {
     } finally { setUnlinkingFaceit(false); }
   };
 
+  const handleUnlinkSteam = async () => {
+    setUnlinkingSteam(true);
+    try {
+      await unlinkSteamAccount();
+      toast({ title: 'Steam unlinked' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to unlink Steam account.', variant: 'destructive' });
+    } finally { setUnlinkingSteam(false); }
+  };
+
   const linkDiscord = () => supabase.auth.signInWithOAuth({
     provider: 'discord',
     options: { redirectTo: window.location.href, scopes: 'identify email guilds.join' },
@@ -234,6 +261,16 @@ function ConnectedAccountsTab() {
       icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-8 h-8 drop-shadow-md"><circle cx="256" cy="256" r="256" fill="#FF5500"/><path d="M168.3 158h175.4v44.1H216.4v39.5h111.2v44.1H216.4v72.3h-48.1V158z" fill="#1F1F1F"/></svg>,
       onConnect: linkFaceitAccount, onUnlink: handleUnlinkFaceit, unlinking: unlinkingFaceit,
       connectClass: 'bg-orange-600 hover:bg-orange-500',
+    },
+    {
+      key: 'steam', name: 'Steam',
+      description: steamLoading ? 'Loading...' : steamAccount
+        ? steamAccount.steamName || steamAccount.steam64Id
+        : 'Required for CS2 match automation (MatchZy)',
+      connected: !!steamAccount, loading: steamLoading,
+      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 259" className="w-8 h-8 drop-shadow-md"><path d="M127.779 0C60.21 0 4.32 51.245.203 116.124l68.96 28.49c5.862-4.006 12.93-6.35 20.552-6.35.686 0 1.363.025 2.032.069l30.744-44.536v-.625c0-26.278 21.393-47.67 47.67-47.67 26.278 0 47.671 21.392 47.671 47.67 0 26.279-21.393 47.672-47.67 47.672h-1.107l-43.835 31.282c0 .547.036 1.093.036 1.63 0 19.713-16.027 35.74-35.74 35.74-17.253 0-31.677-12.254-35.032-28.54L5.149 156.083C22.867 214.05 76.395 258.563 140.077 258.563c78.592 0 115.923-56.57 115.923-130.202C255.999 57.464 198.371 0 127.779 0" fill="#1B2838"/><path d="M82.483 210.328l-15.66-6.473c2.783 5.755 7.506 10.637 13.619 13.37 13.227 5.913 28.694-.184 34.607-13.41 2.868-6.404 2.907-13.477.115-19.91-2.793-6.433-7.91-11.437-14.314-14.305-6.338-2.83-13.202-2.84-19.405-.444l16.195 6.696c9.755 4.363 14.135 15.698 9.772 25.453-4.364 9.755-15.698 14.135-25.453 9.772l.524-.749z" fill="#A3CF06"/><path d="M215.067 93.192c0-17.52-14.261-31.78-31.782-31.78-17.52 0-31.781 14.26-31.781 31.78 0 17.52 14.26 31.782 31.781 31.782 17.52 0 31.782-14.262 31.782-31.782zm-55.594 0c0-13.162 10.65-23.812 23.812-23.812 13.163 0 23.813 10.65 23.813 23.812 0 13.163-10.65 23.813-23.813 23.813-13.162 0-23.812-10.65-23.812-23.813z" fill="#A3CF06"/></svg>,
+      onConnect: linkSteamAccount, onUnlink: handleUnlinkSteam, unlinking: unlinkingSteam,
+      connectClass: 'bg-[#1B2838] hover:bg-[#2A475E]',
     },
     {
       key: 'discord', name: 'Discord',
