@@ -3,7 +3,8 @@
  *
  * Groups joined: match:{matchId}
  * Events: ReportSubmitted, ReportAccepted, ReportDisputed, DisputeResolved,
- *         CheckInUpdated, StatusChanged
+ *         CheckInUpdated, StatusChanged,
+ *         GoingLive, MatchScoreUpdated, MapResultFinalized (MatchZy)
  */
 
 import { useEffect } from 'react';
@@ -18,6 +19,31 @@ interface MatchRealtimePayload {
   [key: string]: unknown;
 }
 
+export interface MatchScorePayload {
+  matchId: string;
+  gameNumber: number;
+  mapNumber: number;
+  team1Score: number;
+  team2Score: number;
+  team1SeriesScore: number;
+  team2SeriesScore: number;
+}
+
+export interface GoingLivePayload {
+  matchId: string;
+  mapNumber: number;
+  gameNumber: number;
+}
+
+export interface MapResultPayload {
+  matchId: string;
+  gameNumber: number;
+  mapNumber: number;
+  team1Score: number;
+  team2Score: number;
+  winner: string | null;
+}
+
 interface Options {
   matchId: string | null | undefined;
   enabled?: boolean;
@@ -27,6 +53,9 @@ interface Options {
   onDisputeResolved?: (payload: MatchRealtimePayload) => void;
   onStatusChanged?:   (payload: MatchRealtimePayload) => void;
   onCheckInUpdated?:  (payload: MatchRealtimePayload) => void;
+  onGoingLive?:       (payload: GoingLivePayload) => void;
+  onScoreUpdated?:    (payload: MatchScorePayload) => void;
+  onMapResult?:       (payload: MapResultPayload) => void;
 }
 
 export function useMatchRealtime({
@@ -38,6 +67,9 @@ export function useMatchRealtime({
   onDisputeResolved,
   onStatusChanged,
   onCheckInUpdated,
+  onGoingLive,
+  onScoreUpdated,
+  onMapResult,
 }: Options) {
   const conn        = useHub(HubPaths.Match);
   const queryClient = useQueryClient();
@@ -66,12 +98,32 @@ export function useMatchRealtime({
     const handleStatusChanged    = wrap(onStatusChanged);
     const handleCheckInUpdated   = wrap(onCheckInUpdated);
 
-    conn.on('ReportSubmitted',  handleReportSubmitted);
-    conn.on('ReportAccepted',   handleReportAccepted);
-    conn.on('ReportDisputed',   handleReportDisputed);
-    conn.on('DisputeResolved',  handleDisputeResolved);
-    conn.on('StatusChanged',    handleStatusChanged);
-    conn.on('CheckInUpdated',   handleCheckInUpdated);
+    // MatchZy live events — invalidate + forward
+    const handleGoingLive = (payload: GoingLivePayload) => {
+      if (!active) return;
+      invalidate();
+      onGoingLive?.(payload);
+    };
+    const handleScoreUpdated = (payload: MatchScorePayload) => {
+      if (!active) return;
+      queryClient.invalidateQueries({ queryKey: ['match', matchId] });
+      onScoreUpdated?.(payload);
+    };
+    const handleMapResult = (payload: MapResultPayload) => {
+      if (!active) return;
+      invalidate();
+      onMapResult?.(payload);
+    };
+
+    conn.on('ReportSubmitted',    handleReportSubmitted);
+    conn.on('ReportAccepted',     handleReportAccepted);
+    conn.on('ReportDisputed',     handleReportDisputed);
+    conn.on('DisputeResolved',    handleDisputeResolved);
+    conn.on('StatusChanged',      handleStatusChanged);
+    conn.on('CheckInUpdated',     handleCheckInUpdated);
+    conn.on('GoingLive',          handleGoingLive);
+    conn.on('MatchScoreUpdated',  handleScoreUpdated);
+    conn.on('MapResultFinalized', handleMapResult);
 
     const join = () => {
       if (!active || conn.state !== HubConnectionState.Connected) return;
@@ -82,12 +134,15 @@ export function useMatchRealtime({
 
     return () => {
       active = false;
-      conn.off('ReportSubmitted',  handleReportSubmitted);
-      conn.off('ReportAccepted',   handleReportAccepted);
-      conn.off('ReportDisputed',   handleReportDisputed);
-      conn.off('DisputeResolved',  handleDisputeResolved);
-      conn.off('StatusChanged',    handleStatusChanged);
-      conn.off('CheckInUpdated',   handleCheckInUpdated);
+      conn.off('ReportSubmitted',    handleReportSubmitted);
+      conn.off('ReportAccepted',     handleReportAccepted);
+      conn.off('ReportDisputed',     handleReportDisputed);
+      conn.off('DisputeResolved',    handleDisputeResolved);
+      conn.off('StatusChanged',      handleStatusChanged);
+      conn.off('CheckInUpdated',     handleCheckInUpdated);
+      conn.off('GoingLive',          handleGoingLive);
+      conn.off('MatchScoreUpdated',  handleScoreUpdated);
+      conn.off('MapResultFinalized', handleMapResult);
       if (conn.state === HubConnectionState.Connected)
         conn.invoke('LeaveMatch', matchId).catch(() => {});
     };
