@@ -9,7 +9,7 @@ import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { useSteamAccount } from '@/hooks/useSteamAccount';
 import { useVenueSearch } from '@/hooks/useVenueSearch';
 import {
-  Loader2, Copy, Check, Shield, Link2, Link2Off, Award, Monitor, Bell,
+  Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -219,11 +219,11 @@ function ConnectedAccountsTab() {
       key: 'steam', name: 'Steam',
       description: steamLoading ? 'Loading...' : steamAccount
         ? steamAccount.steamName || steamAccount.steam64Id
-        : 'Required for CS2 match automation (MatchZy)',
+        : 'Required for CS2 match automation',
       connected: !!steamAccount, loading: steamLoading,
-      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 259" className="w-8 h-8 drop-shadow-md"><path d="M127.779 0C60.21 0 4.32 51.245.203 116.124l68.96 28.49c5.862-4.006 12.93-6.35 20.552-6.35.686 0 1.363.025 2.032.069l30.744-44.536v-.625c0-26.278 21.393-47.67 47.67-47.67 26.278 0 47.671 21.392 47.671 47.67 0 26.279-21.393 47.672-47.67 47.672h-1.107l-43.835 31.282c0 .547.036 1.093.036 1.63 0 19.713-16.027 35.74-35.74 35.74-17.253 0-31.677-12.254-35.032-28.54L5.149 156.083C22.867 214.05 76.395 258.563 140.077 258.563c78.592 0 115.923-56.57 115.923-130.202C255.999 57.464 198.371 0 127.779 0" fill="#1B2838"/><path d="M82.483 210.328l-15.66-6.473c2.783 5.755 7.506 10.637 13.619 13.37 13.227 5.913 28.694-.184 34.607-13.41 2.868-6.404 2.907-13.477.115-19.91-2.793-6.433-7.91-11.437-14.314-14.305-6.338-2.83-13.202-2.84-19.405-.444l16.195 6.696c9.755 4.363 14.135 15.698 9.772 25.453-4.364 9.755-15.698 14.135-25.453 9.772l.524-.749z" fill="#A3CF06"/><path d="M215.067 93.192c0-17.52-14.261-31.78-31.782-31.78-17.52 0-31.781 14.26-31.781 31.78 0 17.52 14.26 31.782 31.781 31.782 17.52 0 31.782-14.262 31.782-31.782zm-55.594 0c0-13.162 10.65-23.812 23.812-23.812 13.163 0 23.813 10.65 23.813 23.812 0 13.163-10.65 23.813-23.813 23.813-13.162 0-23.812-10.65-23.812-23.813z" fill="#A3CF06"/></svg>,
+      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 65 65" className="w-8 h-8 drop-shadow-md"><path d="M32.83 0C15.59 0 1.44 13.07.1 29.68l17.63 7.29a9.21 9.21 0 0 1 5.26-1.63l.52 0 7.87-11.4v-.16a12.2 12.2 0 1 1 12.2 12.2h-.28l-11.22 8a9.26 9.26 0 0 1-18.42 1.67L1.32 39.93A32.83 32.83 0 1 0 32.83 0z" fill="#fff"/><path d="M20.92 53.83l-4-1.66a6.94 6.94 0 1 0 3.66-8.48l4.14 1.71a5.38 5.38 0 0 1-3.8 8.43z" fill="#fff"/><path d="M55 29.79a8.14 8.14 0 1 0-8.14 8.14A8.15 8.15 0 0 0 55 29.79zm-14.14 0A6.06 6.06 0 1 1 46.9 35.8 6 6 0 0 1 40.84 29.79z" fill="#fff"/></svg>,
       onConnect: linkSteamAccount, onUnlink: handleUnlinkSteam, unlinking: unlinkingSteam,
-      connectClass: 'bg-[#1B2838] hover:bg-[#2A475E]',
+      connectClass: 'bg-[#171a21] hover:bg-[#2a475e] border border-white/10',
     },
     {
       key: 'riot', name: 'Riot Games',
@@ -233,7 +233,7 @@ function ConnectedAccountsTab() {
       connected: !!riotAccount, loading: riotLoading,
       icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 587.93 165.37" className="w-8 h-8 drop-shadow-md"><path d="M98.77.33L0 46.07l24.61 93.66 18.73-2.3-5.15-58.89 6.15-2.74L54.96 136l32.01-3.93-5.69-65 6.09-2.71 11.68 66.23 32.38-3.98-6.23-71.25 6.16-2.74 12.77 72.43 32.01-3.93V19.71L98.77.33zm2.32 142.05l1.63 9.22 73.42 12.24v-30.68l-75.01 9.22h-.04z" fill="#D13639"/></svg>,
       onConnect: linkRiotAccount, onUnlink: handleUnlinkRiot, unlinking: unlinkingRiot,
-      connectClass: 'bg-red-600 hover:bg-red-500',
+      connectClass: 'bg-[#D13639] hover:bg-[#b82e31] border border-white/10',
     },
     {
       key: 'discord', name: 'Discord',
@@ -243,7 +243,7 @@ function ConnectedAccountsTab() {
       connected: !!discordIdentity, loading: false,
       icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" className="w-8 h-8 drop-shadow-md"><path fill="#5865F2" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>,
       onConnect: linkDiscord, onUnlink: undefined, unlinking: false,
-      connectClass: 'bg-[#5865F2] hover:bg-[#4752C4]',
+      connectClass: 'bg-[#5865F2] hover:bg-[#4752C4] border border-white/10',
     },
   ];
 
@@ -264,16 +264,16 @@ function ConnectedAccountsTab() {
             acc.connected ? (
               acc.onUnlink && (
                 <Button size="sm" variant="outline"
-                  className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 shrink-0"
+                  className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 shrink-0 text-xs"
                   disabled={acc.unlinking} onClick={acc.onUnlink}>
                   {acc.unlinking
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <><Link2Off className="w-3.5 h-3.5 mr-1.5" />Unlink</>}
+                    : 'Unlink'}
                 </Button>
               )
             ) : (
-              <Button size="sm" className={`shrink-0 text-white ${acc.connectClass}`} onClick={acc.onConnect}>
-                <Shield className="w-3.5 h-3.5 mr-1.5" /> Connect
+              <Button size="sm" className={`shrink-0 text-white text-xs ${acc.connectClass}`} onClick={acc.onConnect}>
+                Connect
               </Button>
             )
           )}

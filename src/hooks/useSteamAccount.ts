@@ -46,14 +46,18 @@ export function useSteamAccount() {
 
   /**
    * Start Steam OpenID 2.0 via BFF — backend builds the redirect URL.
-   * Opens in a new tab so the user can complete Steam login.
+   * Fetches the URL via authenticated API call, then navigates to Steam.
    */
   const linkSteamAccount = async () => {
     if (!user?.id) return;
-    // The /api/accounts/steam/auth endpoint returns a 302 redirect to Steam.
-    // We open it in the current window so the redirect chain works.
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-    window.location.href = `${baseUrl}/api/accounts/steam/auth`;
+    try {
+      const data = await apiClient.get<{ url: string }>('/api/accounts/steam/auth');
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error('[useSteamAccount] Failed to start Steam OAuth:', err);
+    }
   };
 
   /**
