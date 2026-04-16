@@ -150,6 +150,7 @@ const MapVetoToken = lazyWithRetry(() => import('./pages/tournaments/MapVetoToke
 const RiotTest = lazyWithRetry(() => import("./pages/debug/RiotTest"));
 const IgdbTest = lazyWithRetry(() => import("./pages/debug/IgdbTest"));
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
+const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallback"));
 
 import { getWebsiteAssetUrl } from "@/lib/storage";
 
@@ -694,6 +695,7 @@ const AppContent = React.memo(() => {
                 <Route path="/verification" element={<VerificationStatus />} />
 
                 {/* OAuth callbacks — relay code to Settings for token exchange with .NET backend */}
+                <Route path="/auth/steam/callback"       element={<SteamCallback />} />
                 <Route path="/auth/riot/callback"        element={<RiotOAuthCallback />} />
 
                 {/* Debug Routes */}
