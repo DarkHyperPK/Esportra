@@ -14,7 +14,6 @@ export type UserProfile = {
   card_image_url?: string | null;
   riot_tag?: string | null;
   steam_tag?: string | null;
-  faceit_nickname?: string | null;
   country_code?: string | null;
   is_admin?: boolean;
   admin_roles?: string[];
