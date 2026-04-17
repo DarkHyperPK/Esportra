@@ -15,7 +15,6 @@ import { MapVeto } from '@/components/tournament/MapVeto';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
-import { FaceitMatchReport } from '@/components/tournament/FaceitMatchReport';
 import { BracketMatch, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
 import { gameHasMapVeto, isBattleRoyale } from '@/utils/gameFeatures';
@@ -834,26 +833,6 @@ const CaptainMatchPage = () => {
 
                                     {/* Actions — progressively unlocked */}
                                     <div className="space-y-2">
-                                        {/* CS2 Auto-Report */}
-                                        {(() => {
-                                            const gameKey = tournament?.game?.toLowerCase();
-                                            const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
-                                            if (!isCS2 || activeMatch.status === 'completed') return null;
-                                            return (
-                                                <FaceitMatchReport
-                                                    matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                    team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
-                                                    team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
-                                                    isCaptain={isCaptain}
-                                                    onSuccess={() => {
-                                                        toast({ title: "Match Reported", description: "CS2 result verified and saved." });
-                                                        refetchBracket();
-                                                        fetchMatchGames();
-                                                    }}
-                                                />
-                                            );
-                                        })()}
-
                                         {/* Disputed result notice */}
                                         {hasDisputedReport && (
                                             <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

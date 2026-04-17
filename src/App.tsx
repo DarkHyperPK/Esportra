@@ -148,9 +148,7 @@ const VerificationStatus = lazyWithRetry(() => import('./pages/VerificationStatu
 const OrganizerDisputesPage = lazyWithRetry(() => import('./pages/organizer/Disputes'));
 const MapVetoToken = lazyWithRetry(() => import('./pages/tournaments/MapVetoToken'));
 const RiotTest = lazyWithRetry(() => import("./pages/debug/RiotTest"));
-const FaceitTest = lazyWithRetry(() => import("./pages/debug/FaceitTest"));
 const IgdbTest = lazyWithRetry(() => import("./pages/debug/IgdbTest"));
-const FaceitOAuthCallback = lazyWithRetry(() => import("./pages/auth/FaceitOAuthCallback"));
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
 
 import { getWebsiteAssetUrl } from "@/lib/storage";
@@ -691,12 +689,10 @@ const AppContent = React.memo(() => {
                 <Route path="/verification" element={<VerificationStatus />} />
 
                 {/* OAuth callbacks — relay code to Settings for token exchange with .NET backend */}
-                <Route path="/functions/v1/faceit-oauth" element={<FaceitOAuthCallback />} />
                 <Route path="/auth/riot/callback"        element={<RiotOAuthCallback />} />
 
                 {/* Debug Routes */}
                 <Route path="/debug/riot" element={<RiotTest />} />
-                <Route path="/debug/faceit" element={<FaceitTest />} />
                 <Route path="/debug/igdb" element={<IgdbTest />} />
 
                 {/* Catch-all route */}

@@ -395,7 +395,7 @@ const TeamsPage = () => {
         }
       })();
 
-      // Fetch full team members with riot/faceit/stats in one API call
+      // Fetch full team members with riot/stats in one API call
       (async () => {
         try {
           if (!teamId) { if (!cancelled) setTeamMembers([]); return; }
@@ -413,8 +413,6 @@ const TeamsPage = () => {
             riot_puuid: r.riot_puuid,
             riot_game_name: r.riot_game_name,
             riot_tag_line: r.riot_tag_line,
-            faceit_id: r.faceit_id,
-            faceit_nickname: r.faceit_nickname,
             stats: r.kd ? {
               kd: r.kd,
               winRate: r.win_rate,

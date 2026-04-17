@@ -93,7 +93,6 @@ interface UserDetail {
         country_code: string | null;
         date_of_birth: string | null;
         riot_tag: string | null;
-        faceit_nickname: string | null;
         social_links: Record<string, string> | null;
         card_image_url: string | null;
         banner_url: string | null;
@@ -1183,18 +1182,13 @@ const UserManagementTool = () => {
                                 )}
 
                                 {/* Gaming Tags */}
-                                {(p.riot_tag || p.faceit_nickname) && (
+                                {p.riot_tag && (
                                     <div className="p-3 rounded-xl bg-zinc-900/50">
                                         <p className="text-xs text-zinc-500 uppercase mb-2">Gaming Tags</p>
                                         <div className="flex gap-3 flex-wrap">
                                             {p.riot_tag && (
                                                 <span className="text-sm text-zinc-300 flex items-center gap-1">
                                                     <Gamepad2 className="w-3.5 h-3.5 text-red-400" /> Riot: {p.riot_tag}
-                                                </span>
-                                            )}
-                                            {p.faceit_nickname && (
-                                                <span className="text-sm text-zinc-300 flex items-center gap-1">
-                                                    <Gamepad2 className="w-3.5 h-3.5 text-orange-400" /> Faceit: {p.faceit_nickname}
                                                 </span>
                                             )}
                                         </div>

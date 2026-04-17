@@ -5,7 +5,6 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLicenses } from '@/hooks/useLicenses';
-import { useFaceitAccount } from '@/hooks/useFaceitAccount';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { useVenueSearch } from '@/hooks/useVenueSearch';
 import {
@@ -61,7 +60,7 @@ type Tab = 'connected_accounts' | 'notifications' | 'licenses' | 'desktop_pairin
 interface NavItem { key: Tab; label: string; icon: React.ReactNode; description: string; venueOwnerOnly?: boolean }
 
 const NAV: NavItem[] = [
-  { key: 'connected_accounts', label: 'Connected Accounts', description: 'Riot, Faceit, Discord', icon: <Link2 className="w-4 h-4" /> },
+  { key: 'connected_accounts', label: 'Connected Accounts', description: 'Steam, Riot, Discord', icon: <Link2 className="w-4 h-4" /> },
   { key: 'notifications', label: 'Notifications', description: 'Discord DM alerts', icon: <Bell className="w-4 h-4" /> },
   { key: 'licenses', label: 'My Licenses', description: 'Professional license IDs', icon: <Award className="w-4 h-4" /> },
   { key: 'desktop_pairing', label: 'Desktop Pairing', description: 'Venue hub pairing tokens', venueOwnerOnly: true, icon: <Monitor className="w-4 h-4" /> },
@@ -101,19 +100,6 @@ export default function AccountSettings() {
       }
     }
 
-    // ── Faceit OAuth result ──
-    const faceitLinked = params.get('faceit_linked');
-    if (faceitLinked) {
-      setActiveTab('connected_accounts');
-      window.history.replaceState({}, '', window.location.pathname);
-      if (faceitLinked === 'success') {
-        toast({ title: 'Faceit Account Linked!' });
-        localStorage.setItem('faceit_just_linked', Date.now().toString());
-        queryClient.invalidateQueries({ queryKey: ['faceit-account', user?.id] });
-      } else {
-        toast({ title: 'Faceit Linking Failed', description: (params.get('reason') || 'unknown').replace(/_/g, ' '), variant: 'destructive' });
-      }
-    }
   }, []);
 
   const visibleNav = NAV.filter((n) => !n.venueOwnerOnly || ownsVenues);
@@ -177,10 +163,8 @@ function ConnectedAccountsTab() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { riotAccount, isLoading: riotLoading, linkRiotAccount, unlinkRiotAccount } = useRiotAccount();
-  const { faceitAccount, isLoading: faceitLoading, linkFaceitAccount, unlinkFaceitAccount } = useFaceitAccount();
   const [discordIdentity, setDiscordIdentity] = useState<any>(null);
   const [unlinkingRiot, setUnlinkingRiot] = useState(false);
-  const [unlinkingFaceit, setUnlinkingFaceit] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -199,17 +183,7 @@ function ConnectedAccountsTab() {
     } finally { setUnlinkingRiot(false); }
   };
 
-  const handleUnlinkFaceit = async () => {
-    setUnlinkingFaceit(true);
-    try {
-      await unlinkFaceitAccount();
-      toast({ title: 'Faceit unlinked' });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to unlink Faceit account.', variant: 'destructive' });
-    } finally { setUnlinkingFaceit(false); }
-  };
-
-  const linkDiscord = () => supabase.auth.signInWithOAuth({
+  const linkDiscord= () => supabase.auth.signInWithOAuth({
     provider: 'discord',
     options: { redirectTo: window.location.href, scopes: 'identify email guilds.join' },
   });
@@ -224,16 +198,6 @@ function ConnectedAccountsTab() {
       icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 587.93 165.37" className="w-8 h-8 drop-shadow-md"><path d="M98.77.33L0 46.07l24.61 93.66 18.73-2.3-5.15-58.89 6.15-2.74L54.96 136l32.01-3.93-5.69-65 6.09-2.71 11.68 66.23 32.38-3.98-6.23-71.25 6.16-2.74 12.77 72.43 32.01-3.93V19.71L98.77.33zm2.32 142.05l1.63 9.22 73.42 12.24v-30.68l-75.01 9.22h-.04z" fill="#D13639"/></svg>,
       onConnect: linkRiotAccount, onUnlink: handleUnlinkRiot, unlinking: unlinkingRiot,
       connectClass: 'bg-red-600 hover:bg-red-500',
-    },
-    {
-      key: 'faceit', name: 'Faceit',
-      description: faceitLoading ? 'Loading...' : faceitAccount
-        ? faceitAccount.nickname
-        : 'Required for CS2 tournament registration',
-      connected: !!faceitAccount, loading: faceitLoading,
-      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-8 h-8 drop-shadow-md"><circle cx="256" cy="256" r="256" fill="#FF5500"/><path d="M168.3 158h175.4v44.1H216.4v39.5h111.2v44.1H216.4v72.3h-48.1V158z" fill="#1F1F1F"/></svg>,
-      onConnect: linkFaceitAccount, onUnlink: handleUnlinkFaceit, unlinking: unlinkingFaceit,
-      connectClass: 'bg-orange-600 hover:bg-orange-500',
     },
     {
       key: 'discord', name: 'Discord',

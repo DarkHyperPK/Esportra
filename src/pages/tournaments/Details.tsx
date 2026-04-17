@@ -214,13 +214,10 @@ const TournamentDetails = () => {
 
       const gameKey = tournament?.game?.toLowerCase();
       const isValorant = gameKey === 'valorant';
-      const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
 
       return participants.map(p => {
         const display_name = (isValorant && p.solo_riot_tag)
           ? p.solo_riot_tag
-          : (isCS2 && p.solo_faceit_nickname)
-          ? p.solo_faceit_nickname
           : p.solo_username || p.solo_full_name || 'Anonymous';
 
         return {
@@ -232,7 +229,6 @@ const TournamentDetails = () => {
             username: p.solo_username,
             full_name: p.solo_full_name,
             riot_tag: p.solo_riot_tag,
-            faceit_nickname: p.solo_faceit_nickname,
             avatar_url: p.solo_avatar_url,
           },
         };
@@ -655,8 +651,7 @@ const TournamentDetails = () => {
           .map((m: any) => {
             const gameKey = tournament?.game?.toLowerCase();
             const isValorant = gameKey === 'valorant';
-            const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
-            return (isValorant && m.riot_tag) || (isCS2 && m.faceit_nickname) || m.username || m.full_name || m.user_id?.substring(0, 8);
+            return (isValorant && m.riot_tag) || m.username || m.full_name || m.user_id?.substring(0, 8);
           })
           .filter(Boolean) as string[];
         setResolvedMembers(members.length > 0 ? members : null);
