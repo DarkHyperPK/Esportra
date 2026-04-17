@@ -221,7 +221,7 @@ function ConnectedAccountsTab() {
         ? steamAccount.steamName || steamAccount.steam64Id
         : 'Required for CS2 match automation',
       connected: !!steamAccount, loading: steamLoading,
-      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 233 233" className="w-8 h-8 drop-shadow-md"><defs><linearGradient id="steam-grad" x1="50%" y1="0%" x2="50%" y2="100%"><stop offset="0%" stopColor="#111d2e"/><stop offset="21.2%" stopColor="#0d1b30"/><stop offset="40.7%" stopColor="#0a1831"/><stop offset="58.1%" stopColor="#091832"/><stop offset="73.8%" stopColor="#0a1a37"/><stop offset="88.4%" stopColor="#0d1e3f"/><stop offset="100%" stopColor="#10244b"/></linearGradient></defs><circle cx="116.5" cy="116.5" r="116.5" fill="url(#steam-grad)"/><path d="M116.28 68.63a30.04 30.04 0 0 1 29.98 30.12 30.07 30.07 0 0 1-30.07 30.07 30.03 30.03 0 0 1-29.87-27.31l-21.52-8.9a.64.64 0 0 0-.01.1 52.84 52.84 0 0 0 .68 8.47l25.22 10.43a22.65 22.65 0 0 0 14.9 19.96 22.7 22.7 0 0 0 28.43-15.07 22.7 22.7 0 0 0-15.07-28.43 22.58 22.58 0 0 0-12.04-.37l-17.2-12.5A30 30 0 0 1 116.28 68.63zm0 10.04a20 20 0 0 0-19.99 20.08 20.04 20.04 0 0 0 20.04 20.04 20 20 0 0 0 20-20.04 20 20 0 0 0-20.05-20.08z" fill="#fff"/><path d="M55.7 110.06l24.82 10.27a22.7 22.7 0 0 1 43.81 4.86 22.7 22.7 0 0 1-22.7 22.7 22.68 22.68 0 0 1-21.1-14.36l-24.78-10.26a52.81 52.81 0 0 1-.05-13.2z" fill="#fff" fillOpacity=".35"/></svg>,
+      icon: <img src="/steam.png" alt="Steam" className="w-8 h-8 drop-shadow-md rounded-full" />,
       onConnect: linkSteamAccount, onUnlink: handleUnlinkSteam, unlinking: unlinkingSteam,
       connectClass: 'bg-[#171a21] hover:bg-[#2a475e] border border-white/10',
     },
@@ -231,7 +231,7 @@ function ConnectedAccountsTab() {
         ? `${riotAccount.game_name}#${riotAccount.tag_line}`
         : 'Required for Valorant tournament registration',
       connected: !!riotAccount, loading: riotLoading,
-      icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 587.93 165.37" className="w-8 h-8 drop-shadow-md"><path d="M98.77.33L0 46.07l24.61 93.66 18.73-2.3-5.15-58.89 6.15-2.74L54.96 136l32.01-3.93-5.69-65 6.09-2.71 11.68 66.23 32.38-3.98-6.23-71.25 6.16-2.74 12.77 72.43 32.01-3.93V19.71L98.77.33zm2.32 142.05l1.63 9.22 73.42 12.24v-30.68l-75.01 9.22h-.04z" fill="#D13639"/></svg>,
+      icon: <img src="/Riot.png" alt="Riot Games" className="w-8 h-8 drop-shadow-md" />,
       onConnect: linkRiotAccount, onUnlink: handleUnlinkRiot, unlinking: unlinkingRiot,
       connectClass: 'bg-[#D13639] hover:bg-[#b82e31] border border-white/10',
     },
