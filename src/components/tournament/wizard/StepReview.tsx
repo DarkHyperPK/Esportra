@@ -78,7 +78,7 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Games', value: `${data.brGameCount} games` },
                 { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : (brConfig?.scoringPresets?.[data.brScoringPreset]?.name || data.brScoringPreset) },
                 { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
-                { label: 'Max Participants', value: data.maxTeams === 0 ? 'Unlimited' : String(data.maxTeams) },
+                { label: 'Max Participants', value: String(data.maxTeams) },
                 { label: 'Team Size', value: String(data.teamSize) },
             ] : [
                 { label: 'Total Stages', value: `${data.stages.length} stage(s)` },

@@ -1,10 +1,11 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   Handshake, BarChart3, Image, FileText, Trophy, Globe,
-  ArrowRight, CheckCircle2
+  ArrowRight, CheckCircle2, Info
 } from 'lucide-react';
 import Footer from '@/components/Footer';
+import { useState } from 'react';
 
 // Valorant rank icons from the public API
 const RANK_ICONS = {
@@ -13,19 +14,59 @@ const RANK_ICONS = {
   radiant: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/27/largeicon.png',    // Radiant
 };
 
-const tiers = [
+// Info tip content for features that need explanation
+const FEATURE_TIPS: Record<string, string> = {
+  '1 tournament sponsorship': 'A tournament sponsorship lets your brand be featured on one tournament of your choice. Your logo and branding will be displayed in the Esportra placement zones on that tournament\'s page.',
+  '1 placement slot': 'You receive 1 placement slot — meaning your brand will be actively displayed across the placement zones of your chosen tournament.',
+  'Up to 3 tournament sponsorships': 'Ascendant partners can sponsor up to 3 separate tournaments simultaneously, with brand placements active on each.',
+  '3 placement slots': 'You receive 3 placement slots, allowing your brand to appear across 3 different tournaments at the same time.',
+  'Up to 5 tournament sponsorships': 'Radiant partners receive up to 5 tournament sponsorships, covering up to 5 tournaments simultaneously with maximum placement zone access.',
+  'Logo on homepage partner ticker': 'Your brand logo is displayed in the scrolling partner ticker on the Esportra homepage, giving you continuous passive visibility to all site visitors.',
+  'Ticker zone placement': 'Your logo appears in the dedicated ticker zone — a scrolling banner on the Esportra homepage that displays all active partner brands.',
+  'Partner portal access': 'Gain access to the exclusive partner portal at partners.esportra.com where you can manage your profile, upload brand assets, track campaign placements, and monitor your sponsorship activity.',
+  'Basic campaign info dashboard': 'View a summary of your active sponsorship placements and campaign status directly from your partner portal.',
+  'Full analytics (daily + weekly)': 'Access detailed performance data for your sponsorship placements, including daily and weekly breakdowns of impressions, clicks, and click-through rates (CTR).',
+  'Audience demographics data': 'Gain insight into the demographics of the audience viewing your sponsored content, including game preferences and regional data.',
+  'Banner image uploads': 'Upload custom banner images for display in your allocated placement zones on tournament pages.',
+  '5 gallery showcase images': 'Showcase up to 5 images in your brand gallery on your partner profile, helping communicate your products, services, or campaigns.',
+  'Detail deck hosting (PDF/PPTX)': 'Upload a brand or product deck (PDF or PPTX format) that will be hosted and accessible via your partner profile page.',
+  'Monthly analytics aggregation': 'Receive a comprehensive monthly report aggregating all your sponsorship placement performance data.',
+  '8 gallery showcase images': 'Showcase up to 8 images in your brand gallery on your partner profile.',
+  'Priority listing across platform': 'Your brand receives priority visibility positioning across the Esportra platform relative to lower-tier partners.',
+  'Header & stream overlay access': 'Your brand assets can appear in the tournament page header banner and on live stream overlays during broadcasts of sponsored tournaments.',
+  'Match bar branding': 'Your logo is displayed in the match bar that appears during active matches within your sponsored tournaments.',
+  'All 6 placement zones': 'Radiant partners have access to all six advertising placement zones: Ticker, Sidebar, Card Badge, Header, Match Bar, and Stream Overlay.',
+  'Ticker, sidebar & card badge zones': 'Your brand appears in three placement zones: the homepage ticker, the sidebar of tournament pages, and as a badge on tournament cards in listing views.',
+};
+
+type FeatureItem = {
+  label: string;
+  tip?: string;
+  cancelled?: boolean;
+};
+
+const tiers: Array<{
+  name: string;
+  color: string;
+  rankIcon: string;
+  price: string;
+  popular?: boolean;
+  features: FeatureItem[];
+  notIncluded: string[];
+}> = [
   {
     name: 'Partner',
     color: 'blue',
     rankIcon: RANK_ICONS.partner,
     price: 'Entry',
     features: [
-      'Logo on homepage partner ticker',
-      '1 tournament sponsorship',
-      'Ticker zone placement',
-      'Company profile on Partners page',
-      'Partner portal access',
-      'Basic campaign info dashboard',
+      { label: 'Logo on homepage partner ticker', tip: FEATURE_TIPS['Logo on homepage partner ticker'] },
+      { label: '1 tournament sponsorship', tip: FEATURE_TIPS['1 tournament sponsorship'] },
+      { label: '1 placement slot', tip: FEATURE_TIPS['1 placement slot'] },
+      { label: 'Ticker zone placement', tip: FEATURE_TIPS['Ticker zone placement'] },
+      { label: 'Partner portal access', tip: FEATURE_TIPS['Partner portal access'] },
+      { label: 'Basic campaign info dashboard', tip: FEATURE_TIPS['Basic campaign info dashboard'] },
+      { label: 'Company profile on Partners page', cancelled: true },
     ],
     notIncluded: [
       'Analytics dashboard',
@@ -41,14 +82,15 @@ const tiers = [
     price: 'Growth',
     popular: false,
     features: [
-      'Everything in Partner, plus:',
-      'Up to 3 tournament sponsorships',
-      'Ticker, sidebar & card badge zones',
-      'Full analytics (daily + weekly)',
-      'Audience demographics data',
-      'Banner image uploads',
-      '5 gallery showcase images',
-      'Detail deck hosting (PDF/PPTX)',
+      { label: 'Everything in Partner, plus:' },
+      { label: 'Up to 3 tournament sponsorships', tip: FEATURE_TIPS['Up to 3 tournament sponsorships'] },
+      { label: '3 placement slots', tip: FEATURE_TIPS['3 placement slots'] },
+      { label: 'Ticker, sidebar & card badge zones', tip: FEATURE_TIPS['Ticker, sidebar & card badge zones'] },
+      { label: 'Full analytics (daily + weekly)', tip: FEATURE_TIPS['Full analytics (daily + weekly)'] },
+      { label: 'Audience demographics data', tip: FEATURE_TIPS['Audience demographics data'] },
+      { label: 'Banner image uploads', tip: FEATURE_TIPS['Banner image uploads'] },
+      { label: '5 gallery showcase images', tip: FEATURE_TIPS['5 gallery showcase images'] },
+      { label: 'Detail deck hosting (PDF/PPTX)', tip: FEATURE_TIPS['Detail deck hosting (PDF/PPTX)'] },
     ],
     notIncluded: [
       'Monthly analytics',
@@ -62,18 +104,48 @@ const tiers = [
     rankIcon: RANK_ICONS.radiant,
     price: 'Premium',
     features: [
-      'Everything in Ascendant, plus:',
-      'Unlimited tournament sponsorships',
-      'All 6 placement zones',
-      'Monthly analytics aggregation',
-      '8 gallery showcase images',
-      'Priority listing across platform',
-      'Header & stream overlay access',
-      'Match bar branding',
+      { label: 'Everything in Ascendant, plus:' },
+      { label: 'Up to 5 tournament sponsorships', tip: FEATURE_TIPS['Up to 5 tournament sponsorships'] },
+      { label: '3 placement slots', tip: FEATURE_TIPS['3 placement slots'] },
+      { label: 'All 6 placement zones', tip: FEATURE_TIPS['All 6 placement zones'] },
+      { label: 'Monthly analytics aggregation', tip: FEATURE_TIPS['Monthly analytics aggregation'] },
+      { label: '8 gallery showcase images', tip: FEATURE_TIPS['8 gallery showcase images'] },
+      { label: 'Priority listing across platform', tip: FEATURE_TIPS['Priority listing across platform'] },
+      { label: 'Header & stream overlay access', tip: FEATURE_TIPS['Header & stream overlay access'] },
+      { label: 'Match bar branding', tip: FEATURE_TIPS['Match bar branding'] },
     ],
     notIncluded: [],
   },
 ];
+
+// Tooltip component — shows on hover
+const InfoTip = ({ tip }: { tip: string }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="relative inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <span className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-default">
+        <Info className="w-3.5 h-3.5" />
+      </span>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 bg-[#181820] border border-white/10 rounded-xl p-3 shadow-2xl shadow-black/60 pointer-events-none"
+          >
+            <p className="text-xs text-zinc-300 leading-relaxed">{tip}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const zones = [
   { name: 'Ticker', desc: 'Homepage logo scroll', tiers: ['Partner', 'Ascendant', 'Radiant'] },
@@ -148,9 +220,15 @@ const BeAPartner = () => {
 
                     <div className="space-y-3 flex-1">
                       {tier.features.map((f) => (
-                        <div key={f} className="flex items-start gap-2">
-                          <CheckCircle2 className={`w-4 h-4 mt-0.5 flex-shrink-0 ${c.text}`} />
-                          <span className="text-sm text-zinc-300">{f}</span>
+                        <div
+                          key={f.label}
+                          className={`flex items-start gap-2 ${f.cancelled ? 'opacity-30' : ''}`}
+                        >
+                          <CheckCircle2 className={`w-4 h-4 mt-0.5 flex-shrink-0 ${f.cancelled ? 'text-zinc-500' : c.text}`} />
+                          <span className={`text-sm flex-1 ${f.cancelled ? 'text-zinc-500 line-through' : 'text-zinc-300'}`}>
+                            {f.label}
+                          </span>
+                          {f.tip && !f.cancelled && <InfoTip tip={f.tip} />}
                         </div>
                       ))}
                       {tier.notIncluded.map((f) => (

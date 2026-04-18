@@ -33,8 +33,8 @@ export const basicInfoSchema = basicInfoBase.refine(
 const formatRulesBase = z.object({
     bracketType: z.enum(['single_elimination', 'double_elimination', 'swiss', 'round_robin']).optional().default('single_elimination'),
     maxTeams: z.number()
-        .min(0, 'Invalid value')
-        .max(256, 'Maximum 256 teams allowed'),
+        .min(4, 'Minimum 4 teams')
+        .max(1024, 'Maximum 1024 teams allowed'),
     teamSize: z.number().min(1).max(10),
     seedingType: z.enum(['random', 'manual', 'skill_based']).optional().default('random'),
     thirdPlaceMatch: z.boolean().optional().default(false),

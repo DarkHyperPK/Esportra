@@ -313,7 +313,7 @@ export const GraphBracket: React.FC<GraphBracketProps> = ({
                 >
                     {/* Edges (SVG) */}
                     <svg className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-visible">
-                        {edges.map(edge => (
+                        {edges.filter(e => e.type !== 'loser').map(edge => (
                             <EdgePath key={edge.id} edge={edge} nodes={nodes} />
                         ))}
                     </svg>
@@ -410,17 +410,16 @@ const EdgePath: React.FC<{ edge: BracketEdge; nodes: BracketNode[] }> = ({ edge,
         ? target.y + MATCH_HEIGHT * 0.3
         : target.y + MATCH_HEIGHT * 0.7;
 
-    const controlX1 = startX + (endX - startX) / 2;
-    const controlX2 = endX - (endX - startX) / 2;
+    // Right-angle bracket connector: horizontal → vertical → horizontal
+    const midX = startX + (endX - startX) / 2;
 
     return (
         <path
-            d={`M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`}
+            d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
             fill="none"
-            stroke={edge.type === 'winner' ? '#64748b' : '#ef4444'}
+            stroke="#475569"
             strokeWidth="2"
-            strokeDasharray={edge.type === 'loser' ? '4 4' : undefined}
-            className="opacity-50 hover:opacity-100 transition-opacity"
+            className="opacity-60 hover:opacity-100 transition-opacity"
         />
     );
 };

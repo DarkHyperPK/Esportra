@@ -10,6 +10,7 @@ import { ArrowLeft } from 'lucide-react';
 
 const FullscreenBracketPage = () => {
     const { slug } = useParams<{ slug: string }>();
+    const navigate = useNavigate();
     const [tournament, setTournament] = useState<any | null>(null);
     const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -78,8 +79,6 @@ const FullscreenBracketPage = () => {
 
 
 
-    const navigate = useNavigate();
-
     const handleBack = () => {
         // Navigate back to the tournament management page (Stages tab usually)
         if (tournament?.slug) {
@@ -92,7 +91,7 @@ const FullscreenBracketPage = () => {
     };
 
     return (
-        <div className="w-screen h-screen bg-transparent overflow-hidden relative font-sans">
+        <div className="fixed inset-0 z-[9999] bg-[#050505] overflow-hidden font-sans">
             {/* Back Navigation */}
             <div className="absolute top-6 left-6 z-50">
                 <Button

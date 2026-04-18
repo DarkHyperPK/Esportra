@@ -6,9 +6,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLicenses } from '@/hooks/useLicenses';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
+import { useSteamAccount } from '@/hooks/useSteamAccount';
 import { useVenueSearch } from '@/hooks/useVenueSearch';
 import {
-  Loader2, Copy, Check, Shield, Link2, Link2Off, Award, Monitor, Bell,
+  Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,6 +101,19 @@ export default function AccountSettings() {
       }
     }
 
+    // ── Steam OpenID result ──
+    const steamLinked = params.get('steam');
+    if (steamLinked) {
+      setActiveTab('connected_accounts');
+      window.history.replaceState({}, '', window.location.pathname);
+      if (steamLinked === 'linked') {
+        toast({ title: 'Steam Account Linked!' });
+        localStorage.setItem('steam_just_linked', Date.now().toString());
+        queryClient.invalidateQueries({ queryKey: ['steam-account', user?.id] });
+      } else if (steamLinked === 'error') {
+        toast({ title: 'Steam Linking Failed', description: (params.get('reason') || 'unknown').replace(/_/g, ' '), variant: 'destructive' });
+      }
+    }
   }, []);
 
   const visibleNav = NAV.filter((n) => !n.venueOwnerOnly || ownsVenues);
@@ -163,8 +177,10 @@ function ConnectedAccountsTab() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { riotAccount, isLoading: riotLoading, linkRiotAccount, unlinkRiotAccount } = useRiotAccount();
+  const { steamAccount, isLoading: steamLoading, linkSteamAccount, unlinkSteamAccount } = useSteamAccount();
   const [discordIdentity, setDiscordIdentity] = useState<any>(null);
   const [unlinkingRiot, setUnlinkingRiot] = useState(false);
+  const [unlinkingSteam, setUnlinkingSteam] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -183,12 +199,32 @@ function ConnectedAccountsTab() {
     } finally { setUnlinkingRiot(false); }
   };
 
-  const linkDiscord= () => supabase.auth.signInWithOAuth({
+  const handleUnlinkSteam = async () => {
+    setUnlinkingSteam(true);
+    try {
+      await unlinkSteamAccount();
+      toast({ title: 'Steam unlinked' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to unlink Steam account.', variant: 'destructive' });
+    } finally { setUnlinkingSteam(false); }
+  };
+
+  const linkDiscord = () => supabase.auth.signInWithOAuth({
     provider: 'discord',
     options: { redirectTo: window.location.href, scopes: 'identify email guilds.join' },
   });
 
   const accounts = [
+    {
+      key: 'steam', name: 'Steam',
+      description: steamLoading ? 'Loading...' : steamAccount
+        ? steamAccount.steamName || steamAccount.steam64Id
+        : 'Required for CS2 match automation',
+      connected: !!steamAccount, loading: steamLoading,
+      icon: <img src="/steam.png" alt="Steam" className="w-8 h-8 drop-shadow-md rounded-full" />,
+      onConnect: linkSteamAccount, onUnlink: handleUnlinkSteam, unlinking: unlinkingSteam,
+      connectClass: 'bg-[#171a21] hover:bg-[#2a475e] border border-white/10',
+    },
     {
       key: 'riot', name: 'Riot Games',
       description: riotLoading ? 'Loading...' : riotAccount
@@ -197,7 +233,7 @@ function ConnectedAccountsTab() {
       connected: !!riotAccount, loading: riotLoading,
       icon: <img src="/Riot.png" alt="Riot Games" className="w-8 h-8 drop-shadow-md" />,
       onConnect: linkRiotAccount, onUnlink: handleUnlinkRiot, unlinking: unlinkingRiot,
-      connectClass: 'bg-red-600 hover:bg-red-500',
+      connectClass: 'bg-[#D13639] hover:bg-[#b82e31] border border-white/10',
     },
     {
       key: 'discord', name: 'Discord',
@@ -207,7 +243,7 @@ function ConnectedAccountsTab() {
       connected: !!discordIdentity, loading: false,
       icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" className="w-8 h-8 drop-shadow-md"><path fill="#5865F2" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>,
       onConnect: linkDiscord, onUnlink: undefined, unlinking: false,
-      connectClass: 'bg-[#5865F2] hover:bg-[#4752C4]',
+      connectClass: 'bg-[#5865F2] hover:bg-[#4752C4] border border-white/10',
     },
   ];
 
@@ -228,16 +264,16 @@ function ConnectedAccountsTab() {
             acc.connected ? (
               acc.onUnlink && (
                 <Button size="sm" variant="outline"
-                  className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 shrink-0"
+                  className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 shrink-0 text-xs"
                   disabled={acc.unlinking} onClick={acc.onUnlink}>
                   {acc.unlinking
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <><Link2Off className="w-3.5 h-3.5 mr-1.5" />Unlink</>}
+                    : 'Unlink'}
                 </Button>
               )
             ) : (
-              <Button size="sm" className={`shrink-0 text-white ${acc.connectClass}`} onClick={acc.onConnect}>
-                <Shield className="w-3.5 h-3.5 mr-1.5" /> Connect
+              <Button size="sm" className={`shrink-0 text-white text-xs ${acc.connectClass}`} onClick={acc.onConnect}>
+                Connect
               </Button>
             )
           )}

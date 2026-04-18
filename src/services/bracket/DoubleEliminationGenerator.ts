@@ -22,7 +22,7 @@ export class DoubleEliminationGenerator implements IBracketGenerator {
 
         const numTeams = teams.length;
         // Use provided bracketSize if available, otherwise calculate based on teams
-        const targetSize = bracketSize || numTeams || 2;
+        const targetSize = bracketSize || Math.max(numTeams, 2);
         const P = Math.pow(2, Math.ceil(Math.log2(targetSize)));
 
         // Calculate rounds based on bracket size

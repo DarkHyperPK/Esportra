@@ -10,6 +10,7 @@ import StepPersonalDetails from './StepPersonalDetails';
 import StepBusinessInfo from './StepBusinessInfo';
 import StepExperience from './StepExperience';
 import StepDocuments from './StepDocuments';
+import StepLicenseTerms from './StepLicenseTerms';
 import { VerificationWizardData, DEFAULT_VERIFICATION_DATA } from '@/types/verificationWizard';
 import { ORGANIZER_STEPS, VENUE_OWNER_STEPS } from './VerificationSteps';
 
@@ -111,6 +112,10 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
         if (step === 4) { // Documents
             if (!data.cnicFront) newErrors.cnicFront = 'Front image required';
             if (!data.cnicBack) newErrors.cnicBack = 'Back image required';
+        }
+
+        if (step === 5 && role === 'organizer') { // License Terms
+            if (!data.acceptedTerms) newErrors.acceptedTerms = 'You must accept the License Terms to continue.';
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -266,6 +271,8 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
                 return <StepExperience data={data} updateData={updateData} errors={errors} role={role} />;
             case 4:
                 return <StepDocuments data={data} updateData={updateData} errors={errors} role={role} />;
+            case 5:
+                return role === 'organizer' ? <StepLicenseTerms data={data} updateData={updateData} errors={errors} role={role} /> : null;
             default: return null;
         }
     };

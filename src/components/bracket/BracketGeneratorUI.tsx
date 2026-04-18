@@ -34,11 +34,6 @@ export const BracketGeneratorUI: React.FC<BracketGeneratorUIProps> = ({
     const { toast } = useToast();
 
     const handleGenerate = async () => {
-        if (teams.length < 2) {
-            toast({ title: 'Error', description: 'Need at least 2 teams to generate a bracket.', variant: 'destructive' });
-            return;
-        }
-
         setIsGenerating(true);
         try {
             // Get next version_number to avoid unique constraint violation
@@ -80,7 +75,7 @@ export const BracketGeneratorUI: React.FC<BracketGeneratorUIProps> = ({
             const finalNodes = graph.nodes.filter(n => n.bracket_type === 'final');
 
             // Calculate number of teams and first round matches
-            const bracketSize = Math.pow(2, Math.ceil(Math.log2(teams.length || 4)));
+            const bracketSize = Math.pow(2, Math.ceil(Math.log2(Math.max(teams.length, 2))));
             const firstRoundMatches = bracketSize / 2;
 
             // Layout Winners Bracket using proper tree positioning
@@ -172,15 +167,11 @@ export const BracketGeneratorUI: React.FC<BracketGeneratorUIProps> = ({
 
             <Button
                 onClick={handleGenerate}
-                disabled={isGenerating || teams.length < 2}
+                disabled={isGenerating}
                 className="bg-gaming-purple hover:bg-gaming-purple/80"
             >
                 {isGenerating ? 'Generating...' : `Generate ${formatLabel} Bracket`}
             </Button>
-
-            {teams.length < 2 && (
-                <p className="text-xs text-yellow-500">Need at least 2 registered teams to generate a bracket.</p>
-            )}
         </div>
     );
 };

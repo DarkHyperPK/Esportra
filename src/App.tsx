@@ -130,6 +130,7 @@ const TermsPage = lazyWithRetry(() => import("./pages/Terms"));
 const ContactStandalone = lazyWithRetry(() => import("./pages/Contact"));
 const Partners = lazyWithRetry(() => import("./pages/Partners"));
 const BeAPartner = lazyWithRetry(() => import("./pages/BeAPartner"));
+const OrganizerLicenseTerms = lazyWithRetry(() => import("./pages/OrganizerLicenseTerms"));
 
 // Guides
 const HelpCenter = lazyWithRetry(() => import("./pages/guides/HelpCenter"));
@@ -150,6 +151,7 @@ const MapVetoToken = lazyWithRetry(() => import('./pages/tournaments/MapVetoToke
 const RiotTest = lazyWithRetry(() => import("./pages/debug/RiotTest"));
 const IgdbTest = lazyWithRetry(() => import("./pages/debug/IgdbTest"));
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
+const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallback"));
 
 import { getWebsiteAssetUrl } from "@/lib/storage";
 
@@ -173,20 +175,26 @@ const AppContent = React.memo(() => {
   return (
     <>
       {/* Global Background - Video Only (Seamless Loop) */}
-      <div className="fixed inset-0 w-full h-full z-0">
-        <SeamlessVideoLoop
-          src={BG_VIDEO_URL}
-          className="mix-blend-screen opacity-40"
-          style={{ filter: 'contrast(1.2) saturation(1.1)' }}
+      {!location.pathname.endsWith('/brackets/fullscreen') && (
+        <div className="fixed inset-0 w-full h-full z-0">
+          <SeamlessVideoLoop
+            src={BG_VIDEO_URL}
+            className="mix-blend-screen opacity-40"
+            style={{ filter: 'contrast(1.2) saturation(1.1)' }}
 
-        />
-      </div>
+          />
+        </div>
+      )}
 
       <Toaster />
       <Sonner />
-      <Navbar />
-      <BetaNoticeBanner />
-      <EmailVerificationBanner />
+      {!location.pathname.endsWith('/brackets/fullscreen') && (
+        <>
+          <Navbar />
+          <BetaNoticeBanner />
+          <EmailVerificationBanner />
+        </>
+      )}
       <div className="relative z-10">
         <React.Suspense fallback={<PremiumLoadingScreen />}>
           <SuspensionGuard>
@@ -638,7 +646,6 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/tournaments/edit/:slug" element={<EditTournament />} />
                 <Route path="/tournaments/:slug/brackets" element={<TournamentBrackets />} />
-                <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />
                 <Route path="/tournaments/:slug/captain-match/:matchId?" element={
                   <ProtectedRoute>
                     <CaptainMatchPage />
@@ -663,6 +670,7 @@ const AppContent = React.memo(() => {
                 <Route path="/be-a-partner" element={<BeAPartner />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
+                <Route path="/organizer-license-terms" element={<OrganizerLicenseTerms />} />
 
                 {/* Notification List Route */}
                 <Route path="/notifications" element={<NotificationsPage />} />
@@ -689,6 +697,7 @@ const AppContent = React.memo(() => {
                 <Route path="/verification" element={<VerificationStatus />} />
 
                 {/* OAuth callbacks — relay code to Settings for token exchange with .NET backend */}
+                <Route path="/auth/steam/callback"       element={<SteamCallback />} />
                 <Route path="/auth/riot/callback"        element={<RiotOAuthCallback />} />
 
                 {/* Debug Routes */}
@@ -698,6 +707,9 @@ const AppContent = React.memo(() => {
                 {/* Catch-all route */}
                 <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
               </Route >
+
+              {/* Fullscreen bracket — outside layout to hide navbar/banners */}
+              <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />
             </Routes >
           </SuspensionGuard>
         </React.Suspense >

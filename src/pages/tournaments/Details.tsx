@@ -651,6 +651,7 @@ const TournamentDetails = () => {
           .map((m: any) => {
             const gameKey = tournament?.game?.toLowerCase();
             const isValorant = gameKey === 'valorant';
+            const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
             return (isValorant && m.riot_tag) || m.username || m.full_name || m.user_id?.substring(0, 8);
           })
           .filter(Boolean) as string[];

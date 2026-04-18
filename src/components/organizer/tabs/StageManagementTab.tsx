@@ -309,7 +309,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         try {
             // Get teams/participants for this stage
             let teams: Array<{ id: string; name: string; logo_url?: string | null }> = [];
-
+            let bracketSize: number | undefined = undefined;
             // Check stage config for check-in filtering
             const stageConf = typeof stage.config === 'string'
                 ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()
@@ -369,15 +369,10 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 })).filter(t => t.id);
             }
 
-            if (teams.length < 2) {
-                toast({
-                    title: 'Not Enough Teams',
-                    description: useCheckInOnly
-                        ? 'Need at least 2 checked-in teams to generate matches. Ensure participants have checked in.'
-                        : 'Need at least 2 registered teams to generate matches.',
-                    variant: 'destructive'
-                });
-                return;
+            if (teams.length === 0) {
+                // Allow empty bracket generation using stage capacity for sizing
+                const capacity = stage.capacity || 8;
+                bracketSize = Math.pow(2, Math.ceil(Math.log2(capacity)));
             }
 
             // Clean up any existing bracket for this stage before re-generating
@@ -402,7 +397,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             // Generate based on stage format
             const format = stage.format || 'single_elimination';
             let generator;
-            let bracketSize: number | undefined = undefined;
 
             // Bracket Size remains undefined to allow auto-sizing based on participant count
 
@@ -430,7 +424,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     bracketSize = Math.ceil(Number(stage.capacity) / groupSize);
                     console.log('[StageManagement] Auto-calculated RR group_count:', bracketSize, 'from capacity:', stage.capacity);
                 } else {
-                    bracketSize = Math.ceil(teams.length / 4);
+                    bracketSize = Math.max(1, Math.ceil(teams.length / 4));
                     console.log('[StageManagement] Fallback RR group_count:', bracketSize, 'from teams:', teams.length);
                 }
             } else {
@@ -509,7 +503,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             setHasBrackets(prev => ({ ...prev, [stageId]: true }));
 
             // Runtime BYE warning (Medium Priority)
-            if (format === 'single_elimination' || format === 'double_elimination') {
+            if ((format === 'single_elimination' || format === 'double_elimination') && teams.length > 0) {
                 const actualBracketSize = Math.pow(2, Math.ceil(Math.log2(teams.length)));
                 const byeCount = actualBracketSize - teams.length;
                 const byePercentage = (byeCount / actualBracketSize) * 100;

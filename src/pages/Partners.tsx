@@ -24,7 +24,7 @@ const tierConfig: Record<string, { label: string; icon: typeof Star; color: stri
 };
 
 /* ──────────────────────────────────────────────────────────────
-   Partner Section Component (Redesigned)
+   Partner Section Component 
    ────────────────────────────────────────────────────────────── */
 
 const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
