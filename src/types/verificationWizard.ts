@@ -52,6 +52,9 @@ export interface VerificationWizardData {
     venueExterior: File | null;
     venueInterior: File | null;
     gamingArea: File | null;
+    
+    // License terms acceptance
+    acceptedTerms: boolean;
 }
 
 export interface VerificationWizardStepProps {
@@ -98,4 +101,5 @@ export const DEFAULT_VERIFICATION_DATA: VerificationWizardData = {
     venueExterior: null,
     venueInterior: null,
     gamingArea: null,
+    acceptedTerms: false,
 };
