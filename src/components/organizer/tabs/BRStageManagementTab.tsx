@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, Zap, FileText } from 'lucide-react';
+import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, Zap, FileText, Hash, LogOut, LogIn, Pencil, Check, X } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
@@ -93,6 +93,13 @@ const BR_TEMPLATES: StageTemplate[] = [
     },
 ];
 
+interface StageFlowInfo {
+    teamsEntering: number;
+    groupsFormed: number;
+    teamsAdvancing: number | null;
+    isFinal: boolean;
+}
+
 interface BRStageManagementTabProps {
     tournamentId: string;
     stages: TournamentStage[];
@@ -105,22 +112,20 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const { toast } = useToast();
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-    const [editingStage, setEditingStage] = useState<string | null>(null);
     const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
     const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
     const [applyingTemplate, setApplyingTemplate] = useState(false);
 
+    // Inline editing state
+    const [editingField, setEditingField] = useState<{ stageId: string; field: 'name' | 'capacity' | 'advancement' } | null>(null);
+    const [editValue, setEditValue] = useState('');
+
     // Add stage form
     const [newName, setNewName] = useState('');
     const [newCapacity, setNewCapacity] = useState<string>('20');
-    const [newAdvancement, setNewAdvancement] = useState<string>('');
+    const [newAdvancement, setNewAdvancement] = useState<string>('none');
 
-    // Edit stage form
-    const [editName, setEditName] = useState('');
-    const [editCapacity, setEditCapacity] = useState<string>('');
-    const [editAdvancement, setEditAdvancement] = useState<string>('');
-
-    const sortedStages = [...stages].sort((a, b) => a.stage_order - b.stage_order);
+    const sortedStages = useMemo(() => [...stages].sort((a, b) => a.stage_order - b.stage_order), [stages]);
 
     const registeredTeamCount = useMemo(() => {
         const teamIds = new Set<string>();
@@ -131,6 +136,55 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         }
         return teamIds.size;
     }, [participants]);
+
+    // Compute flow info for each stage (teams entering, groups formed, teams advancing)
+    const stageFlows = useMemo((): Map<string, StageFlowInfo> => {
+        const flows = new Map<string, StageFlowInfo>();
+        let teamsEntering = registeredTeamCount;
+
+        for (let i = 0; i < sortedStages.length; i++) {
+            const stage = sortedStages[i];
+            const isFinal = i === sortedStages.length - 1;
+            const cap = stage.capacity || teamsEntering;
+            const groupsFormed = cap > 0 ? Math.ceil(teamsEntering / cap) : 1;
+            const advPerGroup = stage.advancement_count || null;
+            const teamsAdvancing = advPerGroup && !isFinal ? advPerGroup * groupsFormed : null;
+
+            flows.set(stage.id, { teamsEntering, groupsFormed, isFinal, teamsAdvancing });
+            teamsEntering = teamsAdvancing || teamsEntering;
+        }
+        return flows;
+    }, [sortedStages, registeredTeamCount]);
+
+    // Save a single field inline
+    const saveInlineEdit = useCallback(async (stageId: string, field: 'name' | 'capacity' | 'advancement', value: string) => {
+        try {
+            const stageDtos = stages.map(s => {
+                const dto: any = {
+                    id: s.id,
+                    name: s.name,
+                    format: s.format || 'battle_royale',
+                    stageOrder: s.stage_order,
+                    bestOf: 1,
+                    capacity: s.capacity,
+                    advancementCount: s.advancement_count,
+                };
+                if (s.id === stageId) {
+                    if (field === 'name') dto.name = value.trim();
+                    if (field === 'capacity') dto.capacity = value && value !== 'none' ? parseInt(value) : null;
+                    if (field === 'advancement') dto.advancementCount = value && value !== 'none' ? parseInt(value) : null;
+                }
+                return dto;
+            });
+
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
+            toast({ title: 'Updated', description: `Stage ${field} saved.` });
+            setEditingField(null);
+            onUpdate();
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
+        }
+    }, [stages, tournamentId, toast, onUpdate]);
 
     const handleAddStage = async () => {
         if (!newName.trim()) return;
@@ -161,7 +215,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             setAddDialogOpen(false);
             setNewName('');
             setNewCapacity('20');
-            setNewAdvancement('');
+            setNewAdvancement('none');
             onUpdate();
         } catch (error: any) {
             toast({ title: 'Error', description: error.message || 'Failed to add stage', variant: 'destructive' });
@@ -171,49 +225,18 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const handleDeleteStage = async (stageId: string) => {
         try {
             await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: [stageId] });
-
-            // Reorder remaining stages
             const remaining = stages.filter(s => s.id !== stageId).sort((a, b) => a.stage_order - b.stage_order);
             for (let i = 0; i < remaining.length; i++) {
                 if (remaining[i].stage_order !== i + 1) {
                     await apiClient.patch(`/api/stages/${remaining[i].id}/order`, { stageOrder: i + 1 });
                 }
             }
-
             toast({ title: 'Stage deleted' });
             setDeleteConfirmId(null);
+            if (expandedStageId === stageId) setExpandedStageId(null);
             onUpdate();
         } catch (error: any) {
             toast({ title: 'Error', description: error.message || 'Failed to delete stage', variant: 'destructive' });
-        }
-    };
-
-    const handleEditStage = (stage: TournamentStage) => {
-        setEditingStage(stage.id);
-        setEditName(stage.name);
-        setEditCapacity(stage.capacity?.toString() || 'none');
-        setEditAdvancement(stage.advancement_count?.toString() || 'none');
-    };
-
-    const handleSaveEdit = async () => {
-        if (!editingStage || !editName.trim()) return;
-        try {
-            const stageDtos = stages.map(s => ({
-                id: s.id,
-                name: s.id === editingStage ? editName.trim() : s.name,
-                format: s.format || 'battle_royale',
-                stageOrder: s.stage_order,
-                bestOf: 1,
-                capacity: s.id === editingStage ? (editCapacity && editCapacity !== 'none' ? parseInt(editCapacity) : null) : s.capacity,
-                advancementCount: s.id === editingStage ? (editAdvancement && editAdvancement !== 'none' ? parseInt(editAdvancement) : null) : s.advancement_count,
-            }));
-
-            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
-            toast({ title: 'Stage updated' });
-            setEditingStage(null);
-            onUpdate();
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message || 'Failed to update stage', variant: 'destructive' });
         }
     };
 
@@ -258,14 +281,11 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const handleApplyTemplate = async (template: StageTemplate) => {
         setApplyingTemplate(true);
         try {
-            // Delete existing stages first if any
             if (stages.length > 0) {
                 await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, {
                     deleteIds: stages.map(s => s.id),
                 });
             }
-
-            // Create new stages from template
             const stageDtos = template.stages.map((ts, i) => ({
                 id: null as any,
                 name: ts.name,
@@ -287,6 +307,39 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         }
     };
 
+    // Pre-fill add stage dialog from previous stage's output
+    const openAddStageDialog = () => {
+        if (sortedStages.length > 0) {
+            const lastStage = sortedStages[sortedStages.length - 1];
+            const lastFlow = stageFlows.get(lastStage.id);
+            const teamsReceiving = lastFlow?.teamsAdvancing || lastFlow?.teamsEntering || registeredTeamCount;
+            setNewCapacity(teamsReceiving <= 30 ? 'none' : '20');
+            setNewAdvancement('none');
+            setNewName(sortedStages.length === 1 ? 'Grand Finals' : `Stage ${sortedStages.length + 1}`);
+        } else {
+            setNewName('Group Stage');
+            setNewCapacity('20');
+            setNewAdvancement('none');
+        }
+        setAddDialogOpen(true);
+    };
+
+    const startInlineEdit = (stageId: string, field: 'name' | 'capacity' | 'advancement', currentValue: string) => {
+        setEditingField({ stageId, field });
+        setEditValue(currentValue);
+    };
+
+    // Context info for the add stage dialog
+    const addStageContext = useMemo(() => {
+        if (sortedStages.length === 0) return null;
+        const lastStage = sortedStages[sortedStages.length - 1];
+        const lastFlow = stageFlows.get(lastStage.id);
+        return {
+            fromStageName: lastStage.name,
+            teamsReceiving: lastFlow?.teamsAdvancing || lastFlow?.teamsEntering || 0,
+        };
+    }, [sortedStages, stageFlows]);
+
     return (
         <>
             <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6">
@@ -294,7 +347,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                     <div>
                         <CardTitle>Battle Royale Stages</CardTitle>
                         <p className="text-sm text-gray-400 mt-1">
-                            Configure the tournament progression — group stages, qualifiers, and finals.
+                            Configure the tournament progression. Click any value to edit it inline.
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -307,7 +360,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             Templates
                         </Button>
                         <Button
-                            onClick={() => setAddDialogOpen(true)}
+                            onClick={openAddStageDialog}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2"
                         >
                             <Plus className="w-4 h-4" />
@@ -317,6 +370,38 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 </CardHeader>
 
                 <CardContent className="p-0">
+                    {/* Pipeline Summary */}
+                    {sortedStages.length > 1 && (
+                        <div className="mb-5 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                            <div className="flex items-center gap-2 flex-wrap justify-center">
+                                <span className="text-xs font-medium text-white bg-emerald-500/15 border border-emerald-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                                    <Users className="w-3 h-3" />
+                                    {registeredTeamCount} teams
+                                </span>
+                                {sortedStages.map((stage, i) => {
+                                    const flow = stageFlows.get(stage.id);
+                                    return (
+                                        <React.Fragment key={stage.id}>
+                                            <ArrowRight className="w-3.5 h-3.5 text-emerald-500/40 flex-shrink-0" />
+                                            <span className="text-xs text-gray-400 bg-white/5 px-2.5 py-1 rounded-lg whitespace-nowrap">
+                                                {stage.name}
+                                                {flow && flow.groupsFormed > 1 && (
+                                                    <span className="text-gray-600 ml-1">({flow.groupsFormed}g)</span>
+                                                )}
+                                            </span>
+                                            {flow?.teamsAdvancing && i < sortedStages.length - 1 && (
+                                                <>
+                                                    <ArrowRight className="w-3.5 h-3.5 text-amber-500/40 flex-shrink-0" />
+                                                    <span className="text-xs text-amber-400/80 whitespace-nowrap">{flow.teamsAdvancing}t</span>
+                                                </>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {sortedStages.length === 0 ? (
                         <div className="space-y-6">
                             <div className="text-center py-6">
@@ -348,174 +433,281 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-3">
-                            {sortedStages.map((stage, index) => (
-                                <div key={stage.id}>
-                                    <div className="p-5 bg-white/[0.02] border border-white/10 rounded-xl hover:border-emerald-500/20 transition-all">
-                                        {editingStage === stage.id ? (
-                                            /* Edit Mode */
-                                            <div className="space-y-4">
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    <div className="space-y-1.5">
-                                                        <Label className="text-xs text-gray-500">Stage Name</Label>
-                                                        <Input
-                                                            value={editName}
-                                                            onChange={(e) => setEditName(e.target.value)}
-                                                            className="[color-scheme:dark]"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                        <Label className="text-xs text-gray-500">Teams per Group (Lobby Size)</Label>
-                                                        <Select value={editCapacity} onValueChange={setEditCapacity}>
-                                                            <SelectTrigger><SelectValue placeholder="No limit" /></SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="none">No limit</SelectItem>
-                                                                {[10, 12, 15, 16, 20, 25, 30, 40, 60].map(n => (
-                                                                    <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                        <Label className="text-xs text-gray-500">Advance Top N</Label>
-                                                        <Select value={editAdvancement} onValueChange={setEditAdvancement}>
-                                                            <SelectTrigger><SelectValue placeholder="None (final stage)" /></SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="none">None (final stage)</SelectItem>
-                                                                {[2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20].map(n => (
-                                                                    <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <Button size="sm" onClick={handleSaveEdit} className="bg-emerald-600 hover:bg-emerald-500">
-                                                        Save
-                                                    </Button>
-                                                    <Button size="sm" variant="ghost" onClick={() => setEditingStage(null)}>
-                                                        Cancel
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            /* View Mode */
-                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-lg">
-                                                        {index + 1}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-white text-lg">{stage.name}</h4>
-                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                            <span className="text-xs text-gray-400 uppercase tracking-wider bg-gray-800 px-2 py-0.5 rounded">
-                                                                Battle Royale
-                                                            </span>
-                                                            <span className={`text-xs uppercase tracking-wider px-2 py-0.5 rounded font-medium ${
-                                                                stage.status === 'live' ? "bg-red-500/20 text-red-400" :
-                                                                stage.status === 'completed' ? "bg-emerald-500/20 text-emerald-400" :
-                                                                "bg-blue-500/20 text-blue-400"
-                                                            }`}>
-                                                                {stage.status || 'upcoming'}
-                                                            </span>
-                                                            {stage.capacity && (
-                                                                <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                                    <Users className="w-3 h-3" />
-                                                                    {stage.capacity} per group
-                                                                </span>
+                        <div className="space-y-0">
+                            {sortedStages.map((stage, index) => {
+                                const flow = stageFlows.get(stage.id);
+                                const isExpanded = expandedStageId === stage.id;
+                                const isLast = index === sortedStages.length - 1;
+                                const prevStage = index > 0 ? sortedStages[index - 1] : null;
+
+                                return (
+                                    <div key={stage.id}>
+                                        {/* Stage Card */}
+                                        <div className={`p-5 border rounded-xl transition-all ${
+                                            isExpanded
+                                                ? 'bg-emerald-500/[0.03] border-emerald-500/20'
+                                                : 'bg-white/[0.02] border-white/10 hover:border-white/20'
+                                        }`}>
+                                            {/* Header Row */}
+                                            <div className="flex flex-col gap-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    {/* Left: Stage number + name + status */}
+                                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                                                            stage.status === 'live' ? 'bg-red-500/15 border border-red-500/30 text-red-400' :
+                                                            stage.status === 'completed' ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400' :
+                                                            'bg-white/5 border border-white/10 text-gray-400'
+                                                        }`}>
+                                                            {index + 1}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            {editingField?.stageId === stage.id && editingField.field === 'name' ? (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Input
+                                                                        value={editValue}
+                                                                        onChange={(e) => setEditValue(e.target.value)}
+                                                                        className="h-7 text-sm w-48 [color-scheme:dark]"
+                                                                        autoFocus
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter' && editValue.trim()) saveInlineEdit(stage.id, 'name', editValue);
+                                                                            if (e.key === 'Escape') setEditingField(null);
+                                                                        }}
+                                                                    />
+                                                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-emerald-400" onClick={() => editValue.trim() && saveInlineEdit(stage.id, 'name', editValue)}>
+                                                                        <Check className="w-3 h-3" />
+                                                                    </Button>
+                                                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-gray-500" onClick={() => setEditingField(null)}>
+                                                                        <X className="w-3 h-3" />
+                                                                    </Button>
+                                                                </div>
+                                                            ) : (
+                                                                <button
+                                                                    className="text-left group/name"
+                                                                    onClick={() => startInlineEdit(stage.id, 'name', stage.name)}
+                                                                >
+                                                                    <h4 className="font-bold text-white text-base flex items-center gap-1.5">
+                                                                        {stage.name}
+                                                                        <Pencil className="w-3 h-3 text-gray-600 opacity-0 group-hover/name:opacity-100 transition-opacity" />
+                                                                    </h4>
+                                                                </button>
                                                             )}
-                                                            {stage.advancement_count && (
-                                                                <span className="text-xs text-amber-400 flex items-center gap-1">
-                                                                    <Trophy className="w-3 h-3" />
-                                                                    Top {stage.advancement_count} advance
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className={`text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded font-semibold ${
+                                                                    stage.status === 'live' ? "bg-red-500/20 text-red-400" :
+                                                                    stage.status === 'completed' ? "bg-emerald-500/20 text-emerald-400" :
+                                                                    "bg-blue-500/15 text-blue-400"
+                                                                }`}>
+                                                                    {stage.status || 'upcoming'}
                                                                 </span>
-                                                            )}
+                                                                {isLast && (
+                                                                    <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold">
+                                                                        Finals
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                <div className="flex items-center gap-2">
-                                                    {/* Expand/Collapse Groups */}
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className={`text-xs ${expandedStageId === stage.id ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' : 'border-white/10'}`}
-                                                        onClick={() => setExpandedStageId(expandedStageId === stage.id ? null : stage.id)}
-                                                    >
-                                                        {expandedStageId === stage.id ? <ChevronDown className="w-3.5 h-3.5 mr-1.5" /> : <ChevronRight className="w-3.5 h-3.5 mr-1.5" />}
-                                                        Manage Groups
-                                                    </Button>
-
-                                                    {/* Status Dropdown */}
-                                                    <Select
-                                                        value={stage.status || 'upcoming'}
-                                                        onValueChange={(v) => handleStatusChange(stage.id, v)}
-                                                    >
-                                                        <SelectTrigger className="w-[120px] h-8 text-xs">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="upcoming">Upcoming</SelectItem>
-                                                            <SelectItem value="live">Live</SelectItem>
-                                                            <SelectItem value="completed">Completed</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-
-                                                    {/* Reorder */}
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <Button size="icon" variant="ghost" className="h-6 w-6 text-gray-400 hover:text-white" disabled={index === 0} onClick={() => handleReorder(stage.id, 'up')}>
-                                                            <ArrowUp className="w-3 h-3" />
-                                                        </Button>
-                                                        <Button size="icon" variant="ghost" className="h-6 w-6 text-gray-400 hover:text-white" disabled={index === sortedStages.length - 1} onClick={() => handleReorder(stage.id, 'down')}>
-                                                            <ArrowDown className="w-3 h-3" />
+                                                    {/* Right: Actions */}
+                                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                        <Select
+                                                            value={stage.status || 'upcoming'}
+                                                            onValueChange={(v) => handleStatusChange(stage.id, v)}
+                                                        >
+                                                            <SelectTrigger className="w-[110px] h-7 text-[11px]">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="upcoming">Upcoming</SelectItem>
+                                                                <SelectItem value="live">Live</SelectItem>
+                                                                <SelectItem value="completed">Completed</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <div className="flex flex-col">
+                                                            <Button size="icon" variant="ghost" className="h-5 w-5 text-gray-500 hover:text-white" disabled={index === 0} onClick={() => handleReorder(stage.id, 'up')}>
+                                                                <ArrowUp className="w-2.5 h-2.5" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" className="h-5 w-5 text-gray-500 hover:text-white" disabled={isLast} onClick={() => handleReorder(stage.id, 'down')}>
+                                                                <ArrowDown className="w-2.5 h-2.5" />
+                                                            </Button>
+                                                        </div>
+                                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400/60 hover:text-red-400 hover:bg-red-400/10" onClick={() => setDeleteConfirmId(stage.id)}>
+                                                            <Trash2 className="w-3.5 h-3.5" />
                                                         </Button>
                                                     </div>
+                                                </div>
 
-                                                    {/* Edit */}
-                                                    <Button size="sm" variant="outline" className="text-xs border-white/10" onClick={() => handleEditStage(stage)}>
-                                                        Edit
-                                                    </Button>
+                                                {/* Flow Metrics Row */}
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {/* Teams Entering */}
+                                                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5 text-center">
+                                                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
+                                                            <LogIn className="w-3 h-3" />
+                                                            <span className="text-[10px] uppercase tracking-wider font-medium">Teams In</span>
+                                                        </div>
+                                                        <p className="text-lg font-bold text-white">{flow?.teamsEntering || '—'}</p>
+                                                        {prevStage && (
+                                                            <p className="text-[10px] text-gray-600 mt-0.5 truncate">from {prevStage.name}</p>
+                                                        )}
+                                                    </div>
 
-                                                    {/* Delete */}
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10" onClick={() => setDeleteConfirmId(stage.id)}>
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
+                                                    {/* Lobby Size / Groups */}
+                                                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5 text-center">
+                                                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
+                                                            <Hash className="w-3 h-3" />
+                                                            <span className="text-[10px] uppercase tracking-wider font-medium">Groups</span>
+                                                        </div>
+                                                        {editingField?.stageId === stage.id && editingField.field === 'capacity' ? (
+                                                            <div className="flex items-center gap-1 justify-center">
+                                                                <Select value={editValue} onValueChange={(v) => { setEditValue(v); saveInlineEdit(stage.id, 'capacity', v); }}>
+                                                                    <SelectTrigger className="h-7 w-20 text-xs">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="none">All</SelectItem>
+                                                                        {[10, 12, 15, 16, 20, 25, 30, 40, 60].map(n => (
+                                                                            <SelectItem key={n} value={String(n)}>{n}/grp</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                className="group/cap w-full"
+                                                                onClick={() => startInlineEdit(stage.id, 'capacity', stage.capacity?.toString() || 'none')}
+                                                            >
+                                                                <p className="text-lg font-bold text-white flex items-center justify-center gap-1">
+                                                                    {flow?.groupsFormed || 1}
+                                                                    <Pencil className="w-2.5 h-2.5 text-gray-600 opacity-0 group-hover/cap:opacity-100 transition-opacity" />
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-600 mt-0.5">
+                                                                    {stage.capacity ? `${stage.capacity} teams/lobby` : 'no limit'}
+                                                                </p>
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Teams Advancing */}
+                                                    <div className={`border rounded-lg p-2.5 text-center ${
+                                                        isLast
+                                                            ? 'bg-amber-500/[0.04] border-amber-500/10'
+                                                            : !stage.advancement_count
+                                                                ? 'bg-red-500/[0.04] border-red-500/10'
+                                                                : 'bg-white/[0.03] border-white/5'
+                                                    }`}>
+                                                        <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
+                                                            <LogOut className="w-3 h-3" />
+                                                            <span className="text-[10px] uppercase tracking-wider font-medium">
+                                                                {isLast ? 'Winner' : 'Advance'}
+                                                            </span>
+                                                        </div>
+                                                        {isLast ? (
+                                                            <div>
+                                                                <Trophy className="w-5 h-5 text-amber-400 mx-auto" />
+                                                                <p className="text-[10px] text-amber-400/70 mt-0.5">Final stage</p>
+                                                            </div>
+                                                        ) : editingField?.stageId === stage.id && editingField.field === 'advancement' ? (
+                                                            <div className="flex items-center gap-1 justify-center">
+                                                                <Select value={editValue} onValueChange={(v) => { setEditValue(v); saveInlineEdit(stage.id, 'advancement', v); }}>
+                                                                    <SelectTrigger className="h-7 w-24 text-xs">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="none">Not set</SelectItem>
+                                                                        {[2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20].map(n => (
+                                                                            <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                className="group/adv w-full"
+                                                                onClick={() => startInlineEdit(stage.id, 'advancement', stage.advancement_count?.toString() || 'none')}
+                                                            >
+                                                                {stage.advancement_count ? (
+                                                                    <>
+                                                                        <p className="text-lg font-bold text-white flex items-center justify-center gap-1">
+                                                                            {flow?.teamsAdvancing || '—'}
+                                                                            <Pencil className="w-2.5 h-2.5 text-gray-600 opacity-0 group-hover/adv:opacity-100 transition-opacity" />
+                                                                        </p>
+                                                                        <p className="text-[10px] text-gray-600 mt-0.5">
+                                                                            top {stage.advancement_count}/group
+                                                                        </p>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <p className="text-sm font-medium text-red-400 flex items-center justify-center gap-1">
+                                                                            <AlertTriangle className="w-3 h-3" />
+                                                                            Not set
+                                                                            <Pencil className="w-2.5 h-2.5 text-gray-600 opacity-0 group-hover/adv:opacity-100 transition-opacity" />
+                                                                        </p>
+                                                                        <p className="text-[10px] text-red-400/50 mt-0.5">click to set</p>
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Manage Groups Button */}
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className={`w-full text-xs ${
+                                                        isExpanded
+                                                            ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5'
+                                                            : 'border-white/10 text-gray-400 hover:text-white'
+                                                    }`}
+                                                    onClick={() => setExpandedStageId(isExpanded ? null : stage.id)}
+                                                >
+                                                    {isExpanded ? <ChevronDown className="w-3.5 h-3.5 mr-1.5" /> : <ChevronRight className="w-3.5 h-3.5 mr-1.5" />}
+                                                    {isExpanded ? 'Collapse Group Management' : 'Manage Groups & Rounds'}
+                                                </Button>
+                                            </div>
+
+                                            {/* Inline Group Management (expanded) */}
+                                            {isExpanded && (
+                                                <div className="mt-4 pt-4 border-t border-white/5">
+                                                    <BRStageGroupSection
+                                                        stageId={stage.id}
+                                                        registeredTeamCount={flow?.teamsEntering || registeredTeamCount}
+                                                        scoringPreset={scoringPreset}
+                                                        hasNextStage={!isLast}
+                                                        advancementCount={stage.advancement_count}
+                                                        stageStatus={stage.status}
+                                                        onUpdate={onUpdate}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Advancement Connector */}
+                                        {!isLast && (
+                                            <div className="flex justify-center py-1.5">
+                                                <div className="flex flex-col items-center gap-0.5">
+                                                    <div className="w-px h-2 bg-emerald-500/20" />
+                                                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 bg-white/[0.02] border border-white/5 px-3 py-1 rounded-full">
+                                                        <ArrowDown className="w-3 h-3 text-emerald-500/50" />
+                                                        {stage.advancement_count ? (
+                                                            <span>
+                                                                <span className="text-emerald-400 font-medium">{flow?.teamsAdvancing || '?'}</span>
+                                                                {' '}teams advance
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-amber-400 flex items-center gap-1">
+                                                                <AlertTriangle className="w-3 h-3" />
+                                                                Set advancement count above
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="w-px h-2 bg-emerald-500/20" />
                                                 </div>
                                             </div>
                                         )}
-
-                                        {/* Inline Group Management (expanded) */}
-                                        {expandedStageId === stage.id && editingStage !== stage.id && (
-                                            <BRStageGroupSection
-                                                stageId={stage.id}
-                                                registeredTeamCount={registeredTeamCount}
-                                                scoringPreset={scoringPreset}
-                                                hasNextStage={sortedStages.some(s => s.stage_order > stage.stage_order)}
-                                                advancementCount={stage.advancement_count}
-                                                stageStatus={stage.status}
-                                                onUpdate={onUpdate}
-                                            />
-                                        )}
                                     </div>
-
-                                    {/* Advancement Arrow */}
-                                    {index < sortedStages.length - 1 && (
-                                        <div className="flex justify-center py-2">
-                                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                <ArrowRight className="w-4 h-4 text-emerald-500" />
-                                                {stage.advancement_count ? (
-                                                    <span>Top {stage.advancement_count} advance to next stage</span>
-                                                ) : (
-                                                    <span className="text-amber-400 flex items-center gap-1">
-                                                        <AlertTriangle className="w-3 h-3" />
-                                                        No advancement count set
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </CardContent>
@@ -525,11 +717,24 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
                 <DialogContent className="bg-[#0a0a0c] border-white/10">
                     <DialogHeader>
-                        <DialogTitle>Add BR Stage</DialogTitle>
+                        <DialogTitle>Add Stage</DialogTitle>
                         <DialogDescription>
-                            Add a new stage to the tournament flow. Teams progress from one stage to the next.
+                            {addStageContext
+                                ? `This stage will receive teams advancing from "${addStageContext.fromStageName}".`
+                                : 'Add the first stage of your tournament.'}
                         </DialogDescription>
                     </DialogHeader>
+
+                    {/* Context Banner */}
+                    {addStageContext && addStageContext.teamsReceiving > 0 && (
+                        <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm">
+                            <LogIn className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                            <span className="text-emerald-300">
+                                ~<strong>{addStageContext.teamsReceiving}</strong> teams expected from {addStageContext.fromStageName}
+                            </span>
+                        </div>
+                    )}
+
                     <div className="space-y-4 py-2">
                         <div className="space-y-1.5">
                             <Label>Stage Name</Label>
@@ -545,30 +750,34 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             <Select value={newCapacity} onValueChange={setNewCapacity}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none">No limit</SelectItem>
+                                    <SelectItem value="none">No limit (single lobby)</SelectItem>
                                     {[10, 12, 15, 16, 20, 25, 30, 40, 60].map(n => (
-                                        <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>
+                                        <SelectItem key={n} value={String(n)}>{n} teams per group</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <p className="text-xs text-gray-500">
-                                How many teams fit in each lobby. Groups will be created in the Groups tab.
-                            </p>
+                            {newCapacity && newCapacity !== 'none' && addStageContext && addStageContext.teamsReceiving > 0 && (
+                                <p className="text-xs text-emerald-500/80">
+                                    → {Math.ceil(addStageContext.teamsReceiving / parseInt(newCapacity))} groups will be formed
+                                </p>
+                            )}
                         </div>
                         <div className="space-y-1.5">
                             <Label>Advance Top N per Group</Label>
                             <Select value={newAdvancement} onValueChange={setNewAdvancement}>
-                                <SelectTrigger><SelectValue placeholder="None (final stage)" /></SelectTrigger>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none">None (final stage)</SelectItem>
+                                    <SelectItem value="none">None (this is the final stage)</SelectItem>
                                     {[2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20].map(n => (
-                                        <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
+                                        <SelectItem key={n} value={String(n)}>Top {n} per group</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <p className="text-xs text-gray-500">
-                                Leave empty for the final stage. Set a number for qualifier stages.
-                            </p>
+                            {newAdvancement && newAdvancement !== 'none' && newCapacity && newCapacity !== 'none' && addStageContext && addStageContext.teamsReceiving > 0 && (
+                                <p className="text-xs text-amber-400/80">
+                                    → {parseInt(newAdvancement) * Math.ceil(addStageContext.teamsReceiving / parseInt(newCapacity))} teams will advance to the next stage
+                                </p>
+                            )}
                         </div>
                     </div>
                     <DialogFooter>
