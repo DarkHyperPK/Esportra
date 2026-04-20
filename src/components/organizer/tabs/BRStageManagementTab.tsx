@@ -548,22 +548,22 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                         )}
                                                     </div>
 
-                                                    {/* Lobby Size / Groups */}
+                                                    {/* Lobby Size */}
                                                     <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5 text-center">
                                                         <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
                                                             <Hash className="w-3 h-3" />
-                                                            <span className="text-[10px] uppercase tracking-wider font-medium">Groups</span>
+                                                            <span className="text-[10px] uppercase tracking-wider font-medium">Lobby Size</span>
                                                         </div>
                                                         {editingField?.stageId === stage.id && editingField.field === 'capacity' ? (
                                                             <div className="flex items-center gap-1 justify-center">
                                                                 <Select value={editValue} onValueChange={(v) => { setEditValue(v); saveInlineEdit(stage.id, 'capacity', v); }}>
-                                                                    <SelectTrigger className="h-7 w-20 text-xs">
+                                                                    <SelectTrigger className="h-7 w-24 text-xs">
                                                                         <SelectValue />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
-                                                                        <SelectItem value="none">All</SelectItem>
+                                                                        <SelectItem value="none">No limit</SelectItem>
                                                                         {[10, 12, 15, 16, 20, 25, 30, 40, 60].map(n => (
-                                                                            <SelectItem key={n} value={String(n)}>{n}/grp</SelectItem>
+                                                                            <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>
                                                                         ))}
                                                                     </SelectContent>
                                                                 </Select>
@@ -574,11 +574,13 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                 onClick={() => startInlineEdit(stage.id, 'capacity', stage.capacity?.toString() || 'none')}
                                                             >
                                                                 <p className="text-lg font-bold text-white flex items-center justify-center gap-1">
-                                                                    {flow?.groupsFormed || 1}
+                                                                    {stage.capacity ? `${stage.capacity}` : '∞'}
                                                                     <Pencil className="w-2.5 h-2.5 text-gray-600 opacity-0 group-hover/cap:opacity-100 transition-opacity" />
                                                                 </p>
                                                                 <p className="text-[10px] text-gray-600 mt-0.5">
-                                                                    {stage.capacity ? `${stage.capacity} teams/lobby` : 'no limit'}
+                                                                    {(flow?.groupsFormed || 1) > 1
+                                                                        ? `→ ${flow?.groupsFormed} groups`
+                                                                        : 'single lobby'}
                                                                 </p>
                                                             </button>
                                                         )}
@@ -605,22 +607,54 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                             </div>
                                                         ) : editingField?.stageId === stage.id && editingField.field === 'advancement' ? (
                                                             <div className="flex items-center gap-1 justify-center">
-                                                                <Select value={editValue} onValueChange={(v) => { setEditValue(v); saveInlineEdit(stage.id, 'advancement', v); }}>
-                                                                    <SelectTrigger className="h-7 w-24 text-xs">
+                                                                <Select
+                                                                    value={editValue}
+                                                                    onValueChange={(v) => {
+                                                                        setEditValue(v);
+                                                                        const groups = flow?.groupsFormed || 1;
+                                                                        const perGroup = v !== 'none' ? String(Math.floor(parseInt(v) / groups)) : v;
+                                                                        saveInlineEdit(stage.id, 'advancement', perGroup);
+                                                                    }}
+                                                                >
+                                                                    <SelectTrigger className="h-7 w-32 text-xs">
                                                                         <SelectValue />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
                                                                         <SelectItem value="none">Not set</SelectItem>
-                                                                        {[2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20].map(n => (
-                                                                            <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
-                                                                        ))}
+                                                                        {(() => {
+                                                                            const g = flow?.groupsFormed || 1;
+                                                                            const maxTeams = flow?.teamsEntering || 100;
+                                                                            if (g <= 1) {
+                                                                                return [2, 4, 6, 8, 10, 12, 16, 20]
+                                                                                    .filter(n => n < maxTeams)
+                                                                                    .map(n => (
+                                                                                        <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>
+                                                                                    ));
+                                                                            }
+                                                                            const options: number[] = [];
+                                                                            for (let i = 1; i <= 20; i++) {
+                                                                                const total = g * i;
+                                                                                if (total >= maxTeams) break;
+                                                                                options.push(total);
+                                                                            }
+                                                                            return options.map(n => (
+                                                                                <SelectItem key={n} value={String(n)}>
+                                                                                    {n} total — {n / g}/grp
+                                                                                </SelectItem>
+                                                                            ));
+                                                                        })()}
                                                                     </SelectContent>
                                                                 </Select>
                                                             </div>
                                                         ) : (
                                                             <button
                                                                 className="group/adv w-full"
-                                                                onClick={() => startInlineEdit(stage.id, 'advancement', stage.advancement_count?.toString() || 'none')}
+                                                                onClick={() => {
+                                                                    const advTotal = stage.advancement_count && flow
+                                                                        ? String(stage.advancement_count * flow.groupsFormed)
+                                                                        : 'none';
+                                                                    startInlineEdit(stage.id, 'advancement', advTotal);
+                                                                }}
                                                             >
                                                                 {stage.advancement_count ? (
                                                                     <>
@@ -629,7 +663,9 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                             <Pencil className="w-2.5 h-2.5 text-gray-600 opacity-0 group-hover/adv:opacity-100 transition-opacity" />
                                                                         </p>
                                                                         <p className="text-[10px] text-gray-600 mt-0.5">
-                                                                            top {stage.advancement_count}/group
+                                                                            {(flow?.groupsFormed || 1) > 1
+                                                                                ? `${stage.advancement_count}/grp × ${flow?.groupsFormed} grps`
+                                                                                : `top ${stage.advancement_count}`}
                                                                         </p>
                                                                     </>
                                                                 ) : (
@@ -691,6 +727,11 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                             <span>
                                                                 <span className="text-emerald-400 font-medium">{flow?.teamsAdvancing || '?'}</span>
                                                                 {' '}teams advance
+                                                                {flow && flow.groupsFormed > 1 && (
+                                                                    <span className="text-gray-600">
+                                                                        {' '}({stage.advancement_count}/grp × {flow.groupsFormed} grps)
+                                                                    </span>
+                                                                )}
                                                             </span>
                                                         ) : (
                                                             <span className="text-amber-400 flex items-center gap-1">
