@@ -344,12 +344,11 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
 
-            // Auto-create groups for non-final stages
+            // Auto-create groups for non-final stages — match by stage_order to avoid TOCTOU
             if (!newIsFinal && newGroupCount > 0 && lobbySize != null) {
                 try {
                     const freshStages = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/stages`);
-                    const sorted = [...freshStages].sort((a: any, b: any) => a.stage_order - b.stage_order);
-                    const newStage = sorted[sorted.length - 1];
+                    const newStage = freshStages.find((s: any) => s.stage_order === newOrder);
                     if (newStage) {
                         await apiClient.post(`/api/stages/${newStage.id}/br/groups`, {
                             groupCount: newGroupCount,
@@ -377,11 +376,23 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const handleDeleteStage = async (stageId: string) => {
         try {
             await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: [stageId] });
-            const remaining = stages.filter(s => s.id !== stageId).sort((a, b) => a.stage_order - b.stage_order);
-            for (let i = 0; i < remaining.length; i++) {
-                if (remaining[i].stage_order !== i + 1) {
-                    await apiClient.patch(`/api/stages/${remaining[i].id}/order`, { stageOrder: i + 1 });
-                }
+            // Re-sequence remaining stages in a single PUT instead of N sequential PATCHes
+            const remaining = stages
+                .filter(s => s.id !== stageId)
+                .sort((a, b) => a.stage_order - b.stage_order);
+            if (remaining.length > 0) {
+                const resequenced = remaining.map((s, i) => ({
+                    id: s.id,
+                    name: s.name,
+                    format: s.format || 'battle_royale',
+                    stageOrder: i + 1,
+                    bestOf: 1,
+                    capacity: s.capacity,
+                    advancementCount: s.advancement_count,
+                    startsAt: s.starts_at || null,
+                    endsAt: s.ends_at || null,
+                }));
+                await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: resequenced });
             }
             toast({ title: 'Stage deleted' });
             setDeleteConfirmId(null);
@@ -484,28 +495,31 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 stageOrder: i + 1,
                 bestOf: 1,
                 capacity: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.capacity || null : null,
-                advancementCount: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.advancement || null : null,
+                advancementCount: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.advancement ?? null : null,
                 startsAt: null,
                 endsAt: null,
             }));
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
 
-            // Auto-create groups for each non-final stage
+            // Auto-create groups for each non-final stage in parallel (avoids N sequential requests)
             try {
                 const freshStages = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/stages`);
-                const sorted = [...freshStages].sort((a, b) => a.stage_order - b.stage_order);
-                for (let i = 0; i < sorted.length - 1; i++) {
-                    const cfg = templateConfig[i];
-                    if (cfg?.groupCount > 0 && cfg?.capacity > 0) {
-                        await apiClient.post(`/api/stages/${sorted[i].id}/br/groups`, {
+                // Match by stage_order (1-based) not array index — immune to concurrent inserts
+                const nonFinalCount = selectedTemplate.stages.length - 1;
+                await Promise.all(
+                    Array.from({ length: nonFinalCount }, (_, i) => {
+                        const cfg = templateConfig[i];
+                        const stage = freshStages.find((s: any) => s.stage_order === i + 1);
+                        if (!stage || !cfg || cfg.groupCount <= 0 || cfg.capacity <= 0) return Promise.resolve();
+                        return apiClient.post(`/api/stages/${stage.id}/br/groups`, {
                             groupCount: cfg.groupCount,
                             lobbySize: cfg.capacity,
                         });
-                    }
-                }
+                    })
+                );
             } catch {
-                // Non-critical — groups can be created later
+                // Non-critical — groups can be created later from Groups & Rounds section
             }
 
             toast({ title: 'Template Applied', description: `"${selectedTemplate.name}" — ${selectedTemplate.stages.length} stages with groups created.` });
@@ -923,7 +937,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     <BRStageGroupSection
                                                         stageId={stage.id}
                                                         stageCapacity={stage.capacity}
-                                                        registeredTeamCount={flow?.teamsEntering || registeredTeamCount}
+                                                        registeredTeamCount={flow?.teamsEntering ?? registeredTeamCount}
                                                         scoringPreset={scoringPreset}
                                                         hasNextStage={!isLast}
                                                         advancementCount={stage.advancement_count}
@@ -974,12 +988,22 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                         </DialogDescription>
                     </DialogHeader>
 
-                    {/* Context Banner */}
-                    {addStageContext?.incomingTeams != null && addStageContext.incomingTeams > 0 && (
+                    {/* Context Banner — incoming teams from previous stage */}
+                    {addStageContext?.fromStageName && addStageContext.incomingTeams > 0 && (
                         <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm">
                             <LogIn className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                             <span className="text-emerald-300">
-                                ~<strong>{addStageContext.incomingTeams}</strong> teams expected from {addStageContext.fromStageName}
+                                ~<strong>{addStageContext.incomingTeams}</strong> teams expected from <strong>{addStageContext.fromStageName}</strong>
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Warning: previous stage has no advancement configured */}
+                    {addStageContext?.fromStageName && addStageContext.incomingTeams === 0 && (
+                        <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm">
+                            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                            <span className="text-amber-300">
+                                <strong>"{addStageContext.fromStageName}"</strong> has no advancement count set — it doesn't know how many teams to pass forward. Configure it first, or this stage will have no defined input.
                             </span>
                         </div>
                     )}
@@ -1032,72 +1056,84 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
                                 {!newIsFinal && (
                                     <>
-                                        {/* Groups */}
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-1.5">
-                                                <Label className="text-xs text-gray-400">Groups</Label>
-                                                <Select
-                                                    value={String(newGroupCount)}
-                                                    onValueChange={(v) => {
-                                                        const g = parseInt(v);
-                                                        setNewGroupCount(g);
-                                                        const newLobby = incomingTeams > 0 ? Math.ceil(incomingTeams / g) : 0;
-                                                        setNewAdvancement(prev => Math.min(prev, Math.max(1, newLobby - 1)));
-                                                    }}
-                                                >
-                                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        {Array.from({ length: maxGroups }, (_, k) => k + 1).map(n => (
-                                                            <SelectItem key={n} value={String(n)}>
-                                                                {n} {n === 1 ? 'group' : 'groups'}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                        {/* Dead-end guard: lobbySize <= 1 means nothing can be eliminated */}
+                                        {incomingTeams > 0 && lobbySize <= 1 ? (
+                                            <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                                                <p className="text-xs text-amber-300">
+                                                    Only <strong>1 team per group</strong> — an intermediate stage with 1 team per lobby can't eliminate anyone. Either reduce the group count or set this as a Final Stage.
+                                                </p>
                                             </div>
+                                        ) : (
+                                            <>
+                                                {/* Groups */}
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs text-gray-400">Groups</Label>
+                                                        <Select
+                                                            value={String(newGroupCount)}
+                                                            onValueChange={(v) => {
+                                                                const g = parseInt(v);
+                                                                setNewGroupCount(g);
+                                                                const newLobby = incomingTeams > 0 ? Math.ceil(incomingTeams / g) : 0;
+                                                                setNewAdvancement(prev => Math.min(prev, Math.max(1, newLobby - 1)));
+                                                            }}
+                                                        >
+                                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                                            <SelectContent>
+                                                                {Array.from({ length: maxGroups }, (_, k) => k + 1).map(n => (
+                                                                    <SelectItem key={n} value={String(n)}>
+                                                                        {n} {n === 1 ? 'group' : 'groups'}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
 
-                                            {/* Lobby Size (read-only derived) */}
-                                            <div className="space-y-1.5">
-                                                <Label className="text-xs text-gray-400">Lobby Size (derived)</Label>
-                                                <div className={`h-9 flex items-center px-3 rounded-md border text-sm ${lobbyOverMax ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-white/[0.03] border-white/10 text-gray-300'}`}>
-                                                    {incomingTeams > 0 ? `${lobbySize} teams` : '—'}
-                                                    {lobbyOverMax && <AlertTriangle className="w-3 h-3 ml-1.5 text-red-400" />}
+                                                    {/* Lobby Size (read-only derived) */}
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs text-gray-400">Lobby Size (derived)</Label>
+                                                        <div className={`h-9 flex items-center px-3 rounded-md border text-sm ${lobbyOverMax ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-white/[0.03] border-white/10 text-gray-300'}`}>
+                                                            {incomingTeams > 0 ? `${lobbySize} teams` : '—'}
+                                                            {lobbyOverMax && <AlertTriangle className="w-3 h-3 ml-1.5 text-red-400" />}
+                                                        </div>
+                                                        <p className="text-[10px] text-gray-600">
+                                                            {maxLobbySize ? `game max: ${maxLobbySize}` : 'no game limit'}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <p className="text-[10px] text-gray-600">
-                                                    {maxLobbySize ? `game max: ${maxLobbySize}` : 'no game limit'}
-                                                </p>
-                                            </div>
-                                        </div>
 
-                                        {/* Advance per Group */}
-                                        <div className="space-y-1.5">
-                                            <Label className="text-xs text-gray-400">Advance per Group</Label>
-                                            <Select
-                                                value={String(Math.min(newAdvancement, Math.max(1, lobbySize - 1)))}
-                                                onValueChange={(v) => setNewAdvancement(parseInt(v))}
-                                            >
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                                <SelectContent>
-                                                    {advancementOptions.map(n => (
-                                                        <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            {incomingTeams > 0 && (
-                                                <p className="text-xs text-amber-400/80">
-                                                    → <strong>{Math.min(newAdvancement, Math.max(1, lobbySize - 1)) * newGroupCount}</strong> teams total will advance to the next stage
-                                                </p>
-                                            )}
-                                        </div>
+                                                {/* Advance per Group */}
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-xs text-gray-400">Advance per Group</Label>
+                                                    <Select
+                                                        value={String(Math.min(newAdvancement, Math.max(1, lobbySize - 1)))}
+                                                        onValueChange={(v) => setNewAdvancement(parseInt(v))}
+                                                    >
+                                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {advancementOptions.map(n => (
+                                                                <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {incomingTeams > 0 && (
+                                                        <p className="text-xs text-amber-400/80">
+                                                            → <strong>{Math.min(newAdvancement, Math.max(1, lobbySize - 1)) * newGroupCount}</strong> teams total will advance to the next stage
+                                                        </p>
+                                                    )}
+                                                </div>
 
-                                        {/* Lobby size warning */}
-                                        {lobbyOverMax && (
-                                            <div className="flex items-start gap-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
-                                                <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
-                                                <p className="text-xs text-red-300">
-                                                    Lobby size {lobbySize} exceeds game max of {maxLobbySize}. Add more groups to split teams.
-                                                </p>
-                                            </div>
+                                                {/* Lobby size warning */}
+                                                {lobbyOverMax && (
+                                                    <div className="flex items-start gap-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                                        <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                                                        <p className="text-xs text-red-300">
+                                                            Lobby size {lobbySize} exceeds game max of {maxLobbySize}. Add more groups to split teams.
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </>
                                 )}
@@ -1121,7 +1157,13 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                         <Button variant="ghost" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
                         <Button
                             onClick={handleAddStage}
-                            disabled={!newName.trim() || addStageErrors.length > 0}
+                            disabled={
+                                !newName.trim() ||
+                                addStageErrors.length > 0 ||
+                                // Can't add intermediate stage when lobbySize=1 (no one to eliminate)
+                                (!newIsFinal && addStageContext != null && addStageContext.incomingTeams > 0 &&
+                                    Math.ceil(addStageContext.incomingTeams / newGroupCount) <= 1)
+                            }
                             className="bg-emerald-600 hover:bg-emerald-500"
                         >
                             Add Stage

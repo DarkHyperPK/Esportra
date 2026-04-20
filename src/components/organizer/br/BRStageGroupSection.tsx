@@ -57,17 +57,20 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   const [method, setMethod] = useState<BRDistributionMethod>('random');
   const [confirmDistribute, setConfirmDistribute] = useState(false);
 
-  // Check if ANY group in this stage has rounds (for locking)
+  // Check if ANY group in this stage has rounds — parallel fetch instead of sequential N+1
   const { rounds: selectedGroupRounds } = useBRRounds(stageId, selectedGroupId);
   const anyGroupHasRounds = useQuery({
     queryKey: ['br-any-rounds', stageId, groups.map(g => g.id).join(',')],
     queryFn: async () => {
       if (groups.length === 0) return false;
-      for (const g of groups) {
-        const rounds = await apiClient.get<any[]>(`/api/stages/${stageId}/br/groups/${g.id}/rounds`);
-        if (rounds.length > 0) return true;
-      }
-      return false;
+      const results = await Promise.all(
+        groups.map(g =>
+          apiClient.get<any[]>(`/api/stages/${stageId}/br/groups/${g.id}/rounds`)
+            .then(rounds => rounds.length > 0)
+            .catch(() => false)
+        )
+      );
+      return results.some(Boolean);
     },
     enabled: groups.length > 0,
     staleTime: 1000 * 60,
