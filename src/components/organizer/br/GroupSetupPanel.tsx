@@ -24,6 +24,7 @@ import type { BRGroup, BRDistributionMethod } from '@/types/brGroups';
 
 interface GroupSetupPanelProps {
   groups: BRGroup[];
+  stageCapacity: number | null;
   registeredTeamCount: number;
   onCreateGroups: (params: { groupCount: number; lobbySize: number; force?: boolean }) => Promise<unknown>;
   onAssignTeams: (params: { method: BRDistributionMethod }) => Promise<unknown>;
@@ -34,6 +35,7 @@ interface GroupSetupPanelProps {
 
 export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
   groups,
+  stageCapacity,
   registeredTeamCount,
   onCreateGroups,
   onAssignTeams,
@@ -41,10 +43,11 @@ export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
   isAssigning,
   hasRounds,
 }) => {
+  const defaultLobbySize = groups[0]?.lobby_size ?? stageCapacity ?? 20;
   const [groupCount, setGroupCount] = useState(
-    groups.length > 0 ? groups.length : Math.max(1, Math.ceil(registeredTeamCount / 20))
+    groups.length > 0 ? groups.length : Math.max(1, Math.ceil(registeredTeamCount / defaultLobbySize))
   );
-  const [lobbySize, setLobbySize] = useState(groups[0]?.lobby_size ?? 20);
+  const [lobbySize, setLobbySize] = useState(defaultLobbySize);
   const [method, setMethod] = useState<BRDistributionMethod>('random');
   const [confirmRecreate, setConfirmRecreate] = useState(false);
   const [confirmDistribute, setConfirmDistribute] = useState(false);

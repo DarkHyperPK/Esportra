@@ -19,6 +19,7 @@ interface ScoringPreset {
 
 interface BRStageGroupSectionProps {
   stageId: string;
+  stageCapacity: number | null;
   registeredTeamCount: number;
   scoringPreset: ScoringPreset;
   hasNextStage: boolean;
@@ -29,6 +30,7 @@ interface BRStageGroupSectionProps {
 
 const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   stageId,
+  stageCapacity,
   registeredTeamCount,
   scoringPreset,
   hasNextStage,
@@ -76,6 +78,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
       {/* Setup + Distribution */}
       <GroupSetupPanel
         groups={groups}
+        stageCapacity={stageCapacity}
         registeredTeamCount={registeredTeamCount}
         onCreateGroups={async (params) => {
           try { await createGroups.mutateAsync(params); onUpdate(); } catch { /* toast handled by hook */ }

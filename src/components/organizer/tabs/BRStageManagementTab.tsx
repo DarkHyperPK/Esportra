@@ -668,6 +668,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                 <div className="mt-4 pt-4 border-t border-white/5">
                                                     <BRStageGroupSection
                                                         stageId={stage.id}
+                                                        stageCapacity={stage.capacity}
                                                         registeredTeamCount={flow?.teamsEntering || registeredTeamCount}
                                                         scoringPreset={scoringPreset}
                                                         hasNextStage={!isLast}
