@@ -87,6 +87,7 @@ import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
 import { GroupManagementTab } from '@/components/organizer/tabs/GroupManagementTab';
 import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
+import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import BRGameResults from '@/components/tournament/br/BRGameResults';
 import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
@@ -1813,140 +1814,11 @@ const TournamentDashboard = () => {
               {activeTab === 'games' && isBR && (
                 <TabsContent value="games" forceMount key="games">
                   <TabTransition direction={direction}>
-                    <div className="space-y-6">
-                      {/* Scoring Config */}
-                      <BRScoringConfig preset={brScoringPreset} killCap={brKillCap} />
-
-                      {/* Live Leaderboard */}
-                      <BRLeaderboard
-                        entries={brResults.leaderboard}
-                        totalGames={brGameCount}
-                        gamesCompleted={brResults.gamesCompleted}
-                      />
-
-                      {/* Winner banner */}
-                      {brResults.winner && (
-                        <Card className="bg-amber-500/10 backdrop-blur-md border border-amber-500/30 rounded-2xl p-6">
-                          <div className="flex items-center gap-4">
-                            <Trophy className="w-10 h-10 text-amber-400" />
-                            <div>
-                              <h3 className="text-lg font-bold text-white">Tournament Winner</h3>
-                              <p className="text-amber-300 font-medium">{brResults.winner.teamName} — {brResults.winner.totalPoints} points</p>
-                            </div>
-                            {tournament?.status !== 'completed' && (
-                              <Button
-                                onClick={async () => {
-                                  try {
-                                    await apiClient.put(`/api/tournaments/${tournament!.id}`, {
-                                      status: 'completed',
-                                      winner_team_name: brResults.winner!.teamName,
-                                    });
-                                    toast({ title: 'Tournament Completed', description: `${brResults.winner!.teamName} crowned as champion!` });
-                                    queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
-                                  } catch {
-                                    toast({ title: 'Error', description: 'Failed to complete tournament.', variant: 'destructive' });
-                                  }
-                                }}
-                                className="ml-auto bg-amber-600 hover:bg-amber-700 text-white"
-                              >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Mark Completed
-                              </Button>
-                            )}
-                          </div>
-                        </Card>
-                      )}
-
-                      {/* Game Result Entry */}
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-bold text-white">Games</h3>
-                          {brResults.gamesCompleted > 0 && isOrganizer && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="text-red-400 border-red-500/20 hover:bg-red-500/10 hover:text-red-300">
-                                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                                  Reset All Games
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="bg-[#12121a] border-white/10 text-white">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle className="text-white flex items-center gap-2">
-                                    <AlertTriangle className="w-5 h-5 text-red-400" />
-                                    Reset All Games
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription className="text-white/70">
-                                    This will permanently delete all game results, lobby codes, and evidence across all {brGameCount} games. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel className="border-white/20 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    className="bg-red-600 hover:bg-red-700 text-white"
-                                    disabled={brResults.isResettingAll}
-                                    onClick={() => brResults.resetAllGames()}
-                                  >
-                                    {brResults.isResettingAll ? 'Resetting...' : 'Reset All Games'}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
-                        {brTeams.length === 0 && (
-                          <Card className="bg-black/20 backdrop-blur-md border border-amber-500/20 rounded-2xl p-4 text-center">
-                            <p className="text-amber-400/80 text-sm">No participants registered yet. Games can be started once teams register.</p>
-                          </Card>
-                        )}
-                        {Array.from({ length: brGameCount }, (_, i) => {
-                          const gameNum = i + 1;
-                          const gameStatus = brResults.getGameStatus(gameNum);
-                          // Sequential: locked if any prior game is not completed
-                          const isLocked = i > 0 && brResults.getGameStatus(i) !== 'completed';
-                          return (
-                            <BRGameResults
-                              key={i}
-                              gameNumber={gameNum}
-                              teams={brTeams}
-                              scoringPreset={brScoringPreset}
-                              killCap={brKillCap}
-                              existingResults={brResults.getGameResults(gameNum)}
-                              lobbyCode={brResults.getLobbyCode(gameNum)}
-                              isOrganizer={isOrganizer}
-                              gameStatus={gameStatus}
-                              isLocked={isLocked}
-                              evidence={brResults.getEvidence(gameNum)}
-                              onStartGame={(lobbyCode) => {
-                                brResults.startGame(gameNum, lobbyCode);
-                                // Broadcast game start to all participants via tournament announcements
-                                if (tournament?.id) {
-                                  apiClient.post(`/api/tournaments/${tournament.id}/announcements`, {
-                                    title: `Game ${gameNum} Started`,
-                                    content: `Lobby code: ${lobbyCode}. Join now!`,
-                                  }).catch(() => {});
-                                }
-                              }}
-                              onSave={(results, lobbyCode) => {
-                                brResults.saveGameResults(gameNum, results, lobbyCode);
-                              }}
-                              onResetGame={() => brResults.resetGame(gameNum)}
-                              onUpdateLobbyCode={(code) => {
-                                brResults.updateLobbyCode(gameNum, code);
-                                // Broadcast updated lobby code to all participants
-                                if (tournament?.id) {
-                                  apiClient.post(`/api/tournaments/${tournament.id}/announcements`, {
-                                    title: `Lobby Code Updated — Game ${gameNum}`,
-                                    content: `New lobby code: ${code}`,
-                                  }).catch(() => {});
-                                }
-                              }}
-                              onMarkEvidenceReviewed={(teamId) => brResults.markEvidenceReviewed(gameNum, teamId)}
-                              isSaving={brResults.isSaving}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
+                    <BRGamesTab
+                      tournamentId={tournament!.id}
+                      stages={stages}
+                      scoringPreset={brScoringPreset}
+                    />
                   </TabTransition>
                 </TabsContent>
               )}
