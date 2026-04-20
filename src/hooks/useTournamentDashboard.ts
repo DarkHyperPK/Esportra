@@ -87,6 +87,8 @@ export interface DashboardStage {
     capacity: number;
     advancement_count: number;
     is_locked: boolean;
+    starts_at: string | null;
+    ends_at: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -136,7 +138,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 current_participants:  t.current_participants ?? result.participants.length,
             };
 
-            const mappedParticipants: DashboardParticipant[] = result.participants.map((p: any) => ({
+            const mappedParticipants: DashboardParticipant[] = (result.participants ?? []).map((p: any) => ({
                 id:               p.id,
                 user_id:          p.user_id,
                 tournament_id:    p.tournament_id,
@@ -157,7 +159,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));
 
-            const mappedStages: DashboardStage[] = result.stages.map((s: any) => ({
+            const mappedStages: DashboardStage[] = (result.stages ?? []).map((s: any) => ({
                 ...s,
                 config: typeof s.config === 'string' ? (() => { try { return JSON.parse(s.config); } catch { return s.config; } })() : (s.config || null),
                 capacity:          s.capacity ?? 0,
