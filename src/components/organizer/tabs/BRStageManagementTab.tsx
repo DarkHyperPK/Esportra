@@ -38,7 +38,7 @@ const BR_TEMPLATES: StageTemplate[] = [
         id: 'open_qualifier',
         name: 'Open Qualifier → Finals',
         description: '2-stage format. All teams play group stage, top performers advance to a single finals lobby.',
-        icon: '🏆',
+        icon: '',
         teamRange: '20–60 teams',
         stages: [
             { name: 'Open Qualifiers', capacity: 20, advancementCount: 10 },
@@ -49,7 +49,7 @@ const BR_TEMPLATES: StageTemplate[] = [
         id: 'triple_stage',
         name: 'Groups → Semis → Finals',
         description: '3-stage progression. Large pool narrows through semis to a final lobby. Used in ALGS & PCS.',
-        icon: '🔥',
+        icon: '',
         teamRange: '40–100 teams',
         stages: [
             { name: 'Group Stage', capacity: 20, advancementCount: 10 },
@@ -61,7 +61,7 @@ const BR_TEMPLATES: StageTemplate[] = [
         id: 'fncs_style',
         name: 'FNCS-Style (4 Stages)',
         description: 'Open → Quarter → Semi → Finals. The gold standard for large-scale Fortnite tournaments.',
-        icon: '⚡',
+        icon: '',
         teamRange: '80–200 teams',
         stages: [
             { name: 'Open Qualifiers', capacity: 20, advancementCount: 12 },
@@ -73,8 +73,8 @@ const BR_TEMPLATES: StageTemplate[] = [
     {
         id: 'single_lobby',
         name: 'Single Lobby (No Stages)',
-        description: 'All teams in one lobby. Best for small events with ≤20 teams. No advancement needed.',
-        icon: '🎯',
+        description: 'All teams in one lobby. Best for small events with 20 teams or fewer. No advancement needed.',
+        icon: '',
         teamRange: '4–20 teams',
         stages: [
             { name: 'Main Event', capacity: null, advancementCount: null },
@@ -84,7 +84,7 @@ const BR_TEMPLATES: StageTemplate[] = [
         id: 'dual_group',
         name: 'Dual Group → Unified Finals',
         description: '2 parallel groups play separately, top teams merge into one finals lobby. Clean and fast.',
-        icon: '⚔️',
+        icon: '',
         teamRange: '30–40 teams',
         stages: [
             { name: 'Group Stage', capacity: 20, advancementCount: 8 },
@@ -403,33 +403,28 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                     )}
 
                     {sortedStages.length === 0 ? (
-                        <div className="space-y-6">
-                            <div className="text-center py-6">
-                                <Layers className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                                <p className="text-gray-400 mb-1">No stages defined yet.</p>
-                                <p className="text-sm text-gray-500">
-                                    Choose a template below to get started, or add stages manually.
-                                </p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {BR_TEMPLATES.map((t) => (
-                                    <button
-                                        key={t.id}
-                                        onClick={() => handleApplyTemplate(t)}
-                                        disabled={applyingTemplate}
-                                        className="text-left p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group disabled:opacity-50"
-                                    >
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-lg">{t.icon}</span>
-                                            <h4 className="font-semibold text-white text-sm group-hover:text-emerald-300 transition-colors">{t.name}</h4>
-                                        </div>
-                                        <p className="text-xs text-gray-500 mb-3 line-clamp-2">{t.description}</p>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs text-gray-600">{t.teamRange}</span>
-                                            <span className="text-xs text-emerald-500/70">{t.stages.length} {t.stages.length === 1 ? 'stage' : 'stages'}</span>
-                                        </div>
-                                    </button>
-                                ))}
+                        <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-xl">
+                            <Layers className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                            <p className="text-gray-400 mb-1">No stages defined yet.</p>
+                            <p className="text-sm text-gray-500 mb-4">
+                                Use a template for a quick setup, or add stages manually.
+                            </p>
+                            <div className="flex items-center justify-center gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setTemplateDialogOpen(true)}
+                                    className="border-white/10 text-gray-300 hover:text-white"
+                                >
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Browse Templates
+                                </Button>
+                                <Button
+                                    onClick={openAddStageDialog}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                                >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Add Stage
+                                </Button>
                             </div>
                         </div>
                     ) : (
@@ -830,7 +825,6 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-lg">{t.icon}</span>
                                             <h4 className="font-semibold text-white">{t.name}</h4>
                                             <span className="text-xs text-gray-600 ml-auto hidden sm:block">{t.teamRange}</span>
                                         </div>
