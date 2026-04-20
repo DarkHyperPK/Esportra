@@ -1010,13 +1010,22 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 </DialogHeader>
                             </div>
                             <div className="px-6 py-4 space-y-4 max-h-[65vh] overflow-y-auto">
-                                {selectedTemplate.stages.map((s, i) => {
+                                {(() => {
+                                    // Pre-compute teamsIn and groups for each stage cumulatively
+                                    const stageFlows: { teamsIn: number; groups: number }[] = [];
+                                    for (let j = 0; j < selectedTemplate.stages.length; j++) {
+                                        const c = templateConfig[j];
+                                        const tIn = j === 0
+                                            ? registeredTeamCount || 60
+                                            : (templateConfig[j - 1]?.advancement || 4) * (stageFlows[j - 1]?.groups || 1);
+                                        const g = c?.capacity > 0 ? Math.ceil(tIn / c.capacity) : 1;
+                                        stageFlows.push({ teamsIn: tIn, groups: g });
+                                    }
+                                    return selectedTemplate.stages.map((s, i) => {
                                     const isFinalStage = i === selectedTemplate.stages.length - 1;
                                     const cfg = templateConfig[i];
-                                    const teamsIn = i === 0
-                                        ? registeredTeamCount || 60
-                                        : templateConfig[i - 1]?.advancement || 10;
-                                    const groups = cfg?.capacity > 0 ? Math.ceil(teamsIn / cfg.capacity) : 1;
+                                    const teamsIn = stageFlows[i].teamsIn;
+                                    const groups = stageFlows[i].groups;
 
                                     return (
                                         <div key={i} className={`p-4 rounded-xl border ${isFinalStage ? 'border-amber-500/15 bg-amber-500/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
@@ -1049,9 +1058,9 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
-                                                        {groups > 1 && (
-                                                            <p className="text-[10px] text-gray-600">{groups} groups auto-formed</p>
-                                                        )}
+                                                        <p className="text-[10px] text-gray-600">
+                                                            {teamsIn} teams entering → {groups} {groups === 1 ? 'group' : 'groups'}
+                                                        </p>
                                                     </div>
                                                     <div className="space-y-1.5">
                                                         <Label className="text-xs text-gray-500">Advance per Group</Label>
@@ -1072,17 +1081,23 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
-                                                        {groups > 1 && cfg?.advancement && (
-                                                            <p className="text-[10px] text-emerald-500/70">{cfg.advancement * groups} total advance</p>
+                                                        {cfg?.advancement && (
+                                                            <p className="text-[10px] text-emerald-500/70">
+                                                                {cfg.advancement * groups} total advance
+                                                                {groups > 1 && <span className="text-gray-600"> ({cfg.advancement}/grp × {groups})</span>}
+                                                            </p>
                                                         )}
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <p className="text-xs text-gray-500">Receives teams from previous stage. No configuration needed.</p>
+                                                <p className="text-xs text-gray-500">
+                                                    Receives {teamsIn} teams from previous stage. No configuration needed.
+                                                </p>
                                             )}
                                         </div>
                                     );
-                                })}
+                                });
+                                })()}
                             </div>
                             <div className="px-6 py-4 border-t border-white/5 flex items-center gap-3">
                                 <Button variant="ghost" className="text-gray-400" onClick={() => setSelectedTemplate(null)}>
