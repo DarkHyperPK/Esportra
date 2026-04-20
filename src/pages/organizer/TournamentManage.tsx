@@ -85,6 +85,7 @@ import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnoun
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
 import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
+import { GroupManagementTab } from '@/components/organizer/tabs/GroupManagementTab';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import BRGameResults from '@/components/tournament/br/BRGameResults';
 import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
@@ -1690,7 +1691,7 @@ const TournamentDashboard = () => {
                 {(() => {
                   const isBR = isBattleRoyale(tournament?.game || '');
                   const tabs = isBR
-                    ? ['overview', 'participants', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                    ? ['overview', 'participants', 'groups', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
                     : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
                   return tabs.map((tab) => {
                   if (tab === 'brackets') {
@@ -1786,6 +1787,20 @@ const TournamentDashboard = () => {
                       stages={stages}
                       onUpdate={() => refetchDashboard()}
                       game={tournament.game || ''}
+                    />
+                  </TabTransition>
+                </TabsContent>
+              )}
+
+              {/* BR Groups Tab */}
+              {activeTab === 'groups' && isBR && (
+                <TabsContent value="groups" forceMount key="groups">
+                  <TabTransition direction={direction}>
+                    <GroupManagementTab
+                      tournamentId={tournament.id}
+                      stages={stages}
+                      participants={participants}
+                      onUpdate={() => refetchDashboard()}
                     />
                   </TabTransition>
                 </TabsContent>
