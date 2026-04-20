@@ -20,8 +20,6 @@ interface ScoringPreset {
 interface BRStageGroupSectionProps {
   stageId: string;
   stageCapacity: number | null;
-  stageStartsAt: string | null;
-  stageEndsAt: string | null;
   registeredTeamCount: number;
   scoringPreset: ScoringPreset;
   hasNextStage: boolean;
@@ -33,8 +31,6 @@ interface BRStageGroupSectionProps {
 const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   stageId,
   stageCapacity,
-  stageStartsAt,
-  stageEndsAt,
   registeredTeamCount,
   scoringPreset,
   hasNextStage,
@@ -54,8 +50,22 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
+  // Check if ANY group in this stage has rounds (for force-recreate confirmation)
   const { rounds: selectedGroupRounds } = useBRRounds(stageId, selectedGroupId);
-  const hasRounds = selectedGroupRounds.length > 0;
+  const anyGroupHasRounds = useQuery({
+    queryKey: ['br-any-rounds', stageId, groups.map(g => g.id).join(',')],
+    queryFn: async () => {
+      if (groups.length === 0) return false;
+      for (const g of groups) {
+        const rounds = await apiClient.get<any[]>(`/api/stages/${stageId}/br/groups/${g.id}/rounds`);
+        if (rounds.length > 0) return true;
+      }
+      return false;
+    },
+    enabled: groups.length > 0,
+    staleTime: 1000 * 60,
+  });
+  const hasRounds = anyGroupHasRounds.data === true;
 
   // Batch-fetch teams for all groups
   const allGroupTeamsQueries = useQuery({
@@ -150,8 +160,6 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
           groupName={groups.find(g => g.id === selectedGroupId)?.name ?? ''}
           teams={teamsByGroup[selectedGroupId] ?? []}
           scoringPreset={scoringPreset}
-          stageStartsAt={stageStartsAt}
-          stageEndsAt={stageEndsAt}
         />
       )}
 

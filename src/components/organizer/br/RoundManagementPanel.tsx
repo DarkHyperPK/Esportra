@@ -40,8 +40,6 @@ interface RoundManagementPanelProps {
   groupName: string;
   teams: BRGroupTeam[];
   scoringPreset: ScoringPreset;
-  stageStartsAt?: string | null;
-  stageEndsAt?: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -56,8 +54,6 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   groupName,
   teams,
   scoringPreset,
-  stageStartsAt,
-  stageEndsAt,
 }) => {
   const { rounds, isLoading, error, refetch, createRound, updateRound } = useBRRounds(stageId, groupId);
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
@@ -92,28 +88,6 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     }
   };
 
-  const handleScheduleUpdate = async (roundId: string, scheduledAt: string | null) => {
-    try {
-      await updateRound.mutateAsync({ roundId, scheduledAt });
-    } catch {
-      /* toast handled by hook */
-    }
-  };
-
-  const handleAutoSchedule = async () => {
-    if (!stageStartsAt || !stageEndsAt || rounds.length === 0) return;
-    const start = new Date(stageStartsAt).getTime();
-    const end = new Date(stageEndsAt).getTime();
-    if (end <= start) return;
-    const interval = (end - start) / rounds.length;
-    for (let i = 0; i < rounds.length; i++) {
-      const scheduledAt = new Date(start + interval * i).toISOString();
-      try {
-        await updateRound.mutateAsync({ roundId: rounds[i].id, scheduledAt });
-      } catch { /* continue */ }
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -140,28 +114,15 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-white">{groupName} — Rounds</h4>
-        <div className="flex items-center gap-2">
-          {stageStartsAt && stageEndsAt && rounds.length > 0 && (
-            <Button
-              onClick={handleAutoSchedule}
-              disabled={updateRound.isPending}
-              size="sm"
-              className="h-7 text-xs bg-white/5 border border-white/10 text-white hover:bg-white/10"
-            >
-              <Clock className="w-3 h-3 mr-1" />
-              Auto-schedule
-            </Button>
-          )}
-          <Button
-            onClick={handleCreateRound}
-            disabled={createRound.isPending}
-            size="sm"
-            className="h-7 text-xs bg-white/5 border border-white/10 text-white hover:bg-white/10"
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            {createRound.isPending ? 'Creating...' : 'New Round'}
-          </Button>
-        </div>
+        <Button
+          onClick={handleCreateRound}
+          disabled={createRound.isPending}
+          size="sm"
+          className="h-7 text-xs bg-white/5 border border-white/10 text-white hover:bg-white/10"
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          {createRound.isPending ? 'Creating...' : 'New Round'}
+        </Button>
       </div>
 
       {/* Round List */}
@@ -183,7 +144,6 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               onToggle={() => setExpandedRoundId(expandedRoundId === round.id ? null : round.id)}
               onStatusAction={(action) => setConfirmAction({ roundId: round.id, action })}
               onLobbyCodeUpdate={(code) => handleLobbyCodeUpdate(round.id, code)}
-              onScheduleUpdate={(scheduledAt) => handleScheduleUpdate(round.id, scheduledAt)}
               isUpdating={updateRound.isPending}
             />
           ))}
@@ -242,7 +202,6 @@ interface RoundRowProps {
   onToggle: () => void;
   onStatusAction: (action: 'start' | 'complete' | 'reopen') => void;
   onLobbyCodeUpdate: (code: string) => void;
-  onScheduleUpdate: (scheduledAt: string | null) => void;
   isUpdating: boolean;
 }
 
@@ -254,7 +213,6 @@ const RoundRow: React.FC<RoundRowProps> = ({
   onToggle,
   onStatusAction,
   onLobbyCodeUpdate,
-  onScheduleUpdate,
   isUpdating,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRRoundResults(
@@ -309,9 +267,9 @@ const RoundRow: React.FC<RoundRowProps> = ({
       {/* Expanded Content */}
       {isExpanded && (
         <div className="border-t border-white/5 px-4 py-4 space-y-4">
-          {/* Lobby Code + Schedule + Actions Row */}
+          {/* Lobby Code + Actions Row */}
           <div className="flex items-end gap-3 flex-wrap">
-            <div className="flex-1 min-w-[160px] space-y-1">
+            <div className="flex-1 min-w-[200px] space-y-1">
               <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
                 <Key className="w-3 h-3" /> Lobby Code
               </label>
@@ -334,27 +292,6 @@ const RoundRow: React.FC<RoundRowProps> = ({
                   </Button>
                 )}
               </div>
-            </div>
-
-            <div className="min-w-[180px] space-y-1">
-              <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Scheduled
-              </label>
-              <Input
-                type="datetime-local"
-                value={(() => {
-                  if (!round.scheduled_at) return '';
-                  const d = new Date(round.scheduled_at);
-                  const pad = (n: number) => String(n).padStart(2, '0');
-                  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-                })()}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  onScheduleUpdate(val ? new Date(val).toISOString() : null);
-                }}
-                disabled={round.status === 'completed'}
-                className="h-8 text-xs bg-white/5 border-white/10 text-white [color-scheme:dark]"
-              />
             </div>
 
             {/* Status Actions */}

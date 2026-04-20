@@ -208,8 +208,6 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages, sc
                             groupName={selectedGroup.name}
                             teams={groupTeams}
                             scoringPreset={scoringPreset}
-                            stageStartsAt={selectedStage?.starts_at}
-                            stageEndsAt={selectedStage?.ends_at}
                         />
                     </Card>
                 </>
