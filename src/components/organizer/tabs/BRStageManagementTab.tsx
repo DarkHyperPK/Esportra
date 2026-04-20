@@ -122,7 +122,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
     // Template config step
     const [selectedTemplate, setSelectedTemplate] = useState<StageTemplate | null>(null);
-    const [templateConfig, setTemplateConfig] = useState<{ capacity: number; advancement: number }[]>([]);
+    const [templateConfig, setTemplateConfig] = useState<{ capacity: number; advancement: number; groupCount: number }[]>([]);
 
     // Advance teams confirmation
     const [advanceConfirmStageId, setAdvanceConfirmStageId] = useState<string | null>(null);
@@ -319,12 +319,18 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
     const handleSelectTemplate = (template: StageTemplate) => {
         setSelectedTemplate(template);
-        setTemplateConfig(
-            template.stages.map(s => ({
-                capacity: s.capacity ?? 20,
-                advancement: s.advancementCount ?? 0,
-            }))
-        );
+        const configs: { capacity: number; advancement: number; groupCount: number }[] = [];
+        for (let j = 0; j < template.stages.length; j++) {
+            const s = template.stages[j];
+            const cap = s.capacity ?? 20;
+            const adv = s.advancementCount ?? 0;
+            const tIn = j === 0
+                ? registeredTeamCount || 60
+                : (configs[j - 1]?.advancement || 4) * (configs[j - 1]?.groupCount || 1);
+            const groups = cap > 0 ? Math.max(1, Math.ceil(tIn / cap)) : 1;
+            configs.push({ capacity: cap, advancement: adv, groupCount: groups });
+        }
+        setTemplateConfig(configs);
     };
 
     const handleApplyTemplate = async () => {
@@ -349,7 +355,25 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             }));
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
-            toast({ title: 'Template Applied', description: `"${selectedTemplate.name}" — ${selectedTemplate.stages.length} stages created.` });
+
+            // Auto-create groups for each non-final stage
+            try {
+                const freshStages = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/stages`);
+                const sorted = [...freshStages].sort((a, b) => a.stage_order - b.stage_order);
+                for (let i = 0; i < sorted.length - 1; i++) {
+                    const cfg = templateConfig[i];
+                    if (cfg?.groupCount > 0 && cfg?.capacity > 0) {
+                        await apiClient.post(`/api/stages/${sorted[i].id}/br/groups`, {
+                            groupCount: cfg.groupCount,
+                            lobbySize: cfg.capacity,
+                        });
+                    }
+                }
+            } catch {
+                // Non-critical — groups can be created later
+            }
+
+            toast({ title: 'Template Applied', description: `"${selectedTemplate.name}" — ${selectedTemplate.stages.length} stages with groups created.` });
             setTemplateDialogOpen(false);
             setSelectedTemplate(null);
             onUpdate();
@@ -686,80 +710,25 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                 <Trophy className="w-5 h-5 text-amber-400 mx-auto" />
                                                                 <p className="text-[10px] text-amber-400/70 mt-0.5">Final stage</p>
                                                             </div>
-                                                        ) : editingField?.stageId === stage.id && editingField.field === 'advancement' ? (
-                                                            <div className="flex items-center gap-1 justify-center">
-                                                                <Select
-                                                                    value={editValue}
-                                                                    onValueChange={(v) => {
-                                                                        setEditValue(v);
-                                                                        const groups = flow?.groupsFormed || 1;
-                                                                        const perGroup = v !== 'none' ? String(Math.floor(parseInt(v) / groups)) : v;
-                                                                        saveInlineEdit(stage.id, 'advancement', perGroup);
-                                                                    }}
-                                                                >
-                                                                    <SelectTrigger className="h-7 w-32 text-xs">
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="none">Not set</SelectItem>
-                                                                        {(() => {
-                                                                            const g = flow?.groupsFormed || 1;
-                                                                            const maxTeams = flow?.teamsEntering || 100;
-                                                                            if (g <= 1) {
-                                                                                return [2, 4, 6, 8, 10, 12, 16, 20]
-                                                                                    .filter(n => n < maxTeams)
-                                                                                    .map(n => (
-                                                                                        <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>
-                                                                                    ));
-                                                                            }
-                                                                            const options: number[] = [];
-                                                                            for (let i = 1; i <= 20; i++) {
-                                                                                const total = g * i;
-                                                                                if (total >= maxTeams) break;
-                                                                                options.push(total);
-                                                                            }
-                                                                            return options.map(n => (
-                                                                                <SelectItem key={n} value={String(n)}>
-                                                                                    {n} total — {n / g}/grp
-                                                                                </SelectItem>
-                                                                            ));
-                                                                        })()}
-                                                                    </SelectContent>
-                                                                </Select>
+                                                        ) : stage.advancement_count ? (
+                                                            <div>
+                                                                <p className="text-lg font-bold text-white">
+                                                                    {flow?.teamsAdvancing || '—'}
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-600 mt-0.5">
+                                                                    {(flow?.groupsFormed || 1) > 1
+                                                                        ? `${stage.advancement_count}/grp × ${flow?.groupsFormed} grps`
+                                                                        : `top ${stage.advancement_count}`}
+                                                                </p>
                                                             </div>
                                                         ) : (
-                                                            <button
-                                                                className="group/adv w-full"
-                                                                onClick={() => {
-                                                                    const advTotal = stage.advancement_count && flow
-                                                                        ? String(stage.advancement_count * flow.groupsFormed)
-                                                                        : 'none';
-                                                                    startInlineEdit(stage.id, 'advancement', advTotal);
-                                                                }}
-                                                            >
-                                                                {stage.advancement_count ? (
-                                                                    <>
-                                                                        <p className="text-lg font-bold text-white flex items-center justify-center gap-1">
-                                                                            {flow?.teamsAdvancing || '—'}
-                                                                            <Pencil className="w-2.5 h-2.5 text-gray-600 opacity-0 group-hover/adv:opacity-100 transition-opacity" />
-                                                                        </p>
-                                                                        <p className="text-[10px] text-gray-600 mt-0.5">
-                                                                            {(flow?.groupsFormed || 1) > 1
-                                                                                ? `${stage.advancement_count}/grp × ${flow?.groupsFormed} grps`
-                                                                                : `top ${stage.advancement_count}`}
-                                                                        </p>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <p className="text-sm font-medium text-red-400 flex items-center justify-center gap-1">
-                                                                            <AlertTriangle className="w-3 h-3" />
-                                                                            Not set
-                                                                            <Pencil className="w-2.5 h-2.5 text-gray-600 opacity-0 group-hover/adv:opacity-100 transition-opacity" />
-                                                                        </p>
-                                                                        <p className="text-[10px] text-red-400/50 mt-0.5">click to set</p>
-                                                                    </>
-                                                                )}
-                                                            </button>
+                                                            <div>
+                                                                <p className="text-sm font-medium text-amber-400 flex items-center justify-center gap-1">
+                                                                    <AlertTriangle className="w-3 h-3" />
+                                                                    Not set
+                                                                </p>
+                                                                <p className="text-[10px] text-amber-400/50 mt-0.5">configure via template</p>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -794,7 +763,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     onClick={() => setExpandedStageId(isExpanded ? null : stage.id)}
                                                 >
                                                     {isExpanded ? <ChevronDown className="w-3.5 h-3.5 mr-1.5" /> : <ChevronRight className="w-3.5 h-3.5 mr-1.5" />}
-                                                    {isExpanded ? 'Collapse Group Management' : 'Manage Groups & Rounds'}
+                                                    {isExpanded ? 'Collapse' : 'Groups & Rounds'}
                                                 </Button>
 
                                                 {/* Advance Teams Button — simple trigger for non-final stages */}
@@ -828,28 +797,13 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                         </div>
 
                                         {/* Advancement Connector */}
-                                        {!isLast && (
-                                            <div className="flex justify-center py-1.5">
+                                        {!isLast && stage.advancement_count && (
+                                            <div className="flex justify-center py-1">
                                                 <div className="flex flex-col items-center gap-0.5">
                                                     <div className="w-px h-2 bg-emerald-500/20" />
-                                                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 bg-white/[0.02] border border-white/5 px-3 py-1 rounded-full">
-                                                        <ArrowDown className="w-3 h-3 text-emerald-500/50" />
-                                                        {stage.advancement_count ? (
-                                                            <span>
-                                                                <span className="text-emerald-400 font-medium">{flow?.teamsAdvancing || '?'}</span>
-                                                                {' '}teams advance
-                                                                {flow && flow.groupsFormed > 1 && (
-                                                                    <span className="text-gray-600">
-                                                                        {' '}({stage.advancement_count}/grp × {flow.groupsFormed} grps)
-                                                                    </span>
-                                                                )}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-amber-400 flex items-center gap-1">
-                                                                <AlertTriangle className="w-3 h-3" />
-                                                                Set advancement count above
-                                                            </span>
-                                                        )}
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-gray-500 px-2 py-0.5">
+                                                        <ArrowDown className="w-3 h-3 text-emerald-500/40" />
+                                                        <span className="text-emerald-400/60">{flow?.teamsAdvancing || '?'} advance</span>
                                                     </div>
                                                     <div className="w-px h-2 bg-emerald-500/20" />
                                                 </div>
@@ -1011,41 +965,48 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             </div>
                             <div className="px-6 py-4 space-y-4 max-h-[65vh] overflow-y-auto">
                                 {(() => {
-                                    // Pre-compute teamsIn and groups for each stage cumulatively
-                                    const stageFlows: { teamsIn: number; groups: number }[] = [];
-                                    for (let j = 0; j < selectedTemplate.stages.length; j++) {
-                                        const c = templateConfig[j];
-                                        const tIn = j === 0
-                                            ? registeredTeamCount || 60
-                                            : (templateConfig[j - 1]?.advancement || 4) * (stageFlows[j - 1]?.groups || 1);
-                                        const g = c?.capacity > 0 ? Math.ceil(tIn / c.capacity) : 1;
-                                        stageFlows.push({ teamsIn: tIn, groups: g });
-                                    }
                                     return selectedTemplate.stages.map((s, i) => {
                                     const isFinalStage = i === selectedTemplate.stages.length - 1;
                                     const cfg = templateConfig[i];
-                                    const teamsIn = stageFlows[i].teamsIn;
-                                    const groups = stageFlows[i].groups;
+
+                                    // Compute teamsIn cumulatively
+                                    let teamsIn = registeredTeamCount || 60;
+                                    if (i > 0) {
+                                        for (let j = 0; j < i; j++) {
+                                            const prev = templateConfig[j];
+                                            teamsIn = (prev?.advancement || 4) * (prev?.groupCount || 1);
+                                        }
+                                    }
+
+                                    // Auto-recalculate group count when lobby size changes
+                                    const autoGroups = cfg?.capacity > 0 ? Math.max(1, Math.ceil(teamsIn / cfg.capacity)) : 1;
 
                                     return (
                                         <div key={i} className={`p-4 rounded-xl border ${isFinalStage ? 'border-amber-500/15 bg-amber-500/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold ${isFinalStage ? 'bg-amber-500/15 text-amber-400' : 'bg-white/5 text-gray-400'}`}>
-                                                    {i + 1}
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold ${isFinalStage ? 'bg-amber-500/15 text-amber-400' : 'bg-white/5 text-gray-400'}`}>
+                                                        {i + 1}
+                                                    </div>
+                                                    <h4 className="font-semibold text-white text-sm">{s.name}</h4>
+                                                    {isFinalStage && <span className="text-[10px] text-amber-400 uppercase tracking-widest">Finals</span>}
                                                 </div>
-                                                <h4 className="font-semibold text-white text-sm">{s.name}</h4>
-                                                {isFinalStage && <span className="text-[10px] text-amber-400 uppercase tracking-widest">Finals</span>}
+                                                {!isFinalStage && (
+                                                    <span className="text-[10px] text-gray-500">{teamsIn} teams entering</span>
+                                                )}
                                             </div>
 
                                             {!isFinalStage ? (
-                                                <div className="grid grid-cols-2 gap-3">
+                                                <div className="grid grid-cols-3 gap-3">
                                                     <div className="space-y-1.5">
                                                         <Label className="text-xs text-gray-500">Lobby Size</Label>
                                                         <Select
                                                             value={String(cfg?.capacity || 20)}
                                                             onValueChange={(v) => {
                                                                 const next = [...templateConfig];
-                                                                next[i] = { ...next[i], capacity: parseInt(v) };
+                                                                const newCap = parseInt(v);
+                                                                const newGroups = newCap > 0 ? Math.max(1, Math.ceil(teamsIn / newCap)) : 1;
+                                                                next[i] = { ...next[i], capacity: newCap, groupCount: newGroups };
                                                                 setTemplateConfig(next);
                                                             }}
                                                         >
@@ -1058,8 +1019,30 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs text-gray-500">Groups</Label>
+                                                        <Select
+                                                            value={String(cfg?.groupCount || autoGroups)}
+                                                            onValueChange={(v) => {
+                                                                const next = [...templateConfig];
+                                                                next[i] = { ...next[i], groupCount: parseInt(v) };
+                                                                setTemplateConfig(next);
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="h-9 bg-white/5 border-white/10 text-white text-sm">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {Array.from({ length: 20 }, (_, k) => k + 1).map(n => (
+                                                                    <SelectItem key={n} value={String(n)}>
+                                                                        {n} {n === 1 ? 'group' : 'groups'}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
                                                         <p className="text-[10px] text-gray-600">
-                                                            {teamsIn} teams entering → {groups} {groups === 1 ? 'group' : 'groups'}
+                                                            {Math.ceil(teamsIn / (cfg?.groupCount || autoGroups))} teams/group
                                                         </p>
                                                     </div>
                                                     <div className="space-y-1.5">
@@ -1081,12 +1064,9 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
-                                                        {cfg?.advancement && (
-                                                            <p className="text-[10px] text-emerald-500/70">
-                                                                {cfg.advancement * groups} total advance
-                                                                {groups > 1 && <span className="text-gray-600"> ({cfg.advancement}/grp × {groups})</span>}
-                                                            </p>
-                                                        )}
+                                                        <p className="text-[10px] text-emerald-500/70">
+                                                            {(cfg?.advancement || 4) * (cfg?.groupCount || autoGroups)} total advance
+                                                        </p>
                                                     </div>
                                                 </div>
                                             ) : (
