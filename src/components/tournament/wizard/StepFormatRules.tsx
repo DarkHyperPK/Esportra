@@ -413,7 +413,6 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 <SelectValue placeholder="Select max participants" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="0">Unlimited</SelectItem>
                                 <SelectItem value="20">20</SelectItem>
                                 <SelectItem value="30">30</SelectItem>
                                 <SelectItem value="40">40</SelectItem>
@@ -449,6 +448,170 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             Standard for {data.game} is {selectedGame?.formats?.find(f => f.value === selectedGame.defaultFormat)?.teamSize || 1}.
                         </p>
                     </div>
+
+                    {/* ── Multi-Stage Toggle ─────────────────────────────── */}
+                    <div className="space-y-3">
+                        <div className="w-full h-px bg-white/5 my-6" />
+                        <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                            <Layers className="w-4 h-4" />
+                            Tournament Structure
+                        </Label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => updateData({ brMultiStage: false })}
+                                className={cn(
+                                    "p-4 rounded-xl border text-left transition-all",
+                                    !data.brMultiStage
+                                        ? "border-emerald-500 bg-emerald-500/10"
+                                        : "border-white/10 hover:border-white/20 bg-white/[0.02]"
+                                )}
+                            >
+                                <div className="font-semibold text-white text-sm">Single Stage</div>
+                                <div className="text-xs text-gray-400 mt-1">
+                                    All teams in one lobby, standard leaderboard
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const rawLobby = brConfig ? Math.floor(brConfig.playersPerLobby / data.teamSize) : 20;
+                                    const lobbySize = Math.min(rawLobby, 30);
+                                    const updates: Partial<typeof data> = {
+                                        brMultiStage: true,
+                                        brLobbySize: lobbySize,
+                                    };
+                                    // Multi-stage requires a concrete maxTeams
+                                    if (!data.maxTeams || data.maxTeams < 4) {
+                                        updates.maxTeams = 40;
+                                    }
+                                    updateData(updates);
+                                }}
+                                className={cn(
+                                    "p-4 rounded-xl border text-left transition-all",
+                                    data.brMultiStage
+                                        ? "border-emerald-500 bg-emerald-500/10"
+                                        : "border-white/10 hover:border-white/20 bg-white/[0.02]"
+                                )}
+                            >
+                                <div className="font-semibold text-white text-sm">Multi-Stage</div>
+                                <div className="text-xs text-gray-400 mt-1">
+                                    Groups → qualify → Finals (ALGS/PCS/FNCS model)
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ── Multi-Stage Configuration ──────────────────────── */}
+                    {data.brMultiStage && (() => {
+                        const maxTeams = data.maxTeams || 0;
+                        const lobbySize = data.brLobbySize || 20;
+                        const groupCount = maxTeams > 0 ? Math.ceil(maxTeams / lobbySize) : 0;
+                        const totalQualified = data.brAdvancementCount * groupCount;
+                        const overflowFinals = totalQualified > lobbySize;
+                        return (
+                            <div className="space-y-5 p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+                                <div className="text-sm font-semibold text-white flex items-center gap-2">
+                                    <Layers className="w-4 h-4 text-emerald-400" />
+                                    Multi-Stage Configuration
+                                </div>
+
+                                {/* Lobby Size */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-gray-500">Teams per Lobby / Group</Label>
+                                    <Select
+                                        value={String(lobbySize)}
+                                        onValueChange={(v) => updateData({ brLobbySize: parseInt(v) })}
+                                    >
+                                        <SelectTrigger className="w-full font-bold tracking-tight">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {[10, 12, 15, 16, 20, 25, 30].map(n => (
+                                                <SelectItem key={n} value={String(n)}>
+                                                    {n} teams per group
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Auto-calculated Group Count */}
+                                {maxTeams > 0 && (
+                                    <div className="p-3 rounded-lg bg-white/[0.03] border border-white/5">
+                                        <div className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Auto-calculated Groups</div>
+                                        <div className="text-lg font-bold text-white">
+                                            {groupCount} group{groupCount !== 1 ? 's' : ''}{' '}
+                                            <span className="text-sm text-gray-400 font-normal">
+                                                ({maxTeams} teams ÷ {lobbySize} per lobby)
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                                {maxTeams === 0 && (
+                                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                                        Set a max team count above to auto-calculate groups. "Unlimited" is not supported for multi-stage.
+                                    </div>
+                                )}
+
+                                {/* Advancement Count */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-gray-500">Top Teams per Group → Finals</Label>
+                                    <Select
+                                        value={String(data.brAdvancementCount)}
+                                        onValueChange={(v) => updateData({ brAdvancementCount: parseInt(v) })}
+                                    >
+                                        <SelectTrigger className="w-full font-bold tracking-tight">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {[2, 3, 4, 5, 6, 8, 10].map(n => (
+                                                <SelectItem key={n} value={String(n)}>
+                                                    Top {n} per group
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Finals Game Count */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-gray-500">Finals — Number of Rounds</Label>
+                                    <Select
+                                        value={String(data.brFinalsGameCount)}
+                                        onValueChange={(v) => updateData({ brFinalsGameCount: parseInt(v) })}
+                                    >
+                                        <SelectTrigger className="w-full font-bold tracking-tight">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {[3, 4, 5, 6, 7, 8, 9, 10, 12].map(n => (
+                                                <SelectItem key={n} value={String(n)}>
+                                                    {n} games
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Summary + validation */}
+                                {groupCount > 0 && (
+                                    <div className="space-y-2">
+                                        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 space-y-1">
+                                            <div className="font-bold text-sm text-emerald-200">Stage Flow</div>
+                                            <div>Group Stage: {groupCount} groups × {data.brGameCount} rounds → top {data.brAdvancementCount} per group</div>
+                                            <div>Finals: {totalQualified} qualified teams → {data.brFinalsGameCount} rounds → champion</div>
+                                        </div>
+                                        {overflowFinals && (
+                                            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300">
+                                                ⚠ {totalQualified} qualified teams exceeds lobby size of {lobbySize}. Reduce advancement count or increase lobby size.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </>
             ) : (
                 <>
