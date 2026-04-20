@@ -21,6 +21,8 @@ interface GroupCardProps {
   onDelete: () => void;
   isDeleting: boolean;
   isLocked: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
 export const GroupCard: React.FC<GroupCardProps> = ({
@@ -30,6 +32,8 @@ export const GroupCard: React.FC<GroupCardProps> = ({
   onDelete,
   isDeleting,
   isLocked,
+  isSelected = false,
+  onSelect,
 }) => {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const fillPercent = group.lobby_size > 0
@@ -37,8 +41,14 @@ export const GroupCard: React.FC<GroupCardProps> = ({
     : 0;
 
   return (
-    <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl overflow-hidden hover:border-white/10 transition-colors">
-      {/* Header */}
+    <div
+      onClick={onSelect}
+      className={`bg-[#0a0a0c] border rounded-2xl overflow-hidden transition-colors cursor-pointer ${
+        isSelected
+          ? 'border-rose-500/40 ring-1 ring-rose-500/20'
+          : 'border-white/5 hover:border-white/10'
+      }`}
+    >{/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-white">{group.name}</h3>
@@ -60,7 +70,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setConfirmDelete(true)}
+            onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
             disabled={isDeleting}
             className="h-7 w-7 text-zinc-500 hover:text-red-400 hover:bg-red-400/10"
           >

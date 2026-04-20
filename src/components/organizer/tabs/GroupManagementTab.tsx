@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useBRGroups } from '@/hooks/useBRGroups';
+import { useBRRounds } from '@/hooks/useBRRounds';
 import { apiClient } from '@/lib/apiClient';
 import { GroupSetupPanel } from '@/components/organizer/br/GroupSetupPanel';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
+import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
 import {
   Select,
   SelectContent,
@@ -27,16 +29,24 @@ interface Participant {
   status?: string;
 }
 
+interface ScoringPreset {
+  placements: number[];
+  killPoints: number;
+  killCap: number | null;
+}
+
 interface GroupManagementTabProps {
   tournamentId: string;
   stages: TournamentStage[];
   participants: Participant[];
+  scoringPreset: ScoringPreset;
   onUpdate: () => void;
 }
 
 export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
   stages,
   participants,
+  scoringPreset,
   onUpdate,
 }) => {
   const sortedStages = useMemo(
@@ -62,6 +72,17 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
     assignTeams,
     deleteGroup,
   } = useBRGroups(selectedStageId || null);
+
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+
+  // Check if the selected group has rounds for hasRounds lock detection
+  const { rounds: selectedGroupRounds } = useBRRounds(
+    selectedStageId || null,
+    selectedGroupId
+  );
+
+  // Any group having rounds locks group setup modifications
+  const hasRounds = selectedGroupRounds.length > 0;
 
   // Batch-fetch teams for ALL groups in one pass instead of N+1 queries per card
   const allGroupTeamsQueries = useQuery({
@@ -92,9 +113,6 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
     }
     return teamIds.size;
   }, [participants]);
-
-  // Detect if any group has rounds (locks modifications)
-  const hasRounds = false; // Will be enhanced in Phase 3 when rounds are tracked
 
   if (sortedStages.length === 0) {
     return (
@@ -187,10 +205,23 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
                 onDelete={() => deleteGroup.mutate(group.id)}
                 isDeleting={deleteGroup.isPending}
                 isLocked={hasRounds}
+                isSelected={selectedGroupId === group.id}
+                onSelect={() => setSelectedGroupId(selectedGroupId === group.id ? null : group.id)}
               />
             ))}
           </div>
         </div>
+      )}
+
+      {/* Round Management Panel */}
+      {!isLoading && !error && selectedGroupId && groups.some(g => g.id === selectedGroupId) && (
+        <RoundManagementPanel
+          stageId={selectedStageId}
+          groupId={selectedGroupId}
+          groupName={groups.find(g => g.id === selectedGroupId)?.name ?? ''}
+          teams={teamsByGroup[selectedGroupId] ?? []}
+          scoringPreset={scoringPreset}
+        />
       )}
 
       {/* Empty State */}

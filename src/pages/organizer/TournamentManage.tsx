@@ -1800,6 +1800,7 @@ const TournamentDashboard = () => {
                       tournamentId={tournament.id}
                       stages={stages}
                       participants={participants}
+                      scoringPreset={brScoringPreset}
                       onUpdate={() => refetchDashboard()}
                     />
                   </TabTransition>
