@@ -86,6 +86,7 @@ import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnoun
 import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
 import { GroupManagementTab } from '@/components/organizer/tabs/GroupManagementTab';
+import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import BRGameResults from '@/components/tournament/br/BRGameResults';
 import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
@@ -1660,7 +1661,12 @@ const TournamentDashboard = () => {
                   <SelectValue placeholder="Select View" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#09090b] border-white/10 text-white z-[60]">
-                  {['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'].map((tab) => {
+                  {(() => {
+                    const isBRMobile = isBattleRoyale(tournament?.game || '');
+                    const mobileTabs = isBRMobile
+                      ? ['overview', 'participants', 'stages', 'groups', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                      : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
+                    return mobileTabs.map((tab) => {
                     // Filter tabs based on permissions
                     if (tab === 'bans' && !canManageTeams) return null;
                     if (tab === 'disputes' && !canAssistDisputes) return null;
@@ -1673,7 +1679,8 @@ const TournamentDashboard = () => {
                         {tab}
                       </SelectItem>
                     );
-                  })}
+                  });
+                  })()}
                 </SelectContent>
               </Select>
             </div>
@@ -1691,7 +1698,7 @@ const TournamentDashboard = () => {
                 {(() => {
                   const isBR = isBattleRoyale(tournament?.game || '');
                   const tabs = isBR
-                    ? ['overview', 'participants', 'groups', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                    ? ['overview', 'participants', 'stages', 'groups', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
                     : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
                   return tabs.map((tab) => {
                   if (tab === 'brackets') {
@@ -1782,12 +1789,20 @@ const TournamentDashboard = () => {
               {activeTab === 'stages' && (
                 <TabsContent value="stages" forceMount key="stages">
                   <TabTransition direction={direction}>
-                    <StageManagementTab
-                      tournamentId={tournament.id}
-                      stages={stages}
-                      onUpdate={() => refetchDashboard()}
-                      game={tournament.game || ''}
-                    />
+                    {isBR ? (
+                      <BRStageManagementTab
+                        tournamentId={tournament.id}
+                        stages={stages}
+                        onUpdate={() => refetchDashboard()}
+                      />
+                    ) : (
+                      <StageManagementTab
+                        tournamentId={tournament.id}
+                        stages={stages}
+                        onUpdate={() => refetchDashboard()}
+                        game={tournament.game || ''}
+                      />
+                    )}
                   </TabTransition>
                 </TabsContent>
               )}
