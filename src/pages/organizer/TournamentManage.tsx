@@ -1664,7 +1664,7 @@ const TournamentDashboard = () => {
                   {(() => {
                     const isBRMobile = isBattleRoyale(tournament?.game || '');
                     const mobileTabs = isBRMobile
-                      ? ['overview', 'participants', 'stages', 'groups', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                      ? ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
                       : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
                     return mobileTabs.map((tab) => {
                     // Filter tabs based on permissions
@@ -1698,7 +1698,7 @@ const TournamentDashboard = () => {
                 {(() => {
                   const isBR = isBattleRoyale(tournament?.game || '');
                   const tabs = isBR
-                    ? ['overview', 'participants', 'stages', 'groups', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                    ? ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
                     : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
                   return tabs.map((tab) => {
                   if (tab === 'brackets') {
@@ -1793,6 +1793,8 @@ const TournamentDashboard = () => {
                       <BRStageManagementTab
                         tournamentId={tournament.id}
                         stages={stages}
+                        participants={participants}
+                        scoringPreset={brScoringPreset}
                         onUpdate={() => refetchDashboard()}
                       />
                     ) : (
@@ -1803,21 +1805,6 @@ const TournamentDashboard = () => {
                         game={tournament.game || ''}
                       />
                     )}
-                  </TabTransition>
-                </TabsContent>
-              )}
-
-              {/* BR Groups Tab */}
-              {activeTab === 'groups' && isBR && (
-                <TabsContent value="groups" forceMount key="groups">
-                  <TabTransition direction={direction}>
-                    <GroupManagementTab
-                      tournamentId={tournament.id}
-                      stages={stages}
-                      participants={participants}
-                      scoringPreset={brScoringPreset}
-                      onUpdate={() => refetchDashboard()}
-                    />
                   </TabTransition>
                 </TabsContent>
               )}

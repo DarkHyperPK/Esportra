@@ -1,28 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Lock, Users, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
+import BRStageGroupSection from '@/components/organizer/br/BRStageGroupSection';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
+
+interface Participant {
+    team_id?: string | null;
+    status?: string;
+}
+
+interface ScoringPreset {
+    placements: number[];
+    killPoints: number;
+    killCap: number | null;
+}
 
 interface BRStageManagementTabProps {
     tournamentId: string;
     stages: TournamentStage[];
+    participants: Participant[];
+    scoringPreset: ScoringPreset;
     onUpdate: () => void;
 }
 
-export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages, onUpdate }) => {
+export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages, participants, scoringPreset, onUpdate }) => {
     const { toast } = useToast();
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [editingStage, setEditingStage] = useState<string | null>(null);
+    const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
 
     // Add stage form
     const [newName, setNewName] = useState('');
@@ -35,6 +50,16 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const [editAdvancement, setEditAdvancement] = useState<string>('');
 
     const sortedStages = [...stages].sort((a, b) => a.stage_order - b.stage_order);
+
+    const registeredTeamCount = useMemo(() => {
+        const teamIds = new Set<string>();
+        for (const p of participants) {
+            if (p.team_id && (p.status === 'accepted' || p.status === 'approved')) {
+                teamIds.add(p.team_id);
+            }
+        }
+        return teamIds.size;
+    }, [participants]);
 
     const handleAddStage = async () => {
         if (!newName.trim()) return;
@@ -275,6 +300,17 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
+                                                    {/* Expand/Collapse Groups */}
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className={`text-xs ${expandedStageId === stage.id ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' : 'border-white/10'}`}
+                                                        onClick={() => setExpandedStageId(expandedStageId === stage.id ? null : stage.id)}
+                                                    >
+                                                        {expandedStageId === stage.id ? <ChevronDown className="w-3.5 h-3.5 mr-1.5" /> : <ChevronRight className="w-3.5 h-3.5 mr-1.5" />}
+                                                        Manage Groups
+                                                    </Button>
+
                                                     {/* Status Dropdown */}
                                                     <Select
                                                         value={stage.status || 'upcoming'}
@@ -311,6 +347,19 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     </Button>
                                                 </div>
                                             </div>
+                                        )}
+
+                                        {/* Inline Group Management (expanded) */}
+                                        {expandedStageId === stage.id && editingStage !== stage.id && (
+                                            <BRStageGroupSection
+                                                stageId={stage.id}
+                                                registeredTeamCount={registeredTeamCount}
+                                                scoringPreset={scoringPreset}
+                                                hasNextStage={sortedStages.some(s => s.stage_order > stage.stage_order)}
+                                                advancementCount={stage.advancement_count}
+                                                stageStatus={stage.status}
+                                                onUpdate={onUpdate}
+                                            />
                                         )}
                                     </div>
 
