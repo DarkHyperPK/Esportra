@@ -56,8 +56,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 format: 'battle_royale',
                 stageOrder: newOrder,
                 bestOf: 1,
-                capacity: newCapacity ? parseInt(newCapacity) : null,
-                advancementCount: newAdvancement ? parseInt(newAdvancement) : null,
+                capacity: newCapacity && newCapacity !== 'none' ? parseInt(newCapacity) : null,
+                advancementCount: newAdvancement && newAdvancement !== 'none' ? parseInt(newAdvancement) : null,
             });
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
@@ -95,8 +95,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const handleEditStage = (stage: TournamentStage) => {
         setEditingStage(stage.id);
         setEditName(stage.name);
-        setEditCapacity(stage.capacity?.toString() || '');
-        setEditAdvancement(stage.advancement_count?.toString() || '');
+        setEditCapacity(stage.capacity?.toString() || 'none');
+        setEditAdvancement(stage.advancement_count?.toString() || 'none');
     };
 
     const handleSaveEdit = async () => {
@@ -108,8 +108,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 format: s.format || 'battle_royale',
                 stageOrder: s.stage_order,
                 bestOf: 1,
-                capacity: s.id === editingStage ? (editCapacity ? parseInt(editCapacity) : null) : s.capacity,
-                advancementCount: s.id === editingStage ? (editAdvancement ? parseInt(editAdvancement) : null) : s.advancement_count,
+                capacity: s.id === editingStage ? (editCapacity && editCapacity !== 'none' ? parseInt(editCapacity) : null) : s.capacity,
+                advancementCount: s.id === editingStage ? (editAdvancement && editAdvancement !== 'none' ? parseInt(editAdvancement) : null) : s.advancement_count,
             }));
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
@@ -209,7 +209,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                         <Select value={editCapacity} onValueChange={setEditCapacity}>
                                                             <SelectTrigger><SelectValue placeholder="No limit" /></SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="">No limit</SelectItem>
+                                                                <SelectItem value="none">No limit</SelectItem>
                                                                 {[10, 12, 15, 16, 20, 25, 30, 40, 60].map(n => (
                                                                     <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>
                                                                 ))}
@@ -221,7 +221,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                         <Select value={editAdvancement} onValueChange={setEditAdvancement}>
                                                             <SelectTrigger><SelectValue placeholder="None (final stage)" /></SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="">None (final stage)</SelectItem>
+                                                                <SelectItem value="none">None (final stage)</SelectItem>
                                                                 {[2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20].map(n => (
                                                                     <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
                                                                 ))}
@@ -361,7 +361,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             <Select value={newCapacity} onValueChange={setNewCapacity}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">No limit</SelectItem>
+                                    <SelectItem value="none">No limit</SelectItem>
                                     {[10, 12, 15, 16, 20, 25, 30, 40, 60].map(n => (
                                         <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>
                                     ))}
@@ -376,7 +376,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             <Select value={newAdvancement} onValueChange={setNewAdvancement}>
                                 <SelectTrigger><SelectValue placeholder="None (final stage)" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">None (final stage)</SelectItem>
+                                    <SelectItem value="none">None (final stage)</SelectItem>
                                     {[2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20].map(n => (
                                         <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
                                     ))}
