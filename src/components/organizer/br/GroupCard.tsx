@@ -1,13 +1,23 @@
-import React from 'react';
-import { useBRGroupTeams } from '@/hooks/useBRGroups';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Trash2, Users, Lock } from 'lucide-react';
-import type { BRGroup } from '@/types/brGroups';
+import type { BRGroup, BRGroupTeam } from '@/types/brGroups';
 
 interface GroupCardProps {
   group: BRGroup;
-  stageId: string;
+  teams: BRGroupTeam[];
+  teamsLoading: boolean;
   onDelete: () => void;
   isDeleting: boolean;
   isLocked: boolean;
@@ -15,13 +25,16 @@ interface GroupCardProps {
 
 export const GroupCard: React.FC<GroupCardProps> = ({
   group,
-  stageId,
+  teams,
+  teamsLoading,
   onDelete,
   isDeleting,
   isLocked,
 }) => {
-  const { data: teams, isLoading } = useBRGroupTeams(stageId, group.id);
-  const fillPercent = Math.round((group.team_count / group.lobby_size) * 100);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const fillPercent = group.lobby_size > 0
+    ? Math.round((group.team_count / group.lobby_size) * 100)
+    : 0;
 
   return (
     <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl overflow-hidden hover:border-white/10 transition-colors">
@@ -47,7 +60,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={onDelete}
+            onClick={() => setConfirmDelete(true)}
             disabled={isDeleting}
             className="h-7 w-7 text-zinc-500 hover:text-red-400 hover:bg-red-400/10"
           >
@@ -68,13 +81,13 @@ export const GroupCard: React.FC<GroupCardProps> = ({
 
       {/* Team List */}
       <div className="p-4 space-y-1.5 max-h-[240px] overflow-y-auto">
-        {isLoading ? (
+        {teamsLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-7 bg-white/5 rounded-lg animate-pulse" />
             ))}
           </div>
-        ) : teams && teams.length > 0 ? (
+        ) : teams.length > 0 ? (
           teams.map((team) => (
             <div
               key={team.team_id}
@@ -99,6 +112,30 @@ export const GroupCard: React.FC<GroupCardProps> = ({
           <p className="text-xs text-zinc-600 text-center py-4">No teams assigned</p>
         )}
       </div>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent className="bg-[#121214] border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete {group.name}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              This will remove the group and all its team assignments, rounds, and results.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onDelete}
+              className="bg-red-600 hover:bg-red-500"
+            >
+              Delete Group
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

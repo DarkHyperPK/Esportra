@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useBRGroups } from '@/hooks/useBRGroups';
+import { apiClient } from '@/lib/apiClient';
 import { GroupSetupPanel } from '@/components/organizer/br/GroupSetupPanel';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
 import {
@@ -12,6 +14,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, LayoutGrid, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import type { BRGroupTeam } from '@/types/brGroups';
 
 interface TournamentStage {
   id: string;
@@ -43,6 +46,13 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
 
   const [selectedStageId, setSelectedStageId] = useState<string>(sortedStages[0]?.id ?? '');
 
+  // Sync selectedStageId when stages load or change
+  useEffect(() => {
+    if (!selectedStageId && sortedStages.length > 0) {
+      setSelectedStageId(sortedStages[0].id);
+    }
+  }, [sortedStages, selectedStageId]);
+
   const {
     groups,
     isLoading,
@@ -52,6 +62,26 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
     assignTeams,
     deleteGroup,
   } = useBRGroups(selectedStageId || null);
+
+  // Batch-fetch teams for ALL groups in one pass instead of N+1 queries per card
+  const allGroupTeamsQueries = useQuery({
+    queryKey: ['br-group-teams-batch', selectedStageId, groups.map(g => g.id).join(',')],
+    queryFn: async () => {
+      if (groups.length === 0) return {};
+      const results = await Promise.all(
+        groups.map(g =>
+          apiClient.get<BRGroupTeam[]>(`/api/stages/${selectedStageId}/br/groups/${g.id}/teams`)
+            .then(teams => ({ groupId: g.id, teams }))
+        )
+      );
+      const map: Record<string, BRGroupTeam[]> = {};
+      for (const r of results) map[r.groupId] = r.teams;
+      return map;
+    },
+    enabled: !!selectedStageId && groups.length > 0,
+    staleTime: 1000 * 60 * 2,
+  });
+  const teamsByGroup = allGroupTeamsQueries.data ?? {};
 
   const registeredTeamCount = useMemo(() => {
     const teamIds = new Set<string>();
@@ -101,8 +131,12 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
       <GroupSetupPanel
         groups={groups}
         registeredTeamCount={registeredTeamCount}
-        onCreateGroups={async (params) => { await createGroups.mutateAsync(params); onUpdate(); }}
-        onAssignTeams={async (params) => { await assignTeams.mutateAsync(params); onUpdate(); }}
+        onCreateGroups={async (params) => {
+          try { await createGroups.mutateAsync(params); onUpdate(); } catch { /* toast handled by hook */ }
+        }}
+        onAssignTeams={async (params) => {
+          try { await assignTeams.mutateAsync(params); onUpdate(); } catch { /* toast handled by hook */ }
+        }}
         isCreating={createGroups.isPending}
         isAssigning={assignTeams.isPending}
         hasRounds={hasRounds}
@@ -148,7 +182,8 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
               <GroupCard
                 key={group.id}
                 group={group}
-                stageId={selectedStageId}
+                teams={teamsByGroup[group.id] ?? []}
+                teamsLoading={allGroupTeamsQueries.isLoading}
                 onDelete={() => deleteGroup.mutate(group.id)}
                 isDeleting={deleteGroup.isPending}
                 isLocked={hasRounds}

@@ -54,13 +54,19 @@ export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
   const totalAssigned = groups.reduce((sum, g) => sum + g.team_count, 0);
 
   const handleCreate = async (force: boolean = false) => {
-    await onCreateGroups({ groupCount, lobbySize, force });
-    setConfirmRecreate(false);
+    try {
+      await onCreateGroups({ groupCount, lobbySize, force });
+    } finally {
+      setConfirmRecreate(false);
+    }
   };
 
   const handleDistribute = async () => {
-    await onAssignTeams({ method });
-    setConfirmDistribute(false);
+    try {
+      await onAssignTeams({ method });
+    } finally {
+      setConfirmDistribute(false);
+    }
   };
 
   return (
