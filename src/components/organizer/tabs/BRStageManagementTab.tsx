@@ -350,23 +350,25 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             Configure the tournament progression. Click any value to edit it inline.
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setTemplateDialogOpen(true)}
-                            className="border-white/10 text-gray-300 hover:text-white flex items-center gap-2"
-                        >
-                            <FileText className="w-4 h-4" />
-                            Templates
-                        </Button>
-                        <Button
-                            onClick={openAddStageDialog}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Add Stage
-                        </Button>
-                    </div>
+                    {sortedStages.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setTemplateDialogOpen(true)}
+                                className="border-white/10 text-gray-300 hover:text-white flex items-center gap-2"
+                            >
+                                <FileText className="w-4 h-4" />
+                                Templates
+                            </Button>
+                            <Button
+                                onClick={openAddStageDialog}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Add Stage
+                            </Button>
+                        </div>
+                    )}
                 </CardHeader>
 
                 <CardContent className="p-0">
