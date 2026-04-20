@@ -7,11 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, FileText, Hash, LogOut, LogIn, Pencil, Check, X, RotateCcw } from 'lucide-react';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, ApiError } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import BRStageGroupSection from '@/components/organizer/br/BRStageGroupSection';
-import AdvanceTeamsPanel from '@/components/organizer/br/AdvanceTeamsPanel';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
@@ -115,11 +114,18 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
-    const [advanceStageId, setAdvanceStageId] = useState<string | null>(null);
     const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
     const [applyingTemplate, setApplyingTemplate] = useState(false);
     const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
+
+    // Template config step
+    const [selectedTemplate, setSelectedTemplate] = useState<StageTemplate | null>(null);
+    const [templateConfig, setTemplateConfig] = useState<{ capacity: number; advancement: number }[]>([]);
+
+    // Advance teams confirmation
+    const [advanceConfirmStageId, setAdvanceConfirmStageId] = useState<string | null>(null);
+    const [isAdvancing, setIsAdvancing] = useState(false);
 
     // Inline editing state
     const [editingField, setEditingField] = useState<{ stageId: string; field: 'name' | 'capacity' | 'advancement' } | null>(null);
@@ -299,7 +305,18 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         }
     };
 
-    const handleApplyTemplate = async (template: StageTemplate) => {
+    const handleSelectTemplate = (template: StageTemplate) => {
+        setSelectedTemplate(template);
+        setTemplateConfig(
+            template.stages.map(s => ({
+                capacity: s.capacity ?? 20,
+                advancement: s.advancementCount ?? 0,
+            }))
+        );
+    };
+
+    const handleApplyTemplate = async () => {
+        if (!selectedTemplate) return;
         setApplyingTemplate(true);
         try {
             if (stages.length > 0) {
@@ -307,24 +324,44 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                     deleteIds: stages.map(s => s.id),
                 });
             }
-            const stageDtos = template.stages.map((ts, i) => ({
+            const stageDtos = selectedTemplate.stages.map((ts, i) => ({
                 id: null as any,
                 name: ts.name,
                 format: 'battle_royale',
                 stageOrder: i + 1,
                 bestOf: 1,
-                capacity: ts.capacity,
-                advancementCount: ts.advancementCount,
+                capacity: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.capacity || null : null,
+                advancementCount: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.advancement || null : null,
             }));
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
-            toast({ title: 'Template Applied', description: `"${template.name}" — ${template.stages.length} stages created.` });
+            toast({ title: 'Template Applied', description: `"${selectedTemplate.name}" — ${selectedTemplate.stages.length} stages created.` });
             setTemplateDialogOpen(false);
+            setSelectedTemplate(null);
             onUpdate();
         } catch (error: any) {
             toast({ title: 'Error', description: error.message || 'Failed to apply template', variant: 'destructive' });
         } finally {
             setApplyingTemplate(false);
+        }
+    };
+
+    const handleAdvanceTeams = async (stageId: string, advancementCount: number) => {
+        setIsAdvancing(true);
+        try {
+            const data = await apiClient.post<{ advanced: number; to_stage: string }>(
+                `/api/stages/${stageId}/br/advance?preview=false`,
+                { teamsPerGroup: advancementCount }
+            );
+            toast({ title: `${data.advanced} teams advanced to ${data.to_stage}` });
+            setAdvanceConfirmStageId(null);
+            onUpdate();
+        } catch (error: any) {
+            const msg = error instanceof ApiError && typeof error.body === 'object' && error.body?.error
+                ? error.body.error : error.message;
+            toast({ title: 'Advancement failed', description: msg, variant: 'destructive' });
+        } finally {
+            setIsAdvancing(false);
         }
     };
 
@@ -728,19 +765,15 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     {isExpanded ? 'Collapse Group Management' : 'Manage Groups & Rounds'}
                                                 </Button>
 
-                                                {/* Advance Teams Button — only for non-final stages with advancement configured */}
+                                                {/* Advance Teams Button — simple trigger for non-final stages */}
                                                 {!isLast && stage.advancement_count && (
                                                     <Button
                                                         size="sm"
-                                                        className={`w-full text-xs ${
-                                                            advanceStageId === stage.id
-                                                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                                                                : 'bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/20'
-                                                        }`}
-                                                        onClick={() => setAdvanceStageId(advanceStageId === stage.id ? null : stage.id)}
+                                                        className="w-full text-xs bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all"
+                                                        onClick={() => setAdvanceConfirmStageId(stage.id)}
                                                     >
                                                         <ArrowRight className="w-3.5 h-3.5 mr-1.5" />
-                                                        {advanceStageId === stage.id ? 'Hide Advancement' : `Advance Top ${flow?.teamsAdvancing || '?'} Teams`}
+                                                        Advance Top {flow?.teamsAdvancing || '?'} Teams
                                                     </Button>
                                                 )}
                                             </div>
@@ -757,20 +790,6 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                         advancementCount={stage.advancement_count}
                                                         stageStatus={stage.status}
                                                         onUpdate={onUpdate}
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {/* Inline Advance Teams Panel */}
-                                            {advanceStageId === stage.id && !isLast && stage.advancement_count && (
-                                                <div className="mt-4 pt-4 border-t border-emerald-500/10">
-                                                    <AdvanceTeamsPanel
-                                                        stageId={stage.id}
-                                                        advancementCount={stage.advancement_count}
-                                                        onAdvanced={() => {
-                                                            setAdvanceStageId(null);
-                                                            onUpdate();
-                                                        }}
                                                     />
                                                 </div>
                                             )}
@@ -906,68 +925,184 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 </DialogContent>
             </Dialog>
 
-            {/* Template Picker Dialog */}
-            <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+            {/* Template Picker Dialog — two-step: browse → configure → apply */}
+            <Dialog open={templateDialogOpen} onOpenChange={(open) => {
+                setTemplateDialogOpen(open);
+                if (!open) setSelectedTemplate(null);
+            }}>
                 <DialogContent className="bg-[#0a0a0c] border-white/10 max-w-2xl p-0 overflow-hidden">
-                    <div className="px-6 pt-6 pb-4 border-b border-white/5">
-                        <DialogHeader>
-                            <DialogTitle className="text-lg font-semibold text-white">
-                                Stage Templates
-                            </DialogTitle>
-                            <DialogDescription className="text-gray-500 text-sm">
-                                {stages.length > 0
-                                    ? 'Applying a template will replace all existing stages.'
-                                    : 'Select a structure that fits your tournament size.'}
-                            </DialogDescription>
-                        </DialogHeader>
-                    </div>
-                    <div className="px-6 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
-                        {BR_TEMPLATES.map((t) => (
-                            <button
-                                key={t.id}
-                                onClick={() => handleApplyTemplate(t)}
-                                disabled={applyingTemplate}
-                                className="w-full text-left p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-emerald-500/30 hover:bg-emerald-500/[0.04] transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <div className="flex items-center justify-between mb-2.5">
-                                    <h4 className="font-semibold text-white text-sm group-hover:text-emerald-300 transition-colors">
-                                        {t.name}
-                                    </h4>
-                                    <span className="text-[10px] uppercase tracking-widest text-gray-600 font-medium bg-white/[0.03] px-2 py-0.5 rounded">
-                                        {t.teamRange}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-gray-500 mb-3 leading-relaxed">{t.description}</p>
-                                {/* Stage flow visualization */}
-                                <div className="flex items-center gap-0 overflow-x-auto pb-1">
-                                    {t.stages.map((s, i) => {
-                                        const isLast = i === t.stages.length - 1;
-                                        return (
-                                            <React.Fragment key={i}>
-                                                <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg px-2.5 py-1.5 flex-shrink-0">
-                                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                                                        isLast ? 'bg-amber-400' : 'bg-emerald-400/60'
-                                                    }`} />
-                                                    <span className="text-[11px] text-gray-300 font-medium whitespace-nowrap">{s.name}</span>
-                                                    {s.capacity && (
-                                                        <span className="text-[10px] text-gray-600 font-mono">{s.capacity}</span>
-                                                    )}
-                                                    {s.advancementCount && (
-                                                        <span className="text-[9px] text-emerald-500/70 font-mono">→{s.advancementCount}</span>
-                                                    )}
+                    {!selectedTemplate ? (
+                        <>
+                            <div className="px-6 pt-6 pb-4 border-b border-white/5">
+                                <DialogHeader>
+                                    <DialogTitle className="text-lg font-semibold text-white">
+                                        Stage Templates
+                                    </DialogTitle>
+                                    <DialogDescription className="text-gray-500 text-sm">
+                                        {stages.length > 0
+                                            ? 'Applying a template will replace all existing stages.'
+                                            : 'Select a structure that fits your tournament size.'}
+                                    </DialogDescription>
+                                </DialogHeader>
+                            </div>
+                            <div className="px-6 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
+                                {BR_TEMPLATES.map((t) => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => handleSelectTemplate(t)}
+                                        className="w-full text-left p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-emerald-500/30 hover:bg-emerald-500/[0.04] transition-all group"
+                                    >
+                                        <div className="flex items-center justify-between mb-2.5">
+                                            <h4 className="font-semibold text-white text-sm group-hover:text-emerald-300 transition-colors">
+                                                {t.name}
+                                            </h4>
+                                            <span className="text-[10px] uppercase tracking-widest text-gray-600 font-medium bg-white/[0.03] px-2 py-0.5 rounded">
+                                                {t.teamRange}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 leading-relaxed">{t.description}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="px-6 pt-6 pb-4 border-b border-white/5">
+                                <DialogHeader>
+                                    <DialogTitle className="text-lg font-semibold text-white">
+                                        Configure — {selectedTemplate.name}
+                                    </DialogTitle>
+                                    <DialogDescription className="text-gray-500 text-sm">
+                                        Adjust lobby size and advancement for each stage. {registeredTeamCount > 0 ? `${registeredTeamCount} teams registered.` : ''}
+                                    </DialogDescription>
+                                </DialogHeader>
+                            </div>
+                            <div className="px-6 py-4 space-y-4 max-h-[65vh] overflow-y-auto">
+                                {selectedTemplate.stages.map((s, i) => {
+                                    const isFinalStage = i === selectedTemplate.stages.length - 1;
+                                    const cfg = templateConfig[i];
+                                    const teamsIn = i === 0
+                                        ? registeredTeamCount || 60
+                                        : templateConfig[i - 1]?.advancement || 10;
+                                    const groups = cfg?.capacity > 0 ? Math.ceil(teamsIn / cfg.capacity) : 1;
+
+                                    return (
+                                        <div key={i} className={`p-4 rounded-xl border ${isFinalStage ? 'border-amber-500/15 bg-amber-500/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold ${isFinalStage ? 'bg-amber-500/15 text-amber-400' : 'bg-white/5 text-gray-400'}`}>
+                                                    {i + 1}
                                                 </div>
-                                                {!isLast && (
-                                                    <div className="w-4 h-px bg-gradient-to-r from-emerald-500/30 to-emerald-500/10 flex-shrink-0" />
-                                                )}
-                                            </React.Fragment>
-                                        );
-                                    })}
-                                </div>
-                            </button>
-                        ))}
-                    </div>
+                                                <h4 className="font-semibold text-white text-sm">{s.name}</h4>
+                                                {isFinalStage && <span className="text-[10px] text-amber-400 uppercase tracking-widest">Finals</span>}
+                                            </div>
+
+                                            {!isFinalStage ? (
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs text-gray-500">Lobby Size</Label>
+                                                        <Select
+                                                            value={String(cfg?.capacity || 20)}
+                                                            onValueChange={(v) => {
+                                                                const next = [...templateConfig];
+                                                                next[i] = { ...next[i], capacity: parseInt(v) };
+                                                                setTemplateConfig(next);
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="h-9 bg-white/5 border-white/10 text-white text-sm">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {[10, 12, 15, 16, 20, 25, 30, 40, 60].map(n => (
+                                                                    <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        {groups > 1 && (
+                                                            <p className="text-[10px] text-gray-600">{groups} groups auto-formed</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs text-gray-500">Advance per Group</Label>
+                                                        <Select
+                                                            value={String(cfg?.advancement || 4)}
+                                                            onValueChange={(v) => {
+                                                                const next = [...templateConfig];
+                                                                next[i] = { ...next[i], advancement: parseInt(v) };
+                                                                setTemplateConfig(next);
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="h-9 bg-white/5 border-white/10 text-white text-sm">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {[1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20].map(n => (
+                                                                    <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        {groups > 1 && cfg?.advancement && (
+                                                            <p className="text-[10px] text-emerald-500/70">{cfg.advancement * groups} total advance</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-gray-500">Receives teams from previous stage. No configuration needed.</p>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="px-6 py-4 border-t border-white/5 flex items-center gap-3">
+                                <Button variant="ghost" className="text-gray-400" onClick={() => setSelectedTemplate(null)}>
+                                    Back
+                                </Button>
+                                <Button
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white"
+                                    onClick={handleApplyTemplate}
+                                    disabled={applyingTemplate}
+                                >
+                                    {applyingTemplate ? 'Applying...' : `Apply ${selectedTemplate.stages.length} Stages`}
+                                </Button>
+                            </div>
+                        </>
+                    )}
                 </DialogContent>
             </Dialog>
+
+            {/* Advance Teams Confirmation */}
+            <AlertDialog open={!!advanceConfirmStageId} onOpenChange={() => setAdvanceConfirmStageId(null)}>
+                <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white flex items-center gap-2">
+                            <ArrowRight className="w-5 h-5 text-emerald-400" />
+                            Advance Teams
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                            {(() => {
+                                const stage = sortedStages.find(s => s.id === advanceConfirmStageId);
+                                const flow = stage ? stageFlows.get(stage.id) : null;
+                                if (!stage) return '';
+                                return `This will advance the top ${flow?.teamsAdvancing || '?'} teams (${stage.advancement_count}/group) from "${stage.name}" to the next stage. This stage will be marked as completed.`;
+                            })()}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            disabled={isAdvancing}
+                            onClick={() => {
+                                const stage = sortedStages.find(s => s.id === advanceConfirmStageId);
+                                if (stage?.advancement_count && advanceConfirmStageId) {
+                                    handleAdvanceTeams(advanceConfirmStageId, stage.advancement_count);
+                                }
+                            }}
+                        >
+                            {isAdvancing ? 'Advancing...' : 'Advance Teams'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Reset All Stages Confirmation */}
             <AlertDialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
