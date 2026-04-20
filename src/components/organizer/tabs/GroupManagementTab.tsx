@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/apiClient';
 import { GroupSetupPanel } from '@/components/organizer/br/GroupSetupPanel';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
 import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
+import AdvanceTeamsPanel from '@/components/organizer/br/AdvanceTeamsPanel';
 import {
   Select,
   SelectContent,
@@ -22,6 +23,8 @@ interface TournamentStage {
   id: string;
   name: string;
   stage_order: number;
+  advancement_count?: number;
+  status?: string;
 }
 
 interface Participant {
@@ -223,6 +226,20 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
           scoringPreset={scoringPreset}
         />
       )}
+
+      {/* Stage Advancement Panel */}
+      {!isLoading && !error && groups.length > 0 && (() => {
+        const currentStage = sortedStages.find(s => s.id === selectedStageId);
+        const hasNextStage = currentStage && sortedStages.some(s => s.stage_order > currentStage.stage_order);
+        const advCount = currentStage?.advancement_count ?? 4;
+        return hasNextStage && currentStage?.status !== 'completed' ? (
+          <AdvanceTeamsPanel
+            stageId={selectedStageId}
+            advancementCount={advCount}
+            onAdvanced={onUpdate}
+          />
+        ) : null;
+      })()}
 
       {/* Empty State */}
       {!isLoading && !error && groups.length === 0 && selectedStageId && (
