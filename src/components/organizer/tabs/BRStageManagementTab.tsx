@@ -33,6 +33,8 @@ interface StageTemplate {
     description: string;
     icon: string;
     teamRange: string;
+    minTeams: number;
+    maxTeams: number;
     stages: { name: string; capacity: number | null; advancementCount: number | null }[];
 }
 
@@ -43,6 +45,8 @@ const BR_TEMPLATES: StageTemplate[] = [
         description: '2-stage format. All teams compete in qualifiers, top performers advance to a single finals lobby.',
         icon: '',
         teamRange: '20–60 teams',
+        minTeams: 20,
+        maxTeams: 60,
         stages: [
             { name: 'Qualifiers', capacity: 20, advancementCount: 10 },
             { name: 'Grand Finals', capacity: null, advancementCount: null },
@@ -54,6 +58,8 @@ const BR_TEMPLATES: StageTemplate[] = [
         description: '3-stage progression. Large pool narrows through semi-finals into a single finals lobby.',
         icon: '',
         teamRange: '40–100 teams',
+        minTeams: 40,
+        maxTeams: 100,
         stages: [
             { name: 'Group Stage', capacity: 20, advancementCount: 10 },
             { name: 'Semi-Finals', capacity: 20, advancementCount: 10 },
@@ -66,6 +72,8 @@ const BR_TEMPLATES: StageTemplate[] = [
         description: 'Open → Quarter → Semi → Finals. Best for large-scale tournaments with high team counts.',
         icon: '',
         teamRange: '80–200 teams',
+        minTeams: 80,
+        maxTeams: 200,
         stages: [
             { name: 'Open Qualifiers', capacity: 20, advancementCount: 12 },
             { name: 'Quarter-Finals', capacity: 20, advancementCount: 10 },
@@ -79,6 +87,8 @@ const BR_TEMPLATES: StageTemplate[] = [
         description: 'All teams in one lobby. Best for small events with 20 teams or fewer. No advancement needed.',
         icon: '',
         teamRange: '4–20 teams',
+        minTeams: 4,
+        maxTeams: 20,
         stages: [
             { name: 'Main Event', capacity: null, advancementCount: null },
         ],
@@ -89,6 +99,8 @@ const BR_TEMPLATES: StageTemplate[] = [
         description: '2 parallel groups compete separately, top teams from each merge into one finals lobby.',
         icon: '',
         teamRange: '30–40 teams',
+        minTeams: 30,
+        maxTeams: 40,
         stages: [
             { name: 'Group Stage', capacity: 20, advancementCount: 8 },
             { name: 'Grand Finals', capacity: null, advancementCount: null },
@@ -101,6 +113,7 @@ interface StageFlowInfo {
     groupsFormed: number;
     teamsAdvancing: number | null;
     isFinal: boolean;
+    isConfigured: boolean;
 }
 
 interface BRStageManagementTabProps {
@@ -141,8 +154,10 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
     // Add stage form
     const [newName, setNewName] = useState('');
-    const [newCapacity, setNewCapacity] = useState<string>('20');
-    const [newAdvancement, setNewAdvancement] = useState<string>('none');
+    const [newGroupCount, setNewGroupCount] = useState<number>(1);
+    const [newAdvancement, setNewAdvancement] = useState<number>(1);
+    const [newIsFinal, setNewIsFinal] = useState<boolean>(false);
+    const [addStageErrors, setAddStageErrors] = useState<string[]>([]);
 
     const sortedStages = useMemo(() => [...stages].sort((a, b) => a.stage_order - b.stage_order), [stages]);
 
@@ -223,13 +238,23 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         for (let i = 0; i < sortedStages.length; i++) {
             const stage = sortedStages[i];
             const isFinal = i === sortedStages.length - 1;
-            const cap = stage.capacity || teamsEntering;
-            const groupsFormed = cap > 0 ? Math.ceil(teamsEntering / cap) : 1;
-            const advPerGroup = stage.advancement_count || null;
-            const teamsAdvancing = advPerGroup && !isFinal ? advPerGroup * groupsFormed : null;
+            // groupsFormed: if no capacity set, it's a single lobby (1 group)
+            const groupsFormed = stage.capacity && stage.capacity > 0
+                ? Math.ceil(teamsEntering / stage.capacity)
+                : 1;
+            const advPerGroup = stage.advancement_count ?? null;
+            const teamsAdvancing = advPerGroup != null && !isFinal ? advPerGroup * groupsFormed : null;
+            // isConfigured: finals always configured; non-finals need advancement_count set
+            const isConfigured = isFinal ? true : stage.advancement_count != null;
 
-            flows.set(stage.id, { teamsEntering, groupsFormed, isFinal, teamsAdvancing });
-            teamsEntering = teamsAdvancing || teamsEntering;
+            flows.set(stage.id, { teamsEntering, groupsFormed, isFinal, teamsAdvancing, isConfigured });
+
+            // FIX 1: null advancement → 0 (unconfigured), not carried forward stale count
+            if (isFinal) {
+                teamsEntering = 0; // doesn't matter — no next stage
+            } else {
+                teamsEntering = teamsAdvancing ?? 0; // null → 0, not carried forward
+            }
         }
         return flows;
     }, [sortedStages, registeredTeamCount]);
@@ -268,6 +293,29 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
     const handleAddStage = async () => {
         if (!newName.trim()) return;
+
+        // Derive incomingTeams for validation
+        const incomingTeams = addStageContext?.incomingTeams ?? registeredTeamCount;
+        const lobbySize = newIsFinal ? null : (newGroupCount > 0 && incomingTeams > 0 ? Math.ceil(incomingTeams / newGroupCount) : null);
+
+        // FIX 10 — Validate before saving
+        const errs: string[] = [];
+        if (!newIsFinal) {
+            if (newGroupCount < 1) errs.push('Group count must be at least 1.');
+            if (newAdvancement < 1) errs.push('Advance per group must be at least 1.');
+            if (lobbySize != null && newAdvancement >= lobbySize) {
+                errs.push(`Advance per group (${newAdvancement}) must be less than lobby size (${lobbySize}) — at least 1 team must be eliminated.`);
+            }
+            if (maxLobbySize && lobbySize != null && lobbySize > maxLobbySize) {
+                errs.push(`Lobby size ${lobbySize} exceeds game max of ${maxLobbySize}. Add more groups.`);
+            }
+        }
+        if (errs.length > 0) {
+            setAddStageErrors(errs);
+            return;
+        }
+        setAddStageErrors([]);
+
         try {
             const newOrder = stages.length + 1;
             const stageDtos = stages.map(s => ({
@@ -288,18 +336,38 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 format: 'battle_royale',
                 stageOrder: newOrder,
                 bestOf: 1,
-                capacity: newCapacity && newCapacity !== 'none' ? parseInt(newCapacity) : null,
-                advancementCount: newAdvancement && newAdvancement !== 'none' ? parseInt(newAdvancement) : null,
+                capacity: newIsFinal ? null : lobbySize,
+                advancementCount: newIsFinal ? null : newAdvancement,
                 startsAt: null,
                 endsAt: null,
             });
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
+
+            // Auto-create groups for non-final stages
+            if (!newIsFinal && newGroupCount > 0 && lobbySize != null) {
+                try {
+                    const freshStages = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/stages`);
+                    const sorted = [...freshStages].sort((a: any, b: any) => a.stage_order - b.stage_order);
+                    const newStage = sorted[sorted.length - 1];
+                    if (newStage) {
+                        await apiClient.post(`/api/stages/${newStage.id}/br/groups`, {
+                            groupCount: newGroupCount,
+                            lobbySize,
+                        });
+                    }
+                } catch {
+                    // Non-critical — groups can be created later
+                }
+            }
+
             toast({ title: 'Stage added', description: `${newName} has been added.` });
             setAddDialogOpen(false);
             setNewName('');
-            setNewCapacity('20');
-            setNewAdvancement('none');
+            setNewGroupCount(1);
+            setNewAdvancement(1);
+            setNewIsFinal(false);
+            setAddStageErrors([]);
             onUpdate();
         } catch (error: any) {
             toast({ title: 'Error', description: error.message || 'Failed to add stage', variant: 'destructive' });
@@ -472,18 +540,24 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
     // Pre-fill add stage dialog from previous stage's output
     const openAddStageDialog = () => {
-        if (sortedStages.length > 0) {
-            const lastStage = sortedStages[sortedStages.length - 1];
-            const lastFlow = stageFlows.get(lastStage.id);
-            const teamsReceiving = lastFlow?.teamsAdvancing || lastFlow?.teamsEntering || registeredTeamCount;
-            setNewCapacity(teamsReceiving <= 30 ? 'none' : '20');
-            setNewAdvancement('none');
-            setNewName(sortedStages.length === 1 ? 'Grand Finals' : `Stage ${sortedStages.length + 1}`);
-        } else {
-            setNewName('Group Stage');
-            setNewCapacity('20');
-            setNewAdvancement('none');
-        }
+        const incomingTeams = sortedStages.length > 0
+            ? (stageFlows.get(sortedStages[sortedStages.length - 1].id)?.teamsAdvancing ?? 0)
+            : registeredTeamCount;
+
+        // Default groups: split into multiple if exceeds max lobby size
+        const defaultGroups = maxLobbySize && incomingTeams > maxLobbySize
+            ? Math.ceil(incomingTeams / maxLobbySize)
+            : 1;
+        const defaultLobbySize = defaultGroups > 0 && incomingTeams > 0
+            ? Math.ceil(incomingTeams / defaultGroups)
+            : incomingTeams;
+        const defaultAdv = Math.max(1, Math.floor(defaultLobbySize / 2));
+
+        setNewName(sortedStages.length === 0 ? 'Group Stage' : sortedStages.length === 1 ? 'Grand Finals' : `Stage ${sortedStages.length + 1}`);
+        setNewGroupCount(defaultGroups);
+        setNewAdvancement(defaultAdv);
+        setNewIsFinal(sortedStages.length >= 1 && (stageFlows.get(sortedStages[sortedStages.length - 1].id)?.teamsAdvancing ?? 0) === 0 ? false : sortedStages.length === 1);
+        setAddStageErrors([]);
         setAddDialogOpen(true);
     };
 
@@ -494,14 +568,16 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
     // Context info for the add stage dialog
     const addStageContext = useMemo(() => {
-        if (sortedStages.length === 0) return null;
+        if (sortedStages.length === 0) {
+            return { fromStageName: null, incomingTeams: registeredTeamCount };
+        }
         const lastStage = sortedStages[sortedStages.length - 1];
         const lastFlow = stageFlows.get(lastStage.id);
         return {
             fromStageName: lastStage.name,
-            teamsReceiving: lastFlow?.teamsAdvancing || lastFlow?.teamsEntering || 0,
+            incomingTeams: lastFlow?.teamsAdvancing ?? 0,
         };
-    }, [sortedStages, stageFlows]);
+    }, [sortedStages, stageFlows, registeredTeamCount]);
 
     return (
         <>
@@ -785,6 +861,16 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     </div>
                                                 </div>
 
+                                                {/* FIX 3 — Not configured warning banner for non-final stages */}
+                                                {!isLast && !flow?.isConfigured && (
+                                                    <div className="flex items-start gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/25 rounded-lg">
+                                                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                                                        <p className="text-xs text-amber-300 leading-snug">
+                                                            <strong>Stage not ready</strong> — advancement count is not set. Configure via Templates or set it manually.
+                                                        </p>
+                                                    </div>
+                                                )}
+
                                                 {/* Schedule summary + button */}
                                                 <button
                                                     onClick={() => setScheduleStageId(stage.id)}
@@ -818,15 +904,15 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     {isExpanded ? 'Collapse' : 'Groups & Rounds'}
                                                 </Button>
 
-                                                {/* Advance Teams Button — simple trigger for non-final stages */}
-                                                {!isLast && stage.advancement_count && (
+                                                {/* Advance Teams Button — only show when stage is fully configured */}
+                                                {!isLast && flow?.isConfigured && flow?.teamsAdvancing != null && flow.teamsAdvancing > 0 && (
                                                     <Button
                                                         size="sm"
                                                         className="w-full text-xs bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all"
                                                         onClick={() => setAdvanceConfirmStageId(stage.id)}
                                                     >
                                                         <ArrowRight className="w-3.5 h-3.5 mr-1.5" />
-                                                        Advance Top {flow?.teamsAdvancing || '?'} Teams
+                                                        Advance Top {flow.teamsAdvancing} Teams
                                                     </Button>
                                                 )}
                                             </div>
@@ -849,13 +935,20 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                         </div>
 
                                         {/* Advancement Connector */}
-                                        {!isLast && stage.advancement_count && (
+                                        {!isLast && (
                                             <div className="flex justify-center py-1">
                                                 <div className="flex flex-col items-center gap-0.5">
                                                     <div className="w-px h-2 bg-emerald-500/20" />
                                                     <div className="flex items-center gap-1.5 text-[10px] text-gray-500 px-2 py-0.5">
                                                         <ArrowDown className="w-3 h-3 text-emerald-500/40" />
-                                                        <span className="text-emerald-400/60">{flow?.teamsAdvancing || '?'} advance</span>
+                                                        {flow?.teamsAdvancing != null && flow.teamsAdvancing > 0 ? (
+                                                            <span className="text-emerald-400/60">{flow.teamsAdvancing} advance</span>
+                                                        ) : (
+                                                            <span className="text-amber-500/70 flex items-center gap-1">
+                                                                <AlertTriangle className="w-2.5 h-2.5" />
+                                                                — not configured
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div className="w-px h-2 bg-emerald-500/20" />
                                                 </div>
@@ -869,76 +962,168 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 </CardContent>
             </Card>
 
-            {/* Add Stage Dialog */}
-            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            {/* Add Stage Dialog — groups-first, dynamic & validated */}
+            <Dialog open={addDialogOpen} onOpenChange={(open) => { setAddDialogOpen(open); if (!open) setAddStageErrors([]); }}>
                 <DialogContent className="bg-[#0a0a0c] border-white/10">
                     <DialogHeader>
                         <DialogTitle>Add Stage</DialogTitle>
                         <DialogDescription>
-                            {addStageContext
+                            {addStageContext?.fromStageName
                                 ? `This stage will receive teams advancing from "${addStageContext.fromStageName}".`
                                 : 'Add the first stage of your tournament.'}
                         </DialogDescription>
                     </DialogHeader>
 
                     {/* Context Banner */}
-                    {addStageContext && addStageContext.teamsReceiving > 0 && (
+                    {addStageContext?.incomingTeams != null && addStageContext.incomingTeams > 0 && (
                         <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm">
                             <LogIn className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                             <span className="text-emerald-300">
-                                ~<strong>{addStageContext.teamsReceiving}</strong> teams expected from {addStageContext.fromStageName}
+                                ~<strong>{addStageContext.incomingTeams}</strong> teams expected from {addStageContext.fromStageName}
                             </span>
                         </div>
                     )}
 
-                    <div className="space-y-4 py-2">
-                        <div className="space-y-1.5">
-                            <Label>Stage Name</Label>
-                            <Input
-                                value={newName}
-                                onChange={(e) => setNewName(e.target.value)}
-                                placeholder="e.g., Group Stage, Semi-Finals, Grand Finals"
-                                className="[color-scheme:dark]"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label>Teams per Group (Lobby Size)</Label>
-                            <Select value={newCapacity} onValueChange={setNewCapacity}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">No limit (single lobby)</SelectItem>
-                                    {[10, 12, 15, 16, 20, 25, 30, 40, 60].map(n => (
-                                        <SelectItem key={n} value={String(n)}>{n} teams per group</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {newCapacity && newCapacity !== 'none' && addStageContext && addStageContext.teamsReceiving > 0 && (
-                                <p className="text-xs text-emerald-500/80">
-                                    → {Math.ceil(addStageContext.teamsReceiving / parseInt(newCapacity))} groups will be formed
-                                </p>
-                            )}
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label>Advance Top N per Group</Label>
-                            <Select value={newAdvancement} onValueChange={setNewAdvancement}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">None (this is the final stage)</SelectItem>
-                                    {[2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20].map(n => (
-                                        <SelectItem key={n} value={String(n)}>Top {n} per group</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {newAdvancement && newAdvancement !== 'none' && newCapacity && newCapacity !== 'none' && addStageContext && addStageContext.teamsReceiving > 0 && (
-                                <p className="text-xs text-amber-400/80">
-                                    → {parseInt(newAdvancement) * Math.ceil(addStageContext.teamsReceiving / parseInt(newCapacity))} teams will advance to the next stage
-                                </p>
-                            )}
-                        </div>
-                    </div>
+                    {(() => {
+                        const incomingTeams = addStageContext?.incomingTeams ?? registeredTeamCount;
+                        const lobbySize = newGroupCount > 0 && incomingTeams > 0
+                            ? Math.ceil(incomingTeams / newGroupCount)
+                            : incomingTeams || 0;
+                        const maxGroups = Math.max(1, Math.min(incomingTeams, 64));
+                        const advancementOptions = lobbySize > 1
+                            ? Array.from({ length: lobbySize - 1 }, (_, k) => k + 1)
+                            : [1];
+                        const lobbyOverMax = maxLobbySize != null && lobbySize > maxLobbySize;
+
+                        return (
+                            <div className="space-y-4 py-2">
+                                {/* Stage Name */}
+                                <div className="space-y-1.5">
+                                    <Label>Stage Name</Label>
+                                    <Input
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        placeholder="e.g., Group Stage, Semi-Finals, Grand Finals"
+                                        className="[color-scheme:dark]"
+                                    />
+                                </div>
+
+                                {/* Stage Type Toggle */}
+                                <div className="space-y-1.5">
+                                    <Label>Stage Type</Label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewIsFinal(false)}
+                                            className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${!newIsFinal ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-white/[0.02] border-white/10 text-gray-400 hover:border-white/20'}`}
+                                        >
+                                            Intermediate Stage
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewIsFinal(true)}
+                                            className={`flex-1 py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${newIsFinal ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-white/[0.02] border-white/10 text-gray-400 hover:border-white/20'}`}
+                                        >
+                                            <Trophy className="w-3 h-3 inline mr-1" />
+                                            Final Stage
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {!newIsFinal && (
+                                    <>
+                                        {/* Groups */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-gray-400">Groups</Label>
+                                                <Select
+                                                    value={String(newGroupCount)}
+                                                    onValueChange={(v) => {
+                                                        const g = parseInt(v);
+                                                        setNewGroupCount(g);
+                                                        const newLobby = incomingTeams > 0 ? Math.ceil(incomingTeams / g) : 0;
+                                                        setNewAdvancement(prev => Math.min(prev, Math.max(1, newLobby - 1)));
+                                                    }}
+                                                >
+                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {Array.from({ length: maxGroups }, (_, k) => k + 1).map(n => (
+                                                            <SelectItem key={n} value={String(n)}>
+                                                                {n} {n === 1 ? 'group' : 'groups'}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Lobby Size (read-only derived) */}
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-gray-400">Lobby Size (derived)</Label>
+                                                <div className={`h-9 flex items-center px-3 rounded-md border text-sm ${lobbyOverMax ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-white/[0.03] border-white/10 text-gray-300'}`}>
+                                                    {incomingTeams > 0 ? `${lobbySize} teams` : '—'}
+                                                    {lobbyOverMax && <AlertTriangle className="w-3 h-3 ml-1.5 text-red-400" />}
+                                                </div>
+                                                <p className="text-[10px] text-gray-600">
+                                                    {maxLobbySize ? `game max: ${maxLobbySize}` : 'no game limit'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Advance per Group */}
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs text-gray-400">Advance per Group</Label>
+                                            <Select
+                                                value={String(Math.min(newAdvancement, Math.max(1, lobbySize - 1)))}
+                                                onValueChange={(v) => setNewAdvancement(parseInt(v))}
+                                            >
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    {advancementOptions.map(n => (
+                                                        <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            {incomingTeams > 0 && (
+                                                <p className="text-xs text-amber-400/80">
+                                                    → <strong>{Math.min(newAdvancement, Math.max(1, lobbySize - 1)) * newGroupCount}</strong> teams total will advance to the next stage
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Lobby size warning */}
+                                        {lobbyOverMax && (
+                                            <div className="flex items-start gap-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                                <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                                                <p className="text-xs text-red-300">
+                                                    Lobby size {lobbySize} exceeds game max of {maxLobbySize}. Add more groups to split teams.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* Validation errors */}
+                                {addStageErrors.length > 0 && (
+                                    <div className="space-y-1">
+                                        {addStageErrors.map((err, i) => (
+                                            <div key={i} className="flex items-start gap-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                                <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                                                <p className="text-xs text-red-300">{err}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAddStage} disabled={!newName.trim()} className="bg-emerald-600 hover:bg-emerald-500">
+                        <Button
+                            onClick={handleAddStage}
+                            disabled={!newName.trim() || addStageErrors.length > 0}
+                            className="bg-emerald-600 hover:bg-emerald-500"
+                        >
                             Add Stage
                         </Button>
                     </DialogFooter>
@@ -954,6 +1139,37 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             This will remove the stage and all its groups, rounds, and results. This cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
+                    {/* FIX 9 — Flow cascade warning */}
+                    {(() => {
+                        if (!deleteConfirmId) return null;
+                        const stageIdx = sortedStages.findIndex(s => s.id === deleteConfirmId);
+                        const prevStage = stageIdx > 0 ? sortedStages[stageIdx - 1] : null;
+                        const nextStage = stageIdx < sortedStages.length - 1 ? sortedStages[stageIdx + 1] : null;
+                        const isMiddleStage = prevStage != null && nextStage != null;
+
+                        if (isMiddleStage) {
+                            return (
+                                <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                    <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                                    <p className="text-xs text-amber-300 leading-relaxed">
+                                        This stage connects <strong>"{prevStage.name}"</strong> → <strong>"{nextStage.name}"</strong>.
+                                        Deleting it will break the flow — <strong>"{nextStage.name}"</strong> will no longer have a defined input.
+                                    </p>
+                                </div>
+                            );
+                        }
+                        if (!prevStage && nextStage) {
+                            return (
+                                <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                    <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                                    <p className="text-xs text-amber-300 leading-relaxed">
+                                        <strong>"{nextStage.name}"</strong> currently receives teams from this stage. After deletion, it will have no input source.
+                                    </p>
+                                </div>
+                            );
+                        }
+                        return null;
+                    })()}
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
                         <Button variant="destructive" onClick={() => deleteConfirmId && handleDeleteStage(deleteConfirmId)}>
@@ -984,7 +1200,25 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 </DialogHeader>
                             </div>
                             <div className="px-6 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
-                                {BR_TEMPLATES.map((t) => (
+                                {BR_TEMPLATES.map((t) => {
+                                    // FIX 7 — Fit badge
+                                    const fitBadge = (() => {
+                                        if (registeredTeamCount <= 0) {
+                                            return <span className="text-[10px] text-gray-500 px-2 py-0.5 rounded bg-white/[0.03] border border-white/5">Configure teams first</span>;
+                                        }
+                                        const n = registeredTeamCount;
+                                        const within = n >= t.minTeams && n <= t.maxTeams;
+                                        const slightlyOutside = !within && n >= t.minTeams * 0.8 && n <= t.maxTeams * 1.2;
+                                        if (within) {
+                                            return <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">✓ Fits your {n} teams</span>;
+                                        }
+                                        if (slightlyOutside) {
+                                            return <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400">~ Slightly outside range</span>;
+                                        }
+                                        return <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400">✗ Not recommended for {n} teams</span>;
+                                    })();
+
+                                    return (
                                     <button
                                         key={t.id}
                                         onClick={() => handleSelectTemplate(t)}
@@ -994,13 +1228,17 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                             <h4 className="font-semibold text-white text-sm group-hover:text-emerald-300 transition-colors">
                                                 {t.name}
                                             </h4>
-                                            <span className="text-[10px] uppercase tracking-widest text-gray-600 font-medium bg-white/[0.03] px-2 py-0.5 rounded">
-                                                {t.teamRange}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                {fitBadge}
+                                                <span className="text-[10px] uppercase tracking-widest text-gray-600 font-medium bg-white/[0.03] px-2 py-0.5 rounded">
+                                                    {t.teamRange}
+                                                </span>
+                                            </div>
                                         </div>
                                         <p className="text-xs text-gray-500 leading-relaxed">{t.description}</p>
                                     </button>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </>
                     ) : (
