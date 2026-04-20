@@ -6,7 +6,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, FileText, Hash, LogOut, LogIn, Pencil, Check, X, RotateCcw } from 'lucide-react';
+import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, FileText, Hash, LogOut, LogIn, Pencil, Check, X, RotateCcw, Calendar } from 'lucide-react';
 import { apiClient, ApiError } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
@@ -179,6 +179,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                     bestOf: 1,
                     capacity: s.capacity,
                     advancementCount: s.advancement_count,
+                    startsAt: s.starts_at || null,
+                    endsAt: s.ends_at || null,
                 };
                 if (s.id === stageId) {
                     if (field === 'name') dto.name = value.trim();
@@ -197,6 +199,35 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         }
     }, [stages, tournamentId, toast, onUpdate]);
 
+    // Convert ISO date to datetime-local input value (local time)
+    const toLocalInput = (iso: string | null): string => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    const saveStageSchedule = useCallback(async (stageId: string, field: 'starts_at' | 'ends_at', value: string) => {
+        try {
+            const stageDtos = stages.map(s => ({
+                id: s.id,
+                name: s.name,
+                format: s.format || 'battle_royale',
+                stageOrder: s.stage_order,
+                bestOf: 1,
+                capacity: s.capacity,
+                advancementCount: s.advancement_count,
+                startsAt: s.id === stageId && field === 'starts_at' ? (value ? new Date(value).toISOString() : null) : (s.starts_at || null),
+                endsAt: s.id === stageId && field === 'ends_at' ? (value ? new Date(value).toISOString() : null) : (s.ends_at || null),
+            }));
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
+            toast({ title: 'Schedule updated' });
+            onUpdate();
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message || 'Failed to update schedule', variant: 'destructive' });
+        }
+    }, [stages, tournamentId, toast, onUpdate]);
+
     const handleAddStage = async () => {
         if (!newName.trim()) return;
         try {
@@ -209,6 +240,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 bestOf: 1,
                 capacity: s.capacity,
                 advancementCount: s.advancement_count,
+                startsAt: s.starts_at || null,
+                endsAt: s.ends_at || null,
             }));
 
             stageDtos.push({
@@ -219,6 +252,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 bestOf: 1,
                 capacity: newCapacity && newCapacity !== 'none' ? parseInt(newCapacity) : null,
                 advancementCount: newAdvancement && newAdvancement !== 'none' ? parseInt(newAdvancement) : null,
+                startsAt: null,
+                endsAt: null,
             });
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
@@ -270,6 +305,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 bestOf: 1,
                 capacity: s.capacity,
                 advancementCount: s.advancement_count,
+                startsAt: s.starts_at || null,
+                endsAt: s.ends_at || null,
             }));
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
@@ -332,6 +369,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 bestOf: 1,
                 capacity: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.capacity || null : null,
                 advancementCount: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.advancement || null : null,
+                startsAt: null,
+                endsAt: null,
             }));
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
@@ -750,6 +789,33 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     </div>
                                                 </div>
 
+                                                {/* Schedule */}
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                                                            <Calendar className="w-3 h-3" /> Starts
+                                                        </label>
+                                                        <Input
+                                                            type="datetime-local"
+                                                            value={toLocalInput(stage.starts_at)}
+                                                            onChange={(e) => saveStageSchedule(stage.id, 'starts_at', e.target.value)}
+                                                            className="h-8 text-xs bg-white/5 border-white/10 text-white [color-scheme:dark]"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                                                            <Calendar className="w-3 h-3" /> Ends
+                                                        </label>
+                                                        <Input
+                                                            type="datetime-local"
+                                                            value={toLocalInput(stage.ends_at)}
+                                                            onChange={(e) => saveStageSchedule(stage.id, 'ends_at', e.target.value)}
+                                                            min={toLocalInput(stage.starts_at) || undefined}
+                                                            className="h-8 text-xs bg-white/5 border-white/10 text-white [color-scheme:dark]"
+                                                        />
+                                                    </div>
+                                                </div>
+
                                                 {/* Manage Groups Button */}
                                                 <Button
                                                     variant="outline"
@@ -784,6 +850,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     <BRStageGroupSection
                                                         stageId={stage.id}
                                                         stageCapacity={stage.capacity}
+                                                        stageStartsAt={stage.starts_at}
+                                                        stageEndsAt={stage.ends_at}
                                                         registeredTeamCount={flow?.teamsEntering || registeredTeamCount}
                                                         scoringPreset={scoringPreset}
                                                         hasNextStage={!isLast}

@@ -20,6 +20,8 @@ interface ScoringPreset {
 interface BRStageGroupSectionProps {
   stageId: string;
   stageCapacity: number | null;
+  stageStartsAt: string | null;
+  stageEndsAt: string | null;
   registeredTeamCount: number;
   scoringPreset: ScoringPreset;
   hasNextStage: boolean;
@@ -31,6 +33,8 @@ interface BRStageGroupSectionProps {
 const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   stageId,
   stageCapacity,
+  stageStartsAt,
+  stageEndsAt,
   registeredTeamCount,
   scoringPreset,
   hasNextStage,
@@ -146,6 +150,8 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
           groupName={groups.find(g => g.id === selectedGroupId)?.name ?? ''}
           teams={teamsByGroup[selectedGroupId] ?? []}
           scoringPreset={scoringPreset}
+          stageStartsAt={stageStartsAt}
+          stageEndsAt={stageEndsAt}
         />
       )}
 
