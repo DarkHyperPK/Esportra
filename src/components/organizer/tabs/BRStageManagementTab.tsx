@@ -107,11 +107,12 @@ interface BRStageManagementTabProps {
     stages: TournamentStage[];
     participants: Participant[];
     maxParticipants?: number | null;
+    teamSize?: number | null;
     scoringPreset: ScoringPreset;
     onUpdate: () => void;
 }
 
-export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages, participants, maxParticipants, scoringPreset, onUpdate }) => {
+export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages, participants, maxParticipants, teamSize, scoringPreset, onUpdate }) => {
     const { toast } = useToast();
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -449,7 +450,14 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6">
                 <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4 flex flex-row items-center justify-between space-y-0">
                     <div>
-                        <CardTitle>Battle Royale Stages</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <CardTitle>Battle Royale Stages</CardTitle>
+                            {teamSize != null && (
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                                    {teamSize === 1 ? 'Solo' : teamSize === 2 ? 'Duo' : teamSize === 3 ? 'Trio' : `${teamSize}v${teamSize}`}
+                                </span>
+                            )}
+                        </div>
                         <p className="text-sm text-gray-400 mt-1">
                             Configure the tournament progression. Click any value to edit it inline.
                         </p>
@@ -491,7 +499,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             <div className="flex items-center gap-2 flex-wrap justify-center">
                                 <span className="text-xs font-medium text-white bg-emerald-500/15 border border-emerald-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
                                     <Users className="w-3 h-3" />
-                                    {registeredTeamCount} teams
+                                    {registeredTeamCount} {teamSize === 1 ? 'players' : 'teams'}
                                 </span>
                                 {sortedStages.map((stage, i) => {
                                     const flow = stageFlows.get(stage.id);

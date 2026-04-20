@@ -195,6 +195,45 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
             {/* ── Battle Royale Format ─────────────────────────────────── */}
             {isBR && brConfig ? (
                 <>
+                    {/* Game Mode (Solo / Duo / Squad) — only if game has multiple formats */}
+                    {selectedGame && selectedGame.formats.length > 1 && (
+                        <div className="space-y-3">
+                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                <Users className="w-4 h-4" />
+                                Game Mode
+                            </Label>
+                            <div className="grid grid-cols-3 gap-3">
+                                {selectedGame.formats.map((fmt) => {
+                                    const isSelected = data.teamSize === fmt.teamSize;
+                                    return (
+                                        <button
+                                            key={fmt.value}
+                                            type="button"
+                                            onClick={() => updateData({ teamSize: fmt.teamSize })}
+                                            className={cn(
+                                                "p-4 rounded-xl border text-center transition-all",
+                                                isSelected
+                                                    ? "border-rose-500 bg-rose-500/10"
+                                                    : "border-white/10 hover:border-white/20 bg-white/[0.02]"
+                                            )}
+                                        >
+                                            <div className="font-bold text-white text-sm">{fmt.name}</div>
+                                            <div className="text-xs text-gray-400 mt-1">
+                                                {fmt.teamSize === 1 ? 'Individual' : `${fmt.teamSize} players`}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <p className="text-sm text-gray-400">
+                                {data.teamSize === 1
+                                    ? 'Each participant competes individually.'
+                                    : `Teams of ${data.teamSize} compete together. Registrations will require a team of this size.`}
+                            </p>
+                            <div className="w-full h-px bg-white/5 my-2" />
+                        </div>
+                    )}
+
                     {/* Game Count */}
                     <div className="space-y-3">
                         <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
