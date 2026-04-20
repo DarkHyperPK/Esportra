@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { LayoutGrid, Shuffle, AlertTriangle } from 'lucide-react';
+import { LayoutGrid, Shuffle } from 'lucide-react';
 import type { BRGroup, BRDistributionMethod } from '@/types/brGroups';
 
 interface GroupSetupPanelProps {
@@ -43,16 +43,15 @@ export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
   isAssigning,
   hasRounds,
 }) => {
-  const defaultLobbySize = groups[0]?.lobby_size ?? stageCapacity ?? 20;
+  const lobbySize = stageCapacity ?? registeredTeamCount;
+  const autoGroupCount = lobbySize > 0 ? Math.max(1, Math.ceil(registeredTeamCount / lobbySize)) : 1;
   const [groupCount, setGroupCount] = useState(
-    groups.length > 0 ? groups.length : Math.max(1, Math.ceil(registeredTeamCount / defaultLobbySize))
+    groups.length > 0 ? groups.length : autoGroupCount
   );
-  const [lobbySize, setLobbySize] = useState(defaultLobbySize);
   const [method, setMethod] = useState<BRDistributionMethod>('random');
   const [confirmRecreate, setConfirmRecreate] = useState(false);
   const [confirmDistribute, setConfirmDistribute] = useState(false);
 
-  const totalCapacity = groupCount * lobbySize;
   const hasExistingGroups = groups.length > 0;
   const totalAssigned = groups.reduce((sum, g) => sum + g.team_count, 0);
 
@@ -95,23 +94,12 @@ export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-zinc-400">Lobby Size</Label>
-            <Input
-              type="number"
-              min={1}
-              max={150}
-              value={lobbySize}
-              onChange={(e) => setLobbySize(Math.min(150, Math.max(1, parseInt(e.target.value) || 1)))}
-              className="bg-white/5 border-white/10 text-white"
-            />
+            <div className="h-10 flex items-center px-3 rounded-md bg-white/[0.03] border border-white/10 text-sm text-gray-300">
+              {lobbySize} teams
+            </div>
+            <p className="text-[10px] text-gray-600">Set in stage config above</p>
           </div>
         </div>
-
-        {totalCapacity < registeredTeamCount && (
-          <div className="flex items-center gap-2 text-amber-400 text-xs bg-amber-400/10 rounded-lg px-3 py-2">
-            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-            Capacity ({totalCapacity}) is less than registered teams ({registeredTeamCount})
-          </div>
-        )}
 
         <Button
           onClick={() => hasRounds ? setConfirmRecreate(true) : handleCreate()}
