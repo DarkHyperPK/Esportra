@@ -106,11 +106,12 @@ interface BRStageManagementTabProps {
     tournamentId: string;
     stages: TournamentStage[];
     participants: Participant[];
+    maxParticipants?: number | null;
     scoringPreset: ScoringPreset;
     onUpdate: () => void;
 }
 
-export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages, participants, scoringPreset, onUpdate }) => {
+export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages, participants, maxParticipants, scoringPreset, onUpdate }) => {
     const { toast } = useToast();
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -142,7 +143,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
     const sortedStages = useMemo(() => [...stages].sort((a, b) => a.stage_order - b.stage_order), [stages]);
 
-    const registeredTeamCount = useMemo(() => {
+    const acceptedTeamCount = useMemo(() => {
         const teamIds = new Set<string>();
         for (const p of participants) {
             if (p.team_id && (p.status === 'accepted' || p.status === 'approved')) {
@@ -151,6 +152,9 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         }
         return teamIds.size;
     }, [participants]);
+
+    // Use actual accepted teams; fall back to tournament max_participants if no check-ins yet
+    const registeredTeamCount = acceptedTeamCount || maxParticipants || 0;
 
     // Compute flow info for each stage (teams entering, groups formed, teams advancing)
     const stageFlows = useMemo((): Map<string, StageFlowInfo> => {
@@ -326,12 +330,13 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             const tIn = j === 0
                 ? totalTeams
                 : (configs[j - 1]?.advancement || 1) * (configs[j - 1]?.groupCount || 1);
-            // Default capacity: use template default but clamp to teamsIn
-            const cap = tIn > 0 ? Math.min(s.capacity ?? 20, tIn) : (s.capacity ?? 20);
-            const groups = cap > 0 && tIn > 0 ? Math.max(1, Math.ceil(tIn / cap)) : 1;
-            const teamsPerGroup = groups > 0 ? Math.ceil(tIn / groups) : tIn;
-            const adv = Math.min(s.advancementCount ?? 4, teamsPerGroup || 1);
-            configs.push({ capacity: cap, advancement: adv, groupCount: groups });
+            // Default groups from template hint (advancementCount is used as group hint), min 1
+            const defaultGroups = s.capacity && tIn > 0 ? Math.max(1, Math.ceil(tIn / s.capacity)) : 1;
+            const groups = Math.max(1, defaultGroups);
+            const lobbySize = groups > 0 && tIn > 0 ? Math.ceil(tIn / groups) : tIn;
+            const teamsPerGroup = lobbySize;
+            const adv = Math.min(s.advancementCount ?? 1, teamsPerGroup || 1);
+            configs.push({ capacity: lobbySize, advancement: adv, groupCount: groups });
         }
         setTemplateConfig(configs);
     };
@@ -940,15 +945,26 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                         Configure — {selectedTemplate.name}
                                     </DialogTitle>
                                     <DialogDescription className="text-gray-500 text-sm">
-                                        Adjust lobby size and advancement for each stage. {registeredTeamCount > 0 ? `${registeredTeamCount} teams registered.` : ''}
+                                        Configure lobby size, groups and advancement per stage.
+                                        {acceptedTeamCount > 0
+                                            ? ` ${acceptedTeamCount} teams checked in.`
+                                            : maxParticipants
+                                                ? ` Using tournament limit of ${maxParticipants} teams.`
+                                                : ''}
                                     </DialogDescription>
                                 </DialogHeader>
                             </div>
                             <div className="px-6 py-4 space-y-4 max-h-[65vh] overflow-y-auto">
                                 {registeredTeamCount === 0 && (
+                                    <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                        <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                                        <p className="text-xs text-red-300">No team count available. Set a participant limit in tournament settings first.</p>
+                                    </div>
+                                )}
+                                {acceptedTeamCount === 0 && maxParticipants && maxParticipants > 0 && (
                                     <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                                         <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                                        <p className="text-xs text-amber-300">No teams registered yet. Configuration uses estimates — adjust after check-in.</p>
+                                        <p className="text-xs text-amber-300">No check-ins yet — using tournament max of <strong>{maxParticipants}</strong> teams as estimate. Reconfigure after check-in closes.</p>
                                     </div>
                                 )}
                                 {(() => {
@@ -966,22 +982,17 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                     }
 
                                     const groupCount = cfg?.groupCount || 1;
-                                    const lobbySize = cfg?.capacity || teamsIn;
-                                    // Max advancement per group = teams per group
+                                    // lobby size = ceil(teamsIn / groupCount), capped by cfg.capacity if set
+                                    const autoLobbySize = groupCount > 0 ? Math.ceil(teamsIn / groupCount) : teamsIn;
+                                    const lobbySize = cfg?.capacity || autoLobbySize;
                                     const teamsPerGroup = groupCount > 0 ? Math.ceil(teamsIn / groupCount) : teamsIn;
-                                    // Generate lobby size options: multiples that make sense up to teamsIn
-                                    const lobbySizeOptions = [5, 8, 10, 12, 15, 16, 20, 25, 30, 40, 50, 60, 80, 100, 128, 150, 200]
-                                        .filter(n => n <= teamsIn);
-                                    // Add teamsIn itself if not already in list
-                                    if (teamsIn > 0 && !lobbySizeOptions.includes(teamsIn)) {
-                                        lobbySizeOptions.push(teamsIn);
-                                        lobbySizeOptions.sort((a, b) => a - b);
-                                    }
-                                    // Advancement options: 1 to teamsPerGroup
+                                    // Max groups = teamsIn (1 team per group is ridiculous but valid upper bound)
+                                    const maxGroups = Math.min(teamsIn, 64);
+                                    // Advancement options: 1 to teamsPerGroup (can't advance more than in group)
                                     const advancementOptions = Array.from(
                                         { length: Math.max(1, teamsPerGroup) },
                                         (_, k) => k + 1
-                                    ).filter(n => n <= teamsPerGroup);
+                                    );
 
                                     return (
                                         <div key={i} className={`p-4 rounded-xl border ${isFinalStage ? 'border-amber-500/15 bg-amber-500/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
@@ -1003,18 +1014,18 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     <p className="text-xs text-gray-500">No teams to configure. Register teams first.</p>
                                                 ) : (
                                                 <div className="grid grid-cols-3 gap-3">
+                                                    {/* Groups — primary control, organizer sets this */}
                                                     <div className="space-y-1.5">
-                                                        <Label className="text-xs text-gray-500">Lobby Size</Label>
+                                                        <Label className="text-xs text-gray-500">Groups</Label>
                                                         <Select
-                                                            value={String(cfg?.capacity || teamsIn)}
+                                                            value={String(groupCount)}
                                                             onValueChange={(v) => {
                                                                 const next = [...templateConfig];
-                                                                const newCap = parseInt(v);
-                                                                const newGroups = newCap > 0 ? Math.max(1, Math.ceil(teamsIn / newCap)) : 1;
-                                                                // Clamp advancement to not exceed new lobby size
+                                                                const newGroups = parseInt(v);
+                                                                const newLobbySize = Math.ceil(teamsIn / newGroups);
                                                                 const newTeamsPerGroup = Math.ceil(teamsIn / newGroups);
                                                                 const clampedAdv = Math.min(next[i]?.advancement || 4, newTeamsPerGroup);
-                                                                next[i] = { ...next[i], capacity: newCap, groupCount: newGroups, advancement: clampedAdv };
+                                                                next[i] = { ...next[i], groupCount: newGroups, capacity: newLobbySize, advancement: clampedAdv };
                                                                 setTemplateConfig(next);
                                                             }}
                                                         >
@@ -1022,27 +1033,30 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {lobbySizeOptions.map(n => (
+                                                                {Array.from({ length: maxGroups }, (_, k) => k + 1).map(n => (
                                                                     <SelectItem key={n} value={String(n)}>
-                                                                        {n} teams{n === teamsIn ? ' (all)' : ''}
+                                                                        {n} {n === 1 ? 'group' : 'groups'}
                                                                     </SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                        <Label className="text-xs text-gray-500">Groups</Label>
-                                                        <div className="h-9 flex items-center px-3 rounded-md bg-white/[0.03] border border-white/10 text-sm text-gray-300">
-                                                            {groupCount} {groupCount === 1 ? 'group' : 'groups'}
-                                                        </div>
                                                         <p className="text-[10px] text-gray-600">
                                                             {teamsPerGroup} teams/group
                                                         </p>
                                                     </div>
+                                                    {/* Lobby Size — derived from groups, read-only */}
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs text-gray-500">Lobby Size</Label>
+                                                        <div className="h-9 flex items-center px-3 rounded-md bg-white/[0.03] border border-white/10 text-sm text-gray-300">
+                                                            {teamsPerGroup} teams
+                                                        </div>
+                                                        <p className="text-[10px] text-gray-600">auto from groups</p>
+                                                    </div>
+                                                    {/* Advance per Group */}
                                                     <div className="space-y-1.5">
                                                         <Label className="text-xs text-gray-500">Advance per Group</Label>
                                                         <Select
-                                                            value={String(Math.min(cfg?.advancement || 4, teamsPerGroup))}
+                                                            value={String(Math.min(cfg?.advancement || 1, teamsPerGroup))}
                                                             onValueChange={(v) => {
                                                                 const next = [...templateConfig];
                                                                 next[i] = { ...next[i], advancement: parseInt(v) };
@@ -1059,7 +1073,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                             </SelectContent>
                                                         </Select>
                                                         <p className="text-[10px] text-emerald-500/70">
-                                                            {Math.min(cfg?.advancement || 4, teamsPerGroup) * groupCount} total advance
+                                                            {Math.min(cfg?.advancement || 1, teamsPerGroup) * groupCount} total advance
                                                         </p>
                                                     </div>
                                                 </div>

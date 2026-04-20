@@ -1795,6 +1795,7 @@ const TournamentDashboard = () => {
                         tournamentId={tournament.id}
                         stages={stages}
                         participants={participants}
+                        maxParticipants={tournament.max_participants ?? null}
                         scoringPreset={brScoringPreset}
                         onUpdate={() => refetchDashboard()}
                       />
