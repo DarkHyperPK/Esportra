@@ -159,10 +159,6 @@ const TournamentDetails = () => {
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
   const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
 
-  // Multi-group stage detection — check first stage for groups
-  const firstBRStageId = isBR && stages.length > 0 ? stages[0].id : null;
-  const { hasGroups: brHasGroups } = useBRGroupStage(firstBRStageId);
-
   const isOrganizer = (currentRole === 'organizer' && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id)) || admin.hasPermission('tournaments:edit');
   const requiresCheckIn = Boolean(tournament?.check_in_required);
   const checkInDeadlineDate = tournament?.check_in_deadline ? new Date(tournament.check_in_deadline) : null;
@@ -204,6 +200,10 @@ const TournamentDetails = () => {
   // Public Bracket View State - Refactored to Hook
   const { stages, activeVersionsMap, loading: bracketLoading } = usePublicBracketData(tournament?.id);
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+
+  // Multi-group stage detection — check first stage for groups
+  const firstBRStageId = isBR && stages.length > 0 ? stages[0].id : null;
+  const { hasGroups: brHasGroups } = useBRGroupStage(firstBRStageId);
 
   // Auto-select first stage when stages load
   useEffect(() => {
@@ -826,8 +826,7 @@ const TournamentDetails = () => {
                     {selectedStageId && (
                       <BRGroupStageView
                         stageId={selectedStageId}
-                        scoringPreset={brScoringPreset}
-                        qualificationCount={(stages.find((s: any) => s.id === selectedStageId) as any)?.config?.advancement_count}
+                        qualificationCount={(stages.find((s: any) => s.id === selectedStageId) as any)?.advancement_count}
                       />
                     )}
                   </>

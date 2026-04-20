@@ -34,7 +34,7 @@ function mapToLeaderboardEntry(row: GroupLeaderboardResponse): BRLeaderboardEntr
 }
 
 export const useBRGroupStage = (stageId: string | null) => {
-  const { data: groups, isLoading: groupsLoading, error: groupsError } = useQuery({
+  const { data: groups, isLoading: groupsLoading, error: groupsError, refetch } = useQuery({
     queryKey: ['br-groups', stageId],
     queryFn: () => apiClient.get<BRGroup[]>(`/api/stages/${stageId}/br/groups`),
     enabled: !!stageId,
@@ -45,12 +45,13 @@ export const useBRGroupStage = (stageId: string | null) => {
     groups: groups ?? [],
     isLoading: groupsLoading,
     error: groupsError,
+    refetch,
     hasGroups: (groups?.length ?? 0) > 0,
   };
 };
 
 export const useBRGroupLeaderboard = (stageId: string | null, groupId: string | null) => {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['br-group-leaderboard', stageId, groupId],
     queryFn: async () => {
       const raw = await apiClient.get<GroupLeaderboardResponse[]>(
@@ -66,11 +67,12 @@ export const useBRGroupLeaderboard = (stageId: string | null, groupId: string | 
     leaderboard: data ?? [],
     isLoading,
     error,
+    refetch,
   };
 };
 
 export const useBRGroupRounds = (stageId: string | null, groupId: string | null) => {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['br-group-rounds-summary', stageId, groupId],
     queryFn: () =>
       apiClient.get<BRRound[]>(`/api/stages/${stageId}/br/groups/${groupId}/rounds`),
@@ -88,5 +90,6 @@ export const useBRGroupRounds = (stageId: string | null, groupId: string | null)
     completedRounds: completed,
     activeRound,
     isLoading,
+    error,
   };
 };

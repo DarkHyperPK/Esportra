@@ -1,27 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Users, Swords, Copy, Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
-import type { BRScoringPreset } from '@/types/battleRoyale';
 
 interface BRGroupStageViewProps {
   stageId: string;
-  scoringPreset: BRScoringPreset;
   /** Number of teams that qualify from each group (for cutoff line) */
   qualificationCount?: number;
 }
 
 const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
   stageId,
-  scoringPreset,
   qualificationCount,
 }) => {
-  const { groups, isLoading, error } = useBRGroupStage(stageId);
+  const { groups, isLoading, error, refetch } = useBRGroupStage(stageId);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+
+  // Reset group selection when stage changes
+  useEffect(() => {
+    setSelectedGroupId(null);
+  }, [stageId]);
 
   // Auto-select first group
   const activeGroupId = selectedGroupId ?? groups[0]?.id ?? null;
@@ -39,11 +42,21 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
       <div className="text-center py-8 text-zinc-400">
         <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
         <p className="text-sm">Failed to load group stage data.</p>
+        <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+          Try again
+        </Button>
       </div>
     );
   }
 
-  if (groups.length === 0) return null;
+  if (groups.length === 0) {
+    return (
+      <div className="text-center py-12 text-zinc-400">
+        <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+        <p className="text-sm">Groups haven't been set up yet.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -90,7 +103,7 @@ interface GroupContentProps {
 
 const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualificationCount }) => {
   const { toast } = useToast();
-  const { leaderboard, isLoading: lbLoading, error: lbError } = useBRGroupLeaderboard(stageId, groupId);
+  const { leaderboard, isLoading: lbLoading, error: lbError, refetch: refetchLb } = useBRGroupLeaderboard(stageId, groupId);
   const { totalRounds, completedRounds, activeRound, isLoading: roundsLoading } = useBRGroupRounds(stageId, groupId);
 
   const isLoading = lbLoading || roundsLoading;
@@ -111,6 +124,9 @@ const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualifica
         <CardContent className="py-8 text-center">
           <AlertCircle className="w-8 h-8 mx-auto mb-2 text-zinc-500" />
           <p className="text-sm text-zinc-400">Failed to load leaderboard.</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => refetchLb()}>
+            Try again
+          </Button>
         </CardContent>
       </Card>
     );
@@ -134,6 +150,7 @@ const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualifica
                 </span>
                 <button
                   type="button"
+                  aria-label="Copy lobby code"
                   onClick={() => {
                     if (activeRound.lobby_code) {
                       navigator.clipboard.writeText(activeRound.lobby_code);
