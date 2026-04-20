@@ -145,6 +145,12 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const sortedStages = useMemo(() => [...stages].sort((a, b) => a.stage_order - b.stage_order), [stages]);
 
     const acceptedTeamCount = useMemo(() => {
+        if (teamSize === 1) {
+            // Solo: participants compete individually, no team_id
+            return participants.filter(
+                p => !p.team_id && (p.status === 'accepted' || p.status === 'approved')
+            ).length;
+        }
         const teamIds = new Set<string>();
         for (const p of participants) {
             if (p.team_id && (p.status === 'accepted' || p.status === 'approved')) {
@@ -152,7 +158,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             }
         }
         return teamIds.size;
-    }, [participants]);
+    }, [participants, teamSize]);
 
     // Use actual accepted teams; fall back to tournament max_participants if no check-ins yet
     const registeredTeamCount = acceptedTeamCount || maxParticipants || 0;
@@ -454,7 +460,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             <CardTitle>Battle Royale Stages</CardTitle>
                             {teamSize != null && (
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
-                                    {teamSize === 1 ? 'Solo' : teamSize === 2 ? 'Duo' : teamSize === 3 ? 'Trio' : `${teamSize}v${teamSize}`}
+                                    {teamSize === 1 ? 'Solo' : teamSize === 2 ? 'Duo' : teamSize === 3 ? 'Trio' : teamSize === 4 ? 'Squads' : `${teamSize}-player`}
                                 </span>
                             )}
                         </div>

@@ -173,7 +173,7 @@
         "assistedReporting": false,
         "seriesFormats": [],
         "hasSidePick": false,
-        "isTeamGame": true,
+        "isTeamGame": false,
         "isBattleRoyale": true
       },
       "brConfig": {
