@@ -36,19 +36,19 @@ interface StageTemplate {
 const BR_TEMPLATES: StageTemplate[] = [
     {
         id: 'open_qualifier',
-        name: 'Open Qualifier → Finals',
-        description: '2-stage format. All teams play group stage, top performers advance to a single finals lobby.',
+        name: 'Qualifier → Finals',
+        description: '2-stage format. All teams compete in qualifiers, top performers advance to a single finals lobby.',
         icon: '',
         teamRange: '20–60 teams',
         stages: [
-            { name: 'Open Qualifiers', capacity: 20, advancementCount: 10 },
+            { name: 'Qualifiers', capacity: 20, advancementCount: 10 },
             { name: 'Grand Finals', capacity: null, advancementCount: null },
         ],
     },
     {
         id: 'triple_stage',
         name: 'Groups → Semis → Finals',
-        description: '3-stage progression. Large pool narrows through semis to a final lobby. Used in ALGS & PCS.',
+        description: '3-stage progression. Large pool narrows through semi-finals into a single finals lobby.',
         icon: '',
         teamRange: '40–100 teams',
         stages: [
@@ -58,9 +58,9 @@ const BR_TEMPLATES: StageTemplate[] = [
         ],
     },
     {
-        id: 'fncs_style',
-        name: 'FNCS-Style (4 Stages)',
-        description: 'Open → Quarter → Semi → Finals. The gold standard for large-scale Fortnite tournaments.',
+        id: 'four_stage',
+        name: 'Full Circuit (4 Stages)',
+        description: 'Open → Quarter → Semi → Finals. Best for large-scale tournaments with high team counts.',
         icon: '',
         teamRange: '80–200 teams',
         stages: [
@@ -72,7 +72,7 @@ const BR_TEMPLATES: StageTemplate[] = [
     },
     {
         id: 'single_lobby',
-        name: 'Single Lobby (No Stages)',
+        name: 'Single Lobby',
         description: 'All teams in one lobby. Best for small events with 20 teams or fewer. No advancement needed.',
         icon: '',
         teamRange: '4–20 teams',
@@ -82,8 +82,8 @@ const BR_TEMPLATES: StageTemplate[] = [
     },
     {
         id: 'dual_group',
-        name: 'Dual Group → Unified Finals',
-        description: '2 parallel groups play separately, top teams merge into one finals lobby. Clean and fast.',
+        name: 'Dual Group → Finals',
+        description: '2 parallel groups compete separately, top teams from each merge into one finals lobby.',
         icon: '',
         teamRange: '30–40 teams',
         stages: [
