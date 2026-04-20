@@ -1859,7 +1859,40 @@ const TournamentDashboard = () => {
 
                       {/* Game Result Entry */}
                       <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white">Games</h3>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-bold text-white">Games</h3>
+                          {brResults.gamesCompleted > 0 && isOrganizer && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="text-red-400 border-red-500/20 hover:bg-red-500/10 hover:text-red-300">
+                                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                                  Reset All Games
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="bg-[#12121a] border-white/10 text-white">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-white flex items-center gap-2">
+                                    <AlertTriangle className="w-5 h-5 text-red-400" />
+                                    Reset All Games
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription className="text-white/70">
+                                    This will permanently delete all game results, lobby codes, and evidence across all {brGameCount} games. This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="border-white/20 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                    disabled={brResults.isResettingAll}
+                                    onClick={() => brResults.resetAllGames()}
+                                  >
+                                    {brResults.isResettingAll ? 'Resetting...' : 'Reset All Games'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
                         {brTeams.length === 0 && (
                           <Card className="bg-black/20 backdrop-blur-md border border-amber-500/20 rounded-2xl p-4 text-center">
                             <p className="text-amber-400/80 text-sm">No participants registered yet. Games can be started once teams register.</p>

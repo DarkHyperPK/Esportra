@@ -363,15 +363,36 @@ export function useBRGameResults({
     [allGames, persistGame, queryClient, tournamentId]
   );
 
+  // Reset ALL games back to empty
+  const resetAllGamesMutation = useMutation({
+    mutationFn: async () => {
+      if (!tournamentId) throw new Error('No tournament ID');
+      await apiClient.put(`/api/tournaments/${tournamentId}/br-games`, { games: {} });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['br-game-results', tournamentId] });
+      toast({ title: 'All Games Reset', description: 'All game data has been cleared.' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Reset Failed', description: error.message || 'Could not reset games.', variant: 'destructive' });
+    },
+  });
+
+  const resetAllGames = useCallback(() => {
+    resetAllGamesMutation.mutate();
+  }, [resetAllGamesMutation]);
+
   return {
     leaderboard,
     gamesCompleted,
     winner,
     isLoading,
     isSaving: saveMutation.isPending,
+    isResettingAll: resetAllGamesMutation.isPending,
     saveGameResults,
     startGame,
     resetGame,
+    resetAllGames,
     updateLobbyCode,
     getGameResults,
     getGameStatus,
