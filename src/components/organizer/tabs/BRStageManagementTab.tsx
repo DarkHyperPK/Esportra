@@ -11,6 +11,7 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import BRStageGroupSection from '@/components/organizer/br/BRStageGroupSection';
+import AdvanceTeamsPanel from '@/components/organizer/br/AdvanceTeamsPanel';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
@@ -114,6 +115,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
+    const [advanceStageId, setAdvanceStageId] = useState<string | null>(null);
     const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
     const [applyingTemplate, setApplyingTemplate] = useState(false);
     const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
@@ -725,6 +727,22 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     {isExpanded ? <ChevronDown className="w-3.5 h-3.5 mr-1.5" /> : <ChevronRight className="w-3.5 h-3.5 mr-1.5" />}
                                                     {isExpanded ? 'Collapse Group Management' : 'Manage Groups & Rounds'}
                                                 </Button>
+
+                                                {/* Advance Teams Button — only for non-final stages with advancement configured */}
+                                                {!isLast && stage.advancement_count && (
+                                                    <Button
+                                                        size="sm"
+                                                        className={`w-full text-xs ${
+                                                            advanceStageId === stage.id
+                                                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                                                : 'bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/20'
+                                                        }`}
+                                                        onClick={() => setAdvanceStageId(advanceStageId === stage.id ? null : stage.id)}
+                                                    >
+                                                        <ArrowRight className="w-3.5 h-3.5 mr-1.5" />
+                                                        {advanceStageId === stage.id ? 'Hide Advancement' : `Advance Top ${flow?.teamsAdvancing || '?'} Teams`}
+                                                    </Button>
+                                                )}
                                             </div>
 
                                             {/* Inline Group Management (expanded) */}
@@ -739,6 +757,20 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                         advancementCount={stage.advancement_count}
                                                         stageStatus={stage.status}
                                                         onUpdate={onUpdate}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Inline Advance Teams Panel */}
+                                            {advanceStageId === stage.id && !isLast && stage.advancement_count && (
+                                                <div className="mt-4 pt-4 border-t border-emerald-500/10">
+                                                    <AdvanceTeamsPanel
+                                                        stageId={stage.id}
+                                                        advancementCount={stage.advancement_count}
+                                                        onAdvanced={() => {
+                                                            setAdvanceStageId(null);
+                                                            onUpdate();
+                                                        }}
                                                     />
                                                 </div>
                                             )}
