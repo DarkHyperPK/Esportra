@@ -2,10 +2,11 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, FileText, Hash, LogOut, LogIn, Pencil, Check, X } from 'lucide-react';
+import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, FileText, Hash, LogOut, LogIn, Pencil, Check, X, RotateCcw } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
@@ -115,6 +116,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
     const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
     const [applyingTemplate, setApplyingTemplate] = useState(false);
+    const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
 
     // Inline editing state
     const [editingField, setEditingField] = useState<{ stageId: string; field: 'name' | 'capacity' | 'advancement' } | null>(null);
@@ -278,6 +281,22 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         }
     };
 
+    const handleResetAllStages = async () => {
+        setIsResetting(true);
+        try {
+            const deleteIds = stages.map(s => s.id);
+            await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds });
+            toast({ title: 'All stages cleared', description: 'You can start fresh with templates or add stages manually.' });
+            setResetConfirmOpen(false);
+            setExpandedStageId(null);
+            onUpdate();
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message || 'Failed to reset stages', variant: 'destructive' });
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
     const handleApplyTemplate = async (template: StageTemplate) => {
         setApplyingTemplate(true);
         try {
@@ -352,6 +371,15 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                     </div>
                     {sortedStages.length > 0 && (
                         <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setResetConfirmOpen(true)}
+                                className="border-red-500/20 text-red-400/70 hover:text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                            >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                Reset
+                            </Button>
                             <Button
                                 variant="outline"
                                 onClick={() => setTemplateDialogOpen(true)}
@@ -908,6 +936,31 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Reset All Stages Confirmation */}
+            <AlertDialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
+                <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-red-400" />
+                            Reset All Stages
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                            This will permanently delete all {sortedStages.length} stages, including their groups, rounds, and results. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            disabled={isResetting}
+                            onClick={handleResetAllStages}
+                        >
+                            {isResetting ? 'Resetting...' : 'Reset All Stages'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 };
