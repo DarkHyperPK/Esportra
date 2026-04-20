@@ -51,10 +51,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import esportsGamesData from '@/data/esportsGames.json';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { cn } from '@/lib/utils';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
 import { useBRGameResults } from '@/hooks/useBRGameResults';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
+import BRGroupStageView from '@/components/tournament/br/BRGroupStageView';
+import { useBRGroupStage } from '@/hooks/useBRGroupLeaderboard';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import SEO from '@/components/SEO';
 
@@ -155,6 +158,10 @@ const TournamentDetails = () => {
     || (brConf?.scoringPresets?.[brPresetKey as string])
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
   const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
+
+  // Multi-group stage detection — check first stage for groups
+  const firstBRStageId = isBR && stages.length > 0 ? stages[0].id : null;
+  const { hasGroups: brHasGroups } = useBRGroupStage(firstBRStageId);
 
   const isOrganizer = (currentRole === 'organizer' && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id)) || admin.hasPermission('tournaments:edit');
   const requiresCheckIn = Boolean(tournament?.check_in_required);
@@ -791,8 +798,43 @@ const TournamentDetails = () => {
           {isBR ? (
             <TabsContent value="leaderboard">
               <div className="container mx-auto px-4 space-y-6">
-                {/* Active game banner for players */}
-                {brResults.activeGameNumber && (
+                {brHasGroups ? (
+                  <>
+                    {/* Multi-group stage selector */}
+                    {stages.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {stages.map((stage: any) => (
+                          <button
+                            key={stage.id}
+                            type="button"
+                            onClick={() => setSelectedStageId(stage.id)}
+                            className={cn(
+                              'px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap border',
+                              selectedStageId === stage.id
+                                ? 'bg-white/10 border-white/20 text-white'
+                                : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.06]'
+                            )}
+                          >
+                            {stage.name || `Stage ${stage.stage_order + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <BRScoringConfig preset={brScoringPreset} killCap={brKillCap} />
+
+                    {selectedStageId && (
+                      <BRGroupStageView
+                        stageId={selectedStageId}
+                        scoringPreset={brScoringPreset}
+                        qualificationCount={(stages.find((s: any) => s.id === selectedStageId) as any)?.config?.advancement_count}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Legacy single-lobby leaderboard */}
+                    {brResults.activeGameNumber && (
                   <div className="flex items-center gap-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 animate-pulse-slow">
                     <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Swords className="w-5 h-5 text-rose-400" />
@@ -854,6 +896,8 @@ const TournamentDetails = () => {
                   totalGames={brGameCount}
                   gamesCompleted={brResults.gamesCompleted}
                 />
+                  </>
+                )}
               </div>
             </TabsContent>
           ) : (

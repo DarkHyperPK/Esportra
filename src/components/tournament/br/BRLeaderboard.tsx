@@ -9,9 +9,11 @@ interface BRLeaderboardProps {
   entries: BRLeaderboardEntry[];
   totalGames: number;
   gamesCompleted: number;
+  /** If set, draws a qualification cutoff line after this rank */
+  qualificationCutoff?: number;
 }
 
-const BRLeaderboard: React.FC<BRLeaderboardProps> = ({ entries, totalGames, gamesCompleted }) => {
+const BRLeaderboard: React.FC<BRLeaderboardProps> = ({ entries, totalGames, gamesCompleted, qualificationCutoff }) => {
   const sorted = [...entries].sort((a, b) => b.totalPoints - a.totalPoints);
 
   return (
@@ -47,16 +49,17 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({ entries, totalGames, game
             </div>
 
             {sorted.map((entry, index) => (
-              <div
-                key={entry.teamId}
-                className={cn(
-                  "grid grid-cols-[40px_1fr_70px_70px_70px_50px_70px] gap-2 items-center px-3 py-2.5 rounded-lg transition-colors",
-                  index === 0 ? "bg-amber-500/10 border border-amber-500/20" :
-                  index === 1 ? "bg-gray-400/5 border border-gray-400/10" :
-                  index === 2 ? "bg-amber-700/5 border border-amber-700/10" :
-                  "hover:bg-white/[0.02]"
-                )}
-              >
+              <React.Fragment key={entry.teamId}>
+                <div
+                  className={cn(
+                    "grid grid-cols-[40px_1fr_70px_70px_70px_50px_70px] gap-2 items-center px-3 py-2.5 rounded-lg transition-colors",
+                    index === 0 ? "bg-amber-500/10 border border-amber-500/20" :
+                    index === 1 ? "bg-gray-400/5 border border-gray-400/10" :
+                    index === 2 ? "bg-amber-700/5 border border-amber-700/10" :
+                    qualificationCutoff && index < qualificationCutoff ? "bg-emerald-500/[0.03]" :
+                    "hover:bg-white/[0.02]"
+                  )}
+                >
                 {/* Rank */}
                 <div className={cn(
                   "text-sm font-bold",
@@ -102,6 +105,18 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({ entries, totalGames, game
                   </Badge>
                 </div>
               </div>
+
+              {/* Qualification cutoff line */}
+              {qualificationCutoff && index + 1 === qualificationCutoff && index < sorted.length - 1 && (
+                <div className="flex items-center gap-2 py-1">
+                  <div className="flex-1 h-px bg-emerald-500/40" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500/70 whitespace-nowrap">
+                    Top {qualificationCutoff} Qualify
+                  </span>
+                  <div className="flex-1 h-px bg-emerald-500/40" />
+                </div>
+              )}
+            </React.Fragment>
             ))}
           </div>
         )}
