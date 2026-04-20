@@ -147,18 +147,24 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
             ))}
 
             {/* Advance button */}
-            <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
-              onClick={() => setShowConfirm(true)}
-              disabled={execute.isPending}
-            >
-              {execute.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <ArrowRight className="w-4 h-4 mr-2" />
-              )}
-              Advance {previewData.total_qualified} Teams to Finals
-            </Button>
+            {previewData.total_qualified === 0 ? (
+              <p className="text-sm text-amber-400 text-center py-2">
+                No teams qualified. Check that rounds have results recorded.
+              </p>
+            ) : (
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
+                onClick={() => setShowConfirm(true)}
+                disabled={execute.isPending}
+              >
+                {execute.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                )}
+                Advance {previewData.total_qualified} Teams to Finals
+              </Button>
+            )}
           </div>
         )}
 

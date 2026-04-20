@@ -228,17 +228,19 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
       )}
 
       {/* Stage Advancement Panel */}
-      {!isLoading && !error && groups.length > 0 && (() => {
+      {(() => {
+        if (isLoading || error || groups.length === 0) return null;
         const currentStage = sortedStages.find(s => s.id === selectedStageId);
-        const hasNextStage = currentStage && sortedStages.some(s => s.stage_order > currentStage.stage_order);
-        const advCount = currentStage?.advancement_count ?? 4;
-        return hasNextStage && currentStage?.status !== 'completed' ? (
+        if (!currentStage || currentStage.status === 'completed') return null;
+        const hasNextStage = sortedStages.some(s => s.stage_order > currentStage.stage_order);
+        if (!hasNextStage) return null;
+        return (
           <AdvanceTeamsPanel
             stageId={selectedStageId}
-            advancementCount={advCount}
+            advancementCount={currentStage.advancement_count ?? 4}
             onAdvanced={onUpdate}
           />
-        ) : null;
+        );
       })()}
 
       {/* Empty State */}

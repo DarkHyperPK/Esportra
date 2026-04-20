@@ -1,6 +1,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, ApiError } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+
+function extractErrorMessage(error: Error): string {
+  if (error instanceof ApiError && typeof error.body === 'object' && error.body !== null) {
+    const body = error.body as Record<string, unknown>;
+    if (typeof body.error === 'string') return body.error;
+  }
+  return error.message;
+}
 
 interface QualifiedTeam {
   team_id: string;
@@ -38,7 +46,7 @@ export const useBRAdvancement = (stageId: string | null) => {
         teamsPerGroup ? { teamsPerGroup } : {}
       ),
     onError: (error: Error) => {
-      toast({ title: 'Preview failed', description: error.message, variant: 'destructive' });
+      toast({ title: 'Preview failed', description: extractErrorMessage(error), variant: 'destructive' });
     },
   });
 
@@ -51,10 +59,11 @@ export const useBRAdvancement = (stageId: string | null) => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['br-groups'] });
       queryClient.invalidateQueries({ queryKey: ['br-rounds'] });
+      queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch'] });
       toast({ title: `${data.advanced} teams advanced to ${data.to_stage}` });
     },
     onError: (error: Error) => {
-      toast({ title: 'Advancement failed', description: error.message, variant: 'destructive' });
+      toast({ title: 'Advancement failed', description: extractErrorMessage(error), variant: 'destructive' });
     },
   });
 
