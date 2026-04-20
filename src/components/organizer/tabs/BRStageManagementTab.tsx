@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, Zap, FileText, Hash, LogOut, LogIn, Pencil, Check, X } from 'lucide-react';
+import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, FileText, Hash, LogOut, LogIn, Pencil, Check, X } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
@@ -806,55 +806,62 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
             {/* Template Picker Dialog */}
             <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
-                <DialogContent className="bg-[#0a0a0c] border-white/10 max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Zap className="w-5 h-5 text-emerald-400" />
-                            Stage Templates
-                        </DialogTitle>
-                        <DialogDescription>
-                            {stages.length > 0
-                                ? 'Applying a template will replace all existing stages. Choose a structure that fits your tournament.'
-                                : 'Choose a pre-built stage structure to get started quickly.'}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid grid-cols-1 gap-3 py-2 max-h-[60vh] overflow-y-auto">
+                <DialogContent className="bg-[#0a0a0c] border-white/10 max-w-2xl p-0 overflow-hidden">
+                    <div className="px-6 pt-6 pb-4 border-b border-white/5">
+                        <DialogHeader>
+                            <DialogTitle className="text-lg font-semibold text-white">
+                                Stage Templates
+                            </DialogTitle>
+                            <DialogDescription className="text-gray-500 text-sm">
+                                {stages.length > 0
+                                    ? 'Applying a template will replace all existing stages.'
+                                    : 'Select a structure that fits your tournament size.'}
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    <div className="px-6 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
                         {BR_TEMPLATES.map((t) => (
-                            <div
+                            <button
                                 key={t.id}
-                                className="p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all"
+                                onClick={() => handleApplyTemplate(t)}
+                                disabled={applyingTemplate}
+                                className="w-full text-left p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-emerald-500/30 hover:bg-emerald-500/[0.04] transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h4 className="font-semibold text-white">{t.name}</h4>
-                                            <span className="text-xs text-gray-600 ml-auto hidden sm:block">{t.teamRange}</span>
-                                        </div>
-                                        <p className="text-xs text-gray-400 mb-3">{t.description}</p>
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            {t.stages.map((s, i) => (
-                                                <React.Fragment key={i}>
-                                                    <span className="text-xs bg-white/5 border border-white/10 px-2 py-0.5 rounded-md text-gray-300">
-                                                        {s.name}
-                                                        {s.capacity && <span className="text-gray-500 ml-1">({s.capacity}/grp)</span>}
-                                                    </span>
-                                                    {i < t.stages.length - 1 && (
-                                                        <ArrowRight className="w-3 h-3 text-emerald-500/50 flex-shrink-0" />
-                                                    )}
-                                                </React.Fragment>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <Button
-                                        size="sm"
-                                        onClick={() => handleApplyTemplate(t)}
-                                        disabled={applyingTemplate}
-                                        className="bg-emerald-600 hover:bg-emerald-500 text-white flex-shrink-0"
-                                    >
-                                        {applyingTemplate ? 'Applying...' : 'Apply'}
-                                    </Button>
+                                <div className="flex items-center justify-between mb-2.5">
+                                    <h4 className="font-semibold text-white text-sm group-hover:text-emerald-300 transition-colors">
+                                        {t.name}
+                                    </h4>
+                                    <span className="text-[10px] uppercase tracking-widest text-gray-600 font-medium bg-white/[0.03] px-2 py-0.5 rounded">
+                                        {t.teamRange}
+                                    </span>
                                 </div>
-                            </div>
+                                <p className="text-xs text-gray-500 mb-3 leading-relaxed">{t.description}</p>
+                                {/* Stage flow visualization */}
+                                <div className="flex items-center gap-0 overflow-x-auto pb-1">
+                                    {t.stages.map((s, i) => {
+                                        const isLast = i === t.stages.length - 1;
+                                        return (
+                                            <React.Fragment key={i}>
+                                                <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.06] rounded-lg px-2.5 py-1.5 flex-shrink-0">
+                                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                                        isLast ? 'bg-amber-400' : 'bg-emerald-400/60'
+                                                    }`} />
+                                                    <span className="text-[11px] text-gray-300 font-medium whitespace-nowrap">{s.name}</span>
+                                                    {s.capacity && (
+                                                        <span className="text-[10px] text-gray-600 font-mono">{s.capacity}</span>
+                                                    )}
+                                                    {s.advancementCount && (
+                                                        <span className="text-[9px] text-emerald-500/70 font-mono">→{s.advancementCount}</span>
+                                                    )}
+                                                </div>
+                                                {!isLast && (
+                                                    <div className="w-4 h-px bg-gradient-to-r from-emerald-500/30 to-emerald-500/10 flex-shrink-0" />
+                                                )}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </div>
+                            </button>
                         ))}
                     </div>
                 </DialogContent>
