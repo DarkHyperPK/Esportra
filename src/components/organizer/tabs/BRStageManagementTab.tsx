@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import BRStageGroupSection from '@/components/organizer/br/BRStageGroupSection';
 import { BRScheduleDialog } from '@/components/organizer/br/BRScheduleDialog';
+import { getBRConfig } from '@/utils/gameFeatures';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
@@ -108,11 +109,12 @@ interface BRStageManagementTabProps {
     participants: Participant[];
     maxParticipants?: number | null;
     teamSize?: number | null;
+    game?: string;
     scoringPreset: ScoringPreset;
     onUpdate: () => void;
 }
 
-export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages, participants, maxParticipants, teamSize, scoringPreset, onUpdate }) => {
+export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages, participants, maxParticipants, teamSize, game, scoringPreset, onUpdate }) => {
     const { toast } = useToast();
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -162,6 +164,56 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
     // Use actual accepted teams; fall back to tournament max_participants if no check-ins yet
     const registeredTeamCount = acceptedTeamCount || maxParticipants || 0;
+
+    // Max players per lobby from game config (e.g. 100 for Fortnite, 64 for PUBG, 60 for Apex)
+    const brConfig = useMemo(() => getBRConfig(game || ''), [game]);
+    const maxLobbySize = brConfig?.playersPerLobby ?? null;
+
+    // Validate the template config and return per-stage error messages
+    const templateConfigErrors = useMemo((): string[] => {
+        if (!selectedTemplate) return [];
+        const errors: string[] = [];
+        let teamsIn = registeredTeamCount || 0;
+
+        for (let i = 0; i < selectedTemplate.stages.length; i++) {
+            const isFinal = i === selectedTemplate.stages.length - 1;
+            const cfg = templateConfig[i];
+
+            if (isFinal) {
+                // Final stage: validate that teams entering fit within max lobby
+                if (maxLobbySize && teamsIn > maxLobbySize) {
+                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): ${teamsIn} teams advancing to finals exceeds the max lobby size of ${maxLobbySize} for this game. Reduce advancement in the previous stage.`);
+                } else {
+                    errors.push('');
+                }
+            } else {
+                if (!cfg) { errors.push(''); continue; }
+                const groupCount = cfg.groupCount || 1;
+                const teamsPerGroup = groupCount > 0 ? Math.ceil(teamsIn / groupCount) : teamsIn;
+                const advancement = Math.min(cfg.advancement || 1, teamsPerGroup);
+                const totalAdvancing = advancement * groupCount;
+
+                if (teamsIn === 0) {
+                    errors.push(`Stage ${i + 1}: No teams entering. Check the previous stage's advancement count.`);
+                } else if (advancement >= teamsPerGroup && groupCount === 1) {
+                    // Single group advancing everyone = pointless qualifier
+                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): Advancing all ${teamsPerGroup} teams from a single group is pointless — everyone passes through. Reduce advancement or add more groups.`);
+                } else if (totalAdvancing >= teamsIn && groupCount === 1) {
+                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): Advancing ${totalAdvancing} of ${teamsIn} teams means no one is eliminated. Set advancement below ${teamsIn}.`);
+                } else if (maxLobbySize && teamsPerGroup > maxLobbySize) {
+                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): Lobby size ${teamsPerGroup} exceeds the game's max of ${maxLobbySize} players per lobby. Add more groups.`);
+                } else {
+                    errors.push('');
+                }
+
+                // Advance teamsIn to next stage
+                teamsIn = totalAdvancing;
+            }
+        }
+        return errors;
+    }, [selectedTemplate, templateConfig, registeredTeamCount, maxLobbySize]);
+
+    const hasTemplateErrors = templateConfigErrors.some(e => e !== '');
 
     // Compute flow info for each stage (teams entering, groups formed, teams advancing)
     const stageFlows = useMemo((): Map<string, StageFlowInfo> => {
@@ -1061,10 +1113,13 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     {/* Lobby Size — derived from groups, read-only */}
                                                     <div className="space-y-1.5">
                                                         <Label className="text-xs text-gray-500">Lobby Size</Label>
-                                                        <div className="h-9 flex items-center px-3 rounded-md bg-white/[0.03] border border-white/10 text-sm text-gray-300">
+                                                        <div className={`h-9 flex items-center px-3 rounded-md border text-sm ${maxLobbySize && teamsPerGroup > maxLobbySize ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-white/[0.03] border-white/10 text-gray-300'}`}>
                                                             {teamsPerGroup} teams
+                                                            {maxLobbySize && teamsPerGroup > maxLobbySize && <AlertTriangle className="w-3 h-3 ml-1.5 text-red-400" />}
                                                         </div>
-                                                        <p className="text-[10px] text-gray-600">auto from groups</p>
+                                                        <p className="text-[10px] text-gray-600">
+                                                            {maxLobbySize ? `max ${maxLobbySize}` : 'auto from groups'}
+                                                        </p>
                                                     </div>
                                                     {/* Advance per Group */}
                                                     <div className="space-y-1.5">
@@ -1094,8 +1149,21 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                 )
                                             ) : (
                                                 <p className="text-xs text-gray-500">
-                                                    {teamsIn > 0 ? `Receives ${teamsIn} teams from previous stage. No configuration needed.` : 'Awaiting teams from previous stage.'}
+                                                    {teamsIn > 0
+                                                        ? <>
+                                                            Receives <strong className="text-white">{teamsIn}</strong> teams from previous stage.
+                                                            {maxLobbySize && <span className="text-gray-600"> Game max: {maxLobbySize}/lobby.</span>}
+                                                          </>
+                                                        : 'Awaiting teams from previous stage.'}
                                                 </p>
+                                            )}
+
+                                            {/* Per-stage validation error */}
+                                            {templateConfigErrors[i] && (
+                                                <div className="mt-3 flex items-start gap-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                                    <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                                                    <p className="text-xs text-red-300 leading-relaxed">{templateConfigErrors[i]}</p>
+                                                </div>
                                             )}
                                         </div>
                                     );
@@ -1106,10 +1174,17 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 <Button variant="ghost" className="text-gray-400" onClick={() => setSelectedTemplate(null)}>
                                     Back
                                 </Button>
+                                {hasTemplateErrors && (
+                                    <p className="text-xs text-red-400 flex items-center gap-1.5 flex-1">
+                                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                                        Fix the errors above before applying.
+                                    </p>
+                                )}
                                 <Button
-                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white"
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 disabled:cursor-not-allowed"
                                     onClick={handleApplyTemplate}
-                                    disabled={applyingTemplate}
+                                    disabled={applyingTemplate || hasTemplateErrors || registeredTeamCount === 0}
+                                    title={hasTemplateErrors ? 'Resolve validation errors first' : registeredTeamCount === 0 ? 'No team count available' : undefined}
                                 >
                                     {applyingTemplate ? 'Applying...' : `Apply ${selectedTemplate.stages.length} Stages`}
                                 </Button>
