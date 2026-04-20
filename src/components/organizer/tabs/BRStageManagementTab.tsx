@@ -319,15 +319,18 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
     const handleSelectTemplate = (template: StageTemplate) => {
         setSelectedTemplate(template);
+        const totalTeams = registeredTeamCount || 0;
         const configs: { capacity: number; advancement: number; groupCount: number }[] = [];
         for (let j = 0; j < template.stages.length; j++) {
             const s = template.stages[j];
-            const cap = s.capacity ?? 20;
-            const adv = s.advancementCount ?? 0;
             const tIn = j === 0
-                ? registeredTeamCount || 60
-                : (configs[j - 1]?.advancement || 4) * (configs[j - 1]?.groupCount || 1);
-            const groups = cap > 0 ? Math.max(1, Math.ceil(tIn / cap)) : 1;
+                ? totalTeams
+                : (configs[j - 1]?.advancement || 1) * (configs[j - 1]?.groupCount || 1);
+            // Default capacity: use template default but clamp to teamsIn
+            const cap = tIn > 0 ? Math.min(s.capacity ?? 20, tIn) : (s.capacity ?? 20);
+            const groups = cap > 0 && tIn > 0 ? Math.max(1, Math.ceil(tIn / cap)) : 1;
+            const teamsPerGroup = groups > 0 ? Math.ceil(tIn / groups) : tIn;
+            const adv = Math.min(s.advancementCount ?? 4, teamsPerGroup || 1);
             configs.push({ capacity: cap, advancement: adv, groupCount: groups });
         }
         setTemplateConfig(configs);
@@ -659,36 +662,14 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                             <Hash className="w-3 h-3" />
                                                             <span className="text-[10px] uppercase tracking-wider font-medium">Lobby Size</span>
                                                         </div>
-                                                        {editingField?.stageId === stage.id && editingField.field === 'capacity' ? (
-                                                            <div className="flex items-center gap-1 justify-center">
-                                                                <Select value={editValue} onValueChange={(v) => { setEditValue(v); saveInlineEdit(stage.id, 'capacity', v); }}>
-                                                                    <SelectTrigger className="h-7 w-24 text-xs">
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="none">No limit</SelectItem>
-                                                                        {[10, 12, 15, 16, 20, 25, 30, 40, 60].map(n => (
-                                                                            <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </div>
-                                                        ) : (
-                                                            <button
-                                                                className="group/cap w-full"
-                                                                onClick={() => startInlineEdit(stage.id, 'capacity', stage.capacity?.toString() || 'none')}
-                                                            >
-                                                                <p className="text-lg font-bold text-white flex items-center justify-center gap-1">
-                                                                    {stage.capacity ? `${stage.capacity}` : '∞'}
-                                                                    <Pencil className="w-2.5 h-2.5 text-gray-600 opacity-0 group-hover/cap:opacity-100 transition-opacity" />
-                                                                </p>
-                                                                <p className="text-[10px] text-gray-600 mt-0.5">
-                                                                    {(flow?.groupsFormed || 1) > 1
-                                                                        ? `→ ${flow?.groupsFormed} groups`
-                                                                        : 'single lobby'}
-                                                                </p>
-                                                            </button>
-                                                        )}
+                                                        <p className="text-lg font-bold text-white">
+                                                            {stage.capacity ? `${stage.capacity}` : '∞'}
+                                                        </p>
+                                                        <p className="text-[10px] text-gray-600 mt-0.5">
+                                                            {(flow?.groupsFormed || 1) > 1
+                                                                ? `→ ${flow?.groupsFormed} groups`
+                                                                : 'single lobby'}
+                                                        </p>
                                                     </div>
 
                                                     {/* Teams Advancing */}
@@ -964,22 +945,43 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 </DialogHeader>
                             </div>
                             <div className="px-6 py-4 space-y-4 max-h-[65vh] overflow-y-auto">
+                                {registeredTeamCount === 0 && (
+                                    <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                                        <p className="text-xs text-amber-300">No teams registered yet. Configuration uses estimates — adjust after check-in.</p>
+                                    </div>
+                                )}
                                 {(() => {
                                     return selectedTemplate.stages.map((s, i) => {
                                     const isFinalStage = i === selectedTemplate.stages.length - 1;
                                     const cfg = templateConfig[i];
 
-                                    // Compute teamsIn cumulatively
-                                    let teamsIn = registeredTeamCount || 60;
+                                    // Compute teamsIn cumulatively from registered count
+                                    let teamsIn = registeredTeamCount || 0;
                                     if (i > 0) {
                                         for (let j = 0; j < i; j++) {
                                             const prev = templateConfig[j];
-                                            teamsIn = (prev?.advancement || 4) * (prev?.groupCount || 1);
+                                            teamsIn = (prev?.advancement || 1) * (prev?.groupCount || 1);
                                         }
                                     }
 
-                                    // Auto-recalculate group count when lobby size changes
-                                    const autoGroups = cfg?.capacity > 0 ? Math.max(1, Math.ceil(teamsIn / cfg.capacity)) : 1;
+                                    const groupCount = cfg?.groupCount || 1;
+                                    const lobbySize = cfg?.capacity || teamsIn;
+                                    // Max advancement per group = teams per group
+                                    const teamsPerGroup = groupCount > 0 ? Math.ceil(teamsIn / groupCount) : teamsIn;
+                                    // Generate lobby size options: multiples that make sense up to teamsIn
+                                    const lobbySizeOptions = [5, 8, 10, 12, 15, 16, 20, 25, 30, 40, 50, 60, 80, 100, 128, 150, 200]
+                                        .filter(n => n <= teamsIn);
+                                    // Add teamsIn itself if not already in list
+                                    if (teamsIn > 0 && !lobbySizeOptions.includes(teamsIn)) {
+                                        lobbySizeOptions.push(teamsIn);
+                                        lobbySizeOptions.sort((a, b) => a - b);
+                                    }
+                                    // Advancement options: 1 to teamsPerGroup
+                                    const advancementOptions = Array.from(
+                                        { length: Math.max(1, teamsPerGroup) },
+                                        (_, k) => k + 1
+                                    ).filter(n => n <= teamsPerGroup);
 
                                     return (
                                         <div key={i} className={`p-4 rounded-xl border ${isFinalStage ? 'border-amber-500/15 bg-amber-500/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
@@ -991,22 +993,28 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     <h4 className="font-semibold text-white text-sm">{s.name}</h4>
                                                     {isFinalStage && <span className="text-[10px] text-amber-400 uppercase tracking-widest">Finals</span>}
                                                 </div>
-                                                {!isFinalStage && (
-                                                    <span className="text-[10px] text-gray-500">{teamsIn} teams entering</span>
-                                                )}
+                                                <span className="text-[10px] text-gray-500 font-medium">
+                                                    {teamsIn > 0 ? `${teamsIn} teams entering` : 'Awaiting registrations'}
+                                                </span>
                                             </div>
 
                                             {!isFinalStage ? (
+                                                teamsIn === 0 ? (
+                                                    <p className="text-xs text-gray-500">No teams to configure. Register teams first.</p>
+                                                ) : (
                                                 <div className="grid grid-cols-3 gap-3">
                                                     <div className="space-y-1.5">
                                                         <Label className="text-xs text-gray-500">Lobby Size</Label>
                                                         <Select
-                                                            value={String(cfg?.capacity || 20)}
+                                                            value={String(cfg?.capacity || teamsIn)}
                                                             onValueChange={(v) => {
                                                                 const next = [...templateConfig];
                                                                 const newCap = parseInt(v);
                                                                 const newGroups = newCap > 0 ? Math.max(1, Math.ceil(teamsIn / newCap)) : 1;
-                                                                next[i] = { ...next[i], capacity: newCap, groupCount: newGroups };
+                                                                // Clamp advancement to not exceed new lobby size
+                                                                const newTeamsPerGroup = Math.ceil(teamsIn / newGroups);
+                                                                const clampedAdv = Math.min(next[i]?.advancement || 4, newTeamsPerGroup);
+                                                                next[i] = { ...next[i], capacity: newCap, groupCount: newGroups, advancement: clampedAdv };
                                                                 setTemplateConfig(next);
                                                             }}
                                                         >
@@ -1014,41 +1022,27 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {[10, 12, 15, 16, 20, 25, 30, 40, 60].map(n => (
-                                                                    <SelectItem key={n} value={String(n)}>{n} teams</SelectItem>
+                                                                {lobbySizeOptions.map(n => (
+                                                                    <SelectItem key={n} value={String(n)}>
+                                                                        {n} teams{n === teamsIn ? ' (all)' : ''}
+                                                                    </SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
                                                     <div className="space-y-1.5">
                                                         <Label className="text-xs text-gray-500">Groups</Label>
-                                                        <Select
-                                                            value={String(cfg?.groupCount || autoGroups)}
-                                                            onValueChange={(v) => {
-                                                                const next = [...templateConfig];
-                                                                next[i] = { ...next[i], groupCount: parseInt(v) };
-                                                                setTemplateConfig(next);
-                                                            }}
-                                                        >
-                                                            <SelectTrigger className="h-9 bg-white/5 border-white/10 text-white text-sm">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {Array.from({ length: 20 }, (_, k) => k + 1).map(n => (
-                                                                    <SelectItem key={n} value={String(n)}>
-                                                                        {n} {n === 1 ? 'group' : 'groups'}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
+                                                        <div className="h-9 flex items-center px-3 rounded-md bg-white/[0.03] border border-white/10 text-sm text-gray-300">
+                                                            {groupCount} {groupCount === 1 ? 'group' : 'groups'}
+                                                        </div>
                                                         <p className="text-[10px] text-gray-600">
-                                                            {Math.ceil(teamsIn / (cfg?.groupCount || autoGroups))} teams/group
+                                                            {teamsPerGroup} teams/group
                                                         </p>
                                                     </div>
                                                     <div className="space-y-1.5">
                                                         <Label className="text-xs text-gray-500">Advance per Group</Label>
                                                         <Select
-                                                            value={String(cfg?.advancement || 4)}
+                                                            value={String(Math.min(cfg?.advancement || 4, teamsPerGroup))}
                                                             onValueChange={(v) => {
                                                                 const next = [...templateConfig];
                                                                 next[i] = { ...next[i], advancement: parseInt(v) };
@@ -1059,19 +1053,20 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {[1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20].map(n => (
+                                                                {advancementOptions.map(n => (
                                                                     <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
                                                         <p className="text-[10px] text-emerald-500/70">
-                                                            {(cfg?.advancement || 4) * (cfg?.groupCount || autoGroups)} total advance
+                                                            {Math.min(cfg?.advancement || 4, teamsPerGroup) * groupCount} total advance
                                                         </p>
                                                     </div>
                                                 </div>
+                                                )
                                             ) : (
                                                 <p className="text-xs text-gray-500">
-                                                    Receives {teamsIn} teams from previous stage. No configuration needed.
+                                                    {teamsIn > 0 ? `Receives ${teamsIn} teams from previous stage. No configuration needed.` : 'Awaiting teams from previous stage.'}
                                                 </p>
                                             )}
                                         </div>
