@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, Zap, FileText } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
@@ -24,6 +24,75 @@ interface ScoringPreset {
     killCap: number | null;
 }
 
+interface StageTemplate {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    teamRange: string;
+    stages: { name: string; capacity: number | null; advancementCount: number | null }[];
+}
+
+const BR_TEMPLATES: StageTemplate[] = [
+    {
+        id: 'open_qualifier',
+        name: 'Open Qualifier → Finals',
+        description: '2-stage format. All teams play group stage, top performers advance to a single finals lobby.',
+        icon: '🏆',
+        teamRange: '20–60 teams',
+        stages: [
+            { name: 'Open Qualifiers', capacity: 20, advancementCount: 10 },
+            { name: 'Grand Finals', capacity: null, advancementCount: null },
+        ],
+    },
+    {
+        id: 'triple_stage',
+        name: 'Groups → Semis → Finals',
+        description: '3-stage progression. Large pool narrows through semis to a final lobby. Used in ALGS & PCS.',
+        icon: '🔥',
+        teamRange: '40–100 teams',
+        stages: [
+            { name: 'Group Stage', capacity: 20, advancementCount: 10 },
+            { name: 'Semi-Finals', capacity: 20, advancementCount: 10 },
+            { name: 'Grand Finals', capacity: null, advancementCount: null },
+        ],
+    },
+    {
+        id: 'fncs_style',
+        name: 'FNCS-Style (4 Stages)',
+        description: 'Open → Quarter → Semi → Finals. The gold standard for large-scale Fortnite tournaments.',
+        icon: '⚡',
+        teamRange: '80–200 teams',
+        stages: [
+            { name: 'Open Qualifiers', capacity: 20, advancementCount: 12 },
+            { name: 'Quarter-Finals', capacity: 20, advancementCount: 10 },
+            { name: 'Semi-Finals', capacity: 20, advancementCount: 10 },
+            { name: 'Grand Finals', capacity: null, advancementCount: null },
+        ],
+    },
+    {
+        id: 'single_lobby',
+        name: 'Single Lobby (No Stages)',
+        description: 'All teams in one lobby. Best for small events with ≤20 teams. No advancement needed.',
+        icon: '🎯',
+        teamRange: '4–20 teams',
+        stages: [
+            { name: 'Main Event', capacity: null, advancementCount: null },
+        ],
+    },
+    {
+        id: 'dual_group',
+        name: 'Dual Group → Unified Finals',
+        description: '2 parallel groups play separately, top teams merge into one finals lobby. Clean and fast.',
+        icon: '⚔️',
+        teamRange: '30–40 teams',
+        stages: [
+            { name: 'Group Stage', capacity: 20, advancementCount: 8 },
+            { name: 'Grand Finals', capacity: null, advancementCount: null },
+        ],
+    },
+];
+
 interface BRStageManagementTabProps {
     tournamentId: string;
     stages: TournamentStage[];
@@ -38,6 +107,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [editingStage, setEditingStage] = useState<string | null>(null);
     const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
+    const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+    const [applyingTemplate, setApplyingTemplate] = useState(false);
 
     // Add stage form
     const [newName, setNewName] = useState('');
@@ -184,6 +255,38 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         }
     };
 
+    const handleApplyTemplate = async (template: StageTemplate) => {
+        setApplyingTemplate(true);
+        try {
+            // Delete existing stages first if any
+            if (stages.length > 0) {
+                await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, {
+                    deleteIds: stages.map(s => s.id),
+                });
+            }
+
+            // Create new stages from template
+            const stageDtos = template.stages.map((ts, i) => ({
+                id: null as any,
+                name: ts.name,
+                format: 'battle_royale',
+                stageOrder: i + 1,
+                bestOf: 1,
+                capacity: ts.capacity,
+                advancementCount: ts.advancementCount,
+            }));
+
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
+            toast({ title: 'Template Applied', description: `"${template.name}" — ${template.stages.length} stages created.` });
+            setTemplateDialogOpen(false);
+            onUpdate();
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message || 'Failed to apply template', variant: 'destructive' });
+        } finally {
+            setApplyingTemplate(false);
+        }
+    };
+
     return (
         <>
             <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6">
@@ -194,23 +297,55 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             Configure the tournament progression — group stages, qualifiers, and finals.
                         </p>
                     </div>
-                    <Button
-                        onClick={() => setAddDialogOpen(true)}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Add Stage
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setTemplateDialogOpen(true)}
+                            className="border-white/10 text-gray-300 hover:text-white flex items-center gap-2"
+                        >
+                            <FileText className="w-4 h-4" />
+                            Templates
+                        </Button>
+                        <Button
+                            onClick={() => setAddDialogOpen(true)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add Stage
+                        </Button>
+                    </div>
                 </CardHeader>
 
                 <CardContent className="p-0">
                     {sortedStages.length === 0 ? (
-                        <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-xl">
-                            <Layers className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                            <p className="text-gray-400 mb-2">No stages defined yet.</p>
-                            <p className="text-sm text-gray-500">
-                                Add stages to set up the tournament flow — e.g., Group Stage → Finals.
-                            </p>
+                        <div className="space-y-6">
+                            <div className="text-center py-6">
+                                <Layers className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                                <p className="text-gray-400 mb-1">No stages defined yet.</p>
+                                <p className="text-sm text-gray-500">
+                                    Choose a template below to get started, or add stages manually.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {BR_TEMPLATES.map((t) => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => handleApplyTemplate(t)}
+                                        disabled={applyingTemplate}
+                                        className="text-left p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group disabled:opacity-50"
+                                    >
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-lg">{t.icon}</span>
+                                            <h4 className="font-semibold text-white text-sm group-hover:text-emerald-300 transition-colors">{t.name}</h4>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mb-3 line-clamp-2">{t.description}</p>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs text-gray-600">{t.teamRange}</span>
+                                            <span className="text-xs text-emerald-500/70">{t.stages.length} {t.stages.length === 1 ? 'stage' : 'stages'}</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -460,6 +595,63 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             Delete Stage
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Template Picker Dialog */}
+            <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+                <DialogContent className="bg-[#0a0a0c] border-white/10 max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Zap className="w-5 h-5 text-emerald-400" />
+                            Stage Templates
+                        </DialogTitle>
+                        <DialogDescription>
+                            {stages.length > 0
+                                ? 'Applying a template will replace all existing stages. Choose a structure that fits your tournament.'
+                                : 'Choose a pre-built stage structure to get started quickly.'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-1 gap-3 py-2 max-h-[60vh] overflow-y-auto">
+                        {BR_TEMPLATES.map((t) => (
+                            <div
+                                key={t.id}
+                                className="p-4 rounded-xl border border-white/10 bg-white/[0.02] hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all"
+                            >
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-lg">{t.icon}</span>
+                                            <h4 className="font-semibold text-white">{t.name}</h4>
+                                            <span className="text-xs text-gray-600 ml-auto hidden sm:block">{t.teamRange}</span>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mb-3">{t.description}</p>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            {t.stages.map((s, i) => (
+                                                <React.Fragment key={i}>
+                                                    <span className="text-xs bg-white/5 border border-white/10 px-2 py-0.5 rounded-md text-gray-300">
+                                                        {s.name}
+                                                        {s.capacity && <span className="text-gray-500 ml-1">({s.capacity}/grp)</span>}
+                                                    </span>
+                                                    {i < t.stages.length - 1 && (
+                                                        <ArrowRight className="w-3 h-3 text-emerald-500/50 flex-shrink-0" />
+                                                    )}
+                                                </React.Fragment>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => handleApplyTemplate(t)}
+                                        disabled={applyingTemplate}
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-white flex-shrink-0"
+                                    >
+                                        {applyingTemplate ? 'Applying...' : 'Apply'}
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </DialogContent>
             </Dialog>
         </>
