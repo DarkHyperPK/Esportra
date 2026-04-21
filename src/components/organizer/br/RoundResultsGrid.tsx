@@ -33,13 +33,15 @@ interface ResultRow {
 }
 
 export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
-  teams,
-  existingResults,
+  teams: teamsProp,
+  existingResults: existingResultsProp,
   scoringPreset,
   onSave,
   isSaving,
   isLocked,
 }) => {
+  const teams = teamsProp ?? [];
+  const existingResults = existingResultsProp ?? [];
   const calcPoints = useCallback(
     (placement: number, kills: number) => {
       const pp =

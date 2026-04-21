@@ -57,7 +57,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
 
     // Fetch teams for the selected group
-    const { teams: groupTeams, isLoading: teamsLoading } = useBRGroupTeams(
+    const { data: groupTeams, isLoading: teamsLoading } = useBRGroupTeams(
         selectedStageId || null,
         selectedGroupId || null
     );
@@ -207,7 +207,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                             stageId={selectedStageId}
                             groupId={selectedGroupId}
                             groupName={selectedGroup.name}
-                            teams={groupTeams}
+                            teams={groupTeams ?? []}
                             scoringPreset={scoringPreset}
                         />
                     </Card>

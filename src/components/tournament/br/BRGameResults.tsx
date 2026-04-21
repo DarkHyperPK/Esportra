@@ -30,7 +30,7 @@ interface BRGameResultsProps {
 
 const BRGameResults: React.FC<BRGameResultsProps> = ({
   gameNumber,
-  teams,
+  teams: teamsProp,
   scoringPreset,
   killCap,
   existingResults,
@@ -46,6 +46,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   isLocked = false,
   evidence = [],
 }) => {
+  const teams = teamsProp ?? [];
   const { toast } = useToast();
   const [currentLobbyCode, setCurrentLobbyCode] = useState(initialLobbyCode || '');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
