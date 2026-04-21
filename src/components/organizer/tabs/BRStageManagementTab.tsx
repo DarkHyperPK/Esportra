@@ -177,8 +177,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         return teamIds.size;
     }, [participants, teamSize]);
 
-    // Use actual accepted teams; fall back to tournament max_participants if no check-ins yet
-    const registeredTeamCount = acceptedTeamCount || maxParticipants || 0;
+    // Always use tournament max_participants for stage config — accepted count is display-only
+    const registeredTeamCount = maxParticipants || 0;
 
     // Max players per lobby from game config (e.g. 100 for Fortnite, 64 for PUBG, 60 for Apex)
     const brConfig = useMemo(() => getBRConfig(game || ''), [game]);
