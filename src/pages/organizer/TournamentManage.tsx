@@ -306,7 +306,7 @@ const TournamentDashboard = () => {
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
   const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
   const brTeams = useMemo(() =>
-    isBR ? participants.map(p => ({
+    isBR ? (participants ?? []).map(p => ({
       id: p.team_id || p.id,
       name: p.team_name || p.gamer_tag || p.user?.username || 'Unknown',
       logo: p.team_logo || undefined,
