@@ -19,13 +19,15 @@ export const useBRGroups = (stageId: string | null) => {
       apiClient.post<BRGroup[]>(`/api/stages/${stageId}/br/groups`, params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['br-groups', stageId] });
-      queryClient.invalidateQueries({ queryKey: ['br-group-teams'] });
+      queryClient.invalidateQueries({ queryKey: ['br-group-teams', stageId] });
+      queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch', stageId] });
       toast({ title: 'Groups created' });
     },
-    onError: (error: Error) => {
-      const msg = error.message.includes('force=true')
-        ? 'Groups have existing rounds. Enable "Force recreate" to proceed.'
-        : error.message;
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      const msg = message.toLowerCase().includes('force') || message.toLowerCase().includes('existing round')
+        ? 'Groups have existing rounds. Delete all rounds first, or enable "Force recreate" to override.'
+        : message;
       toast({ title: 'Failed to create groups', description: msg, variant: 'destructive' });
     },
   });
@@ -38,7 +40,9 @@ export const useBRGroups = (stageId: string | null) => {
       ),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['br-groups', stageId] });
-      queryClient.invalidateQueries({ queryKey: ['br-group-teams'] });
+      queryClient.invalidateQueries({ queryKey: ['br-group-teams', stageId] });
+      // Also invalidate the batch-fetch key used by BRStageGroupSection
+      queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch', stageId] });
       toast({ title: `${data.assigned} teams distributed across ${data.groups} groups` });
     },
     onError: (error: Error) => {
@@ -74,7 +78,8 @@ export const useBRGroups = (stageId: string | null) => {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['br-groups', stageId] });
-      queryClient.invalidateQueries({ queryKey: ['br-group-teams'] });
+      queryClient.invalidateQueries({ queryKey: ['br-group-teams', stageId] });
+      queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch', stageId] });
       toast({ title: 'Group teams updated' });
     },
     onError: (error: Error) => {
