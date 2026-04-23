@@ -39,75 +39,96 @@ interface StageTemplate {
     stages: { name: string; capacity: number | null; advancementCount: number | null }[];
 }
 
-const BR_TEMPLATES: StageTemplate[] = [
-    {
-        id: 'open_qualifier',
-        name: 'Qualifier → Finals',
-        description: '2-stage format. All teams compete in qualifiers, top performers advance to a single finals lobby.',
-        icon: '',
-        teamRange: '20–60 teams',
-        minTeams: 20,
-        maxTeams: 60,
-        stages: [
-            { name: 'Qualifiers', capacity: 20, advancementCount: 10 },
-            { name: 'Grand Finals', capacity: null, advancementCount: null },
-        ],
-    },
-    {
-        id: 'triple_stage',
-        name: 'Groups → Semis → Finals',
-        description: '3-stage progression. Large pool narrows through semi-finals into a single finals lobby.',
-        icon: '',
-        teamRange: '40–100 teams',
-        minTeams: 40,
-        maxTeams: 100,
-        stages: [
-            { name: 'Group Stage', capacity: 20, advancementCount: 10 },
-            { name: 'Semi-Finals', capacity: 20, advancementCount: 10 },
-            { name: 'Grand Finals', capacity: null, advancementCount: null },
-        ],
-    },
-    {
-        id: 'four_stage',
-        name: 'Full Circuit (4 Stages)',
-        description: 'Open → Quarter → Semi → Finals. Best for large-scale tournaments with high team counts.',
-        icon: '',
-        teamRange: '80–200 teams',
-        minTeams: 80,
-        maxTeams: 200,
-        stages: [
-            { name: 'Open Qualifiers', capacity: 20, advancementCount: 12 },
-            { name: 'Quarter-Finals', capacity: 20, advancementCount: 10 },
-            { name: 'Semi-Finals', capacity: 20, advancementCount: 10 },
-            { name: 'Grand Finals', capacity: null, advancementCount: null },
-        ],
-    },
-    {
-        id: 'single_lobby',
-        name: 'Single Lobby',
-        description: 'All teams in one lobby. Best for small events with 20 teams or fewer. No advancement needed.',
-        icon: '',
-        teamRange: '4–20 teams',
-        minTeams: 4,
-        maxTeams: 20,
-        stages: [
-            { name: 'Main Event', capacity: null, advancementCount: null },
-        ],
-    },
-    {
-        id: 'dual_group',
-        name: 'Dual Group → Finals',
-        description: '2 parallel groups compete separately, top teams from each merge into one finals lobby.',
-        icon: '',
-        teamRange: '30–40 teams',
-        minTeams: 30,
-        maxTeams: 40,
-        stages: [
-            { name: 'Group Stage', capacity: 20, advancementCount: 8 },
-            { name: 'Grand Finals', capacity: null, advancementCount: null },
-        ],
-    },
-];
+/**
+ * Generate format-aware BR stage templates.
+ *
+ * All capacities and team ranges are derived from `lobbySize` — the maximum
+ * number of competing UNITS (players / duos / squads) that fit in one game
+ * lobby, calculated as: Math.floor(game.playersPerLobby / team_size).
+ *
+ * Examples for a 100-player-lobby game:
+ *   Solo  (team_size=1): lobbySize=100 → single lobby fits 100 players
+ *   Duo   (team_size=2): lobbySize=50  → single lobby fits 50 duos
+ *   Squad (team_size=4): lobbySize=25  → single lobby fits 25 squads
+ *
+ * The fallback (lobbySize=null) uses the old hardcoded values so existing
+ * behaviour is preserved for games without a configured playersPerLobby.
+ */
+function getBRTemplates(lobbySize: number | null, unitsLabel: string): StageTemplate[] {
+    const L = lobbySize ?? 20; // fallback to legacy value when game has no config
+    const half = Math.max(1, Math.floor(L / 2));
+    const twoThirds = Math.max(1, Math.floor((L * 2) / 3));
+
+    return [
+        {
+            id: 'single_lobby',
+            name: 'Single Lobby',
+            description: `All ${unitsLabel} in one lobby. Best for small events that fit within a single game session.`,
+            icon: '',
+            teamRange: `4–${L} ${unitsLabel}`,
+            minTeams: 4,
+            maxTeams: L,
+            stages: [
+                { name: 'Main Event', capacity: null, advancementCount: null },
+            ],
+        },
+        {
+            id: 'open_qualifier',
+            name: 'Qualifier → Finals',
+            description: `2-stage format. ${unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1)} compete across qualifier lobbies; top performers advance to a single finals lobby.`,
+            icon: '',
+            teamRange: `${L + 1}–${L * 3} ${unitsLabel}`,
+            minTeams: L + 1,
+            maxTeams: L * 3,
+            stages: [
+                { name: 'Qualifiers', capacity: L, advancementCount: half },
+                { name: 'Grand Finals', capacity: null, advancementCount: null },
+            ],
+        },
+        {
+            id: 'dual_group',
+            name: 'Dual Group → Finals',
+            description: `2 parallel groups compete separately; top ${unitsLabel} from each merge into one finals lobby.`,
+            icon: '',
+            teamRange: `${L + 1}–${L * 2} ${unitsLabel}`,
+            minTeams: L + 1,
+            maxTeams: L * 2,
+            stages: [
+                { name: 'Group Stage', capacity: L, advancementCount: half },
+                { name: 'Grand Finals', capacity: null, advancementCount: null },
+            ],
+        },
+        {
+            id: 'triple_stage',
+            name: 'Groups → Semis → Finals',
+            description: `3-stage progression. Large pool narrows through semi-finals into a single finals lobby.`,
+            icon: '',
+            teamRange: `${L * 2 + 1}–${L * 5} ${unitsLabel}`,
+            minTeams: L * 2 + 1,
+            maxTeams: L * 5,
+            stages: [
+                { name: 'Group Stage', capacity: L, advancementCount: half },
+                { name: 'Semi-Finals', capacity: L, advancementCount: twoThirds },
+                { name: 'Grand Finals', capacity: null, advancementCount: null },
+            ],
+        },
+        {
+            id: 'four_stage',
+            name: 'Full Circuit (4 Stages)',
+            description: `Open → Quarter → Semi → Finals. Best for large-scale events with high ${unitsLabel} counts.`,
+            icon: '',
+            teamRange: `${L * 4 + 1}–${L * 10} ${unitsLabel}`,
+            minTeams: L * 4 + 1,
+            maxTeams: L * 10,
+            stages: [
+                { name: 'Open Qualifiers', capacity: L, advancementCount: twoThirds },
+                { name: 'Quarter-Finals', capacity: L, advancementCount: half },
+                { name: 'Semi-Finals', capacity: L, advancementCount: twoThirds },
+                { name: 'Grand Finals', capacity: null, advancementCount: null },
+            ],
+        },
+    ];
+}
 
 interface StageFlowInfo {
     teamsEntering: number;
@@ -209,6 +230,9 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const unitLabel  = effectiveTeamSize === 1 ? 'player'  : effectiveTeamSize === 2 ? 'duo'  : effectiveTeamSize === 3 ? 'trio'  : 'team';
     const unitsLabel = effectiveTeamSize === 1 ? 'players' : effectiveTeamSize === 2 ? 'duos' : effectiveTeamSize === 3 ? 'trios' : 'teams';
     const UnitsLabel = unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1);
+
+    // Format-aware stage templates — recomputed whenever the game or team format changes
+    const brTemplates = useMemo(() => getBRTemplates(maxLobbySize, unitsLabel), [maxLobbySize, unitsLabel]);
 
     // Validate the template config and return per-stage error messages
     const templateConfigErrors = useMemo((): string[] => {
@@ -1278,7 +1302,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 </DialogHeader>
                             </div>
                             <div className="px-6 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
-                                {BR_TEMPLATES.map((t) => {
+                                {brTemplates.map((t) => {
                                     // FIX 7 — Fit badge
                                     const fitBadge = (() => {
                                         if (registeredTeamCount <= 0) {
