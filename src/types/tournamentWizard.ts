@@ -125,8 +125,8 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     tournamentType: 'bracket',
     bracketType: 'single_elimination',
     stages: [], // No default stage - configure via Stage Setup Wizard
-    maxTeams: 8,
-    teamSize: 7,
+    maxTeams: 100,
+    teamSize: 1,
     seedingType: 'random',
     thirdPlaceMatch: false,
     mapPoolIds: [],

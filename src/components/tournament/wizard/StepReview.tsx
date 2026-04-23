@@ -79,8 +79,8 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Group Stage Games', value: `${data.brGameCount} games` },
                 { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : (brConfig?.scoringPresets?.[data.brScoringPreset]?.name || data.brScoringPreset) },
                 { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
-                { label: 'Max Participants', value: data.maxTeams ? String(data.maxTeams) : 'Unlimited' },
-                { label: 'Team Size', value: String(data.teamSize) },
+                { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${data.teamSize === 1 ? 'Players' : data.teamSize === 2 ? 'Duos' : data.teamSize === 3 ? 'Trios' : 'Squads'}` : 'Unlimited' },
+                { label: 'Team Size', value: data.teamSize === 1 ? 'Solo (Individual)' : data.teamSize === 2 ? 'Duo (2 players)' : data.teamSize === 3 ? 'Trio (3 players)' : `${data.teamSize} players` },
                 ...(data.brMultiStage ? [
                     { label: 'Lobby Size', value: `${data.brLobbySize} teams per group` },
                     { label: 'Groups', value: data.maxTeams ? `${Math.ceil(data.maxTeams / data.brLobbySize)} groups` : 'TBD' },
