@@ -93,3 +93,51 @@ export const useBRGroupRounds = (stageId: string | null, groupId: string | null)
     error,
   };
 };
+
+// ── Player context ────────────────────────────────────────────────────────────
+
+export interface BRPlayerContext {
+  stageId: string | null;
+  stageName: string | null;
+  groupId: string | null;
+  groupName: string | null;
+  totalRounds: number;
+  completedRounds: number;
+  activeRound: {
+    id: string;
+    roundNumber: number;
+    lobbyCode: string | null;
+    status: string;
+    scheduledAt: string | null;
+  } | null;
+}
+
+export const useBRPlayerContext = (tournamentId: string | null | undefined) => {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['br-player-context', tournamentId],
+    queryFn: () =>
+      apiClient.get<BRPlayerContext>(`/api/tournaments/${tournamentId}/br/player-context`),
+    enabled: !!tournamentId,
+    staleTime: 1000 * 30,
+    refetchInterval: 15000, // poll every 15s for live updates
+  });
+
+  const defaultContext: BRPlayerContext = {
+    stageId: null,
+    groupId: null,
+    groupName: null,
+    stageName: null,
+    totalRounds: 0,
+    completedRounds: 0,
+    activeRound: null,
+  };
+
+  return {
+    context: data ?? defaultContext,
+    isLoading,
+    error,
+    refetch,
+    isInGroup: !!data?.groupId,
+  };
+};
+

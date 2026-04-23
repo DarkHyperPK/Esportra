@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBRRounds, useBRRoundResults } from '@/hooks/useBRRounds';
 import { RoundResultsGrid } from './RoundResultsGrid';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,12 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
 }) => {
   const { rounds, isLoading, error, refetch, createRound, updateRound } = useBRRounds(stageId, groupId);
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
+  // Reset expansion if the expanded round was deleted
+  useEffect(() => {
+    if (expandedRoundId && !rounds.some(r => r.id === expandedRoundId)) {
+      setExpandedRoundId(null);
+    }
+  }, [rounds, expandedRoundId]);
   const [confirmAction, setConfirmAction] = useState<{ roundId: string; action: 'start' | 'complete' | 'reopen' } | null>(null);
 
   const handleCreateRound = async () => {
@@ -162,7 +168,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
             <AlertDialogDescription className="text-zinc-400">
               {confirmAction?.action === 'start' && 'This will set the round to active. Teams will be notified.'}
               {confirmAction?.action === 'complete' && 'This will lock the round results. You can re-open later if needed.'}
-              {confirmAction?.action === 'reopen' && 'This will re-open the round for result editing.'}
+              {confirmAction?.action === 'reopen' && 'This will unlock the round for result editing. Any leaderboard standings calculated from this round may change if results are modified.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -207,6 +213,8 @@ interface RoundRowProps {
 
 const RoundRow: React.FC<RoundRowProps> = ({
   round,
+  stageId,
+  groupId,
   teams,
   scoringPreset,
   isExpanded,
@@ -216,7 +224,9 @@ const RoundRow: React.FC<RoundRowProps> = ({
   isUpdating,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRRoundResults(
-    isExpanded ? round.id : null
+    isExpanded ? round.id : null,
+    stageId,
+    groupId
   );
   const [lobbyCode, setLobbyCode] = useState(round.lobby_code ?? '');
   const [lobbyDirty, setLobbyDirty] = useState(false);
@@ -257,7 +267,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
           {round.scheduled_at && (
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {new Date(round.scheduled_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {new Date(round.scheduled_at).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}
             </span>
           )}
           {round.lobby_code ? `${round.lobby_code}` : 'No lobby code'}

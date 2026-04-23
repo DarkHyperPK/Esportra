@@ -827,6 +827,7 @@ const TournamentDetails = () => {
                       <BRGroupStageView
                         stageId={selectedStageId}
                         qualificationCount={(stages.find((s: any) => s.id === selectedStageId) as any)?.advancement_count}
+                        tournamentSlug={slug}
                       />
                     )}
                   </>

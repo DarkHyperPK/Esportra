@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+import { BR_CONFIG } from '@/config/brConfig';
 import type { BRRound, BRRoundResult, BRResultInput } from '@/types/brRounds';
 
 export const useBRRounds = (stageId: string | null, groupId: string | null) => {
@@ -57,7 +58,7 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
   };
 };
 
-export const useBRRoundResults = (roundId: string | null) => {
+export const useBRRoundResults = (roundId: string | null, stageId?: string | null, groupId?: string | null) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -65,7 +66,7 @@ export const useBRRoundResults = (roundId: string | null) => {
     queryKey: ['br-round-results', roundId],
     queryFn: () => apiClient.get<BRRoundResult[]>(`/api/br/rounds/${roundId}/results`),
     enabled: !!roundId,
-    staleTime: 1000 * 30,
+    staleTime: BR_CONFIG.ROUNDS_STALE_TIME_MS,
   });
 
   const submitResults = useMutation({
@@ -75,7 +76,13 @@ export const useBRRoundResults = (roundId: string | null) => {
       }),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['br-round-results', variables.roundId] });
-      queryClient.invalidateQueries({ queryKey: ['br-rounds'] });
+      if (stageId && groupId) {
+        queryClient.invalidateQueries({ queryKey: ['br-rounds', stageId, groupId] });
+        queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard', stageId, groupId] });
+        queryClient.invalidateQueries({ queryKey: ['br-group-rounds-summary', stageId, groupId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['br-rounds'] });
+      }
       toast({ title: `${data.saved} results saved` });
     },
     onError: (error: Error) => {

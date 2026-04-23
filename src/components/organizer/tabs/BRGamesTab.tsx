@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers, Users, Trophy, Filter, ChevronRight } from 'lucide-react';
-import { useBRGroupStage, useBRGroupLeaderboard } from '@/hooks/useBRGroupLeaderboard';
+import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
 import { useBRGroupTeams } from '@/hooks/useBRGroups';
 import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
@@ -64,6 +64,12 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
 
     // Fetch leaderboard for the selected group
     const { leaderboard, isLoading: leaderboardLoading } = useBRGroupLeaderboard(
+        selectedStageId || null,
+        selectedGroupId || null
+    );
+
+    // Fetch round summary for accurate totalGames/gamesCompleted in leaderboard
+    const { totalRounds, completedRounds } = useBRGroupRounds(
         selectedStageId || null,
         selectedGroupId || null
     );
@@ -192,12 +198,17 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                                 No results yet. Start rounds below and submit results.
                             </p>
                         ) : (
+                            <>
                             <BRLeaderboard
                                 entries={leaderboard}
-                                totalGames={0}
-                                gamesCompleted={0}
+                                totalGames={totalRounds}
+                                gamesCompleted={completedRounds}
                                 qualificationCutoff={selectedStage?.advancement_count ?? undefined}
                             />
+                            <p className="text-xs text-zinc-500 text-right mt-1">
+                              Rounds are managed in the panel above
+                            </p>
+                            </>
                         )}
                     </Card>
 

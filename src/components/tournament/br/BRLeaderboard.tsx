@@ -33,7 +33,9 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({ entries, totalGames, game
         {sorted.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <Target className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No results yet. Enter game results to see the leaderboard.</p>
+            <p className="text-sm">
+              {totalGames > 0 ? 'No results recorded yet' : 'Waiting for first round to start'}
+            </p>
           </div>
         ) : (
           <div className="space-y-1">

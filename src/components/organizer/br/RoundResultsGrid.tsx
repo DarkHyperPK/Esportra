@@ -91,7 +91,10 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
   }, [buildRows]);
 
   const updateRow = useCallback(
-    (teamId: string, field: 'placement' | 'kills', value: number) => {
+    (teamId: string, field: 'placement' | 'kills', rawValue: number) => {
+      const value = field === 'placement'
+        ? Math.max(0, Math.min(teams.length || 999, rawValue))
+        : Math.max(0, rawValue);
       setRows((prev) =>
         prev.map((r) => {
           if (r.teamId !== teamId) return r;
@@ -101,7 +104,7 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
         })
       );
     },
-    [calcPoints]
+    [calcPoints, teams.length]
   );
 
   const duplicatePlacements = useMemo(() => {
@@ -117,6 +120,13 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
 
   const allFilled = rows.every((r) => r.placement >= 1);
   const canSave = allFilled && duplicatePlacements.size === 0 && !isLocked;
+  const saveBlockReason = isLocked
+    ? 'Round is locked'
+    : !allFilled
+    ? 'Enter placement for all teams'
+    : duplicatePlacements.size > 0
+    ? 'Fix duplicate placements first'
+    : null;
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -182,8 +192,9 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
               <Input
                 type="number"
                 min={1}
+                max={teams.length || undefined}
                 value={row.placement || ''}
-                onChange={(e) => updateRow(row.teamId, 'placement', Math.max(0, parseInt(e.target.value) || 0))}
+                onChange={(e) => updateRow(row.teamId, 'placement', parseInt(e.target.value) || 0)}
                 disabled={isLocked}
                 className="h-7 text-xs text-center bg-white/5 border-white/10 text-white px-1"
               />
@@ -208,6 +219,13 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
       </div>
 
       {/* Validation */}
+      {!allFilled && !isLocked && (
+        <div className="flex items-center gap-2 text-zinc-500 text-xs bg-white/[0.02] rounded-lg px-3 py-2">
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+          Enter a placement for every team before saving.
+        </div>
+      )}
+
       {duplicatePlacements.size > 0 && (
         <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2">
           <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
@@ -220,7 +238,8 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
         <Button
           onClick={handleSave}
           disabled={!canSave || isSaving}
-          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500"
+          title={saveBlockReason ?? undefined}
+          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Save className="w-3.5 h-3.5 mr-2" />
           {isSaving ? 'Saving...' : 'Save Results'}

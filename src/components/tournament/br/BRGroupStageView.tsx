@@ -3,7 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, Swords, Copy, Loader2, AlertCircle } from 'lucide-react';
+import { Users, Swords, Copy, Loader2, AlertCircle, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
@@ -12,12 +13,16 @@ interface BRGroupStageViewProps {
   stageId: string;
   /** Number of teams that qualify from each group (for cutoff line) */
   qualificationCount?: number;
+  /** If provided, renders a "Match Room" CTA button */
+  tournamentSlug?: string;
 }
 
 const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
   stageId,
   qualificationCount,
+  tournamentSlug,
 }) => {
+  const navigate = useNavigate();
   const { groups, isLoading, error, refetch } = useBRGroupStage(stageId);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
@@ -26,8 +31,10 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
     setSelectedGroupId(null);
   }, [stageId]);
 
-  // Auto-select first group
-  const activeGroupId = selectedGroupId ?? groups[0]?.id ?? null;
+  // Validate that the selected group still exists in the loaded list (guards against stale state after group deletion)
+  const activeGroupId = (selectedGroupId && groups.some(g => g.id === selectedGroupId))
+    ? selectedGroupId
+    : groups[0]?.id ?? null;
 
   if (isLoading) {
     return (
@@ -60,6 +67,19 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
 
   return (
     <div className="space-y-4">
+      {tournamentSlug && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => navigate(`/tournaments/${tournamentSlug}/br-game-room`)}
+            className="flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-semibold px-3 py-1.5 rounded-lg bg-rose-500/8 border border-rose-500/20 hover:bg-rose-500/12 transition-colors"
+          >
+            <Swords className="w-3.5 h-3.5" />
+            Match Room
+          </button>
+        </div>
+      )}
+
       {/* Group tab selector */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {groups.map((group) => (
@@ -134,6 +154,22 @@ const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualifica
 
   return (
     <div className="space-y-4">
+      {/* No rounds state */}
+      {!roundsLoading && totalRounds === 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-white/10 bg-white/[0.01]">
+          <Clock className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+          <p className="text-xs text-zinc-500">No rounds have been created yet. The organizer will start rounds soon.</p>
+        </div>
+      )}
+
+      {/* All rounds complete, none active */}
+      {!roundsLoading && totalRounds > 0 && !activeRound && completedRounds < totalRounds && (
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-amber-500/15 bg-amber-500/[0.04]">
+          <Clock className="w-4 h-4 text-amber-500/60 flex-shrink-0" />
+          <p className="text-xs text-amber-300/70">Waiting for the next round to start. {completedRounds}/{totalRounds} rounds completed.</p>
+        </div>
+      )}
+
       {/* Active round banner */}
       {activeRound && (
         <div className="flex items-center gap-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 animate-pulse-slow">

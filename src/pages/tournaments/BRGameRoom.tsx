@@ -1,10 +1,11 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useBRGameResults } from '@/hooks/useBRGameResults';
+import { useBRPlayerContext, useBRGroupLeaderboard } from '@/hooks/useBRGroupLeaderboard';
 import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,7 @@ const BRGameRoom: React.FC = () => {
   const isBR = isBattleRoyale(game);
 
   // Fetch participants
-  const { data: participantsData } = useQuery({
+  const { data: participantsData, error: participantsError } = useQuery({
     queryKey: ['tournament-participants', tournament?.id],
     queryFn: () => apiClient.get<any[]>(`/api/tournaments/${tournament.id}/participants`),
     enabled: !!tournament?.id,
@@ -97,6 +98,13 @@ const BRGameRoom: React.FC = () => {
     tiebreaker: brSettings?.brTiebreaker || 'most_wins',
   });
 
+  // ── New stage-based data sources ─────────────────────────────────────────
+  const playerCtx = useBRPlayerContext(tournament?.id);
+  const { leaderboard: stageLeaderboard } = useBRGroupLeaderboard(
+    playerCtx.context.stageId,
+    playerCtx.context.groupId,
+  );
+
   // Self-report state
   const [reportPlacement, setReportPlacement] = useState<number>(1);
   const [reportKills, setReportKills] = useState<number>(0);
@@ -104,6 +112,13 @@ const BRGameRoom: React.FC = () => {
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Revoke any dangling object URL when evidencePreview changes or component unmounts
+  useEffect(() => {
+    return () => {
+      if (evidencePreview) URL.revokeObjectURL(evidencePreview);
+    };
+  }, [evidencePreview]);
 
   const handleEvidenceSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -130,7 +145,15 @@ const BRGameRoom: React.FC = () => {
 
   // Submit self-report with evidence
   const submitReport = async () => {
-    if (!userTeam || !brResults.activeGameNumber) return;
+    const activeRoundNumber = playerCtx.context.activeRound?.roundNumber ?? null;
+    if (!userTeam || !activeRoundNumber) return;
+    // Belt-and-suspenders: re-check at call time in case cache hasn't updated yet
+    const alreadySubmitted = (brResults.getEvidence(activeRoundNumber) || [])
+      .some(ev => ev.teamId === userTeam.id || ev.teamName === userTeam.name);
+    if (alreadySubmitted) {
+      toast({ title: 'Already submitted', description: 'You have already submitted evidence for this game.', variant: 'destructive' });
+      return;
+    }
     if (!evidenceFile) {
       toast({ title: 'Evidence required', description: 'Please upload a screenshot of your results.', variant: 'destructive' });
       return;
@@ -152,7 +175,7 @@ const BRGameRoom: React.FC = () => {
       }
 
       // Submit evidence via hook
-      await brResults.submitEvidence(brResults.activeGameNumber, {
+      await brResults.submitEvidence(activeRoundNumber, {
         teamId: userTeam.id,
         teamName: userTeam.name,
         imageUrl,
@@ -177,7 +200,7 @@ const BRGameRoom: React.FC = () => {
 
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
-  if (loadingTournament) return <PremiumLoadingScreen />;
+  if (loadingTournament || playerCtx.isLoading) return <PremiumLoadingScreen />;
 
   if (!tournament) {
     return (
@@ -198,22 +221,52 @@ const BRGameRoom: React.FC = () => {
     );
   }
 
-  const activeGame = brResults.activeGameNumber;
-  const activeCode = activeGame ? brResults.getLobbyCode(activeGame) : null;
-  const allGamesFinished = brResults.gamesCompleted >= brGameCount;
+  if (participantsError) {
+    return (
+      <PremiumBackground className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-3 px-4">
+          <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
+          <p className="text-white font-semibold">Failed to load tournament data</p>
+          <p className="text-zinc-400 text-sm">Could not fetch participant list. Please refresh and try again.</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>Refresh</Button>
+        </div>
+      </PremiumBackground>
+    );
+  }
 
-  // Find user's rank in leaderboard (match by id or name)
+  const activeGame = playerCtx.context.activeRound?.roundNumber ?? null;
+  const activeCode = playerCtx.context.activeRound?.lobbyCode ?? null;
+  // Use stage leaderboard when available (new system), fall back to old system
+  const leaderboard = stageLeaderboard.length > 0 ? stageLeaderboard : brResults.leaderboard;
+  const gamesCompleted = playerCtx.context.completedRounds;
+  const totalGames = playerCtx.context.totalRounds > 0 ? playerCtx.context.totalRounds : brGameCount;
+  const allGamesFinished = gamesCompleted >= totalGames && totalGames > 0;
+
+  // Find user's rank in leaderboard (match by id only — name-based fallback causes false matches with duplicate team names)
   const userRank = userTeam
-    ? brResults.leaderboard.findIndex(e => e.teamId === userTeam.id || e.teamName === userTeam.name) + 1
+    ? leaderboard.findIndex(e => e.teamId === userTeam.id) + 1
     : 0;
   const userEntry = userTeam
-    ? brResults.leaderboard.find(e => e.teamId === userTeam.id || e.teamName === userTeam.name)
+    ? leaderboard.find(e => e.teamId === userTeam.id) ?? null
     : null;
 
   // Check if user already submitted evidence for active game
   const userAlreadySubmitted = activeGame && userTeam
-    ? (brResults.getEvidence(activeGame) || []).some(ev => ev.teamId === userTeam.id || ev.teamName === userTeam.name)
+    ? (brResults.getEvidence(activeGame) || []).some(ev => ev.teamId === userTeam.id)
     : false;
+
+  // Warn on browser close/refresh if user has an active unsubmitted game
+  useEffect(() => {
+    const isActiveAndUnsubmitted = !!activeGame && !userAlreadySubmitted;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isActiveAndUnsubmitted) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [activeGame, userAlreadySubmitted]);
 
   return (
     <PremiumBackground className="min-h-screen">
@@ -239,7 +292,7 @@ const BRGameRoom: React.FC = () => {
               <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Battle Royale</span>
               <span className="w-1 h-1 rounded-full bg-zinc-700" />
               <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
-                {brResults.gamesCompleted}/{brGameCount} Games
+                {gamesCompleted}/{totalGames} Games
               </span>
             </div>
           </div>
@@ -250,6 +303,51 @@ const BRGameRoom: React.FC = () => {
             </div>
           )}
         </motion.div>
+
+        {/* ─── Stale data indicator ─── */}
+        {(brResults.isError || playerCtx.error) && (
+          <motion.div variants={stagger.item}>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/8 border border-amber-500/20">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+              <p className="text-xs text-amber-300/80">Unable to reach the server. Showing last known data.</p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── Group Stage Link ─── */}
+        <motion.div variants={stagger.item}>
+          <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+            <span className="text-xs text-zinc-500">
+              {playerCtx.context.groupName
+                ? `Playing in group: ${playerCtx.context.groupName}`
+                : 'Playing in group stage?'}
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate(`/tournaments/${slug}`)}
+              className="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1 transition-colors"
+            >
+              View your group <ArrowLeft className="w-3 h-3 rotate-180" />
+            </button>
+          </div>
+        </motion.div>
+
+        {/* ─── Not assigned to a group ─── */}
+        {!playerCtx.isInGroup && !playerCtx.isLoading && (
+          <motion.div variants={stagger.item}>
+            <Card className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl">
+              <CardContent className="py-10 px-6 flex flex-col items-center text-center">
+                <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
+                  <Gamepad2 className="w-7 h-7 text-zinc-600" />
+                </div>
+                <h3 className="text-base font-bold text-white tracking-tight mb-1">Not Yet Assigned</h3>
+                <p className="text-sm text-zinc-500 max-w-xs">
+                  You are not assigned to a group yet. Check back soon.
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* ─── Active Game — LIVE ─── */}
         {activeGame ? (
@@ -275,7 +373,7 @@ const BRGameRoom: React.FC = () => {
                           Game {activeGame}
                         </CardTitle>
                         <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest mt-0.5">
-                          {brResults.gamesCompleted} of {brGameCount} completed
+                          {gamesCompleted} of {totalGames} completed
                         </p>
                       </div>
                     </div>
@@ -347,11 +445,11 @@ const BRGameRoom: React.FC = () => {
                             <Input
                               type="number"
                               min={1}
-                              max={100}
+                              max={Math.max(brTeams.length, 1)}
                               value={reportPlacement}
                               onChange={(e) => {
                                 const v = parseInt(e.target.value) || 1;
-                                setReportPlacement(Math.max(1, Math.min(100, v)));
+                                setReportPlacement(Math.max(1, Math.min(Math.max(brTeams.length, 1), v)));
                               }}
                               className="h-11 text-center text-lg font-bold pl-7 bg-black/30 border-white/[0.06] focus:border-rose-500/40 [color-scheme:dark]"
                             />
@@ -362,9 +460,16 @@ const BRGameRoom: React.FC = () => {
                           <Input
                             type="number"
                             min={0}
-                            max={brKillCap || 99}
+                            max={brKillCap ?? undefined}
                             value={reportKills}
-                            onChange={(e) => setReportKills(Math.max(0, Math.min(brKillCap || 99, parseInt(e.target.value) || 0)))}
+                            onChange={(e) => {
+                              const raw = parseInt(e.target.value) || 0;
+                              const cap = brKillCap ?? 99;
+                              if (raw > cap && brKillCap != null) {
+                                toast({ title: `Kill cap is ${brKillCap}`, description: `Maximum kills counted per game is ${brKillCap}.` });
+                              }
+                              setReportKills(Math.max(0, Math.min(cap, raw)));
+                            }}
                             className="h-11 text-center text-lg font-bold bg-black/30 border-white/[0.06] focus:border-rose-500/40 [color-scheme:dark]"
                           />
                         </div>
@@ -443,13 +548,13 @@ const BRGameRoom: React.FC = () => {
               </Card>
             </div>
           </motion.div>
-        ) : allGamesFinished || brResults.winner ? (
+        ) : allGamesFinished || (leaderboard.length > 0 && gamesCompleted >= totalGames && totalGames > 0) ? (
           /* ─── Tournament Complete ─── */
           (() => {
-            const isWinner = userTeam && brResults.winner
-              && (brResults.winner.teamId === userTeam.id || brResults.winner.teamName === userTeam.name);
-            const userRankIdx = userTeam ? brResults.leaderboard.findIndex(e => e.teamId === userTeam.id || e.teamName === userTeam.name) : -1;
-            const userRank = userRankIdx >= 0 ? userRankIdx + 1 : null;
+            const winner = leaderboard.length > 0 ? leaderboard[0] : null;
+            const isWinner = userTeam && winner && winner.teamId === userTeam.id;
+            const userRankIdx = userTeam ? leaderboard.findIndex(e => e.teamId === userTeam.id) : -1;
+            const userRankFinal = userRankIdx >= 0 ? userRankIdx + 1 : null;
 
             return isWinner ? (
               /* ─── Winner Card ─── */
@@ -465,7 +570,7 @@ const BRGameRoom: React.FC = () => {
                       <h2 className="text-2xl font-black text-amber-300 tracking-tight mb-1">🎉 Congratulations!</h2>
                       <p className="text-lg font-bold text-white">You are the Champion!</p>
                       <p className="text-amber-400/70 text-sm mt-2 font-medium">
-                        {brResults.winner!.totalPoints} pts · {brResults.winner!.wins} win{brResults.winner!.wins !== 1 ? 's' : ''} · {brResults.winner!.totalKills} kills
+                        {winner!.totalPoints} pts · {winner!.wins} win{winner!.wins !== 1 ? 's' : ''} · {winner!.totalKills} kills
                       </p>
                       <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
                         <Medal className="w-4 h-4 text-amber-400" />
@@ -488,15 +593,15 @@ const BRGameRoom: React.FC = () => {
                         </div>
                         <div className="flex-1">
                           <h2 className="text-xl font-bold text-white tracking-tight">Tournament Complete</h2>
-                          {brResults.winner && (
+                          {winner && (
                             <p className="text-amber-300/80 font-medium text-sm mt-1">
-                              Winner: <span className="text-amber-300 font-bold">{brResults.winner.teamName}</span>
-                              {' '}<span className="text-amber-400/60">— {brResults.winner.totalPoints} pts</span>
+                              Winner: <span className="text-amber-300 font-bold">{winner.teamName}</span>
+                              {' '}<span className="text-amber-400/60">— {winner.totalPoints} pts</span>
                             </p>
                           )}
                           {userTeam && (
                             <p className="text-zinc-400 text-sm mt-2 leading-relaxed">
-                              Thank you for participating!{userRank ? ` You finished #${userRank} overall.` : ''} Better luck next time 💪
+                              Thank you for participating!{userRankFinal ? ` You finished #${userRankFinal} overall.` : ''} Better luck next time 💪
                             </p>
                           )}
                         </div>
@@ -517,7 +622,7 @@ const BRGameRoom: React.FC = () => {
                 </div>
                 <h3 className="text-base font-bold text-white tracking-tight mb-1">Waiting for Next Game</h3>
                 <p className="text-sm text-zinc-500 max-w-xs">
-                  {brResults.gamesCompleted} of {brGameCount} games completed. The organizer will start the next game soon.
+                  {gamesCompleted} of {totalGames} games completed. The organizer will start the next game soon.
                 </p>
               </CardContent>
             </Card>
@@ -572,7 +677,7 @@ const BRGameRoom: React.FC = () => {
         )}
 
         {/* ─── Game History ─── */}
-        {brResults.gamesCompleted > 0 && (
+        {gamesCompleted > 0 && (
           <motion.div variants={stagger.item} className="space-y-2">
             <button
               onClick={() => setHistoryExpanded(prev => !prev)}
@@ -598,7 +703,7 @@ const BRGameRoom: React.FC = () => {
                   transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
                   className="overflow-hidden space-y-3"
                 >
-                  {Array.from({ length: brGameCount }, (_, i) => i + 1)
+                  {Array.from({ length: totalGames }, (_, i) => i + 1)
                     .filter(n => brResults.getGameStatus(n) === 'completed')
                     .map(gameNum => {
                       const results = brResults.getGameResults(gameNum);
@@ -630,7 +735,7 @@ const BRGameRoom: React.FC = () => {
                           <div className="divide-y divide-white/[0.025]">
                             {sorted.map((r) => {
                               const isUser = userTeam?.id === r.teamId;
-                              const teamInfo = brResults.leaderboard.find(e => e.teamId === r.teamId);
+                              const teamInfo = leaderboard.find(e => e.teamId === r.teamId);
                               return (
                                 <div
                                   key={r.teamId}
@@ -680,14 +785,14 @@ const BRGameRoom: React.FC = () => {
         {/* ─── Leaderboard ─── */}
         <motion.div variants={stagger.item}>
           <BRLeaderboard
-            entries={brResults.leaderboard}
-            totalGames={brGameCount}
-            gamesCompleted={brResults.gamesCompleted}
+            entries={leaderboard}
+            totalGames={totalGames}
+            gamesCompleted={gamesCompleted}
           />
         </motion.div>
 
         {/* ─── Dispute Option ─── */}
-        {brResults.gamesCompleted > 0 && userTeam && (
+        {gamesCompleted > 0 && userTeam && (
           <motion.div variants={stagger.item}>
             <div className="rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">

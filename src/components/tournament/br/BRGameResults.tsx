@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Save, Copy, Key, Play, Lock, CheckCircle, Radio, ImageIcon, RotateCcw, Edit3, Eye, EyeOff, X } from 'lucide-react';
 import type { BRScoringPreset, BRTeamResult, BREvidence } from '@/types/battleRoyale';
 import type { BRGameStatus } from '@/hooks/useBRGameResults';
+import { calculateBRPoints } from '@/utils/brScoring';
 
 interface BRGameResultsProps {
   gameNumber: number;
@@ -52,6 +53,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [startLobbyCode, setStartLobbyCode] = useState('');
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [savedIndicator, setSavedIndicator] = useState(false);
 
   // Sync lobby code when prop updates (e.g., after optimistic update or refetch)
   useEffect(() => {
@@ -65,41 +67,38 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
     return teams.map((t, i) => ({ teamId: t.id, placement: i + 1, kills: 0 }));
   });
 
-  // Sync results when existing results change from backend (e.g., after reset or refetch)
+  // Sync results from backend data; overlay evidence on top atomically to avoid race conditions
   const existingResultsJson = JSON.stringify(existingResults || []);
+  const evidenceJson = JSON.stringify(
+    evidence.map(e => ({ teamId: e.teamId, teamName: e.teamName, placement: e.placement, kills: e.kills }))
+  );
   useEffect(() => {
     const parsed = JSON.parse(existingResultsJson) as BRTeamResult[];
-    if (parsed.length) {
-      setResults(parsed.map(r => ({ teamId: r.teamId, placement: r.placement, kills: r.kills })));
-    } else {
-      setResults(teams.map((t, i) => ({ teamId: t.id, placement: i + 1, kills: 0 })));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existingResultsJson]);
-
-  // Auto-fill results from player-reported evidence scores
-  const evidenceJson = JSON.stringify(evidence.map(e => ({ teamId: e.teamId, teamName: e.teamName, placement: e.placement, kills: e.kills })));
-  useEffect(() => {
     const evList = JSON.parse(evidenceJson) as { teamId: string; teamName: string; placement?: number; kills?: number }[];
-    if (!evList.length) return;
-    setResults(prev => {
-      const updated = [...prev];
+
+    // Step 1: build base rows from existing results or default ordering
+    const base: { teamId: string; placement: number; kills: number }[] = parsed.length
+      ? parsed.map(r => ({ teamId: r.teamId, placement: r.placement, kills: r.kills }))
+      : teams.map((t, i) => ({ teamId: t.id, placement: i + 1, kills: 0 }));
+
+    // Step 2: overlay evidence placements/kills only where evidence provides them
+    if (evList.length > 0) {
       for (const ev of evList) {
-        if (ev.placement == null) continue;
-        // Find by teamId or team name
-        let idx = updated.findIndex(r => r.teamId === ev.teamId);
+        if (ev.placement === null || ev.placement === undefined) continue;
+        let idx = base.findIndex(r => r.teamId === ev.teamId);
         if (idx < 0) {
           const matched = teams.find(t => t.name === ev.teamName);
-          if (matched) idx = updated.findIndex(r => r.teamId === matched.id);
+          if (matched) idx = base.findIndex(r => r.teamId === matched.id);
         }
         if (idx >= 0) {
-          updated[idx] = { ...updated[idx], placement: ev.placement, kills: ev.kills ?? updated[idx].kills };
+          base[idx] = { ...base[idx], placement: ev.placement, kills: ev.kills ?? base[idx].kills };
         }
       }
-      return updated;
-    });
+    }
+
+    setResults(base);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [evidenceJson]);
+  }, [existingResultsJson, evidenceJson]);
 
   const updateKills = (index: number, kills: number) => {
     const capped = killCap ? Math.min(kills, killCap) : kills;
@@ -115,14 +114,6 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
     setResults(newResults);
   };
 
-  const calculatePoints = (placement: number, kills: number): { placementPts: number; killPts: number; total: number } => {
-    const placementPts = placement <= scoringPreset.placements.length
-      ? scoringPreset.placements[placement - 1]
-      : 0;
-    const effectiveKills = killCap ? Math.min(kills, killCap) : kills;
-    const killPts = effectiveKills * scoringPreset.killPoints;
-    return { placementPts, killPts, total: placementPts + killPts };
-  };
 
   const handleSave = () => {
     const placements = results.map(r => r.placement);
@@ -133,19 +124,21 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
     }
 
     const fullResults: BRTeamResult[] = results.map(r => {
-      const pts = calculatePoints(r.placement, r.kills);
+      const pts = calculateBRPoints(r.placement, r.kills, scoringPreset, killCap);
       return {
         teamId: r.teamId,
-        teamName: teams.find(t => t.id === r.teamId)?.name,
+        teamName: teams.find(t => t.id === r.teamId)?.name ?? 'Unknown',
         placement: r.placement,
         kills: r.kills,
-        placementPoints: pts.placementPts,
-        killPoints: pts.killPts,
-        totalPoints: pts.total,
+        placementPoints: pts.placementPoints,
+        killPoints: pts.killPoints,
+        totalPoints: pts.totalPoints,
       };
     });
 
     onSave(fullResults, currentLobbyCode || undefined);
+    setSavedIndicator(true);
+    setTimeout(() => setSavedIndicator(false), 2500);
   };
 
   // Sort by placement for display
@@ -268,8 +261,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
           </div>
         </div>
         {/* Lobby Code */}
-        <div className="flex items-center gap-2 mt-3">
-          <Key className="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <div className="flex items-center gap-2 mt-3">          <Key className="w-4 h-4 text-gray-400 flex-shrink-0" />
           {isOrganizer && gameStatus === 'active' ? (
             <Input
               placeholder="Enter lobby code for players..."
@@ -297,6 +289,12 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
             <span className="text-xs text-gray-500 italic">No lobby code set</span>
           )}
         </div>
+        {savedIndicator && (
+          <div className="flex items-center gap-2 mt-2 text-xs text-emerald-400">
+            <CheckCircle className="w-3.5 h-3.5" />
+            Results saved successfully
+          </div>
+        )}
       </CardHeader>
       <CardContent className="pt-4">
         <div className="space-y-2">
@@ -314,7 +312,7 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
           {/* Results rows — read-only standings */}
           {sortedResults.map((result, displayIndex) => {
             const team = teams.find(t => t.id === result.teamId);
-            const pts = calculatePoints(result.placement, result.kills);
+            const pts = calculateBRPoints(result.placement, result.kills, scoringPreset, killCap);
 
             return (
               <div
@@ -344,9 +342,9 @@ const BRGameResults: React.FC<BRGameResultsProps> = ({
                 </div>
                 <div className="text-center text-sm text-zinc-300 font-medium">#{result.placement}</div>
                 <div className="text-center text-sm text-zinc-300 font-medium">{result.kills}</div>
-                <div className="text-center text-xs text-emerald-400 font-bold">{pts.placementPts}</div>
-                <div className="text-center text-xs text-rose-400 font-bold">{pts.killPts}</div>
-                <div className="text-center text-sm text-white font-bold">{pts.total}</div>
+                <div className="text-center text-xs text-emerald-400 font-bold">{pts.placementPoints}</div>
+                <div className="text-center text-xs text-rose-400 font-bold">{pts.killPoints}</div>
+                <div className="text-center text-sm text-white font-bold">{pts.totalPoints}</div>
               </div>
             );
           })}

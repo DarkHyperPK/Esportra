@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
+import { BR_CONFIG } from '@/config/brConfig';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { BRTeamResult, BRLeaderboardEntry, BRScoringPreset, BRGameResult, BREvidence } from '@/types/battleRoyale';
 
@@ -35,7 +36,7 @@ export function useBRGameResults({
   const queryClient = useQueryClient();
 
   // Fetch saved BR game data from backend API
-  const { data: savedGames, isLoading } = useQuery({
+  const { data: savedGames, isLoading, isError: gamesQueryError, isFetching } = useQuery({
     queryKey: ['br-game-results', tournamentId],
     queryFn: async (): Promise<BRGameData[]> => {
       if (!tournamentId) return [];
@@ -44,7 +45,7 @@ export function useBRGameResults({
         `/api/tournaments/${tournamentId}/br-games`
       );
 
-      if (!resp?.games) return [];
+      if (!resp?.games || typeof resp.games !== 'object' || Array.isArray(resp.games)) return [];
 
       const games: BRGameData[] = [];
       const gamesObj = resp.games as Record<string, BRGameData>;
@@ -55,8 +56,8 @@ export function useBRGameResults({
       return games;
     },
     enabled: !!tournamentId,
-    staleTime: 1000 * 5,
-    refetchInterval: 1000 * 5,
+    staleTime: BR_CONFIG.STALE_TIME_MS,
+    refetchInterval: BR_CONFIG.POLL_INTERVAL_MS,
   });
 
   // Merge saved data into a Map
@@ -77,6 +78,7 @@ export function useBRGameResults({
   const persistGame = useCallback(
     async (gameData: BRGameData) => {
       if (!tournamentId) throw new Error('No tournament ID');
+      if (gameCount < 1) throw new Error('Tournament has no games configured');
 
       // Read current games from cache to merge
       const currentSaved = queryClient.getQueryData<BRGameData[]>(['br-game-results', tournamentId]) || [];
@@ -90,7 +92,7 @@ export function useBRGameResults({
         games: currentGames,
       });
     },
-    [tournamentId, queryClient]
+    [tournamentId, queryClient, gameCount]
   );
 
   // Save mutation
@@ -177,13 +179,16 @@ export function useBRGameResults({
   const updateLobbyCode = useCallback(
     (gameNumber: number, lobbyCode: string) => {
       const existing = allGames.get(gameNumber);
-      if (!existing) return;
+      if (!existing) {
+        toast({ title: 'Game not found', description: `Game ${gameNumber} has not been started yet.`, variant: 'destructive' });
+        return;
+      }
       saveMutation.mutate({
         ...existing,
         lobbyCode,
       });
     },
-    [saveMutation, allGames]
+    [saveMutation, allGames, toast]
   );
 
   // Get game status
@@ -263,7 +268,7 @@ export function useBRGameResults({
         entry.totalKills += result.kills;
         if (result.placement === 1) entry.wins += 1;
         if (result.placement < entry.bestPlacement) entry.bestPlacement = result.placement;
-        entry.perGameResults.push({
+        (entry.perGameResults ??= []).push({
           gameNumber: gameData.gameNumber,
           placement: result.placement,
           kills: result.kills,
@@ -387,6 +392,8 @@ export function useBRGameResults({
     gamesCompleted,
     winner,
     isLoading,
+    isError: gamesQueryError,
+    isFetching,
     isSaving: saveMutation.isPending,
     isResettingAll: resetAllGamesMutation.isPending,
     saveGameResults,

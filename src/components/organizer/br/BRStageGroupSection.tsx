@@ -86,6 +86,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
         groups.map(g =>
           apiClient.get<BRGroupTeam[]>(`/api/stages/${stageId}/br/groups/${g.id}/teams`)
             .then(teams => ({ groupId: g.id, teams }))
+            .catch(() => ({ groupId: g.id, teams: [] as BRGroupTeam[] }))
         )
       );
       const map: Record<string, BRGroupTeam[]> = {};
