@@ -59,6 +59,7 @@ export const useBRGroups = (stageId: string | null) => {
       apiClient.delete(`/api/stages/${stageId}/br/groups/${groupId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['br-groups', stageId] });
+      queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch', stageId] });
       toast({ title: 'Group deleted' });
     },
     onError: (error: Error) => {
