@@ -13,6 +13,7 @@ import { Database } from '@/integrations/supabase/types';
 import BRStageGroupSection from '@/components/organizer/br/BRStageGroupSection';
 import { BRScheduleDialog } from '@/components/organizer/br/BRScheduleDialog';
 import { getBRConfig } from '@/utils/gameFeatures';
+import esportsGames from '@/data/esportsGames.json';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
@@ -185,7 +186,29 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
     // Max players per lobby from game config (e.g. 100 for Fortnite, 64 for PUBG, 60 for Apex)
     const brConfig = useMemo(() => getBRConfig(game || ''), [game]);
-    const maxLobbySize = brConfig?.playersPerLobby ?? null;
+
+    // Resolve effective teamSize: use prop if set, otherwise infer from the game's default format.
+    // This handles older tournaments where team_size was never persisted to the DB.
+    const effectiveTeamSize = useMemo(() => {
+        if (teamSize != null && teamSize > 0) return teamSize;
+        // Fallback: look up the game's default format team size
+        const gameConfig = game ? (esportsGames.games as { name: string; formats: { value: string; teamSize: number }[]; defaultFormat: string }[]).find(g => g.name.toLowerCase() === (game || '').toLowerCase()) : null;
+        if (gameConfig) {
+            const fmt = gameConfig.formats.find(f => f.value === gameConfig.defaultFormat) ?? gameConfig.formats[0];
+            return fmt?.teamSize ?? 1;
+        }
+        return 1; // ultimate fallback: solo
+    }, [teamSize, game]);
+
+    // playersPerLobby is total player count; divide by effectiveTeamSize to get competing-unit capacity
+    const maxLobbySize = brConfig
+        ? Math.floor(brConfig.playersPerLobby / Math.max(1, effectiveTeamSize))
+        : null;
+
+    // Format-aware unit labels — all "team/teams" labels in the UI derive from these
+    const unitLabel  = effectiveTeamSize === 1 ? 'player'  : effectiveTeamSize === 2 ? 'duo'  : effectiveTeamSize === 3 ? 'trio'  : 'team';
+    const unitsLabel = effectiveTeamSize === 1 ? 'players' : effectiveTeamSize === 2 ? 'duos' : effectiveTeamSize === 3 ? 'trios' : 'teams';
+    const UnitsLabel = unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1);
 
     // Validate the template config and return per-stage error messages
     const templateConfigErrors = useMemo((): string[] => {
@@ -200,7 +223,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             if (isFinal) {
                 // Final stage: validate that teams entering fit within max lobby
                 if (maxLobbySize && teamsIn > maxLobbySize) {
-                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): ${teamsIn} teams advancing to finals exceeds the max lobby size of ${maxLobbySize} for this game. Reduce advancement in the previous stage.`);
+                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): ${teamsIn} ${unitsLabel} advancing to finals exceeds the max lobby size of ${maxLobbySize} ${unitsLabel} for this game. Reduce advancement in the previous stage.`);
                 } else {
                     errors.push('');
                 }
@@ -215,11 +238,11 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                     errors.push(`Stage ${i + 1}: No teams entering. Check the previous stage's advancement count.`);
                 } else if (advancement >= teamsPerGroup && groupCount === 1) {
                     // Single group advancing everyone = pointless qualifier
-                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): Advancing all ${teamsPerGroup} teams from a single group is pointless — everyone passes through. Reduce advancement or add more groups.`);
+                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): Advancing all ${teamsPerGroup} ${unitsLabel} from a single group is pointless — everyone passes through. Reduce advancement or add more groups.`);
                 } else if (totalAdvancing >= teamsIn && groupCount === 1) {
-                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): Advancing ${totalAdvancing} of ${teamsIn} teams means no one is eliminated. Set advancement below ${teamsIn}.`);
+                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): Advancing ${totalAdvancing} of ${teamsIn} ${unitsLabel} means no one is eliminated. Set advancement below ${teamsIn}.`);
                 } else if (maxLobbySize && teamsPerGroup > maxLobbySize) {
-                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): Lobby size ${teamsPerGroup} exceeds the game's max of ${maxLobbySize} players per lobby. Add more groups.`);
+                    errors.push(`Stage ${i + 1} (${selectedTemplate.stages[i].name}): Lobby size ${teamsPerGroup} ${unitsLabel} exceeds the game's max of ${maxLobbySize} ${unitsLabel}/lobby. Add more groups.`);
                 } else {
                     errors.push('');
                 }
@@ -307,7 +330,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             if (newGroupCount < 1) errs.push('Group count must be at least 1.');
             if (newAdvancement < 1) errs.push('Advance per group must be at least 1.');
             if (lobbySize != null && newAdvancement >= lobbySize) {
-                errs.push(`Advance per group (${newAdvancement}) must be less than lobby size (${lobbySize}) — at least 1 team must be eliminated.`);
+                errs.push(`Advance per group (${newAdvancement}) must be less than lobby size (${lobbySize}) — at least 1 ${unitLabel} must be eliminated.`);
             }
             if (maxLobbySize && lobbySize != null && lobbySize > maxLobbySize) {
                 errs.push(`Lobby size ${lobbySize} exceeds game max of ${maxLobbySize}. Add more groups.`);
@@ -463,6 +486,13 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     };
 
     const handleSelectTemplate = (template: StageTemplate) => {
+        // Warn if there are already stages configured
+        if (stages.length > 0) {
+          const confirmed = window.confirm(
+            `Applying this template will replace your ${stages.length} existing stage${stages.length !== 1 ? 's' : ''}. This action cannot be undone.\n\nContinue?`
+          );
+          if (!confirmed) return;
+        }
         setSelectedTemplate(template);
         const totalTeams = registeredTeamCount || 0;
         const configs: { capacity: number; advancement: number; groupCount: number }[] = [];
@@ -471,8 +501,11 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             const tIn = j === 0
                 ? totalTeams
                 : (configs[j - 1]?.advancement || 1) * (configs[j - 1]?.groupCount || 1);
-            // Default groups from template hint (advancementCount is used as group hint), min 1
-            const defaultGroups = s.capacity && tIn > 0 ? Math.max(1, Math.ceil(tIn / s.capacity)) : 1;
+            // Clamp template hint by game's actual max lobby size (if known)
+            const effectiveCapacity = s.capacity
+              ? (maxLobbySize ? Math.min(s.capacity, maxLobbySize) : s.capacity)
+              : (maxLobbySize ?? 20);
+            const defaultGroups = tIn > 0 ? Math.max(1, Math.ceil(tIn / effectiveCapacity)) : 1;
             const groups = Math.max(1, defaultGroups);
             const lobbySize = groups > 0 && tIn > 0 ? Math.ceil(tIn / groups) : tIn;
             const teamsPerGroup = lobbySize;
@@ -603,9 +636,9 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                     <div>
                         <div className="flex items-center gap-2">
                             <CardTitle>Battle Royale Stages</CardTitle>
-                            {teamSize != null && (
+                            {(
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
-                                    {teamSize === 1 ? 'Solo' : teamSize === 2 ? 'Duo' : teamSize === 3 ? 'Trio' : teamSize === 4 ? 'Squads' : `${teamSize}-player`}
+                                    {effectiveTeamSize === 1 ? 'Solo' : effectiveTeamSize === 2 ? 'Duo' : effectiveTeamSize === 3 ? 'Trio' : effectiveTeamSize === 4 ? 'Squads' : `${effectiveTeamSize}-player`}
                                 </span>
                             )}
                         </div>
@@ -650,7 +683,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                             <div className="flex items-center gap-2 flex-wrap justify-center">
                                 <span className="text-xs font-medium text-white bg-emerald-500/15 border border-emerald-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
                                     <Users className="w-3 h-3" />
-                                    {registeredTeamCount} {teamSize === 1 ? 'players' : 'teams'}
+                                    {registeredTeamCount} {unitsLabel}
                                 </span>
                                 {sortedStages.map((stage, i) => {
                                     const flow = stageFlows.get(stage.id);
@@ -812,7 +845,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     <div className="bg-white/[0.03] border border-white/5 rounded-lg p-2.5 text-center">
                                                         <div className="flex items-center justify-center gap-1 text-gray-500 mb-1">
                                                             <LogIn className="w-3 h-3" />
-                                                            <span className="text-[10px] uppercase tracking-wider font-medium">Teams In</span>
+                                                            <span className="text-[10px] uppercase tracking-wider font-medium">{UnitsLabel} In</span>
                                                         </div>
                                                         <p className="text-lg font-bold text-white">{flow?.teamsEntering || '—'}</p>
                                                         {prevStage && (
@@ -929,7 +962,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                         onClick={() => setAdvanceConfirmStageId(stage.id)}
                                                     >
                                                         <ArrowRight className="w-3.5 h-3.5 mr-1.5" />
-                                                        Advance Top {flow.teamsAdvancing} Teams
+                                                        Advance Top {flow.teamsAdvancing} {UnitsLabel}
                                                     </Button>
                                                 )}
                                             </div>
@@ -986,7 +1019,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                         <DialogTitle>Add Stage</DialogTitle>
                         <DialogDescription>
                             {addStageContext?.fromStageName
-                                ? `This stage will receive teams advancing from "${addStageContext.fromStageName}".`
+                                ? `This stage will receive ${unitsLabel} advancing from "${addStageContext.fromStageName}".`
                                 : 'Add the first stage of your tournament.'}
                         </DialogDescription>
                     </DialogHeader>
@@ -996,7 +1029,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                         <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm">
                             <LogIn className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                             <span className="text-emerald-300">
-                                ~<strong>{addStageContext.incomingTeams}</strong> teams expected from <strong>{addStageContext.fromStageName}</strong>
+                                ~<strong>{addStageContext.incomingTeams}</strong> {unitsLabel} expected from <strong>{addStageContext.fromStageName}</strong>
                             </span>
                         </div>
                     )}
@@ -1006,7 +1039,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                         <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm">
                             <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                             <span className="text-amber-300">
-                                <strong>"{addStageContext.fromStageName}"</strong> has no advancement count set — it doesn't know how many teams to pass forward. Configure it first, or this stage will have no defined input.
+                                <strong>"{addStageContext.fromStageName}"</strong> has no advancement count set — it doesn't know how many {unitsLabel} to pass forward. Configure it first, or this stage will have no defined input.
                             </span>
                         </div>
                     )}
@@ -1064,7 +1097,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                             <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                                                 <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                                                 <p className="text-xs text-amber-300">
-                                                    Only <strong>1 team per group</strong> — an intermediate stage with 1 team per lobby can't eliminate anyone. Either reduce the group count or set this as a Final Stage.
+                                                    Only <strong>1 {unitLabel} per group</strong> — an intermediate stage with 1 {unitLabel} per lobby can't eliminate anyone. Either reduce the group count or set this as a Final Stage.
                                                 </p>
                                             </div>
                                         ) : (
@@ -1097,7 +1130,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     <div className="space-y-1.5">
                                                         <Label className="text-xs text-gray-400">Lobby Size (derived)</Label>
                                                         <div className={`h-9 flex items-center px-3 rounded-md border text-sm ${lobbyOverMax ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-white/[0.03] border-white/10 text-gray-300'}`}>
-                                                            {incomingTeams > 0 ? `${lobbySize} teams` : '—'}
+                                                            {incomingTeams > 0 ? `${lobbySize} ${unitsLabel}` : '—'}
                                                             {lobbyOverMax && <AlertTriangle className="w-3 h-3 ml-1.5 text-red-400" />}
                                                         </div>
                                                         <p className="text-[10px] text-gray-600">
@@ -1122,7 +1155,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     </Select>
                                                     {incomingTeams > 0 && (
                                                         <p className="text-xs text-amber-400/80">
-                                                            → <strong>{Math.min(newAdvancement, Math.max(1, lobbySize - 1)) * newGroupCount}</strong> teams total will advance to the next stage
+                                                            → <strong>{Math.min(newAdvancement, Math.max(1, lobbySize - 1)) * newGroupCount}</strong> {unitsLabel} total will advance to the next stage
                                                         </p>
                                                     )}
                                                 </div>
@@ -1132,7 +1165,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     <div className="flex items-start gap-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
                                                         <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
                                                         <p className="text-xs text-red-300">
-                                                            Lobby size {lobbySize} exceeds game max of {maxLobbySize}. Add more groups to split teams.
+                                                            Lobby size {lobbySize} {unitsLabel} exceeds game max of {maxLobbySize} {unitsLabel}/lobby. Add more groups to split them.
                                                         </p>
                                                     </div>
                                                 )}
@@ -1208,7 +1241,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                                     <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                                     <p className="text-xs text-amber-300 leading-relaxed">
-                                        <strong>"{nextStage.name}"</strong> currently receives teams from this stage. After deletion, it will have no input source.
+                                        <strong>"{nextStage.name}"</strong> currently receives {unitsLabel} from this stage. After deletion, it will have no input source.
                                     </p>
                                 </div>
                             );
@@ -1249,18 +1282,18 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                     // FIX 7 — Fit badge
                                     const fitBadge = (() => {
                                         if (registeredTeamCount <= 0) {
-                                            return <span className="text-[10px] text-gray-500 px-2 py-0.5 rounded bg-white/[0.03] border border-white/5">Configure teams first</span>;
+                                            return <span className="text-[10px] text-gray-500 px-2 py-0.5 rounded bg-white/[0.03] border border-white/5">Set {unitsLabel} count first</span>;
                                         }
                                         const n = registeredTeamCount;
                                         const within = n >= t.minTeams && n <= t.maxTeams;
                                         const slightlyOutside = !within && n >= t.minTeams * 0.8 && n <= t.maxTeams * 1.2;
                                         if (within) {
-                                            return <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">✓ Fits your {n} teams</span>;
+                                            return <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">✓ Fits your {n} {unitsLabel}</span>;
                                         }
                                         if (slightlyOutside) {
                                             return <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400">~ Slightly outside range</span>;
                                         }
-                                        return <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400">✗ Not recommended for {n} teams</span>;
+                                        return <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400">✗ Not recommended for {n} {unitsLabel}</span>;
                                     })();
 
                                     return (
@@ -1276,7 +1309,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                             <div className="flex items-center gap-2">
                                                 {fitBadge}
                                                 <span className="text-[10px] uppercase tracking-widest text-gray-600 font-medium bg-white/[0.03] px-2 py-0.5 rounded">
-                                                    {t.teamRange}
+                                                    {t.minTeams}–{t.maxTeams} {unitsLabel}
                                                 </span>
                                             </div>
                                         </div>
@@ -1296,9 +1329,9 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                     <DialogDescription className="text-gray-500 text-sm">
                                         Configure lobby size, groups and advancement per stage.
                                         {acceptedTeamCount > 0
-                                            ? ` ${acceptedTeamCount} teams checked in.`
+                                            ? ` ${acceptedTeamCount} ${unitsLabel} checked in.`
                                             : maxParticipants
-                                                ? ` Using tournament limit of ${maxParticipants} teams.`
+                                                ? ` Using tournament limit of ${maxParticipants} ${unitsLabel}.`
                                                 : ''}
                                     </DialogDescription>
                                 </DialogHeader>
@@ -1307,13 +1340,13 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 {registeredTeamCount === 0 && (
                                     <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                                         <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                                        <p className="text-xs text-red-300">No team count available. Set a participant limit in tournament settings first.</p>
+                                        <p className="text-xs text-red-300">No {unitLabel} count available. Set a participant limit in tournament settings first.</p>
                                     </div>
                                 )}
                                 {acceptedTeamCount === 0 && maxParticipants && maxParticipants > 0 && (
                                     <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                                         <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                                        <p className="text-xs text-amber-300">No check-ins yet — using tournament max of <strong>{maxParticipants}</strong> teams as estimate. Reconfigure after check-in closes.</p>
+                                        <p className="text-xs text-amber-300">No check-ins yet — using tournament max of <strong>{maxParticipants}</strong> {unitsLabel} as estimate. Reconfigure after check-in closes.</p>
                                     </div>
                                 )}
                                 {(() => {
@@ -1354,13 +1387,13 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     {isFinalStage && <span className="text-[10px] text-amber-400 uppercase tracking-widest">Finals</span>}
                                                 </div>
                                                 <span className="text-[10px] text-gray-500 font-medium">
-                                                    {teamsIn > 0 ? `${teamsIn} teams entering` : 'Awaiting registrations'}
+                                                    {teamsIn > 0 ? `${teamsIn} ${unitsLabel} entering` : 'Awaiting registrations'}
                                                 </span>
                                             </div>
 
                                             {!isFinalStage ? (
                                                 teamsIn === 0 ? (
-                                                    <p className="text-xs text-gray-500">No teams to configure. Register teams first.</p>
+                                                    <p className="text-xs text-gray-500">No {unitsLabel} to configure. Register {unitsLabel} first.</p>
                                                 ) : (
                                                 <div className="grid grid-cols-3 gap-3">
                                                     {/* Groups — primary control, organizer sets this */}
@@ -1390,14 +1423,14 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                             </SelectContent>
                                                         </Select>
                                                         <p className="text-[10px] text-gray-600">
-                                                            {teamsPerGroup} teams/group
+                                                            {teamsPerGroup} {unitsLabel}/group
                                                         </p>
                                                     </div>
                                                     {/* Lobby Size — derived from groups, read-only */}
                                                     <div className="space-y-1.5">
                                                         <Label className="text-xs text-gray-500">Lobby Size</Label>
                                                         <div className={`h-9 flex items-center px-3 rounded-md border text-sm ${maxLobbySize && teamsPerGroup > maxLobbySize ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-white/[0.03] border-white/10 text-gray-300'}`}>
-                                                            {teamsPerGroup} teams
+                                                            {teamsPerGroup} {unitsLabel}
                                                             {maxLobbySize && teamsPerGroup > maxLobbySize && <AlertTriangle className="w-3 h-3 ml-1.5 text-red-400" />}
                                                         </div>
                                                         <p className="text-[10px] text-gray-600">
@@ -1437,7 +1470,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                             Receives <strong className="text-white">{teamsIn}</strong> teams from previous stage.
                                                             {maxLobbySize && <span className="text-gray-600"> Game max: {maxLobbySize}/lobby.</span>}
                                                           </>
-                                                        : 'Awaiting teams from previous stage.'}
+                                                        : `Awaiting ${unitsLabel} from previous stage.`}
                                                 </p>
                                             )}
 
@@ -1467,7 +1500,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                     className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40 disabled:cursor-not-allowed"
                                     onClick={handleApplyTemplate}
                                     disabled={applyingTemplate || hasTemplateErrors || registeredTeamCount === 0}
-                                    title={hasTemplateErrors ? 'Resolve validation errors first' : registeredTeamCount === 0 ? 'No team count available' : undefined}
+                                    title={hasTemplateErrors ? 'Resolve validation errors first' : registeredTeamCount === 0 ? `No ${unitLabel} count available` : undefined}
                                 >
                                     {applyingTemplate ? 'Applying...' : `Apply ${selectedTemplate.stages.length} Stages`}
                                 </Button>
@@ -1483,14 +1516,14 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-white flex items-center gap-2">
                             <ArrowRight className="w-5 h-5 text-emerald-400" />
-                            Advance Teams
+                            Advance {UnitsLabel}
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-gray-400">
                             {(() => {
                                 const stage = sortedStages.find(s => s.id === advanceConfirmStageId);
                                 const flow = stage ? stageFlows.get(stage.id) : null;
                                 if (!stage) return '';
-                                return `This will advance the top ${flow?.teamsAdvancing || '?'} teams (${stage.advancement_count}/group) from "${stage.name}" to the next stage. This stage will be marked as completed.`;
+                                return `This will advance the top ${flow?.teamsAdvancing || '?'} ${unitsLabel} (${stage.advancement_count}/group) from "${stage.name}" to the next stage. This stage will be marked as completed.`;
                             })()}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -1506,7 +1539,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 }
                             }}
                         >
-                            {isAdvancing ? 'Advancing...' : 'Advance Teams'}
+                            {isAdvancing ? 'Advancing...' : `Advance ${UnitsLabel}`}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

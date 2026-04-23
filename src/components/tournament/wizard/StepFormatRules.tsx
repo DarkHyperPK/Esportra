@@ -476,7 +476,12 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         </Select>
                         <p className="text-sm text-gray-400">
                             {brConfig.playersPerLobby
-                                ? `Each lobby supports up to ${brConfig.playersPerLobby} players.`
+                                ? (() => {
+                                    const ts = data.teamSize ?? 1;
+                                    const unitsPerLobby = Math.floor(brConfig.playersPerLobby / Math.max(1, ts));
+                                    const unitLbl = ts === 1 ? 'players' : ts === 2 ? 'duos' : ts === 3 ? 'trios' : 'teams';
+                                    return `Each lobby supports up to ${unitsPerLobby} ${unitLbl} per lobby.`;
+                                })()
                                 : 'Set the maximum number of participants.'}
                         </p>
                     </div>
