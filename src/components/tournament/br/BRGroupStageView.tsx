@@ -235,12 +235,15 @@ const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualifica
                   key={participant.team_id}
                   className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
                 >
-                  {participant.logo_url ? (
-                    <img
-                      src={participant.logo_url}
-                      alt={participant.team_name}
-                      className="w-8 h-8 rounded-full object-cover border border-white/10"
-                    />
+                    {participant.logo_url ? (
+                      <img
+                        src={participant.logo_url}
+                        alt={participant.team_name}
+                        loading="lazy"
+                        decoding="async"
+                        fetchPriority="low"
+                        className="w-8 h-8 rounded-full object-cover border border-white/10"
+                      />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-500">
                       <Users className="w-3.5 h-3.5" />
@@ -263,6 +266,7 @@ const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualifica
         totalGames={totalRounds}
         gamesCompleted={completedRounds}
         qualificationCutoff={qualificationCount}
+        pageSize={20}
       />
     </div>
   );

@@ -204,6 +204,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                                 totalGames={totalRounds}
                                 gamesCompleted={completedRounds}
                                 qualificationCutoff={selectedStage?.advancement_count ?? undefined}
+                                pageSize={20}
                             />
                             <p className="text-xs text-zinc-500 text-right mt-1">
                               Rounds are managed in the panel above

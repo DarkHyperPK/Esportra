@@ -179,7 +179,14 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
               {/* Team */}
               <div className="flex items-center gap-2 min-w-0">
                 {row.logoUrl ? (
-                  <img src={row.logoUrl} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+                  <img
+                    src={row.logoUrl}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
+                    className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+                  />
                 ) : (
                   <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
                     <Users className="w-3 h-3 text-zinc-500" />

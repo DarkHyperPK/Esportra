@@ -15,6 +15,14 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
 import { Tournament as TournamentType } from '@/hooks/useTournaments';
 import { TournamentStatus } from '@/types/tournament';
@@ -88,13 +96,10 @@ import { StageManagementTab } from '@/components/organizer/tabs/StageManagementT
 import { GroupManagementTab } from '@/components/organizer/tabs/GroupManagementTab';
 import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
 import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
-import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
-import BRGameResults from '@/components/tournament/br/BRGameResults';
-import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
-import { useBRGameResults } from '@/hooks/useBRGameResults';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+const PARTICIPANTS_PAGE_SIZE = 24;
 
 interface DatabaseTournament {
   id: string;
@@ -299,29 +304,10 @@ const TournamentDashboard = () => {
   const isBR = isBattleRoyale(tournament?.game || '');
   const brConf = isBR ? getBRConfig(tournament?.game || '') : null;
   const brSettings = isBR ? tournament?.settings : null;
-  const brGameCount = brSettings?.brGameCount || brConf?.defaultGameCount || 6;
   const brPresetKey = brSettings?.brScoringPreset || brConf?.defaultPreset || '';
   const brScoringPreset = brSettings?.brCustomScoring
     || (brConf?.scoringPresets?.[brPresetKey])
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
-  const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
-  const brTeams = useMemo(() =>
-    isBR ? (participants ?? []).map(p => ({
-      id: p.team_id || p.id,
-      name: p.team_name || p.gamer_tag || p.user?.username || 'Unknown',
-      logo: p.team_logo || undefined,
-    })) : [],
-    [isBR, participants]
-  );
-
-  const brResults = useBRGameResults({
-    tournamentId: isBR ? tournament?.id : undefined,
-    gameCount: brGameCount,
-    scoringPreset: brScoringPreset,
-    killCap: brKillCap,
-    teams: brTeams,
-    tiebreaker: brSettings?.brTiebreaker || 'most_wins',
-  });
 
   // Tab State & Direction
   const TAB_ORDER = ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'staff', 'settings'];
@@ -370,6 +356,21 @@ const TournamentDashboard = () => {
   const [cascadeWarnings, setCascadeWarnings] = useState<Array<{ entity: string; count: number; description?: string }>>([]);
   const [hasStaffAccess, setHasStaffAccess] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [participantsPage, setParticipantsPage] = useState(1);
+
+  const activeParticipants = useMemo(
+    () => participants.filter((participant) => !['rejected', 'cancelled', 'disqualified'].includes(participant.status)),
+    [participants],
+  );
+  const totalParticipantPages = Math.max(1, Math.ceil(activeParticipants.length / PARTICIPANTS_PAGE_SIZE));
+  const pagedParticipants = useMemo(() => {
+    const start = (participantsPage - 1) * PARTICIPANTS_PAGE_SIZE;
+    return activeParticipants.slice(start, start + PARTICIPANTS_PAGE_SIZE);
+  }, [activeParticipants, participantsPage]);
+  const participantRangeStart = activeParticipants.length === 0
+    ? 0
+    : ((participantsPage - 1) * PARTICIPANTS_PAGE_SIZE) + 1;
+  const participantRangeEnd = Math.min(participantsPage * PARTICIPANTS_PAGE_SIZE, activeParticipants.length);
 
   // Sync staff access state
   useEffect(() => {
@@ -537,6 +538,14 @@ const TournamentDashboard = () => {
     return () => clearInterval(timer);
   }, [activeTab]);
 
+  useEffect(() => {
+    setParticipantsPage(1);
+  }, [activeTab, activeParticipants.length]);
+
+  useEffect(() => {
+    setParticipantsPage((current) => Math.min(current, totalParticipantPages));
+  }, [totalParticipantPages]);
+
 
 
   // Real-time subscriptions removed to eliminate dashboard lag as requested by user.
@@ -615,63 +624,6 @@ const TournamentDashboard = () => {
       setIsDeleting(false);
     }
   };
-
-  const handleMarkFinished = async () => {
-    if (!isOrganizer) return;
-
-    if (isBR) {
-      // BR tournaments: require all games completed
-      if (brResults.gamesCompleted < brGameCount) {
-        toast({
-          title: 'Cannot Finish',
-          description: `All ${brGameCount} games must have results before finishing the tournament.`,
-          variant: 'destructive'
-        });
-        return;
-      }
-    } else {
-      // Bracket tournaments: require all stages completed
-      const incomplete = stages.some(s => s.status !== 'completed');
-      if (incomplete) {
-        toast({
-          title: 'Cannot Finish',
-          description: 'All stages must be completed before finishing the tournament.',
-          variant: 'destructive'
-        });
-        return;
-      }
-    }
-
-    try {
-      const winnerName = isBR && brResults.winner ? brResults.winner.teamName : undefined;
-
-      // Send status + winner in one call so backend can award RP
-      await apiClient.put(`/api/tournaments/${tournament.id}`, {
-        status: 'completed',
-        ...(winnerName && { winner_team_name: winnerName }),
-      });
-
-      refetchDashboard();
-      toast({
-        title: 'Tournament Finished',
-        description: winnerName
-          ? `${winnerName} crowned as champion!`
-          : 'Tournament has been marked as completed.',
-      });
-      queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
-    } catch (e) {
-      console.error('Error finishing tournament:', e);
-      toast({
-        title: 'Error',
-        description: 'Failed to complete tournament.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-
-
-
 
   const handleRemoveUncheckedParticipants = async () => {
     if (!tournament?.id) return;
@@ -1945,20 +1897,68 @@ const TournamentDashboard = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-0 relative z-10">
-                        {participants.filter(p => !['rejected', 'cancelled', 'disqualified'].includes(p.status)).length === 0 ? (
+                        {activeParticipants.length === 0 ? (
                           <p className="text-gray-400 italic">No participants registered yet.</p>
                         ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            <AnimatePresence>
-                              {participants.filter(p => !['rejected', 'cancelled', 'disqualified'].includes(p.status)).map((participant) => (
-                                <OrganizerTeamCard
-                                  key={participant.id}
-                                  participant={participant}
-                                  onManage={handleTeamClick}
-                                  renderStatusBadge={renderCheckInBadge}
-                                />
-                              ))}
-                            </AnimatePresence>
+                          <div className="space-y-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                              <AnimatePresence mode="popLayout">
+                                {pagedParticipants.map((participant) => (
+                                  <OrganizerTeamCard
+                                    key={participant.id}
+                                    participant={participant}
+                                    onManage={handleTeamClick}
+                                    renderStatusBadge={renderCheckInBadge}
+                                  />
+                                ))}
+                              </AnimatePresence>
+                            </div>
+
+                            {totalParticipantPages > 1 && (
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <p className="text-xs text-zinc-500">
+                                  Showing {participantRangeStart}-{participantRangeEnd} of {activeParticipants.length}
+                                </p>
+                                <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+                                  <PaginationContent>
+                                    <PaginationItem>
+                                      <PaginationPrevious
+                                        href="#participants"
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          if (participantsPage > 1) {
+                                            setParticipantsPage((page) => page - 1);
+                                          }
+                                        }}
+                                        className={participantsPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                                      />
+                                    </PaginationItem>
+                                    <PaginationItem>
+                                      <PaginationLink
+                                        href="#participants"
+                                        isActive
+                                        onClick={(event) => event.preventDefault()}
+                                        className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                                      >
+                                        {participantsPage} / {totalParticipantPages}
+                                      </PaginationLink>
+                                    </PaginationItem>
+                                    <PaginationItem>
+                                      <PaginationNext
+                                        href="#participants"
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          if (participantsPage < totalParticipantPages) {
+                                            setParticipantsPage((page) => page + 1);
+                                          }
+                                        }}
+                                        className={participantsPage >= totalParticipantPages ? 'pointer-events-none opacity-50' : ''}
+                                      />
+                                    </PaginationItem>
+                                  </PaginationContent>
+                                </Pagination>
+                              </div>
+                            )}
                           </div>
                         )}
                       </CardContent>

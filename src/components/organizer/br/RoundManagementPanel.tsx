@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBRRounds, useBRRoundResults } from '@/hooks/useBRRounds';
+import { useToast } from '@/hooks/use-toast';
 import { RoundResultsGrid } from './RoundResultsGrid';
 import { RoundEvidencePanel } from './RoundEvidencePanel';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,13 @@ interface ScoringPreset {
   killCap: number | null;
 }
 
+type RoundAction = 'start' | 'complete' | 'reopen' | 'reset';
+
+interface RoundActionSettings {
+  lobbyCode: string | null;
+  queueTimerMinutes: number | null;
+}
+
 interface RoundManagementPanelProps {
   stageId: string;
   groupId: string;
@@ -58,6 +66,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   scoringPreset,
 }) => {
   const { rounds, isLoading, error, refetch, createRound, updateRound, resetRound } = useBRRounds(stageId, groupId);
+  const { toast } = useToast();
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
   // Reset expansion if the expanded round was deleted
   useEffect(() => {
@@ -65,7 +74,12 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
       setExpandedRoundId(null);
     }
   }, [rounds, expandedRoundId]);
-  const [confirmAction, setConfirmAction] = useState<{ roundId: string; roundNumber: number; action: 'start' | 'complete' | 'reopen' | 'reset' } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    roundId: string;
+    roundNumber: number;
+    action: RoundAction;
+    settings?: RoundActionSettings;
+  } | null>(null);
   const isMutatingRound = updateRound.isPending || resetRound.isPending;
 
   const handleCreateRound = async () => {
@@ -83,6 +97,13 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     try {
       if (action === 'reset') {
         await resetRound.mutateAsync({ roundId, roundNumber });
+      } else if (action === 'start') {
+        await updateRound.mutateAsync({
+          roundId,
+          status: statusMap[action],
+          lobbyCode: confirmAction.settings?.lobbyCode ?? null,
+          queueTimerMinutes: confirmAction.settings?.queueTimerMinutes ?? null,
+        });
       } else {
         await updateRound.mutateAsync({ roundId, status: statusMap[action] });
       }
@@ -151,7 +172,18 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               scoringPreset={scoringPreset}
               isExpanded={expandedRoundId === round.id}
               onToggle={() => setExpandedRoundId(expandedRoundId === round.id ? null : round.id)}
-              onStatusAction={(action) => setConfirmAction({ roundId: round.id, roundNumber: round.round_number, action })}
+              onStatusAction={(action, settings) => {
+                if (action === 'start' && !settings?.lobbyCode) {
+                  toast({
+                    title: 'Lobby code required',
+                    description: 'Enter the lobby code before starting the round so players receive it immediately.',
+                    variant: 'destructive',
+                  });
+                  return;
+                }
+
+                setConfirmAction({ roundId: round.id, roundNumber: round.round_number, action, settings });
+              }}
               onRoundSettingsSave={(settings) => handleLobbyCodeUpdate(round.id, settings.lobbyCode, settings.queueTimerMinutes)}
               isUpdating={isMutatingRound}
             />
@@ -170,7 +202,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               {confirmAction?.action === 'reset' && 'Reset Round?'}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
-              {confirmAction?.action === 'start' && 'This will set the round to active. Teams will be notified.'}
+              {confirmAction?.action === 'start' && 'This will publish the current lobby code and queue timer, then set the round live for players.'}
               {confirmAction?.action === 'complete' && 'This will lock the round results. You can re-open later if needed.'}
               {confirmAction?.action === 'reopen' && 'This will unlock the round for result editing. Any leaderboard standings calculated from this round may change if results are modified.'}
               {confirmAction?.action === 'reset' && 'This will clear the lobby code, results, and submitted evidence, then move the round back to pending.'}
@@ -214,7 +246,7 @@ interface RoundRowProps {
   scoringPreset: ScoringPreset;
   isExpanded: boolean;
   onToggle: () => void;
-  onStatusAction: (action: 'start' | 'complete' | 'reopen' | 'reset') => void;
+  onStatusAction: (action: RoundAction, settings?: RoundActionSettings) => void;
   onRoundSettingsSave: (settings: { lobbyCode: string; queueTimerMinutes: number | null }) => Promise<void>;
   isUpdating: boolean;
 }
@@ -254,14 +286,24 @@ const RoundRow: React.FC<RoundRowProps> = ({
     setSettingsDirty(false);
   }, [round.id, round.lobby_code, round.queue_timer_minutes]);
 
+  const getRoundSettings = (): RoundActionSettings => {
+    const trimmedLobbyCode = lobbyCode.trim();
+    const trimmedTimer = queueTimerInput.trim();
+    const parsedTimer = trimmedTimer === '' ? null : Number(trimmedTimer);
+
+    return {
+      lobbyCode: trimmedLobbyCode === '' ? null : trimmedLobbyCode,
+      queueTimerMinutes: Number.isFinite(parsedTimer) ? parsedTimer : null,
+    };
+  };
+
   const handleSettingsSave = async () => {
     if (!settingsDirty) return;
 
-    const trimmedTimer = queueTimerInput.trim();
-    const queueTimerMinutes = trimmedTimer === '' ? null : Number(trimmedTimer);
+    const settings = getRoundSettings();
     await onRoundSettingsSave({
-      lobbyCode,
-      queueTimerMinutes: Number.isFinite(queueTimerMinutes) ? queueTimerMinutes : null,
+      lobbyCode: settings.lobbyCode ?? '',
+      queueTimerMinutes: settings.queueTimerMinutes,
     });
     setSettingsDirty(false);
   };
@@ -369,7 +411,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
                 <div className="space-y-1">
                   <p className="text-[11px] font-medium text-white">Round controls</p>
                   <p className="text-[10px] leading-relaxed text-zinc-500">
-                    Save timer and lobby changes separately, then control the round lifecycle from here.
+                    Saving updates the draft instantly. Starting a round also publishes the current lobby code and queue timer automatically.
                   </p>
                 </div>
 
@@ -385,7 +427,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
                   {round.status === 'pending' && (
                     <Button
                       size="sm"
-                      onClick={() => onStatusAction('start')}
+                      onClick={() => onStatusAction('start', getRoundSettings())}
                       disabled={isUpdating}
                       className="h-9 text-xs bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/20"
                     >

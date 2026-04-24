@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users } from 'lucide-react';
+import EntityAvatar from '@/components/ui/EntityAvatar';
 
 interface PublicTeamCardProps {
     participant: any;
@@ -34,7 +35,7 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
         return [];
     };
 
-    const members = getMembers(participant.team_members);
+    const members = useMemo(() => getMembers(participant.team_members), [participant.team_members]);
 
     return (
         // Layout Placeholder - Keeps the grid cell stable
@@ -73,15 +74,16 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
 
                             {/* Logo */}
                             <div className="relative w-24 h-24 flex items-center justify-center mb-2">
-                                {participant.team_logo ? (
-                                    <img
-                                        src={participant.team_logo}
-                                        alt={participant.team_name}
-                                        className="w-full h-full object-contain filter drop-shadow-md"
-                                    />
-                                ) : (
-                                    <Users className="w-16 h-16 text-gray-600" />
-                                )}
+                                <EntityAvatar
+                                    type="team"
+                                    src={participant.team_logo}
+                                    name={participant.team_name}
+                                    entityId={participant.team_id || participant.id}
+                                    size="w-24 h-24"
+                                    className="rounded-3xl border border-white/10 bg-white/[0.03] p-1.5"
+                                    imgClassName="object-contain filter drop-shadow-md"
+                                    fallbackClassName="text-xl tracking-wider"
+                                />
                             </div>
 
                             {/* Name */}

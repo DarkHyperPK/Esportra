@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { BR_CONFIG } from '@/config/brConfig';
@@ -127,6 +128,40 @@ export const useBRRoundResults = (roundId: string | null, stageId?: string | nul
     error,
     refetch,
     submitResults,
+  };
+};
+
+export const useBRCompletedRoundResults = (rounds: BRRound[], enabled = true) => {
+  const completedRounds = useMemo(
+    () => rounds
+      .filter((round) => round.status === 'completed')
+      .sort((a, b) => a.round_number - b.round_number),
+    [rounds],
+  );
+
+  const queries = useQueries({
+    queries: completedRounds.map((round) => ({
+      queryKey: ['br-round-results', round.id],
+      queryFn: () => apiClient.get<BRRoundResult[]>(`/api/br/rounds/${round.id}/results`),
+      enabled,
+      staleTime: BR_CONFIG.ROUNDS_STALE_TIME_MS,
+    })),
+  });
+
+  const resultsByRoundNumber = useMemo(() => {
+    const resultMap = new Map<number, BRRoundResult[]>();
+
+    completedRounds.forEach((round, index) => {
+      resultMap.set(round.round_number, queries[index]?.data ?? []);
+    });
+
+    return resultMap;
+  }, [completedRounds, queries]);
+
+  return {
+    completedRounds,
+    resultsByRoundNumber,
+    isLoading: queries.some((query) => query.isLoading),
   };
 };
 

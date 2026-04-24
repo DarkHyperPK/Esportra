@@ -135,14 +135,14 @@ export const useBRGroupTeams = (stageId: string | null, groupId: string | null) 
 };
 
 // Public single-group participant list for player-facing group views.
-export const useBRGroupParticipants = (stageId: string | null, groupId: string | null) => {
+export const useBRGroupParticipants = (stageId: string | null, groupId: string | null, enabled = true) => {
   return useQuery({
     queryKey: ['br-group-participants', stageId, groupId],
     queryFn: () =>
       apiClient.get<BRGroupTeam[]>(
         `/api/stages/${stageId}/br/groups/${groupId}/participants`
       ),
-    enabled: !!stageId && !!groupId,
+    enabled: enabled && !!stageId && !!groupId,
     staleTime: 1000 * 60 * 2,
   });
 };

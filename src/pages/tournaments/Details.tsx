@@ -151,6 +151,12 @@ const TournamentDetails = () => {
   const detailsSearchParams = typeof window !== 'undefined' ? new URLSearchParams(location.search) : null;
   const requestedDetailsTab = detailsSearchParams?.get('tab') ?? null;
   const requestedBRStageId = detailsSearchParams?.get('brStage') ?? null;
+  const competitorTabValue = terminology.competitorLabelPlural.toLowerCase();
+  const [activeTab, setActiveTab] = useState(requestedDetailsTab || 'overview');
+
+  useEffect(() => {
+    setActiveTab(requestedDetailsTab || 'overview');
+  }, [requestedDetailsTab]);
 
   // BR leaderboard config (only computed for BR tournaments)
   const brConf = isBR ? getBRConfig(tournament?.game || '') : null;
@@ -205,8 +211,8 @@ const TournamentDetails = () => {
   const [selectedStageId, setSelectedStageId] = useState<string | null>(requestedBRStageId);
 
   // Multi-group stage detection — check first stage for groups
-  const firstBRStageId = isBR && stages.length > 0 ? stages[0].id : null;
-  const { hasGroups: brHasGroups } = useBRGroupStage(firstBRStageId);
+  const firstBRStageId = isBR && activeTab === 'leaderboard' && stages.length > 0 ? stages[0].id : null;
+  const { hasGroups: brHasGroups, isLoading: brGroupsLoading } = useBRGroupStage(firstBRStageId);
 
   // Auto-select first stage when stages load
   useEffect(() => {
@@ -214,6 +220,11 @@ const TournamentDetails = () => {
       setSelectedStageId(stages[0].id);
     }
   }, [stages, selectedStageId]);
+
+  const shouldLoadParticipants = !!tournament?.id && (
+    activeTab === competitorTabValue
+    || (isBR && activeTab === 'leaderboard' && !brGroupsLoading && !brHasGroups)
+  );
 
   // Fetch robust participant data (logos, rosters, profiles) — single request, no N+1
   const { data: enrichedParticipants = [] } = useQuery({
@@ -245,7 +256,7 @@ const TournamentDetails = () => {
         };
       });
     },
-    enabled: !!tournament?.id,
+    enabled: shouldLoadParticipants,
     staleTime: 2 * 60_000,
   });
 
@@ -259,6 +270,7 @@ const TournamentDetails = () => {
     [isBR, enrichedParticipants]
   );
 
+  const shouldLoadLegacyBRLeaderboard = isBR && activeTab === 'leaderboard' && !brGroupsLoading && !brHasGroups;
   const brResults = useBRGameResults({
     tournamentId: isBR ? tournament?.id : undefined,
     gameCount: brGameCount,
@@ -266,6 +278,7 @@ const TournamentDetails = () => {
     killCap: brKillCap,
     teams: brTeams,
     tiebreaker: brSettings?.brTiebreaker || 'most_wins',
+    enabled: shouldLoadLegacyBRLeaderboard,
   });
 
   useEffect(() => {
@@ -766,7 +779,7 @@ const TournamentDetails = () => {
       {/* --- TABS NAVIGATION (Sticky) --- */}
       {/* --- TABS NAVIGATION (Sticky) --- */}
       <div className="relative z-30 -mt-20">
-        <Tabs defaultValue={requestedDetailsTab || 'overview'} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="container mx-auto px-4">
             <div className="sticky top-4 z-40 bg-[#050505]/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl mb-12 shadow-2xl shadow-black/50 mx-auto max-w-3xl">
               <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">
@@ -792,7 +805,7 @@ const TournamentDetails = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value={terminology.competitorLabelPlural.toLowerCase()}>
+          <TabsContent value={competitorTabValue}>
             <div className="container mx-auto px-4">
               <TeamsTab participants={enrichedParticipants} />
             </div>

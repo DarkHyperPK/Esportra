@@ -41,7 +41,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     awaitingApproval = false
 }) => {
     const navigate = useNavigate();
-    const gameData = useRawgGame(tournament.game || '');
+    const gameData = useRawgGame(tournament.game || '', { enabled: !tournament.image_url });
     const bannerSrc = tournament.image_url || gameData.gameBanner || '/placeholder.svg';
     const isVideoBanner = bannerSrc.includes('youtube.com/embed/');
 
@@ -91,6 +91,8 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                             <img
                                 src={bannerSrc}
                                 alt={tournament.name}
+                                decoding="async"
+                                fetchPriority="high"
                                 className="w-full h-full object-cover contrast-110"
                             />
                         )}

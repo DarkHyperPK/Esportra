@@ -13,6 +13,7 @@ interface UseBRGameResultsProps {
   killCap: number | null;
   teams: { id: string; name: string; logo?: string }[];
   tiebreaker?: 'most_wins' | 'most_kills' | 'head_to_head';
+  enabled?: boolean;
 }
 
 export type BRGameStatus = 'pending' | 'active' | 'completed';
@@ -40,6 +41,7 @@ export function useBRGameResults({
   killCap,
   teams,
   tiebreaker = 'most_wins',
+  enabled = true,
 }: UseBRGameResultsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -171,7 +173,7 @@ export function useBRGameResults({
       }
       return games;
     },
-    enabled: !!tournamentId,
+    enabled: !!tournamentId && enabled,
     staleTime: BR_CONFIG.STALE_TIME_MS,
     // No polling: this legacy endpoint is read-once for finish-tournament logic.
     // Real-time updates go through the new br_rounds / br_group_teams system.

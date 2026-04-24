@@ -29,6 +29,28 @@ const DICEBEAR_STYLE: Record<EntityType, string> = {
     org: 'initials',
 };
 
+const FALLBACK_TONES = [
+    'bg-gradient-to-br from-rose-500/80 to-orange-500/70',
+    'bg-gradient-to-br from-blue-500/80 to-cyan-500/70',
+    'bg-gradient-to-br from-emerald-500/80 to-teal-500/70',
+    'bg-gradient-to-br from-fuchsia-500/80 to-violet-500/70',
+    'bg-gradient-to-br from-amber-500/80 to-yellow-500/70',
+    'bg-gradient-to-br from-zinc-500/80 to-slate-500/70',
+];
+
+const getHash = (value: string) => value.split('').reduce((acc, char) => ((acc * 31) + char.charCodeAt(0)) >>> 0, 0);
+
+const getInitials = (value: string) => {
+    const parts = value
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+};
+
 /**
  * EntityAvatar
  *
@@ -55,11 +77,11 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({
 
     const seed = name || entityId || 'unknown';
     const style = DICEBEAR_STYLE[type];
-
-    const fallbackUrl = useMemo(
-        () => `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&radius=50&backgroundColor=0a0a0c,111111,1a1a2e&backgroundType=gradientLinear`,
+    const fallbackTone = useMemo(
+        () => FALLBACK_TONES[getHash(`${style}:${seed}`) % FALLBACK_TONES.length],
         [style, seed]
     );
+    const initials = useMemo(() => getInitials(seed), [seed]);
 
     const showFallback = !src || imgError;
 
@@ -72,13 +94,17 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({
             )}
         >
             {showFallback ? (
-                <img
-                    src={fallbackUrl}
-                    alt={name || 'Avatar'}
-                    className={cn('w-full h-full object-cover', imgClassName, fallbackClassName)}
-                    loading="lazy"
-                    decoding="async"
-                />
+                <div
+                    aria-label={name || 'Avatar'}
+                    className={cn(
+                        'flex h-full w-full items-center justify-center text-white font-semibold uppercase',
+                        fallbackTone,
+                        imgClassName,
+                        fallbackClassName
+                    )}
+                >
+                    <span className="select-none">{initials}</span>
+                </div>
             ) : (
                 <img
                     src={src}

@@ -33,6 +33,36 @@ function mapToLeaderboardEntry(row: GroupLeaderboardResponse): BRLeaderboardEntr
   };
 }
 
+const getRoundTimestamp = (value: string | null | undefined) => {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+const selectPreferredActiveRound = (rounds: BRRound[]) => {
+  const activeRounds = rounds.filter((round) => round.status === 'active');
+  if (activeRounds.length === 0) return null;
+
+  return [...activeRounds].sort((left, right) => {
+    const queueStartedDifference = getRoundTimestamp(right.queue_started_at) - getRoundTimestamp(left.queue_started_at);
+    if (queueStartedDifference !== 0) {
+      return queueStartedDifference;
+    }
+
+    const liveCodeDifference = Number(Boolean(right.lobby_code)) - Number(Boolean(left.lobby_code));
+    if (liveCodeDifference !== 0) {
+      return liveCodeDifference;
+    }
+
+    const startedDifference = getRoundTimestamp(right.started_at) - getRoundTimestamp(left.started_at);
+    if (startedDifference !== 0) {
+      return startedDifference;
+    }
+
+    return right.round_number - left.round_number;
+  })[0];
+};
+
 export const useBRGroupStage = (stageId: string | null) => {
   const { data: groups, isLoading: groupsLoading, error: groupsError, refetch } = useQuery({
     queryKey: ['br-groups', stageId],
@@ -71,18 +101,20 @@ export const useBRGroupLeaderboard = (stageId: string | null, groupId: string | 
   };
 };
 
-export const useBRGroupRounds = (stageId: string | null, groupId: string | null) => {
+export const useBRGroupRounds = (stageId: string | null, groupId: string | null, enabled = true) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['br-group-rounds-summary', stageId, groupId],
     queryFn: () =>
       apiClient.get<BRRound[]>(`/api/stages/${stageId}/br/groups/${groupId}/rounds`),
-    enabled: !!stageId && !!groupId,
-    staleTime: 1000 * 60,
+    enabled: enabled && !!stageId && !!groupId,
+    staleTime: 1000 * 5,
+    refetchInterval: enabled && !!stageId && !!groupId ? 5000 : false,
+    refetchIntervalInBackground: true,
   });
 
   const rounds = data ?? [];
   const completed = rounds.filter((r) => r.status === 'completed').length;
-  const activeRound = rounds.find((r) => r.status === 'active') ?? null;
+  const activeRound = selectPreferredActiveRound(rounds);
 
   return {
     rounds,
@@ -114,14 +146,15 @@ export interface BRPlayerContext {
   } | null;
 }
 
-export const useBRPlayerContext = (tournamentId: string | null | undefined) => {
+export const useBRPlayerContext = (tournamentId: string | null | undefined, enabled = true) => {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['br-player-context', tournamentId],
     queryFn: () =>
       apiClient.get<BRPlayerContext>(`/api/tournaments/${tournamentId}/br/player-context`),
-    enabled: !!tournamentId,
-    staleTime: 1000 * 30,
-    refetchInterval: 15000, // poll every 15s for live updates
+    enabled: enabled && !!tournamentId,
+    staleTime: 1000 * 5,
+    refetchInterval: enabled && !!tournamentId ? 5000 : false,
+    refetchIntervalInBackground: true,
   });
 
   const defaultContext: BRPlayerContext = {

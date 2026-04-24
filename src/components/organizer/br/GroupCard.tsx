@@ -107,6 +107,9 @@ export const GroupCard: React.FC<GroupCardProps> = ({
                 <img
                   src={team.logo_url}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
                   className="w-5 h-5 rounded-full object-cover"
                 />
               ) : (

@@ -70,6 +70,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                     <img
                                         src={tournament.organization?.logo_url || tournament.organizer?.avatar_url}
                                         alt={tournament.organization?.name || tournament.organizer?.username}
+                                        loading="lazy"
+                                        decoding="async"
                                         className="w-8 h-8 rounded-full border border-white/10 object-cover"
                                     />
                                 ) : (
