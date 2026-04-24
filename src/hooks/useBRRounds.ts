@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { BR_CONFIG } from '@/config/brConfig';
 import type { BRRound, BRRoundResult, BRResultInput } from '@/types/brRounds';
+import type { BREvidence } from '@/types/battleRoyale';
 
 export const useBRRounds = (stageId: string | null, groupId: string | null) => {
   const queryClient = useQueryClient();
@@ -16,6 +17,7 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
       ),
     enabled: !!stageId && !!groupId,
     staleTime: 1000 * 60,
+    refetchInterval: 15000,
   });
 
   const createRound = useMutation({
@@ -96,5 +98,66 @@ export const useBRRoundResults = (roundId: string | null, stageId?: string | nul
     error,
     refetch,
     submitResults,
+  };
+};
+
+export const useBRRoundEvidence = (roundId: string | null, stageId?: string | null, groupId?: string | null) => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: evidence, isLoading, error, refetch } = useQuery({
+    queryKey: ['br-round-evidence', roundId],
+    queryFn: () => apiClient.get<BREvidence[]>(`/api/br/rounds/${roundId}/evidence`),
+    enabled: !!roundId,
+    staleTime: BR_CONFIG.ROUNDS_STALE_TIME_MS,
+    refetchInterval: 15000,
+  });
+
+  const invalidateRelatedQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['br-round-evidence', roundId] });
+    if (stageId && groupId) {
+      await queryClient.invalidateQueries({ queryKey: ['br-rounds', stageId, groupId] });
+    }
+  };
+
+  const submitEvidenceMutation = useMutation({
+    mutationFn: async (payload: { imageUrl: string; placement?: number | null; kills?: number | null }) => {
+      if (!roundId) throw new Error('No round selected');
+      return apiClient.put<{ success: boolean }>(`/api/br/rounds/${roundId}/evidence`, payload);
+    },
+    onSuccess: async () => {
+      await invalidateRelatedQueries();
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to submit evidence', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const markReviewedMutation = useMutation({
+    mutationFn: async (payload: { entityId: string; reviewed: boolean }) => {
+      if (!roundId) throw new Error('No round selected');
+      return apiClient.patch<{ success: boolean }>(
+        `/api/br/rounds/${roundId}/evidence/${payload.entityId}`,
+        { reviewed: payload.reviewed }
+      );
+    },
+    onSuccess: async (_data, variables) => {
+      await invalidateRelatedQueries();
+      toast({ title: variables.reviewed ? 'Evidence reviewed' : 'Evidence reopened' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to update evidence', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  return {
+    evidence: evidence ?? [],
+    isLoading,
+    error,
+    refetch,
+    submitEvidence: submitEvidenceMutation.mutateAsync,
+    markReviewed: markReviewedMutation.mutateAsync,
+    isSubmitting: submitEvidenceMutation.isPending,
+    isUpdating: markReviewedMutation.isPending,
   };
 };

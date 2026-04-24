@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBRRounds, useBRRoundResults } from '@/hooks/useBRRounds';
 import { RoundResultsGrid } from './RoundResultsGrid';
+import { RoundEvidencePanel } from './RoundEvidencePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -274,6 +275,16 @@ const RoundRow: React.FC<RoundRowProps> = ({
             {round.result_count} results
           </span>
         )}
+        {!!round.evidence_count && (
+          <span className="text-[10px] text-zinc-600">
+            {round.evidence_count} evidence
+          </span>
+        )}
+        {!!round.pending_evidence_count && (
+          <Badge variant="outline" className="border-amber-500/30 text-[10px] text-amber-300">
+            {round.pending_evidence_count} pending review
+          </Badge>
+        )}
         <span className="ml-auto flex items-center gap-3 text-[10px] text-zinc-600">
           {round.scheduled_at && (
             <span className="flex items-center gap-1">
@@ -380,6 +391,12 @@ const RoundRow: React.FC<RoundRowProps> = ({
           </div>
 
           {/* Results Grid */}
+          <RoundEvidencePanel
+            roundId={round.id}
+            stageId={stageId}
+            groupId={groupId}
+          />
+
           {resultsLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (

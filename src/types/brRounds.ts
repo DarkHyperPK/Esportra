@@ -10,6 +10,8 @@ export interface BRRound {
   queue_started_at?: string | null;
   created_at: string;
   result_count: number;
+  evidence_count?: number;
+  pending_evidence_count?: number;
 }
 
 export interface BRRoundResult {

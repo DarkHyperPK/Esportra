@@ -6,8 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useBRGameResults } from '@/hooks/useBRGameResults';
 import { useBRPlayerContext, useBRGroupLeaderboard } from '@/hooks/useBRGroupLeaderboard';
+import { useBRRoundEvidence } from '@/hooks/useBRRounds';
 import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
+import { BRQueueTimerCard } from '@/components/tournament/br/BRQueueTimerCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -161,7 +163,7 @@ const BRGameRoom: React.FC = () => {
     const activeRoundNumber = playerCtx.context.activeRound?.roundNumber ?? null;
     if (!userTeam || !activeRoundNumber) return;
     // Belt-and-suspenders: re-check at call time in case cache hasn't updated yet
-    const alreadySubmitted = (brResults.getEvidence(activeRoundNumber) || [])
+    const alreadySubmitted = activeEvidence
       .some(ev => ev.teamId === userTeam.id || ev.teamName === userTeam.name);
     if (alreadySubmitted) {
       toast({ title: 'Already submitted', description: 'You have already submitted evidence for this game.', variant: 'destructive' });
@@ -187,15 +189,22 @@ const BRGameRoom: React.FC = () => {
         return;
       }
 
-      // Submit evidence via hook
-      await brResults.submitEvidence(activeRoundNumber, {
-        teamId: userTeam.id,
-        teamName: userTeam.name,
-        imageUrl,
-        submittedAt: new Date().toISOString(),
-        placement: reportPlacement,
-        kills: reportKills,
-      });
+      if (activeRoundId) {
+        await roundEvidence.submitEvidence({
+          imageUrl,
+          placement: reportPlacement,
+          kills: reportKills,
+        });
+      } else {
+        await brResults.submitEvidence(activeRoundNumber, {
+          teamId: userTeam.id,
+          teamName: userTeam.name,
+          imageUrl,
+          submittedAt: new Date().toISOString(),
+          placement: reportPlacement,
+          kills: reportKills,
+        });
+      }
 
       toast({ title: 'Evidence Submitted', description: `Placement: #${reportPlacement}, Kills: ${reportKills}. The organizer will review your submission.` });
       clearEvidence();
@@ -215,6 +224,7 @@ const BRGameRoom: React.FC = () => {
   const [queueNow, setQueueNow] = useState(Date.now());
 
   const activeGame = playerCtx.context.activeRound?.roundNumber ?? null;
+  const activeRoundId = playerCtx.context.activeRound?.id ?? null;
   const activeCode = playerCtx.context.activeRound?.lobbyCode ?? null;
   const activeQueueTimerMinutes = playerCtx.context.activeRound?.queueTimerMinutes ?? null;
   const queueStartedAtMs = playerCtx.context.activeRound?.queueStartedAt
@@ -223,6 +233,11 @@ const BRGameRoom: React.FC = () => {
   const queueEndsAtMs = queueStartedAtMs && activeQueueTimerMinutes
     ? queueStartedAtMs + (activeQueueTimerMinutes * 60_000)
     : null;
+  const roundEvidence = useBRRoundEvidence(
+    activeRoundId,
+    playerCtx.context.stageId,
+    playerCtx.context.groupId,
+  );
   // Use stage leaderboard when available (new system), fall back to old system
   const leaderboard = stageLeaderboard.length > 0 ? stageLeaderboard : brResults.leaderboard;
   const gamesCompleted = playerCtx.context.completedRounds;
@@ -237,9 +252,15 @@ const BRGameRoom: React.FC = () => {
     ? leaderboard.find(e => e.teamId === userTeam.id) ?? null
     : null;
 
+  const activeEvidence = activeRoundId
+    ? roundEvidence.evidence
+    : activeGame
+      ? (brResults.getEvidence(activeGame) || [])
+      : [];
+
   // Check if user already submitted evidence for active game
   const userAlreadySubmitted = activeGame && userTeam
-    ? (brResults.getEvidence(activeGame) || []).some(ev => ev.teamId === userTeam.id)
+    ? activeEvidence.some(ev => ev.teamId === userTeam.id)
     : false;
 
   // Keep hook order stable across loading/error/ready renders.
@@ -453,39 +474,13 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Queue timer */}
-                  {activeGame && activeQueueTimerMinutes && !activeCode && (
-                    <div className="flex items-center gap-2 rounded-lg border border-zinc-700/60 bg-black/20 px-3 py-2">
-                      <Clock className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                      <p className="text-xs text-zinc-400">
-                        Queue timer is set to <span className="font-semibold text-white">{activeQueueTimerMinutes} minute{activeQueueTimerMinutes === 1 ? '' : 's'}</span> and will start when the lobby code goes live.
-                      </p>
-                    </div>
-                  )}
-                  {activeGame && activeQueueTimerMinutes && activeCode && queueCountdownLabel && queueRemainingMs !== null && queueRemainingMs > 0 && (
-                    <div className="flex items-center gap-2 rounded-lg border border-amber-500/15 bg-amber-500/5 px-3 py-2">
-                      <Clock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                      <p className="text-xs text-amber-300/80">
-                        Queue opens in <span className="font-semibold text-amber-300">{queueCountdownLabel}</span>.
-                      </p>
-                    </div>
-                  )}
-                  {activeGame && activeQueueTimerMinutes && activeCode && queueEndsAtMs === null && (
-                    <div className="flex items-center gap-2 rounded-lg border border-zinc-700/60 bg-black/20 px-3 py-2">
-                      <Clock className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                      <p className="text-xs text-zinc-400">
-                        Queue timer is configured and will start as soon as the live countdown syncs.
-                      </p>
-                    </div>
-                  )}
-                  {activeGame && activeQueueTimerMinutes && activeCode && queueRemainingMs === 0 && (
-                    <div className="flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-3 py-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                      <p className="text-xs text-emerald-300/80">
-                        Queue timer finished. You can join the lobby now.
-                      </p>
-                    </div>
-                  )}
+                  <BRQueueTimerCard
+                    queueTimerMinutes={activeQueueTimerMinutes}
+                    activeCode={activeCode}
+                    queueRemainingMs={queueRemainingMs}
+                    queueEndsAtMs={queueEndsAtMs}
+                    queueCountdownLabel={queueCountdownLabel}
+                  />
 
                   {/* Self-Report Form */}
                   {userTeam && !userAlreadySubmitted && (
