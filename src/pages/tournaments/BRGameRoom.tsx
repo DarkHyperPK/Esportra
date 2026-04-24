@@ -200,6 +200,40 @@ const BRGameRoom: React.FC = () => {
 
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
+  const activeGame = playerCtx.context.activeRound?.roundNumber ?? null;
+  const activeCode = playerCtx.context.activeRound?.lobbyCode ?? null;
+  // Use stage leaderboard when available (new system), fall back to old system
+  const leaderboard = stageLeaderboard.length > 0 ? stageLeaderboard : brResults.leaderboard;
+  const gamesCompleted = playerCtx.context.completedRounds;
+  const totalGames = playerCtx.context.totalRounds > 0 ? playerCtx.context.totalRounds : brGameCount;
+  const allGamesFinished = gamesCompleted >= totalGames && totalGames > 0;
+
+  // Find user's rank in leaderboard (match by id only — name-based fallback causes false matches with duplicate team names)
+  const userRank = userTeam
+    ? leaderboard.findIndex(e => e.teamId === userTeam.id) + 1
+    : 0;
+  const userEntry = userTeam
+    ? leaderboard.find(e => e.teamId === userTeam.id) ?? null
+    : null;
+
+  // Check if user already submitted evidence for active game
+  const userAlreadySubmitted = activeGame && userTeam
+    ? (brResults.getEvidence(activeGame) || []).some(ev => ev.teamId === userTeam.id)
+    : false;
+
+  // Keep hook order stable across loading/error/ready renders.
+  useEffect(() => {
+    const isActiveAndUnsubmitted = !!activeGame && !userAlreadySubmitted;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isActiveAndUnsubmitted) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [activeGame, userAlreadySubmitted]);
+
   if (loadingTournament || playerCtx.isLoading) return <PremiumLoadingScreen />;
 
   if (!tournament) {
@@ -233,40 +267,6 @@ const BRGameRoom: React.FC = () => {
       </PremiumBackground>
     );
   }
-
-  const activeGame = playerCtx.context.activeRound?.roundNumber ?? null;
-  const activeCode = playerCtx.context.activeRound?.lobbyCode ?? null;
-  // Use stage leaderboard when available (new system), fall back to old system
-  const leaderboard = stageLeaderboard.length > 0 ? stageLeaderboard : brResults.leaderboard;
-  const gamesCompleted = playerCtx.context.completedRounds;
-  const totalGames = playerCtx.context.totalRounds > 0 ? playerCtx.context.totalRounds : brGameCount;
-  const allGamesFinished = gamesCompleted >= totalGames && totalGames > 0;
-
-  // Find user's rank in leaderboard (match by id only — name-based fallback causes false matches with duplicate team names)
-  const userRank = userTeam
-    ? leaderboard.findIndex(e => e.teamId === userTeam.id) + 1
-    : 0;
-  const userEntry = userTeam
-    ? leaderboard.find(e => e.teamId === userTeam.id) ?? null
-    : null;
-
-  // Check if user already submitted evidence for active game
-  const userAlreadySubmitted = activeGame && userTeam
-    ? (brResults.getEvidence(activeGame) || []).some(ev => ev.teamId === userTeam.id)
-    : false;
-
-  // Warn on browser close/refresh if user has an active unsubmitted game
-  useEffect(() => {
-    const isActiveAndUnsubmitted = !!activeGame && !userAlreadySubmitted;
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isActiveAndUnsubmitted) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [activeGame, userAlreadySubmitted]);
 
   return (
     <PremiumBackground className="min-h-screen">
