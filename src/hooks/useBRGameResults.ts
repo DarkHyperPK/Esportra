@@ -57,7 +57,8 @@ export function useBRGameResults({
     },
     enabled: !!tournamentId,
     staleTime: BR_CONFIG.STALE_TIME_MS,
-    refetchInterval: BR_CONFIG.POLL_INTERVAL_MS,
+    // No polling: this legacy endpoint is read-once for finish-tournament logic.
+    // Real-time updates go through the new br_rounds / br_group_teams system.
   });
 
   // Merge saved data into a Map

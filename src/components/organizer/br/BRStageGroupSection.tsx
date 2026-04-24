@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useBRGroups } from '@/hooks/useBRGroups';
-import { useBRRounds } from '@/hooks/useBRRounds';
 import { apiClient } from '@/lib/apiClient';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
 import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
@@ -57,46 +56,19 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   const [method, setMethod] = useState<BRDistributionMethod>('random');
   const [confirmDistribute, setConfirmDistribute] = useState(false);
 
-  // Check if ANY group in this stage has rounds — parallel fetch instead of sequential N+1
-  const { rounds: selectedGroupRounds } = useBRRounds(stageId, selectedGroupId);
-  const anyGroupHasRounds = useQuery({
-    queryKey: ['br-any-rounds', stageId, groups.map(g => g.id).join(',')],
-    queryFn: async () => {
-      if (groups.length === 0) return false;
-      const results = await Promise.all(
-        groups.map(g =>
-          apiClient.get<any[]>(`/api/stages/${stageId}/br/groups/${g.id}/rounds`)
-            .then(rounds => rounds.length > 0)
-            .catch(() => false)
-        )
-      );
-      return results.some(Boolean);
-    },
-    enabled: groups.length > 0,
-    staleTime: 1000 * 60,
-  });
-  const hasRounds = anyGroupHasRounds.data === true;
-
-  // Batch-fetch teams for all groups
-  const allGroupTeamsQueries = useQuery({
-    queryKey: ['br-group-teams-batch', stageId, groups.map(g => g.id).join(',')],
-    queryFn: async () => {
-      if (groups.length === 0) return {};
-      const results = await Promise.all(
-        groups.map(g =>
-          apiClient.get<BRGroupTeam[]>(`/api/stages/${stageId}/br/groups/${g.id}/teams`)
-            .then(teams => ({ groupId: g.id, teams }))
-            .catch(() => ({ groupId: g.id, teams: [] as BRGroupTeam[] }))
-        )
-      );
-      const map: Record<string, BRGroupTeam[]> = {};
-      for (const r of results) map[r.groupId] = r.teams;
-      return map;
-    },
+  // Batch-fetch all groups' teams + has_rounds in ONE request (replaces N×2 parallel fetches)
+  const groupIds = groups.map(g => g.id).join(',');
+  const groupsDetail = useQuery({
+    queryKey: ['br-groups-detail', stageId, groupIds],
+    queryFn: () =>
+      apiClient.get<{ has_rounds: boolean; teams_by_group: Record<string, BRGroupTeam[]> }>(
+        `/api/stages/${stageId}/br/groups/detail`
+      ),
     enabled: groups.length > 0,
     staleTime: 1000 * 60 * 2,
   });
-  const teamsByGroup = allGroupTeamsQueries.data ?? {};
+  const hasRounds   = groupsDetail.data?.has_rounds === true;
+  const teamsByGroup = groupsDetail.data?.teams_by_group ?? {};
 
   const totalAssigned = groups.reduce((sum, g) => sum + g.team_count, 0);
 
@@ -169,7 +141,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
                 key={group.id}
                 group={group}
                 teams={teamsByGroup[group.id] ?? []}
-                teamsLoading={allGroupTeamsQueries.isLoading}
+                teamsLoading={groupsDetail.isLoading}
                 onDelete={() => deleteGroup.mutate(group.id)}
                 isDeleting={deleteGroup.isPending}
                 isLocked={hasRounds}

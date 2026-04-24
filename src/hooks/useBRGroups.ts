@@ -20,7 +20,7 @@ export const useBRGroups = (stageId: string | null) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['br-groups', stageId] });
       queryClient.invalidateQueries({ queryKey: ['br-group-teams', stageId] });
-      queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch', stageId] });
+      queryClient.invalidateQueries({ queryKey: ['br-groups-detail', stageId] });
       toast({ title: 'Groups created' });
     },
     onError: (error: unknown) => {
@@ -42,7 +42,7 @@ export const useBRGroups = (stageId: string | null) => {
       queryClient.invalidateQueries({ queryKey: ['br-groups', stageId] });
       queryClient.invalidateQueries({ queryKey: ['br-group-teams', stageId] });
       // Also invalidate the batch-fetch key used by BRStageGroupSection
-      queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch', stageId] });
+      queryClient.invalidateQueries({ queryKey: ['br-groups-detail', stageId] });
       toast({ title: `${data.assigned} teams distributed across ${data.groups} groups` });
     },
     onError: (error: Error) => {
@@ -59,7 +59,7 @@ export const useBRGroups = (stageId: string | null) => {
       apiClient.delete(`/api/stages/${stageId}/br/groups/${groupId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['br-groups', stageId] });
-      queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch', stageId] });
+      queryClient.invalidateQueries({ queryKey: ['br-groups-detail', stageId] });
       toast({ title: 'Group deleted' });
     },
     onError: (error: Error) => {
@@ -80,7 +80,7 @@ export const useBRGroups = (stageId: string | null) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['br-groups', stageId] });
       queryClient.invalidateQueries({ queryKey: ['br-group-teams', stageId] });
-      queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch', stageId] });
+      queryClient.invalidateQueries({ queryKey: ['br-groups-detail', stageId] });
       toast({ title: 'Group teams updated' });
     },
     onError: (error: Error) => {
