@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useBRGroups } from '@/hooks/useBRGroups';
-import { apiClient } from '@/lib/apiClient';
+import { useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
 import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
 import { Button } from '@/components/ui/button';
@@ -17,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { BRGroupTeam, BRDistributionMethod } from '@/types/brGroups';
+import type { BRDistributionMethod } from '@/types/brGroups';
 
 interface ScoringPreset {
   placements: number[];
@@ -43,32 +41,17 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   scoringPreset,
   onUpdate,
 }) => {
-  const {
-    groups,
-    isLoading,
-    error,
-    refetch,
-    assignTeams,
-    deleteGroup,
-  } = useBRGroups(stageId);
+  // Single HTTP request: groups list + has_rounds + all teams in one call.
+  const { data, isLoading, error, refetch } = useBRGroupsDetail(stageId);
+  const groups     = data?.groups      ?? [];
+  const hasRounds  = data?.has_rounds  === true;
+  const teamsByGroup = data?.teams_by_group ?? {};
+
+  const { assignTeams, deleteGroup } = useBRGroupsMutations(stageId);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [method, setMethod] = useState<BRDistributionMethod>('random');
   const [confirmDistribute, setConfirmDistribute] = useState(false);
-
-  // Batch-fetch all groups' teams + has_rounds in ONE request (replaces N×2 parallel fetches)
-  const groupIds = groups.map(g => g.id).join(',');
-  const groupsDetail = useQuery({
-    queryKey: ['br-groups-detail', stageId, groupIds],
-    queryFn: () =>
-      apiClient.get<{ has_rounds: boolean; teams_by_group: Record<string, BRGroupTeam[]> }>(
-        `/api/stages/${stageId}/br/groups/detail`
-      ),
-    enabled: groups.length > 0,
-    staleTime: 1000 * 60 * 2,
-  });
-  const hasRounds   = groupsDetail.data?.has_rounds === true;
-  const teamsByGroup = groupsDetail.data?.teams_by_group ?? {};
 
   const totalAssigned = groups.reduce((sum, g) => sum + g.team_count, 0);
 
@@ -141,7 +124,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
                 key={group.id}
                 group={group}
                 teams={teamsByGroup[group.id] ?? []}
-                teamsLoading={groupsDetail.isLoading}
+                teamsLoading={isLoading}
                 onDelete={() => deleteGroup.mutate(group.id)}
                 isDeleting={deleteGroup.isPending}
                 isLocked={hasRounds}
