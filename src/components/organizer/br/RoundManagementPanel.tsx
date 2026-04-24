@@ -317,102 +317,114 @@ const RoundRow: React.FC<RoundRowProps> = ({
       {isExpanded && (
         <div className="border-t border-white/5 px-4 py-4 space-y-4">
           {/* Round Settings + Actions Row */}
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_auto] xl:items-end">
-            <div className="space-y-1">
-              <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                <Key className="w-3 h-3" /> Lobby Code
-              </label>
-              <Input
-                value={lobbyCode}
-                onChange={(e) => { setLobbyCode(e.target.value); setSettingsDirty(true); }}
-                placeholder="Enter lobby code..."
-                disabled={round.status === 'completed'}
-                className="h-9 text-xs bg-white/5 border-white/10 text-white"
-              />
-              <p className="text-[10px] text-zinc-600">
-                The code becomes visible to players only when the round is live.
-              </p>
+          <div className="space-y-3">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
+              <div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
+                <label className="mb-2 flex text-[10px] text-zinc-500 uppercase tracking-wider items-center gap-1">
+                  <Key className="w-3 h-3" /> Lobby Code
+                </label>
+                <Input
+                  value={lobbyCode}
+                  onChange={(e) => { setLobbyCode(e.target.value); setSettingsDirty(true); }}
+                  placeholder="Enter lobby code..."
+                  disabled={round.status === 'completed'}
+                  className="h-10 text-sm bg-white/5 border-white/10 text-white"
+                />
+                <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
+                  The code becomes visible to players only when the round is live.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
+                <label className="mb-2 flex text-[10px] text-zinc-500 uppercase tracking-wider items-center gap-1">
+                  <Clock className="w-3 h-3" /> Queue Timer (minutes)
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={180}
+                  value={queueTimerInput}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') {
+                      setQueueTimerInput('');
+                    } else {
+                      const clamped = Math.max(0, Math.min(180, Number.parseInt(raw, 10) || 0));
+                      setQueueTimerInput(String(clamped));
+                    }
+                    setSettingsDirty(true);
+                  }}
+                  placeholder="e.g. 5"
+                  disabled={round.status === 'completed'}
+                  className="h-10 text-sm bg-white/5 border-white/10 text-white"
+                />
+                <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
+                  Countdown starts when the round is live and the lobby code is visible.
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Queue Timer (minutes)
-              </label>
-              <Input
-                type="number"
-                min={0}
-                max={180}
-                value={queueTimerInput}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === '') {
-                    setQueueTimerInput('');
-                  } else {
-                    const clamped = Math.max(0, Math.min(180, Number.parseInt(raw, 10) || 0));
-                    setQueueTimerInput(String(clamped));
-                  }
-                  setSettingsDirty(true);
-                }}
-                 placeholder="e.g. 5"
-                 disabled={round.status === 'completed'}
-                 className="h-9 text-xs bg-white/5 border-white/10 text-white"
-               />
-               <p className="text-[10px] text-zinc-600">
-                 Countdown starts when the round is live and the lobby code is visible.
-               </p>
-             </div>
+            <div className="rounded-xl border border-white/6 bg-white/[0.02] px-3 py-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-1">
+                  <p className="text-[11px] font-medium text-white">Round controls</p>
+                  <p className="text-[10px] leading-relaxed text-zinc-500">
+                    Save timer and lobby changes separately, then control the round lifecycle from here.
+                  </p>
+                </div>
 
-             {/* Status Actions */}
-             <div className="flex flex-wrap gap-2 xl:justify-end">
-               <Button
-                 size="sm"
-                 onClick={handleSettingsSave}
-                 disabled={!settingsDirty || isUpdating}
-                 className="h-9 text-xs bg-white/10 hover:bg-white/15 text-white disabled:bg-white/5 disabled:text-zinc-600"
-               >
-                 Save settings
-               </Button>
-               {round.status === 'pending' && (
-                 <Button
-                   size="sm"
-                  onClick={() => onStatusAction('start')}
-                  disabled={isUpdating}
-                  className="h-8 text-xs bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/20"
-                >
-                  <Play className="w-3 h-3 mr-1" /> Start
-                </Button>
-              )}
-              {round.status === 'active' && (
-                <Button
-                  size="sm"
-                  onClick={() => onStatusAction('complete')}
-                  disabled={isUpdating}
-                  className="h-8 text-xs bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/20"
-                >
-                  <CheckCircle className="w-3 h-3 mr-1" /> Complete
-                </Button>
-              )}
-              {round.status === 'completed' && (
-                <Button
-                  size="sm"
-                  onClick={() => onStatusAction('reopen')}
-                  disabled={isUpdating}
-                   className="h-8 text-xs bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/20"
-                 >
-                   <Undo2 className="w-3 h-3 mr-1" /> Re-open
-                 </Button>
-               )}
-               <Button
-                 size="sm"
-                 variant="outline"
-                 onClick={() => onStatusAction('reset')}
-                 disabled={!hasRoundState || isUpdating}
-                 className="h-8 text-xs border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15 disabled:border-white/10 disabled:bg-white/5 disabled:text-zinc-600"
-               >
-                 <RotateCcw className="w-3 h-3 mr-1" /> Reset
-               </Button>
-             </div>
-           </div>
+                <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <Button
+                    size="sm"
+                    onClick={handleSettingsSave}
+                    disabled={!settingsDirty || isUpdating}
+                    className="h-9 text-xs bg-white/10 hover:bg-white/15 text-white disabled:bg-white/5 disabled:text-zinc-600"
+                  >
+                    Save settings
+                  </Button>
+                  {round.status === 'pending' && (
+                    <Button
+                      size="sm"
+                      onClick={() => onStatusAction('start')}
+                      disabled={isUpdating}
+                      className="h-9 text-xs bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/20"
+                    >
+                      <Play className="w-3 h-3 mr-1" /> Start
+                    </Button>
+                  )}
+                  {round.status === 'active' && (
+                    <Button
+                      size="sm"
+                      onClick={() => onStatusAction('complete')}
+                      disabled={isUpdating}
+                      className="h-9 text-xs bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/20"
+                    >
+                      <CheckCircle className="w-3 h-3 mr-1" /> Complete
+                    </Button>
+                  )}
+                  {round.status === 'completed' && (
+                    <Button
+                      size="sm"
+                      onClick={() => onStatusAction('reopen')}
+                      disabled={isUpdating}
+                      className="h-9 text-xs bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/20"
+                    >
+                      <Undo2 className="w-3 h-3 mr-1" /> Re-open
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onStatusAction('reset')}
+                    disabled={!hasRoundState || isUpdating}
+                    className="h-9 text-xs border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15 disabled:border-white/10 disabled:bg-white/5 disabled:text-zinc-600"
+                  >
+                    <RotateCcw className="w-3 h-3 mr-1" /> Reset
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Results Grid */}
           <RoundEvidencePanel
