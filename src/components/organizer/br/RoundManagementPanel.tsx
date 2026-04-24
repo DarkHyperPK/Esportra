@@ -171,19 +171,28 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               teams={teams}
               scoringPreset={scoringPreset}
               isExpanded={expandedRoundId === round.id}
-              onToggle={() => setExpandedRoundId(expandedRoundId === round.id ? null : round.id)}
-              onStatusAction={(action, settings) => {
-                if (action === 'start' && !settings?.lobbyCode) {
-                  toast({
-                    title: 'Lobby code required',
+               onToggle={() => setExpandedRoundId(expandedRoundId === round.id ? null : round.id)}
+               onStatusAction={(action, settings) => {
+                 if (action === 'start' && !settings?.lobbyCode) {
+                   toast({
+                     title: 'Lobby code required',
                     description: 'Enter the lobby code before starting the round so players receive it immediately.',
                     variant: 'destructive',
-                  });
-                  return;
-                }
+                   });
+                   return;
+                 }
 
-                setConfirmAction({ roundId: round.id, roundNumber: round.round_number, action, settings });
-              }}
+                  if (action === 'complete' && (round.pending_evidence_count ?? 0) > 0) {
+                    toast({
+                      title: 'Evidence review required',
+                      description: 'Review or reopen all pending evidence submissions before completing this round.',
+                      variant: 'destructive',
+                    });
+                    return;
+                  }
+
+                 setConfirmAction({ roundId: round.id, roundNumber: round.round_number, action, settings });
+               }}
               onRoundSettingsSave={(settings) => handleLobbyCodeUpdate(round.id, settings.lobbyCode, settings.queueTimerMinutes)}
               isUpdating={isMutatingRound}
             />
@@ -274,6 +283,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
   );
   const [settingsDirty, setSettingsDirty] = useState(false);
   const statusCfg = STATUS_CONFIG[round.status] ?? STATUS_CONFIG.pending;
+  const hasPendingEvidenceReview = (round.pending_evidence_count ?? 0) > 0;
   const hasRoundState = round.status !== 'pending'
     || round.result_count > 0
     || (round.evidence_count ?? 0) > 0
@@ -413,6 +423,11 @@ const RoundRow: React.FC<RoundRowProps> = ({
                   <p className="text-[10px] leading-relaxed text-zinc-500">
                     Saving updates the draft instantly. Starting a round also publishes the current lobby code and queue timer automatically.
                   </p>
+                  {hasPendingEvidenceReview && round.status === 'active' && (
+                    <p className="text-[10px] leading-relaxed text-amber-300/80">
+                      Complete is locked until all submitted evidence is reviewed.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -438,7 +453,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
                     <Button
                       size="sm"
                       onClick={() => onStatusAction('complete')}
-                      disabled={isUpdating}
+                      disabled={isUpdating || hasPendingEvidenceReview}
                       className="h-9 text-xs bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/20"
                     >
                       <CheckCircle className="w-3 h-3 mr-1" /> Complete

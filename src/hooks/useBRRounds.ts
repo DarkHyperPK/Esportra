@@ -185,7 +185,7 @@ export const useBRRoundEvidence = (roundId: string | null, stageId?: string | nu
   };
 
   const submitEvidenceMutation = useMutation({
-    mutationFn: async (payload: { imageUrl: string; placement?: number | null; kills?: number | null }) => {
+    mutationFn: async (payload: { imageUrl: string; imagePath?: string; placement?: number | null; kills?: number | null }) => {
       if (!roundId) throw new Error('No round selected');
       return apiClient.put<{ success: boolean }>(`/api/br/rounds/${roundId}/evidence`, payload);
     },

@@ -63,7 +63,18 @@ const BRGameRoom: React.FC = () => {
   const stages = tournamentData?.stages || [];
   const game = tournament?.game || '';
   const isBR = isBattleRoyale(game);
-  const usesRelationalBrFlow = isBR && stages.length > 0;
+  const primaryStageId = stages[0]?.id ?? null;
+  const {
+    data: relationalGroups = [],
+    isLoading: relationalGroupsLoading,
+  } = useQuery({
+    queryKey: ['br-relational-groups-ready', primaryStageId],
+    queryFn: () => apiClient.get<Array<{ id: string }>>(`/api/stages/${primaryStageId}/br/groups`),
+    enabled: isBR && !!primaryStageId,
+    staleTime: 1000 * 60,
+  });
+  const usesRelationalBrFlow = isBR && !!primaryStageId && relationalGroups.length > 0;
+  const isResolvingBrFlow = isBR && !!primaryStageId && relationalGroupsLoading;
 
   // Find user's team
   const userTeam = useMemo(() => {
@@ -160,7 +171,7 @@ const BRGameRoom: React.FC = () => {
     if (!userTeam || !activeRoundNumber) return;
     // Belt-and-suspenders: re-check at call time in case cache hasn't updated yet
     const alreadySubmitted = activeEvidence
-      .some(ev => ev.teamId === userTeam.id || ev.teamName === userTeam.name);
+      .some(ev => ev.teamId === userTeam.id);
     if (alreadySubmitted) {
       toast({ title: 'Already submitted', description: 'You have already submitted evidence for this game.', variant: 'destructive' });
       return;
@@ -173,12 +184,14 @@ const BRGameRoom: React.FC = () => {
     try {
       // Upload evidence image
       let imageUrl = '';
+      let imagePath = '';
       try {
         const fd = new FormData();
         fd.append('file', evidenceFile);
         fd.append('bucket', 'tournaments.results');
-        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        const { url, path } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
         imageUrl = url;
+        imagePath = path;
       } catch {
         toast({ title: 'Upload failed', description: 'Could not upload evidence image. Please try again.', variant: 'destructive' });
         setReportSubmitting(false);
@@ -188,6 +201,7 @@ const BRGameRoom: React.FC = () => {
       if (activeRoundId) {
         await roundEvidence.submitEvidence({
           imageUrl,
+          imagePath,
           placement: reportPlacement,
           kills: reportKills,
         });
@@ -254,7 +268,7 @@ const BRGameRoom: React.FC = () => {
   const { data: groupParticipants = [], isLoading: groupParticipantsLoading } = useBRGroupParticipants(
     playerCtx.context.stageId,
     playerCtx.context.groupId,
-    usesRelationalBrFlow && groupRosterOpen,
+    usesRelationalBrFlow && !!playerCtx.context.groupId,
   );
 
   const activeRound = useMemo(() => {
@@ -348,6 +362,9 @@ const BRGameRoom: React.FC = () => {
   const userSubmission = userAlreadySubmitted && userTeam
     ? activeEvidence.find(ev => ev.teamId === userTeam.id) ?? null
     : null;
+  const reportPlacementCap = usesRelationalBrFlow
+    ? Math.max(groupParticipants.length, 1)
+    : Math.max(brTeams.length, 1);
 
   // Keep hook order stable across loading/error/ready renders.
   useEffect(() => {
@@ -372,7 +389,7 @@ const BRGameRoom: React.FC = () => {
   const queueRemainingMs = queueEndsAtMs ? Math.max(0, queueEndsAtMs - queueNow) : null;
   const queueCountdownLabel = queueRemainingMs != null ? formatCountdown(queueRemainingMs) : null;
 
-  if (loadingTournament || (usesRelationalBrFlow && (playerCtx.isLoading || relationalRoundsLoading))) return <PremiumLoadingScreen />;
+  if (loadingTournament || isResolvingBrFlow || (usesRelationalBrFlow && (playerCtx.isLoading || relationalRoundsLoading))) return <PremiumLoadingScreen />;
 
   if (!tournament) {
     return (
@@ -628,17 +645,17 @@ const BRGameRoom: React.FC = () => {
                           <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-1.5 block">Placement</label>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 font-bold text-base">#</span>
-                            <Input
-                              type="number"
-                              min={1}
-                              max={Math.max(brTeams.length, 1)}
-                              value={reportPlacement}
-                              onChange={(e) => {
-                                const v = parseInt(e.target.value) || 1;
-                                setReportPlacement(Math.max(1, Math.min(Math.max(brTeams.length, 1), v)));
-                              }}
-                              className="h-11 text-center text-lg font-bold pl-7 bg-black/30 border-white/[0.06] focus:border-rose-500/40 [color-scheme:dark]"
-                            />
+                             <Input
+                               type="number"
+                               min={1}
+                               max={reportPlacementCap}
+                               value={reportPlacement}
+                               onChange={(e) => {
+                                 const v = parseInt(e.target.value) || 1;
+                                 setReportPlacement(Math.max(1, Math.min(reportPlacementCap, v)));
+                               }}
+                               className="h-11 text-center text-lg font-bold pl-7 bg-black/30 border-white/[0.06] focus:border-rose-500/40 [color-scheme:dark]"
+                             />
                           </div>
                         </div>
                         <div>
