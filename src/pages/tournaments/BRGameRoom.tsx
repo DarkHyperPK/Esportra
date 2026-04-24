@@ -204,8 +204,15 @@ const BRGameRoom: React.FC = () => {
 
       toast({ title: 'Evidence Submitted', description: `Placement: #${reportPlacement}, Kills: ${reportKills}. The organizer will review your submission.` });
       clearEvidence();
-    } catch {
-      toast({ title: 'Submission failed', description: 'Could not submit your report. Please try again.', variant: 'destructive' });
+    } catch (err: unknown) {
+      const status = (err as { status?: number })?.status;
+      if (status === 409) {
+        // Server confirmed already submitted — invalidate so UI reflects the locked state
+        await roundEvidence.refetch();
+        toast({ title: 'Already submitted', description: 'Your evidence for this round has already been submitted and cannot be changed.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Submission failed', description: 'Could not submit your report. Please try again.', variant: 'destructive' });
+      }
     }
     setReportSubmitting(false);
   };
@@ -338,6 +345,9 @@ const BRGameRoom: React.FC = () => {
   const userAlreadySubmitted = activeGame && userTeam
     ? activeEvidence.some(ev => ev.teamId === userTeam.id)
     : false;
+  const userSubmission = userAlreadySubmitted && userTeam
+    ? activeEvidence.find(ev => ev.teamId === userTeam.id) ?? null
+    : null;
 
   // Keep hook order stable across loading/error/ready renders.
   useEffect(() => {
@@ -711,12 +721,28 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Already submitted notice */}
-                  {userTeam && userAlreadySubmitted && (
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15">
-                      <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      <p className="text-sm text-emerald-300/80">
-                        Evidence submitted for Game {activeGame}. Awaiting organizer review.
+                  {/* Already submitted — locked card */}
+                  {userTeam && userAlreadySubmitted && userSubmission && (
+                    <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        <span className="text-sm font-semibold text-emerald-300">Evidence submitted — locked</span>
+                      </div>
+                      <div className="rounded-lg overflow-hidden border border-white/[0.06]">
+                        <img
+                          src={userSubmission.imageUrl}
+                          alt="Your submitted evidence"
+                          className="w-full h-32 object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </div>
+                      <div className="flex gap-4 text-xs text-zinc-400">
+                        <span>Placement: <span className="text-zinc-200 font-semibold">#{userSubmission.placement ?? '—'}</span></span>
+                        <span>Kills: <span className="text-zinc-200 font-semibold">{userSubmission.kills ?? '—'}</span></span>
+                      </div>
+                      <p className="text-[10px] text-zinc-600">
+                        Your results are final. The organizer will verify and finalize standings.
                       </p>
                     </div>
                   )}
