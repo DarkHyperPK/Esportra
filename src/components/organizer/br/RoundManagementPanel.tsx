@@ -25,6 +25,7 @@ import {
   RefreshCw,
   Undo2,
   Clock,
+  RotateCcw,
 } from 'lucide-react';
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRRound, BRResultInput } from '@/types/brRounds';
@@ -56,7 +57,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   teams,
   scoringPreset,
 }) => {
-  const { rounds, isLoading, error, refetch, createRound, updateRound } = useBRRounds(stageId, groupId);
+  const { rounds, isLoading, error, refetch, createRound, updateRound, resetRound } = useBRRounds(stageId, groupId);
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
   // Reset expansion if the expanded round was deleted
   useEffect(() => {
@@ -64,7 +65,8 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
       setExpandedRoundId(null);
     }
   }, [rounds, expandedRoundId]);
-  const [confirmAction, setConfirmAction] = useState<{ roundId: string; action: 'start' | 'complete' | 'reopen' } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ roundId: string; roundNumber: number; action: 'start' | 'complete' | 'reopen' | 'reset' } | null>(null);
+  const isMutatingRound = updateRound.isPending || resetRound.isPending;
 
   const handleCreateRound = async () => {
     try {
@@ -76,10 +78,14 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
 
   const handleStatusChange = async () => {
     if (!confirmAction) return;
-    const { roundId, action } = confirmAction;
+    const { roundId, roundNumber, action } = confirmAction;
     const statusMap = { start: 'active', complete: 'completed', reopen: 'active' } as const;
     try {
-      await updateRound.mutateAsync({ roundId, status: statusMap[action] });
+      if (action === 'reset') {
+        await resetRound.mutateAsync({ roundId, roundNumber });
+      } else {
+        await updateRound.mutateAsync({ roundId, status: statusMap[action] });
+      }
     } catch {
       /* toast handled by hook */
     } finally {
@@ -145,9 +151,9 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               scoringPreset={scoringPreset}
               isExpanded={expandedRoundId === round.id}
               onToggle={() => setExpandedRoundId(expandedRoundId === round.id ? null : round.id)}
-              onStatusAction={(action) => setConfirmAction({ roundId: round.id, action })}
+              onStatusAction={(action) => setConfirmAction({ roundId: round.id, roundNumber: round.round_number, action })}
               onRoundSettingsSave={(settings) => handleLobbyCodeUpdate(round.id, settings.lobbyCode, settings.queueTimerMinutes)}
-              isUpdating={updateRound.isPending}
+              isUpdating={isMutatingRound}
             />
           ))}
         </div>
@@ -161,11 +167,13 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               {confirmAction?.action === 'start' && 'Start Round?'}
               {confirmAction?.action === 'complete' && 'Complete Round?'}
               {confirmAction?.action === 'reopen' && 'Re-open Round?'}
+              {confirmAction?.action === 'reset' && 'Reset Round?'}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
               {confirmAction?.action === 'start' && 'This will set the round to active. Teams will be notified.'}
               {confirmAction?.action === 'complete' && 'This will lock the round results. You can re-open later if needed.'}
               {confirmAction?.action === 'reopen' && 'This will unlock the round for result editing. Any leaderboard standings calculated from this round may change if results are modified.'}
+              {confirmAction?.action === 'reset' && 'This will clear the lobby code, results, and submitted evidence, then move the round back to pending.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -179,12 +187,15 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
                   ? 'bg-amber-600 hover:bg-amber-500'
                   : confirmAction?.action === 'complete'
                   ? 'bg-emerald-600 hover:bg-emerald-500'
+                  : confirmAction?.action === 'reset'
+                  ? 'bg-rose-600 hover:bg-rose-500'
                   : 'bg-indigo-600 hover:bg-indigo-500'
               }
             >
               {confirmAction?.action === 'start' && 'Start Round'}
               {confirmAction?.action === 'complete' && 'Complete Round'}
               {confirmAction?.action === 'reopen' && 'Re-open'}
+              {confirmAction?.action === 'reset' && 'Reset Round'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -203,7 +214,7 @@ interface RoundRowProps {
   scoringPreset: ScoringPreset;
   isExpanded: boolean;
   onToggle: () => void;
-  onStatusAction: (action: 'start' | 'complete' | 'reopen') => void;
+  onStatusAction: (action: 'start' | 'complete' | 'reopen' | 'reset') => void;
   onRoundSettingsSave: (settings: { lobbyCode: string; queueTimerMinutes: number | null }) => Promise<void>;
   isUpdating: boolean;
 }
@@ -231,6 +242,11 @@ const RoundRow: React.FC<RoundRowProps> = ({
   );
   const [settingsDirty, setSettingsDirty] = useState(false);
   const statusCfg = STATUS_CONFIG[round.status] ?? STATUS_CONFIG.pending;
+  const hasRoundState = round.status !== 'pending'
+    || round.result_count > 0
+    || (round.evidence_count ?? 0) > 0
+    || !!round.lobby_code
+    || !!round.queue_started_at;
 
   useEffect(() => {
     setLobbyCode(round.lobby_code ?? '');
@@ -285,7 +301,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
             {round.pending_evidence_count} pending review
           </Badge>
         )}
-        <span className="ml-auto flex items-center gap-3 text-[10px] text-zinc-600">
+        <span className="ml-auto flex flex-wrap items-center justify-end gap-3 text-[10px] text-zinc-600">
           {round.scheduled_at && (
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
@@ -301,33 +317,24 @@ const RoundRow: React.FC<RoundRowProps> = ({
       {isExpanded && (
         <div className="border-t border-white/5 px-4 py-4 space-y-4">
           {/* Round Settings + Actions Row */}
-          <div className="flex items-end gap-3 flex-wrap">
-            <div className="flex-1 min-w-[200px] space-y-1">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_auto] xl:items-end">
+            <div className="space-y-1">
               <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
                 <Key className="w-3 h-3" /> Lobby Code
               </label>
-              <div className="flex gap-2">
-                <Input
-                  value={lobbyCode}
-                  onChange={(e) => { setLobbyCode(e.target.value); setSettingsDirty(true); }}
-                  placeholder="Enter lobby code..."
-                  disabled={round.status === 'completed'}
-                  className="h-8 text-xs bg-white/5 border-white/10 text-white"
-                />
-                {settingsDirty && (
-                  <Button
-                    size="sm"
-                    onClick={handleSettingsSave}
-                    disabled={isUpdating}
-                    className="h-8 text-xs bg-white/10 hover:bg-white/15 text-white"
-                  >
-                    Save
-                  </Button>
-                )}
-              </div>
+              <Input
+                value={lobbyCode}
+                onChange={(e) => { setLobbyCode(e.target.value); setSettingsDirty(true); }}
+                placeholder="Enter lobby code..."
+                disabled={round.status === 'completed'}
+                className="h-9 text-xs bg-white/5 border-white/10 text-white"
+              />
+              <p className="text-[10px] text-zinc-600">
+                The code becomes visible to players only when the round is live.
+              </p>
             </div>
 
-            <div className="w-[180px] space-y-1">
+            <div className="space-y-1">
               <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
                 <Clock className="w-3 h-3" /> Queue Timer (minutes)
               </label>
@@ -346,20 +353,28 @@ const RoundRow: React.FC<RoundRowProps> = ({
                   }
                   setSettingsDirty(true);
                 }}
-                placeholder="e.g. 5"
-                disabled={round.status === 'completed'}
-                className="h-8 text-xs bg-white/5 border-white/10 text-white"
-              />
-              <p className="text-[10px] text-zinc-600">
-                Countdown starts when the round is live and the lobby code is visible.
-              </p>
-            </div>
+                 placeholder="e.g. 5"
+                 disabled={round.status === 'completed'}
+                 className="h-9 text-xs bg-white/5 border-white/10 text-white"
+               />
+               <p className="text-[10px] text-zinc-600">
+                 Countdown starts when the round is live and the lobby code is visible.
+               </p>
+             </div>
 
-            {/* Status Actions */}
-            <div className="flex gap-2">
-              {round.status === 'pending' && (
-                <Button
-                  size="sm"
+             {/* Status Actions */}
+             <div className="flex flex-wrap gap-2 xl:justify-end">
+               <Button
+                 size="sm"
+                 onClick={handleSettingsSave}
+                 disabled={!settingsDirty || isUpdating}
+                 className="h-9 text-xs bg-white/10 hover:bg-white/15 text-white disabled:bg-white/5 disabled:text-zinc-600"
+               >
+                 Save settings
+               </Button>
+               {round.status === 'pending' && (
+                 <Button
+                   size="sm"
                   onClick={() => onStatusAction('start')}
                   disabled={isUpdating}
                   className="h-8 text-xs bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/20"
@@ -382,13 +397,22 @@ const RoundRow: React.FC<RoundRowProps> = ({
                   size="sm"
                   onClick={() => onStatusAction('reopen')}
                   disabled={isUpdating}
-                  className="h-8 text-xs bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/20"
-                >
-                  <Undo2 className="w-3 h-3 mr-1" /> Re-open
-                </Button>
-              )}
-            </div>
-          </div>
+                   className="h-8 text-xs bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/20"
+                 >
+                   <Undo2 className="w-3 h-3 mr-1" /> Re-open
+                 </Button>
+               )}
+               <Button
+                 size="sm"
+                 variant="outline"
+                 onClick={() => onStatusAction('reset')}
+                 disabled={!hasRoundState || isUpdating}
+                 className="h-8 text-xs border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15 disabled:border-white/10 disabled:bg-white/5 disabled:text-zinc-600"
+               >
+                 <RotateCcw className="w-3 h-3 mr-1" /> Reset
+               </Button>
+             </div>
+           </div>
 
           {/* Results Grid */}
           <RoundEvidencePanel

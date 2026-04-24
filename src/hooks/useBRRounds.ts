@@ -9,6 +9,19 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const invalidateRoundQueries = async (roundId?: string | null) => {
+    await queryClient.invalidateQueries({ queryKey: ['br-rounds', stageId, groupId] });
+    if (stageId && groupId) {
+      await queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard', stageId, groupId] });
+      await queryClient.invalidateQueries({ queryKey: ['br-group-rounds-summary', stageId, groupId] });
+    }
+    if (roundId) {
+      await queryClient.invalidateQueries({ queryKey: ['br-round-results', roundId] });
+      await queryClient.invalidateQueries({ queryKey: ['br-round-evidence', roundId] });
+    }
+    await queryClient.invalidateQueries({ queryKey: ['br-player-context'] });
+  };
+
   const { data: rounds, isLoading, error, refetch } = useQuery({
     queryKey: ['br-rounds', stageId, groupId],
     queryFn: () =>
@@ -26,8 +39,8 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
         `/api/stages/${stageId}/br/groups/${groupId}/rounds`,
         params
       ),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['br-rounds', stageId, groupId] });
+    onSuccess: async (data) => {
+      await invalidateRoundQueries(data.id);
       toast({ title: `Round ${data.round_number} created` });
     },
     onError: (error: Error) => {
@@ -40,13 +53,28 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
       const { roundId, ...body } = params;
       return apiClient.patch<BRRound>(`/api/br/rounds/${roundId}`, body);
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['br-rounds', stageId, groupId] });
+    onSuccess: async (data) => {
+      await invalidateRoundQueries(data.id);
       const action = data.status === 'active' ? 'started' : data.status === 'completed' ? 'completed' : 'updated';
       toast({ title: `Round ${data.round_number} ${action}` });
     },
     onError: (error: Error) => {
       toast({ title: 'Failed to update round', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const resetRound = useMutation({
+    mutationFn: (params: { roundId: string; roundNumber: number }) =>
+      apiClient.post<BRRound>(`/api/br/rounds/${params.roundId}/reset`, {}),
+    onSuccess: async (data, variables) => {
+      await invalidateRoundQueries(data.id ?? variables.roundId);
+      toast({
+        title: `Round ${variables.roundNumber} reset`,
+        description: 'Lobby code, results, and evidence were cleared.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to reset round', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -57,6 +85,7 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
     refetch,
     createRound,
     updateRound,
+    resetRound,
   };
 };
 
