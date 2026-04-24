@@ -148,6 +148,9 @@ const TournamentDetails = () => {
   const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
   const terminology = useGameTerminology(tournament?.game);
   const isBR = isBattleRoyale(tournament?.game || '');
+  const detailsSearchParams = typeof window !== 'undefined' ? new URLSearchParams(location.search) : null;
+  const requestedDetailsTab = detailsSearchParams?.get('tab') ?? null;
+  const requestedBRStageId = detailsSearchParams?.get('brStage') ?? null;
 
   // BR leaderboard config (only computed for BR tournaments)
   const brConf = isBR ? getBRConfig(tournament?.game || '') : null;
@@ -199,7 +202,7 @@ const TournamentDetails = () => {
 
   // Public Bracket View State - Refactored to Hook
   const { stages, activeVersionsMap, loading: bracketLoading } = usePublicBracketData(tournament?.id);
-  const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+  const [selectedStageId, setSelectedStageId] = useState<string | null>(requestedBRStageId);
 
   // Multi-group stage detection — check first stage for groups
   const firstBRStageId = isBR && stages.length > 0 ? stages[0].id : null;
@@ -207,7 +210,7 @@ const TournamentDetails = () => {
 
   // Auto-select first stage when stages load
   useEffect(() => {
-    if (stages.length > 0 && !selectedStageId) {
+    if (stages.length > 0 && (!selectedStageId || !stages.some((stage: any) => stage.id === selectedStageId))) {
       setSelectedStageId(stages[0].id);
     }
   }, [stages, selectedStageId]);
@@ -763,7 +766,7 @@ const TournamentDetails = () => {
       {/* --- TABS NAVIGATION (Sticky) --- */}
       {/* --- TABS NAVIGATION (Sticky) --- */}
       <div className="relative z-30 -mt-20">
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue={requestedDetailsTab || 'overview'} className="w-full">
           <div className="container mx-auto px-4">
             <div className="sticky top-4 z-40 bg-[#050505]/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl mb-12 shadow-2xl shadow-black/50 mx-auto max-w-3xl">
               <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">

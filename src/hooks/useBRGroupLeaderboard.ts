@@ -108,6 +108,8 @@ export interface BRPlayerContext {
     roundNumber: number;
     lobbyCode: string | null;
     status: string;
+    queueTimerMinutes: number | null;
+    queueStartedAt: string | null;
     scheduledAt: string | null;
   } | null;
 }

@@ -86,12 +86,8 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     }
   };
 
-  const handleLobbyCodeUpdate = async (roundId: string, lobbyCode: string) => {
-    try {
-      await updateRound.mutateAsync({ roundId, lobbyCode: lobbyCode || null });
-    } catch {
-      /* toast handled by hook */
-    }
+  const handleLobbyCodeUpdate = async (roundId: string, lobbyCode: string, queueTimerMinutes: number | null) => {
+    await updateRound.mutateAsync({ roundId, lobbyCode: lobbyCode || null, queueTimerMinutes });
   };
 
   if (isLoading) {
@@ -149,7 +145,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               isExpanded={expandedRoundId === round.id}
               onToggle={() => setExpandedRoundId(expandedRoundId === round.id ? null : round.id)}
               onStatusAction={(action) => setConfirmAction({ roundId: round.id, action })}
-              onLobbyCodeUpdate={(code) => handleLobbyCodeUpdate(round.id, code)}
+              onRoundSettingsSave={(settings) => handleLobbyCodeUpdate(round.id, settings.lobbyCode, settings.queueTimerMinutes)}
               isUpdating={updateRound.isPending}
             />
           ))}
@@ -207,7 +203,7 @@ interface RoundRowProps {
   isExpanded: boolean;
   onToggle: () => void;
   onStatusAction: (action: 'start' | 'complete' | 'reopen') => void;
-  onLobbyCodeUpdate: (code: string) => void;
+  onRoundSettingsSave: (settings: { lobbyCode: string; queueTimerMinutes: number | null }) => Promise<void>;
   isUpdating: boolean;
 }
 
@@ -220,7 +216,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
   isExpanded,
   onToggle,
   onStatusAction,
-  onLobbyCodeUpdate,
+  onRoundSettingsSave,
   isUpdating,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRRoundResults(
@@ -229,13 +225,28 @@ const RoundRow: React.FC<RoundRowProps> = ({
     groupId
   );
   const [lobbyCode, setLobbyCode] = useState(round.lobby_code ?? '');
-  const [lobbyDirty, setLobbyDirty] = useState(false);
+  const [queueTimerInput, setQueueTimerInput] = useState(
+    round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : ''
+  );
+  const [settingsDirty, setSettingsDirty] = useState(false);
   const statusCfg = STATUS_CONFIG[round.status] ?? STATUS_CONFIG.pending;
 
-  const handleLobbySave = () => {
-    if (!lobbyDirty) return;
-    onLobbyCodeUpdate(lobbyCode);
-    setLobbyDirty(false);
+  useEffect(() => {
+    setLobbyCode(round.lobby_code ?? '');
+    setQueueTimerInput(round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : '');
+    setSettingsDirty(false);
+  }, [round.id, round.lobby_code, round.queue_timer_minutes]);
+
+  const handleSettingsSave = async () => {
+    if (!settingsDirty) return;
+
+    const trimmedTimer = queueTimerInput.trim();
+    const queueTimerMinutes = trimmedTimer === '' ? null : Number(trimmedTimer);
+    await onRoundSettingsSave({
+      lobbyCode,
+      queueTimerMinutes: Number.isFinite(queueTimerMinutes) ? queueTimerMinutes : null,
+    });
+    setSettingsDirty(false);
   };
 
   const handleResultSave = async (resultInputs: BRResultInput[]) => {
@@ -270,6 +281,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
               {new Date(round.scheduled_at).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}
             </span>
           )}
+          {round.queue_timer_minutes ? `Queue ${round.queue_timer_minutes}m` : null}
           {round.lobby_code ? `${round.lobby_code}` : 'No lobby code'}
         </span>
       </button>
@@ -277,7 +289,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
       {/* Expanded Content */}
       {isExpanded && (
         <div className="border-t border-white/5 px-4 py-4 space-y-4">
-          {/* Lobby Code + Actions Row */}
+          {/* Round Settings + Actions Row */}
           <div className="flex items-end gap-3 flex-wrap">
             <div className="flex-1 min-w-[200px] space-y-1">
               <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
@@ -286,15 +298,15 @@ const RoundRow: React.FC<RoundRowProps> = ({
               <div className="flex gap-2">
                 <Input
                   value={lobbyCode}
-                  onChange={(e) => { setLobbyCode(e.target.value); setLobbyDirty(true); }}
+                  onChange={(e) => { setLobbyCode(e.target.value); setSettingsDirty(true); }}
                   placeholder="Enter lobby code..."
                   disabled={round.status === 'completed'}
                   className="h-8 text-xs bg-white/5 border-white/10 text-white"
                 />
-                {lobbyDirty && (
+                {settingsDirty && (
                   <Button
                     size="sm"
-                    onClick={handleLobbySave}
+                    onClick={handleSettingsSave}
                     disabled={isUpdating}
                     className="h-8 text-xs bg-white/10 hover:bg-white/15 text-white"
                   >
@@ -302,6 +314,34 @@ const RoundRow: React.FC<RoundRowProps> = ({
                   </Button>
                 )}
               </div>
+            </div>
+
+            <div className="w-[180px] space-y-1">
+              <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Queue Timer (minutes)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={180}
+                value={queueTimerInput}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setQueueTimerInput('');
+                  } else {
+                    const clamped = Math.max(0, Math.min(180, Number.parseInt(raw, 10) || 0));
+                    setQueueTimerInput(String(clamped));
+                  }
+                  setSettingsDirty(true);
+                }}
+                placeholder="e.g. 5"
+                disabled={round.status === 'completed'}
+                className="h-8 text-xs bg-white/5 border-white/10 text-white"
+              />
+              <p className="text-[10px] text-zinc-600">
+                Countdown starts when the round is live and the lobby code is visible.
+              </p>
             </div>
 
             {/* Status Actions */}

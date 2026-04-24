@@ -8,6 +8,7 @@ const invalidateBRGroups = (queryClient: ReturnType<typeof useQueryClient>, stag
   queryClient.invalidateQueries({ queryKey: ['br-groups', stageId] });
   queryClient.invalidateQueries({ queryKey: ['br-groups-detail', stageId] });
   queryClient.invalidateQueries({ queryKey: ['br-group-teams', stageId] });
+  queryClient.invalidateQueries({ queryKey: ['br-group-participants', stageId] });
 };
 
 // ── useBRGroupsMutations ─────────────────────────────────────────────────────
@@ -127,6 +128,19 @@ export const useBRGroupTeams = (stageId: string | null, groupId: string | null) 
     queryFn: () =>
       apiClient.get<BRGroupTeam[]>(
         `/api/stages/${stageId}/br/groups/${groupId}/teams`
+      ),
+    enabled: !!stageId && !!groupId,
+    staleTime: 1000 * 60 * 2,
+  });
+};
+
+// Public single-group participant list for player-facing group views.
+export const useBRGroupParticipants = (stageId: string | null, groupId: string | null) => {
+  return useQuery({
+    queryKey: ['br-group-participants', stageId, groupId],
+    queryFn: () =>
+      apiClient.get<BRGroupTeam[]>(
+        `/api/stages/${stageId}/br/groups/${groupId}/participants`
       ),
     enabled: !!stageId && !!groupId,
     staleTime: 1000 * 60 * 2,

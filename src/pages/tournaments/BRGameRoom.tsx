@@ -17,7 +17,7 @@ import PremiumBackground from '@/components/ui/PremiumBackground';
 import {
   Trophy, Copy, ArrowLeft, Radio, Clock, CheckCircle, Key, Send,
   Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown,
-  Crosshair, Medal, Flame, Shield,
+  Crosshair, Medal, Flame,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,6 +27,19 @@ import type { BRScoringPreset } from '@/types/battleRoyale';
 const stagger = {
   container: { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } },
   item: { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } } },
+};
+
+const formatCountdown = (ms: number) => {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
 const BRGameRoom: React.FC = () => {
@@ -199,9 +212,17 @@ const BRGameRoom: React.FC = () => {
   }, [game]);
 
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [queueNow, setQueueNow] = useState(Date.now());
 
   const activeGame = playerCtx.context.activeRound?.roundNumber ?? null;
   const activeCode = playerCtx.context.activeRound?.lobbyCode ?? null;
+  const activeQueueTimerMinutes = playerCtx.context.activeRound?.queueTimerMinutes ?? null;
+  const queueStartedAtMs = playerCtx.context.activeRound?.queueStartedAt
+    ? new Date(playerCtx.context.activeRound.queueStartedAt).getTime()
+    : null;
+  const queueEndsAtMs = queueStartedAtMs && activeQueueTimerMinutes
+    ? queueStartedAtMs + (activeQueueTimerMinutes * 60_000)
+    : null;
   // Use stage leaderboard when available (new system), fall back to old system
   const leaderboard = stageLeaderboard.length > 0 ? stageLeaderboard : brResults.leaderboard;
   const gamesCompleted = playerCtx.context.completedRounds;
@@ -233,6 +254,16 @@ const BRGameRoom: React.FC = () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [activeGame, userAlreadySubmitted]);
+
+  useEffect(() => {
+    if (!queueEndsAtMs) return;
+    setQueueNow(Date.now());
+    const timer = window.setInterval(() => setQueueNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [queueEndsAtMs]);
+
+  const queueRemainingMs = queueEndsAtMs ? Math.max(0, queueEndsAtMs - queueNow) : null;
+  const queueCountdownLabel = queueRemainingMs != null ? formatCountdown(queueRemainingMs) : null;
 
   if (loadingTournament || playerCtx.isLoading) return <PremiumLoadingScreen />;
 
@@ -296,12 +327,6 @@ const BRGameRoom: React.FC = () => {
               </span>
             </div>
           </div>
-          {userTeam && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/[0.08] border border-rose-500/20">
-              <Shield className="w-3.5 h-3.5 text-rose-400" />
-              <span className="text-xs font-semibold text-rose-300 truncate max-w-[120px]">{userTeam.name}</span>
-            </div>
-          )}
         </motion.div>
 
         {/* ─── Stale data indicator ─── */}
@@ -324,7 +349,13 @@ const BRGameRoom: React.FC = () => {
             </span>
             <button
               type="button"
-              onClick={() => navigate(`/tournaments/${slug}`)}
+              onClick={() => {
+                const params = new URLSearchParams();
+                params.set('tab', 'leaderboard');
+                if (playerCtx.context.stageId) params.set('brStage', playerCtx.context.stageId);
+                if (playerCtx.context.groupId) params.set('brGroup', playerCtx.context.groupId);
+                navigate(`/tournaments/${slug}?${params.toString()}`);
+              }}
               className="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1 transition-colors"
             >
               View your group <ArrowLeft className="w-3 h-3 rotate-180" />
@@ -422,11 +453,37 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Queue start notice */}
-                  {activeGame && (
+                  {/* Queue timer */}
+                  {activeGame && activeQueueTimerMinutes && !activeCode && (
+                    <div className="flex items-center gap-2 rounded-lg border border-zinc-700/60 bg-black/20 px-3 py-2">
+                      <Clock className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                      <p className="text-xs text-zinc-400">
+                        Queue timer is set to <span className="font-semibold text-white">{activeQueueTimerMinutes} minute{activeQueueTimerMinutes === 1 ? '' : 's'}</span> and will start when the lobby code goes live.
+                      </p>
+                    </div>
+                  )}
+                  {activeGame && activeQueueTimerMinutes && activeCode && queueCountdownLabel && queueRemainingMs !== null && queueRemainingMs > 0 && (
                     <div className="flex items-center gap-2 rounded-lg border border-amber-500/15 bg-amber-500/5 px-3 py-2">
                       <Clock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                      <p className="text-xs text-amber-300/80">Queue will be started <span className="font-semibold text-amber-300">5 minutes</span> after the lobby code goes live.</p>
+                      <p className="text-xs text-amber-300/80">
+                        Queue opens in <span className="font-semibold text-amber-300">{queueCountdownLabel}</span>.
+                      </p>
+                    </div>
+                  )}
+                  {activeGame && activeQueueTimerMinutes && activeCode && queueEndsAtMs === null && (
+                    <div className="flex items-center gap-2 rounded-lg border border-zinc-700/60 bg-black/20 px-3 py-2">
+                      <Clock className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                      <p className="text-xs text-zinc-400">
+                        Queue timer is configured and will start as soon as the live countdown syncs.
+                      </p>
+                    </div>
+                  )}
+                  {activeGame && activeQueueTimerMinutes && activeCode && queueRemainingMs === 0 && (
+                    <div className="flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-3 py-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                      <p className="text-xs text-emerald-300/80">
+                        Queue timer finished. You can join the lobby now.
+                      </p>
                     </div>
                   )}
 

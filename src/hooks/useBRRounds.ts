@@ -19,7 +19,7 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
   });
 
   const createRound = useMutation({
-    mutationFn: (params: { lobbyCode?: string; scheduledAt?: string }) =>
+    mutationFn: (params: { lobbyCode?: string; scheduledAt?: string; queueTimerMinutes?: number | null }) =>
       apiClient.post<BRRound>(
         `/api/stages/${stageId}/br/groups/${groupId}/rounds`,
         params
@@ -34,7 +34,7 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
   });
 
   const updateRound = useMutation({
-    mutationFn: (params: { roundId: string; lobbyCode?: string | null; status?: string; scheduledAt?: string | null }) => {
+    mutationFn: (params: { roundId: string; lobbyCode?: string | null; status?: string; scheduledAt?: string | null; queueTimerMinutes?: number | null }) => {
       const { roundId, ...body } = params;
       return apiClient.patch<BRRound>(`/api/br/rounds/${roundId}`, body);
     },

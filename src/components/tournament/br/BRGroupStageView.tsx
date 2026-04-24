@@ -4,9 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Users, Swords, Copy, Loader2, AlertCircle, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
+import { useBRGroupParticipants } from '@/hooks/useBRGroups';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 
 interface BRGroupStageViewProps {
@@ -23,18 +24,22 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
   tournamentSlug,
 }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { groups, isLoading, error, refetch } = useBRGroupStage(stageId);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const requestedGroupId = searchParams.get('brGroup');
 
   // Reset group selection when stage changes
   useEffect(() => {
     setSelectedGroupId(null);
-  }, [stageId]);
+  }, [stageId, requestedGroupId]);
 
   // Validate that the selected group still exists in the loaded list (guards against stale state after group deletion)
   const activeGroupId = (selectedGroupId && groups.some(g => g.id === selectedGroupId))
     ? selectedGroupId
-    : groups[0]?.id ?? null;
+    : (requestedGroupId && groups.some(g => g.id === requestedGroupId))
+      ? requestedGroupId
+      : groups[0]?.id ?? null;
 
   if (isLoading) {
     return (
@@ -125,6 +130,7 @@ const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualifica
   const { toast } = useToast();
   const { leaderboard, isLoading: lbLoading, error: lbError, refetch: refetchLb } = useBRGroupLeaderboard(stageId, groupId);
   const { totalRounds, completedRounds, activeRound, isLoading: roundsLoading } = useBRGroupRounds(stageId, groupId);
+  const { data: participants = [], isLoading: participantsLoading } = useBRGroupParticipants(stageId, groupId);
 
   const isLoading = lbLoading || roundsLoading;
 
@@ -202,6 +208,54 @@ const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualifica
           </div>
         </div>
       )}
+
+      {/* Group participants */}
+      <Card className="bg-black/20 border border-white/10 rounded-2xl">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-zinc-400" />
+            <h3 className="text-sm font-semibold text-white">Participants</h3>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+              {participants.length}
+            </Badge>
+          </div>
+
+          {participantsLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-10 bg-white/5 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : participants.length === 0 ? (
+            <p className="text-xs text-zinc-500">No participants assigned to this group yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {participants.map((participant) => (
+                <div
+                  key={participant.team_id}
+                  className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
+                >
+                  {participant.logo_url ? (
+                    <img
+                      src={participant.logo_url}
+                      alt={participant.team_name}
+                      className="w-8 h-8 rounded-full object-cover border border-white/10"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-500">
+                      <Users className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-white truncate">{participant.team_name}</p>
+                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Seed {participant.seed_order}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Leaderboard */}
       <BRLeaderboard
