@@ -102,19 +102,31 @@ export const useBRGroups = (stageId: string | null) => {
 };
 
 // ── useBRGroupsDetail ────────────────────────────────────────────────────────
-// Single-request batch: groups list + has_rounds flag + all teams in one call.
-// Use this in the organizer stage section to eliminate the 2-step waterfall.
+// Organizer-only stage summary. Optionally includes all group rosters when the
+// caller really needs them; default is to include rosters for backwards
+// compatibility.
 export interface BRGroupsDetailData {
   groups: BRGroup[];
   has_rounds: boolean;
   teams_by_group: Record<string, BRGroupTeam[]>;
 }
 
-export const useBRGroupsDetail = (stageId: string | null) => {
+interface UseBRGroupsDetailOptions {
+  includeTeams?: boolean;
+}
+
+export const useBRGroupsDetail = (
+  stageId: string | null,
+  options: UseBRGroupsDetailOptions = {},
+) => {
+  const includeTeams = options.includeTeams ?? true;
+
   return useQuery({
-    queryKey: ['br-groups-detail', stageId],
+    queryKey: ['br-groups-detail', stageId, includeTeams ? 'with-teams' : 'summary'],
     queryFn: () =>
-      apiClient.get<BRGroupsDetailData>(`/api/stages/${stageId}/br/groups/detail`),
+      apiClient.get<BRGroupsDetailData>(
+        `/api/stages/${stageId}/br/groups/detail?includeTeams=${includeTeams ? 'true' : 'false'}`,
+      ),
     enabled: !!stageId,
     staleTime: 1000 * 60 * 2,
   });

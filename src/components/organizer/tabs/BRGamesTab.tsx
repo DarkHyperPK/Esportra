@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Layers, Users, Trophy, Filter, ChevronRight } from 'lucide-react';
+import { Layers, Users, Trophy, Filter, ChevronRight, RefreshCw } from 'lucide-react';
 import { useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
-import { useBRGroupsDetail } from '@/hooks/useBRGroups';
+import { useBRGroupTeams, useBRGroups } from '@/hooks/useBRGroups';
 import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import type { Database } from '@/integrations/supabase/types';
@@ -37,15 +38,20 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
 
     const selectedStage = sortedStages.find(s => s.id === selectedStageId);
 
-    // Fetch groups + all roster rows for the selected stage in one request
-    const { data: groupDetail, isLoading: groupsLoading } = useBRGroupsDetail(selectedStageId || null);
-    const groups = groupDetail?.groups ?? [];
-    const teamsByGroup = groupDetail?.teams_by_group ?? {};
+    const {
+        groups,
+        isLoading: groupsLoading,
+        error: groupsError,
+        refetch: refetchGroups,
+    } = useBRGroups(selectedStageId || null);
 
     // Auto-select first group when groups load
     React.useEffect(() => {
         if (groups.length > 0 && (!selectedGroupId || !groups.find(g => g.id === selectedGroupId))) {
             setSelectedGroupId(groups[0].id);
+        }
+        if (groups.length === 0 && selectedGroupId) {
+            setSelectedGroupId('');
         }
     }, [groups, selectedGroupId]);
 
@@ -57,7 +63,10 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
 
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
 
-    const groupTeams = selectedGroupId ? (teamsByGroup[selectedGroupId] ?? []) : [];
+    const {
+        data: groupTeams = [],
+        isLoading: groupTeamsLoading,
+    } = useBRGroupTeams(selectedStageId || null, selectedGroupId || null);
 
     // Fetch leaderboard for the selected group
     const { leaderboard, isLoading: leaderboardLoading } = useBRGroupLeaderboard(
@@ -164,8 +173,28 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                 </div>
             </Card>
 
+            {groupsError && (
+                <Card className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-sm text-red-300">Failed to load groups</p>
+                            <p className="text-xs text-red-400/70">{(groupsError as Error).message}</p>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => refetchGroups()}
+                            className="text-red-200 hover:text-white hover:bg-red-500/10"
+                        >
+                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                            Retry
+                        </Button>
+                    </div>
+                </Card>
+            )}
+
             {/* Group Content */}
-            {selectedStageId && selectedGroupId && selectedGroup ? (
+            {!groupsError && selectedStageId && selectedGroupId && selectedGroup ? (
                 <>
                     {/* Group Leaderboard */}
                     <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5">
@@ -211,15 +240,24 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                     </Card>
 
                     {/* Rounds & Results */}
-                    <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-                        <RoundManagementPanel
-                            stageId={selectedStageId}
-                            groupId={selectedGroupId}
-                            groupName={selectedGroup.name}
-                            teams={groupTeams ?? []}
-                            scoringPreset={scoringPreset}
-                        />
-                    </Card>
+                    {groupTeamsLoading ? (
+                        <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5 space-y-2">
+                            <div className="h-5 w-44 bg-white/5 rounded animate-pulse" />
+                            {Array.from({ length: 2 }).map((_, i) => (
+                                <div key={i} className="h-14 bg-white/5 rounded-xl animate-pulse" />
+                            ))}
+                        </Card>
+                    ) : (
+                        <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5">
+                            <RoundManagementPanel
+                                stageId={selectedStageId}
+                                groupId={selectedGroupId}
+                                groupName={selectedGroup.name}
+                                teams={groupTeams}
+                                scoringPreset={scoringPreset}
+                            />
+                        </Card>
+                    )}
                 </>
             ) : selectedStageId && groups.length > 0 && !selectedGroupId ? (
                 <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-center">

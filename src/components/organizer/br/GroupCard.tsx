@@ -18,6 +18,7 @@ interface GroupCardProps {
   group: BRGroup;
   teams: BRGroupTeam[];
   teamsLoading: boolean;
+  showTeams?: boolean;
   onDelete: () => void;
   isDeleting: boolean;
   isLocked: boolean;
@@ -29,6 +30,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
   group,
   teams,
   teamsLoading,
+  showTeams = true,
   onDelete,
   isDeleting,
   isLocked,
@@ -90,41 +92,52 @@ export const GroupCard: React.FC<GroupCardProps> = ({
       </div>
 
       {/* Team List */}
-      <div className="p-4 space-y-1.5 max-h-[240px] overflow-y-auto">
-        {teamsLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-7 bg-white/5 rounded-lg animate-pulse" />
-            ))}
-          </div>
-        ) : teams.length > 0 ? (
-          teams.map((team) => (
-            <div
-              key={team.team_id}
-              className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-white/[0.02] hover:bg-white/5 transition-colors"
-            >
-              {team.logo_url ? (
-                <img
-                  src={team.logo_url}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  fetchPriority="low"
-                  className="w-5 h-5 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                  <Users className="w-3 h-3 text-zinc-500" />
-                </div>
-              )}
-              <span className="text-xs text-zinc-300 truncate">{team.team_name}</span>
-              <span className="text-[10px] text-zinc-600 ml-auto">#{team.seed_order}</span>
+      {showTeams ? (
+        <div className="p-4 space-y-1.5 max-h-[240px] overflow-y-auto">
+          {teamsLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-7 bg-white/5 rounded-lg animate-pulse" />
+              ))}
             </div>
-          ))
+          ) : teams.length > 0 ? (
+            teams.map((team) => (
+              <div
+                key={team.team_id}
+                className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-white/[0.02] hover:bg-white/5 transition-colors"
+              >
+                {team.logo_url ? (
+                  <img
+                    src={team.logo_url}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
+                    className="w-5 h-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                    <Users className="w-3 h-3 text-zinc-500" />
+                  </div>
+                )}
+                <span className="text-xs text-zinc-300 truncate">{team.team_name}</span>
+                <span className="text-[10px] text-zinc-600 ml-auto">#{team.seed_order}</span>
+              </div>
+            ))
+          ) : (
+            <p className="text-xs text-zinc-600 text-center py-4">No teams assigned</p>
+          )}
+        </div>
         ) : (
-          <p className="text-xs text-zinc-600 text-center py-4">No teams assigned</p>
-        )}
-      </div>
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between gap-3 text-[11px]">
+            <span className="text-zinc-500">
+              {group.team_count > 0 ? `${group.team_count} teams assigned` : 'No teams assigned'}
+            </span>
+            <span className="text-zinc-600">Select to load roster</span>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

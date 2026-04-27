@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
+import React, { useEffect, useState } from 'react';
+import { useBRGroupTeams, useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
 import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
 import { Button } from '@/components/ui/button';
@@ -41,17 +41,27 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   scoringPreset,
   onUpdate,
 }) => {
-  // Single HTTP request: groups list + has_rounds + all teams in one call.
-  const { data, isLoading, error, refetch } = useBRGroupsDetail(stageId);
-  const groups     = data?.groups      ?? [];
-  const hasRounds  = data?.has_rounds  === true;
-  const teamsByGroup = data?.teams_by_group ?? {};
+  const { data, isLoading, error, refetch } = useBRGroupsDetail(stageId, { includeTeams: false });
+  const groups = data?.groups ?? [];
+  const hasRounds = data?.has_rounds === true;
 
   const { assignTeams, deleteGroup } = useBRGroupsMutations(stageId);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [method, setMethod] = useState<BRDistributionMethod>('random');
   const [confirmDistribute, setConfirmDistribute] = useState(false);
+  const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? null;
+
+  useEffect(() => {
+    if (selectedGroupId && !selectedGroup) {
+      setSelectedGroupId(null);
+    }
+  }, [selectedGroup, selectedGroupId]);
+
+  const {
+    data: selectedGroupTeams = [],
+    isLoading: selectedGroupTeamsLoading,
+  } = useBRGroupTeams(stageId, selectedGroup?.id ?? null);
 
   const totalAssigned = groups.reduce((sum, g) => sum + g.team_count, 0);
 
@@ -123,8 +133,9 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
               <GroupCard
                 key={group.id}
                 group={group}
-                teams={teamsByGroup[group.id] ?? []}
-                teamsLoading={isLoading}
+                teams={selectedGroupId === group.id ? selectedGroupTeams : []}
+                teamsLoading={selectedGroupId === group.id && selectedGroupTeamsLoading}
+                showTeams={selectedGroupId === group.id}
                 onDelete={() => deleteGroup.mutate(group.id)}
                 isDeleting={deleteGroup.isPending}
                 isLocked={hasRounds}
@@ -137,14 +148,23 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
       )}
 
       {/* Round Management Panel */}
-      {!isLoading && !error && selectedGroupId && groups.some(g => g.id === selectedGroupId) && (
-        <RoundManagementPanel
-          stageId={stageId}
-          groupId={selectedGroupId}
-          groupName={groups.find(g => g.id === selectedGroupId)?.name ?? ''}
-          teams={teamsByGroup[selectedGroupId] ?? []}
-          scoringPreset={scoringPreset}
-        />
+      {!isLoading && !error && selectedGroup && (
+        selectedGroupTeamsLoading ? (
+          <div className="space-y-2 rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="h-5 w-40 bg-white/5 rounded animate-pulse" />
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="h-14 bg-white/5 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <RoundManagementPanel
+            stageId={stageId}
+            groupId={selectedGroup.id}
+            groupName={selectedGroup.name}
+            teams={selectedGroupTeams}
+            scoringPreset={scoringPreset}
+          />
+        )
       )}
 
       {/* Empty State */}
