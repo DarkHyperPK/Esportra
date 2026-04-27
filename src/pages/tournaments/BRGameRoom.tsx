@@ -250,7 +250,10 @@ const BRGameRoom: React.FC = () => {
   } = useBRGroupRounds(
     playerCtx.context.stageId,
     playerCtx.context.groupId,
-    usesRelationalBrFlow && !!playerCtx.context.groupId,
+    {
+      enabled: usesRelationalBrFlow && !!playerCtx.context.groupId,
+      refetchIntervalMs: 5000,
+    },
   );
   const normalizedRelationalActiveRound = useMemo(() => {
     if (!relationalActiveRound) return null;

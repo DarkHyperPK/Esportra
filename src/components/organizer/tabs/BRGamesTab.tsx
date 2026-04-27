@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers, Users, Trophy, Filter, ChevronRight } from 'lucide-react';
-import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
-import { useBRGroupTeams } from '@/hooks/useBRGroups';
+import { useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
+import { useBRGroupsDetail } from '@/hooks/useBRGroups';
 import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import type { Database } from '@/integrations/supabase/types';
@@ -38,8 +37,10 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
 
     const selectedStage = sortedStages.find(s => s.id === selectedStageId);
 
-    // Fetch groups for the selected stage
-    const { groups, isLoading: groupsLoading } = useBRGroupStage(selectedStageId || null);
+    // Fetch groups + all roster rows for the selected stage in one request
+    const { data: groupDetail, isLoading: groupsLoading } = useBRGroupsDetail(selectedStageId || null);
+    const groups = groupDetail?.groups ?? [];
+    const teamsByGroup = groupDetail?.teams_by_group ?? {};
 
     // Auto-select first group when groups load
     React.useEffect(() => {
@@ -56,11 +57,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
 
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
 
-    // Fetch teams for the selected group
-    const { data: groupTeams, isLoading: teamsLoading } = useBRGroupTeams(
-        selectedStageId || null,
-        selectedGroupId || null
-    );
+    const groupTeams = selectedGroupId ? (teamsByGroup[selectedGroupId] ?? []) : [];
 
     // Fetch leaderboard for the selected group
     const { leaderboard, isLoading: leaderboardLoading } = useBRGroupLeaderboard(

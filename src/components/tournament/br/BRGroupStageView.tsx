@@ -129,7 +129,9 @@ interface GroupContentProps {
 const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualificationCount }) => {
   const { toast } = useToast();
   const { leaderboard, isLoading: lbLoading, error: lbError, refetch: refetchLb } = useBRGroupLeaderboard(stageId, groupId);
-  const { totalRounds, completedRounds, activeRound, isLoading: roundsLoading } = useBRGroupRounds(stageId, groupId);
+  const { totalRounds, completedRounds, activeRound, isLoading: roundsLoading } = useBRGroupRounds(stageId, groupId, {
+    refetchIntervalMs: 5000,
+  });
   const { data: participants = [], isLoading: participantsLoading } = useBRGroupParticipants(stageId, groupId);
 
   const isLoading = lbLoading || roundsLoading;

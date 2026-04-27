@@ -14,7 +14,6 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
     await queryClient.invalidateQueries({ queryKey: ['br-rounds', stageId, groupId] });
     if (stageId && groupId) {
       await queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard', stageId, groupId] });
-      await queryClient.invalidateQueries({ queryKey: ['br-group-rounds-summary', stageId, groupId] });
     }
     if (roundId) {
       await queryClient.invalidateQueries({ queryKey: ['br-round-results', roundId] });
@@ -111,7 +110,6 @@ export const useBRRoundResults = (roundId: string | null, stageId?: string | nul
       if (stageId && groupId) {
         queryClient.invalidateQueries({ queryKey: ['br-rounds', stageId, groupId] });
         queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard', stageId, groupId] });
-        queryClient.invalidateQueries({ queryKey: ['br-group-rounds-summary', stageId, groupId] });
       } else {
         queryClient.invalidateQueries({ queryKey: ['br-rounds'] });
       }

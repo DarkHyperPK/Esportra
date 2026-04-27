@@ -101,15 +101,25 @@ export const useBRGroupLeaderboard = (stageId: string | null, groupId: string | 
   };
 };
 
-export const useBRGroupRounds = (stageId: string | null, groupId: string | null, enabled = true) => {
+interface UseBRGroupRoundsOptions {
+  enabled?: boolean;
+  refetchIntervalMs?: number | false;
+}
+
+export const useBRGroupRounds = (
+  stageId: string | null,
+  groupId: string | null,
+  options: UseBRGroupRoundsOptions = {},
+) => {
+  const { enabled = true, refetchIntervalMs = false } = options;
   const { data, isLoading, error } = useQuery({
-    queryKey: ['br-group-rounds-summary', stageId, groupId],
+    queryKey: ['br-rounds', stageId, groupId],
     queryFn: () =>
       apiClient.get<BRRound[]>(`/api/stages/${stageId}/br/groups/${groupId}/rounds`),
     enabled: enabled && !!stageId && !!groupId,
-    staleTime: 1000 * 5,
-    refetchInterval: enabled && !!stageId && !!groupId ? 5000 : false,
-    refetchIntervalInBackground: true,
+    staleTime: 1000 * 60,
+    refetchInterval: enabled && !!stageId && !!groupId ? refetchIntervalMs : false,
+    refetchIntervalInBackground: Boolean(refetchIntervalMs),
   });
 
   const rounds = data ?? [];
