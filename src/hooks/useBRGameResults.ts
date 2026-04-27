@@ -1,8 +1,10 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
+import { BR_CONFIG } from '@/config/brConfig';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { BRTeamResult, BRLeaderboardEntry, BRScoringPreset, BRGameResult, BREvidence } from '@/types/battleRoyale';
+import type { BRTeamResult, BRLeaderboardEntry, BRScoringPreset, BREvidence } from '@/types/battleRoyale';
+import { calculateBRPoints } from '@/utils/brScoring';
 
 interface UseBRGameResultsProps {
   tournamentId: string | undefined;
@@ -11,6 +13,7 @@ interface UseBRGameResultsProps {
   killCap: number | null;
   teams: { id: string; name: string; logo?: string }[];
   tiebreaker?: 'most_wins' | 'most_kills' | 'head_to_head';
+  enabled?: boolean;
 }
 
 export type BRGameStatus = 'pending' | 'active' | 'completed';
@@ -23,6 +26,14 @@ interface BRGameData {
   evidence?: BREvidence[];
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const toFiniteNumber = (value: unknown): number | null => {
+  const num = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
 export function useBRGameResults({
   tournamentId,
   gameCount,
@@ -30,12 +41,120 @@ export function useBRGameResults({
   killCap,
   teams,
   tiebreaker = 'most_wins',
+  enabled = true,
 }: UseBRGameResultsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const normalizeResult = useCallback((raw: unknown): BRTeamResult | null => {
+    if (!isRecord(raw)) return null;
+
+    const teamId = raw.teamId ?? raw.team_id ?? raw.id;
+    if (typeof teamId !== 'string' || !teamId) return null;
+
+    const placement = Math.max(1, toFiniteNumber(raw.placement ?? raw.rank) ?? 1);
+    const kills = Math.max(0, toFiniteNumber(raw.kills ?? raw.eliminations) ?? 0);
+    const computed = calculateBRPoints(placement, kills, scoringPreset, killCap);
+
+    return {
+      teamId,
+      teamName:
+        typeof raw.teamName === 'string'
+          ? raw.teamName
+          : typeof raw.team_name === 'string'
+            ? raw.team_name
+            : undefined,
+      placement,
+      kills,
+      placementPoints: toFiniteNumber(raw.placementPoints ?? raw.placement_points) ?? computed.placementPoints,
+      killPoints: toFiniteNumber(raw.killPoints ?? raw.kill_points) ?? computed.killPoints,
+      totalPoints: toFiniteNumber(raw.totalPoints ?? raw.total_points) ?? computed.totalPoints,
+    };
+  }, [killCap, scoringPreset]);
+
+  const normalizeEvidence = useCallback((raw: unknown): BREvidence | null => {
+    if (!isRecord(raw)) return null;
+
+    const teamId = raw.teamId ?? raw.team_id;
+    const imageUrl = raw.imageUrl ?? raw.image_url ?? raw.url;
+    if (typeof teamId !== 'string' || !teamId || typeof imageUrl !== 'string' || !imageUrl) return null;
+
+    return {
+      teamId,
+      teamName:
+        typeof raw.teamName === 'string'
+          ? raw.teamName
+          : typeof raw.team_name === 'string'
+            ? raw.team_name
+            : 'Unknown',
+      imageUrl,
+      submittedAt:
+        typeof raw.submittedAt === 'string'
+          ? raw.submittedAt
+          : typeof raw.submitted_at === 'string'
+            ? raw.submitted_at
+            : new Date(0).toISOString(),
+      placement: toFiniteNumber(raw.placement) ?? undefined,
+      kills: toFiniteNumber(raw.kills) ?? undefined,
+      reviewed: raw.reviewed === true,
+    };
+  }, []);
+
+  const normalizeGameData = useCallback((key: string, raw: unknown): BRGameData | null => {
+    if (!isRecord(raw)) return null;
+
+    const gameNumber =
+      toFiniteNumber(raw.gameNumber ?? raw.game_number)
+      ?? (key.startsWith('game_') ? toFiniteNumber(key.slice(5)) : null);
+
+    if (!gameNumber || gameNumber < 1) return null;
+
+    const rawResults = Array.isArray(raw.results)
+      ? raw.results
+      : isRecord(raw.results)
+        ? Object.values(raw.results)
+        : [];
+    const results = rawResults
+      .map(normalizeResult)
+      .filter((result): result is BRTeamResult => result !== null);
+
+    const rawEvidence = Array.isArray(raw.evidence)
+      ? raw.evidence
+      : isRecord(raw.evidence)
+        ? Object.values(raw.evidence)
+        : [];
+    const evidence = rawEvidence
+      .map(normalizeEvidence)
+      .filter((item): item is BREvidence => item !== null);
+
+    const lobbyCode =
+      typeof raw.lobbyCode === 'string'
+        ? raw.lobbyCode
+        : typeof raw.lobby_code === 'string'
+          ? raw.lobby_code
+          : null;
+
+    const rawStatus = typeof raw.status === 'string' ? raw.status : null;
+    const status: BRGameStatus =
+      rawStatus === 'active' || rawStatus === 'completed' || rawStatus === 'pending'
+        ? rawStatus
+        : results.length > 0
+          ? 'completed'
+          : lobbyCode
+            ? 'active'
+            : 'pending';
+
+    return {
+      gameNumber,
+      results,
+      evidence,
+      lobbyCode,
+      status,
+    };
+  }, [normalizeEvidence, normalizeResult]);
+
   // Fetch saved BR game data from backend API
-  const { data: savedGames, isLoading } = useQuery({
+  const { data: savedGames, isLoading, isError: gamesQueryError, isFetching } = useQuery({
     queryKey: ['br-game-results', tournamentId],
     queryFn: async (): Promise<BRGameData[]> => {
       if (!tournamentId) return [];
@@ -44,19 +163,20 @@ export function useBRGameResults({
         `/api/tournaments/${tournamentId}/br-games`
       );
 
-      if (!resp?.games) return [];
+      if (!resp?.games || typeof resp.games !== 'object' || Array.isArray(resp.games)) return [];
 
       const games: BRGameData[] = [];
-      const gamesObj = resp.games as Record<string, BRGameData>;
+      const gamesObj = resp.games as Record<string, unknown>;
       for (const key of Object.keys(gamesObj)) {
-        const g = gamesObj[key];
-        if (g && g.gameNumber) games.push(g);
+        const normalized = normalizeGameData(key, gamesObj[key]);
+        if (normalized) games.push(normalized);
       }
       return games;
     },
-    enabled: !!tournamentId,
-    staleTime: 1000 * 5,
-    refetchInterval: 1000 * 5,
+    enabled: !!tournamentId && enabled,
+    staleTime: BR_CONFIG.STALE_TIME_MS,
+    // No polling: this legacy endpoint is read-once for finish-tournament logic.
+    // Real-time updates go through the new br_rounds / br_group_teams system.
   });
 
   // Merge saved data into a Map
@@ -66,7 +186,9 @@ export function useBRGameResults({
       for (const g of savedGames) {
         merged.set(g.gameNumber, {
           ...g,
-          status: g.status || (g.results.length > 0 ? 'completed' : 'pending'),
+          results: Array.isArray(g.results) ? g.results : [],
+          evidence: Array.isArray(g.evidence) ? g.evidence : [],
+          status: g.status || ((Array.isArray(g.results) ? g.results.length : 0) > 0 ? 'completed' : 'pending'),
         });
       }
     }
@@ -77,6 +199,7 @@ export function useBRGameResults({
   const persistGame = useCallback(
     async (gameData: BRGameData) => {
       if (!tournamentId) throw new Error('No tournament ID');
+      if (gameCount < 1) throw new Error('Tournament has no games configured');
 
       // Read current games from cache to merge
       const currentSaved = queryClient.getQueryData<BRGameData[]>(['br-game-results', tournamentId]) || [];
@@ -90,7 +213,7 @@ export function useBRGameResults({
         games: currentGames,
       });
     },
-    [tournamentId, queryClient]
+    [tournamentId, queryClient, gameCount]
   );
 
   // Save mutation
@@ -177,13 +300,16 @@ export function useBRGameResults({
   const updateLobbyCode = useCallback(
     (gameNumber: number, lobbyCode: string) => {
       const existing = allGames.get(gameNumber);
-      if (!existing) return;
+      if (!existing) {
+        toast({ title: 'Game not found', description: `Game ${gameNumber} has not been started yet.`, variant: 'destructive' });
+        return;
+      }
       saveMutation.mutate({
         ...existing,
         lobbyCode,
       });
     },
-    [saveMutation, allGames]
+    [saveMutation, allGames, toast]
   );
 
   // Get game status
@@ -263,7 +389,7 @@ export function useBRGameResults({
         entry.totalKills += result.kills;
         if (result.placement === 1) entry.wins += 1;
         if (result.placement < entry.bestPlacement) entry.bestPlacement = result.placement;
-        entry.perGameResults.push({
+        (entry.perGameResults ??= []).push({
           gameNumber: gameData.gameNumber,
           placement: result.placement,
           kills: result.kills,
@@ -363,15 +489,38 @@ export function useBRGameResults({
     [allGames, persistGame, queryClient, tournamentId]
   );
 
+  // Reset ALL games back to empty
+  const resetAllGamesMutation = useMutation({
+    mutationFn: async () => {
+      if (!tournamentId) throw new Error('No tournament ID');
+      await apiClient.put(`/api/tournaments/${tournamentId}/br-games`, { games: {} });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['br-game-results', tournamentId] });
+      toast({ title: 'All Games Reset', description: 'All game data has been cleared.' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Reset Failed', description: error.message || 'Could not reset games.', variant: 'destructive' });
+    },
+  });
+
+  const resetAllGames = useCallback(() => {
+    resetAllGamesMutation.mutate();
+  }, [resetAllGamesMutation]);
+
   return {
     leaderboard,
     gamesCompleted,
     winner,
     isLoading,
+    isError: gamesQueryError,
+    isFetching,
     isSaving: saveMutation.isPending,
+    isResettingAll: resetAllGamesMutation.isPending,
     saveGameResults,
     startGame,
     resetGame,
+    resetAllGames,
     updateLobbyCode,
     getGameResults,
     getGameStatus,

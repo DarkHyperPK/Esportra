@@ -160,6 +160,8 @@
       "category": "Battle Royale",
       "type": "battle_royale",
       "formats": [
+        { "name": "Solo", "value": "solo", "teamSize": 1 },
+        { "name": "Duo", "value": "duo", "teamSize": 2 },
         { "name": "Squads", "value": "squads", "teamSize": 4 }
       ],
       "defaultFormat": "squads",
@@ -171,7 +173,7 @@
         "assistedReporting": false,
         "seriesFormats": [],
         "hasSidePick": false,
-        "isTeamGame": true,
+        "isTeamGame": false,
         "isBattleRoyale": true
       },
       "brConfig": {

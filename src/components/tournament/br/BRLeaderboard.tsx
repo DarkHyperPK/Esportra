@@ -1,6 +1,15 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import EntityAvatar from '@/components/ui/EntityAvatar';
 import { cn } from '@/lib/utils';
 import { Trophy, Target, Crosshair } from 'lucide-react';
 import type { BRLeaderboardEntry } from '@/types/battleRoyale';
@@ -9,10 +18,33 @@ interface BRLeaderboardProps {
   entries: BRLeaderboardEntry[];
   totalGames: number;
   gamesCompleted: number;
+  /** If set, draws a qualification cutoff line after this rank */
+  qualificationCutoff?: number;
+  pageSize?: number;
 }
 
-const BRLeaderboard: React.FC<BRLeaderboardProps> = ({ entries, totalGames, gamesCompleted }) => {
-  const sorted = [...entries].sort((a, b) => b.totalPoints - a.totalPoints);
+const BRLeaderboard: React.FC<BRLeaderboardProps> = ({
+  entries,
+  totalGames,
+  gamesCompleted,
+  qualificationCutoff,
+  pageSize,
+}) => {
+  const [page, setPage] = React.useState(1);
+  const sorted = React.useMemo(() => [...entries].sort((a, b) => b.totalPoints - a.totalPoints), [entries]);
+  const totalPages = pageSize ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
+  const pageStartIndex = pageSize ? (page - 1) * pageSize : 0;
+  const visibleEntries = pageSize ? sorted.slice(pageStartIndex, pageStartIndex + pageSize) : sorted;
+  const rangeStart = sorted.length === 0 ? 0 : pageStartIndex + 1;
+  const rangeEnd = pageSize ? Math.min(pageStartIndex + pageSize, sorted.length) : sorted.length;
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [sorted.length, pageSize, qualificationCutoff]);
+
+  React.useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   return (
     <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
@@ -31,7 +63,9 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({ entries, totalGames, game
         {sorted.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <Target className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No results yet. Enter game results to see the leaderboard.</p>
+            <p className="text-sm">
+              {totalGames > 0 ? 'No results recorded yet' : 'Waiting for first round to start'}
+            </p>
           </div>
         ) : (
           <div className="space-y-1">
@@ -46,32 +80,40 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({ entries, totalGames, game
               <div className="text-center">Wins</div>
             </div>
 
-            {sorted.map((entry, index) => (
-              <div
-                key={entry.teamId}
-                className={cn(
-                  "grid grid-cols-[40px_1fr_70px_70px_70px_50px_70px] gap-2 items-center px-3 py-2.5 rounded-lg transition-colors",
-                  index === 0 ? "bg-amber-500/10 border border-amber-500/20" :
-                  index === 1 ? "bg-gray-400/5 border border-gray-400/10" :
-                  index === 2 ? "bg-amber-700/5 border border-amber-700/10" :
-                  "hover:bg-white/[0.02]"
-                )}
-              >
+            {visibleEntries.map((entry, index) => {
+              const absoluteIndex = pageStartIndex + index;
+              return (
+              <React.Fragment key={entry.teamId}>
+                <div
+                  className={cn(
+                    "grid grid-cols-[40px_1fr_70px_70px_70px_50px_70px] gap-2 items-center px-3 py-2.5 rounded-lg transition-colors",
+                    absoluteIndex === 0 ? "bg-amber-500/10 border border-amber-500/20" :
+                    absoluteIndex === 1 ? "bg-gray-400/5 border border-gray-400/10" :
+                    absoluteIndex === 2 ? "bg-amber-700/5 border border-amber-700/10" :
+                    qualificationCutoff && absoluteIndex < qualificationCutoff ? "bg-emerald-500/[0.03]" :
+                    "hover:bg-white/[0.02]"
+                  )}
+                >
                 {/* Rank */}
                 <div className={cn(
                   "text-sm font-bold",
-                  index === 0 ? "text-amber-400" :
-                  index === 1 ? "text-gray-300" :
-                  index === 2 ? "text-amber-600" : "text-gray-500"
+                  absoluteIndex === 0 ? "text-amber-400" :
+                  absoluteIndex === 1 ? "text-gray-300" :
+                  absoluteIndex === 2 ? "text-amber-600" : "text-gray-500"
                 )}>
-                  {index + 1}
+                  {absoluteIndex + 1}
                 </div>
 
                 {/* Team */}
                 <div className="flex items-center gap-2 min-w-0">
-                  {entry.teamLogo && (
-                    <img src={entry.teamLogo} alt="" className="w-6 h-6 rounded object-cover flex-shrink-0" />
-                  )}
+                  <EntityAvatar
+                    type="team"
+                    name={entry.teamName}
+                    src={entry.teamLogo || undefined}
+                    size="w-6 h-6"
+                    className="flex-shrink-0"
+                    fallbackClassName="text-[10px]"
+                  />
                   <span className="text-sm text-white font-medium truncate">{entry.teamName}</span>
                 </div>
 
@@ -102,7 +144,65 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({ entries, totalGames, game
                   </Badge>
                 </div>
               </div>
-            ))}
+
+              {/* Qualification cutoff line */}
+              {qualificationCutoff && absoluteIndex + 1 === qualificationCutoff && absoluteIndex < sorted.length - 1 && (
+                <div className="flex items-center gap-2 py-1">
+                  <div className="flex-1 h-px bg-emerald-500/40" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500/70 whitespace-nowrap">
+                    Top {qualificationCutoff} Qualify
+                  </span>
+                  <div className="flex-1 h-px bg-emerald-500/40" />
+                </div>
+              )}
+            </React.Fragment>
+              );
+            })}
+          </div>
+        )}
+        {sorted.length > 0 && totalPages > 1 && (
+          <div className="mt-4 flex flex-col gap-3 border-t border-white/5 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-zinc-500">
+              Showing {rangeStart}-{rangeEnd} of {sorted.length}
+            </p>
+            <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#br-leaderboard"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (page > 1) {
+                        setPage((current) => current - 1);
+                      }
+                    }}
+                    className={page === 1 ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink
+                    href="#br-leaderboard"
+                    isActive
+                    onClick={(event) => event.preventDefault()}
+                    className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                  >
+                    {page} / {totalPages}
+                  </PaginationLink>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    href="#br-leaderboard"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (page < totalPages) {
+                        setPage((current) => current + 1);
+                      }
+                    }}
+                    className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         )}
       </CardContent>

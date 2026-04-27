@@ -86,6 +86,10 @@ interface FetchGameDataOptions {
     skipRawg?: boolean;
 }
 
+interface UseRawgGameOptions extends FetchGameDataOptions {
+    enabled?: boolean;
+}
+
 export async function fetchGameData(
     gameName: string,
     options?: FetchGameDataOptions,
@@ -183,10 +187,12 @@ export async function fetchGameData(
     return promise;
 }
 
-export const useRawgGame = (gameName: string) => {
+export const useRawgGame = (gameName: string, options?: UseRawgGameOptions) => {
+    const enabled = options?.enabled ?? true;
+    const skipRawg = options?.skipRawg ?? false;
     // Synchronous cache hit — no loading flash on revisit
     const cacheKey = gameName.trim().toLowerCase();
-    const cached = gameCache.get(cacheKey);
+    const cached = enabled ? gameCache.get(cacheKey) : undefined;
 
     const [data, setData] = useState<GameData>(() => cached ? {
         ...cached,
@@ -200,19 +206,27 @@ export const useRawgGame = (gameName: string) => {
         rawgScreenshots: [],
         videos: [],
         carouselIndex: 0,
-        isLoading: true,
+        isLoading: enabled,
         error: null,
     });
 
     const carouselTimeout = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
+        if (!enabled || !gameName.trim()) {
+            setData((prev) => ({
+                ...prev,
+                isLoading: false,
+            }));
+            return;
+        }
+
         // Skip fetch if we already had a cache hit
         if (gameCache.has(cacheKey)) return;
 
         let isMounted = true;
 
-        fetchGameData(gameName).then(result => {
+        fetchGameData(gameName, { skipRawg }).then(result => {
             if (isMounted) {
                 setData({
                     ...result,
@@ -224,7 +238,7 @@ export const useRawgGame = (gameName: string) => {
         });
 
         return () => { isMounted = false; };
-    }, [gameName, cacheKey]);
+    }, [gameName, cacheKey, enabled, skipRawg]);
 
     const maxLen = Math.max(data.screenshots?.length || 0, data.rawgScreenshots?.length || 0);
 

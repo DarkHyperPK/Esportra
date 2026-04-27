@@ -15,6 +15,14 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
 import { Tournament as TournamentType } from '@/hooks/useTournaments';
 import { TournamentStatus } from '@/types/tournament';
@@ -85,13 +93,13 @@ import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnoun
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
 import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
-import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
-import BRGameResults from '@/components/tournament/br/BRGameResults';
-import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
-import { useBRGameResults } from '@/hooks/useBRGameResults';
+import { GroupManagementTab } from '@/components/organizer/tabs/GroupManagementTab';
+import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
+import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+const PARTICIPANTS_PAGE_SIZE = 24;
 
 interface DatabaseTournament {
   id: string;
@@ -296,29 +304,10 @@ const TournamentDashboard = () => {
   const isBR = isBattleRoyale(tournament?.game || '');
   const brConf = isBR ? getBRConfig(tournament?.game || '') : null;
   const brSettings = isBR ? tournament?.settings : null;
-  const brGameCount = brSettings?.brGameCount || brConf?.defaultGameCount || 6;
   const brPresetKey = brSettings?.brScoringPreset || brConf?.defaultPreset || '';
   const brScoringPreset = brSettings?.brCustomScoring
     || (brConf?.scoringPresets?.[brPresetKey])
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
-  const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
-  const brTeams = useMemo(() =>
-    isBR ? participants.map(p => ({
-      id: p.team_id || p.id,
-      name: p.team_name || p.gamer_tag || p.user?.username || 'Unknown',
-      logo: p.team_logo || undefined,
-    })) : [],
-    [isBR, participants]
-  );
-
-  const brResults = useBRGameResults({
-    tournamentId: isBR ? tournament?.id : undefined,
-    gameCount: brGameCount,
-    scoringPreset: brScoringPreset,
-    killCap: brKillCap,
-    teams: brTeams,
-    tiebreaker: brSettings?.brTiebreaker || 'most_wins',
-  });
 
   // Tab State & Direction
   const TAB_ORDER = ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'staff', 'settings'];
@@ -367,6 +356,21 @@ const TournamentDashboard = () => {
   const [cascadeWarnings, setCascadeWarnings] = useState<Array<{ entity: string; count: number; description?: string }>>([]);
   const [hasStaffAccess, setHasStaffAccess] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [participantsPage, setParticipantsPage] = useState(1);
+
+  const activeParticipants = useMemo(
+    () => participants.filter((participant) => !['rejected', 'cancelled', 'disqualified'].includes(participant.status)),
+    [participants],
+  );
+  const totalParticipantPages = Math.max(1, Math.ceil(activeParticipants.length / PARTICIPANTS_PAGE_SIZE));
+  const pagedParticipants = useMemo(() => {
+    const start = (participantsPage - 1) * PARTICIPANTS_PAGE_SIZE;
+    return activeParticipants.slice(start, start + PARTICIPANTS_PAGE_SIZE);
+  }, [activeParticipants, participantsPage]);
+  const participantRangeStart = activeParticipants.length === 0
+    ? 0
+    : ((participantsPage - 1) * PARTICIPANTS_PAGE_SIZE) + 1;
+  const participantRangeEnd = Math.min(participantsPage * PARTICIPANTS_PAGE_SIZE, activeParticipants.length);
 
   // Sync staff access state
   useEffect(() => {
@@ -534,6 +538,14 @@ const TournamentDashboard = () => {
     return () => clearInterval(timer);
   }, [activeTab]);
 
+  useEffect(() => {
+    setParticipantsPage(1);
+  }, [activeTab, activeParticipants.length]);
+
+  useEffect(() => {
+    setParticipantsPage((current) => Math.min(current, totalParticipantPages));
+  }, [totalParticipantPages]);
+
 
 
   // Real-time subscriptions removed to eliminate dashboard lag as requested by user.
@@ -612,63 +624,6 @@ const TournamentDashboard = () => {
       setIsDeleting(false);
     }
   };
-
-  const handleMarkFinished = async () => {
-    if (!isOrganizer) return;
-
-    if (isBR) {
-      // BR tournaments: require all games completed
-      if (brResults.gamesCompleted < brGameCount) {
-        toast({
-          title: 'Cannot Finish',
-          description: `All ${brGameCount} games must have results before finishing the tournament.`,
-          variant: 'destructive'
-        });
-        return;
-      }
-    } else {
-      // Bracket tournaments: require all stages completed
-      const incomplete = stages.some(s => s.status !== 'completed');
-      if (incomplete) {
-        toast({
-          title: 'Cannot Finish',
-          description: 'All stages must be completed before finishing the tournament.',
-          variant: 'destructive'
-        });
-        return;
-      }
-    }
-
-    try {
-      const winnerName = isBR && brResults.winner ? brResults.winner.teamName : undefined;
-
-      // Send status + winner in one call so backend can award RP
-      await apiClient.put(`/api/tournaments/${tournament.id}`, {
-        status: 'completed',
-        ...(winnerName && { winner_team_name: winnerName }),
-      });
-
-      refetchDashboard();
-      toast({
-        title: 'Tournament Finished',
-        description: winnerName
-          ? `${winnerName} crowned as champion!`
-          : 'Tournament has been marked as completed.',
-      });
-      queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
-    } catch (e) {
-      console.error('Error finishing tournament:', e);
-      toast({
-        title: 'Error',
-        description: 'Failed to complete tournament.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-
-
-
 
   const handleRemoveUncheckedParticipants = async () => {
     if (!tournament?.id) return;
@@ -1659,7 +1614,12 @@ const TournamentDashboard = () => {
                   <SelectValue placeholder="Select View" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#09090b] border-white/10 text-white z-[60]">
-                  {['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'].map((tab) => {
+                  {(() => {
+                    const isBRMobile = isBattleRoyale(tournament?.game || '');
+                    const mobileTabs = isBRMobile
+                      ? ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                      : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
+                    return mobileTabs.map((tab) => {
                     // Filter tabs based on permissions
                     if (tab === 'bans' && !canManageTeams) return null;
                     if (tab === 'disputes' && !canAssistDisputes) return null;
@@ -1672,7 +1632,8 @@ const TournamentDashboard = () => {
                         {tab}
                       </SelectItem>
                     );
-                  })}
+                  });
+                  })()}
                 </SelectContent>
               </Select>
             </div>
@@ -1690,7 +1651,7 @@ const TournamentDashboard = () => {
                 {(() => {
                   const isBR = isBattleRoyale(tournament?.game || '');
                   const tabs = isBR
-                    ? ['overview', 'participants', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                    ? ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
                     : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
                   return tabs.map((tab) => {
                   if (tab === 'brackets') {
@@ -1781,12 +1742,25 @@ const TournamentDashboard = () => {
               {activeTab === 'stages' && (
                 <TabsContent value="stages" forceMount key="stages">
                   <TabTransition direction={direction}>
-                    <StageManagementTab
-                      tournamentId={tournament.id}
-                      stages={stages}
-                      onUpdate={() => refetchDashboard()}
-                      game={tournament.game || ''}
-                    />
+                    {isBR ? (
+                      <BRStageManagementTab
+                        tournamentId={tournament.id}
+                        stages={stages}
+                        participants={participants}
+                        maxParticipants={tournament.max_participants ?? null}
+                        teamSize={tournament.team_size ?? null}
+                        game={tournament.game || ''}
+                        scoringPreset={brScoringPreset}
+                        onUpdate={() => refetchDashboard()}
+                      />
+                    ) : (
+                      <StageManagementTab
+                        tournamentId={tournament.id}
+                        stages={stages}
+                        onUpdate={() => refetchDashboard()}
+                        game={tournament.game || ''}
+                      />
+                    )}
                   </TabTransition>
                 </TabsContent>
               )}
@@ -1795,107 +1769,11 @@ const TournamentDashboard = () => {
               {activeTab === 'games' && isBR && (
                 <TabsContent value="games" forceMount key="games">
                   <TabTransition direction={direction}>
-                    <div className="space-y-6">
-                      {/* Scoring Config */}
-                      <BRScoringConfig preset={brScoringPreset} killCap={brKillCap} />
-
-                      {/* Live Leaderboard */}
-                      <BRLeaderboard
-                        entries={brResults.leaderboard}
-                        totalGames={brGameCount}
-                        gamesCompleted={brResults.gamesCompleted}
-                      />
-
-                      {/* Winner banner */}
-                      {brResults.winner && (
-                        <Card className="bg-amber-500/10 backdrop-blur-md border border-amber-500/30 rounded-2xl p-6">
-                          <div className="flex items-center gap-4">
-                            <Trophy className="w-10 h-10 text-amber-400" />
-                            <div>
-                              <h3 className="text-lg font-bold text-white">Tournament Winner</h3>
-                              <p className="text-amber-300 font-medium">{brResults.winner.teamName} — {brResults.winner.totalPoints} points</p>
-                            </div>
-                            {tournament?.status !== 'completed' && (
-                              <Button
-                                onClick={async () => {
-                                  try {
-                                    await apiClient.put(`/api/tournaments/${tournament!.id}`, {
-                                      status: 'completed',
-                                      winner_team_name: brResults.winner!.teamName,
-                                    });
-                                    toast({ title: 'Tournament Completed', description: `${brResults.winner!.teamName} crowned as champion!` });
-                                    queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
-                                  } catch {
-                                    toast({ title: 'Error', description: 'Failed to complete tournament.', variant: 'destructive' });
-                                  }
-                                }}
-                                className="ml-auto bg-amber-600 hover:bg-amber-700 text-white"
-                              >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Mark Completed
-                              </Button>
-                            )}
-                          </div>
-                        </Card>
-                      )}
-
-                      {/* Game Result Entry */}
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white">Games</h3>
-                        {brTeams.length === 0 && (
-                          <Card className="bg-black/20 backdrop-blur-md border border-amber-500/20 rounded-2xl p-4 text-center">
-                            <p className="text-amber-400/80 text-sm">No participants registered yet. Games can be started once teams register.</p>
-                          </Card>
-                        )}
-                        {Array.from({ length: brGameCount }, (_, i) => {
-                          const gameNum = i + 1;
-                          const gameStatus = brResults.getGameStatus(gameNum);
-                          // Sequential: locked if any prior game is not completed
-                          const isLocked = i > 0 && brResults.getGameStatus(i) !== 'completed';
-                          return (
-                            <BRGameResults
-                              key={i}
-                              gameNumber={gameNum}
-                              teams={brTeams}
-                              scoringPreset={brScoringPreset}
-                              killCap={brKillCap}
-                              existingResults={brResults.getGameResults(gameNum)}
-                              lobbyCode={brResults.getLobbyCode(gameNum)}
-                              isOrganizer={isOrganizer}
-                              gameStatus={gameStatus}
-                              isLocked={isLocked}
-                              evidence={brResults.getEvidence(gameNum)}
-                              onStartGame={(lobbyCode) => {
-                                brResults.startGame(gameNum, lobbyCode);
-                                // Broadcast game start to all participants via tournament announcements
-                                if (tournament?.id) {
-                                  apiClient.post(`/api/tournaments/${tournament.id}/announcements`, {
-                                    title: `Game ${gameNum} Started`,
-                                    content: `Lobby code: ${lobbyCode}. Join now!`,
-                                  }).catch(() => {});
-                                }
-                              }}
-                              onSave={(results, lobbyCode) => {
-                                brResults.saveGameResults(gameNum, results, lobbyCode);
-                              }}
-                              onResetGame={() => brResults.resetGame(gameNum)}
-                              onUpdateLobbyCode={(code) => {
-                                brResults.updateLobbyCode(gameNum, code);
-                                // Broadcast updated lobby code to all participants
-                                if (tournament?.id) {
-                                  apiClient.post(`/api/tournaments/${tournament.id}/announcements`, {
-                                    title: `Lobby Code Updated — Game ${gameNum}`,
-                                    content: `New lobby code: ${code}`,
-                                  }).catch(() => {});
-                                }
-                              }}
-                              onMarkEvidenceReviewed={(teamId) => brResults.markEvidenceReviewed(gameNum, teamId)}
-                              isSaving={brResults.isSaving}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
+                    <BRGamesTab
+                      tournamentId={tournament!.id}
+                      stages={stages}
+                      scoringPreset={brScoringPreset}
+                    />
                   </TabTransition>
                 </TabsContent>
               )}
@@ -2019,20 +1897,68 @@ const TournamentDashboard = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-0 relative z-10">
-                        {participants.filter(p => !['rejected', 'cancelled', 'disqualified'].includes(p.status)).length === 0 ? (
+                        {activeParticipants.length === 0 ? (
                           <p className="text-gray-400 italic">No participants registered yet.</p>
                         ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            <AnimatePresence>
-                              {participants.filter(p => !['rejected', 'cancelled', 'disqualified'].includes(p.status)).map((participant) => (
-                                <OrganizerTeamCard
-                                  key={participant.id}
-                                  participant={participant}
-                                  onManage={handleTeamClick}
-                                  renderStatusBadge={renderCheckInBadge}
-                                />
-                              ))}
-                            </AnimatePresence>
+                          <div className="space-y-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                              <AnimatePresence mode="popLayout">
+                                {pagedParticipants.map((participant) => (
+                                  <OrganizerTeamCard
+                                    key={participant.id}
+                                    participant={participant}
+                                    onManage={handleTeamClick}
+                                    renderStatusBadge={renderCheckInBadge}
+                                  />
+                                ))}
+                              </AnimatePresence>
+                            </div>
+
+                            {totalParticipantPages > 1 && (
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <p className="text-xs text-zinc-500">
+                                  Showing {participantRangeStart}-{participantRangeEnd} of {activeParticipants.length}
+                                </p>
+                                <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+                                  <PaginationContent>
+                                    <PaginationItem>
+                                      <PaginationPrevious
+                                        href="#participants"
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          if (participantsPage > 1) {
+                                            setParticipantsPage((page) => page - 1);
+                                          }
+                                        }}
+                                        className={participantsPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                                      />
+                                    </PaginationItem>
+                                    <PaginationItem>
+                                      <PaginationLink
+                                        href="#participants"
+                                        isActive
+                                        onClick={(event) => event.preventDefault()}
+                                        className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                                      >
+                                        {participantsPage} / {totalParticipantPages}
+                                      </PaginationLink>
+                                    </PaginationItem>
+                                    <PaginationItem>
+                                      <PaginationNext
+                                        href="#participants"
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          if (participantsPage < totalParticipantPages) {
+                                            setParticipantsPage((page) => page + 1);
+                                          }
+                                        }}
+                                        className={participantsPage >= totalParticipantPages ? 'pointer-events-none opacity-50' : ''}
+                                      />
+                                    </PaginationItem>
+                                  </PaginationContent>
+                                </Pagination>
+                              </div>
+                            )}
                           </div>
                         )}
                       </CardContent>

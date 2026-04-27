@@ -103,6 +103,17 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
 
     const validateCurrentStep = useCallback(() => {
         const result = validateStep(currentStep, data);
+
+        // BR multi-stage: enforce advancement × groups ≤ lobby size
+        if (currentStep === 2 && data.tournamentType === 'battle_royale' && data.brMultiStage && data.maxTeams > 0) {
+            const groupCount = Math.ceil(data.maxTeams / data.brLobbySize);
+            const totalQualified = data.brAdvancementCount * groupCount;
+            if (totalQualified > data.brLobbySize) {
+                result.valid = false;
+                result.errors['brAdvancementCount'] = `${totalQualified} qualified teams exceeds finals lobby size of ${data.brLobbySize}. Reduce advancement count or increase lobby size.`;
+            }
+        }
+
         setErrors(result.errors);
         setStepValidation(prev => ({ ...prev, [currentStep]: result.valid }));
         return result.valid;
@@ -173,6 +184,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     description:          data.description,
                     status:               data.status || undefined,
                     maxTeams:             data.maxTeams,
+                    teamSize:             data.teamSize,
                     entryFee:             toMoney(data.entryFee),
                     prizePool:            toMoney(data.prizePool),
                     startDate:            startDateTime.toISOString(),
@@ -199,22 +211,55 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                             brCustomScoring: data.brCustomScoring,
                             brKillCap: data.brKillCap,
                             brTiebreaker: data.brTiebreaker,
+                            brMultiStage: data.brMultiStage,
+                            ...(data.brMultiStage ? {
+                                brLobbySize: data.brLobbySize,
+                                brAdvancementCount: data.brAdvancementCount,
+                                brFinalsGameCount: data.brFinalsGameCount,
+                            } : {}),
                         } : {}),
                     },
                 });
 
                 // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
-                if (data.stages.length > 0 || initialData?.stages) {
+                const stagesToSync = (() => {
+                    if (data.tournamentType === 'battle_royale' && data.brMultiStage) {
+                        return [
+                            {
+                                id: null,
+                                name: 'Group Stage',
+                                format: 'battle_royale',
+                                stageOrder: 1,
+                                bestOf: 1,
+                                capacity: data.brLobbySize,
+                                advancementCount: data.brAdvancementCount,
+                            },
+                            {
+                                id: null,
+                                name: 'Finals',
+                                format: 'battle_royale',
+                                stageOrder: 2,
+                                bestOf: 1,
+                                capacity: data.brLobbySize,
+                                advancementCount: null,
+                            },
+                        ];
+                    }
+                    if (data.tournamentType === 'battle_royale') return [];
+                    return data.stages.map(s => ({
+                        id:               s.id || null,
+                        name:             s.name,
+                        format:           s.format,
+                        stageOrder:       s.stage_order,
+                        bestOf:           (s as any).best_of || 1,
+                        capacity:         (s as any).capacity || null,
+                        advancementCount: (s as any).advancement_count || null,
+                    }));
+                })();
+
+                if (stagesToSync.length > 0 || initialData?.stages) {
                     await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
-                        stages: data.stages.map(s => ({
-                            id:               s.id || null,
-                            name:             s.name,
-                            format:           s.format,
-                            stageOrder:       s.stage_order,
-                            bestOf:           (s as any).best_of || 1,
-                            capacity:         (s as any).capacity || null,
-                            advancementCount: (s as any).advancement_count || null,
-                        })),
+                        stages: stagesToSync,
                     });
                 }
 
@@ -277,17 +322,46 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                             brCustomScoring: data.brCustomScoring,
                             brKillCap: data.brKillCap,
                             brTiebreaker: data.brTiebreaker,
+                            brMultiStage: data.brMultiStage,
+                            ...(data.brMultiStage ? {
+                                brLobbySize: data.brLobbySize,
+                                brAdvancementCount: data.brAdvancementCount,
+                                brFinalsGameCount: data.brFinalsGameCount,
+                            } : {}),
                         } : {}),
                     },
                     // Backend handles stages + map pool in one transaction
-                    stages: data.tournamentType === 'battle_royale' ? [] : data.stages.map((s, i) => ({
-                        name:             s.name,
-                        format:           s.format,
-                        stageOrder:       s.stage_order ?? i,
-                        bestOf:           (s as any).best_of ?? 1,
-                        capacity:         (s as any).capacity ?? null,
-                        advancementCount: (s as any).advancement_count ?? null,
-                    })),
+                    stages: (() => {
+                        if (data.tournamentType === 'battle_royale' && data.brMultiStage) {
+                            return [
+                                {
+                                    name: 'Group Stage',
+                                    format: 'battle_royale',
+                                    stageOrder: 1,
+                                    bestOf: 1,
+                                    capacity: data.brLobbySize,
+                                    advancementCount: data.brAdvancementCount,
+                                },
+                                {
+                                    name: 'Finals',
+                                    format: 'battle_royale',
+                                    stageOrder: 2,
+                                    bestOf: 1,
+                                    capacity: data.brLobbySize,
+                                    advancementCount: null,
+                                },
+                            ];
+                        }
+                        if (data.tournamentType === 'battle_royale') return [];
+                        return data.stages.map((s, i) => ({
+                            name:             s.name,
+                            format:           s.format,
+                            stageOrder:       s.stage_order ?? i,
+                            bestOf:           (s as any).best_of ?? 1,
+                            capacity:         (s as any).capacity ?? null,
+                            advancementCount: (s as any).advancement_count ?? null,
+                        }));
+                    })(),
                     mapPoolIds: data.mapPoolIds ?? [],
                 });
 

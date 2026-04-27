@@ -47,6 +47,12 @@ export interface TournamentWizardData {
     brKillCap: number | null;
     brTiebreaker: 'most_wins' | 'most_kills' | 'head_to_head';
 
+    // Battle Royale multi-stage (Step 2)
+    brMultiStage: boolean;
+    brLobbySize: number;
+    brAdvancementCount: number;
+    brFinalsGameCount: number;
+
     // Step 3: Branding
     bannerUrl: string | null;
     logoUrl: string | null;
@@ -119,8 +125,8 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     tournamentType: 'bracket',
     bracketType: 'single_elimination',
     stages: [], // No default stage - configure via Stage Setup Wizard
-    maxTeams: 8,
-    teamSize: 7,
+    maxTeams: 100,
+    teamSize: 1,
     seedingType: 'random',
     thirdPlaceMatch: false,
     mapPoolIds: [],
@@ -132,6 +138,10 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     brCustomScoring: null,
     brKillCap: null,
     brTiebreaker: 'most_wins',
+    brMultiStage: false,
+    brLobbySize: 20,
+    brAdvancementCount: 4,
+    brFinalsGameCount: 6,
 
     // Step 3
     bannerUrl: null,

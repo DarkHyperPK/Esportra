@@ -741,6 +741,8 @@ export type Database = {
           advancement_count: number | null
           status: string | null
           is_locked: boolean | null
+          starts_at: string | null
+          ends_at: string | null
           created_at: string
           updated_at: string
         }
@@ -755,6 +757,8 @@ export type Database = {
           advancement_count?: number | null
           status?: string | null
           is_locked?: boolean | null
+          starts_at?: string | null
+          ends_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -769,6 +773,8 @@ export type Database = {
           advancement_count?: number | null
           status?: string | null
           is_locked?: boolean | null
+          starts_at?: string | null
+          ends_at?: string | null
           created_at?: string
           updated_at?: string
         }

@@ -72,6 +72,9 @@ const SidebarCard: React.FC<{
             <img
               src={s.banner_image_url}
               alt={s.name}
+              loading="lazy"
+              decoding="async"
+              fetchPriority="low"
               className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-transparent" />
@@ -82,11 +85,14 @@ const SidebarCard: React.FC<{
         <div className="p-4">
           <div className="flex items-center gap-2 mb-2">
             {s.logo_url && (
-              <img
-                src={s.logo_url}
-                alt={s.name}
-                className="h-5 w-auto object-contain"
-              />
+                <img
+                  src={s.logo_url}
+                  alt={s.name}
+                  loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
+                  className="h-5 w-auto object-contain"
+                />
             )}
             <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">
               {link.sponsor_type.replace('_', ' ')}

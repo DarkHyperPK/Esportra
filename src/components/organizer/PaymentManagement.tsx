@@ -6,6 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import type { DashboardParticipant } from '@/hooks/useTournamentDashboard';
@@ -17,10 +25,12 @@ interface PaymentManagementProps {
 }
 
 type PaymentFilter = 'all' | 'pending' | 'approved' | 'rejected';
+const PAYMENT_PAGE_SIZE = 20;
 
 const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, participants, onRefresh }) => {
   const { toast } = useToast();
   const [filter, setFilter] = useState<PaymentFilter>('pending');
+  const [page, setPage] = useState(1);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<DashboardParticipant | null>(null);
@@ -37,6 +47,13 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
     if (filter === 'all') return paidParticipants;
     return paidParticipants.filter(p => p.payment_status === filter);
   }, [paidParticipants, filter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAYMENT_PAGE_SIZE));
+  const pagedParticipants = useMemo(() => {
+    const start = (page - 1) * PAYMENT_PAGE_SIZE;
+    return filtered.slice(start, start + PAYMENT_PAGE_SIZE);
+  }, [filtered, page]);
+  const rangeStart = filtered.length === 0 ? 0 : ((page - 1) * PAYMENT_PAGE_SIZE) + 1;
+  const rangeEnd = Math.min(page * PAYMENT_PAGE_SIZE, filtered.length);
 
   const counts = useMemo(() => ({
     pending:  paidParticipants.filter(p => p.payment_status === 'pending').length,
@@ -100,6 +117,14 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
     }
   };
 
+  React.useEffect(() => {
+    setPage(1);
+  }, [filter, filtered.length]);
+
+  React.useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
   if (paidParticipants.length === 0) {
     return (
       <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 mb-6">
@@ -145,7 +170,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
           ) : (
             <div className="space-y-3">
               <AnimatePresence mode="popLayout">
-                {filtered.map(p => (
+                {pagedParticipants.map(p => (
                   <motion.div
                     key={p.id}
                     layout
@@ -155,10 +180,17 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                     className="flex flex-col sm:flex-row sm:items-center gap-4 bg-zinc-900/50 border border-white/5 rounded-xl p-4"
                   >
                     {/* Info */}
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {p.team_logo ? (
-                        <img src={p.team_logo} alt="" className="w-10 h-10 rounded-lg object-cover border border-white/10" />
-                      ) : (
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {p.team_logo ? (
+                          <img
+                            src={p.team_logo}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            fetchPriority="low"
+                            className="w-10 h-10 rounded-lg object-cover border border-white/10"
+                          />
+                        ) : (
                         <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs font-bold">
                           {(p.team_name || p.gamer_tag || '?').charAt(0).toUpperCase()}
                         </div>
@@ -207,6 +239,51 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
               </AnimatePresence>
             </div>
           )}
+          {filtered.length > 0 && totalPages > 1 && (
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-zinc-500">
+                Showing {rangeStart}-{rangeEnd} of {filtered.length}
+              </p>
+              <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#payments"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        if (page > 1) {
+                          setPage((current) => current - 1);
+                        }
+                      }}
+                      className={page === 1 ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationLink
+                      href="#payments"
+                      isActive
+                      onClick={(event) => event.preventDefault()}
+                      className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    >
+                      {page} / {totalPages}
+                    </PaginationLink>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#payments"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        if (page < totalPages) {
+                          setPage((current) => current + 1);
+                        }
+                      }}
+                      className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -218,7 +295,13 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
           </DialogHeader>
           {receiptViewUrl && (
             <div className="flex items-center justify-center max-h-[70vh] overflow-auto">
-              <img src={receiptViewUrl} alt="Payment Receipt" className="max-w-full max-h-[65vh] object-contain rounded-lg" />
+              <img
+                src={receiptViewUrl}
+                alt="Payment Receipt"
+                loading="lazy"
+                decoding="async"
+                className="max-w-full max-h-[65vh] object-contain rounded-lg"
+              />
             </div>
           )}
         </DialogContent>

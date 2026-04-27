@@ -88,6 +88,9 @@ const SponsorPill: React.FC<{
         <img
           src={s.logo_url}
           alt={s.name}
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
           className="h-6 w-auto object-contain"
         />
       )}

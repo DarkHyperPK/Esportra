@@ -30,8 +30,8 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
-  const hub = useHub(HubPaths.Notification);
+  const { user, loading: authLoading } = useAuth();
+  const hub = useHub(HubPaths.Notification, { autoStart: !!user && !authLoading });
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const listenersAttached = useRef(false);
@@ -70,7 +70,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   // Wire up SignalR listeners (replaces polling)
   useEffect(() => {
-    if (!user || !hub || listenersAttached.current) return;
+    if (!user || !hub || authLoading || listenersAttached.current) return;
 
     const onNewNotification = (payload: Record<string, string>) => {
       // Prepend new notification and bump unread count; full data comes from a re-fetch
@@ -112,17 +112,18 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       hub.off('AllRead', onAllRead);
       listenersAttached.current = false;
     };
-  }, [user, hub]);
+  }, [user, hub, authLoading]);
 
   // Initial fetch on mount — one-time load of existing notifications
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
       return;
     }
     fetchNotifications();
-  }, [user, fetchNotifications]);
+  }, [user, fetchNotifications, authLoading]);
 
   const markAsRead = async (id: string) => {
     // Optimistic update

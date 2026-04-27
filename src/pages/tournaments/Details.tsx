@@ -51,10 +51,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import esportsGamesData from '@/data/esportsGames.json';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { cn } from '@/lib/utils';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
 import { useBRGameResults } from '@/hooks/useBRGameResults';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
+import BRGroupStageView from '@/components/tournament/br/BRGroupStageView';
+import { useBRGroupStage } from '@/hooks/useBRGroupLeaderboard';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import SEO from '@/components/SEO';
 
@@ -145,6 +148,15 @@ const TournamentDetails = () => {
   const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
   const terminology = useGameTerminology(tournament?.game);
   const isBR = isBattleRoyale(tournament?.game || '');
+  const detailsSearchParams = typeof window !== 'undefined' ? new URLSearchParams(location.search) : null;
+  const requestedDetailsTab = detailsSearchParams?.get('tab') ?? null;
+  const requestedBRStageId = detailsSearchParams?.get('brStage') ?? null;
+  const competitorTabValue = terminology.competitorLabelPlural.toLowerCase();
+  const [activeTab, setActiveTab] = useState(requestedDetailsTab || 'overview');
+
+  useEffect(() => {
+    setActiveTab(requestedDetailsTab || 'overview');
+  }, [requestedDetailsTab]);
 
   // BR leaderboard config (only computed for BR tournaments)
   const brConf = isBR ? getBRConfig(tournament?.game || '') : null;
@@ -196,14 +208,23 @@ const TournamentDetails = () => {
 
   // Public Bracket View State - Refactored to Hook
   const { stages, activeVersionsMap, loading: bracketLoading } = usePublicBracketData(tournament?.id);
-  const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+  const [selectedStageId, setSelectedStageId] = useState<string | null>(requestedBRStageId);
+
+  // Multi-group stage detection — check first stage for groups
+  const firstBRStageId = isBR && activeTab === 'leaderboard' && stages.length > 0 ? stages[0].id : null;
+  const { hasGroups: brHasGroups, isLoading: brGroupsLoading } = useBRGroupStage(firstBRStageId);
 
   // Auto-select first stage when stages load
   useEffect(() => {
-    if (stages.length > 0 && !selectedStageId) {
+    if (stages.length > 0 && (!selectedStageId || !stages.some((stage: any) => stage.id === selectedStageId))) {
       setSelectedStageId(stages[0].id);
     }
   }, [stages, selectedStageId]);
+
+  const shouldLoadParticipants = !!tournament?.id && (
+    activeTab === competitorTabValue
+    || (isBR && activeTab === 'leaderboard' && !brGroupsLoading && !brHasGroups)
+  );
 
   // Fetch robust participant data (logos, rosters, profiles) — single request, no N+1
   const { data: enrichedParticipants = [] } = useQuery({
@@ -234,7 +255,7 @@ const TournamentDetails = () => {
         };
       });
     },
-    enabled: !!tournament?.id,
+    enabled: shouldLoadParticipants,
     staleTime: 2 * 60_000,
   });
 
@@ -248,6 +269,7 @@ const TournamentDetails = () => {
     [isBR, enrichedParticipants]
   );
 
+  const shouldLoadLegacyBRLeaderboard = isBR && activeTab === 'leaderboard' && !brGroupsLoading && !brHasGroups;
   const brResults = useBRGameResults({
     tournamentId: isBR ? tournament?.id : undefined,
     gameCount: brGameCount,
@@ -255,6 +277,7 @@ const TournamentDetails = () => {
     killCap: brKillCap,
     teams: brTeams,
     tiebreaker: brSettings?.brTiebreaker || 'most_wins',
+    enabled: shouldLoadLegacyBRLeaderboard,
   });
 
   useEffect(() => {
@@ -755,7 +778,7 @@ const TournamentDetails = () => {
       {/* --- TABS NAVIGATION (Sticky) --- */}
       {/* --- TABS NAVIGATION (Sticky) --- */}
       <div className="relative z-30 -mt-20">
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="container mx-auto px-4">
             <div className="sticky top-4 z-40 bg-[#050505]/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl mb-12 shadow-2xl shadow-black/50 mx-auto max-w-3xl">
               <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">
@@ -781,7 +804,7 @@ const TournamentDetails = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value={terminology.competitorLabelPlural.toLowerCase()}>
+          <TabsContent value={competitorTabValue}>
             <div className="container mx-auto px-4">
               <TeamsTab participants={enrichedParticipants} />
             </div>
@@ -790,8 +813,43 @@ const TournamentDetails = () => {
           {isBR ? (
             <TabsContent value="leaderboard">
               <div className="container mx-auto px-4 space-y-6">
-                {/* Active game banner for players */}
-                {brResults.activeGameNumber && (
+                {brHasGroups ? (
+                  <>
+                    {/* Multi-group stage selector */}
+                    {stages.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {stages.map((stage: any) => (
+                          <button
+                            key={stage.id}
+                            type="button"
+                            onClick={() => setSelectedStageId(stage.id)}
+                            className={cn(
+                              'px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap border',
+                              selectedStageId === stage.id
+                                ? 'bg-white/10 border-white/20 text-white'
+                                : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.06]'
+                            )}
+                          >
+                            {stage.name || `Stage ${stage.stage_order + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <BRScoringConfig preset={brScoringPreset} killCap={brKillCap} />
+
+                    {selectedStageId && (
+                      <BRGroupStageView
+                        stageId={selectedStageId}
+                        qualificationCount={(stages.find((s: any) => s.id === selectedStageId) as any)?.advancement_count}
+                        tournamentSlug={slug}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Legacy single-lobby leaderboard */}
+                    {brResults.activeGameNumber && (
                   <div className="flex items-center gap-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 animate-pulse-slow">
                     <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Swords className="w-5 h-5 text-rose-400" />
@@ -853,6 +911,8 @@ const TournamentDetails = () => {
                   totalGames={brGameCount}
                   gamesCompleted={brResults.gamesCompleted}
                 />
+                  </>
+                )}
               </div>
             </TabsContent>
           ) : (

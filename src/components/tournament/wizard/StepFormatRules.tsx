@@ -195,6 +195,69 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
             {/* ── Battle Royale Format ─────────────────────────────────── */}
             {isBR && brConfig ? (
                 <>
+                    {/* Game Mode (Solo / Duo / Squad) — only if game has multiple formats */}
+                    {selectedGame && selectedGame.formats.length > 1 && (() => {
+                        // Guard against stale teamSize from localStorage not matching any format of this game
+                        const validSizes = selectedGame.formats.map(f => f.teamSize);
+                        const activeSize = validSizes.includes(data.teamSize)
+                            ? data.teamSize
+                            : selectedGame.formats.find(f => f.value === selectedGame.defaultFormat)?.teamSize ?? selectedGame.formats[0].teamSize;
+
+                        // Auto-correct stale state without an extra render cycle
+                        if (!validSizes.includes(data.teamSize)) {
+                            updateData({ teamSize: activeSize });
+                        }
+
+                        return (
+                            <div className="space-y-3">
+                                <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                    <Users className="w-4 h-4" />
+                                    Game Mode
+                                </Label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {selectedGame.formats.map((fmt) => {
+                                        const isSelected = activeSize === fmt.teamSize && fmt.value === (selectedGame.formats.find(f => f.teamSize === activeSize)?.value);
+                                        return (
+                                            <button
+                                                key={fmt.value}
+                                                type="button"
+                                                onClick={() => {
+                                                    const newSize = fmt.teamSize;
+                                                    // Compute sensible maxTeams for this format based on lobby size
+                                                    const unitsPerLobby = brConfig
+                                                        ? Math.floor(brConfig.playersPerLobby / Math.max(1, newSize))
+                                                        : 20;
+                                                    // Default to 5× the lobby size, clamped to the valid dropdown values
+                                                    const validOptions = [20, 30, 40, 60, 100, 150, 200];
+                                                    const target = unitsPerLobby * 5;
+                                                    const sensible = validOptions.find(n => n >= target) ?? validOptions[validOptions.length - 1];
+                                                    updateData({ teamSize: newSize, maxTeams: sensible });
+                                                }}
+                                                className={cn(
+                                                    "p-4 rounded-xl border text-center transition-all",
+                                                    isSelected
+                                                        ? "border-rose-500 bg-rose-500/10"
+                                                        : "border-white/10 hover:border-white/20 bg-white/[0.02]"
+                                                )}
+                                            >
+                                                <div className="font-bold text-white text-sm">{fmt.name}</div>
+                                                <div className="text-xs text-gray-400 mt-1">
+                                                    {fmt.teamSize === 1 ? 'Individual' : `${fmt.teamSize} players`}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-sm text-gray-400">
+                                    {activeSize === 1
+                                        ? 'Each participant competes individually.'
+                                        : `Teams of ${activeSize} compete together. Registrations will require a team of this size.`}
+                                </p>
+                                <div className="w-full h-px bg-white/5 my-2" />
+                            </div>
+                        );
+                    })()}
+
                     {/* Game Count */}
                     <div className="space-y-3">
                         <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
@@ -398,57 +461,50 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         </div>
                     )}
 
-                    {/* Max Teams for BR */}
-                    <div className="space-y-3">
-                        <div className="w-full h-px bg-white/5 my-6" />
-                        <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <Users className="w-4 h-4" />
-                            Maximum Teams / Players
-                        </Label>
-                        <Select
-                            value={String(data.maxTeams)}
-                            onValueChange={(value) => updateData({ maxTeams: parseInt(value) })}
-                        >
-                            <SelectTrigger className="w-full font-bold tracking-tight">
-                                <SelectValue placeholder="Select max participants" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="0">Unlimited</SelectItem>
-                                <SelectItem value="20">20</SelectItem>
-                                <SelectItem value="30">30</SelectItem>
-                                <SelectItem value="40">40</SelectItem>
-                                <SelectItem value="60">60</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
-                                <SelectItem value="150">150</SelectItem>
-                                <SelectItem value="200">200</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <p className="text-sm text-gray-400">
-                            {brConfig.playersPerLobby
-                                ? `Each lobby supports up to ${brConfig.playersPerLobby} players.`
-                                : 'Set the maximum number of participants.'}
-                        </p>
-                    </div>
+                    {/* Max Participants for BR — label and options adapt to solo/duo/squad */}
+                    {(() => {
+                        const ts = data.teamSize ?? 1;
+                        const unitSingular = ts === 1 ? 'player'  : ts === 2 ? 'duo'  : ts === 3 ? 'trio'  : 'squad';
+                        const unitPlural   = ts === 1 ? 'players' : ts === 2 ? 'duos' : ts === 3 ? 'trios' : 'squads';
+                        const labelStr = ts === 1 ? 'Maximum Players' : ts === 2 ? 'Maximum Duos' : ts === 3 ? 'Maximum Trios' : 'Maximum Squads';
+                        const unitsPerLobby = brConfig ? Math.floor(brConfig.playersPerLobby / Math.max(1, ts)) : 20;
+                        // Options: multiples of lobby size up to a reasonable cap, plus common fixed sizes
+                        const raw = [1, 2, 3, 4, 5, 8, 10].map(n => n * unitsPerLobby);
+                        const fixed = ts === 1 ? [20, 30, 40, 60, 100, 150, 200] : ts === 2 ? [10, 16, 20, 30, 50, 60, 100] : [8, 10, 16, 20, 30, 40, 50];
+                        const options = [...new Set([...raw, ...fixed])].filter(n => n >= 4 && n <= 500).sort((a, b) => a - b);
+                        return (
+                            <div className="space-y-3">
+                                <div className="w-full h-px bg-white/5 my-6" />
+                                <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                    <Users className="w-4 h-4" />
+                                    {labelStr}
+                                </Label>
+                                <Select
+                                    value={String(data.maxTeams)}
+                                    onValueChange={(value) => updateData({ maxTeams: parseInt(value) })}
+                                >
+                                    <SelectTrigger className="w-full font-bold tracking-tight">
+                                        <SelectValue placeholder={`Select max ${unitPlural}`} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {options.map(n => (
+                                            <SelectItem key={n} value={String(n)}>
+                                                {n} {unitPlural}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-sm text-gray-400">
+                                    {brConfig.playersPerLobby
+                                        ? `Each lobby fits up to ${unitsPerLobby} ${unitPlural}. ${ts > 1 ? `Each ${unitSingular} has ${ts} players.` : ''}`
+                                        : `Set the maximum number of ${unitPlural}.`}
+                                </p>
+                            </div>
+                        );
+                    })()}
 
-                    {/* Team Size for BR */}
-                    <div className="space-y-3">
-                        <div className="w-full h-px bg-white/5 my-6" />
-                        <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <Users className="w-4 h-4" />
-                            Team Size
-                        </Label>
-                        <Input
-                            type="number"
-                            min={1}
-                            max={4}
-                            value={data.teamSize}
-                            onChange={(e) => updateData({ teamSize: parseInt(e.target.value) || 1 })}
-                            className="[color-scheme:dark] font-bold tracking-tight"
-                        />
-                        <p className="text-sm text-gray-400">
-                            Standard for {data.game} is {selectedGame?.formats?.find(f => f.value === selectedGame.defaultFormat)?.teamSize || 1}.
-                        </p>
-                    </div>
+
+
                 </>
             ) : (
                 <>

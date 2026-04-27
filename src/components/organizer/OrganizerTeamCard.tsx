@@ -103,6 +103,9 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
                                     <img
                                         src={displayLogo}
                                         alt={displayName}
+                                        loading="lazy"
+                                        decoding="async"
+                                        fetchPriority="low"
                                         className={`w-full h-full object-contain filter drop-shadow-md ${isSolo ? 'rounded-full' : ''}`}
                                     />
                                 ) : (
