@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Users, Calendar, BarChart3, Plus, Building2, ChevronRight, ShieldCheck } from "lucide-react";
+import { Trophy, Users, Calendar, BarChart3, Plus, Building2, ChevronRight, ShieldCheck, Workflow } from "lucide-react";
 import { apiClient } from '@/lib/apiClient';
 import TournamentsList from "@/components/organizer/TournamentsList";
 import ParticipantsList from "@/components/organizer/ParticipantsList";
@@ -99,6 +99,14 @@ const OrganizerDashboard = () => {
             <p className="text-zinc-500 mt-1">Welcome back, {profile?.full_name || profile?.username}</p>
           </div>
           <div className="flex gap-3">
+            <Button
+              onClick={() => navigate('/organizer/seasons')}
+              variant="outline"
+              className="border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-zinc-700 text-white"
+            >
+              <Workflow className="mr-2 h-4 w-4" />
+              Manage Seasons
+            </Button>
             <Button
               onClick={() => navigate('/organizer/tournaments')}
               variant="outline"

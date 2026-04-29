@@ -53,9 +53,11 @@ const DesktopNav = ({
         </FramerDropdownTrigger>
         <FramerDropdownContent className="min-w-[220px]">
           <FramerDropdownItem to="/tournaments">Browse Tournaments</FramerDropdownItem>
+          <FramerDropdownItem to="/seasons">Browse Seasons</FramerDropdownItem>
           {(userRole === 'organizer' || isSuperAdmin || admin.hasPermission('tournaments:create')) && (
             <>
               <div className="h-px bg-white/10 my-1 mx-2" />
+              <FramerDropdownItem to="/organizer/seasons">Manage Seasons</FramerDropdownItem>
               <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
               <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
             </>

@@ -132,9 +132,11 @@ const MobileNav = ({
                     >
                     <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
                       <Link to="/tournaments" className={subLinkClass} onClick={onClose}>Browse Tournaments</Link>
+                      <Link to="/seasons" className={subLinkClass} onClick={onClose}>Browse Seasons</Link>
                       {(userRole === 'organizer' || isSuperAdmin || admin.hasPermission('tournaments:create')) && (
                         <>
                           <div className="h-px bg-white/10 my-1 mx-2" />
+                          <Link to="/organizer/seasons" className={subLinkClass} onClick={onClose}>Manage Seasons</Link>
                           <Link to="/organizer/tournaments" className={subLinkClass} onClick={onClose}>Manage Tournaments</Link>
                           <Link to="/tournaments/create" className={subLinkClass} onClick={onClose}>Create Tournament</Link>
                         </>
@@ -265,6 +267,9 @@ const MobileNav = ({
                 )}
                 {(userRole === 'organizer' && !isSuperAdmin) && (
                   <div className="mb-3 space-y-1">
+                    <Link to="/organizer/seasons" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
+                      Manage Seasons
+                    </Link>
                     <Link to="/organizer/tournaments" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                       Manage Tournaments
                     </Link>

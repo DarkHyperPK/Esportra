@@ -299,6 +299,7 @@ const UserMenu = ({
 
             {admin.isAdmin && admin.hasPermission('tournaments:create') && (
               <>
+                <FramerDropdownItem to="/organizer/seasons">Manage Seasons</FramerDropdownItem>
                 <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
                 <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
               </>
@@ -322,6 +323,7 @@ const UserMenu = ({
                 {hasOrganization ? (
                   <>
                     <FramerDropdownItem to="/organizer/dashboard?tab=organization" icon={<Building2 className="h-4 w-4" />}>My Organization</FramerDropdownItem>
+                    <FramerDropdownItem to="/organizer/seasons">Manage Seasons</FramerDropdownItem>
                     <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
                     <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
                   </>

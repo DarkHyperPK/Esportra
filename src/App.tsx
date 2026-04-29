@@ -82,6 +82,9 @@ const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dash
 
 // Tournament Organizer
 const OrganizerDashboard = lazyWithRetry(() => import("./pages/organizer/Dashboard"));
+const ManageSeasons = lazyWithRetry(() => import("./pages/organizer/ManageSeasons"));
+const CreateSeason = lazyWithRetry(() => import("./pages/organizer/CreateSeason"));
+const SeasonManage = lazyWithRetry(() => import("./pages/organizer/SeasonManage"));
 const TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentList"));
 const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
 const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
@@ -120,6 +123,8 @@ const EditVenue = lazyWithRetry(() => import("./pages/venues/EditVenue"));
 // Tournaments
 const BrowseTournaments = lazyWithRetry(() => import("./pages/tournaments/List"));
 const CreateTournament = lazyWithRetry(() => import("./pages/tournaments/Create"));
+const SeasonsList = lazyWithRetry(() => import("./pages/seasons/List"));
+const SeasonsDetails = lazyWithRetry(() => import("./pages/seasons/Details"));
 
 // About
 const ContactPage = lazyWithRetry(() => import("./pages/about/Contact"));
@@ -589,6 +594,21 @@ const AppContent = React.memo(() => {
                     <ManageTournaments />
                   </ProtectedRoute>
                 } />
+                <Route path="/organizer/seasons" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <ManageSeasons />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/seasons/create" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <CreateSeason />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/seasons/:id" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <SeasonManage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/organizer/tournament/:slug" element={
                   <ProtectedRoute>
                     <TournamentManage />
@@ -615,6 +635,8 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/tournaments" element={<BrowseTournaments />} />
+                <Route path="/seasons" element={<SeasonsList />} />
+                <Route path="/seasons/:id" element={<SeasonsDetails />} />
                 <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
                 <Route path="/player/:username" element={<PlayerProfile />} />
