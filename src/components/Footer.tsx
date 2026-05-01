@@ -63,10 +63,16 @@ const Footer = () => {
           <div className="relative">
             <h4 className="text-white text-sm font-medium tracking-[0.2em] uppercase mb-10">Company</h4>
             <ul className="space-y-4">
-              {['About', 'Privacy', 'Contact', 'Terms'].map((link) => (
-                <li key={link}>
-                  <Link to={`/${link.toLowerCase()}`} className="text-white/40 hover:text-white font-light transition-all duration-300">
-                    {link}
+              {[
+                { label: 'About', to: '/about' },
+                { label: 'Privacy', to: '/privacy' },
+                { label: 'Contact', to: '/contact' },
+                { label: 'Terms', to: '/terms' },
+                { label: 'Refund Policy', to: '/refund-policy' },
+              ].map((link) => (
+                <li key={link.label}>
+                  <Link to={link.to} className="text-white/40 hover:text-white font-light transition-all duration-300">
+                    {link.label}
                   </Link>
                 </li>
               ))}

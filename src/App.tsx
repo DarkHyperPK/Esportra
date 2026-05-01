@@ -136,6 +136,7 @@ const ContactStandalone = lazyWithRetry(() => import("./pages/Contact"));
 const Partners = lazyWithRetry(() => import("./pages/Partners"));
 const BeAPartner = lazyWithRetry(() => import("./pages/BeAPartner"));
 const OrganizerLicenseTerms = lazyWithRetry(() => import("./pages/OrganizerLicenseTerms"));
+const RefundPolicyPage = lazyWithRetry(() => import("./pages/RefundPolicy"));
 
 // Guides
 const HelpCenter = lazyWithRetry(() => import("./pages/guides/HelpCenter"));
@@ -693,6 +694,7 @@ const AppContent = React.memo(() => {
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/organizer-license-terms" element={<OrganizerLicenseTerms />} />
+                <Route path="/refund-policy" element={<RefundPolicyPage />} />
 
                 {/* Notification List Route */}
                 <Route path="/notifications" element={<NotificationsPage />} />
