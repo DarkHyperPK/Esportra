@@ -104,7 +104,7 @@ const ManageSeasons = () => {
 
     try {
       // Use syncNodes with empty array to delete the season (soft delete)
-      await apiClient.put(`/api/seasons/${seasonId}/nodes`, []);
+      await apiClient.put(`/api/seasons/${seasonId}/nodes`, { nodes: [] });
       toast({ title: 'Season deleted', description: 'The season has been deleted.' });
       refetch();
     } catch (deleteError) {
