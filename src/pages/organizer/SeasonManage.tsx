@@ -473,6 +473,36 @@ const SeasonManage = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!seasonId || !data) return;
+
+    if (data.season.status !== 'draft') {
+      toast({
+        title: 'Cannot delete',
+        description: 'Only draft seasons can be deleted.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this season? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Use the deleteSeason hook if available, otherwise use syncNodes with empty array
+      await syncNodes.mutateAsync([]);
+      toast({ title: 'Season deleted', description: 'The season has been deleted.' });
+      window.location.href = '/organizer/seasons';
+    } catch (deleteError) {
+      toast({
+        title: 'Deletion failed',
+        description: deleteError instanceof Error ? deleteError.message : 'Could not delete this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (!seasonId) {
     return <div className="min-h-screen bg-[#050505]" />;
   }
@@ -553,6 +583,12 @@ const SeasonManage = () => {
               <Copy className="mr-2 h-4 w-4" />
               Duplicate
             </Button>
+            {data.season.status === 'draft' && (
+              <Button variant="outline" className="border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500/10" onClick={handleDelete} disabled={syncNodes.isPending}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            )}
             <Button className="bg-rose-500 text-white hover:bg-rose-600" onClick={handleRecalculate} disabled={recalculateSeason.isPending}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Recalculate

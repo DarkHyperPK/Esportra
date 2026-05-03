@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
@@ -53,6 +53,19 @@ interface OrgStats {
     activeTournaments: number;
 }
 
+interface Season {
+    id: string;
+    name: string;
+    slug: string;
+    game: string;
+    status: string;
+    participant_mode: string;
+    is_public: boolean;
+    start_date: string | null;
+    end_date: string | null;
+    created_at: string;
+}
+
 const OrganizationSettings: React.FC = () => {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -95,6 +108,9 @@ const OrganizationSettings: React.FC = () => {
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [uploadingBanner, setUploadingBanner] = useState(false);
 
+    // Seasons state
+    const [seasons, setSeasons] = useState<Season[]>([]);
+
     // Track whether form fields differ from saved organization data
     const hasUnsavedChanges = organization ? (
         name !== organization.name ||
@@ -127,6 +143,7 @@ const OrganizationSettings: React.FC = () => {
                 fetchAlbums(data.id);
                 fetchMedia(data.id, null); // Fetch root media initially
                 fetchStats(data.id); // Fetch stats using org ID
+                fetchSeasons(data.id); // Fetch seasons
             }
         } catch (error: any) {
             console.error('Error fetching organization:', error);
@@ -155,6 +172,17 @@ const OrganizationSettings: React.FC = () => {
             setStats(data || { totalTournaments: 0, totalParticipants: 0, activeTournaments: 0 });
         } catch (error) {
             console.error('Error fetching stats:', error);
+        }
+    };
+
+    const fetchSeasons = async (orgId?: string) => {
+        if (!orgId) return;
+        try {
+            const data = await apiClient.get<Season[]>(`/api/seasons?organizationId=${orgId}`);
+            setSeasons(data || []);
+        } catch (error) {
+            console.error('Error fetching seasons:', error);
+            setSeasons([]);
         }
     };
 
@@ -558,6 +586,72 @@ const OrganizationSettings: React.FC = () => {
                             className="bg-white/5 border-white/10 focus:border-esports-accent focus:ring-esports-accent/20 min-h-[120px]"
                         />
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* Seasons */}
+            <Card className="border-white/5 bg-gradient-to-br from-[#0a0a0c] to-[#050507]">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="font-heading flex items-center gap-2">
+                                <Trophy className="h-5 w-5 text-rose-400" />
+                                Seasons
+                            </CardTitle>
+                            <CardDescription>Manage your organization's competitive seasons.</CardDescription>
+                        </div>
+                        <Button variant="outline" size="sm" asChild className="border-white/10 hover:bg-white/5 hover:border-rose-500/50">
+                            <Link to="/organizer/seasons/create">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Season
+                            </Link>
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {seasons.length === 0 ? (
+                        <div className="text-center py-12 border border-dashed border-white/10 rounded-xl bg-white/5">
+                            <Trophy className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                            <p className="text-gray-500">No seasons created yet.</p>
+                            <Button variant="outline" size="sm" asChild className="mt-4 border-white/10 hover:bg-white/5">
+                                <Link to="/organizer/seasons/create">Create your first season</Link>
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {seasons.map((season) => (
+                                <div
+                                    key={season.id}
+                                    className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-rose-500/20 to-rose-600/20 border border-rose-500/30 flex items-center justify-center">
+                                            <Trophy className="h-5 w-5 text-rose-400" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-white">{season.name}</h4>
+                                            <p className="text-sm text-gray-400">{season.game} • {season.participant_mode}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                            season.status === 'active' ? 'bg-emerald-500/20 text-emerald-300' :
+                                            season.status === 'draft' ? 'bg-gray-500/20 text-gray-300' :
+                                            season.status === 'completed' ? 'bg-blue-500/20 text-blue-300' :
+                                            'bg-amber-500/20 text-amber-300'
+                                        }`}>
+                                            {season.status}
+                                        </span>
+                                        <Button variant="ghost" size="sm" asChild className="text-gray-400 hover:text-white hover:bg-white/10">
+                                            <Link to={`/organizer/seasons/${season.id}`}>
+                                                <ExternalLink className="h-4 w-4" />
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
