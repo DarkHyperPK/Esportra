@@ -18,6 +18,7 @@ import { apiClient } from '@/lib/apiClient';
 import { Link } from 'react-router-dom';
 import TeamCreationWizard from '@/components/player/TeamCreationWizard';
 import CaptainJourneyTour from '@/components/player/CaptainJourneyTour';
+import { hasSeenTour, markTourSeen } from '@/lib/onboardingFlags';
 import { Plus, Users, Settings, Crown, Trash2, UserMinus, UserPlus, Calendar, Trophy, Gamepad2, Edit, X, Upload, Save, Shield } from 'lucide-react';
 import esportsGames from '@/data/esportsGames.json';
 import EditTeamDialog from '@/components/player/EditTeamDialog';
@@ -1319,7 +1320,7 @@ const TeamsPage = () => {
                     size="lg"
                     className="h-14 px-10 bg-white text-black hover:bg-white/90 rounded-full font-heading font-bold uppercase tracking-widest text-sm transition-all hover:scale-105 shadow-[0_0_40px_rgba(255,255,255,0.3)]"
                     onClick={() => {
-                      if (!localStorage.getItem('esportra_tour_captain_seen')) {
+                      if (!hasSeenTour('captain')) {
                         setShowJourneyTour(true);
                       } else {
                         setShowTeamCreationWizard(true);
@@ -1341,7 +1342,7 @@ const TeamsPage = () => {
         {/* Captain Journey Tour */}
         {showJourneyTour && (
           <CaptainJourneyTour onComplete={() => {
-            localStorage.setItem('esportra_tour_captain_seen', 'true');
+            markTourSeen('captain');
             setShowJourneyTour(false);
             setShowTeamCreationWizard(true);
           }} />

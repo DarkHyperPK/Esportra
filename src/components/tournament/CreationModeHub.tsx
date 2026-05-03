@@ -1,8 +1,7 @@
-import { motion } from 'framer-motion';
-import { ArrowRight, CalendarRange, Layers3, Sparkles, Trophy, Workflow } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { useRawgGame } from '@/hooks/useRawgGame';
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence, useReducedMotion, useMotionValue, useSpring } from 'framer-motion';
+import { ArrowRight, Trophy, Workflow } from 'lucide-react';
+import { fetchGameData, type CachedGame } from '@/hooks/useRawgGame';
 
 type CreationMode = 'event' | 'season';
 
@@ -10,208 +9,313 @@ interface CreationModeHubProps {
   onSelect: (mode: CreationMode) => void;
 }
 
-interface CreationCardProps {
-  mode: CreationMode;
-  title: string;
-  eyebrow: string;
-  description: string;
-  cta: string;
-  gameName: string;
-  accentClasses: string;
-  statLabel: string;
-  statValue: string;
-  bullets: string[];
-  onSelect: (mode: CreationMode) => void;
+// ---------------------------------------------------------------------------
+// Media hook
+// ---------------------------------------------------------------------------
+
+const useHubMedia = (): Partial<Record<CreationMode, string>> => {
+  const [media, setMedia] = useState<Partial<Record<CreationMode, string>>>({});
+
+  useEffect(() => {
+    let alive = true;
+
+    const pick = (d: CachedGame) =>
+      d.screenshots[0] ?? d.gameBanner ?? d.cover ?? undefined;
+
+    void (async () => {
+      try {
+        const [eventData, seasonData] = await Promise.all([
+          fetchGameData('Valorant', { skipRawg: true }),
+          fetchGameData('Dota 2', { skipRawg: true }),
+        ]);
+        if (alive) setMedia({ event: pick(eventData), season: pick(seasonData) });
+      } catch {
+        // media is decorative — fail silently
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return media;
+};
+
+// ---------------------------------------------------------------------------
+// Panel config — all Tailwind classes are static strings
+// ---------------------------------------------------------------------------
+
+interface PanelColors {
+  iconText: string;
+  glowColor: string;
+  accentBorder: string;
+  dot: string;
+  btnBase: string;
 }
 
-const CreationCard = ({
+const EVENT_COLORS: PanelColors = {
+  iconText: 'text-rose-400',
+  glowColor: 'bg-rose-500',
+  accentBorder: 'border-rose-500/25',
+  dot: 'bg-rose-400',
+  btnBase: 'bg-rose-500 hover:bg-rose-400 active:bg-rose-600',
+};
+
+const SEASON_COLORS: PanelColors = {
+  iconText: 'text-cyan-400',
+  glowColor: 'bg-cyan-500',
+  accentBorder: 'border-cyan-500/25',
+  dot: 'bg-cyan-400',
+  btnBase: 'bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600',
+};
+
+interface PanelDef {
+  mode: CreationMode;
+  title: string;
+  tagline: string;
+  points: string[];
+  colors: PanelColors;
+}
+
+const PANELS: PanelDef[] = [
+  {
+    mode: 'event',
+    title: 'Tournament',
+    tagline: 'A single, self-contained competition from setup to results.',
+    points: [
+      'Groups, brackets, or custom stage formats',
+      'Registration, check-in, and participant management',
+      'Match operations, veto, and live results',
+    ],
+    colors: EVENT_COLORS,
+  },
+  {
+    mode: 'season',
+    title: 'Season',
+    tagline: 'A connected series of competitions under one program.',
+    points: [
+      'Drag-and-drop structure builder',
+      'Linked events with qualification paths',
+      'Season-wide standings and points systems',
+    ],
+    colors: SEASON_COLORS,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Panel component
+// ---------------------------------------------------------------------------
+
+interface PanelProps extends PanelDef {
+  image?: string;
+  isActive: boolean;
+  anyActive: boolean;
+  reducedMotion: boolean;
+  onEnter: () => void;
+  onLeave: () => void;
+  onSelect: () => void;
+}
+
+const Panel = ({
   mode,
   title,
-  eyebrow,
-  description,
-  cta,
-  gameName,
-  accentClasses,
-  statLabel,
-  statValue,
-  bullets,
+  tagline,
+  points,
+  colors,
+  image,
+  isActive,
+  anyActive,
+  reducedMotion,
+  onEnter,
+  onLeave,
   onSelect,
-}: CreationCardProps) => {
-  const gameData = useRawgGame(gameName, { skipRawg: true });
-  const hero = gameData.screenshots[1] || gameData.screenshots[0] || gameData.gameBanner || gameData.gameLogo;
-  const cover = gameData.cover || gameData.gameLogo;
+}: PanelProps) => {
   const Icon = mode === 'event' ? Trophy : Workflow;
 
+  // Spring-driven y — guarantees identical physics hover-in AND hover-out
+  const yRaw = useMotionValue(0);
+  const y = useSpring(yRaw, { stiffness: 220, damping: 26 });
+  useEffect(() => {
+    yRaw.set(isActive && !reducedMotion ? -28 : 0);
+  }, [isActive, reducedMotion, yRaw]);
+
   return (
-    <motion.button
-      type="button"
-      onClick={() => onSelect(mode)}
-      whileHover={{ y: -8, scale: 1.01 }}
-      transition={{ type: 'spring', stiffness: 220, damping: 18 }}
-      className="group relative min-h-[540px] overflow-hidden rounded-[32px] border border-white/10 bg-black/30 text-left shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
+    <motion.div
+      role="button"
+      tabIndex={0}
+      aria-label={`Create ${title}`}
+      className="relative flex cursor-pointer flex-col items-center justify-center overflow-hidden border-r border-white/[0.04] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+      style={{ minHeight: 'calc(100dvh - 52px)', flexGrow: 1 }}
+      animate={
+        reducedMotion
+          ? undefined
+          : {
+              flexGrow: isActive ? 1.18 : anyActive ? 0.84 : 1,
+              opacity: anyActive && !isActive ? 0.52 : 1,
+            }
+      }
+      transition={{ type: 'spring', stiffness: 200, damping: 30 }}
+      onHoverStart={onEnter}
+      onHoverEnd={onLeave}
+      onFocus={onEnter}
+      onBlur={onLeave}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
-      {hero ? (
-        <img
-          src={hero}
+      {/* IGDB background image */}
+      {image && (
+        <motion.img
+          src={image}
           alt=""
           aria-hidden
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[8s] ease-out group-hover:scale-110"
+          className="absolute inset-0 h-full w-full object-cover"
+          animate={
+            reducedMotion
+              ? undefined
+              : { opacity: isActive ? 0.22 : 0.06, scale: isActive ? 1.05 : 1 }
+          }
+          transition={{ duration: 0.9, ease: 'easeOut' }}
         />
-      ) : (
-        <div className="absolute inset-0 animate-pulse bg-zinc-900" />
       )}
 
-      <div className={`absolute inset-0 bg-gradient-to-br ${accentClasses}`} />
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/10" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_35%)] opacity-70" />
+      {/* Base dark overlay — keeps text always readable */}
+      <div className="absolute inset-0 bg-[#050505]/90" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/40 via-transparent to-[#050505]/60" />
 
-      <div className="relative flex h-full flex-col justify-between p-6 md:p-8">
-        <div className="space-y-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-3">
-              <Badge className="border-0 bg-white/12 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-white/80 hover:bg-white/12">
-                {eyebrow}
-              </Badge>
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-black/35 text-white">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="text-3xl font-black tracking-tight text-white">{title}</h2>
-                  <p className="text-sm text-white/60">{gameName} IGDB-inspired artwork</p>
-                </div>
-              </div>
-            </div>
+      {/* Accent border highlight on hover */}
+      <motion.div
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 border ${colors.accentBorder}`}
+        animate={{ opacity: isActive ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
+      />
 
-            {cover ? (
-              <img
-                src={cover}
-                alt={`${gameName} cover`}
-                className="h-24 w-16 rounded-2xl border border-white/15 object-cover shadow-2xl"
-              />
-            ) : null}
-          </div>
+      {/* Ambient center glow */}
+      <motion.div
+        aria-hidden
+        className={`absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[80px] ${colors.glowColor}`}
+        animate={{ opacity: isActive ? 0.14 : 0 }}
+        transition={{ duration: 0.7 }}
+      />
 
-          <p className="max-w-xl text-base leading-7 text-white/80">{description}</p>
+      {/* Content */}
+      <div className="relative z-10 flex flex-col items-center px-8 py-16 text-center">
+        {/* Bare icon — scales on hover, stays in place */}
+        <motion.div
+          className="mb-7"
+          animate={reducedMotion ? undefined : { scale: isActive ? 1.1 : 1 }}
+          transition={{ type: 'spring', stiffness: 280, damping: 20 }}
+        >
+          <Icon className={`h-7 w-7 ${colors.iconText}`} />
+        </motion.div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/12 bg-black/30 p-4">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{statLabel}</p>
-              <p className="mt-2 text-2xl font-bold text-white">{statValue}</p>
-            </div>
-            <div className="rounded-2xl border border-white/12 bg-black/30 p-4">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Best for</p>
-              <p className="mt-2 text-sm font-medium text-white/85">
-                {mode === 'event' ? 'Standalone tournaments with stages' : 'Linked qualifiers and finals'}
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Group: title + tagline + reveal all slide together via spring */}
+        <motion.div
+          className="flex flex-col items-center"
+          style={{ y }}
+        >
+          <h2 className="font-heading text-[clamp(48px,6.5vw,84px)] font-bold leading-none tracking-[-0.045em] text-white">
+            {title}
+          </h2>
 
-        <div className="space-y-5">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {bullets.map((bullet) => (
-              <div key={bullet} className="rounded-2xl border border-white/12 bg-black/30 px-4 py-3 text-sm text-white/75">
-                {bullet}
-              </div>
-            ))}
-          </div>
+          <p className="font-body mt-5 max-w-[240px] text-[13px] leading-[1.7] text-zinc-400">
+            {tagline}
+          </p>
 
-          <div className="flex items-center justify-between rounded-[28px] border border-white/12 bg-black/35 p-4">
-            <div>
-              <p className="text-sm font-semibold text-white">{cta}</p>
-              <p className="mt-1 text-xs uppercase tracking-[0.18em] text-white/45">
-                {mode === 'event' ? 'Current multi-stage wizard' : 'Season tree setup wizard'}
-              </p>
-            </div>
+          {/* Reveal: fades in below tagline, exits cleanly */}
+          <AnimatePresence>
+            {isActive && (
+              <motion.div
+                key="reveal"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-10 flex w-full max-w-[220px] flex-col items-center"
+              >
+                <ul className="w-full space-y-3 text-left">
+                  {points.map((pt, i) => (
+                    <motion.li
+                      key={pt}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.07, duration: 0.22 }}
+                      className="flex items-start gap-2.5"
+                    >
+                      <span
+                        className={`mt-[6px] h-[5px] w-[5px] shrink-0 rounded-full ${colors.dot}`}
+                      />
+                      <span className="font-body text-[12px] leading-[1.65] text-zinc-300">
+                        {pt}
+                      </span>
+                    </motion.li>
+                  ))}
+                </ul>
 
-            <Button className="border-0 bg-white text-black hover:bg-white/90">
-              Open
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+                <button
+                  className={`mt-7 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[12px] font-semibold text-white transition-all duration-200 ${colors.btnBase}`}
+                >
+                  Begin setup
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
-    </motion.button>
+    </motion.div>
   );
 };
 
+// ---------------------------------------------------------------------------
+// Hub
+// ---------------------------------------------------------------------------
+
 const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
+  const [active, setActive] = useState<CreationMode | null>(null);
+  const media = useHubMedia();
+  const reducedMotion = !!useReducedMotion();
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="relative overflow-hidden rounded-[40px] border border-white/10 bg-black/35 p-6 shadow-[0_35px_120px_rgba(0,0,0,0.5)] backdrop-blur-2xl sm:p-8 lg:p-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(244,63,94,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.16),transparent_32%)]" />
+    <div className="flex min-h-screen flex-col bg-[#050505]">
+      {/* Top strip */}
+      <div className="flex items-center justify-center border-b border-white/[0.05] px-8 py-4">
+        <p className="font-body text-[11px] font-medium uppercase tracking-[0.3em] text-zinc-400">
+          Choose format
+        </p>
+      </div>
 
-        <div className="relative z-10">
-          <div className="mx-auto mb-8 max-w-3xl text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.28em] text-white/70">
-              <Sparkles className="h-3.5 w-3.5" />
-              Creation hub
-            </div>
-            <h1 className="text-4xl font-black tracking-tight text-white md:text-5xl">
-              Choose how this competition should scale
-            </h1>
-            <p className="mt-4 text-sm leading-7 text-white/65 md:text-base">
-              Start from one premium entry point. Launch a single-event tournament with stages, or build a full season
-              tree that connects qualifiers, checkpoints, and finals.
-            </p>
-          </div>
+      {/* Split panels */}
+      <div className="flex flex-1 flex-col sm:flex-row">
+        {PANELS.map((panel) => (
+          <Panel
+            key={panel.mode}
+            {...panel}
+            image={media[panel.mode]}
+            isActive={active === panel.mode}
+            anyActive={active !== null}
+            reducedMotion={reducedMotion}
+            onEnter={() => setActive(panel.mode)}
+            onLeave={() => setActive(null)}
+            onSelect={() => onSelect(panel.mode)}
+          />
+        ))}
+      </div>
 
-          <div className="relative grid gap-6 lg:grid-cols-2">
-            <CreationCard
-              mode="event"
-              title="Single Event"
-              eyebrow="One tournament"
-              description="Run one tournament with multiple stages, brackets, schedules, check-in, veto, and match operations inside a single event shell."
-              cta="Launch single-event wizard"
-              gameName="Valorant"
-              accentClasses="from-[#5b21b6]/55 via-[#1d4ed8]/30 to-black/60"
-              statLabel="Structure"
-              statValue="Multi-stage"
-              bullets={['Groups + playoffs', 'One registration pool', 'Best for weekend events']}
-              onSelect={onSelect}
-            />
-
-            <CreationCard
-              mode="season"
-              title="Season"
-              eyebrow="Multi-event circuit"
-              description="Connect multiple tournaments into one season tree, route winners into downstream rounds, track standings, and manage qualification workflows."
-              cta="Launch season builder"
-              gameName="Counter-Strike 2"
-              accentClasses="from-[#0f172a]/45 via-[#0f766e]/28 to-black/70"
-              statLabel="Structure"
-              statValue="Multi-event"
-              bullets={['City qualifiers -> finals', 'Shared standings', 'Qualification automation']}
-              onSelect={onSelect}
-            />
-
-            <div className="pointer-events-none absolute inset-y-8 left-1/2 hidden -translate-x-1/2 items-center lg:flex">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/15 bg-black/65 text-white shadow-2xl backdrop-blur-xl">
-                <Layers3 className="h-6 w-6" />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-sm text-white/55">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-              <CalendarRange className="h-4 w-4" />
-              Event flow for single tournaments
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-              <Workflow className="h-4 w-4" />
-              Season flow for linked competitions
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-              <ArrowRight className="h-4 w-4" />
-              Both start from the same route
-            </span>
-          </div>
-        </div>
+      {/* Bottom strip */}
+      <div className="border-t border-white/[0.05] px-8 py-3.5">
+        <p className="font-body text-[11px] text-zinc-700">
+          All game titles and participant formats supported.
+        </p>
       </div>
     </div>
   );
 };
 
 export default CreationModeHub;
-

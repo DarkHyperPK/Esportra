@@ -3,9 +3,17 @@ import { apiClient } from '@/lib/apiClient';
 import type {
   CreateSeasonPayload,
   CreateSeasonResponse,
+  CreateSeasonWorkspacePayload,
   SeasonListItem,
+  SeasonNodeDraft,
   UpdateSeasonPayload,
+  PublishSeasonRequest,
+  PublishSeasonResponse,
+  SeasonTournament,
+  SeasonStanding,
+  SeasonAuditLog,
 } from '@/types/season';
+import { toSeasonNodeDraftPayload } from '@/components/season/builder/seasonBuilderUtils';
 
 type SeasonListApiRow = {
   id: string;
@@ -22,11 +30,25 @@ type SeasonListApiRow = {
   owner_full_name?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  banner_url?: string | null;
+  logo_url?: string | null;
   created_at?: string;
   updated_at?: string;
   node_count?: number;
   is_season_staff?: boolean;
 };
+
+type CreateSeasonApiResponse = {
+  id: string;
+  slug: string;
+  root_node_id: string;
+};
+
+const mapCreateSeasonResponse = (row: CreateSeasonApiResponse): CreateSeasonResponse => ({
+  id: row.id,
+  slug: row.slug,
+  rootNodeId: row.root_node_id,
+});
 
 const mapSeasonListItem = (row: SeasonListApiRow): SeasonListItem => ({
   id: row.id,
@@ -43,6 +65,8 @@ const mapSeasonListItem = (row: SeasonListApiRow): SeasonListItem => ({
   ownerFullName: row.owner_full_name ?? null,
   startDate: row.start_date ?? null,
   endDate: row.end_date ?? null,
+  bannerUrl: row.banner_url ?? null,
+  logoUrl: row.logo_url ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   nodeCount: row.node_count,
@@ -68,9 +92,51 @@ export const useCreateSeason = () => {
 
   return useMutation({
     mutationFn: (payload: CreateSeasonPayload) =>
-      apiClient.post<CreateSeasonResponse>('/api/seasons', payload),
+      apiClient
+        .post<CreateSeasonApiResponse>('/api/seasons', payload)
+        .then(mapCreateSeasonResponse),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
+    },
+  });
+};
+
+export const useCreateSeasonWorkspace = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ season, nodes }: CreateSeasonWorkspacePayload) => {
+      const createdSeason = await apiClient
+        .post<CreateSeasonApiResponse>('/api/seasons', season)
+        .then(mapCreateSeasonResponse);
+
+      const rootNodeId = createdSeason.rootNodeId;
+      const currentRootId = nodes.find((node) => node.nodeType === 'root')?.id ?? nodes[0]?.id;
+
+      // Clean node data (convert empty strings to null) then swap root IDs
+      const cleanedNodes = toSeasonNodeDraftPayload(nodes).map((node) => ({
+        ...node,
+        id: node.id === currentRootId ? rootNodeId : node.id,
+        parentNodeId: node.parentNodeId === currentRootId ? rootNodeId : node.parentNodeId,
+        slug: node.slug?.trim() || null,
+        region: node.region?.trim() || null,
+        city: node.city?.trim() || null,
+        country: node.country?.trim() || null,
+        linkedStageId: node.linkedStageId?.trim() || null,
+        registrationDeadline: node.registrationDeadline || null,
+        startsAt: node.startsAt || null,
+        endsAt: node.endsAt || null,
+      }));
+
+      await apiClient.put<{ success: boolean; count: number }>(`/api/seasons/${createdSeason.id}/nodes`, {
+        nodes: cleanedNodes,
+      });
+
+      return createdSeason;
+    },
+    onSuccess: (season) => {
+      queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['season', season.id] });
     },
   });
 };
@@ -88,3 +154,85 @@ export const useUpdateSeason = (seasonId: string) => {
   });
 };
 
+export const usePublishSeason = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ seasonId, req }: { seasonId: string; req: PublishSeasonRequest }) =>
+      apiClient.post<PublishSeasonResponse>(`/api/seasons/${seasonId}/publish`, req),
+    onSuccess: (variables) => {
+      queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['season', variables.seasonId] });
+    },
+  });
+};
+
+export const useArchiveSeason = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (seasonId: string) =>
+      apiClient.post<{ success: boolean; status: string }>(`/api/seasons/${seasonId}/archive`, {}),
+    onSuccess: (_, seasonId) => {
+      queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['season', seasonId] });
+    },
+  });
+};
+
+export const useCancelSeason = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ seasonId, reason }: { seasonId: string; reason: string }) =>
+      apiClient.post<{ success: boolean; status: string }>(`/api/seasons/${seasonId}/cancel`, { reason }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['season', variables.seasonId] });
+    },
+  });
+};
+
+export const useDuplicateSeason = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ seasonId, newName, newSlug }: { seasonId: string; newName: string; newSlug: string }) =>
+      apiClient.post<{ success: boolean; seasonId: string }>(`/api/seasons/${seasonId}/duplicate`, { newName, newSlug }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seasons'] });
+    },
+  });
+};
+
+export const useSeasonTournaments = (seasonId: string) => {
+  return useQuery<SeasonTournament[]>({
+    queryKey: ['seasonTournaments', seasonId],
+    queryFn: () => apiClient.get<SeasonTournament[]>(`/api/seasons/${seasonId}/tournaments`),
+    enabled: !!seasonId,
+  });
+};
+
+export const useSeasonAdvancement = (seasonId: string) => {
+  return useQuery({
+    queryKey: ['seasonAdvancement', seasonId],
+    queryFn: () => apiClient.get(`/api/seasons/${seasonId}/advancement`),
+    enabled: !!seasonId,
+  });
+};
+
+export const useSeasonStandings = (seasonId: string) => {
+  return useQuery<SeasonStanding[]>({
+    queryKey: ['seasonStandings', seasonId],
+    queryFn: () => apiClient.get<SeasonStanding[]>(`/api/public/seasons/${seasonId}/standings`),
+    enabled: !!seasonId,
+  });
+};
+
+export const useSeasonAuditLog = (seasonId: string) => {
+  return useQuery<SeasonAuditLog[]>({
+    queryKey: ['seasonAuditLog', seasonId],
+    queryFn: () => apiClient.get<SeasonAuditLog[]>(`/api/admin/seasons/${seasonId}/audit`),
+    enabled: !!seasonId,
+  });
+};

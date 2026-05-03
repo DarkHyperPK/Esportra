@@ -3,10 +3,12 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import {
   Trophy, Users, Settings, Shield, ChevronRight, ChevronDown,
-  Swords, BarChart3, AlertTriangle, Info, ArrowRight, BookOpen
+  Swords, BarChart3, AlertTriangle, Info, ArrowRight, BookOpen,
+  Network,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { useLowFx } from '@/hooks/useLowFx';
 
 /* ─── Types ──────────────────────────────────────────────────── */
 interface GuideSection {
@@ -238,6 +240,71 @@ const guideSections: GuideSection[] = [
     ],
   },
   {
+    id: 'seasons',
+    icon: <Network className="w-5 h-5" />,
+    title: 'Seasons & Structure',
+    description: 'Design multi-stage circuits — qualifiers, linked events, and finals that span weeks or months.',
+    steps: [
+      {
+        title: 'What a season is',
+        content: 'A season is a designed competitive pathway that ties multiple stages together — think regional qualifiers feeding into regional finals, then a global championship. Unlike a single tournament, a season spans weeks or months and tracks player or team progression across every stage.',
+        navigation: 'Organizer Dashboard (/organizer) → Seasons → New Season',
+      },
+      {
+        title: 'Step 1 — Essentials',
+        content: 'Set the season\'s name, game, region, dates, description, and banner image. Pick a slug — this becomes the season\'s URL. You can save as a draft and come back; nothing publishes until Step 3.',
+        navigation: 'New Season Wizard → Step 1: Essentials',
+      },
+      {
+        title: 'Step 2 — Structure',
+        content: 'Design the tree of stages. Use one of two templates (Regional Circuit or Event Series) to scaffold a typical layout, or use the quick-add buttons (Qualifier, Event, Finals) to build manually. Each stage you add appears in the canvas grouped by type.',
+        navigation: 'New Season Wizard → Step 2: Structure',
+        tip: 'Click "Tour" inside the Structure builder for a guided spotlight walkthrough that pins each step to a real UI element.',
+      },
+      {
+        title: 'Stage types explained',
+        content: 'Stages have a type that controls how they\'re categorised in the canvas:\n\n• Qualifier — Entry-level competition. Players compete here to earn a spot in later stages.\n• Event — A competition stop, optionally bound to a real tournament.\n• Finals — The closing championship stage where qualifying paths converge.\n• Custom — Fully flexible. Use for showmatches, boot camps, or anything non-standard.\n\nThe type is set when you add a stage and is for display purposes — it doesn\'t enforce any automatic logic.',
+      },
+      {
+        title: 'Tree hierarchy ("Grouped under")',
+        content: 'Each stage in the Inspector has a "Grouped under" field that picks its parent in the tree. This is how you nest stages visually — e.g., Regional Finals nested under Grand Finals.\n\nImportant: tree position is purely visual. It does NOT control advancement, points, or qualification. Those are configured separately as Points rules (next step).',
+        navigation: 'Inspector panel → Position in tree → Grouped under',
+      },
+      {
+        title: 'Linking stages to tournaments',
+        content: 'Each stage can be bound to one of your existing tournaments via the Inspector\'s "Linked tournament" dropdown. When that tournament finishes, its placements and points feed into the season standings automatically. Linking is optional — you can link later, after the tournament is created.',
+        navigation: 'Inspector panel → Tournament binding → Linked tournament',
+        tip: 'If a tournament has multiple internal stages (e.g. Groups → Playoffs), use the optional "Stage filter" field to pull results from just one stage.',
+      },
+      {
+        title: 'Scheduling & location per stage',
+        content: 'Every stage has its own Registration / Starts / Ends dates and an independent Region / City / Country. Stages can run sequentially or in parallel (overlapping dates are allowed). All of this is informational — it appears in the season calendar but does not auto-open registrations.',
+        navigation: 'Inspector panel → Schedule + Location',
+      },
+      {
+        title: 'Status lifecycle',
+        content: 'Each stage has a manual status: Draft → Scheduled → Live → Completed → Archived. The platform never auto-transitions — you flip the status as your season progresses. Use Draft while building, Scheduled when ready to show players, Live once it\'s running.',
+        navigation: 'Inspector panel → Status',
+      },
+      {
+        title: 'Step 3 — Review & publish',
+        content: 'Review your essentials and structure on the summary page. Once published, the season appears in public listings. You can keep editing structure and metadata from the season\'s management page after publishing.',
+        navigation: 'New Season Wizard → Step 3: Review → Publish',
+      },
+      {
+        title: 'Points rules & qualifications (after creation)',
+        content: 'Advancement — who qualifies and how many points each placement awards — is configured AFTER the season is created. Open the season\'s management page and switch to the Points rules tab.\n\nFor each rule you pick: a source stage, a placement range (e.g. 1st–4th), the points awarded, an optional qualification status, and an optional destination node. Because rules are independent of tree position, a single stage can receive qualifiers from multiple sources.',
+        navigation: 'Organizer Dashboard → Seasons → [season] → Points rules tab',
+        warning: 'The Structure builder does NOT control advancement — only display. Always wire Points rules after publishing if you want automatic standings and qualifications.',
+      },
+      {
+        title: 'Standings & qualifications views',
+        content: 'After matches start completing, the Standings tab aggregates points across the season. The Qualifications tab lists every qualification record auto-generated by your Points rules — players and teams can see and respond to these from the season\'s public detail page.',
+        navigation: 'Season management → Standings / Qualifications tabs',
+      },
+    ],
+  },
+  {
     id: 'best-practices',
     icon: <Shield className="w-5 h-5" />,
     title: 'Best Practices',
@@ -354,12 +421,18 @@ const GuideSectionCard = ({ section }: { section: GuideSection }) => {
 
 /* ─── Page Component ─────────────────────────────────────────── */
 const OrganizerGuide = () => {
+  const isLowFx = useLowFx();
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col font-sans selection:bg-rose-500/30">
       {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-rose-900/10 blur-[150px] rounded-full mix-blend-screen" />
-        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20 brightness-100 contrast-150" />
+        {!isLowFx && (
+          <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-rose-900/10 blur-[150px] rounded-full mix-blend-screen" />
+        )}
+        {!isLowFx && (
+          <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20 brightness-100 contrast-150" />
+        )}
       </div>
 
       <main className="relative z-10 flex-grow pt-32 pb-20 px-4">

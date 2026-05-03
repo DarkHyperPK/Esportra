@@ -7,6 +7,7 @@ import TheManifesto from "@/components/landing/TheManifesto";
 import PlatformPromise from "@/components/landing/PlatformPromise";
 import SupportedGames from "@/components/landing/SupportedGames";
 import VenueShowcase from "@/components/landing/VenueShowcase";
+import BrandShowcase from "@/components/landing/BrandShowcase";
 
 import TheHeartbeat from "@/components/landing/TheHeartbeat";
 import Roadmap from "@/components/landing/Roadmap";
@@ -26,6 +27,7 @@ const Index = () => {
             <FeaturesSection />
             <SupportedGames />
             <VenueShowcase />
+            <BrandShowcase />
             <TheHeartbeat />
             <PlatformPromise />
             <Roadmap />

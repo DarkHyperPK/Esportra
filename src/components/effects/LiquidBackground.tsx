@@ -1,11 +1,29 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useLowFx } from '@/hooks/useLowFx';
 
 /**
  * LiquidBackground - A CSS/Framer-Motion based animated gradient background
- * Simulates a fluid/liquid effect with moving gradient orbs
+ * Simulates a fluid/liquid effect with moving gradient orbs.
+ *
+ * In low-fx mode, returns a static gradient that matches the orb palette —
+ * the animated blurred/blended orbs are omitted entirely (they are the single
+ * biggest CPU cost when GPU acceleration is off).
  */
 export const LiquidBackground = () => {
+    const isLowFx = useLowFx();
+
+    if (isLowFx) {
+        return (
+            <div
+                className="absolute inset-0 overflow-hidden bg-[#020617]"
+                aria-hidden="true"
+            >
+                <div className="absolute inset-0 bg-gradient-to-br from-[#1a0b3e] via-[#0f172a] to-[#020617]" />
+            </div>
+        );
+    }
+
     return (
         <div className="absolute inset-0 overflow-hidden bg-[#020617]">
             {/* Base gradient */}

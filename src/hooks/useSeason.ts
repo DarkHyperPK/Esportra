@@ -28,6 +28,8 @@ type SnakeCaseSeason = {
   allow_manual_overrides: boolean;
   start_date?: string | null;
   end_date?: string | null;
+  banner_url?: string | null;
+  logo_url?: string | null;
   settings?: unknown;
   created_at: string;
   updated_at: string;
@@ -152,6 +154,8 @@ const mapSeason = (row: SnakeCaseSeason): Season => ({
   allowManualOverrides: row.allow_manual_overrides,
   startDate: row.start_date ?? null,
   endDate: row.end_date ?? null,
+  bannerUrl: row.banner_url ?? null,
+  logoUrl: row.logo_url ?? null,
   settings: row.settings ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at,

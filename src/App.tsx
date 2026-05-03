@@ -21,7 +21,6 @@ import { SuspensionGuard } from "@/components/auth/SuspensionGuard";
 import { SeamlessVideoLoop } from "@/components/effects/SeamlessVideoLoop";
 import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
 
-
 import ProtectedRoute from "@/components/ProtectedRoute";
 import React from 'react';
 import Navbar from "@/components/Navbar";

@@ -8,8 +8,10 @@ import { useLicenses } from '@/hooks/useLicenses';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { useSteamAccount } from '@/hooks/useSteamAccount';
 import { useVenueSearch } from '@/hooks/useVenueSearch';
+import { useLowFx, setLowFxOverride, getLowFxOverride } from '@/hooks/useLowFx';
+import { detectLowFx } from '@/lib/detectLowFx';
 import {
-  Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell,
+  Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell, Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,7 +58,7 @@ const LICENSE_STATUS_CLASS: Record<string, string> = {
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
-type Tab = 'connected_accounts' | 'notifications' | 'licenses' | 'desktop_pairing' | 'security';
+type Tab = 'connected_accounts' | 'notifications' | 'licenses' | 'desktop_pairing' | 'security' | 'performance';
 
 interface NavItem { key: Tab; label: string; icon: React.ReactNode; description: string; venueOwnerOnly?: boolean }
 
@@ -66,6 +68,7 @@ const NAV: NavItem[] = [
   { key: 'licenses', label: 'My Licenses', description: 'Professional license IDs', icon: <Award className="w-4 h-4" /> },
   { key: 'desktop_pairing', label: 'Desktop Pairing', description: 'Venue hub pairing tokens', venueOwnerOnly: true, icon: <Monitor className="w-4 h-4" /> },
   { key: 'security', label: 'Security', description: 'Password & account safety', icon: <Shield className="w-4 h-4" /> },
+  { key: 'performance', label: 'Performance', description: 'Visual effects & performance', icon: <Zap className="w-4 h-4" /> },
 ];
 
 // ─── AccountSettings ──────────────────────────────────────────────────────────
@@ -163,6 +166,7 @@ export default function AccountSettings() {
             {activeTab === 'licenses' && <LicensesTab userId={user?.id} />}
             {activeTab === 'desktop_pairing' && ownsVenues && <DesktopPairingTab userId={user?.id} />}
             {activeTab === 'security' && <SecurityTab />}
+            {activeTab === 'performance' && <PerformanceTab />}
           </div>
         </div>
       </main>
@@ -531,6 +535,129 @@ function SecurityTab() {
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Update Password'}
           </Button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Performance ─────────────────────────────────────────────────────────
+
+type FxMode = 'auto' | 'on' | 'off';
+
+function PerformanceTab() {
+  const { toast } = useToast();
+  const effectiveLowFx = useLowFx();
+  const detection = detectLowFx();
+  const [mode, setMode] = useState<FxMode>(() => {
+    const o = getLowFxOverride();
+    if (o === 'on') return 'on';
+    if (o === 'off') return 'off';
+    return 'auto';
+  });
+
+  const apply = (next: FxMode) => {
+    setMode(next);
+    if (next === 'auto') setLowFxOverride(null);
+    else setLowFxOverride(next === 'on');
+    toast({
+      title:
+        next === 'auto' ? 'Auto detection' :
+        next === 'on'   ? 'Low-FX forced on' :
+                          'Low-FX forced off',
+      description:
+        next === 'auto' ? 'The app will detect your hardware automatically.' :
+        next === 'on'   ? 'Expensive visual effects are disabled.' :
+                          'All visual effects are enabled, regardless of hardware.',
+    });
+  };
+
+  const options: Array<{ value: FxMode; label: string; hint: string }> = [
+    { value: 'auto', label: 'Automatic', hint: 'Detect software rendering and low-end devices' },
+    { value: 'on',   label: 'Always on', hint: 'Force reduced effects for smoothest performance' },
+    { value: 'off',  label: 'Always off', hint: 'Force full effects regardless of hardware' },
+  ];
+
+  return (
+    <div className="max-w-xl space-y-4">
+      {/* Current status card */}
+      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Current status</p>
+            <p className="text-sm font-medium text-white mt-1">
+              {effectiveLowFx ? 'Low-FX mode active' : 'Full visual effects active'}
+            </p>
+          </div>
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium ${
+              effectiveLowFx
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+            }`}
+          >
+            <Zap className="w-3 h-3" /> {effectiveLowFx ? 'Degraded' : 'Full'}
+          </span>
+        </div>
+        {detection.reasons.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-white/5">
+            <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1.5">
+              Auto-detected signals
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {detection.reasons.map((r) => (
+                <code
+                  key={r}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-black/30 border border-white/5 text-gray-400 font-mono"
+                >
+                  {r}
+                </code>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Mode selector */}
+      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 space-y-3">
+        <div>
+          <h3 className="font-semibold text-white">Visual effects mode</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Low-FX disables blurs, background shaders, and animated glows — the effects that hurt performance when GPU acceleration is unavailable.
+          </p>
+        </div>
+
+        <div role="radiogroup" aria-label="Visual effects mode" className="space-y-1.5">
+          {options.map((opt) => {
+            const active = mode === opt.value;
+            return (
+              <button
+                key={opt.value}
+                role="radio"
+                aria-checked={active}
+                onClick={() => apply(opt.value)}
+                className={`w-full flex items-start gap-3 p-3 rounded-lg border text-left transition-colors ${
+                  active
+                    ? 'bg-rose-500/10 border-rose-500/30'
+                    : 'bg-transparent border-white/5 hover:bg-white/[0.03] hover:border-white/10'
+                }`}
+              >
+                <span
+                  className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                    active ? 'border-rose-400' : 'border-white/20'
+                  }`}
+                >
+                  {active && <span className="w-2 h-2 rounded-full bg-rose-400" />}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className={`block text-sm font-medium ${active ? 'text-white' : 'text-gray-300'}`}>
+                    {opt.label}
+                  </span>
+                  <span className="block text-[11px] text-gray-500 mt-0.5">{opt.hint}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -622,3 +622,74 @@ img {
 img {
   image-rendering: auto;
 }
+
+/* ─── Low-FX mode ─────────────────────────────────────────────────────────────
+ * Activated by `html[data-low-fx="true"]` (set in src/main.tsx before React
+ * mounts, either via auto-detection or the user override).
+ *
+ * Goal: remove the CPU-crushing effects (backdrop-filter, large Gaussian blurs,
+ * mix-blend-mode) without touching intentional blend modes on <img>/<video>
+ * elements (which are usually layer-cached or cheap). Rules are scoped to the
+ * Tailwind utility classes that actually cause the pain. */
+html[data-low-fx="true"] {
+  /* Kill backdrop-filter across the tree — always the biggest offender. */
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Neutralise Tailwind blur utilities on the element itself. */
+  .blur-3xl,
+  .blur-2xl,
+  .blur-xl,
+  .blur-lg,
+  .blur-md,
+  .blur-sm,
+  .blur-xs,
+  .blur,
+  [class*="blur-["] {
+    filter: none !important;
+  }
+
+  /* Backdrop-blur utility variants (Tailwind generates `.backdrop-blur-*`). */
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Remove mix-blend-mode from the Tailwind utilities only
+   * (`.mix-blend-screen`, `.mix-blend-overlay`, etc.) — this is precise and
+   * avoids breaking intentional blend modes declared inline. */
+  [class*="mix-blend-"] {
+    mix-blend-mode: normal !important;
+  }
+
+  /* Glass helpers defined in this file. */
+  .glass,
+  .glass-dark,
+  .glass-esports,
+  .glass-premium,
+  .card-esports {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Disable the long-running decorative keyframe animations. */
+  .animate-blob,
+  .animate-premium-drift,
+  .animate-shimmer {
+    animation: none !important;
+  }
+
+  /* Respect the user's implicit reduced-motion preference by shortening all
+   * transitions. (We don't disable them entirely so state changes still feel
+   * responsive.) */
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.1s !important;
+    animation-duration: 0.1s !important;
+  }
+}

@@ -19,29 +19,33 @@ export const seasonVisibilitySchema = z.object({
   allowManualOverrides: z.boolean(),
 });
 
-export const seasonScheduleSchema = z.object({
+export const seasonScheduleFieldsSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  rootNodeName: z.string().max(120, 'Root node name cannot exceed 120 characters').optional(),
-}).refine((data) => validDateOrder(data.startDate, data.endDate), {
+});
+
+export const seasonScheduleSchema = seasonScheduleFieldsSchema.refine(
+  (data) => validDateOrder(data.startDate, data.endDate),
+  {
+    message: 'End date must be on or after the start date',
+    path: ['endDate'],
+  },
+);
+
+export const seasonFormBaseSchema = seasonBasicsSchema
+  .merge(seasonVisibilitySchema)
+  .merge(seasonScheduleFieldsSchema);
+
+export const fullSeasonSchema = seasonFormBaseSchema.refine((data) => validDateOrder(data.startDate, data.endDate), {
   message: 'End date must be on or after the start date',
   path: ['endDate'],
 });
 
-export const fullSeasonSchema = seasonBasicsSchema
-  .merge(seasonVisibilitySchema)
-  .merge(seasonScheduleSchema)
-  .refine((data) => validDateOrder(data.startDate, data.endDate), {
-    message: 'End date must be on or after the start date',
-    path: ['endDate'],
-  });
-
 export const validateSeasonStep = (step: number, data: unknown): { valid: boolean; errors: Record<string, string> } => {
   const schemaMap: Record<number, z.ZodSchema> = {
-    1: seasonBasicsSchema,
-    2: seasonVisibilitySchema,
-    3: seasonScheduleSchema,
-    4: fullSeasonSchema,
+    1: seasonFormBaseSchema,
+    2: z.object({}),
+    3: fullSeasonSchema,
   };
 
   const schema = schemaMap[step];

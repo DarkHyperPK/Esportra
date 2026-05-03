@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
+import { useLowFx } from '@/hooks/useLowFx';
 
 // Preset configurations from Framer source
 const templates = {
@@ -199,6 +200,8 @@ export const AnimatedLiquidBackground: React.FC<AnimatedLiquidBackgroundProps> =
     preset = 'Prism',
     style
 }) => {
+    const isLowFx = useLowFx();
+
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationRef = useRef<number>(0);
     const glRef = useRef<WebGLRenderingContext | null>(null);
@@ -211,6 +214,8 @@ export const AnimatedLiquidBackground: React.FC<AnimatedLiquidBackgroundProps> =
     const values = templates[preset] || templates.Prism;
 
     useEffect(() => {
+        // Low-FX: skip the entire WebGL pipeline — shaders are CPU-bound disasters.
+        if (isLowFx) return;
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -316,7 +321,23 @@ export const AnimatedLiquidBackground: React.FC<AnimatedLiquidBackgroundProps> =
                 gl.deleteShader(fragmentShader);
             }
         };
-    }, [preset, values, isInView]);
+    }, [preset, values, isInView, isLowFx]);
+
+    // Low-FX fallback: render a cheap static gradient that matches the preset's
+    // dominant colors instead of the expensive WebGL shader.
+    if (isLowFx) {
+        return (
+            <div
+                ref={ref}
+                className="absolute inset-0 w-full h-full overflow-hidden"
+                style={{
+                    ...style,
+                    backgroundImage: `linear-gradient(135deg, ${values.color1}, ${values.color2} 60%, ${values.color3})`,
+                }}
+                aria-hidden="true"
+            />
+        );
+    }
 
     return (
         <div ref={ref} className="absolute inset-0 w-full h-full overflow-hidden" style={style}>

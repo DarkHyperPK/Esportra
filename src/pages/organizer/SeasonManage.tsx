@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import Footer from '@/components/Footer';
+import SeasonStructureBuilder from '@/components/season/builder/SeasonStructureBuilder';
+import ImageUploader from '@/components/tournament/wizard/ImageUploader';
+import {
+  buildSeasonTreeFromDrafts,
+  hydrateSeasonBuilderNodes,
+  toSeasonNodeDraftPayload,
+  validateSeasonBuilderNodes,
+} from '@/components/season/builder/seasonBuilderUtils';
 import SeasonQualificationsPanel from '@/components/season/SeasonQualificationsPanel';
 import SeasonStandingsTable from '@/components/season/SeasonStandingsTable';
 import SeasonTreePreview from '@/components/season/SeasonTreePreview';
@@ -12,7 +20,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  useOrganizerTournamentOptions,
   useRecalculateSeason,
   useSeason,
   useSeasonQualifications,
@@ -22,10 +29,12 @@ import {
   useSyncSeasonStaff,
   useUpdateSeasonQualification,
 } from '@/hooks/useSeason';
-import { useUpdateSeason } from '@/hooks/useSeasons';
+import { usePublishSeason, useUpdateSeason, useArchiveSeason, useCancelSeason, useDuplicateSeason, useSeasonTournaments, useSeasonAdvancement, useSeasonAuditLog } from '@/hooks/useSeasons';
 import { useToast } from '@/hooks/use-toast';
+import { seasonBasicsSchema } from '@/schemas/seasonSchema';
 import type {
   SeasonNodeDraft,
+  SeasonBuilderNode,
   SeasonNodeStatus,
   SeasonNodeType,
   SeasonParticipantMode,
@@ -36,7 +45,7 @@ import type {
   SeasonTreeNode,
   UpdateSeasonPayload,
 } from '@/types/season';
-import { ExternalLink, Plus, RefreshCw, Trash2, Users } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch } from 'lucide-react';
 import esportsGames from '@/data/esportsGames.json';
 
 const TABS = [
@@ -46,6 +55,12 @@ const TABS = [
   ['rules', 'Points rules'],
   ['standings', 'Standings'],
   ['qualifications', 'Qualifications'],
+  ['flow', 'Flow'],
+  ['tournaments', 'Tournaments'],
+  ['advancement', 'Advancement'],
+  ['announcements', 'Announcements'],
+  ['settings', 'Settings'],
+  ['audit', 'Audit Log'],
 ] as const;
 
 const SEASON_STATUSES: SeasonStatus[] = ['draft', 'published', 'active', 'completed', 'archived'];
@@ -66,6 +81,8 @@ type OverviewState = {
   allowManualOverrides: boolean;
   startDate: string;
   endDate: string;
+  bannerUrl: string | null;
+  logoUrl: string | null;
 };
 
 const emptyOverview: OverviewState = {
@@ -79,6 +96,8 @@ const emptyOverview: OverviewState = {
   allowManualOverrides: true,
   startDate: '',
   endDate: '',
+  bannerUrl: null,
+  logoUrl: null,
 };
 
 const toNullable = (value: string) => {
@@ -87,71 +106,6 @@ const toNullable = (value: string) => {
 };
 
 const formatDateInput = (value?: string | null) => (value ? value.slice(0, 10) : '');
-
-const buildTreeFromDrafts = (seasonId: string, nodes: SeasonNodeDraft[]): SeasonTreeNode[] => {
-  const mappedNodes = nodes.map((node, index) => ({
-    id: node.id ?? `draft-${index}`,
-    seasonId,
-    parentNodeId: node.parentNodeId,
-    name: node.name || `Node ${index + 1}`,
-    slug: node.slug ?? null,
-    nodeType: node.nodeType,
-    displayOrder: node.displayOrder,
-    region: node.region ?? null,
-    city: node.city ?? null,
-    country: node.country ?? null,
-    linkedTournamentId: node.linkedTournamentId ?? null,
-    linkedStageId: node.linkedStageId ?? null,
-    status: node.status,
-    registrationDeadline: node.registrationDeadline ?? null,
-    startsAt: node.startsAt ?? null,
-    endsAt: node.endsAt ?? null,
-    metadata: node.metadata ?? null,
-    createdAt: '',
-    updatedAt: '',
-    linkedTournamentName: null,
-    linkedStageName: null,
-    children: [] as SeasonTreeNode[],
-  }));
-
-  const nodeMap = new Map(mappedNodes.map((node) => [node.id, node]));
-  const roots: SeasonTreeNode[] = [];
-
-  mappedNodes.forEach((node) => {
-    if (node.parentNodeId && nodeMap.has(node.parentNodeId)) {
-      nodeMap.get(node.parentNodeId)?.children.push(node);
-      return;
-    }
-
-    roots.push(node);
-  });
-
-  const sortRecursively = (items: SeasonTreeNode[]) => {
-    items.sort((left, right) => left.displayOrder - right.displayOrder || left.name.localeCompare(right.name));
-    items.forEach((item) => sortRecursively(item.children));
-  };
-
-  sortRecursively(roots);
-  return roots;
-};
-
-const createEmptyNode = (parentNodeId: string | null, displayOrder: number): SeasonNodeDraft => ({
-  parentNodeId,
-  name: '',
-  nodeType: 'qualifier',
-  displayOrder,
-  status: 'draft',
-  slug: '',
-  region: '',
-  city: '',
-  country: '',
-  linkedTournamentId: null,
-  linkedStageId: '',
-  registrationDeadline: '',
-  startsAt: '',
-  endsAt: '',
-  metadata: null,
-});
 
 const createEmptyRule = (sourceNodeId: string): SeasonRuleDraft => ({
   sourceNodeId,
@@ -173,18 +127,23 @@ const SeasonManage = () => {
   const { data, isLoading, error, refetch } = useSeason(seasonId);
   const standingsQuery = useSeasonStandings(seasonId);
   const qualificationsQuery = useSeasonQualifications(seasonId);
-  const tournamentOptionsQuery = useOrganizerTournamentOptions();
-
   const updateSeason = useUpdateSeason(seasonId ?? '');
   const syncStaff = useSyncSeasonStaff(seasonId ?? '');
   const syncNodes = useSyncSeasonNodes(seasonId ?? '');
   const syncRules = useSyncSeasonRules(seasonId ?? '');
   const recalculateSeason = useRecalculateSeason(seasonId ?? '');
   const updateQualification = useUpdateSeasonQualification(seasonId ?? '');
+  const publishSeason = usePublishSeason();
+  const archiveSeason = useArchiveSeason();
+  const cancelSeason = useCancelSeason();
+  const duplicateSeason = useDuplicateSeason();
+  const tournamentsQuery = useSeasonTournaments(seasonId ?? '');
+  const advancementQuery = useSeasonAdvancement(seasonId ?? '');
+  const auditLogQuery = useSeasonAuditLog(seasonId ?? '');
 
   const [overview, setOverview] = useState<OverviewState>(emptyOverview);
   const [staffRows, setStaffRows] = useState<SeasonStaffMember[]>([]);
-  const [nodeRows, setNodeRows] = useState<SeasonNodeDraft[]>([]);
+  const [nodeRows, setNodeRows] = useState<SeasonBuilderNode[]>([]);
   const [ruleRows, setRuleRows] = useState<SeasonRuleDraft[]>([]);
   const [qualificationBusyId, setQualificationBusyId] = useState<string | null>(null);
 
@@ -204,6 +163,8 @@ const SeasonManage = () => {
       allowManualOverrides: data.season.allowManualOverrides,
       startDate: formatDateInput(data.season.startDate),
       endDate: formatDateInput(data.season.endDate),
+      bannerUrl: data.season.bannerUrl ?? null,
+      logoUrl: data.season.logoUrl ?? null,
     });
 
     setStaffRows(
@@ -213,29 +174,7 @@ const SeasonManage = () => {
       })),
     );
 
-    setNodeRows(
-      data.nodes
-        .slice()
-        .sort((left, right) => left.displayOrder - right.displayOrder)
-        .map((node) => ({
-          id: node.id,
-          parentNodeId: node.parentNodeId,
-          name: node.name,
-          nodeType: node.nodeType,
-          displayOrder: node.displayOrder,
-          status: node.status,
-          slug: node.slug ?? '',
-          region: node.region ?? '',
-          city: node.city ?? '',
-          country: node.country ?? '',
-          linkedTournamentId: node.linkedTournamentId ?? null,
-          linkedStageId: node.linkedStageId ?? '',
-          registrationDeadline: formatDateInput(node.registrationDeadline),
-          startsAt: formatDateInput(node.startsAt),
-          endsAt: formatDateInput(node.endsAt),
-          metadata: null,
-        })),
-    );
+    setNodeRows(hydrateSeasonBuilderNodes(data.nodes));
 
     setRuleRows(
       data.rules.map((rule) => ({
@@ -254,14 +193,14 @@ const SeasonManage = () => {
   }, [data]);
 
   const seasonTreePreview = useMemo(
-    () => (seasonId ? buildTreeFromDrafts(seasonId, nodeRows) : []),
+    () => (seasonId ? buildSeasonTreeFromDrafts(seasonId, nodeRows) : []),
     [nodeRows, seasonId],
   );
 
   const nodeOptions = useMemo(
     () =>
       nodeRows.map((node, index) => ({
-        id: node.id ?? `draft-${index}`,
+        id: node.id || `draft-${index}`,
         name: node.name || `Node ${index + 1}`,
         nodeType: node.nodeType,
       })),
@@ -277,6 +216,26 @@ const SeasonManage = () => {
   const handleOverviewSave = async () => {
     if (!seasonId) return;
 
+    const validation = seasonBasicsSchema.safeParse(overview);
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast({
+        title: 'Validation failed',
+        description: firstError?.message ?? 'Please check the overview fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (overview.startDate && overview.endDate && new Date(overview.endDate) < new Date(overview.startDate)) {
+      toast({
+        title: 'Validation failed',
+        description: 'End date must be on or after the start date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const payload: UpdateSeasonPayload = {
       name: overview.name.trim(),
       game: overview.game,
@@ -288,6 +247,8 @@ const SeasonManage = () => {
       allowManualOverrides: overview.allowManualOverrides,
       startDate: toNullable(overview.startDate),
       endDate: toNullable(overview.endDate),
+      bannerUrl: overview.bannerUrl,
+      logoUrl: overview.logoUrl,
     };
 
     try {
@@ -324,7 +285,17 @@ const SeasonManage = () => {
   const handleNodesSave = async () => {
     if (!seasonId) return;
 
-    const payload = nodeRows.map((node) => ({
+    const nodeValidation = validateSeasonBuilderNodes(nodeRows);
+    if (!nodeValidation.valid) {
+      toast({
+        title: 'Validation failed',
+        description: nodeValidation.message ?? 'Please name all structure nodes before saving.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const payload = toSeasonNodeDraftPayload(nodeRows).map((node) => ({
       ...node,
       slug: toNullable(node.slug ?? ''),
       region: toNullable(node.region ?? ''),
@@ -351,6 +322,16 @@ const SeasonManage = () => {
 
   const handleRulesSave = async () => {
     if (!seasonId) return;
+
+    const invalidRule = ruleRows.find((rule) => rule.sourceNodeId && rule.placementFrom > rule.placementTo);
+    if (invalidRule) {
+      toast({
+        title: 'Validation failed',
+        description: `Placement range is invalid: "from" (${invalidRule.placementFrom}) cannot be greater than "to" (${invalidRule.placementTo}).`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const payload = ruleRows
       .filter((rule) => rule.sourceNodeId)
@@ -413,6 +394,85 @@ const SeasonManage = () => {
     }
   };
 
+  const handlePublish = async () => {
+    if (!seasonId) return;
+
+    try {
+      const result = await publishSeason.mutateAsync({
+        seasonId,
+        req: { allowIncomplete: false, activate: false },
+      });
+      toast({
+        title: 'Season published',
+        description: `${result.tournamentsCreated} tournaments created, ${result.tournamentsLinked} linked.`,
+      });
+      refetch();
+    } catch (publishError) {
+      toast({
+        title: 'Publish failed',
+        description: publishError instanceof Error ? publishError.message : 'Could not publish this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!seasonId) return;
+
+    try {
+      await archiveSeason.mutateAsync(seasonId);
+      toast({ title: 'Season archived', description: 'The season has been archived.' });
+      refetch();
+    } catch (archiveError) {
+      toast({
+        title: 'Archive failed',
+        description: archiveError instanceof Error ? archiveError.message : 'Could not archive this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!seasonId) return;
+
+    const reason = prompt('Please provide a reason for cancelling this season:');
+    if (!reason) return;
+
+    try {
+      await cancelSeason.mutateAsync({ seasonId, reason });
+      toast({ title: 'Season cancelled', description: 'The season has been cancelled.' });
+      refetch();
+    } catch (cancelError) {
+      toast({
+        title: 'Cancel failed',
+        description: cancelError instanceof Error ? cancelError.message : 'Could not cancel this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!seasonId || !data) return;
+
+    const newName = prompt('Enter a name for the duplicated season:', `${data.season.name} (Copy)`);
+    if (!newName) return;
+
+    const newSlug = prompt('Enter a slug for the duplicated season:', `${data.season.slug}-copy`);
+    if (!newSlug) return;
+
+    try {
+      const result = await duplicateSeason.mutateAsync({ seasonId, newName, newSlug });
+      toast({ title: 'Season duplicated', description: `New season created: ${result.seasonId}` });
+      window.location.href = `/organizer/seasons/${result.seasonId}`;
+    } catch (duplicateError) {
+      toast({
+        title: 'Duplicate failed',
+        description: duplicateError instanceof Error ? duplicateError.message : 'Could not duplicate this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (!seasonId) {
     return <div className="min-h-screen bg-[#050505]" />;
   }
@@ -449,7 +509,7 @@ const SeasonManage = () => {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="w-full px-4 py-10 sm:px-6 lg:px-10 xl:px-14">
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -470,6 +530,28 @@ const SeasonManage = () => {
                 Public view
                 <ExternalLink className="ml-2 h-4 w-4" />
               </Link>
+            </Button>
+            {data.season.status === 'draft' && (
+              <Button className="bg-emerald-500 text-white hover:bg-emerald-600" onClick={handlePublish} disabled={publishSeason.isPending}>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Publish
+              </Button>
+            )}
+            {data.season.status === 'completed' && (
+              <Button variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10" onClick={handleArchive} disabled={archiveSeason.isPending}>
+                <Archive className="mr-2 h-4 w-4" />
+                Archive
+              </Button>
+            )}
+            {(data.season.status === 'draft' || data.season.status === 'published' || data.season.status === 'active') && (
+              <Button variant="outline" className="border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500/10" onClick={handleCancel} disabled={cancelSeason.isPending}>
+                <XCircle className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+            )}
+            <Button variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10" onClick={handleDuplicate} disabled={duplicateSeason.isPending}>
+              <Copy className="mr-2 h-4 w-4" />
+              Duplicate
             </Button>
             <Button className="bg-rose-500 text-white hover:bg-rose-600" onClick={handleRecalculate} disabled={recalculateSeason.isPending}>
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -620,6 +702,32 @@ const SeasonManage = () => {
                 </div>
               </div>
 
+              {/* Media section */}
+              <div className="mt-6 border-t border-white/10 pt-6">
+                <h3 className="text-lg font-semibold text-white">Season branding</h3>
+                <p className="mt-1 text-sm text-zinc-400">Upload a banner and logo for your season's public page and social cards.</p>
+                <div className="mt-5 grid gap-6 md:grid-cols-[1fr_140px]">
+                  <ImageUploader
+                    value={overview.bannerUrl}
+                    onChange={(url) => setOverview((current) => ({ ...current, bannerUrl: url }))}
+                    bucket="season-images"
+                    folder="banners"
+                    aspectRatio="banner"
+                    label="Season banner"
+                    helperText="Recommended: 1920×1080 (16:9). Displayed at the top of the season page."
+                  />
+                  <ImageUploader
+                    value={overview.logoUrl}
+                    onChange={(url) => setOverview((current) => ({ ...current, logoUrl: url }))}
+                    bucket="season-images"
+                    folder="logos"
+                    aspectRatio="logo"
+                    label="Logo"
+                    helperText="1:1 ratio. Used in listings."
+                  />
+                </div>
+              </div>
+
               <Button className="mt-6 bg-rose-500 text-white hover:bg-rose-600" onClick={handleOverviewSave} disabled={updateSeason.isPending}>
                 Save overview
               </Button>
@@ -740,298 +848,21 @@ const SeasonManage = () => {
 
         {activeTab === 'structure' && (
           <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-2xl font-semibold">Season structure</h2>
-                  <p className="mt-2 text-sm text-zinc-400">Model the qualifier tree, choose parent nodes, and link each branch to a tournament.</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-white/15 bg-white/5 text-white hover:bg-white/10"
-                  onClick={() =>
-                    setNodeRows((current) => [...current, createEmptyNode(current[0]?.id ?? null, current.length)])
-                  }
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add node
-                </Button>
-              </div>
-
-              <div className="mt-6 space-y-5">
-                {nodeRows.map((node, index) => {
-                  const rowId = node.id ?? `draft-${index}`;
-                  const availableParents = nodeOptions.filter((option) => option.id !== rowId);
-                  const isRoot = index === 0 || node.nodeType === 'root';
-
-                  return (
-                    <div key={rowId} className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Node {index + 1}</p>
-                          <p className="text-lg font-semibold text-white">{node.name || 'Untitled node'}</p>
-                        </div>
-                        {!isRoot && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20"
-                            onClick={() => setNodeRows((current) => current.filter((_, currentIndex) => currentIndex !== index))}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Remove
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Name</Label>
-                          <Input
-                            value={node.name}
-                            onChange={(event) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], name: event.target.value };
-                              setNodeRows(next);
-                            }}
-                            className="border-white/10 bg-black/20 text-white"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Slug</Label>
-                          <Input
-                            value={node.slug ?? ''}
-                            onChange={(event) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], slug: event.target.value };
-                              setNodeRows(next);
-                            }}
-                            className="border-white/10 bg-black/20 text-white"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Node type</Label>
-                          <Select
-                            value={node.nodeType}
-                            onValueChange={(value: SeasonNodeType) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], nodeType: value };
-                              setNodeRows(next);
-                            }}
-                            disabled={isRoot}
-                          >
-                            <SelectTrigger className="border-white/10 bg-black/20 text-white">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {NODE_TYPES.map((type) => (
-                                <SelectItem key={type} value={type}>{type}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Status</Label>
-                          <Select
-                            value={node.status}
-                            onValueChange={(value: SeasonNodeStatus) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], status: value };
-                              setNodeRows(next);
-                            }}
-                          >
-                            <SelectTrigger className="border-white/10 bg-black/20 text-white">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {NODE_STATUSES.map((status) => (
-                                <SelectItem key={status} value={status}>{status}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Parent node</Label>
-                          <Select
-                            value={node.parentNodeId ?? '__root__'}
-                            onValueChange={(value) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], parentNodeId: value === '__root__' ? null : value };
-                              setNodeRows(next);
-                            }}
-                            disabled={isRoot}
-                          >
-                            <SelectTrigger className="border-white/10 bg-black/20 text-white">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__root__">No parent</SelectItem>
-                              {availableParents.map((option) => (
-                                <SelectItem key={option.id} value={option.id}>
-                                  {option.name} · {option.nodeType}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Display order</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={node.displayOrder}
-                            onChange={(event) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], displayOrder: Number(event.target.value) };
-                              setNodeRows(next);
-                            }}
-                            className="border-white/10 bg-black/20 text-white"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Linked tournament</Label>
-                          <Select
-                            value={node.linkedTournamentId ?? '__none__'}
-                            onValueChange={(value) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], linkedTournamentId: value === '__none__' ? null : value };
-                              setNodeRows(next);
-                            }}
-                          >
-                            <SelectTrigger className="border-white/10 bg-black/20 text-white">
-                              <SelectValue placeholder="Optional linked tournament" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none__">No linked tournament</SelectItem>
-                              {(tournamentOptionsQuery.data ?? []).map((option) => (
-                                <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Linked stage ID</Label>
-                          <Input
-                            value={node.linkedStageId ?? ''}
-                            onChange={(event) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], linkedStageId: event.target.value };
-                              setNodeRows(next);
-                            }}
-                            placeholder="Optional stage UUID"
-                            className="border-white/10 bg-black/20 text-white"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Region</Label>
-                          <Input
-                            value={node.region ?? ''}
-                            onChange={(event) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], region: event.target.value };
-                              setNodeRows(next);
-                            }}
-                            className="border-white/10 bg-black/20 text-white"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>City</Label>
-                          <Input
-                            value={node.city ?? ''}
-                            onChange={(event) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], city: event.target.value };
-                              setNodeRows(next);
-                            }}
-                            className="border-white/10 bg-black/20 text-white"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Country</Label>
-                          <Input
-                            value={node.country ?? ''}
-                            onChange={(event) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], country: event.target.value };
-                              setNodeRows(next);
-                            }}
-                            className="border-white/10 bg-black/20 text-white"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Registration deadline</Label>
-                          <Input
-                            type="date"
-                            value={node.registrationDeadline ?? ''}
-                            onChange={(event) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], registrationDeadline: event.target.value };
-                              setNodeRows(next);
-                            }}
-                            className="border-white/10 bg-black/20 text-white"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Starts at</Label>
-                          <Input
-                            type="date"
-                            value={node.startsAt ?? ''}
-                            onChange={(event) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], startsAt: event.target.value };
-                              setNodeRows(next);
-                            }}
-                            className="border-white/10 bg-black/20 text-white"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Ends at</Label>
-                          <Input
-                            type="date"
-                            value={node.endsAt ?? ''}
-                            onChange={(event) => {
-                              const next = [...nodeRows];
-                              next[index] = { ...next[index], endsAt: event.target.value };
-                              setNodeRows(next);
-                            }}
-                            className="border-white/10 bg-black/20 text-white"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <Button className="mt-6 bg-rose-500 text-white hover:bg-rose-600" onClick={handleNodesSave} disabled={syncNodes.isPending}>
-                Save structure
-              </Button>
-            </div>
+            <SeasonStructureBuilder
+              title="Season structure"
+              description="Configure each tournament inline — format, team size, prize pool — and wire advancement between them. Select a card to edit it in the Inspector."
+              nodes={nodeRows}
+              onChange={setNodeRows}
+              onSave={handleNodesSave}
+              isSaving={syncNodes.isPending}
+              surface="manage"
+            />
 
             <div className="space-y-6">
               <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
                 <h2 className="text-xl font-semibold">Live preview</h2>
                 <SeasonTreePreview tree={seasonTreePreview} className="mt-5" />
               </div>
-
-              {tournamentOptionsQuery.error && (
-                <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 p-5 text-sm text-amber-100">
-                  Tournament options are unavailable right now. You can still save node metadata and wire tournament IDs later.
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -1284,6 +1115,111 @@ const SeasonManage = () => {
               pendingRecordId={qualificationBusyId}
               onManage={handleQualificationManage}
             />
+          </div>
+        )}
+
+        {activeTab === 'flow' && (
+          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold">Season Flow</h2>
+              <p className="mt-2 text-sm text-zinc-400">Visualize the tournament advancement flow and connections.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-8 text-center text-zinc-400">
+              <GitBranch className="mx-auto mb-4 h-12 w-12" />
+              <p>Flow builder coming soon.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'tournaments' && (
+          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold">Season Tournaments</h2>
+              <p className="mt-2 text-sm text-zinc-400">Manage tournaments linked to this season.</p>
+            </div>
+            {tournamentsQuery.isLoading ? (
+              <div className="text-center text-zinc-400">Loading tournaments...</div>
+            ) : tournamentsQuery.data && tournamentsQuery.data.length > 0 ? (
+              <div className="space-y-3">
+                {tournamentsQuery.data.map((st) => (
+                  <div key={st.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 p-4">
+                    <div>
+                      <p className="font-semibold text-white">{st.displayName || st.tournamentName}</p>
+                      <p className="text-sm text-zinc-400">Role: {st.role} · Status: {st.status}</p>
+                    </div>
+                    <Badge className="bg-white/10">{st.tournamentStatus}</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-zinc-400">No tournaments linked to this season yet.</div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'advancement' && (
+          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold">Advancement Rules</h2>
+              <p className="mt-2 text-sm text-zinc-400">Configure how teams advance between tournaments.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-8 text-center text-zinc-400">
+              <TrendingUp className="mx-auto mb-4 h-12 w-12" />
+              <p>Advancement configuration coming soon.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'announcements' && (
+          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold">Announcements</h2>
+              <p className="mt-2 text-sm text-zinc-400">Send announcements to season participants.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-8 text-center text-zinc-400">
+              <FileText className="mx-auto mb-4 h-12 w-12" />
+              <p>Announcements coming soon.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold">Season Settings</h2>
+              <p className="mt-2 text-sm text-zinc-400">Configure season-wide settings and preferences.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-8 text-center text-zinc-400">
+              <Settings className="mx-auto mb-4 h-12 w-12" />
+              <p>Settings panel coming soon.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'audit' && (
+          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold">Audit Log</h2>
+              <p className="mt-2 text-sm text-zinc-400">View all changes made to this season.</p>
+            </div>
+            {auditLogQuery.isLoading ? (
+              <div className="text-center text-zinc-400">Loading audit log...</div>
+            ) : auditLogQuery.data && auditLogQuery.data.length > 0 ? (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {auditLogQuery.data.map((log) => (
+                  <div key={log.id} className="rounded-xl border border-white/10 bg-black/20 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-white">{log.action}</p>
+                      <p className="text-xs text-zinc-400">{new Date(log.createdAt).toLocaleString()}</p>
+                    </div>
+                    <p className="mt-1 text-sm text-zinc-400">Actor: {log.actorUsername || log.actorId}</p>
+                    {log.reason && <p className="mt-1 text-sm text-zinc-500">Reason: {log.reason}</p>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-zinc-400">No audit log entries found.</div>
+            )}
           </div>
         )}
       </div>

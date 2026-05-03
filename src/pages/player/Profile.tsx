@@ -12,11 +12,13 @@ import PlayerAchievements from "@/components/player/PlayerAchievements";
 import { Link, useParams } from 'react-router-dom';
 import { apiClient } from "@/lib/apiClient";
 import { useQuery } from '@tanstack/react-query';
+import { useLowFx } from '@/hooks/useLowFx';
 
 const PlayerProfilePage = () => {
   const { profile: authProfile } = useAuth();
   const { username } = useParams();
   const [activeTab, setActiveTab] = useState("profile");
+  const isLowFx = useLowFx();
 
   const profileQuery = useQuery({
     queryKey: ['profile', 'by-username', username],
@@ -54,9 +56,15 @@ const PlayerProfilePage = () => {
       {/* Dynamic Background Noise & Grid */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]" />
-        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
-        <div className={`absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-rose-600/10 blur-[150px] rounded-full mix-blend-screen`} />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-600/10 blur-[150px] rounded-full mix-blend-screen" />
+        {!isLowFx && (
+          <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
+        )}
+        {!isLowFx && (
+          <>
+            <div className={`absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-rose-600/10 blur-[150px] rounded-full mix-blend-screen`} />
+            <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-600/10 blur-[150px] rounded-full mix-blend-screen" />
+          </>
+        )}
       </div>
 
       <div className="relative z-10 flex-grow container mx-auto px-4 py-12">

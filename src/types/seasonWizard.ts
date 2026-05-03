@@ -11,7 +11,6 @@ export interface SeasonWizardData {
   allowManualOverrides: boolean;
   startDate: string;
   endDate: string;
-  rootNodeName: string;
 }
 
 export interface SeasonWizardStep {
@@ -21,10 +20,9 @@ export interface SeasonWizardStep {
 }
 
 export const SEASON_WIZARD_STEPS: SeasonWizardStep[] = [
-  { id: 1, title: 'Basics', description: 'Name, game, mode, and slug' },
-  { id: 2, title: 'Visibility', description: 'Status, privacy, and overrides' },
-  { id: 3, title: 'Schedule', description: 'Dates and root label' },
-  { id: 4, title: 'Review', description: 'Confirm and create the season' },
+  { id: 1, title: 'Basics', description: 'Core season settings' },
+  { id: 2, title: 'Structure', description: 'Build the qualification flow' },
+  { id: 3, title: 'Review', description: 'Confirm and create' },
 ];
 
 export const DEFAULT_SEASON_WIZARD_DATA: SeasonWizardData = {
@@ -38,6 +36,5 @@ export const DEFAULT_SEASON_WIZARD_DATA: SeasonWizardData = {
   allowManualOverrides: true,
   startDate: '',
   endDate: '',
-  rootNodeName: '',
 };
 
