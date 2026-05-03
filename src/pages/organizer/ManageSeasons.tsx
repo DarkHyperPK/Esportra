@@ -3,10 +3,40 @@ import Footer from '@/components/Footer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useSeasons } from '@/hooks/useSeasons';
-import { ArrowRight, Plus, Workflow } from 'lucide-react';
+import { ArrowRight, Plus, Workflow, Trash2 } from 'lucide-react';
+import { apiClient } from '@/lib/apiClient';
+import { useToast } from '@/hooks/use-toast';
 
 const ManageSeasons = () => {
   const { data: seasons, isLoading, error, refetch } = useSeasons({ mine: true });
+  const { toast } = useToast();
+
+  const handleDelete = async (seasonId: string, seasonName: string, status: string) => {
+    if (status !== 'draft') {
+      toast({
+        title: 'Cannot delete',
+        description: 'Only draft seasons can be deleted.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete "${seasonName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`/api/seasons/${seasonId}`);
+      toast({ title: 'Season deleted', description: 'The season has been deleted.' });
+      refetch();
+    } catch (deleteError) {
+      toast({
+        title: 'Deletion failed',
+        description: deleteError instanceof Error ? deleteError.message : 'Could not delete this season.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
@@ -104,6 +134,16 @@ const ManageSeasons = () => {
                   <Button asChild variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10">
                     <Link to={`/seasons/${season.id}`}>Public view</Link>
                   </Button>
+                  {season.status === 'draft' && (
+                    <Button
+                      variant="outline"
+                      className="border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500/10"
+                      onClick={() => handleDelete(season.id, season.name, season.status)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
