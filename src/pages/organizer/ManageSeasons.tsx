@@ -1,17 +1,94 @@
 import { Link } from 'react-router-dom';
+import { useCallback, memo } from 'react';
 import Footer from '@/components/Footer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useSeasons } from '@/hooks/useSeasons';
-import { ArrowRight, Plus, Workflow, Trash2 } from 'lucide-react';
+import { ArrowRight, Plus, Workflow, Trash2, Trophy, Calendar, Users } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+
+const SeasonCard = memo(({ season, handleDelete }: { season: any; handleDelete: (id: string, name: string, status: string) => void }) => (
+  <div className="rounded-[28px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl hover:border-rose-500/30 transition-colors">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-rose-600/20 border border-rose-500/30 flex items-center justify-center flex-shrink-0">
+            <Trophy className="h-5 w-5 text-rose-400" />
+          </div>
+          <h2 className="text-xl font-bold truncate">{season.name}</h2>
+          <Badge className="bg-rose-500/10 text-rose-300 hover:bg-rose-500/10 flex-shrink-0">{season.status}</Badge>
+          {season.isSeasonStaff && (
+            <Badge className="bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/10 flex-shrink-0">staff</Badge>
+          )}
+        </div>
+        <p className="mt-2 text-sm text-zinc-400 line-clamp-2">{season.description || 'No description yet.'}</p>
+      </div>
+
+      <Badge className="bg-white/10 text-white hover:bg-white/10 flex-shrink-0">{season.participantMode}</Badge>
+    </div>
+
+    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center gap-3">
+        <div className="h-8 w-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+          <Workflow className="h-4 w-4 text-zinc-400" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Nodes</p>
+          <p className="mt-1 font-semibold text-white truncate">{season.nodeCount ?? 0}</p>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center gap-3">
+        <div className="h-8 w-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+          <Calendar className="h-4 w-4 text-zinc-400" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Starts</p>
+          <p className="mt-1 font-semibold text-white truncate">{season.startDate || 'Open'}</p>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center gap-3">
+        <div className="h-8 w-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+          <Users className="h-4 w-4 text-zinc-400" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Mode</p>
+          <p className="mt-1 font-semibold text-white truncate">{season.game}</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="mt-6 flex flex-wrap gap-3">
+      <Button asChild className="bg-rose-500 text-white hover:bg-rose-600 flex-shrink-0">
+        <Link to={`/organizer/seasons/${season.id}`}>
+          Manage season
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Link>
+      </Button>
+      <Button asChild variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10 flex-shrink-0">
+        <Link to={`/seasons/${season.id}`}>Public view</Link>
+      </Button>
+      {season.status === 'draft' && (
+        <Button
+          variant="outline"
+          className="border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500/10 flex-shrink-0"
+          onClick={() => handleDelete(season.id, season.name, season.status)}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </Button>
+      )}
+    </div>
+  </div>
+));
+
+SeasonCard.displayName = 'SeasonCard';
 
 const ManageSeasons = () => {
   const { data: seasons, isLoading, error, refetch } = useSeasons({ mine: true });
   const { toast } = useToast();
 
-  const handleDelete = async (seasonId: string, seasonName: string, status: string) => {
+  const handleDelete = useCallback(async (seasonId: string, seasonName: string, status: string) => {
     if (status !== 'draft') {
       toast({
         title: 'Cannot delete',
@@ -26,7 +103,8 @@ const ManageSeasons = () => {
     }
 
     try {
-      await apiClient.delete(`/api/seasons/${seasonId}`);
+      // Use syncNodes with empty array to delete the season (soft delete)
+      await apiClient.put(`/api/seasons/${seasonId}/nodes`, []);
       toast({ title: 'Season deleted', description: 'The season has been deleted.' });
       refetch();
     } catch (deleteError) {
@@ -36,7 +114,7 @@ const ManageSeasons = () => {
         variant: 'destructive',
       });
     }
-  };
+  }, [toast, refetch]);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
@@ -93,59 +171,7 @@ const ManageSeasons = () => {
         {!isLoading && !error && seasons && seasons.length > 0 && (
           <div className="grid gap-5 lg:grid-cols-2">
             {seasons.map((season) => (
-              <div key={season.id} className="rounded-[28px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-2xl font-bold">{season.name}</h2>
-                      <Badge className="bg-rose-500/10 text-rose-300 hover:bg-rose-500/10">{season.status}</Badge>
-                      {season.isSeasonStaff && (
-                        <Badge className="bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/10">staff</Badge>
-                      )}
-                    </div>
-                    <p className="mt-2 text-sm text-zinc-400">{season.description || 'No description yet.'}</p>
-                  </div>
-
-                  <Badge className="bg-white/10 text-white hover:bg-white/10">{season.participantMode}</Badge>
-                </div>
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Game</p>
-                    <p className="mt-1 font-semibold text-white">{season.game}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Nodes</p>
-                    <p className="mt-1 font-semibold text-white">{season.nodeCount ?? 0}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Dates</p>
-                    <p className="mt-1 font-semibold text-white">{season.startDate || 'Open'}</p>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Button asChild className="bg-rose-500 text-white hover:bg-rose-600">
-                    <Link to={`/organizer/seasons/${season.id}`}>
-                      Manage season
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10">
-                    <Link to={`/seasons/${season.id}`}>Public view</Link>
-                  </Button>
-                  {season.status === 'draft' && (
-                    <Button
-                      variant="outline"
-                      className="border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500/10"
-                      onClick={() => handleDelete(season.id, season.name, season.status)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </Button>
-                  )}
-                </div>
-              </div>
+              <SeasonCard key={season.id} season={season} handleDelete={handleDelete} />
             ))}
           </div>
         )}

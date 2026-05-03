@@ -490,7 +490,7 @@ const SeasonManage = () => {
     }
 
     try {
-      // Use the deleteSeason hook if available, otherwise use syncNodes with empty array
+      // Use syncNodes with empty array to delete the season (soft delete)
       await syncNodes.mutateAsync([]);
       toast({ title: 'Season deleted', description: 'The season has been deleted.' });
       window.location.href = '/organizer/seasons';
