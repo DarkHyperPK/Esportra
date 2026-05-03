@@ -1,16 +1,29 @@
 import { Link } from 'react-router-dom';
-import { useCallback, memo } from 'react';
+import { useCallback, memo, useState } from 'react';
 import Footer from '@/components/Footer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useSeasons } from '@/hooks/useSeasons';
 import { ArrowRight, Plus, Workflow, Trash2, Trophy, Calendar, Users } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
-const SeasonCard = memo(({ season, handleDelete }: { season: any; handleDelete: (id: string, name: string, status: string) => void }) => (
+const SeasonCard = memo(({ season, handleDelete, isSelected, onToggleSelect }: { 
+  season: any; 
+  handleDelete: (id: string, name: string, status: string) => void;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+}) => (
   <div className="rounded-[28px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl hover:border-rose-500/30 transition-colors">
-    <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex items-start gap-4">
+      {season.status === 'draft' && (
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => onToggleSelect(season.id)}
+          className="mt-2 flex-shrink-0"
+        />
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-rose-600/20 border border-rose-500/30 flex items-center justify-center flex-shrink-0">
@@ -87,6 +100,7 @@ SeasonCard.displayName = 'SeasonCard';
 const ManageSeasons = () => {
   const { data: seasons, isLoading, error, refetch } = useSeasons({ mine: true });
   const { toast } = useToast();
+  const [selectedSeasons, setSelectedSeasons] = useState<Set<string>>(new Set());
 
   const handleDelete = useCallback(async (seasonId: string, seasonName: string, status: string) => {
     if (status !== 'draft') {
@@ -103,8 +117,7 @@ const ManageSeasons = () => {
     }
 
     try {
-      // Use syncNodes with empty array to delete the season (soft delete)
-      await apiClient.put(`/api/seasons/${seasonId}/nodes`, { nodes: [] });
+      await apiClient.delete(`/api/seasons/${seasonId}`);
       toast({ title: 'Season deleted', description: 'The season has been deleted.' });
       refetch();
     } catch (deleteError) {
@@ -115,6 +128,59 @@ const ManageSeasons = () => {
       });
     }
   }, [toast, refetch]);
+
+  const handleBulkDelete = useCallback(async () => {
+    const draftSeasons = seasons?.filter(s => s.status === 'draft' && selectedSeasons.has(s.id)) || [];
+    if (draftSeasons.length === 0) {
+      toast({
+        title: 'Cannot delete',
+        description: 'Only draft seasons can be deleted.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${draftSeasons.length} draft season(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await apiClient.post('/api/seasons/bulk-delete', { seasonIds: Array.from(selectedSeasons) });
+      toast({ title: 'Seasons deleted', description: `${draftSeasons.length} season(s) deleted.` });
+      setSelectedSeasons(new Set());
+      refetch();
+    } catch (deleteError) {
+      toast({
+        title: 'Deletion failed',
+        description: deleteError instanceof Error ? deleteError.message : 'Could not delete seasons.',
+        variant: 'destructive',
+      });
+    }
+  }, [selectedSeasons, seasons, toast, refetch]);
+
+  const toggleSeasonSelection = (seasonId: string) => {
+    setSelectedSeasons(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(seasonId)) {
+        newSet.delete(seasonId);
+      } else {
+        newSet.add(seasonId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const draftSeasons = seasons?.filter(s => s.status === 'draft') || [];
+    const draftIds = new Set(draftSeasons.map(s => s.id));
+    const allSelected = draftIds.size > 0 && Array.from(selectedSeasons).every(id => draftIds.has(id));
+    
+    if (allSelected) {
+      setSelectedSeasons(new Set());
+    } else {
+      setSelectedSeasons(draftIds);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
@@ -169,11 +235,41 @@ const ManageSeasons = () => {
         )}
 
         {!isLoading && !error && seasons && seasons.length > 0 && (
-          <div className="grid gap-5 lg:grid-cols-2">
-            {seasons.map((season) => (
-              <SeasonCard key={season.id} season={season} handleDelete={handleDelete} />
-            ))}
-          </div>
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={selectedSeasons.size > 0}
+                  onCheckedChange={toggleSelectAll}
+                  id="select-all-drafts"
+                />
+                <label htmlFor="select-all-drafts" className="text-sm text-zinc-400 cursor-pointer">
+                  Select all draft seasons
+                </label>
+              </div>
+              {selectedSeasons.size > 0 && (
+                <Button
+                  variant="outline"
+                  className="border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500/10"
+                  onClick={handleBulkDelete}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete {selectedSeasons.size} season(s)
+                </Button>
+              )}
+            </div>
+            <div className="grid gap-5 lg:grid-cols-2">
+              {seasons.map((season) => (
+                <SeasonCard 
+                  key={season.id} 
+                  season={season} 
+                  handleDelete={handleDelete}
+                  isSelected={selectedSeasons.has(season.id)}
+                  onToggleSelect={toggleSeasonSelection}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 

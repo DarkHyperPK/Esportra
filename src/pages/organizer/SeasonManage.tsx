@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { apiClient } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import SeasonStructureBuilder from '@/components/season/builder/SeasonStructureBuilder';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
@@ -490,8 +491,7 @@ const SeasonManage = () => {
     }
 
     try {
-      // Use syncNodes with empty array to delete the season (soft delete)
-      await syncNodes.mutateAsync([]);
+      await apiClient.delete(`/api/seasons/${seasonId}`);
       toast({ title: 'Season deleted', description: 'The season has been deleted.' });
       window.location.href = '/organizer/seasons';
     } catch (deleteError) {
