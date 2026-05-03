@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, ArrowRight, CheckCircle2, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -281,72 +280,57 @@ const SpotlightTour = ({
     : { top: viewport.h / 2 - CALLOUT_H / 2, left: viewport.w / 2 - CALLOUT_W / 2, placement: 'bottom' as const };
 
   const body = Array.isArray(current.body) ? current.body : [current.body];
-  const transition = prefersReducedMotion
-    ? { duration: 0 }
-    : { duration: 0.22, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
 
   // Build the four dim rectangles around the cut-out (pointer-events: none; user can still interact)
   const dimLayers = showSpotlight && rect ? (
     <>
       {/* Top */}
-      <motion.div
-        initial={false}
-        animate={{ top: 0, left: 0, width: viewport.w, height: Math.max(0, rect.top - PAD) }}
-        transition={transition}
+      <div
+        style={{ top: 0, left: 0, width: viewport.w, height: Math.max(0, rect.top - PAD) }}
         className="fixed bg-black/60 pointer-events-none"
       />
       {/* Bottom */}
-      <motion.div
-        initial={false}
-        animate={{
+      <div
+        style={{
           top: rect.top + rect.height + PAD,
           left: 0,
           width: viewport.w,
           height: Math.max(0, viewport.h - (rect.top + rect.height + PAD)),
         }}
-        transition={transition}
         className="fixed bg-black/60 pointer-events-none"
       />
       {/* Left */}
-      <motion.div
-        initial={false}
-        animate={{
+      <div
+        style={{
           top: Math.max(0, rect.top - PAD),
           left: 0,
           width: Math.max(0, rect.left - PAD),
           height: rect.height + PAD * 2,
         }}
-        transition={transition}
         className="fixed bg-black/60 pointer-events-none"
       />
       {/* Right */}
-      <motion.div
-        initial={false}
-        animate={{
+      <div
+        style={{
           top: Math.max(0, rect.top - PAD),
           left: rect.left + rect.width + PAD,
           width: Math.max(0, viewport.w - (rect.left + rect.width + PAD)),
           height: rect.height + PAD * 2,
         }}
-        transition={transition}
         className="fixed bg-black/60 pointer-events-none"
       />
 
       {/* Highlight ring */}
-      <motion.div
-        initial={false}
-        animate={{
+      <div
+        style={{
           top: rect.top - PAD,
           left: rect.left - PAD,
           width: rect.width + PAD * 2,
           height: rect.height + PAD * 2,
-        }}
-        transition={transition}
-        className="fixed rounded-2xl border pointer-events-none"
-        style={{
           borderColor: palette.ring,
           boxShadow: `0 0 0 6px ${palette.halo}`,
         }}
+        className="fixed rounded-2xl border pointer-events-none"
       />
     </>
   ) : (
@@ -357,25 +341,20 @@ const SpotlightTour = ({
   const Icon = current.icon;
 
   const callout = (
-    <motion.div
+    <div
       ref={calloutRef}
       key={`step-${stepIndex}`}
-      initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0, top: pos.top, left: pos.left }}
-      exit={prefersReducedMotion ? undefined : { opacity: 0, y: 8 }}
-      transition={transition}
       role="dialog"
       aria-modal="true"
       aria-labelledby={`spotlight-title-${current.id}`}
       className="fixed rounded-[24px] border border-white/[0.09] bg-[#0d0d0f] shadow-[0_24px_80px_rgba(0,0,0,0.7)] pointer-events-auto"
-      style={{ width: CALLOUT_W }}
+      style={{ width: CALLOUT_W, top: pos.top, left: pos.left }}
     >
       {/* Progress bar */}
       <div className="relative h-[3px] w-full overflow-hidden rounded-t-[24px] bg-white/[0.04]">
-        <motion.div
+        <div
           className={cn('h-full rounded-full', palette.progress)}
-          animate={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
-          transition={transition}
+          style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
         />
       </div>
 
@@ -486,7 +465,7 @@ const SpotlightTour = ({
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 
   // Skip close button so clicks on the dimmed area don't swallow UI clicks — pointer-events are none on dim
@@ -502,7 +481,7 @@ const SpotlightTour = ({
       >
         <X className="h-3.5 w-3.5" />
       </button>
-      <AnimatePresence mode="wait">{callout}</AnimatePresence>
+      {callout}
     </div>
   );
 

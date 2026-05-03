@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown, BookOpen, ChevronDown, Flag, Map, PlayCircle, Plus, Save, Trophy, Workflow, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -192,16 +191,8 @@ const SeasonStructureBuilder = ({
 
   return (
     <div className="space-y-5">
-      <AnimatePresence mode="wait">
-        {showTutorial ? (
-          <motion.div
-            key="tutorial"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.28 }}
-            className="rounded-[32px] border border-white/[0.06] bg-[#0a0a0c]/95 backdrop-blur-2xl"
-          >
+      {showTutorial ? (
+        <div className="rounded-[32px] border border-white/[0.06] bg-[#0a0a0c]/95 backdrop-blur-2xl">
             {/* Header */}
             <div className="border-b border-white/[0.04] px-8 py-8">
               <div className="flex items-start justify-between gap-4">
@@ -265,9 +256,8 @@ const SeasonStructureBuilder = ({
 
             {/* Template content */}
             <div className="px-8 py-8">
-              <AnimatePresence mode="wait">
                 {activeTemplate === 'regional' && (
-                  <motion.div key="regional" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div>
                     <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
                       {/* Config panel */}
                       <div className="space-y-6">
@@ -338,11 +328,11 @@ const SeasonStructureBuilder = ({
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 )}
 
                 {activeTemplate === 'simple' && (
-                  <motion.div key="simple" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div>
                     <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
                       <div className="space-y-6">
                         <div>
@@ -387,15 +377,13 @@ const SeasonStructureBuilder = ({
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 )}
-              </AnimatePresence>
             </div>
-          </motion.div>
+          </div>
         ) : (
           /* ─── Builder workspace ──────────────────────────────────────── */
-          <motion.div key="builder" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.28 }} className="space-y-5">
+          <div className="space-y-5">
 
             {/* Header */}
             <div className="rounded-[28px] border border-white/[0.06] bg-[#0a0a0c]/95 px-6 py-5 backdrop-blur-2xl">
@@ -458,14 +446,12 @@ const SeasonStructureBuilder = ({
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_420px]">
               <SeasonBuilderCanvas nodes={normalizedNodes} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId}
                 onAddChild={(nodeId) => addNode(nodeId, 'qualifier')} onAddStageToPhase={addStageToPhase} onReorder={updateNodes} />
-              <AnimatePresence mode="wait">
-                {showGuide ? (
-                  <SeasonBuilderGuide key="guide" onClose={() => setShowGuide(false)} onStartTour={() => { setShowGuide(false); setShowTour(true); }} />
+              {showGuide ? (
+                  <SeasonBuilderGuide onClose={() => setShowGuide(false)} onStartTour={() => { setShowGuide(false); setShowTour(true); }} />
                 ) : (
-                  <SeasonBuilderInspector key="inspector" node={selectedNode} allNodes={normalizedNodes}
+                  <SeasonBuilderInspector node={selectedNode} allNodes={normalizedNodes}
                     onChange={handleNodeChange} onRemove={handleRemoveNode} />
                 )}
-              </AnimatePresence>
             </div>
 
             {(helperText ?? onSave) && (
@@ -478,9 +464,8 @@ const SeasonStructureBuilder = ({
                 )}
               </div>
             )}
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 };

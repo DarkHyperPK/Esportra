@@ -108,12 +108,12 @@ const SeasonBuilderInspector = ({ node, allNodes, onChange, onRemove }: SeasonBu
 
   const patchTournament = (patch: Partial<SeasonStageTournamentConfig>) => {
     const updated = writeTournamentConfig(node, patch);
-    onChange(node.id, { metadata: updated.metadata });
+    onChange(node.id, updated);
   };
 
   const patchConnections = (connections: AdvancementConnection[]) => {
     const updated = writeOutgoingConnections(node, connections);
-    onChange(node.id, { metadata: updated.metadata });
+    onChange(node.id, updated);
   };
 
   const addConnection = () => {
