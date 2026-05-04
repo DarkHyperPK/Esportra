@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import SeasonStructureBuilder from '@/components/season/builder/SeasonStructureBuilder';
 import SeasonTreePreview from '@/components/season/SeasonTreePreview';
+import StepConfigureTournaments from '@/components/season/wizard/StepConfigureTournaments';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,7 +26,11 @@ import {
   buildSeasonTreeFromDrafts,
   countConfiguredStages,
   createSeasonBuilderRootNode,
+  getPhaseMetaForType,
+  isTournamentConfigComplete,
   normalizeSeasonBuilderNodes,
+  readOutgoingConnections,
+  readTournamentConfig,
   validateAdvancementGraph,
   validateSeasonBuilderNodes,
 } from '@/components/season/builder/seasonBuilderUtils';
@@ -34,7 +39,7 @@ import { fetchGameData, type CachedGame } from '@/hooks/useRawgGame';
 import { useToast } from '@/hooks/use-toast';
 import { fullSeasonSchema, validateSeasonStep } from '@/schemas/seasonSchema';
 import { cn } from '@/lib/utils';
-import type { CreateSeasonPayload, SeasonBuilderNode } from '@/types/season';
+import type { CreateSeasonPayload, SeasonBuilderNode, SeasonNodeType } from '@/types/season';
 import { DEFAULT_SEASON_WIZARD_DATA, SEASON_WIZARD_STEPS, type SeasonWizardData } from '@/types/seasonWizard';
 import esportsGames from '@/data/esportsGames.json';
 
@@ -117,7 +122,12 @@ const SeasonWizard = ({
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(1);
   const [structureError, setStructureError] = useState<string | null>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
   const [nodes, setNodes] = useState<SeasonBuilderNode[]>([createSeasonBuilderRootNode()]);
+
+  const handleNodeChange = (nodeId: string, patch: Partial<SeasonBuilderNode>) => {
+    setNodes((prev) => prev.map((n) => (n.id === nodeId ? { ...n, ...patch } : n)));
+  };
 
   const form = useForm<SeasonWizardData>({
     resolver: zodResolver(fullSeasonSchema),
@@ -137,10 +147,17 @@ const SeasonWizard = ({
     [nodes],
   );
 
-  const configCounts = useMemo(() => countConfiguredStages(nodes), [nodes]);
-  const advancementIssues = useMemo(() => validateAdvancementGraph(normalizeSeasonBuilderNodes(nodes)), [nodes]);
-  const advancementErrors = advancementIssues.filter((i) => i.severity === 'error');
-  const advancementWarnings = advancementIssues.filter((i) => i.severity === 'warning');
+  const { configured: configuredCount, total: totalCount } = useMemo(
+    () => countConfiguredStages(nodes),
+    [nodes],
+  );
+
+  const reviewNonRootNodes = useMemo(() => nodes.filter((n) => n.nodeType !== 'root'), [nodes]);
+
+  const totalAdvancementConnections = useMemo(
+    () => reviewNonRootNodes.reduce((acc, n) => acc + readOutgoingConnections(n).length, 0),
+    [reviewNonRootNodes],
+  );
 
   const { banner: gameBanner, cover: gameCover } = useGameArt(values.game);
 
@@ -161,10 +178,42 @@ const SeasonWizard = ({
       syncRootName();
     }
     if (currentStep === 2) {
-      const v = validateSeasonBuilderNodes(nodes);
-      if (!v.valid) { setStructureError(v.message); return; }
+      // Structure-only validation — config completeness is step 3's gate
+      const normalized = normalizeSeasonBuilderNodes(nodes);
+      const nonRoot = normalized.filter((n) => n.nodeType !== 'root');
+      if (nonRoot.length === 0) {
+        setStructureError('Add at least one tournament to the season flow before continuing.');
+        return;
+      }
+      const unnamed = nonRoot.find((n) => n.name.trim().length === 0);
+      if (unnamed) {
+        setStructureError('Name every planned tournament before continuing.');
+        return;
+      }
+      const graphIssues = validateAdvancementGraph(normalized);
+      const blockingIssue = graphIssues.find((i) => i.severity === 'error');
+      if (blockingIssue) {
+        setStructureError(blockingIssue.message);
+        return;
+      }
+    }
+    // Only gate config completeness when moving forward from step 3
+    if (currentStep === 3 && target > currentStep) {
+      const nonRoot = normalizeSeasonBuilderNodes(nodes).filter((n) => n.nodeType !== 'root');
+      const unconfigured = nonRoot.filter(
+        (n) => !isTournamentConfigComplete(readTournamentConfig(n)),
+      );
+      if (unconfigured.length > 0) {
+        const noun = unconfigured.length === 1 ? 'tournament' : 'tournaments';
+        const verb = unconfigured.length === 1 ? 'needs' : 'need';
+        setConfigError(
+          `${unconfigured.length} ${noun} still ${verb} to be configured before you can continue.`,
+        );
+        return;
+      }
     }
     setStructureError(null);
+    setConfigError(null);
     setDirection(target > currentStep ? 1 : -1);
     setCurrentStep(target);
   };
@@ -358,7 +407,7 @@ const SeasonWizard = ({
                   >
                     <div className="mb-7">
                       <p className="font-body text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-500/70">
-                        Step 1 of 3
+                        Step 1 of 4
                       </p>
                       <h2 className="font-heading mt-1.5 text-2xl font-bold tracking-tight text-white">
                         Season Essentials
@@ -727,13 +776,13 @@ const SeasonWizard = ({
                   >
                     <div className="mb-7">
                       <p className="font-body text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-500/70">
-                        Step 2 of 3
+                        Step 2 of 4
                       </p>
                       <h2 className="font-heading mt-1.5 text-2xl font-bold tracking-tight text-white">
-                        Design the Structure
+                        Build the Tournament Flow
                       </h2>
                       <p className="font-body mt-1 text-[13px] text-zinc-500">
-                        Map the qualification flow before you create the workspace.
+                        Plan the tournaments this season will create, then configure advancement between them.
                       </p>
                     </div>
 
@@ -745,19 +794,18 @@ const SeasonWizard = ({
 
                     <SeasonStructureBuilder
                       title="Season flow"
-                      description="Build the hierarchy — qualifiers, linked events, and finals connect here."
+                      description="Plan the tournament circuit — qualifiers, events, and finals — then configure each tournament and its advancement path inline."
                       nodes={nodes}
                       onChange={(next) => {
                         setStructureError(null);
                         setNodes(next);
                       }}
-                      helperText="This structure is saved with the season and becomes the starting point in the management workspace."
-                      surface="wizard"
+                      helperText="This flow is saved with the season and becomes the planned tournament circuit in the management workspace."
                     />
                   </motion.div>
                 )}
 
-                {/* ── Step 3: Review ─────────────────────────────────────── */}
+                {/* ── Step 3: Configure Tournaments ──────────────────────── */}
                 {currentStep === 3 && (
                   <motion.div
                     key="s3"
@@ -771,13 +819,49 @@ const SeasonWizard = ({
                   >
                     <div className="mb-7">
                       <p className="font-body text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-500/70">
-                        Step 3 of 3
+                        Step 3 of 4
                       </p>
                       <h2 className="font-heading mt-1.5 text-2xl font-bold tracking-tight text-white">
-                        Review & Launch
+                        Configure Tournaments
                       </h2>
                       <p className="font-body mt-1 text-[13px] text-zinc-500">
-                        Confirm everything looks right, then create the season.
+                        Set up each tournament in your circuit before creating the season.
+                      </p>
+                    </div>
+
+                    {configError && (
+                      <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3 text-[13px] text-amber-300">
+                        {configError}
+                      </div>
+                    )}
+
+                    <div className="overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.01]">
+                      <StepConfigureTournaments nodes={nodes} onNodeChange={handleNodeChange} />
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── Step 4: Review & Create ─────────────────────────────── */}
+                {currentStep === 4 && (
+                  <motion.div
+                    key="s4"
+                    custom={direction}
+                    variants={STEP_VARIANTS}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={STEP_TRANSITION}
+                    className="p-8"
+                  >
+                    <div className="mb-7">
+                      <p className="font-body text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-500/70">
+                        Step 4 of 4
+                      </p>
+                      <h2 className="font-heading mt-1.5 text-2xl font-bold tracking-tight text-white">
+                        Review & Create
+                      </h2>
+                      <p className="font-body mt-1 text-[13px] text-zinc-500">
+                        Confirm everything looks right, then create the season workspace.
                       </p>
                     </div>
 
@@ -860,6 +944,71 @@ const SeasonWizard = ({
                           )}
                         </div>
 
+                        {/* Tournament circuit summary */}
+                        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
+                          <p className="font-body text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                            Tournament circuit
+                          </p>
+                          <p className="font-body mt-1.5 text-[13px] font-semibold text-white">
+                            {configuredCount}{' '}
+                            {configuredCount === 1 ? 'tournament' : 'tournaments'} ready to create
+                          </p>
+
+                          {reviewNonRootNodes.length > 0 && (
+                            <ul className="mt-3 space-y-2">
+                              {reviewNonRootNodes.map((node) => {
+                                const typeKey = node.nodeType as Exclude<SeasonNodeType, 'root'>;
+                                const meta = getPhaseMetaForType(typeKey);
+                                const ready = isTournamentConfigComplete(
+                                  readTournamentConfig(node),
+                                );
+                                return (
+                                  <li
+                                    key={node.id}
+                                    className="flex items-center justify-between gap-3"
+                                  >
+                                    <div className="flex min-w-0 items-center gap-2">
+                                      <span
+                                        className={cn(
+                                          'shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider',
+                                          meta.accent,
+                                          meta.accentBg,
+                                          meta.accentBorder,
+                                        )}
+                                      >
+                                        {typeKey}
+                                      </span>
+                                      <span className="font-body truncate text-[12px] text-zinc-300">
+                                        {node.name || 'Unnamed'}
+                                      </span>
+                                    </div>
+                                    {ready ? (
+                                      <span className="font-body shrink-0 text-[11px] text-emerald-400">
+                                        Ready ✓
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => void goToStep(3)}
+                                        className="font-body shrink-0 text-[11px] text-amber-400 underline-offset-2 hover:underline"
+                                      >
+                                        ← Configure
+                                      </button>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+
+                          {totalAdvancementConnections > 0 && (
+                            <p className="font-body mt-3 border-t border-white/[0.05] pt-3 text-[12px] text-zinc-500">
+                              {totalAdvancementConnections} advancement{' '}
+                              {totalAdvancementConnections === 1 ? 'connection' : 'connections'} wired
+                            </p>
+                          )}
+                        </div>
+
                         {/* Schedule */}
                         {(values.startDate || values.endDate) && (
                           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
@@ -885,43 +1034,6 @@ const SeasonWizard = ({
                           </div>
                         )}
 
-                        {/* Config + advancement summary */}
-                        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
-                          <p className="font-body text-[11px] uppercase tracking-[0.18em] text-zinc-500">Tournaments in this season</p>
-                          <p className="font-heading mt-1 text-[24px] font-bold text-white">
-                            {configCounts.total}
-                            <span className="ml-2 text-[13px] font-semibold text-zinc-500">
-                              ({configCounts.configured} configured)
-                            </span>
-                          </p>
-                          {configCounts.configured < configCounts.total && (
-                            <p className="mt-2 text-[11px] leading-relaxed text-amber-300/80">
-                              {configCounts.total - configCounts.configured} tournament{configCounts.total - configCounts.configured === 1 ? '' : 's'} still need{configCounts.total - configCounts.configured === 1 ? 's' : ''} setup details (format, team size, max teams, registration type). Go back to Step 2 to finish.
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Advancement validation */}
-                        {(advancementErrors.length > 0 || advancementWarnings.length > 0) && (
-                          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
-                            <p className="font-body text-[11px] uppercase tracking-[0.18em] text-zinc-500">Advancement checks</p>
-                            <ul className="mt-3 space-y-2">
-                              {advancementErrors.map((issue, i) => (
-                                <li key={`err-${i}`} className="flex gap-2 text-[12px] leading-relaxed text-red-300">
-                                  <span className="mt-[4px] h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
-                                  <span>{issue.message}</span>
-                                </li>
-                              ))}
-                              {advancementWarnings.map((issue, i) => (
-                                <li key={`warn-${i}`} className="flex gap-2 text-[12px] leading-relaxed text-amber-300/80">
-                                  <span className="mt-[4px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
-                                  <span>{issue.message}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
                         {/* After creation */}
                         <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.05] px-5 py-4">
                           <div className="flex items-center gap-2.5">
@@ -931,10 +1043,14 @@ const SeasonWizard = ({
                             </p>
                           </div>
                           <ul className="mt-3 space-y-1.5 text-[12px] leading-relaxed text-emerald-50/60">
-                            <li>Your tournaments are created as part of the season with advancement already wired.</li>
-                            <li>Open the season management workspace to run registrations, standings, and live advancement.</li>
-                            <li>Edit unstarted tournaments freely; completed advancement is locked unless you override it.</li>
+                            <li>Continue in the structure workspace with your flow already populated.</li>
+                            <li>Configure staff, points rules, and standings as you build out.</li>
+                            <li>Link more events and recalculate standings as qualifiers complete.</li>
                           </ul>
+                          <p className="mt-3 border-t border-emerald-500/10 pt-3 text-[11px] leading-relaxed text-emerald-50/40">
+                            This creates a draft season workspace. Tournaments will be created when you
+                            publish from the management page.
+                          </p>
                         </div>
                       </div>
 

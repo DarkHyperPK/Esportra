@@ -302,13 +302,81 @@ export const toSeasonNodeDraftPayload = (nodes: SeasonBuilderNode[]): SeasonNode
 
 export const validateSeasonBuilderNodes = (nodes: SeasonBuilderNode[]) => {
   const normalized = normalizeSeasonBuilderNodes(nodes);
-  const unnamedNode = normalized.find((node) => node.name.trim().length === 0);
+  const plannedTournaments = normalized.filter((node) => node.nodeType !== 'root');
+
+  if (plannedTournaments.length === 0) {
+    return {
+      valid: false,
+      message: 'Add at least one tournament to the season flow before continuing.',
+      nodeId: normalized[0]?.id ?? null,
+      warnings: [],
+    };
+  }
+
+  const unnamedNode = plannedTournaments.find((node) => node.name.trim().length === 0);
 
   if (unnamedNode) {
     return {
       valid: false,
-      message: 'Name each structure node before continuing.',
+      message: 'Name every planned tournament before continuing.',
       nodeId: unnamedNode.id,
+      warnings: [],
+    };
+  }
+
+  const incompleteTournament = plannedTournaments.find(
+    (node) => !isTournamentConfigComplete(readTournamentConfig(node)),
+  );
+
+  if (incompleteTournament) {
+    return {
+      valid: false,
+      message: `Finish the tournament setup for "${incompleteTournament.name}" before continuing.`,
+      nodeId: incompleteTournament.id,
+      warnings: [],
+    };
+  }
+
+  const scheduleIssue = plannedTournaments.find((node) => {
+    const registrationDeadline = node.registrationDeadline?.trim();
+    const startsAt = node.startsAt?.trim();
+    const endsAt = node.endsAt?.trim();
+
+    if (registrationDeadline && startsAt && registrationDeadline > startsAt) {
+      return true;
+    }
+
+    if (startsAt && endsAt && endsAt < startsAt) {
+      return true;
+    }
+
+    return false;
+  });
+
+  if (scheduleIssue) {
+    const registrationDeadline = scheduleIssue.registrationDeadline?.trim();
+    const startsAt = scheduleIssue.startsAt?.trim();
+
+    return {
+      valid: false,
+      message:
+        registrationDeadline && startsAt && registrationDeadline > startsAt
+          ? `"${scheduleIssue.name}" closes registration after it starts. Fix the dates before continuing.`
+          : `"${scheduleIssue.name}" ends before it starts. Fix the dates before continuing.`,
+      nodeId: scheduleIssue.id,
+      warnings: [],
+    };
+  }
+
+  const graphIssues = validateAdvancementGraph(normalized);
+  const blockingIssue = graphIssues.find((issue) => issue.severity === 'error');
+
+  if (blockingIssue) {
+    return {
+      valid: false,
+      message: blockingIssue.message,
+      nodeId: blockingIssue.nodeId,
+      warnings: graphIssues.filter((issue) => issue.severity === 'warning').map((issue) => issue.message),
     };
   }
 
@@ -316,6 +384,7 @@ export const validateSeasonBuilderNodes = (nodes: SeasonBuilderNode[]) => {
     valid: true,
     message: null,
     nodeId: null,
+    warnings: graphIssues.filter((issue) => issue.severity === 'warning').map((issue) => issue.message),
   };
 };
 

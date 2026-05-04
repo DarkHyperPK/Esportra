@@ -4,11 +4,11 @@ import type {
   OrganizerTournamentOption,
   Season,
   SeasonDetailResponse,
+  SeasonLeaderboardEntry,
   SeasonNode,
   SeasonQualificationRecord,
   SeasonRule,
   SeasonStaffMember,
-  SeasonStanding,
   SeasonTreeNode,
   SeasonNodeDraft,
   SeasonRuleDraft,
@@ -21,7 +21,8 @@ type SnakeCaseSeason = {
   description?: string | null;
   game: string;
   participant_mode: 'team' | 'solo';
-  status: 'draft' | 'published' | 'active' | 'completed' | 'archived';
+  status: 'draft' | 'published' | 'active' | 'completed' | 'archived' | 'cancelled';
+  visibility?: Season['visibility'];
   owner_user_id: string;
   organization_id?: string | null;
   is_public: boolean;
@@ -35,6 +36,13 @@ type SnakeCaseSeason = {
   updated_at: string;
   owner_username?: string | null;
   owner_full_name?: string | null;
+  published_at?: string | null;
+  completed_at?: string | null;
+  archived_at?: string | null;
+  cancelled_at?: string | null;
+  deleted_at?: string | null;
+  version?: number;
+  created_by?: string | null;
 };
 
 type SnakeCaseNode = {
@@ -59,6 +67,18 @@ type SnakeCaseNode = {
   updated_at: string;
   linked_tournament_name?: string | null;
   linked_stage_name?: string | null;
+  tournament_format?: SeasonNode['tournamentFormat'];
+  team_size?: SeasonNode['teamSize'];
+  max_teams?: SeasonNode['maxTeams'];
+  min_teams?: SeasonNode['minTeams'];
+  best_of?: SeasonNode['bestOf'];
+  registration_type?: SeasonNode['registrationType'];
+  entry_fee?: SeasonNode['entryFee'];
+  prize_pool?: SeasonNode['prizePool'];
+  check_in_minutes_before?: SeasonNode['checkInMinutesBefore'];
+  registration_opens_at?: string | null;
+  published_tournament_id?: string | null;
+  outgoing_advancement_connections?: SeasonNode['outgoingAdvancementConnections'];
 };
 
 type SnakeCaseRule = {
@@ -148,6 +168,7 @@ const mapSeason = (row: SnakeCaseSeason): Season => ({
   game: row.game,
   participantMode: row.participant_mode,
   status: row.status,
+  visibility: row.visibility ?? (row.is_public ? 'public' : 'private'),
   ownerUserId: row.owner_user_id,
   organizationId: row.organization_id ?? null,
   isPublic: row.is_public,
@@ -161,6 +182,13 @@ const mapSeason = (row: SnakeCaseSeason): Season => ({
   updatedAt: row.updated_at,
   ownerUsername: row.owner_username ?? null,
   ownerFullName: row.owner_full_name ?? null,
+  publishedAt: row.published_at ?? null,
+  completedAt: row.completed_at ?? null,
+  archivedAt: row.archived_at ?? null,
+  cancelledAt: row.cancelled_at ?? null,
+  deletedAt: row.deleted_at ?? null,
+  version: row.version,
+  createdBy: row.created_by ?? null,
 });
 
 const mapNode = (row: SnakeCaseNode): SeasonNode => ({
@@ -185,6 +213,18 @@ const mapNode = (row: SnakeCaseNode): SeasonNode => ({
   updatedAt: row.updated_at,
   linkedTournamentName: row.linked_tournament_name ?? null,
   linkedStageName: row.linked_stage_name ?? null,
+  tournamentFormat: row.tournament_format ?? null,
+  teamSize: row.team_size ?? null,
+  maxTeams: row.max_teams ?? null,
+  minTeams: row.min_teams ?? null,
+  bestOf: row.best_of ?? null,
+  registrationType: row.registration_type ?? null,
+  entryFee: row.entry_fee ?? null,
+  prizePool: row.prize_pool ?? null,
+  checkInMinutesBefore: row.check_in_minutes_before ?? null,
+  registrationOpensAt: row.registration_opens_at ?? null,
+  publishedTournamentId: row.published_tournament_id ?? null,
+  outgoingAdvancementConnections: row.outgoing_advancement_connections ?? [],
 });
 
 const mapTreeNode = (row: SnakeCaseTreeNode): SeasonTreeNode => ({
@@ -220,7 +260,7 @@ const mapStaff = (row: SnakeCaseStaff): SeasonStaffMember => ({
   avatarUrl: row.avatar_url ?? null,
 });
 
-const mapStanding = (row: SnakeCaseStanding): SeasonStanding => ({
+const mapStanding = (row: SnakeCaseStanding): SeasonLeaderboardEntry => ({
   entityId: row.entity_id,
   displayName: row.display_name,
   totalPoints: row.total_points,
@@ -277,7 +317,7 @@ export const useSeason = (seasonId?: string) =>
   });
 
 export const useSeasonStandings = (seasonId?: string) =>
-  useQuery<SeasonStanding[]>({
+  useQuery<SeasonLeaderboardEntry[]>({
     queryKey: ['season', seasonId, 'standings'],
     queryFn: async () => {
       const rows = await apiClient.get<SnakeCaseStanding[]>(`/api/seasons/${seasonId}/standings`);

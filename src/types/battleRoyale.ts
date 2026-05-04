@@ -51,7 +51,7 @@ export interface BRLeaderboardEntry {
   gamesPlayed: number;
   wins: number;
   bestPlacement: number;
-  perGameResults?: {
+  perGameResults: {
     gameNumber: number;
     placement: number;
     kills: number;

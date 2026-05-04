@@ -26,7 +26,6 @@ export interface TournamentWizardData {
     endDate: string;
     endTime: string;
     venue: string;
-    region: string;
     status: string;
 
     // Step 2: Format & Rules
@@ -38,7 +37,6 @@ export interface TournamentWizardData {
     seedingType: SeedingType;
     thirdPlaceMatch: boolean;
     mapPoolIds: string[]; // Selected map IDs for tournament map pool
-    rules: string;
 
     // Battle Royale specific (Step 2)
     brGameCount: number;
@@ -47,19 +45,11 @@ export interface TournamentWizardData {
     brKillCap: number | null;
     brTiebreaker: 'most_wins' | 'most_kills' | 'head_to_head';
 
-    // Battle Royale multi-stage (Step 2)
-    brMultiStage: boolean;
-    brLobbySize: number;
-    brAdvancementCount: number;
-    brFinalsGameCount: number;
-
     // Step 3: Branding
     bannerUrl: string | null;
     logoUrl: string | null;
     prizePool: string;
     entryFee: string;
-    currency: string;
-    paymentInstructions: string;
     description: string;
     discordUrl: string;
     twitterUrl: string;
@@ -78,7 +68,6 @@ export interface TournamentWizardData {
     // Game-specific settings
     assistedMatchReporting: boolean;
     mapVetoEnabled: boolean;
-    serverRegion: string;
 }
 
 export interface WizardStepProps {
@@ -118,19 +107,17 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     endDate: '',
     endTime: '',
     venue: '',
-    region: '',
     status: 'open',
 
     // Step 2
     tournamentType: 'bracket',
     bracketType: 'single_elimination',
     stages: [], // No default stage - configure via Stage Setup Wizard
-    maxTeams: 100,
-    teamSize: 1,
+    maxTeams: 0,
+    teamSize: 7,
     seedingType: 'random',
     thirdPlaceMatch: false,
     mapPoolIds: [],
-    rules: '',
 
     // Battle Royale
     brGameCount: 6,
@@ -138,18 +125,12 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     brCustomScoring: null,
     brKillCap: null,
     brTiebreaker: 'most_wins',
-    brMultiStage: false,
-    brLobbySize: 20,
-    brAdvancementCount: 4,
-    brFinalsGameCount: 6,
 
     // Step 3
     bannerUrl: null,
     logoUrl: null,
     prizePool: '',
     entryFee: 'Free',
-    currency: 'USD',
-    paymentInstructions: '',
     description: '',
     discordUrl: '',
     twitterUrl: '',
@@ -168,5 +149,4 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     // Game-specific
     assistedMatchReporting: false,
     mapVetoEnabled: true,
-    serverRegion: '',
 };

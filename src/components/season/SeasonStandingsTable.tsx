@@ -1,10 +1,10 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { SeasonStanding } from '@/types/season';
+import type { SeasonLeaderboardEntry } from '@/types/season';
 import { Trophy } from 'lucide-react';
 
 interface SeasonStandingsTableProps {
-  standings: SeasonStanding[];
+  standings: SeasonLeaderboardEntry[];
   className?: string;
 }
 
@@ -12,7 +12,7 @@ const SeasonStandingsTable = ({ standings, className }: SeasonStandingsTableProp
   if (standings.length === 0) {
     return (
       <div className={cn('rounded-2xl border border-dashed border-white/10 bg-black/20 p-6 text-sm text-zinc-400', className)}>
-        No standings yet. Recalculate the season after linked tournaments or stages are completed.
+        No standings yet. Recalculate after planned tournaments have completed and results have been processed.
       </div>
     );
   }

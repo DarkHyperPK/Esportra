@@ -11,7 +11,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/apiClient';
-import { formatDate, formatTime } from '@/utils/dateFormat';
 
 export interface DashboardTournament {
     id: string;
@@ -53,7 +52,7 @@ export interface DashboardParticipant {
     id: string;
     user_id: string;
     tournament_id: string;
-    status: 'approved' | 'checked_in' | 'withdrawn' | 'pending';
+    status: 'registered' | 'checked_in' | 'withdrawn' | 'pending';
     participant_type: 'solo' | 'team';
     team_name: string | null;
     team_logo: string | null;
@@ -61,11 +60,6 @@ export interface DashboardParticipant {
     gamer_tag: string | null;
     registered_at: string;
     created_at: string;
-    payment_status?: string | null;
-    payment_receipt_url?: string | null;
-    payment_rejection_reason?: string | null;
-    entry_fee_amount?: number | null;
-    entry_fee_paid?: boolean;
     user?: {
         username: string;
         avatar_url: string | null;
@@ -87,8 +81,6 @@ export interface DashboardStage {
     capacity: number;
     advancement_count: number;
     is_locked: boolean;
-    starts_at: string | null;
-    ends_at: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -129,16 +121,16 @@ export function useTournamentDashboard(slug: string | undefined) {
                 entry_fee:   t.entry_fee?.toString()  ?? '0',
                 prize_pool:  t.prize_pool?.toString()  ?? '0',
                 // Legacy computed fields
-                date:                  t.start_date ? formatDate(t.start_date) : '',
-                time:                  t.start_date ? formatTime(t.start_date) : '',
+                date:                  t.start_date ? new Date(t.start_date).toLocaleDateString() : '',
+                time:                  t.start_date ? new Date(t.start_date).toLocaleTimeString() : '',
                 venue:                 t.venue_id ? `Venue ${t.venue_id}` : 'Online',
                 is_online:             !t.venue_id,
                 max_participants:      t.max_teams ?? 0,
-                registration_open:     ['open', 'published'].includes(t.status) && (!t.registration_deadline || new Date(t.registration_deadline) > new Date()),
+                registration_open:     t.status === 'open',
                 current_participants:  t.current_participants ?? result.participants.length,
             };
 
-            const mappedParticipants: DashboardParticipant[] = (result.participants ?? []).map((p: any) => ({
+            const mappedParticipants: DashboardParticipant[] = result.participants.map((p: any) => ({
                 id:               p.id,
                 user_id:          p.user_id,
                 tournament_id:    p.tournament_id,
@@ -150,16 +142,11 @@ export function useTournamentDashboard(slug: string | undefined) {
                 gamer_tag:        p.gamer_tag ?? null,
                 registered_at:    p.registration_date ?? p.created_at,
                 created_at:       p.created_at,
-                payment_status:           p.payment_status ?? null,
-                payment_receipt_url:      p.payment_receipt_url ?? null,
-                payment_rejection_reason: p.payment_rejection_reason ?? null,
-                entry_fee_amount:         p.entry_fee_amount ?? null,
-                entry_fee_paid:           p.entry_fee_paid ?? false,
                 user:             p.username ? { username: p.username, avatar_url: null, full_name: null } : undefined,
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));
 
-            const mappedStages: DashboardStage[] = (result.stages ?? []).map((s: any) => ({
+            const mappedStages: DashboardStage[] = result.stages.map((s: any) => ({
                 ...s,
                 config: typeof s.config === 'string' ? (() => { try { return JSON.parse(s.config); } catch { return s.config; } })() : (s.config || null),
                 capacity:          s.capacity ?? 0,

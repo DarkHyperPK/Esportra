@@ -1,16 +1,12 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useBRGameResults } from '@/hooks/useBRGameResults';
-import { useBRPlayerContext, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
-import { useBRCompletedRoundResults, useBRRoundEvidence } from '@/hooks/useBRRounds';
-import { useBRGroupParticipants } from '@/hooks/useBRGroups';
 import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
-import { BRQueueTimerCard } from '@/components/tournament/br/BRQueueTimerCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,8 +15,8 @@ import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import {
   Trophy, Copy, ArrowLeft, Radio, Clock, CheckCircle, Key, Send,
-  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Users,
-  Crosshair, Medal, Flame,
+  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown,
+  Crosshair, Medal, Flame, Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -30,19 +26,6 @@ import type { BRScoringPreset } from '@/types/battleRoyale';
 const stagger = {
   container: { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } },
   item: { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } } },
-};
-
-const formatCountdown = (ms: number) => {
-  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  }
-
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
 const BRGameRoom: React.FC = () => {
@@ -59,22 +42,17 @@ const BRGameRoom: React.FC = () => {
   });
 
   const tournament = tournamentData?.tournament || tournamentData;
-  const participants = tournamentData?.participants || [];
-  const stages = tournamentData?.stages || [];
   const game = tournament?.game || '';
   const isBR = isBattleRoyale(game);
-  const primaryStageId = stages[0]?.id ?? null;
-  const {
-    data: relationalGroups = [],
-    isLoading: relationalGroupsLoading,
-  } = useQuery({
-    queryKey: ['br-relational-groups-ready', primaryStageId],
-    queryFn: () => apiClient.get<Array<{ id: string }>>(`/api/stages/${primaryStageId}/br/groups`),
-    enabled: isBR && !!primaryStageId,
-    staleTime: 1000 * 60,
+
+  // Fetch participants
+  const { data: participantsData } = useQuery({
+    queryKey: ['tournament-participants', tournament?.id],
+    queryFn: () => apiClient.get<any[]>(`/api/tournaments/${tournament.id}/participants`),
+    enabled: !!tournament?.id,
   });
-  const usesRelationalBrFlow = isBR && !!primaryStageId && relationalGroups.length > 0;
-  const isResolvingBrFlow = isBR && !!primaryStageId && relationalGroupsLoading;
+
+  const participants = participantsData || [];
 
   // Find user's team
   const userTeam = useMemo(() => {
@@ -117,15 +95,7 @@ const BRGameRoom: React.FC = () => {
     killCap: brKillCap,
     teams: brTeams,
     tiebreaker: brSettings?.brTiebreaker || 'most_wins',
-    enabled: !usesRelationalBrFlow,
   });
-
-  // ── New stage-based data sources ─────────────────────────────────────────
-  const playerCtx = useBRPlayerContext(tournament?.id, usesRelationalBrFlow);
-  const { leaderboard: stageLeaderboard } = useBRGroupLeaderboard(
-    playerCtx.context.stageId,
-    playerCtx.context.groupId,
-  );
 
   // Self-report state
   const [reportPlacement, setReportPlacement] = useState<number>(1);
@@ -134,13 +104,6 @@ const BRGameRoom: React.FC = () => {
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Revoke any dangling object URL when evidencePreview changes or component unmounts
-  useEffect(() => {
-    return () => {
-      if (evidencePreview) URL.revokeObjectURL(evidencePreview);
-    };
-  }, [evidencePreview]);
 
   const handleEvidenceSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -167,15 +130,7 @@ const BRGameRoom: React.FC = () => {
 
   // Submit self-report with evidence
   const submitReport = async () => {
-    const activeRoundNumber = playerCtx.context.activeRound?.roundNumber ?? null;
-    if (!userTeam || !activeRoundNumber) return;
-    // Belt-and-suspenders: re-check at call time in case cache hasn't updated yet
-    const alreadySubmitted = activeEvidence
-      .some(ev => ev.teamId === userTeam.id);
-    if (alreadySubmitted) {
-      toast({ title: 'Already submitted', description: 'You have already submitted evidence for this game.', variant: 'destructive' });
-      return;
-    }
+    if (!userTeam || !brResults.activeGameNumber) return;
     if (!evidenceFile) {
       toast({ title: 'Evidence required', description: 'Please upload a screenshot of your results.', variant: 'destructive' });
       return;
@@ -184,49 +139,32 @@ const BRGameRoom: React.FC = () => {
     try {
       // Upload evidence image
       let imageUrl = '';
-      let imagePath = '';
       try {
         const fd = new FormData();
         fd.append('file', evidenceFile);
         fd.append('bucket', 'tournaments.results');
-        const { url, path } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
         imageUrl = url;
-        imagePath = path;
       } catch {
         toast({ title: 'Upload failed', description: 'Could not upload evidence image. Please try again.', variant: 'destructive' });
         setReportSubmitting(false);
         return;
       }
 
-      if (activeRoundId) {
-        await roundEvidence.submitEvidence({
-          imageUrl,
-          imagePath,
-          placement: reportPlacement,
-          kills: reportKills,
-        });
-      } else {
-        await brResults.submitEvidence(activeRoundNumber, {
-          teamId: userTeam.id,
-          teamName: userTeam.name,
-          imageUrl,
-          submittedAt: new Date().toISOString(),
-          placement: reportPlacement,
-          kills: reportKills,
-        });
-      }
+      // Submit evidence via hook
+      await brResults.submitEvidence(brResults.activeGameNumber, {
+        teamId: userTeam.id,
+        teamName: userTeam.name,
+        imageUrl,
+        submittedAt: new Date().toISOString(),
+        placement: reportPlacement,
+        kills: reportKills,
+      });
 
       toast({ title: 'Evidence Submitted', description: `Placement: #${reportPlacement}, Kills: ${reportKills}. The organizer will review your submission.` });
       clearEvidence();
-    } catch (err: unknown) {
-      const status = (err as { status?: number })?.status;
-      if (status === 409) {
-        // Server confirmed already submitted — invalidate so UI reflects the locked state
-        await roundEvidence.refetch();
-        toast({ title: 'Already submitted', description: 'Your evidence for this round has already been submitted and cannot be changed.', variant: 'destructive' });
-      } else {
-        toast({ title: 'Submission failed', description: 'Could not submit your report. Please try again.', variant: 'destructive' });
-      }
+    } catch {
+      toast({ title: 'Submission failed', description: 'Could not submit your report. Please try again.', variant: 'destructive' });
     }
     setReportSubmitting(false);
   };
@@ -238,161 +176,8 @@ const BRGameRoom: React.FC = () => {
   }, [game]);
 
   const [historyExpanded, setHistoryExpanded] = useState(false);
-  const [groupRosterOpen, setGroupRosterOpen] = useState(false);
-  const [queueNow, setQueueNow] = useState(Date.now());
 
-  const {
-    rounds: relationalRounds,
-    totalRounds: relationalTotalRounds,
-    completedRounds: relationalCompletedRounds,
-    activeRound: relationalActiveRound,
-    isLoading: relationalRoundsLoading,
-  } = useBRGroupRounds(
-    playerCtx.context.stageId,
-    playerCtx.context.groupId,
-    {
-      enabled: usesRelationalBrFlow && !!playerCtx.context.groupId,
-      refetchIntervalMs: 5000,
-    },
-  );
-  const normalizedRelationalActiveRound = useMemo(() => {
-    if (!relationalActiveRound) return null;
-
-    return {
-      id: relationalActiveRound.id,
-      roundNumber: relationalActiveRound.round_number,
-      lobbyCode: relationalActiveRound.lobby_code,
-      status: relationalActiveRound.status,
-      queueTimerMinutes: relationalActiveRound.queue_timer_minutes ?? null,
-      queueStartedAt: relationalActiveRound.queue_started_at ?? null,
-      scheduledAt: relationalActiveRound.scheduled_at ?? null,
-    };
-  }, [relationalActiveRound]);
-  const { data: groupParticipants = [], isLoading: groupParticipantsLoading } = useBRGroupParticipants(
-    playerCtx.context.stageId,
-    playerCtx.context.groupId,
-    usesRelationalBrFlow && !!playerCtx.context.groupId,
-  );
-
-  const activeRound = useMemo(() => {
-    if (!usesRelationalBrFlow) return null;
-
-    const relationalRound = normalizedRelationalActiveRound;
-    const contextRound = playerCtx.context.activeRound;
-
-    if (!relationalRound) return contextRound;
-    if (!contextRound) return relationalRound;
-
-    if (relationalRound.id === contextRound.id) {
-      return {
-        ...contextRound,
-        ...relationalRound,
-        lobbyCode: relationalRound.lobbyCode ?? contextRound.lobbyCode,
-        queueTimerMinutes: relationalRound.queueTimerMinutes ?? contextRound.queueTimerMinutes,
-        queueStartedAt: relationalRound.queueStartedAt ?? contextRound.queueStartedAt,
-        scheduledAt: relationalRound.scheduledAt ?? contextRound.scheduledAt,
-      };
-    }
-
-    const relationalHasPublishedState = Boolean(relationalRound.lobbyCode) || Boolean(relationalRound.queueStartedAt);
-    const contextHasPublishedState = Boolean(contextRound.lobbyCode) || Boolean(contextRound.queueStartedAt);
-
-    if (contextHasPublishedState && !relationalHasPublishedState) {
-      return contextRound;
-    }
-
-    if (relationalHasPublishedState && !contextHasPublishedState) {
-      return relationalRound;
-    }
-
-    return relationalRound.roundNumber >= contextRound.roundNumber ? relationalRound : contextRound;
-  }, [usesRelationalBrFlow, normalizedRelationalActiveRound, playerCtx.context.activeRound]);
-  const legacyActiveGame = brResults.activeGameNumber ?? null;
-  const activeGame = activeRound?.roundNumber ?? legacyActiveGame;
-  const activeRoundId = activeRound?.id ?? null;
-  const activeCode = activeRound?.lobbyCode ?? (legacyActiveGame ? brResults.getLobbyCode(legacyActiveGame) : null);
-  const activeQueueTimerMinutes = activeRound?.queueTimerMinutes ?? null;
-  const queueStartedAtMs = activeRound?.queueStartedAt
-    ? new Date(activeRound.queueStartedAt).getTime()
-    : null;
-  const queueEndsAtMs = queueStartedAtMs && activeQueueTimerMinutes
-    ? queueStartedAtMs + (activeQueueTimerMinutes * 60_000)
-    : null;
-  const roundEvidence = useBRRoundEvidence(
-    activeRoundId,
-    playerCtx.context.stageId,
-    playerCtx.context.groupId,
-  );
-  const { completedRounds: completedHistoryRounds, resultsByRoundNumber, isLoading: historyResultsLoading } =
-    useBRCompletedRoundResults(relationalRounds, usesRelationalBrFlow && historyExpanded);
-
-  const leaderboard = usesRelationalBrFlow ? stageLeaderboard : brResults.leaderboard;
-  const gamesCompleted = usesRelationalBrFlow ? relationalCompletedRounds : brResults.gamesCompleted;
-  const totalGames = usesRelationalBrFlow && relationalTotalRounds > 0
-    ? relationalTotalRounds
-    : brGameCount;
-  const allGamesFinished = gamesCompleted >= totalGames && totalGames > 0;
-
-  // Find user's rank in leaderboard (match by id only — name-based fallback causes false matches with duplicate team names)
-  const userRank = userTeam
-    ? leaderboard.findIndex(e => e.teamId === userTeam.id) + 1
-    : 0;
-  const userEntry = userTeam
-    ? leaderboard.find(e => e.teamId === userTeam.id) ?? null
-    : null;
-
-  const activeEvidence = activeRoundId
-    ? roundEvidence.evidence
-    : activeGame
-      ? (brResults.getEvidence(activeGame) || [])
-      : [];
-  const historyGames = usesRelationalBrFlow
-    ? completedHistoryRounds.map((round) => ({
-        gameNumber: round.round_number,
-        results: [...(resultsByRoundNumber.get(round.round_number) ?? [])].sort((a, b) => a.placement - b.placement),
-      }))
-    : Array.from({ length: totalGames }, (_, i) => i + 1)
-        .filter((gameNumber) => brResults.getGameStatus(gameNumber) === 'completed')
-        .map((gameNumber) => ({
-          gameNumber,
-          results: [...(brResults.getGameResults(gameNumber) || [])].sort((a, b) => a.placement - b.placement),
-        }));
-
-  // Check if user already submitted evidence for active game
-  const userAlreadySubmitted = activeGame && userTeam
-    ? activeEvidence.some(ev => ev.teamId === userTeam.id)
-    : false;
-  const userSubmission = userAlreadySubmitted && userTeam
-    ? activeEvidence.find(ev => ev.teamId === userTeam.id) ?? null
-    : null;
-  const reportPlacementCap = usesRelationalBrFlow
-    ? Math.max(groupParticipants.length, 1)
-    : Math.max(brTeams.length, 1);
-
-  // Keep hook order stable across loading/error/ready renders.
-  useEffect(() => {
-    const isActiveAndUnsubmitted = !!activeGame && !userAlreadySubmitted;
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isActiveAndUnsubmitted) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [activeGame, userAlreadySubmitted]);
-
-  useEffect(() => {
-    if (!queueEndsAtMs) return;
-    setQueueNow(Date.now());
-    const timer = window.setInterval(() => setQueueNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [queueEndsAtMs]);
-
-  const queueRemainingMs = queueEndsAtMs ? Math.max(0, queueEndsAtMs - queueNow) : null;
-  const queueCountdownLabel = queueRemainingMs != null ? formatCountdown(queueRemainingMs) : null;
-
-  if (loadingTournament || isResolvingBrFlow || (usesRelationalBrFlow && (playerCtx.isLoading || relationalRoundsLoading))) return <PremiumLoadingScreen />;
+  if (loadingTournament) return <PremiumLoadingScreen />;
 
   if (!tournament) {
     return (
@@ -412,6 +197,23 @@ const BRGameRoom: React.FC = () => {
       </div>
     );
   }
+
+  const activeGame = brResults.activeGameNumber;
+  const activeCode = activeGame ? brResults.getLobbyCode(activeGame) : null;
+  const allGamesFinished = brResults.gamesCompleted >= brGameCount;
+
+  // Find user's rank in leaderboard
+  const userRank = userTeam
+    ? brResults.leaderboard.findIndex(e => e.teamId === userTeam.id) + 1
+    : 0;
+  const userEntry = userTeam
+    ? brResults.leaderboard.find(e => e.teamId === userTeam.id)
+    : null;
+
+  // Check if user already submitted evidence for active game
+  const userAlreadySubmitted = activeGame && userTeam
+    ? (brResults.getEvidence(activeGame) || []).some(ev => ev.teamId === userTeam.id)
+    : false;
 
   return (
     <PremiumBackground className="min-h-screen">
@@ -437,123 +239,17 @@ const BRGameRoom: React.FC = () => {
               <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Battle Royale</span>
               <span className="w-1 h-1 rounded-full bg-zinc-700" />
               <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
-                {gamesCompleted}/{totalGames} Games
+                {brResults.gamesCompleted}/{brGameCount} Games
               </span>
             </div>
           </div>
+          {userTeam && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/[0.08] border border-rose-500/20">
+              <Shield className="w-3.5 h-3.5 text-rose-400" />
+              <span className="text-xs font-semibold text-rose-300 truncate max-w-[120px]">{userTeam.name}</span>
+            </div>
+          )}
         </motion.div>
-
-        {/* ─── Stale data indicator ─── */}
-        {((!usesRelationalBrFlow && brResults.isError) || (usesRelationalBrFlow && playerCtx.error)) && (
-          <motion.div variants={stagger.item}>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/8 border border-amber-500/20">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-              <p className="text-xs text-amber-300/80">Unable to reach the server. Showing last known data.</p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ─── Group Stage Link ─── */}
-        {usesRelationalBrFlow && (
-          <motion.div variants={stagger.item}>
-            <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-              <span className="text-xs text-zinc-500">
-                {playerCtx.context.groupName
-                  ? `Playing in group: ${playerCtx.context.groupName}`
-                  : 'Playing in group stage?'}
-              </span>
-              <button
-                type="button"
-                onClick={() => setGroupRosterOpen((current) => !current)}
-                className="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1 transition-colors"
-              >
-                {groupRosterOpen ? 'Hide your group' : 'View your group'} <ArrowLeft className={cn('w-3 h-3 transition-transform', groupRosterOpen ? 'rotate-90' : 'rotate-180')} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {usesRelationalBrFlow && playerCtx.context.groupId && groupRosterOpen && (
-          <motion.div variants={stagger.item}>
-            <Card className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
-              <CardHeader className="pb-3 border-b border-white/[0.05]">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
-                    <Users className="w-4 h-4 text-zinc-400" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base font-bold text-white tracking-tight">
-                      {playerCtx.context.groupName ? `${playerCtx.context.groupName} roster` : 'Group roster'}
-                    </CardTitle>
-                    <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest">
-                      {groupParticipants.length} participant{groupParticipants.length === 1 ? '' : 's'}
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-5">
-                {groupParticipantsLoading ? (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <div key={index} className="h-14 rounded-xl bg-white/[0.03] animate-pulse" />
-                    ))}
-                  </div>
-                ) : groupParticipants.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-white/[0.06] bg-white/[0.02] px-4 py-5 text-sm text-zinc-500">
-                    Your group roster is still syncing. Please check back in a moment.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {groupParticipants.map((participant) => (
-                      <div
-                        key={participant.team_id}
-                        className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3"
-                      >
-                        {participant.logo_url ? (
-                          <img
-                            src={participant.logo_url}
-                            alt={participant.team_name}
-                            loading="lazy"
-                            decoding="async"
-                            fetchPriority="low"
-                            className="h-10 w-10 rounded-full border border-white/[0.08] object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-zinc-500">
-                            <Users className="w-4 h-4" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-white">{participant.team_name}</p>
-                          <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest">
-                            Seed {participant.seed_order}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* ─── Not assigned to a group ─── */}
-        {!playerCtx.isInGroup && !playerCtx.isLoading && (
-          <motion.div variants={stagger.item}>
-            <Card className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl">
-              <CardContent className="py-10 px-6 flex flex-col items-center text-center">
-                <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
-                  <Gamepad2 className="w-7 h-7 text-zinc-600" />
-                </div>
-                <h3 className="text-base font-bold text-white tracking-tight mb-1">Not Yet Assigned</h3>
-                <p className="text-sm text-zinc-500 max-w-xs">
-                  You are not assigned to a group yet. Check back soon.
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
 
         {/* ─── Active Game — LIVE ─── */}
         {activeGame ? (
@@ -579,7 +275,7 @@ const BRGameRoom: React.FC = () => {
                           Game {activeGame}
                         </CardTitle>
                         <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest mt-0.5">
-                          {gamesCompleted} of {totalGames} completed
+                          {brResults.gamesCompleted} of {brGameCount} completed
                         </p>
                       </div>
                     </div>
@@ -628,14 +324,6 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
-                  <BRQueueTimerCard
-                    queueTimerMinutes={activeQueueTimerMinutes}
-                    activeCode={activeCode}
-                    queueRemainingMs={queueRemainingMs}
-                    queueEndsAtMs={queueEndsAtMs}
-                    queueCountdownLabel={queueCountdownLabel}
-                  />
-
                   {/* Self-Report Form */}
                   {userTeam && !userAlreadySubmitted && (
                     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-4">
@@ -648,17 +336,17 @@ const BRGameRoom: React.FC = () => {
                           <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-1.5 block">Placement</label>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 font-bold text-base">#</span>
-                             <Input
-                               type="number"
-                               min={1}
-                               max={reportPlacementCap}
-                               value={reportPlacement}
-                               onChange={(e) => {
-                                 const v = parseInt(e.target.value) || 1;
-                                 setReportPlacement(Math.max(1, Math.min(reportPlacementCap, v)));
-                               }}
-                               className="h-11 text-center text-lg font-bold pl-7 bg-black/30 border-white/[0.06] focus:border-rose-500/40 [color-scheme:dark]"
-                             />
+                            <Input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={reportPlacement}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value) || 1;
+                                setReportPlacement(Math.max(1, Math.min(100, v)));
+                              }}
+                              className="h-11 text-center text-lg font-bold pl-7 bg-black/30 border-white/[0.06] focus:border-rose-500/40 [color-scheme:dark]"
+                            />
                           </div>
                         </div>
                         <div>
@@ -666,16 +354,9 @@ const BRGameRoom: React.FC = () => {
                           <Input
                             type="number"
                             min={0}
-                            max={brKillCap ?? undefined}
+                            max={brKillCap || 99}
                             value={reportKills}
-                            onChange={(e) => {
-                              const raw = parseInt(e.target.value) || 0;
-                              const cap = brKillCap ?? 99;
-                              if (raw > cap && brKillCap != null) {
-                                toast({ title: `Kill cap is ${brKillCap}`, description: `Maximum kills counted per game is ${brKillCap}.` });
-                              }
-                              setReportKills(Math.max(0, Math.min(cap, raw)));
-                            }}
+                            onChange={(e) => setReportKills(Math.max(0, Math.min(brKillCap || 99, parseInt(e.target.value) || 0)))}
                             className="h-11 text-center text-lg font-bold bg-black/30 border-white/[0.06] focus:border-rose-500/40 [color-scheme:dark]"
                           />
                         </div>
@@ -741,28 +422,12 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Already submitted — locked card */}
-                  {userTeam && userAlreadySubmitted && userSubmission && (
-                    <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                        <span className="text-sm font-semibold text-emerald-300">Evidence submitted — locked</span>
-                      </div>
-                      <div className="rounded-lg overflow-hidden border border-white/[0.06]">
-                        <img
-                          src={userSubmission.imageUrl}
-                          alt="Your submitted evidence"
-                          className="w-full h-32 object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      </div>
-                      <div className="flex gap-4 text-xs text-zinc-400">
-                        <span>Placement: <span className="text-zinc-200 font-semibold">#{userSubmission.placement ?? '—'}</span></span>
-                        <span>Kills: <span className="text-zinc-200 font-semibold">{userSubmission.kills ?? '—'}</span></span>
-                      </div>
-                      <p className="text-[10px] text-zinc-600">
-                        Your results are final. The organizer will verify and finalize standings.
+                  {/* Already submitted notice */}
+                  {userTeam && userAlreadySubmitted && (
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15">
+                      <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <p className="text-sm text-emerald-300/80">
+                        Evidence submitted for Game {activeGame}. Awaiting organizer review.
                       </p>
                     </div>
                   )}
@@ -770,70 +435,36 @@ const BRGameRoom: React.FC = () => {
               </Card>
             </div>
           </motion.div>
-        ) : allGamesFinished || (leaderboard.length > 0 && gamesCompleted >= totalGames && totalGames > 0) ? (
+        ) : allGamesFinished || brResults.winner ? (
           /* ─── Tournament Complete ─── */
-          (() => {
-            const winner = leaderboard.length > 0 ? leaderboard[0] : null;
-            const isWinner = userTeam && winner && winner.teamId === userTeam.id;
-            const userRankIdx = userTeam ? leaderboard.findIndex(e => e.teamId === userTeam.id) : -1;
-            const userRankFinal = userRankIdx >= 0 ? userRankIdx + 1 : null;
-
-            return isWinner ? (
-              /* ─── Winner Card ─── */
-              <motion.div variants={stagger.item}>
-                <div className="relative rounded-2xl overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-amber-400/[0.06] to-yellow-500/15" />
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.12),transparent_60%)]" />
-                  <Card className="relative bg-[#0a0a0c]/80 backdrop-blur-xl border border-amber-500/30 rounded-2xl">
-                    <CardContent className="p-6 sm:p-8 text-center">
-                      <div className="w-20 h-20 rounded-full bg-amber-500/15 border-2 border-amber-500/30 flex items-center justify-center mx-auto mb-4">
-                        <Trophy className="w-10 h-10 text-amber-400" />
-                      </div>
-                      <h2 className="text-2xl font-black text-amber-300 tracking-tight mb-1">🎉 Congratulations!</h2>
-                      <p className="text-lg font-bold text-white">You are the Champion!</p>
-                      <p className="text-amber-400/70 text-sm mt-2 font-medium">
-                        {winner!.totalPoints} pts · {winner!.wins} win{winner!.wins !== 1 ? 's' : ''} · {winner!.totalKills} kills
-                      </p>
-                      <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                        <Medal className="w-4 h-4 text-amber-400" />
-                        <span className="text-sm font-bold text-amber-300">1st Place</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </motion.div>
-            ) : (
-              /* ─── Non-Winner Card ─── */
-              <motion.div variants={stagger.item}>
-                <div className="relative rounded-2xl overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-zinc-500/[0.06] via-transparent to-zinc-500/[0.03]" />
-                  <Card className="relative bg-[#0a0a0c]/90 backdrop-blur-xl border border-white/[0.08] rounded-2xl">
-                    <CardContent className="p-6 sm:p-8">
-                      <div className="flex items-center gap-5">
-                        <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center flex-shrink-0">
-                          <Trophy className="w-8 h-8 text-zinc-500" />
-                        </div>
-                        <div className="flex-1">
-                          <h2 className="text-xl font-bold text-white tracking-tight">Tournament Complete</h2>
-                          {winner && (
-                            <p className="text-amber-300/80 font-medium text-sm mt-1">
-                              Winner: <span className="text-amber-300 font-bold">{winner.teamName}</span>
-                              {' '}<span className="text-amber-400/60">— {winner.totalPoints} pts</span>
-                            </p>
-                          )}
-                          {userTeam && (
-                            <p className="text-zinc-400 text-sm mt-2 leading-relaxed">
-                              Thank you for participating!{userRankFinal ? ` You finished #${userRankFinal} overall.` : ''} Better luck next time 💪
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </motion.div>
-            );
-          })()
+          <motion.div variants={stagger.item}>
+            <div className="relative rounded-2xl overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.08] via-transparent to-amber-500/[0.04]" />
+              <Card className="relative bg-[#0a0a0c]/90 backdrop-blur-xl border border-amber-500/20 rounded-2xl">
+                <CardContent className="p-6 sm:p-8">
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+                      <Trophy className="w-8 h-8 text-amber-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white tracking-tight">Tournament Complete</h2>
+                      {brResults.winner && (
+                        <p className="text-amber-300/80 font-medium text-sm mt-1">
+                          Winner: <span className="text-amber-300 font-bold">{brResults.winner.teamName}</span>
+                          {' '}<span className="text-amber-400/60">— {brResults.winner.totalPoints} pts</span>
+                        </p>
+                      )}
+                      {userTeam && brResults.winner?.teamId === userTeam.id && (
+                        <p className="text-amber-200 text-sm mt-1.5 font-bold flex items-center gap-1.5">
+                          <Medal className="w-4 h-4" /> Congratulations! You won!
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </motion.div>
         ) : (
           /* ─── Waiting for Next Game ─── */
           <motion.div variants={stagger.item}>
@@ -844,7 +475,7 @@ const BRGameRoom: React.FC = () => {
                 </div>
                 <h3 className="text-base font-bold text-white tracking-tight mb-1">Waiting for Next Game</h3>
                 <p className="text-sm text-zinc-500 max-w-xs">
-                  {gamesCompleted} of {totalGames} games completed. The organizer will start the next game soon.
+                  {brResults.gamesCompleted} of {brGameCount} games completed. The organizer will start the next game soon.
                 </p>
               </CardContent>
             </Card>
@@ -899,7 +530,7 @@ const BRGameRoom: React.FC = () => {
         )}
 
         {/* ─── Game History ─── */}
-        {gamesCompleted > 0 && (
+        {brResults.gamesCompleted > 0 && (
           <motion.div variants={stagger.item} className="space-y-2">
             <button
               onClick={() => setHistoryExpanded(prev => !prev)}
@@ -923,86 +554,42 @@ const BRGameRoom: React.FC = () => {
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="overflow-hidden space-y-3"
+                  className="overflow-hidden space-y-2"
                 >
-                  {usesRelationalBrFlow && historyResultsLoading && (
-                    <div className="rounded-2xl bg-white/[0.02] border border-white/[0.04] px-4 py-5 text-sm text-zinc-500">
-                      Loading round history...
-                    </div>
-                  )}
-                  {!historyResultsLoading && historyGames.length === 0 && (
-                    <div className="rounded-2xl bg-white/[0.02] border border-white/[0.04] px-4 py-5 text-sm text-zinc-500">
-                      No completed games yet.
-                    </div>
-                  )}
-                  {historyGames.map(({ gameNumber, results }) => (
-                    <div
-                      key={gameNumber}
-                      className="rounded-2xl bg-white/[0.02] border border-white/[0.04] overflow-hidden"
-                    >
-                      <div className="flex items-center gap-3 px-4 py-3 bg-white/[0.02] border-b border-white/[0.05]">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
-                          <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                        </div>
-                        <span className="text-sm font-bold text-zinc-200">Game {gameNumber}</span>
-                        <span className="text-[10px] text-zinc-600 ml-auto font-mono">{results.length} players</span>
-                      </div>
-
-                      <div className="flex items-center px-4 py-1.5 text-[9px] font-bold uppercase tracking-wider text-zinc-600 border-b border-white/[0.03] bg-white/[0.01]">
-                        <span className="w-6 text-center">#</span>
-                        <span className="flex-1 pl-2">Player</span>
-                        <span className="w-14 text-center">Place</span>
-                        <span className="w-14 text-center">Kills</span>
-                        <span className="w-12 text-right">Pts</span>
-                      </div>
-
-                      <div className="divide-y divide-white/[0.025]">
-                        {results.map((result) => {
-                          const teamId = 'team_id' in result ? result.team_id : result.teamId;
-                          const teamName = 'team_name' in result ? result.team_name : result.teamName;
-                          const totalPointsValue = 'total_points' in result ? result.total_points : result.totalPoints;
-                          const isUser = userTeam?.id === teamId;
-                          const teamInfo = leaderboard.find((entry) => entry.teamId === teamId);
-
-                          return (
-                            <div
-                              key={teamId}
-                              className={cn(
-                                'flex items-center px-4 py-2 text-xs transition-colors',
-                                isUser ? 'bg-rose-500/[0.07] border-l-2 border-l-rose-500' : 'hover:bg-white/[0.015]',
-                              )}
-                            >
-                              <span className={cn(
-                                'w-6 text-center font-bold tabular-nums',
-                                result.placement === 1 ? 'text-amber-400' : result.placement === 2 ? 'text-zinc-300' : result.placement === 3 ? 'text-orange-400' : 'text-zinc-600',
-                              )}>
-                                {result.placement}
-                              </span>
-                              <span className={cn(
-                                'flex-1 pl-2 truncate font-semibold',
-                                isUser ? 'text-white' : 'text-zinc-400',
-                              )}>
-                                {teamInfo?.teamName || teamName || 'Unknown'}
-                                {isUser && <span className="ml-1.5 text-[9px] text-rose-400 font-normal">(you)</span>}
-                              </span>
-                              <span className={cn(
-                                'w-14 text-center font-bold tabular-nums',
-                                result.placement === 1 ? 'text-amber-400' : 'text-zinc-400',
-                              )}>
-                                #{result.placement}
-                              </span>
-                              <span className="w-14 text-center font-medium tabular-nums text-rose-400">
-                                {result.kills}
-                              </span>
-                              <span className="w-12 text-right font-bold tabular-nums text-white">
-                                {totalPointsValue}
-                              </span>
+                  {Array.from({ length: brGameCount }, (_, i) => i + 1)
+                    .filter(n => brResults.getGameStatus(n) === 'completed')
+                    .map(gameNum => {
+                      const results = brResults.getGameResults(gameNum);
+                      const userResult = userTeam ? results?.find(r => r.teamId === userTeam.id) : null;
+                      return (
+                        <div
+                          key={gameNum}
+                          className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.03] transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                            <span className="text-sm font-semibold text-zinc-300">Game {gameNum}</span>
+                          </div>
+                          {userResult ? (
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className={cn(
+                                "font-bold px-2 py-0.5 rounded",
+                                userResult.placement === 1 ? "text-amber-400 bg-amber-500/10" :
+                                userResult.placement <= 3 ? "text-zinc-300 bg-white/[0.04]" : "text-zinc-500"
+                              )}>
+                                #{userResult.placement}
+                              </span>
+                              <span className="text-rose-400 font-medium">{userResult.kills} kills</span>
+                              <span className="text-white font-bold">{userResult.totalPoints} pts</span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-zinc-700 font-mono">No data</span>
+                          )}
+                        </div>
+                      );
+                    })}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1012,14 +599,14 @@ const BRGameRoom: React.FC = () => {
         {/* ─── Leaderboard ─── */}
         <motion.div variants={stagger.item}>
           <BRLeaderboard
-            entries={leaderboard}
-            totalGames={totalGames}
-            gamesCompleted={gamesCompleted}
+            entries={brResults.leaderboard}
+            totalGames={brGameCount}
+            gamesCompleted={brResults.gamesCompleted}
           />
         </motion.div>
 
         {/* ─── Dispute Option ─── */}
-        {gamesCompleted > 0 && userTeam && (
+        {brResults.gamesCompleted > 0 && userTeam && (
           <motion.div variants={stagger.item}>
             <div className="rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">

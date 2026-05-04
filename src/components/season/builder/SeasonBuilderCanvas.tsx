@@ -202,10 +202,10 @@ const SeasonBuilderCanvas = ({
             <Plus className="h-5 w-5 text-zinc-600" />
           </div>
           <div>
-            <p className="font-body text-[13px] font-semibold text-zinc-400">No stages yet</p>
-            <p className="font-body mt-1 max-w-xs text-[12px] text-zinc-600">
-              Use a template or the quick-add buttons above to start building your season.
-            </p>
+              <p className="font-body text-[13px] font-semibold text-zinc-400">No tournaments yet</p>
+              <p className="font-body mt-1 max-w-xs text-[12px] text-zinc-600">
+                Use a template or the quick-add buttons above to start planning tournaments for your season.
+              </p>
           </div>
         </div>
       </div>
@@ -217,7 +217,7 @@ const SeasonBuilderCanvas = ({
       <div className="border-b border-white/[0.04] px-5 py-4">
         <p className="font-heading text-[15px] font-semibold text-white">Season flow</p>
         <p className="font-body mt-1 text-[12px] text-zinc-600">
-          Click any stage to configure it. Stages are grouped by type.
+          Click any tournament to configure it. Tournaments are grouped by role.
         </p>
       </div>
 

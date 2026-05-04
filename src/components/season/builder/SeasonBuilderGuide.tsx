@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowUpRight,
   CalendarRange,
   ChevronDown,
   Flag,
   Layers3,
-  ListChecks,
+  Link2,
   MapPin,
   RotateCcw,
-  Settings2,
   Sparkles,
   Trophy,
+  Workflow,
   X,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -34,30 +33,30 @@ const GUIDE_CHAPTERS: GuideSection[] = [
     id: 'overview',
     icon: Sparkles,
     iconColor: 'text-cyan-400',
-    title: 'What is a Season?',
+    title: 'What is a Season Structure?',
     paragraphs: [
-      "A season is a multi-tournament competition flow. Every stage you add — qualifier, event, playoff, or final — is a real tournament with its own bracket, registration, and leaderboard.",
-      "The Structure Builder is where you design the full competition path in one place. You add tournaments, configure them inline (format, team size, prize pool), and wire advancement so the top finishers automatically progress to the next tournament.",
-      "Think of the season as a championship circuit: players enter through qualifiers, battle through events, and converge at a grand final. You design the full journey up front; the platform runs it.",
+      "A season in Esportra is a designed competitive circuit — a structured pathway that takes players from entry-level tournaments through to a championship.",
+      "The Structure Builder is where you define that circuit. You add tournaments, configure them with real format and registration settings, and wire advancement rules that define how teams move from one tournament to the next.",
+      "Think of the structure as a flow: your season root connects to qualifiers, qualifiers advance top teams to events, events advance top teams to finals. Every connection is an explicit advancement rule.",
     ],
   },
   {
     id: 'stage-types',
     icon: Layers3,
     iconColor: 'text-violet-400',
-    title: 'Tournament Roles',
+    title: 'Tournament Roles Explained',
     paragraphs: [
-      "Every tournament inside a season has a role. The role describes what the tournament does in the overall flow:",
+      "Every tournament you add has a role. Here's what each role means:",
       {
         type: 'list',
         items: [
-          'Qualifier (amber) — Open-entry tournament where new teams join. Typically feeds into an event or playoff.',
-          'Event (violet) — Regional or circuit tournament. Can be fed from qualifiers or accept teams directly, depending on registration type.',
-          'Finals (rose) — Terminal championship tournament. This is where the season ends and a champion is crowned.',
-          'Custom (grey) — Flexible role for anything non-standard: showmatches, invitationals, last-chance qualifiers, or intermediate bracket rounds.',
+          'Qualifier (amber) — Entry-level competitions. Players compete here to earn a spot in the next tournament. Example: a regional open qualifier or online sub-regional.',
+          "Event (violet) — A major competition stop within the season. Teams typically advance from a qualifier into an event.",
+          'Finals (rose) — The closing championship tournament where all qualifying paths converge. Typically one per season.',
+          'Custom (grey) — Fully flexible. Use for anything non-standard: showmatches, boot camps, pre-season invitationals, or intermediate rounds.',
         ],
       },
-      "Roles are purely semantic — they help players understand the shape of your season. The actual mechanics (format, team size, registration, advancement) are set per tournament in the Inspector.",
+      "You can change the role of any tournament at any time from the Inspector. Roles affect how tournaments are categorised and displayed to players — they do not enforce automatic logic.",
     ],
   },
   {
@@ -70,9 +69,9 @@ const GUIDE_CHAPTERS: GuideSection[] = [
       {
         type: 'list',
         items: [
-          "Use the quick-add bar above the canvas (Qualifier, Event, Finals buttons) to add a tournament with that role.",
-          "Click 'Add stage' inside any phase column to add another tournament of the same role.",
-          "New tournaments start with an empty name and no config — the Inspector auto-focuses the name field so you can start typing immediately.",
+          "Use the quick-add bar above the canvas (Qualifier, Event, Finals buttons) to instantly add a tournament to the flow.",
+          "New tournaments start with an empty name — the Inspector's name field will auto-focus so you can type immediately.",
+          "You can also use 'Add child' or 'Add sibling' buttons in the Inspector to add relative to the currently selected tournament.",
         ],
       },
       "Removing a tournament:",
@@ -80,117 +79,110 @@ const GUIDE_CHAPTERS: GuideSection[] = [
         type: 'list',
         items: [
           "Select the tournament in the canvas, then click 'Remove' in the Inspector header.",
-          "The season root cannot be removed.",
-          "If the tournament being removed is a target of any advancement connection, that connection is invalidated and will show an error until you fix it.",
+          "The root node (your season itself) cannot be removed.",
+          "If you remove a tournament that has connected children, those are automatically re-linked to the removed tournament's parent — no orphaned nodes.",
         ],
       },
     ],
   },
   {
-    id: 'inline-config',
-    icon: Settings2,
+    id: 'tournament-setup',
+    icon: Layers3,
     iconColor: 'text-emerald-400',
-    title: 'Configure Tournaments Inline',
+    title: 'Tournament Setup',
     paragraphs: [
-      "Each tournament in the season has its configuration defined right in the Inspector — no jumping to the standalone tournament creation flow.",
-      "Required fields before you can publish:",
+      "Each tournament is configured inline in the Inspector. This is where you define the real tournament that will be created when the season is published.",
+      "Available fields include:",
       {
         type: 'list',
         items: [
-          'Format — single elimination, double elimination, round robin, Swiss, or groups → playoffs.',
-          'Team size — the number of players per team (e.g. 5 for most FPS games).',
-          'Max teams — the cap on registrations for this tournament.',
-          'Registration type — open, invite-only, or qualifier-fed.',
+          'Format — single elimination, double elimination, round robin, swiss, or groups + playoffs',
+          'Registration type — open, invite-only, or qualifier feed',
+          'Team size — players per team',
+          'Max teams — hard cap on entries',
+          'Best of — match series format',
+          'Entry fee and prize pool',
         ],
       },
-      "Optional but recommended: entry fee, prize pool, best-of per match, registration window, and check-in minutes. The Inspector shows a ‘Ready’ badge when the tournament has enough detail to be created on publish.",
+      "A tournament is considered ready only when the required setup is complete. The builder uses that readiness state during validation before allowing the season flow to continue.",
     ],
   },
   {
     id: 'advancement',
-    icon: ListChecks,
-    iconColor: 'text-rose-400',
-    title: 'Advancement Between Tournaments',
-    paragraphs: [
-      "Advancement is how teams move from one tournament to the next. You set it per-tournament in the Inspector under 'Advancement out'.",
-      "Rule types:",
-      {
-        type: 'list',
-        items: [
-          'Top N — the top N finishers advance. Example: top 4 teams from the NA qualifier advance to the NA event.',
-          'Top percentage — the top X% advance. Useful when team counts are uncertain.',
-          'Points threshold — teams with at least X season points advance. Useful for circuits that accumulate points across multiple events.',
-          'Manual selection — you pick the advancing teams yourself after the tournament completes.',
-        ],
-      },
-      "Seed modes control how advancing teams are placed in the next tournament's bracket: preserve finishing order, reseed by season points, randomise, or seed manually. One tournament can have multiple outgoing advancement paths — for example, a qualifier could send top 4 to a main event and 5th–8th to a last-chance qualifier.",
-    ],
-  },
-  {
-    id: 'publishing',
-    icon: Trophy,
+    icon: Link2,
     iconColor: 'text-cyan-400',
-    title: 'Publishing the Season',
+    title: 'Advancement Rules',
     paragraphs: [
-      "When you publish a season, the platform creates every tournament you configured as a real tournament record and wires up the advancement connections between them. It is an end-to-end operation: you do not create tournaments separately and link them later.",
-      "Before publish the platform validates:",
+      "Advancement rules define how teams move from one tournament to the next.",
+      "How it works:",
       {
         type: 'list',
         items: [
-          'Every tournament has its required config fields filled in.',
-          'The advancement graph has no cycles (no team can advance in a loop).',
-          'Every non-Final tournament has at least one outgoing advancement path, or an explicit terminal setting.',
-          'At least one Final or terminal tournament exists.',
+          "Select a tournament in the canvas.",
+          "In the Inspector, open the 'Advancement out' section.",
+          "Add a target tournament.",
+          "Choose the rule type, rule value, and seed mode.",
         ],
       },
-      "If a publish fails mid-way the entire operation rolls back — no half-created tournaments, no orphan advancement rules. After publish, you can still edit configuration on tournaments that have not started yet, but completed advancement cannot be rewritten without an audited manual override.",
+      "Available rule types:",
+      {
+        type: 'list',
+        items: [
+          'Top N teams',
+          'Top percentage',
+          'Points threshold',
+          'Manual selection',
+        ],
+      },
+      "This is what turns the season from a list of tournaments into a connected competition circuit.",
     ],
   },
   {
     id: 'scheduling',
     icon: CalendarRange,
     iconColor: 'text-violet-400',
-    title: 'Scheduling Your Stages',
+    title: 'Scheduling Your Tournaments',
     paragraphs: [
-      "Each stage has three date fields: Registration Deadline, Start Date, and End Date. These are set independently for each stage.",
+      "Each tournament has three date fields: Registration Deadline, Start Date, and End Date. These are set independently for each tournament.",
       {
         type: 'list',
         items: [
-          "Registration Deadline — The last day players can sign up for this specific stage.",
-          "Starts — The official start date of the stage.",
-          "Ends — The official end date of the stage.",
+          "Registration Deadline — The last day players can sign up for this specific tournament.",
+          "Starts — The official start date of the tournament.",
+          "Ends — The official end date of the tournament.",
         ],
       },
-      "Stages can run in parallel (overlapping dates) or sequentially. The schedule is informational — it's displayed to players in the season calendar but does not automatically open or close registrations. Registration management is handled per-tournament.",
+      "Tournaments can run in parallel (overlapping dates) or sequentially. The schedule is informational — it's displayed to players in the season calendar but does not automatically open or close registrations. Registration management is handled per tournament.",
+      "You can also set Region, City, and Country per tournament — useful for seasons that span multiple territories.",
     ],
   },
   {
     id: 'status',
     icon: Trophy,
     iconColor: 'text-rose-400',
-    title: 'Stage Status Lifecycle',
+    title: 'Tournament Status Lifecycle',
     paragraphs: [
-      "Every stage has a status that you manage manually. The platform does not auto-update status.",
+      "Every tournament has a status that you manage manually. The platform does not auto-update status.",
       {
         type: 'list',
         items: [
-          "Draft — The stage is not yet visible to players. Use this while you're still building.",
-          "Scheduled — The stage is visible. Players can see it in the season overview and start preparing.",
-          "Live — The stage is actively running. Match results are being recorded.",
-          "Completed — The stage is over. Results are locked.",
-          "Archived — The stage is hidden from public view. Use for stages you want to preserve but not display.",
+          "Draft — The tournament is not yet visible to players. Use this while you're still building.",
+          "Scheduled — The tournament is visible. Players can see it in the season overview and start preparing.",
+          "Live — The tournament is actively running. Match results are being recorded.",
+          "Completed — The tournament is over. Results are locked.",
+          "Archived — The tournament is hidden from public view. Use for tournaments you want to preserve but not display.",
         ],
       },
-      "Update the status of each stage as your season progresses. You can do this from the Inspector both during season creation and from the season management page (Structure tab) after the season is live.",
+      "Update the status of each tournament as your season progresses. You can do this from the Inspector during season creation, and from the season management page (Structure tab) after the season is live.",
     ],
   },
   {
     id: 'location',
     icon: MapPin,
     iconColor: 'text-emerald-400',
-    title: 'Stage Location',
+    title: 'Tournament Location',
     paragraphs: [
-      "Each stage can have its own geographic details: Region, City, and Country. This is particularly useful for international seasons with stages across multiple territories.",
+      "Each tournament can have its own geographic details: Region, City, and Country. This is particularly useful for international seasons with tournaments across multiple territories.",
       "Examples:",
       {
         type: 'list',
@@ -200,7 +192,7 @@ const GUIDE_CHAPTERS: GuideSection[] = [
           "Grand Finals → Region: Global, City: Dubai, Country: UAE",
         ],
       },
-      "Location data appears in the season overview and helps players identify which stages are geographically accessible or relevant to them.",
+      "Location data appears in the season overview and helps players identify which tournaments are geographically accessible or relevant to them.",
     ],
   },
 ];
@@ -333,20 +325,6 @@ const SeasonBuilderGuide = ({ onClose, onStartTour }: SeasonBuilderGuideProps) =
           {GUIDE_CHAPTERS.map((chapter) => (
             <ChapterItem key={chapter.id} chapter={chapter} />
           ))}
-
-          {/* Cross-link to public organizer guide */}
-          <a
-            href="/guides/organizer#seasons"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 flex items-center justify-between gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left transition hover:border-white/10 hover:bg-white/[0.04]"
-          >
-            <div>
-              <p className="font-body text-[12px] font-semibold text-zinc-200">Full reference: Seasons & Structure</p>
-              <p className="font-body mt-0.5 text-[11px] text-zinc-500">Read the public organizer guide for the long-form walkthrough, including the Points rules tab.</p>
-            </div>
-            <ArrowUpRight className="h-4 w-4 shrink-0 text-zinc-400" />
-          </a>
         </div>
       </ScrollArea>
     </motion.div>

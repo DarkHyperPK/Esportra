@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, BookOpen, ChevronDown, Flag, Map, PlayCircle, Plus, Save, Trophy, Workflow, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowDown, BookOpen, ChevronDown, Flag, HelpCircle, Layers3, Map, PlayCircle, Plus, Save, Trophy, Workflow, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { hasSeenTour, markTourSeen } from '@/lib/onboardingFlags';
 import type { OrganizerTournamentOption, SeasonBuilderNode, SeasonNodeType } from '@/types/season';
 import SeasonBuilderCanvas from './SeasonBuilderCanvas';
 import SeasonBuilderGuide from './SeasonBuilderGuide';
@@ -19,8 +19,7 @@ import {
   normalizeSeasonBuilderNodes,
 } from './seasonBuilderUtils';
 
-const TEMPLATES_FLAG = 'season_templates';
-const TOUR_FLAG = 'season_builder';
+const TUTORIAL_KEY = 'ssb-v2';
 const DEFAULT_REGIONS = ['Region 1', 'Region 2', 'Region 3', 'Region 4'];
 
 const QUICK_ADD: { type: Exclude<SeasonNodeType, 'root' | 'stage'>; label: string; icon: typeof Flag }[] = [
@@ -76,22 +75,21 @@ interface SeasonStructureBuilderProps {
   saveLabel?: string;
   isSaving?: boolean;
   helperText?: string;
-  /** Which surface is hosting the builder. Drives tour copy. Defaults to 'wizard'. */
-  surface?: 'wizard' | 'manage';
 }
 
 const SeasonStructureBuilder = ({
-  title, description, nodes, onChange,
+  title, description, nodes, onChange, tournamentOptions = [],
   onSave, saveLabel = 'Save structure', isSaving = false, helperText,
-  surface = 'wizard',
 }: SeasonStructureBuilderProps) => {
   const normalizedNodes = useMemo(() => normalizeSeasonBuilderNodes(nodes), [nodes]);
   const [selectedNodeId, setSelectedNodeId] = useState(normalizedNodes[0]?.id ?? '');
-  const [showTutorial, setShowTutorial] = useState(() => !hasSeenTour(TEMPLATES_FLAG));
+  const [showTutorial, setShowTutorial] = useState(() => {
+    try { return localStorage.getItem(TUTORIAL_KEY) !== '1'; } catch { return false; }
+  });
+  const [showHelp, setShowHelp] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [activeTemplate, setActiveTemplate] = useState<'regional' | 'simple' | null>('regional');
-  const autoLaunchedRef = useRef(false);
 
   const [regionCount, setRegionCount] = useState(4);
   const [regionNames, setRegionNames] = useState<string[]>(DEFAULT_REGIONS);
@@ -104,7 +102,7 @@ const SeasonStructureBuilder = ({
   }, [normalizedNodes, selectedNodeId]);
 
   const selectedNode = normalizedNodes.find((n) => n.id === selectedNodeId);
-  const { configured: configuredCount, total: stageCount } = countConfiguredStages(normalizedNodes);
+  const configuredSummary = countConfiguredStages(normalizedNodes);
 
   const updateNodes = (next: SeasonBuilderNode[]) => onChange(normalizeSeasonBuilderNodes(next));
 
@@ -158,29 +156,9 @@ const SeasonStructureBuilder = ({
   };
 
   const dismissTutorial = () => {
-    markTourSeen(TEMPLATES_FLAG);
+    try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch { /* ignore */ }
     setShowTutorial(false);
   };
-
-  // Auto-select the first non-root stage so tour Inspector steps land on something visible.
-  const ensureStageSelected = useCallback(() => {
-    const firstStage = normalizedNodes.find((n) => n.nodeType !== 'root');
-    if (!firstStage) return;
-    if (!selectedNodeId || !normalizedNodes.some((n) => n.id === selectedNodeId && n.nodeType !== 'root')) {
-      setSelectedNodeId(firstStage.id);
-    }
-    setShowGuide(false); // make sure the Inspector is the visible side panel
-  }, [normalizedNodes, selectedNodeId]);
-
-  // Auto-launch the tour once: after the templates tutorial is dismissed and at least one stage exists.
-  useEffect(() => {
-    if (autoLaunchedRef.current) return;
-    if (showTutorial) return;
-    if (hasSeenTour(TOUR_FLAG)) return;
-    if (normalizedNodes.filter((n) => n.nodeType !== 'root').length === 0) return;
-    autoLaunchedRef.current = true;
-    setShowTour(true);
-  }, [showTutorial, normalizedNodes]);
 
   // Build flow preview for regional circuit
   const regionalPreviewPhases = [
@@ -191,8 +169,16 @@ const SeasonStructureBuilder = ({
 
   return (
     <div className="space-y-5">
-      {showTutorial ? (
-        <div className="rounded-[32px] border border-white/[0.06] bg-[#0a0a0c]/95 backdrop-blur-2xl">
+      <AnimatePresence mode="wait">
+        {showTutorial ? (
+          <motion.div
+            key="tutorial"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.28 }}
+            className="rounded-[32px] border border-white/[0.06] bg-[#0a0a0c]/95 backdrop-blur-2xl"
+          >
             {/* Header */}
             <div className="border-b border-white/[0.04] px-8 py-8">
               <div className="flex items-start justify-between gap-4">
@@ -204,7 +190,7 @@ const SeasonStructureBuilder = ({
                     How does your season flow?
                   </h3>
                   <p className="font-body mt-3 max-w-lg text-[13px] leading-relaxed text-zinc-500">
-                    A season is a competitive journey — players enter through qualifiers, advance through regional stages, and compete for a championship title. Choose how your journey is structured.
+                    A season is a connected tournament circuit. Pick a template, generate the flow, then configure each tournament and its advancement path inline.
                   </p>
                 </div>
                 <button type="button" onClick={dismissTutorial}
@@ -256,8 +242,9 @@ const SeasonStructureBuilder = ({
 
             {/* Template content */}
             <div className="px-8 py-8">
+              <AnimatePresence mode="wait">
                 {activeTemplate === 'regional' && (
-                  <div>
+                  <motion.div key="regional" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
                       {/* Config panel */}
                       <div className="space-y-6">
@@ -320,19 +307,19 @@ const SeasonStructureBuilder = ({
                         <div className="mt-4 rounded-2xl border border-white/[0.04] bg-black/30 p-4">
                           <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.25em] text-zinc-600">How it works</p>
                           <ol className="space-y-2 text-[11px] leading-relaxed text-zinc-500">
-                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">1.</span>Each region gets its own qualifier and finals tournament.</li>
-                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">2.</span>Configure each tournament inline &mdash; format, team size, prize pool.</li>
-                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">3.</span>Wire advancement on each stage: top N teams progress to the next tournament.</li>
-                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">4.</span>Publish the season &mdash; all tournaments are created at once with advancement live.</li>
+                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">1.</span>Each region gets its own planned tournaments in the flow.</li>
+                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">2.</span>Configure every tournament inline in the Inspector.</li>
+                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">3.</span>Set advancement targets so qualified teams move into the next tournament.</li>
+                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">4.</span>Publishing creates the connected tournament circuit from this plan.</li>
                           </ol>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
 
                 {activeTemplate === 'simple' && (
-                  <div>
+                  <motion.div key="simple" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
                       <div className="space-y-6">
                         <div>
@@ -369,21 +356,23 @@ const SeasonStructureBuilder = ({
                         <div className="mt-4 rounded-2xl border border-white/[0.04] bg-black/30 p-4">
                           <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.25em] text-zinc-600">How it works</p>
                           <ol className="space-y-2 text-[11px] leading-relaxed text-zinc-500">
-                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">1.</span>Each event stop is a real tournament &mdash; configure it inline.</li>
-                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">2.</span>Teams earn points based on placement at each stop.</li>
-                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">3.</span>Standings accumulate across the full season automatically.</li>
-                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">4.</span>Top-ranked teams advance to the Grand Finals tournament.</li>
+                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">1.</span>Each event stop is an independent tournament.</li>
+                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">2.</span>Players earn points based on placement at each stop.</li>
+                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">3.</span>Standings accumulate across the full season.</li>
+                            <li className="flex gap-2"><span className="shrink-0 text-zinc-600">4.</span>Top-ranked players qualify for the Grand Finals.</li>
                           </ol>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
+              </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
         ) : (
           /* ─── Builder workspace ──────────────────────────────────────── */
-          <div className="space-y-5">
+          <motion.div key="builder" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.28 }} className="space-y-5">
 
             {/* Header */}
             <div className="rounded-[28px] border border-white/[0.06] bg-[#0a0a0c]/95 px-6 py-5 backdrop-blur-2xl">
@@ -393,19 +382,20 @@ const SeasonStructureBuilder = ({
                   <p className="font-body mt-1 text-[13px] text-zinc-500">{description}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div data-tour-id="wizard-stats" className="flex items-center gap-1.5 mr-2">
+                  <div className="flex items-center gap-1.5 mr-2">
                     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-center">
-                      <p className="font-body text-[9px] uppercase tracking-[0.14em] text-zinc-600">Tournaments</p>
-                      <p className="font-heading mt-0.5 text-lg font-bold text-white">{stageCount}</p>
+                      <p className="font-body text-[9px] uppercase tracking-[0.14em] text-zinc-600">Stages</p>
+                      <p className="font-heading mt-0.5 text-lg font-bold text-white">{normalizedNodes.filter((n) => n.nodeType !== 'root').length}</p>
                     </div>
                     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-center">
-                      <p className="font-body text-[9px] uppercase tracking-[0.14em] text-zinc-600">Configured</p>
-                      <p className="font-heading mt-0.5 text-lg font-bold text-white">{configuredCount}</p>
+                      <p className="font-body text-[9px] uppercase tracking-[0.14em] text-zinc-600">Ready</p>
+                      <p className="font-heading mt-0.5 text-lg font-bold text-white">{configuredSummary.configured}</p>
                     </div>
                   </div>
                   {[
-                    { key: 'tour', active: showTour, icon: PlayCircle, toggle: () => { setShowGuide(false); setShowTour((v) => !v); }, tip: 'Replay tour' },
-                    { key: 'guide', active: showGuide, icon: BookOpen, toggle: () => { setShowTour(false); setShowGuide((v) => !v); }, tip: 'Reference guide' },
+                    { key: 'tour', active: showTour, icon: PlayCircle, toggle: () => { setShowGuide(false); setShowTour((v) => !v); }, tip: 'Tour' },
+                    { key: 'guide', active: showGuide, icon: BookOpen, toggle: () => { setShowTour(false); setShowGuide((v) => !v); }, tip: 'Guide' },
+                    { key: 'help', active: showHelp, icon: HelpCircle, toggle: () => setShowHelp((v) => !v), tip: 'Reference' },
                   ].map(({ key, active, icon: Ic, toggle, tip }) => (
                     <button key={key} type="button" onClick={toggle} title={tip}
                       className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition',
@@ -417,8 +407,8 @@ const SeasonStructureBuilder = ({
               </div>
 
               {/* Quick add */}
-              <div data-tour-id="quick-add" className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="font-body text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">Add stage</span>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="font-body text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-600">Add tournament</span>
                 {QUICK_ADD.map((opt) => {
                   const Icon = opt.icon;
                   return (
@@ -428,30 +418,27 @@ const SeasonStructureBuilder = ({
                     </button>
                   );
                 })}
-                <button type="button" data-tour-id="templates-link" onClick={() => setShowTutorial(true)}
+                <button type="button" onClick={() => setShowTutorial(true)}
                   className="ml-auto text-[11px] font-medium text-zinc-600 underline-offset-2 transition hover:text-zinc-400 hover:underline">
                   Templates
                 </button>
               </div>
             </div>
 
-            <SeasonBuilderTour
-              open={showTour}
-              surface={surface}
-              onClose={() => setShowTour(false)}
-              onRequireStageSelected={ensureStageSelected}
-            />
+            <AnimatePresence>{showTour && <SeasonBuilderTour onClose={() => setShowTour(false)} />}</AnimatePresence>
 
             {/* Canvas + Inspector */}
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_420px]">
               <SeasonBuilderCanvas nodes={normalizedNodes} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId}
                 onAddChild={(nodeId) => addNode(nodeId, 'qualifier')} onAddStageToPhase={addStageToPhase} onReorder={updateNodes} />
-              {showGuide ? (
-                  <SeasonBuilderGuide onClose={() => setShowGuide(false)} onStartTour={() => { setShowGuide(false); setShowTour(true); }} />
+              <AnimatePresence mode="wait">
+                {showGuide ? (
+                  <SeasonBuilderGuide key="guide" onClose={() => setShowGuide(false)} onStartTour={() => { setShowGuide(false); setShowTour(true); }} />
                 ) : (
-                  <SeasonBuilderInspector node={selectedNode} allNodes={normalizedNodes}
-                    onChange={handleNodeChange} onRemove={handleRemoveNode} />
+                  <SeasonBuilderInspector key="inspector" node={selectedNode} allNodes={normalizedNodes}
+                    tournamentOptions={tournamentOptions} onChange={handleNodeChange} onRemove={handleRemoveNode} />
                 )}
+              </AnimatePresence>
             </div>
 
             {(helperText ?? onSave) && (
@@ -464,8 +451,9 @@ const SeasonStructureBuilder = ({
                 )}
               </div>
             )}
-          </div>
+          </motion.div>
         )}
+      </AnimatePresence>
     </div>
   );
 };

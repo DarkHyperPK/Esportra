@@ -216,7 +216,7 @@ export interface SeasonDetailResponse {
   permissions: SeasonPermissions;
 }
 
-export interface SeasonStanding {
+export interface SeasonLeaderboardEntry {
   entityId: string;
   displayName: string;
   totalPoints: number;

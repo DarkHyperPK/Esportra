@@ -6,10 +6,15 @@ import SeasonStructureBuilder from '@/components/season/builder/SeasonStructureB
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import {
   buildSeasonTreeFromDrafts,
+  getPhaseMetaForType,
   hydrateSeasonBuilderNodes,
+  isTournamentConfigComplete,
+  readOutgoingConnections,
+  readTournamentConfig,
   toSeasonNodeDraftPayload,
   validateSeasonBuilderNodes,
 } from '@/components/season/builder/seasonBuilderUtils';
+import { formatDistanceToNow } from 'date-fns';
 import SeasonQualificationsPanel from '@/components/season/SeasonQualificationsPanel';
 import SeasonStandingsTable from '@/components/season/SeasonStandingsTable';
 import SeasonTreePreview from '@/components/season/SeasonTreePreview';
@@ -34,6 +39,7 @@ import { usePublishSeason, useUpdateSeason, useArchiveSeason, useCancelSeason, u
 import { useToast } from '@/hooks/use-toast';
 import { seasonBasicsSchema } from '@/schemas/seasonSchema';
 import type {
+  AdvancementConnection,
   SeasonNodeDraft,
   SeasonBuilderNode,
   SeasonNodeStatus,
@@ -46,7 +52,17 @@ import type {
   SeasonTreeNode,
   UpdateSeasonPayload,
 } from '@/types/season';
-import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch, AlertCircle, ArrowRight, Bell, Clock, Info, Shield, Activity, X, AlertTriangle, Lock, ShieldOff } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import esportsGames from '@/data/esportsGames.json';
 
 const TABS = [
@@ -62,6 +78,7 @@ const TABS = [
   ['announcements', 'Announcements'],
   ['settings', 'Settings'],
   ['audit', 'Audit Log'],
+  ['analytics', 'Analytics'],
 ] as const;
 
 const SEASON_STATUSES: SeasonStatus[] = ['draft', 'published', 'active', 'completed', 'archived'];
@@ -144,9 +161,15 @@ const SeasonManage = () => {
 
   const [overview, setOverview] = useState<OverviewState>(emptyOverview);
   const [staffRows, setStaffRows] = useState<SeasonStaffMember[]>([]);
+  const [newStaff, setNewStaff] = useState<{ userId: string; role: SeasonStaffMember['role'] }>({ userId: '', role: 'co_organizer' });
   const [nodeRows, setNodeRows] = useState<SeasonBuilderNode[]>([]);
   const [ruleRows, setRuleRows] = useState<SeasonRuleDraft[]>([]);
   const [qualificationBusyId, setQualificationBusyId] = useState<string | null>(null);
+  const [announceTitle, setAnnounceTitle] = useState('');
+  const [announceBody, setAnnounceBody] = useState('');
+  const [showStructureSaveConfirm, setShowStructureSaveConfirm] = useState(false);
+  const [rosterLock, setRosterLock] = useState(false);
+  const [allowRosterChangesBetween, setAllowRosterChangesBetween] = useState(true);
 
   const activeTab = searchParams.get('tab') ?? 'overview';
 
@@ -191,6 +214,10 @@ const SeasonManage = () => {
         regionKey: rule.regionKey ?? '',
       })),
     );
+
+    const seasonSettings = data.season.settings as Record<string, unknown> | null | undefined;
+    setRosterLock(typeof seasonSettings?.rosterLock === 'boolean' ? seasonSettings.rosterLock : false);
+    setAllowRosterChangesBetween(typeof seasonSettings?.allowRosterChangesBetween === 'boolean' ? seasonSettings.allowRosterChangesBetween : true);
   }, [data]);
 
   const seasonTreePreview = useMemo(
@@ -250,6 +277,7 @@ const SeasonManage = () => {
       endDate: toNullable(overview.endDate),
       bannerUrl: overview.bannerUrl,
       logoUrl: overview.logoUrl,
+      settings: { rosterLock, allowRosterChangesBetween },
     };
 
     try {
@@ -290,7 +318,7 @@ const SeasonManage = () => {
     if (!nodeValidation.valid) {
       toast({
         title: 'Validation failed',
-        description: nodeValidation.message ?? 'Please name all structure nodes before saving.',
+        description: nodeValidation.message ?? 'Please finish the tournament flow before saving.',
         variant: 'destructive',
       });
       return;
@@ -311,7 +339,7 @@ const SeasonManage = () => {
 
     try {
       await syncNodes.mutateAsync(payload);
-      toast({ title: 'Structure saved', description: 'Season nodes are now synced to the backend.' });
+      toast({ title: 'Tournament flow saved', description: 'Planned tournaments and advancement are now synced to the backend.' });
     } catch (saveError) {
       toast({
         title: 'Structure sync failed',
@@ -321,8 +349,36 @@ const SeasonManage = () => {
     }
   };
 
-  const handleRulesSave = async () => {
-    if (!seasonId) return;
+  const handleNodesSaveWithGuard = () => {
+    const isStructureLocked =
+      data?.season.status === 'published' ||
+      data?.season.status === 'active' ||
+      data?.season.status === 'completed';
+    if (isStructureLocked) {
+      setShowStructureSaveConfirm(true);
+    } else {
+      handleNodesSave();
+    }
+  };
+
+  const handleRevokeQualification = async (recordId: string, displayName: string) => {
+    if (!confirm(`Revoke qualification for ${displayName}? This cannot be automatically undone.`)) return;
+    setQualificationBusyId(recordId);
+    try {
+      await updateQualification.mutateAsync({ recordId, status: 'revoked', notes: 'Manually revoked by organizer' });
+      toast({ title: `Qualification revoked for ${displayName}` });
+    } catch (err) {
+      toast({
+        title: 'Revoke failed',
+        description: err instanceof Error ? err.message : 'Could not revoke.',
+        variant: 'destructive',
+      });
+    } finally {
+      setQualificationBusyId(null);
+    }
+  };
+
+  const handleRulesSave = async () => {    if (!seasonId) return;
 
     const invalidRule = ruleRows.find((rule) => rule.sourceNodeId && rule.placementFrom > rule.placementTo);
     if (invalidRule) {
@@ -405,7 +461,7 @@ const SeasonManage = () => {
       });
       toast({
         title: 'Season published',
-        description: `${result.tournamentsCreated} tournaments created, ${result.tournamentsLinked} linked.`,
+        description: `${result.tournamentsCreated} tournaments created, ${result.connectionsWired} advancement connections wired.`,
       });
       refetch();
     } catch (publishError) {
@@ -549,7 +605,7 @@ const SeasonManage = () => {
             </div>
             <h1 className="mt-3 text-4xl font-black tracking-tight">{data.season.name}</h1>
             <p className="mt-3 max-w-3xl text-sm text-zinc-400">
-              Edit the season shell, wire tournaments into the tree, manage qualifiers, and refresh standings from one
+              Configure the season overview, planned tournaments, advancement flow, and standings from one
               workspace.
             </p>
           </div>
@@ -797,86 +853,125 @@ const SeasonManage = () => {
         )}
 
         {activeTab === 'staff' && (
-          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold">Season staff</h2>
-                <p className="mt-2 text-sm text-zinc-400">Add co-organizers and season admins who can manage this tree.</p>
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-heading text-2xl font-bold text-white">Season Staff</h2>
+                  <p className="mt-1 font-body text-sm text-zinc-400">Add co-organizers and admins who can manage this season.</p>
+                </div>
+                {staffRows.length > 0 && (
+                  <Badge className="w-fit bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
+                    {staffRows.length} member{staffRows.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="border-white/15 bg-white/5 text-white hover:bg-white/10"
-                onClick={() => setStaffRows((current) => [...current, { userId: '', role: 'co_organizer' }])}
-              >
-                <Users className="mr-2 h-4 w-4" />
-                Add staff row
-              </Button>
             </div>
 
-            <div className="mt-6 space-y-4">
-              {staffRows.length === 0 && (
-                <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-8 text-sm text-zinc-400">
-                  No extra staff yet. The season owner always retains management access.
+            {/* Staff list + add form */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              {/* Empty state */}
+              {staffRows.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.02] py-14 text-center">
+                  <Users className="h-10 w-10 text-zinc-600" />
+                  <p className="text-sm font-medium text-zinc-400">No staff members added.</p>
+                  <p className="text-xs text-zinc-600">Add co-organizers or admins below.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {staffRows.map((member, index) => {
+                    const displayName = member.fullName || member.username || member.userId;
+                    const initials = member.userId.slice(0, 2).toUpperCase();
+                    const isCoOrganizer = member.role === 'co_organizer';
+                    return (
+                      <div
+                        key={`${member.userId}-${index}`}
+                        className="flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3"
+                      >
+                        {/* Avatar */}
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${isCoOrganizer ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
+                          {initials}
+                        </div>
+
+                        {/* Info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-white">{displayName}</p>
+                          {displayName !== member.userId && (
+                            <p className="truncate font-body text-xs text-zinc-500">{member.userId}</p>
+                          )}
+                        </div>
+
+                        {/* Role badge */}
+                        <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${isCoOrganizer ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-400'}`}>
+                          {isCoOrganizer ? 'Co-organizer' : 'Admin'}
+                        </span>
+
+                        {/* Remove */}
+                        <button
+                          type="button"
+                          onClick={() => setStaffRows((current) => current.filter((_, i) => i !== index))}
+                          className="shrink-0 rounded-lg p-1.5 text-zinc-600 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                          aria-label="Remove staff member"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
-              {staffRows.map((member, index) => (
-                <div key={`${member.userId}-${index}`} className="grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 md:grid-cols-[1fr_220px_auto]">
-                  <div className="space-y-2">
-                    <Label>User ID</Label>
-                    <Input
-                      value={member.userId}
-                      onChange={(event) => {
-                        const next = [...staffRows];
-                        next[index] = { ...next[index], userId: event.target.value };
-                        setStaffRows(next);
-                      }}
-                      placeholder="Supabase user UUID"
-                      className="border-white/10 bg-black/20 text-white"
-                    />
-                    {(member.fullName || member.username) && (
-                      <p className="text-sm text-zinc-400">{member.fullName || member.username}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Role</Label>
-                    <Select
-                      value={member.role}
-                      onValueChange={(value: SeasonStaffMember['role']) => {
-                        const next = [...staffRows];
-                        next[index] = { ...next[index], role: value };
-                        setStaffRows(next);
-                      }}
-                    >
-                      <SelectTrigger className="border-white/10 bg-black/20 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STAFF_ROLES.map((role) => (
-                          <SelectItem key={role} value={role}>{role}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20"
-                      onClick={() => setStaffRows((current) => current.filter((_, currentIndex) => currentIndex !== index))}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-              ))}
+              {/* Inline add form */}
+              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:flex-row sm:items-center">
+                <Input
+                  value={newStaff.userId}
+                  onChange={(e) => setNewStaff((s) => ({ ...s, userId: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const trimmed = newStaff.userId.trim();
+                      if (!trimmed) return;
+                      setStaffRows((current) => [...current, { userId: trimmed, role: newStaff.role }]);
+                      setNewStaff({ userId: '', role: 'co_organizer' });
+                    }
+                  }}
+                  placeholder="User ID"
+                  className="border-white/[0.08] bg-black/20 text-white placeholder:text-zinc-600 sm:flex-1"
+                />
+                <Select
+                  value={newStaff.role}
+                  onValueChange={(value: SeasonStaffMember['role']) => setNewStaff((s) => ({ ...s, role: value }))}
+                >
+                  <SelectTrigger className="border-white/[0.08] bg-black/20 text-white sm:w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STAFF_ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {role === 'co_organizer' ? 'Co-organizer' : 'Admin'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0 border-white/[0.08] bg-white/[0.05] text-white hover:bg-white/[0.10]"
+                  onClick={() => {
+                    const trimmed = newStaff.userId.trim();
+                    if (!trimmed) return;
+                    setStaffRows((current) => [...current, { userId: trimmed, role: newStaff.role }]);
+                    setNewStaff({ userId: '', role: 'co_organizer' });
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add
+                </Button>
+              </div>
             </div>
 
-            <Button className="mt-6 bg-rose-500 text-white hover:bg-rose-600" onClick={handleStaffSave} disabled={syncStaff.isPending}>
+            {/* Save */}
+            <Button className="bg-rose-500 text-white hover:bg-rose-600" onClick={handleStaffSave} disabled={syncStaff.isPending}>
               Save staff
             </Button>
           </div>
@@ -884,15 +979,25 @@ const SeasonManage = () => {
 
         {activeTab === 'structure' && (
           <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-            <SeasonStructureBuilder
-              title="Season structure"
-              description="Configure each tournament inline — format, team size, prize pool — and wire advancement between them. Select a card to edit it in the Inspector."
-              nodes={nodeRows}
-              onChange={setNodeRows}
-              onSave={handleNodesSave}
-              isSaving={syncNodes.isPending}
-              surface="manage"
-            />
+            <div className="flex flex-col gap-4">
+              {(data.season.status === 'published' || data.season.status === 'active' || data.season.status === 'completed') && (
+                <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-4">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                  <p className="font-body text-sm text-amber-300">
+                    <span className="font-semibold">This season has been published.</span> Changes to the tournament structure may conflict with active registration and advancement. Make structural changes only during maintenance windows.
+                  </p>
+                </div>
+              )}
+              <SeasonStructureBuilder
+                title="Season structure"
+                description="Configure each tournament inline — format, team size, prize pool — and wire advancement between them. Select a card to edit it in the Inspector."
+                nodes={nodeRows}
+                onChange={setNodeRows}
+                onSave={handleNodesSaveWithGuard}
+                isSaving={syncNodes.isPending}
+                surface="manage"
+              />
+            </div>
 
             <div className="space-y-6">
               <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
@@ -902,6 +1007,29 @@ const SeasonManage = () => {
             </div>
           </div>
         )}
+
+        <AlertDialog open={showStructureSaveConfirm} onOpenChange={setShowStructureSaveConfirm}>
+          <AlertDialogContent className="border-white/10 bg-[#0a0a0c] text-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-heading text-white">Update published season structure?</AlertDialogTitle>
+              <AlertDialogDescription className="font-body text-zinc-400">
+                Modifying the structure of a published season may affect teams currently in registration or advancement. This change cannot be automatically reversed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-white/10 bg-white/5 text-white hover:bg-white/10">Go back</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-rose-500 text-white hover:bg-rose-600"
+                onClick={() => {
+                  setShowStructureSaveConfirm(false);
+                  handleNodesSave();
+                }}
+              >
+                Save anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {activeTab === 'rules' && (
           <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
@@ -1132,132 +1260,860 @@ const SeasonManage = () => {
         )}
 
         {activeTab === 'qualifications' && (
-          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold">Qualification workflow</h2>
-                <p className="mt-2 text-sm text-zinc-400">Review earned spots, invite reserves, and route winners into downstream brackets.</p>
+          <div className="space-y-6">
+            <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+              <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold">Qualification workflow</h2>
+                  <p className="mt-2 text-sm text-zinc-400">Review earned spots, invite reserves, and route winners into downstream brackets.</p>
+                </div>
+                <Button className="bg-rose-500 text-white hover:bg-rose-600" onClick={handleRecalculate} disabled={recalculateSeason.isPending}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh records
+                </Button>
               </div>
-              <Button className="bg-rose-500 text-white hover:bg-rose-600" onClick={handleRecalculate} disabled={recalculateSeason.isPending}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh records
-              </Button>
+
+              <SeasonQualificationsPanel
+                qualifications={qualificationsQuery.data ?? []}
+                canManage
+                destinationOptions={nodeOptions.map((option) => ({ id: option.id, name: option.name }))}
+                pendingRecordId={qualificationBusyId}
+                onManage={handleQualificationManage}
+              />
             </div>
 
-            <SeasonQualificationsPanel
-              qualifications={qualificationsQuery.data ?? []}
-              canManage
-              destinationOptions={nodeOptions.map((option) => ({ id: option.id, name: option.name }))}
-              pendingRecordId={qualificationBusyId}
-              onManage={handleQualificationManage}
-            />
+            {data.permissions.canManage && (() => {
+              const revokable = (qualificationsQuery.data ?? []).filter(
+                (record) =>
+                  (record.status === 'earned' || record.status === 'confirmed' || record.status === 'accepted') &&
+                  record.displayName !== null,
+              );
+              if (revokable.length === 0) return null;
+              return (
+                <div className="rounded-3xl border border-red-500/15 bg-red-500/[0.04] p-6">
+                  <div className="mb-1 flex items-center gap-2">
+                    <ShieldOff className="h-4 w-4 text-red-400" />
+                    <h3 className="font-heading text-lg font-semibold text-red-400">Revoke qualification</h3>
+                  </div>
+                  <p className="mb-5 font-body text-sm text-amber-300/70">
+                    Revoking a qualification permanently changes its status to revoked. Use this to DQ a team from advancing. This cannot be automatically undone.
+                  </p>
+                  <div className="space-y-2">
+                    {revokable.map((record) => (
+                      <div
+                        key={record.id}
+                        className="flex flex-col gap-3 rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-white">{record.displayName}</p>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                            {record.sourceNodeName && <span>{record.sourceNodeName}</span>}
+                            {record.sourceNodeName && <span className="text-zinc-700">·</span>}
+                            <span className="rounded-md border border-white/[0.06] bg-white/[0.04] px-1.5 py-0.5 capitalize">
+                              {record.status}
+                            </span>
+                            {record.qualificationType && (
+                              <>
+                                <span className="text-zinc-700">·</span>
+                                <span className="capitalize text-zinc-400">{record.qualificationType}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="shrink-0 bg-rose-500 text-white hover:bg-rose-600"
+                          disabled={qualificationBusyId === record.id}
+                          onClick={() => handleRevokeQualification(record.id, record.displayName!)}
+                        >
+                          <ShieldOff className="mr-1.5 h-3.5 w-3.5" />
+                          {qualificationBusyId === record.id ? 'Revoking...' : 'Revoke'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
         {activeTab === 'flow' && (
-          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold">Season Flow</h2>
-              <p className="mt-2 text-sm text-zinc-400">Visualize the tournament advancement flow and connections.</p>
+          <div className="space-y-6">
+            {/* Header card */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-heading text-2xl font-bold text-white">{data.season.name}</h2>
+                  <p className="mt-1 text-sm text-zinc-400">{data.season.game} · {nodeRows.filter(n => n.nodeType !== 'root').length}-tournament circuit</p>
+                </div>
+                <Badge className="w-fit bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
+                  {data.season.status}
+                </Badge>
+              </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-8 text-center text-zinc-400">
-              <GitBranch className="mx-auto mb-4 h-12 w-12" />
-              <p>Flow builder coming soon.</p>
+
+            {/* Tree preview */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h3 className="mb-4 font-heading text-lg font-semibold text-white">Circuit visualization</h3>
+              {nodeRows.filter(n => n.nodeType !== 'root').length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.02] py-16 text-center">
+                  <GitBranch className="h-10 w-10 text-zinc-600" />
+                  <p className="text-sm font-medium text-zinc-400">No tournaments planned yet</p>
+                  <p className="text-xs text-zinc-600">Go to the Structure tab to build the circuit</p>
+                </div>
+              ) : (
+                <SeasonTreePreview tree={seasonTreePreview} />
+              )}
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {(
+                [
+                  ['qualifier', 'Qualifiers'],
+                  ['event', 'Events'],
+                  ['final', 'Finals'],
+                ] as [SeasonNodeType, string][]
+              ).map(([type, label]) => {
+                const count = nodeRows.filter(n => n.nodeType === type).length;
+                const meta = getPhaseMetaForType(type as Exclude<SeasonNodeType, 'root'>);
+                return (
+                  <div key={type} className="rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4">
+                    <p className={`text-xs uppercase tracking-widest ${meta.accent}`}>{label}</p>
+                    <p className="mt-1 text-2xl font-bold text-white">{count}</p>
+                  </div>
+                );
+              })}
+              <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4">
+                <p className="text-xs uppercase tracking-widest text-zinc-500">Connections</p>
+                <p className="mt-1 text-2xl font-bold text-white">
+                  {nodeRows.reduce((acc, n) => acc + readOutgoingConnections(n).length, 0)}
+                </p>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h3 className="mb-4 font-heading text-sm font-semibold uppercase tracking-widest text-zinc-500">Legend</h3>
+              <div className="flex flex-wrap gap-3">
+                {(['qualifier', 'event', 'stage', 'final', 'custom'] as Exclude<SeasonNodeType, 'root'>[]).map((type) => {
+                  const meta = getPhaseMetaForType(type);
+                  return (
+                    <div key={type} className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium ${meta.accentBg} ${meta.accentBorder} ${meta.accent}`}>
+                      <span className={`h-2 w-2 rounded-full ${meta.accentBg} border ${meta.accentBorder}`} />
+                      {meta.label}
+                    </div>
+                  );
+                })}
+                <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-400">
+                  <span className="h-2 w-2 rounded-full bg-white/10 border border-white/20" />
+                  Root
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === 'tournaments' && (
-          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold">Season Tournaments</h2>
-              <p className="mt-2 text-sm text-zinc-400">Manage tournaments linked to this season.</p>
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-heading text-2xl font-bold text-white">Season Tournaments</h2>
+                  <p className="mt-1 text-sm text-zinc-400">Tournaments associated with this season circuit.</p>
+                </div>
+                <Badge className="bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
+                  {tournamentsQuery.data?.length ?? 0} tournaments
+                </Badge>
+              </div>
             </div>
+
+            {data.season.status === 'draft' && (
+              <div className="flex items-start gap-3 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+                <p className="text-sm text-blue-300">
+                  Tournaments will be created when you publish this season. The circuit below shows your planned structure.
+                </p>
+              </div>
+            )}
+
             {tournamentsQuery.isLoading ? (
-              <div className="text-center text-zinc-400">Loading tournaments...</div>
-            ) : tournamentsQuery.data && tournamentsQuery.data.length > 0 ? (
               <div className="space-y-3">
-                {tournamentsQuery.data.map((st) => (
-                  <div key={st.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 p-4">
-                    <div>
-                      <p className="font-semibold text-white">{st.displayName || st.tournamentName}</p>
-                      <p className="text-sm text-zinc-400">Role: {st.role} · Status: {st.status}</p>
-                    </div>
-                    <Badge className="bg-white/10">{st.tournamentStatus}</Badge>
-                  </div>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.03]" />
                 ))}
               </div>
+            ) : tournamentsQuery.error ? (
+              <div className="flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 p-4">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                <p className="text-sm text-red-300">Failed to load tournaments. Please retry.</p>
+              </div>
+            ) : tournamentsQuery.data && tournamentsQuery.data.length > 0 ? (
+              <div className="space-y-3">
+                {tournamentsQuery.data.map((st) => {
+                  const roleMeta: Record<string, string> = {
+                    qualifier: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+                    event: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+                    regional_final: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                    grand_final: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                    playoff: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                    last_chance_qualifier: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+                    custom: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+                  };
+                  const statusMeta: Record<string, string> = {
+                    draft: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+                    scheduled: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                    live: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                    completed: 'bg-white/10 text-white border-white/20',
+                    cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
+                  };
+                  const roleClass = roleMeta[st.role] ?? roleMeta.custom;
+                  const statusClass = statusMeta[st.tournamentStatus ?? 'draft'] ?? statusMeta.draft;
+                  return (
+                    <div key={st.id} className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4 transition hover:border-white/[0.10]">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span className={`shrink-0 rounded-lg border px-2 py-0.5 text-xs font-semibold capitalize ${roleClass}`}>
+                          {st.role.replace(/_/g, ' ')}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-white">{st.displayName || st.tournamentName}</p>
+                          <p className="text-xs text-zinc-500">{st.region ? `Region: ${st.region}` : 'No region'}</p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className={`rounded-lg border px-2 py-0.5 text-xs font-medium capitalize ${statusClass}`}>
+                          {st.tournamentStatus ?? st.status}
+                        </span>
+                        <Button asChild size="sm" variant="ghost" className="h-8 w-8 p-0 text-zinc-400 hover:text-white">
+                          <a href={`/organizer/tournaments/${st.tournamentId}/manage`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : data.season.status === 'draft' && nodeRows.filter(n => n.nodeType !== 'root').length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-widest text-zinc-600">Planned tournaments (pre-publish)</p>
+                {nodeRows.filter(n => n.nodeType !== 'root').map((node) => {
+                  const config = readTournamentConfig(node);
+                  const isReady = config.format && config.teamSize && config.maxTeams && config.registrationType;
+                  const meta = getPhaseMetaForType(node.nodeType as Exclude<SeasonNodeType, 'root'>);
+                  return (
+                    <div key={node.id} className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.04] bg-white/[0.02] p-4 opacity-70">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span className={`shrink-0 rounded-lg border px-2 py-0.5 text-xs font-semibold ${meta.accentBg} ${meta.accentBorder} ${meta.accent}`}>
+                          {meta.label.replace(/s$/, '')}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-zinc-300">{node.name || 'Unnamed tournament'}</p>
+                          {config.format && (
+                            <p className="text-xs text-zinc-600">{config.format.replace(/_/g, ' ')} · {config.teamSize ? `${config.teamSize}v${config.teamSize}` : ''} · Best of {config.bestOf ?? 1}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className={`rounded-lg border px-2 py-0.5 text-xs font-medium ${isReady ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+                          {isReady ? 'Ready' : 'Needs config'}
+                        </span>
+                        <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-zinc-500">
+                          On publish
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <div className="text-center text-zinc-400">No tournaments linked to this season yet.</div>
+              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02] py-16 text-center">
+                <Activity className="h-10 w-10 text-zinc-600" />
+                <p className="text-sm font-medium text-zinc-400">No tournaments yet</p>
+                <p className="text-xs text-zinc-600">Add tournaments to the structure to see them here.</p>
+              </div>
             )}
           </div>
         )}
 
         {activeTab === 'advancement' && (
-          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold">Advancement Rules</h2>
-              <p className="mt-2 text-sm text-zinc-400">Configure how teams advance between tournaments.</p>
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h2 className="font-heading text-2xl font-bold text-white">Advancement Rules</h2>
+              <p className="mt-1 text-sm text-zinc-400">These rules control how teams progress between tournaments in your circuit.</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-8 text-center text-zinc-400">
-              <TrendingUp className="mx-auto mb-4 h-12 w-12" />
-              <p>Advancement configuration coming soon.</p>
+
+            {(() => {
+              const allConnections: Array<{ fromName: string; toName: string; conn: AdvancementConnection }> = [];
+              nodeRows.filter(n => n.nodeType !== 'root').forEach(node => {
+                const conns = readOutgoingConnections(node);
+                conns.forEach(conn => {
+                  const toNode = nodeRows.find(n => n.id === conn.toNodeId);
+                  allConnections.push({
+                    fromName: node.name || 'Unnamed',
+                    toName: toNode?.name || 'Unknown',
+                    conn,
+                  });
+                });
+              });
+
+              const ruleTypeLabels: Record<string, string> = {
+                top_n: 'Top N',
+                top_percentage: 'Top %',
+                manual_selection: 'Manual',
+                points_threshold: 'Points threshold',
+              };
+              const seedModeLabels: Record<string, string> = {
+                preserve_seed: 'Preserve seeding',
+                reseed_by_points: 'Reseed by points',
+                randomize: 'Randomize',
+                manual: 'Manual',
+              };
+
+              if (data.season.status === 'draft' || data.season.status === 'published') {
+                return allConnections.length > 0 ? (
+                  <div className="space-y-3">
+                    {allConnections.map(({ fromName, toName, conn }) => (
+                      <div key={conn.id} className="rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-white">{fromName}</span>
+                          <ArrowRight className="h-4 w-4 text-zinc-600" />
+                          <span className="font-semibold text-white">{toName}</span>
+                          <span className="ml-auto rounded-lg border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-xs font-semibold text-violet-400">
+                            {ruleTypeLabels[conn.ruleType] ?? conn.ruleType}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-400">
+                          <span>
+                            {conn.ruleType === 'top_n' && `Top ${conn.ruleValue} advance`}
+                            {conn.ruleType === 'top_percentage' && `Top ${conn.ruleValue}% advance`}
+                            {conn.ruleType === 'points_threshold' && `≥ ${conn.ruleValue} points`}
+                            {conn.ruleType === 'manual_selection' && 'Manual selection'}
+                          </span>
+                          <span className="text-zinc-600">·</span>
+                          <span>{seedModeLabels[conn.seedMode] ?? conn.seedMode}</span>
+                          {conn.label && <><span className="text-zinc-600">·</span><span className="text-zinc-500">"{conn.label}"</span></>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02] py-16 text-center">
+                    <TrendingUp className="h-10 w-10 text-zinc-600" />
+                    <p className="text-sm font-medium text-zinc-400">No advancement rules configured yet</p>
+                    <p className="text-xs text-zinc-600">Go to the Structure tab and configure connections between tournaments.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 text-center">
+                  <p className="text-sm text-zinc-400">Advancement tracking begins when tournaments complete.</p>
+                </div>
+              );
+            })()}
+
+            <div className="flex items-start gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <Shield className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+              <p className="text-sm text-zinc-400">
+                Manual overrides are{' '}
+                <span className={overview.allowManualOverrides ? 'font-semibold text-emerald-400' : 'font-semibold text-zinc-500'}>
+                  {overview.allowManualOverrides ? 'enabled' : 'disabled'}
+                </span>{' '}
+                for this season.
+              </p>
             </div>
           </div>
         )}
 
         {activeTab === 'announcements' && (
-          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold">Announcements</h2>
-              <p className="mt-2 text-sm text-zinc-400">Send announcements to season participants.</p>
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h2 className="font-heading text-2xl font-bold text-white">Announcements</h2>
+              <p className="mt-1 text-sm text-zinc-400">Notify all season participants of important updates.</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-8 text-center text-zinc-400">
-              <FileText className="mx-auto mb-4 h-12 w-12" />
-              <p>Announcements coming soon.</p>
+
+            {/* Compose card */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Bell className="h-4 w-4 text-zinc-400" />
+                <h3 className="font-semibold text-white">Compose announcement</h3>
+                <span className="ml-auto rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">Coming soon</span>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-zinc-300">Title</Label>
+                  <Input
+                    value={announceTitle}
+                    onChange={(e) => setAnnounceTitle(e.target.value)}
+                    placeholder="e.g. Schedule update for Week 3"
+                    disabled
+                    className="border-white/[0.06] bg-white/[0.03] text-zinc-300 placeholder:text-zinc-700 disabled:opacity-50"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-zinc-300">Message</Label>
+                  <Textarea
+                    value={announceBody}
+                    onChange={(e) => setAnnounceBody(e.target.value)}
+                    placeholder="Write your announcement here..."
+                    disabled
+                    className="min-h-[120px] border-white/[0.06] bg-white/[0.03] text-zinc-300 placeholder:text-zinc-700 disabled:opacity-50"
+                  />
+                </div>
+                <Button
+                  disabled
+                  className="bg-rose-500/40 text-white/50 cursor-not-allowed"
+                  onClick={() => {}}
+                >
+                  <Bell className="mr-2 h-4 w-4" />
+                  Send to all participants
+                </Button>
+                <p className="text-xs text-zinc-600">We're building the notification pipeline. This feature will be available soon.</p>
+              </div>
+            </div>
+
+            {/* History empty state */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h3 className="mb-4 font-semibold text-white">Sent announcements</h3>
+              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02] py-12 text-center">
+                <FileText className="h-10 w-10 text-zinc-600" />
+                <p className="text-sm font-medium text-zinc-400">No announcements sent yet</p>
+                <p className="text-xs text-zinc-600">Use the form above to notify all season participants of updates.</p>
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === 'settings' && (
-          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold">Season Settings</h2>
-              <p className="mt-2 text-sm text-zinc-400">Configure season-wide settings and preferences.</p>
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h2 className="font-heading text-2xl font-bold text-white">Season Settings</h2>
+              <p className="mt-1 text-sm text-zinc-400">Configure season-wide policies and manage lifecycle actions.</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-8 text-center text-zinc-400">
-              <Settings className="mx-auto mb-4 h-12 w-12" />
-              <p>Settings panel coming soon.</p>
+
+            {/* Season Policies */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h3 className="mb-1 font-heading text-lg font-semibold text-white">Season policies</h3>
+              <p className="mb-5 text-sm text-zinc-500">These settings affect how the season behaves once active.</p>
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">Manual overrides</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">Allow organizer corrections for qualification routing.</p>
+                    </div>
+                    <Switch
+                      checked={overview.allowManualOverrides}
+                      onCheckedChange={(checked) => {
+                        setOverview((current) => ({ ...current, allowManualOverrides: checked }));
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">Public season page</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">Expose the season tree, standings, and qualification state publicly.</p>
+                    </div>
+                    <Switch
+                      checked={overview.isPublic}
+                      onCheckedChange={(checked) => {
+                        setOverview((current) => ({ ...current, isPublic: checked }));
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <Button className="mt-5 bg-rose-500 text-white hover:bg-rose-600" onClick={handleOverviewSave} disabled={updateSeason.isPending}>
+                Save policies
+              </Button>
+            </div>
+
+            {/* Roster Management */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="mb-1 flex items-center gap-2">
+                <Lock className="h-4 w-4 text-zinc-400" />
+                <h3 className="font-heading text-lg font-semibold text-white">Roster Management</h3>
+              </div>
+              <p className="mb-5 font-body text-sm text-zinc-500">Control how team rosters are managed across the season circuit.</p>
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">Lock rosters after first tournament</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">
+                        Once a team competes in their first tournament, their roster is frozen for the remainder of the season.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={rosterLock}
+                      onCheckedChange={setRosterLock}
+                    />
+                  </div>
+                </div>
+
+                <div className={`rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 transition-opacity ${rosterLock ? 'opacity-40 pointer-events-none' : ''}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">Allow roster changes between tournaments</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">
+                        Teams may adjust their roster in the window between tournament events. Disabled when roster lock is on.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={allowRosterChangesBetween}
+                      onCheckedChange={setAllowRosterChangesBetween}
+                      disabled={rosterLock}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">Manual override allowed</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">Allow organizer corrections to roster assignments regardless of lock state.</p>
+                    </div>
+                    <Switch
+                      checked={overview.allowManualOverrides}
+                      onCheckedChange={(checked) => {
+                        setOverview((current) => ({ ...current, allowManualOverrides: checked }));
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <Button className="mt-5 bg-rose-500 text-white hover:bg-rose-600" onClick={handleOverviewSave} disabled={updateSeason.isPending}>
+                Save roster settings
+              </Button>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="rounded-3xl border border-red-500/20 bg-[#0a0a0c] p-6">
+              <div className="mb-5 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-400" />
+                <h3 className="font-heading text-lg font-semibold text-red-400">Danger Zone</h3>
+              </div>
+              <div className="space-y-4">
+                {data.season.status === 'completed' && (
+                  <div className="flex items-center justify-between gap-4 rounded-2xl border border-red-500/10 bg-red-500/5 p-4">
+                    <div>
+                      <p className="font-medium text-white">Archive season</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">Move this season to archived state. It will no longer appear in active listings.</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="shrink-0 border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                      onClick={handleArchive}
+                      disabled={archiveSeason.isPending}
+                    >
+                      <Archive className="mr-2 h-4 w-4" />
+                      Archive
+                    </Button>
+                  </div>
+                )}
+
+                {(data.season.status === 'draft' || data.season.status === 'published' || data.season.status === 'active') && (
+                  <div className="flex items-center justify-between gap-4 rounded-2xl border border-red-500/10 bg-red-500/5 p-4">
+                    <div>
+                      <p className="font-medium text-white">Cancel season</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">Permanently cancel this season. All participants will be notified. This cannot be undone.</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="shrink-0 border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                      onClick={handleCancel}
+                      disabled={cancelSeason.isPending}
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Cancel season
+                    </Button>
+                  </div>
+                )}
+
+                {data.season.status !== 'completed' && data.season.status !== 'draft' && data.season.status !== 'published' && data.season.status !== 'active' && (
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
+                    <p className="text-sm text-zinc-500">No destructive actions available for a season in <span className="font-medium text-zinc-400">{data.season.status}</span> status.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === 'audit' && (
-          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold">Audit Log</h2>
-              <p className="mt-2 text-sm text-zinc-400">View all changes made to this season.</p>
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-heading text-2xl font-bold text-white">Audit Log</h2>
+                  <p className="mt-1 text-sm text-zinc-400">A full record of all changes made to this season.</p>
+                </div>
+                {auditLogQuery.data && (
+                  <Badge className="bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
+                    {auditLogQuery.data.length} entries
+                  </Badge>
+                )}
+              </div>
             </div>
+
             {auditLogQuery.isLoading ? (
-              <div className="text-center text-zinc-400">Loading audit log...</div>
-            ) : auditLogQuery.data && auditLogQuery.data.length > 0 ? (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {auditLogQuery.data.map((log) => (
-                  <div key={log.id} className="rounded-xl border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold text-white">{log.action}</p>
-                      <p className="text-xs text-zinc-400">{new Date(log.createdAt).toLocaleString()}</p>
-                    </div>
-                    <p className="mt-1 text-sm text-zinc-400">Actor: {log.actorUsername || log.actorId}</p>
-                    {log.reason && <p className="mt-1 text-sm text-zinc-500">Reason: {log.reason}</p>}
-                  </div>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.03]" />
                 ))}
               </div>
+            ) : auditLogQuery.data && auditLogQuery.data.length > 0 ? (
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                <div className="relative space-y-0">
+                  {auditLogQuery.data.map((log, index) => {
+                    const actionColors: Record<string, string> = {
+                      publish: 'bg-emerald-500 border-emerald-500/50',
+                      cancel: 'bg-red-500 border-red-500/50',
+                      archive: 'bg-amber-500 border-amber-500/50',
+                      update: 'bg-zinc-500 border-zinc-500/50',
+                    };
+                    const actionKey = Object.keys(actionColors).find(key => log.action.toLowerCase().includes(key));
+                    const dotClass = actionKey ? actionColors[actionKey] : 'bg-zinc-600 border-zinc-600/50';
+                    const isLast = index === auditLogQuery.data!.length - 1;
+                    return (
+                      <div key={log.id} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className={`relative z-10 h-3 w-3 shrink-0 rounded-full border-2 mt-1.5 ${dotClass}`} />
+                          {!isLast && <div className="w-px flex-1 bg-white/[0.06] my-1" />}
+                        </div>
+                        <div className={`pb-5 min-w-0 flex-1 ${isLast ? 'pb-0' : ''}`}>
+                          <div className="flex flex-wrap items-baseline gap-2">
+                            <span className="font-semibold text-white capitalize">{log.action.replace(/_/g, ' ')}</span>
+                            {log.actorUsername && <span className="text-xs text-zinc-500">by {log.actorUsername}</span>}
+                            <span className="ml-auto flex items-center gap-1 text-xs text-zinc-600">
+                              <Clock className="h-3 w-3" />
+                              {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
+                            </span>
+                          </div>
+                          {log.reason && (
+                            <p className="mt-0.5 text-sm text-zinc-500">"{log.reason}"</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             ) : (
-              <div className="text-center text-zinc-400">No audit log entries found.</div>
+              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02] py-16 text-center">
+                <FileText className="h-10 w-10 text-zinc-600" />
+                <p className="text-sm font-medium text-zinc-400">No audit entries yet</p>
+              </div>
             )}
           </div>
         )}
+
+        {activeTab === 'analytics' && (() => {
+          const nonRootNodes = nodeRows.filter(n => n.nodeType !== 'root');
+          const configuredCount = nonRootNodes.filter(n => isTournamentConfigComplete(readTournamentConfig(n))).length;
+          const totalConnections = nodeRows.reduce((acc, n) => acc + readOutgoingConnections(n).length, 0);
+          const topStandings = (standingsQuery.data ?? []).slice(0, 5);
+          const quals = qualificationsQuery.data ?? [];
+          const confirmedCount = quals.filter(q => q.status === 'confirmed' || q.status === 'accepted').length;
+          const pendingCount = quals.filter(q => q.status === 'invited').length;
+          const revokedCount = quals.filter(q => q.status === 'revoked').length;
+          const linkedTournaments = tournamentsQuery.data ?? [];
+          const draftCount = linkedTournaments.filter(t => (t.tournamentStatus ?? t.status) === 'draft').length;
+          const scheduledCount = linkedTournaments.filter(t => (t.tournamentStatus ?? t.status) === 'scheduled').length;
+          const liveCount = linkedTournaments.filter(t => (t.tournamentStatus ?? t.status) === 'live').length;
+          const completedCount = linkedTournaments.filter(t => (t.tournamentStatus ?? t.status) === 'completed').length;
+
+          return (
+            <div className="space-y-6">
+
+              {/* Header */}
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5 text-rose-400" />
+                  <div>
+                    <h2 className="font-heading text-2xl font-bold text-white">Analytics</h2>
+                    <p className="mt-0.5 text-sm text-zinc-400">Season health at a glance — structure, standings, and qualification pipeline.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Registration Funnel */}
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                <div className="mb-5 flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 text-zinc-400" />
+                  <h3 className="font-heading text-lg font-semibold text-white">Registration Funnel</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+                    <p className="font-body text-xs uppercase tracking-widest text-zinc-500">Planned</p>
+                    <p className="mt-2 font-heading text-3xl font-bold text-white">{nonRootNodes.length}</p>
+                    <p className="mt-1 font-body text-xs text-zinc-600">Tournaments in circuit</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+                    <p className="font-body text-xs uppercase tracking-widest text-zinc-500">Configured</p>
+                    <p className={`mt-2 font-heading text-3xl font-bold ${configuredCount === nonRootNodes.length && nonRootNodes.length > 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {configuredCount}
+                      <span className="ml-1 font-body text-base font-normal text-zinc-600">/ {nonRootNodes.length}</span>
+                    </p>
+                    <p className="mt-1 font-body text-xs text-zinc-600">Format, size, and registration set</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+                    <p className="font-body text-xs uppercase tracking-widest text-zinc-500">Connections</p>
+                    <p className={`mt-2 font-heading text-3xl font-bold ${totalConnections > 0 ? 'text-emerald-400' : 'text-zinc-500'}`}>{totalConnections}</p>
+                    <p className="mt-1 font-body text-xs text-zinc-600">Advancement edges wired</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Qualifier Participation — tournament readiness table */}
+              {nonRootNodes.length > 0 && (
+                <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                  <div className="mb-5 flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-zinc-400" />
+                    <h3 className="font-heading text-lg font-semibold text-white">Tournament Readiness</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="pb-3 text-left font-body text-xs font-semibold uppercase tracking-widest text-zinc-500">Tournament</th>
+                          <th className="pb-3 text-left font-body text-xs font-semibold uppercase tracking-widest text-zinc-500">Type</th>
+                          <th className="pb-3 text-left font-body text-xs font-semibold uppercase tracking-widest text-zinc-500">Configured</th>
+                          <th className="pb-3 text-left font-body text-xs font-semibold uppercase tracking-widest text-zinc-500">Starts</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {nonRootNodes.map((node) => {
+                          const isReady = isTournamentConfigComplete(readTournamentConfig(node));
+                          const meta = getPhaseMetaForType(node.nodeType as Exclude<SeasonNodeType, 'root'>);
+                          return (
+                            <tr key={node.id ?? node.name} className="group">
+                              <td className="py-3 pr-4 font-semibold text-white">{node.name || 'Unnamed'}</td>
+                              <td className="py-3 pr-4">
+                                <span className={`rounded-md border px-2 py-0.5 text-xs font-medium capitalize ${meta.accentBg} ${meta.accentBorder} ${meta.accent}`}>
+                                  {meta.label}
+                                </span>
+                              </td>
+                              <td className="py-3 pr-4">
+                                {isReady
+                                  ? <span className="flex items-center gap-1 text-xs font-semibold text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" />Ready</span>
+                                  : <span className="flex items-center gap-1 text-xs font-semibold text-amber-400"><AlertCircle className="h-3.5 w-3.5" />Needs config</span>
+                                }
+                              </td>
+                              <td className="py-3 font-body text-xs text-zinc-500">
+                                {node.startsAt
+                                  ? new Date(node.startsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                                  : <span className="text-zinc-700">—</span>
+                                }
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Standings Snapshot */}
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-zinc-400" />
+                    <h3 className="font-heading text-lg font-semibold text-white">Standings Snapshot</h3>
+                  </div>
+                  <span className="font-body text-xs text-zinc-600">Top 5</span>
+                </div>
+                {topStandings.length > 0 ? (
+                  <div className="space-y-2">
+                    {topStandings.map((entry) => (
+                      <div key={entry.entityId} className="flex items-center gap-3 rounded-2xl border border-white/[0.04] bg-white/[0.02] px-4 py-3">
+                        <span className={`w-6 shrink-0 font-heading text-sm font-bold ${entry.rank <= 3 ? 'text-amber-400' : 'text-zinc-600'}`}>
+                          #{entry.rank}
+                        </span>
+                        <p className="min-w-0 flex-1 truncate font-semibold text-white">{entry.displayName}</p>
+                        <span className="shrink-0 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 font-body text-xs font-semibold text-emerald-400">
+                          {entry.totalPoints} pts
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="font-body text-sm text-zinc-500">
+                    Standings are calculated after tournaments complete.
+                  </p>
+                )}
+              </div>
+
+              {/* Qualification Summary */}
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                <div className="mb-5 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-zinc-400" />
+                  <h3 className="font-heading text-lg font-semibold text-white">Qualification Pipeline</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
+                    <p className="font-body text-xs uppercase tracking-widest text-zinc-500">Total</p>
+                    <p className="mt-2 font-heading text-2xl font-bold text-white">{quals.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-500/10 bg-emerald-500/[0.04] p-4 text-center">
+                    <p className="font-body text-xs uppercase tracking-widest text-emerald-600">Confirmed</p>
+                    <p className="mt-2 font-heading text-2xl font-bold text-emerald-400">{confirmedCount}</p>
+                  </div>
+                  <div className="rounded-2xl border border-amber-500/10 bg-amber-500/[0.04] p-4 text-center">
+                    <p className="font-body text-xs uppercase tracking-widest text-amber-600">Pending</p>
+                    <p className="mt-2 font-heading text-2xl font-bold text-amber-400">{pendingCount}</p>
+                  </div>
+                  <div className="rounded-2xl border border-red-500/10 bg-red-500/[0.04] p-4 text-center">
+                    <p className="font-body text-xs uppercase tracking-widest text-red-600">Revoked</p>
+                    <p className="mt-2 font-heading text-2xl font-bold text-red-400">{revokedCount}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Linked Tournaments Health */}
+              {linkedTournaments.length > 0 && (
+                <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-zinc-400" />
+                      <h3 className="font-heading text-lg font-semibold text-white">Linked Tournaments</h3>
+                    </div>
+                    <span className="font-body text-xs text-zinc-500">{linkedTournaments.length} total</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {draftCount > 0 && (
+                      <span className="rounded-full border border-zinc-500/20 bg-zinc-500/10 px-3 py-1 font-body text-xs font-semibold text-zinc-400">
+                        {draftCount} Draft
+                      </span>
+                    )}
+                    {scheduledCount > 0 && (
+                      <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 font-body text-xs font-semibold text-blue-400">
+                        {scheduledCount} Scheduled
+                      </span>
+                    )}
+                    {liveCount > 0 && (
+                      <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 font-body text-xs font-semibold text-emerald-400">
+                        {liveCount} Live
+                      </span>
+                    )}
+                    {completedCount > 0 && (
+                      <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 font-body text-xs font-semibold text-zinc-300">
+                        {completedCount} Completed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          );
+        })()}
       </div>
 
       <Footer />
