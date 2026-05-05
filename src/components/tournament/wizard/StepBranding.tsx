@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { Image, DollarSign, FileText, Link as LinkIcon, MessageCircle, Twitter } from 'lucide-react';
+import { Image, DollarSign, FileText, Link as LinkIcon, MessageCircle, Twitter, Bold, Italic, Heading1, Heading2, List } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import ImageUploader from './ImageUploader';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
@@ -12,6 +13,17 @@ import { useAuth } from '@/contexts/AuthContext';
 const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
     const { profile } = useAuth();
     const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
+    const [editorContent, setEditorContent] = useState(data.description);
+
+    const execCommand = (command: string, value: string = '') => {
+        document.execCommand(command, false, value);
+    };
+
+    const handleEditorChange = (e: React.FormEvent<HTMLDivElement>) => {
+        const content = (e.currentTarget as HTMLDivElement).innerHTML;
+        setEditorContent(content);
+        updateData({ description: content });
+    };
 
     // Sanitize names for storage path
     const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -217,17 +229,64 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                     <FileText className="w-4 h-4" />
                     Tournament Description *
                 </Label>
-                <textarea
-                    id="description"
-                    rows={6}
-                    placeholder="Describe your tournament, rules, prize distribution, and any other important information..."
-                    value={data.description}
-                    onChange={(e) => updateData({ description: e.target.value })}
-                    className={cn(
-                        "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none",
-                        errors.description && 'border-red-500'
-                    )}
-                />
+                <div className="border border-gray-700 rounded-lg overflow-hidden">
+                    <div className="flex items-center gap-1 p-2 bg-gray-800 border-b border-gray-700">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => execCommand('bold')}
+                            title="Bold"
+                        >
+                            <Bold className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => execCommand('italic')}
+                            title="Italic"
+                        >
+                            <Italic className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => execCommand('formatBlock', 'h1')}
+                            title="Heading 1"
+                        >
+                            <Heading1 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => execCommand('formatBlock', 'h2')}
+                            title="Heading 2"
+                        >
+                            <Heading2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => execCommand('insertUnorderedList')}
+                            title="Bullet List"
+                        >
+                            <List className="w-4 h-4" />
+                        </Button>
+                    </div>
+                    <div
+                        contentEditable
+                        className={cn(
+                            "w-full px-3 py-2 bg-gray-800 text-white placeholder:text-gray-500 focus:outline-none min-h-[150px]",
+                            errors.description && 'border-red-500'
+                        )}
+                        onInput={handleEditorChange}
+                        dangerouslySetInnerHTML={{ __html: editorContent }}
+                    />
+                </div>
                 <div className="flex justify-between text-xs">
                     {errors.description ? (
                         <p className="text-red-500">{errors.description}</p>
@@ -236,10 +295,10 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                     )}
                     <p className={cn(
                         "text-gray-500",
-                        data.description.length > 4800 && "text-yellow-500",
-                        data.description.length > 5000 && "text-red-500"
+                        editorContent.length > 4800 && "text-yellow-500",
+                        editorContent.length > 5000 && "text-red-500"
                     )}>
-                        {data.description.length}/5000
+                        {editorContent.length}/5000
                     </p>
                 </div>
             </div>
