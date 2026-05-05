@@ -6,53 +6,30 @@ import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, Undo, Redo } from 'lucide-react';
 import { Button } from './button';
 import { cn } from '@/lib/utils';
-import DOMPurify from 'dompurify';
 
 interface RichTextEditorProps {
   content: string;
   onChange: (content: string) => void;
   className?: string;
-  minHeight?: string;
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
   content,
   onChange,
-  className,
-  minHeight = '150px'
+  className
 }) => {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
-        bulletList: {
-          keepMarks: true,
-          keepAttributes: false,
-        },
-        orderedList: {
-          keepMarks: true,
-          keepAttributes: false,
-        },
-      }),
+      StarterKit,
     ],
     content,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      const sanitized = DOMPurify.sanitize(html);
-      onChange(sanitized);
+      onChange(html);
     },
     editorProps: {
       attributes: {
-        class: cn(
-          'prose prose-invert max-w-none focus:outline-none px-3 py-2',
-          'prose-headings:text-white prose-p:text-white prose-strong:text-white prose-em:text-white',
-          'prose-ul:text-white prose-ol:text-white prose-li:text-white',
-          'prose-a:text-blue-400 prose-a:underline',
-          'prose-ul:list-disc prose-ol:list-decimal'
-        ),
-        style: `min-height: ${minHeight}; color: white;`,
+        class: 'focus:outline-none px-3 py-2 text-white min-h-[150px]',
       },
     },
   });

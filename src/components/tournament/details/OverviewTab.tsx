@@ -6,13 +6,6 @@ import { TournamentSponsorSidebar } from '@/components/tournament/TournamentSpon
 
 import { isBattleRoyale } from '@/utils/gameFeatures';
 
-// Helper function to decode HTML entities
-const decodeHtml = (html: string) => {
-    const textArea = document.createElement('textarea');
-    textArea.innerHTML = html;
-    return textArea.value;
-};
-
 interface Stage {
     id: string;
     name: string;
@@ -117,7 +110,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                             <div className="prose prose-invert prose-lg max-w-none">
                                 <div
                                     className="text-[18px] text-gray-200 font-light leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: decodeHtml(tournament.description || '') }}
+                                    dangerouslySetInnerHTML={{ __html: tournament.description || '' }}
                                 />
                             </div>
 
