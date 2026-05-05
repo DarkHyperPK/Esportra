@@ -6,6 +6,22 @@ import { TournamentSponsorSidebar } from '@/components/tournament/TournamentSpon
 
 import { isBattleRoyale } from '@/utils/gameFeatures';
 
+// Simple HTML entity decoder
+const decodeHtml = (html: string) => {
+    if (!html) return '';
+    return html.replace(/&lt;/g, '<')
+               .replace(/&gt;/g, '>')
+               .replace(/&amp;/g, '&')
+               .replace(/&quot;/g, '"')
+               .replace(/&#39;/g, "'")
+               .replace(/&#x27;/g, "'")
+               .replace(/&#x2F;/g, '/')
+               .replace(/&#60;/g, '<')
+               .replace(/&#62;/g, '>')
+               .replace(/&#38;/g, '&')
+               .replace(/&#34;/g, '"');
+};
+
 interface Stage {
     id: string;
     name: string;
@@ -110,7 +126,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                             <div className="prose prose-invert prose-lg max-w-none">
                                 <div
                                     className="text-[18px] text-gray-200 font-light leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: tournament.description || '' }}
+                                    dangerouslySetInnerHTML={{ __html: decodeHtml(tournament.description || '') }}
                                 />
                             </div>
 

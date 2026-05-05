@@ -20,7 +20,11 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 }) => {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -29,7 +33,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'focus:outline-none px-3 py-2 text-white min-h-[150px]',
+        class: 'prose prose-invert max-w-none focus:outline-none px-3 py-2 text-white min-h-[150px]',
       },
     },
   });
