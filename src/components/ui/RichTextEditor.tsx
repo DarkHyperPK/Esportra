@@ -3,8 +3,7 @@
 import React from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
-import { Bold, Italic, List, Link as LinkIcon, Undo, Redo } from 'lucide-react';
+import { Bold, Italic, List, Undo, Redo } from 'lucide-react';
 import { Button } from './button';
 import { cn } from '@/lib/utils';
 import DOMPurify from 'dompurify';
@@ -28,11 +27,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         heading: {
           levels: [1, 2, 3],
         },
-      }),
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: 'text-blue-400 underline cursor-pointer',
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: false,
+        },
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: false,
         },
       }),
     ],
@@ -46,12 +47,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       attributes: {
         class: cn(
           'prose prose-invert max-w-none focus:outline-none px-3 py-2',
-          'text-white',
           'prose-headings:text-white prose-p:text-white prose-strong:text-white prose-em:text-white',
           'prose-ul:text-white prose-ol:text-white prose-li:text-white',
-          'prose-a:text-blue-400 prose-a:underline'
+          'prose-a:text-blue-400 prose-a:underline',
+          'prose-ul:list-disc prose-ol:list-decimal'
         ),
-        style: `min-height: ${minHeight}`,
+        style: `min-height: ${minHeight}; color: white;`,
       },
     },
   });
@@ -86,13 +87,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       {children}
     </Button>
   );
-
-  const setLink = () => {
-    const url = window.prompt('Enter URL:');
-    if (url) {
-      editor.chain().focus().setLink({ href: url }).run();
-    }
-  };
 
   return (
     <div className={cn('border border-gray-700 rounded-lg overflow-hidden', className)}>
@@ -131,13 +125,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           title="Bullet List"
         >
           <List className="w-4 h-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={setLink}
-          isActive={editor.isActive('link')}
-          title="Add Link"
-        >
-          <LinkIcon className="w-4 h-4" />
         </ToolbarButton>
         <div className="w-px h-6 bg-gray-700 mx-1" />
         <ToolbarButton
