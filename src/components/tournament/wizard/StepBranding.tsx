@@ -1,39 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { Image, DollarSign, FileText, Link as LinkIcon, MessageCircle, Twitter, Bold, Italic, Heading1, Heading2, List } from 'lucide-react';
+import { Image, DollarSign, FileText, Link as LinkIcon, MessageCircle, Twitter } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import ImageUploader from './ImageUploader';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
 const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
     const { profile } = useAuth();
     const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
-    const editorRef = useRef<HTMLDivElement>(null);
-
-    const execCommand = (command: string, value: string = '') => {
-        document.execCommand(command, false, value);
-        if (editorRef.current) {
-            updateData({ description: editorRef.current.innerHTML });
-        }
-    };
-
-    const handleEditorChange = () => {
-        if (editorRef.current) {
-            updateData({ description: editorRef.current.innerHTML });
-        }
-    };
-
-    // Initialize editor content when data.description changes from outside
-    useEffect(() => {
-        if (editorRef.current && data.description !== editorRef.current.innerHTML) {
-            editorRef.current.innerHTML = data.description || '';
-        }
-    }, [data.description]);
 
     // Sanitize names for storage path
     const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -239,66 +218,11 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                     <FileText className="w-4 h-4" />
                     Tournament Description *
                 </Label>
-                <div className="border border-gray-700 rounded-lg overflow-hidden">
-                    <div className="flex items-center gap-1 p-2 bg-gray-800 border-b border-gray-700">
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => execCommand('bold')}
-                            title="Bold"
-                        >
-                            <Bold className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => execCommand('italic')}
-                            title="Italic"
-                        >
-                            <Italic className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => execCommand('formatBlock', 'H1')}
-                            title="Heading 1"
-                        >
-                            <Heading1 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => execCommand('formatBlock', 'H2')}
-                            title="Heading 2"
-                        >
-                            <Heading2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => execCommand('insertUnorderedList')}
-                            title="Bullet List"
-                        >
-                            <List className="w-4 h-4" />
-                        </Button>
-                    </div>
-                    <div
-                        ref={editorRef}
-                        contentEditable
-                        style={{ color: 'white' }}
-                        className={cn(
-                            "w-full px-3 py-2 bg-gray-800 placeholder:text-gray-500 focus:outline-none min-h-[150px]",
-                            errors.description && 'border-red-500'
-                        )}
-                        onInput={handleEditorChange}
-                        dangerouslySetInnerHTML={{ __html: data.description || '' }}
-                    />
-                </div>
+                <RichTextEditor
+                    content={data.description || ''}
+                    onChange={(content) => updateData({ description: content })}
+                    className={errors.description ? 'border-red-500' : ''}
+                />
                 <div className="flex justify-between text-xs">
                     {errors.description ? (
                         <p className="text-red-500">{errors.description}</p>

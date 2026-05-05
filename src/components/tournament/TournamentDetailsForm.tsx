@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Bold, Italic, Heading1, Heading2, List } from 'lucide-react';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 
 interface FormData {
   name: string;
@@ -27,31 +26,6 @@ const TournamentDetailsForm = ({
   onInputChange,
   onCheckboxChange
 }: TournamentDetailsFormProps) => {
-  const editorRef = useRef<HTMLDivElement>(null);
-
-  const execCommand = (command: string, value: string = '') => {
-    document.execCommand(command, false, value);
-    if (editorRef.current) {
-      onInputChange({
-        target: { name: 'description', value: editorRef.current.innerHTML }
-      } as React.ChangeEvent<HTMLTextAreaElement>);
-    }
-  };
-
-  const handleEditorChange = () => {
-    if (editorRef.current) {
-      onInputChange({
-        target: { name: 'description', value: editorRef.current.innerHTML }
-      } as React.ChangeEvent<HTMLTextAreaElement>);
-    }
-  };
-
-  // Initialize editor content when formData.description changes from outside
-  useEffect(() => {
-    if (editorRef.current && formData.description !== editorRef.current.innerHTML) {
-      editorRef.current.innerHTML = formData.description || '';
-    }
-  }, [formData.description]);
 
   return (
     <>
@@ -79,63 +53,13 @@ const TournamentDetailsForm = ({
 
       <div>
         <label className="block text-sm font-medium mb-2">Tournament Description</label>
-        <div className="border border-gaming-gray/30 rounded-md overflow-hidden">
-          <div className="flex items-center gap-1 p-2 bg-esports-dark border-b border-gaming-gray/30">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => execCommand('bold')}
-              title="Bold"
-            >
-              <Bold className="w-4 h-4" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => execCommand('italic')}
-              title="Italic"
-            >
-              <Italic className="w-4 h-4" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => execCommand('formatBlock', 'H1')}
-              title="Heading 1"
-            >
-              <Heading1 className="w-4 h-4" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => execCommand('formatBlock', 'H2')}
-              title="Heading 2"
-            >
-              <Heading2 className="w-4 h-4" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => execCommand('insertUnorderedList')}
-              title="Bullet List"
-            >
-              <List className="w-4 h-4" />
-            </Button>
-          </div>
-          <div
-            ref={editorRef}
-            contentEditable
-            style={{ color: 'white' }}
-            className="w-full h-32 px-3 py-2 text-white bg-esports-dark focus:outline-none min-h-[128px]"
-            onInput={handleEditorChange}
-            dangerouslySetInnerHTML={{ __html: formData.description || '' }}
-          />
-        </div>
+        <RichTextEditor
+          content={formData.description || ''}
+          onChange={(content) => onInputChange({
+            target: { name: 'description', value: content }
+          } as React.ChangeEvent<HTMLTextAreaElement>)}
+          minHeight="128px"
+        />
       </div>
     </>
   );
