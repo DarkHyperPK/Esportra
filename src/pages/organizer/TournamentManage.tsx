@@ -1370,7 +1370,7 @@ const TournamentDashboard = () => {
     return (
       <div className="min-h-screen bg-transparent text-white">
         <main className="container mx-auto px-4 py-8">
-          <div className="text-center max-w-md mx-auto bg-black/40 backdrop-blur-md border border-white/10 p-8 rounded-3xl">
+          <div className="text-center max-w-md mx-auto bg-[#0d0d10] border border-white/10 p-8 rounded-3xl">
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h1 className="text-2xl font-bold mb-2">
               {dashboardError ? 'Error Loading Tournament' : 'Tournament not found'}
@@ -1430,7 +1430,7 @@ const TournamentDashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 rounded-xl border border-cyan-500/20 bg-cyan-950/30 backdrop-blur-md text-sm text-cyan-200 px-4 py-2 flex items-center gap-2"
+            className="mb-6 rounded-xl border border-cyan-500/20 bg-cyan-950/30 text-sm text-cyan-200 px-4 py-2 flex items-center gap-2"
           >
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
             Staff Mode: <span className="font-medium text-cyan-100">{staffPermissionSummary}</span>
@@ -1441,7 +1441,7 @@ const TournamentDashboard = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6"
+          className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6"
         >
           {/* Motion Background Grid */}
           <MotionTiles />
@@ -1453,7 +1453,7 @@ const TournamentDashboard = () => {
             <div className="flex gap-6 items-start">
               {/* Big Game Logo with Glow */}
               <div className="relative shrink-0">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#09090b]/80 border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden transition-transform duration-500 backdrop-blur-sm">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#09090b] border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden transition-transform duration-500">
                   {gameLogo && !logoError ? (
                     <img
                       src={gameLogo}
@@ -1471,11 +1471,11 @@ const TournamentDashboard = () => {
 
               <div className="pt-1">
                 <div className="flex items-center gap-3 mb-1">
-                  <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/5 text-[10px] font-bold uppercase tracking-wider text-white/60 backdrop-blur-sm">
+                  <span className="px-2 py-0.5 rounded-md bg-white/10 border border-white/5 text-[10px] font-bold uppercase tracking-wider text-white/60">
                     {tournament.is_online ? 'Online' : 'LAN'} Event
                   </span>
                   {tournament.game && (
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider text-emerald-400 backdrop-blur-sm">
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
                       {tournament.game}
                     </span>
                   )}
@@ -1610,7 +1610,7 @@ const TournamentDashboard = () => {
           <div className="md:hidden sticky top-4 z-40 mb-6">
             <div className="relative">
               <Select value={activeTab} onValueChange={handleTabChange}>
-                <SelectTrigger className="w-full h-12 bg-[#09090b]/90 backdrop-blur-xl border-white/10 text-white rounded-xl px-4 font-bold tracking-wide">
+                <SelectTrigger className="w-full h-12 bg-[#09090b] border-white/10 text-white rounded-xl px-4 font-bold tracking-wide">
                   <SelectValue placeholder="Select View" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#09090b] border-white/10 text-white z-[60]">
@@ -1642,7 +1642,7 @@ const TournamentDashboard = () => {
           {/* Desktop View: Floating Animated Tabs */}
           <div className="hidden md:flex sticky top-4 z-40 mb-8 justify-center perspective-1000">
             <motion.div
-              className="p-1 bg-black/70 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl inline-flex relative overflow-hidden"
+              className="p-1 bg-[#0d0d10] border border-white/10 rounded-2xl shadow-2xl inline-flex relative overflow-hidden"
               initial={{ y: -50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -1696,7 +1696,7 @@ const TournamentDashboard = () => {
               {activeTab === 'overview' && (
                 <TabsContent value="overview" forceMount key="overview">
                   <TabTransition direction={direction}>
-                    <Card className="bg-none bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden mb-6">
+                    <Card className="bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden mb-6">
                       <CardHeader className="pb-4 border-b border-white/5">
                         <CardTitle className="text-lg font-bold text-white tracking-wide">Overview</CardTitle>
                       </CardHeader>
@@ -1782,7 +1782,7 @@ const TournamentDashboard = () => {
                 <TabsContent value="participants" forceMount key="participants">
                   <TabTransition direction={direction}>
                     {showCheckInSummary && (
-                      <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                         <CardHeader className="p-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between relative z-10 border-b border-white/5 pb-4 mb-6">
                           <div>
                             <CardTitle className="text-lg font-bold text-white flex items-center gap-2 tracking-wide">
@@ -1889,7 +1889,7 @@ const TournamentDashboard = () => {
                         onRefresh={refetchDashboard}
                       />
                     )}
-                    <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                    <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                       <MotionTiles />
                       <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
                         <CardTitle className="text-lg font-bold text-white tracking-wide">
@@ -2006,7 +2006,7 @@ const TournamentDashboard = () => {
               {activeTab === 'staff' && (
                 <TabsContent value="staff" forceMount key="staff">
                   <TabTransition direction={direction}>
-                    <Card className="bg-none bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8">
+                    <Card className="bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8">
                       <CardContent className="text-center py-8 space-y-4">
                         <ShieldCheck className="w-12 h-12 text-emerald-400 mx-auto" />
                         <h3 className="text-xl font-bold text-white">Staff Management Moved</h3>
@@ -2045,7 +2045,7 @@ const TournamentDashboard = () => {
                       <PermissionNotice message="Tournament settings are available only to the organizer." />
                     ) : (
                       <>
-                      <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                         <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                           <CardTitle className="text-lg font-semibold text-white">Check-In Requirements</CardTitle>
                         </CardHeader>
@@ -2082,7 +2082,7 @@ const TournamentDashboard = () => {
 
                       {/* Assisted Match Reporting — games with API integration */}
                       {getGameFeatures(tournament?.game || '').assistedReporting && (
-                        <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                        <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                           <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
                               <Zap className="w-5 h-5 text-amber-400" />
@@ -2122,7 +2122,7 @@ const TournamentDashboard = () => {
 
                       {/* Map Veto — games with map veto support */}
                       {getGameFeatures(tournament?.game || '').mapVeto && (
-                        <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                        <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
                           <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
                               <Swords className="w-5 h-5 text-rose-400" />

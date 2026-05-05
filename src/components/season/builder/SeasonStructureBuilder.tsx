@@ -177,7 +177,7 @@ const SeasonStructureBuilder = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.28 }}
-            className="rounded-[32px] border border-white/[0.06] bg-[#0a0a0c]/95 backdrop-blur-2xl"
+            className="rounded-[32px] border border-white/[0.06] bg-[#0a0a0c]"
           >
             {/* Header */}
             <div className="border-b border-white/[0.04] px-8 py-8">
@@ -375,7 +375,7 @@ const SeasonStructureBuilder = ({
             exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.28 }} className="space-y-5">
 
             {/* Header */}
-            <div className="rounded-[28px] border border-white/[0.06] bg-[#0a0a0c]/95 px-6 py-5 backdrop-blur-2xl">
+            <div className="rounded-[28px] border border-white/[0.06] bg-[#0a0a0c] px-6 py-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="font-heading text-lg font-bold text-white">{title}</p>
@@ -442,7 +442,7 @@ const SeasonStructureBuilder = ({
             </div>
 
             {(helperText ?? onSave) && (
-              <div className={cn('flex flex-col gap-4 rounded-[24px] border border-white/[0.06] bg-[#0a0a0c]/80 px-5 py-4 backdrop-blur-xl', onSave && 'md:flex-row md:items-center md:justify-between')}>
+              <div className={cn('flex flex-col gap-4 rounded-[24px] border border-white/[0.06] bg-[#0d0d10] px-5 py-4', onSave && 'md:flex-row md:items-center md:justify-between')}>
                 {helperText && <p className="font-body text-[13px] text-zinc-500">{helperText}</p>}
                 {onSave && (
                   <Button type="button" className="bg-white text-black font-semibold hover:bg-zinc-200" onClick={onSave} disabled={isSaving}>

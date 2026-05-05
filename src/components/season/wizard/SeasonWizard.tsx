@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import SeasonStructureBuilder from '@/components/season/builder/SeasonStructureBuilder';
 import SeasonTreePreview from '@/components/season/SeasonTreePreview';
+import StepAdvancementConnections from '@/components/season/wizard/StepAdvancementConnections';
 import StepConfigureTournaments from '@/components/season/wizard/StepConfigureTournaments';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,10 +28,8 @@ import {
   countConfiguredStages,
   createSeasonBuilderRootNode,
   getPhaseMetaForType,
-  isTournamentConfigComplete,
   normalizeSeasonBuilderNodes,
   readOutgoingConnections,
-  readTournamentConfig,
   validateAdvancementGraph,
   validateSeasonBuilderNodes,
 } from '@/components/season/builder/seasonBuilderUtils';
@@ -53,6 +52,7 @@ const STATUS_LABELS: Record<SeasonWizardData['status'], string> = {
   active: 'Active',
   completed: 'Completed',
   archived: 'Archived',
+  cancelled: 'Cancelled',
 };
 
 const toNullable = (value: string) => {
@@ -71,11 +71,11 @@ const setFormErrors = (
 };
 
 const STEP_VARIANTS = {
-  enter: (dir: number) => ({ x: dir > 0 ? 48 : -48, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: dir > 0 ? -48 : 48, opacity: 0 }),
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
+  exit: { opacity: 0 },
 };
-const STEP_TRANSITION = { type: 'spring', stiffness: 320, damping: 32 };
+const STEP_TRANSITION = { duration: 0.12 };
 
 // ---------------------------------------------------------------------------
 // IGDB art hook — fires when the selected game changes
@@ -120,7 +120,6 @@ const SeasonWizard = ({
   const createSeasonWorkspace = useCreateSeasonWorkspace();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [direction, setDirection] = useState(1);
   const [structureError, setStructureError] = useState<string | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [nodes, setNodes] = useState<SeasonBuilderNode[]>([createSeasonBuilderRootNode()]);
@@ -147,8 +146,8 @@ const SeasonWizard = ({
     [nodes],
   );
 
-  const { configured: configuredCount, total: totalCount } = useMemo(
-    () => countConfiguredStages(nodes),
+  const tournamentCount = useMemo(
+    () => nodes.filter((n) => n.nodeType !== 'root').length,
     [nodes],
   );
 
@@ -197,31 +196,25 @@ const SeasonWizard = ({
         return;
       }
     }
-    // Only gate config completeness when moving forward from step 3
-    if (currentStep === 3 && target > currentStep) {
-      const nonRoot = normalizeSeasonBuilderNodes(nodes).filter((n) => n.nodeType !== 'root');
-      const unconfigured = nonRoot.filter(
-        (n) => !isTournamentConfigComplete(readTournamentConfig(n)),
-      );
-      if (unconfigured.length > 0) {
-        const noun = unconfigured.length === 1 ? 'tournament' : 'tournaments';
-        const verb = unconfigured.length === 1 ? 'needs' : 'need';
+    if (currentStep === 3 && target > 3) {
+      // Soft gate — warn if any tournaments are unconfigured but allow continue
+      const { configured, total } = countConfiguredStages(nodes);
+      if (configured < total) {
         setConfigError(
-          `${unconfigured.length} ${noun} still ${verb} to be configured before you can continue.`,
+          `${total - configured} of ${total} tournament${total !== 1 ? 's' : ''} still need configuration (format, team size, registration type). You can continue, but publishing will require them to be completed.`,
         );
-        return;
+        // Only block if zero configured — otherwise just warn
+        if (configured === 0 && total > 0) return;
       }
     }
     setStructureError(null);
     setConfigError(null);
-    setDirection(target > currentStep ? 1 : -1);
     setCurrentStep(target);
   };
 
   const handleSubmit = form.handleSubmit(async (data) => {
     const sv = validateSeasonBuilderNodes(nodes);
     if (!sv.valid) {
-      setDirection(-1);
       setCurrentStep(2);
       setStructureError(sv.message);
       return;
@@ -262,28 +255,6 @@ const SeasonWizard = ({
 
   return (
     <div className="relative overflow-hidden rounded-[32px] border border-white/[0.06] bg-[#0a0a0c]">
-      {/* Ambient IGDB backdrop */}
-      <AnimatePresence>
-        {gameBanner && (
-          <motion.div
-            key={gameBanner}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.4 }}
-            className="pointer-events-none absolute inset-0 z-0"
-          >
-            <img
-              src={gameBanner}
-              alt=""
-              aria-hidden
-              className="h-full w-full object-cover"
-              style={{ filter: 'blur(60px) saturate(1.4)', opacity: 0.07 }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Layout */}
       <div className="relative z-10 flex min-h-[780px]">
 
@@ -391,13 +362,13 @@ const SeasonWizard = ({
           {/* Step area + nav wrapped in form */}
           <form onSubmit={handleSubmit} className="flex flex-1 flex-col">
             <div className="flex-1 overflow-hidden">
-              <AnimatePresence mode="wait" custom={direction}>
+              <AnimatePresence mode="sync">
 
                 {/* ── Step 1: Essentials ─────────────────────────────────── */}
                 {currentStep === 1 && (
                   <motion.div
                     key="s1"
-                    custom={direction}
+                    
                     variants={STEP_VARIANTS}
                     initial="enter"
                     animate="center"
@@ -407,7 +378,7 @@ const SeasonWizard = ({
                   >
                     <div className="mb-7">
                       <p className="font-body text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-500/70">
-                        Step 1 of 4
+                        Step 1 of 5
                       </p>
                       <h2 className="font-heading mt-1.5 text-2xl font-bold tracking-tight text-white">
                         Season Essentials
@@ -766,7 +737,7 @@ const SeasonWizard = ({
                 {currentStep === 2 && (
                   <motion.div
                     key="s2"
-                    custom={direction}
+                    
                     variants={STEP_VARIANTS}
                     initial="enter"
                     animate="center"
@@ -776,7 +747,7 @@ const SeasonWizard = ({
                   >
                     <div className="mb-7">
                       <p className="font-body text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-500/70">
-                        Step 2 of 4
+                        Step 2 of 5
                       </p>
                       <h2 className="font-heading mt-1.5 text-2xl font-bold tracking-tight text-white">
                         Build the Tournament Flow
@@ -794,7 +765,7 @@ const SeasonWizard = ({
 
                     <SeasonStructureBuilder
                       title="Season flow"
-                      description="Plan the tournament circuit — qualifiers, events, and finals — then configure each tournament and its advancement path inline."
+                      description="Plan the tournament circuit — qualifiers, events, and finals — then wire advancement between them in the next step."
                       nodes={nodes}
                       onChange={(next) => {
                         setStructureError(null);
@@ -809,7 +780,6 @@ const SeasonWizard = ({
                 {currentStep === 3 && (
                   <motion.div
                     key="s3"
-                    custom={direction}
                     variants={STEP_VARIANTS}
                     initial="enter"
                     animate="center"
@@ -819,13 +789,13 @@ const SeasonWizard = ({
                   >
                     <div className="mb-7">
                       <p className="font-body text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-500/70">
-                        Step 3 of 4
+                        Step 3 of 5
                       </p>
                       <h2 className="font-heading mt-1.5 text-2xl font-bold tracking-tight text-white">
                         Configure Tournaments
                       </h2>
                       <p className="font-body mt-1 text-[13px] text-zinc-500">
-                        Set up each tournament in your circuit before creating the season.
+                        Set the format, team size, and registration details for each planned tournament.
                       </p>
                     </div>
 
@@ -835,17 +805,17 @@ const SeasonWizard = ({
                       </div>
                     )}
 
-                    <div className="overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.01]">
+                    <div className="overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.01] p-6">
                       <StepConfigureTournaments nodes={nodes} onNodeChange={handleNodeChange} />
                     </div>
                   </motion.div>
                 )}
 
-                {/* ── Step 4: Review & Create ─────────────────────────────── */}
+                {/* ── Step 4: Advancement Connections ──────────────────────── */}
                 {currentStep === 4 && (
                   <motion.div
-                    key="s4"
-                    custom={direction}
+                    key="s4-adv"
+                    
                     variants={STEP_VARIANTS}
                     initial="enter"
                     animate="center"
@@ -855,7 +825,43 @@ const SeasonWizard = ({
                   >
                     <div className="mb-7">
                       <p className="font-body text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-500/70">
-                        Step 4 of 4
+                        Step 4 of 5
+                      </p>
+                      <h2 className="font-heading mt-1.5 text-2xl font-bold tracking-tight text-white">
+                        Advancement Connections
+                      </h2>
+                      <p className="font-body mt-1 text-[13px] text-zinc-500">
+                        Wire how teams or players advance from one tournament to the next.
+                      </p>
+                    </div>
+
+                    {configError && (
+                      <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3 text-[13px] text-amber-300">
+                        {configError}
+                      </div>
+                    )}
+
+                    <div className="overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.01] p-6">
+                      <StepAdvancementConnections nodes={nodes} onNodeChange={handleNodeChange} />
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── Step 5: Review & Create ─────────────────────────────── */}
+                {currentStep === 5 && (
+                  <motion.div
+                    key="s5"
+                    
+                    variants={STEP_VARIANTS}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={STEP_TRANSITION}
+                    className="p-8"
+                  >
+                    <div className="mb-7">
+                      <p className="font-body text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-500/70">
+                        Step 5 of 5
                       </p>
                       <h2 className="font-heading mt-1.5 text-2xl font-bold tracking-tight text-white">
                         Review & Create
@@ -950,56 +956,54 @@ const SeasonWizard = ({
                             Tournament circuit
                           </p>
                           <p className="font-body mt-1.5 text-[13px] font-semibold text-white">
-                            {configuredCount}{' '}
-                            {configuredCount === 1 ? 'tournament' : 'tournaments'} ready to create
+                            {tournamentCount}{' '}
+                            {tournamentCount === 1 ? 'tournament' : 'tournaments'} planned
                           </p>
 
-                          {reviewNonRootNodes.length > 0 && (
-                            <ul className="mt-3 space-y-2">
-                              {reviewNonRootNodes.map((node) => {
-                                const typeKey = node.nodeType as Exclude<SeasonNodeType, 'root'>;
-                                const meta = getPhaseMetaForType(typeKey);
-                                const ready = isTournamentConfigComplete(
-                                  readTournamentConfig(node),
-                                );
-                                return (
-                                  <li
-                                    key={node.id}
-                                    className="flex items-center justify-between gap-3"
-                                  >
-                                    <div className="flex min-w-0 items-center gap-2">
-                                      <span
-                                        className={cn(
-                                          'shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider',
-                                          meta.accent,
-                                          meta.accentBg,
-                                          meta.accentBorder,
-                                        )}
+                          {reviewNonRootNodes.length > 0 && (() => {
+                            const { configured, total } = countConfiguredStages(nodes);
+                            return (
+                              <>
+                                {configured < total && (
+                                  <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.07] px-3 py-1.5 text-[11px] text-amber-300">
+                                    <span className="font-semibold">{total - configured}</span> of {total} tournaments need configuration — complete before publishing.
+                                  </div>
+                                )}
+                                <ul className="mt-3 space-y-2">
+                                  {reviewNonRootNodes.map((node) => {
+                                    const typeKey = node.nodeType as Exclude<SeasonNodeType, 'root'>;
+                                    const meta = getPhaseMetaForType(typeKey);
+                                    const isConfigured = countConfiguredStages([node]).configured === 1;
+                                    return (
+                                      <li
+                                        key={node.id}
+                                        className="flex items-center justify-between gap-3"
                                       >
-                                        {typeKey}
-                                      </span>
-                                      <span className="font-body truncate text-[12px] text-zinc-300">
-                                        {node.name || 'Unnamed'}
-                                      </span>
-                                    </div>
-                                    {ready ? (
-                                      <span className="font-body shrink-0 text-[11px] text-emerald-400">
-                                        Ready ✓
-                                      </span>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => void goToStep(3)}
-                                        className="font-body shrink-0 text-[11px] text-amber-400 underline-offset-2 hover:underline"
-                                      >
-                                        ← Configure
-                                      </button>
-                                    )}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          )}
+                                        <div className="flex min-w-0 items-center gap-2">
+                                          <span
+                                            className={cn(
+                                              'shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider',
+                                              meta.accent,
+                                              meta.accentBg,
+                                              meta.accentBorder,
+                                            )}
+                                          >
+                                            {typeKey}
+                                          </span>
+                                          <span className="font-body truncate text-[12px] text-zinc-300">
+                                            {node.name || 'Unnamed'}
+                                          </span>
+                                        </div>
+                                        <span className={cn('font-body shrink-0 text-[11px]', isConfigured ? 'text-emerald-400' : 'text-amber-400')}>
+                                          {isConfigured ? 'Configured ✓' : 'Needs setup'}
+                                        </span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </>
+                            );
+                          })()}
 
                           {totalAdvancementConnections > 0 && (
                             <p className="font-body mt-3 border-t border-white/[0.05] pt-3 text-[12px] text-zinc-500">

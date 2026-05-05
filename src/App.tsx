@@ -12,13 +12,10 @@ import { AdminProvider } from "@/contexts/AdminContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { SignalRProvider } from "@/contexts/SignalRContext";
-import { BackgroundRotator } from "@/components/effects/BackgroundRotator";
-
-import { AnimatedLiquidBackground } from "@/components/effects/AnimatedLiquidBackground";
 import { TransitionLayout } from "@/components/TransitionLayout";
 import { LoadingSpinner } from "@/components/effects/LoadingSpinner";
 import { SuspensionGuard } from "@/components/auth/SuspensionGuard";
-import { SeamlessVideoLoop } from "@/components/effects/SeamlessVideoLoop";
+
 import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -97,6 +94,9 @@ const ManageBracketPage = lazyWithRetry(() => import("./pages/organizer/ManageBr
 const FullscreenBracketPage = lazyWithRetry(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
 const OrganizationPublicProfile = lazyWithRetry(() => import("./pages/org/PublicProfile"));
 const OrganizationWizard = lazyWithRetry(() => import("./pages/organizer/OrganizationWizard"));
+const AdminSeasonAudit = lazyWithRetry(() => import("./pages/admin/AdminSeasonAudit"));
+const AdminSeasonOverride = lazyWithRetry(() => import("./pages/admin/AdminSeasonOverride"));
+const AdminSeasonAnalytics = lazyWithRetry(() => import("./pages/admin/AdminSeasonAnalytics"));
 
 const ADMIN_ROLE_SETS = {
   anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
@@ -124,6 +124,7 @@ const BrowseTournaments = lazyWithRetry(() => import("./pages/tournaments/List")
 const CreateTournament = lazyWithRetry(() => import("./pages/tournaments/Create"));
 const SeasonsList = lazyWithRetry(() => import("./pages/seasons/List"));
 const SeasonsDetails = lazyWithRetry(() => import("./pages/seasons/Details"));
+const SeasonPublic = lazyWithRetry(() => import("./pages/seasons/SeasonPublic"));
 
 // About
 const ContactPage = lazyWithRetry(() => import("./pages/about/Contact"));
@@ -158,9 +159,6 @@ const IgdbTest = lazyWithRetry(() => import("./pages/debug/IgdbTest"));
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
 const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallback"));
 
-import { getWebsiteAssetUrl } from "@/lib/storage";
-
-// Redirect /settings → /account/settings preserving query params
 const SettingsRedirect = () => {
   const location = useLocation();
   return <Navigate to={`/account/settings${location.search}`} replace />;
@@ -171,23 +169,19 @@ const AppContent = React.memo(() => {
 
   // Scroll to top on route change
   useEffect(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }, [location.pathname]);
-
-  const isHome = location.pathname === '/';
-  const BG_VIDEO_URL = getWebsiteAssetUrl("Tournament-dashboard-background-animation/background.mp4");
 
   return (
     <>
-      {/* Global Background - Video Only (Seamless Loop) */}
+      {/* Global Background */}
       {!location.pathname.endsWith('/brackets/fullscreen') && (
-        <div className="fixed inset-0 w-full h-full z-0">
-          <SeamlessVideoLoop
-            src={BG_VIDEO_URL}
-            className="mix-blend-screen opacity-40"
-            style={{ filter: 'contrast(1.2) saturation(1.1)' }}
-
-          />
+        <div
+          className="fixed inset-0 w-full h-full z-0 bg-[#050505]"
+          aria-hidden="true"
+        >
+          {/* Subtle dot grid — pure CSS gradient, zero repaint cost */}
+          <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:32px_32px]" />
         </div>
       )}
 
@@ -637,6 +631,7 @@ const AppContent = React.memo(() => {
                 <Route path="/tournaments" element={<BrowseTournaments />} />
                 <Route path="/seasons" element={<SeasonsList />} />
                 <Route path="/seasons/:id" element={<SeasonsDetails />} />
+                <Route path="/seasons/:slug" element={<SeasonPublic />} />
                 <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
                 <Route path="/player/:username" element={<PlayerProfile />} />
@@ -709,6 +704,11 @@ const AppContent = React.memo(() => {
 
                 {/* Admin Protected Route for TournamentDetails */}
                 <Route path="/admin/tournaments/:id" element={<AdminProtectedRoute><TournamentDetails /></AdminProtectedRoute>} />
+
+                {/* Admin Season Routes */}
+                <Route path="/admin/seasons/:id/audit" element={<AdminProtectedRoute><AdminSeasonAudit /></AdminProtectedRoute>} />
+                <Route path="/admin/seasons/:id/override" element={<AdminProtectedRoute><AdminSeasonOverride /></AdminProtectedRoute>} />
+                <Route path="/admin/seasons/analytics" element={<AdminProtectedRoute><AdminSeasonAnalytics /></AdminProtectedRoute>} />
 
                 {/* Tournament History Route */}
                 <Route path="/tournament-history" element={<TournamentHistoryPage />} />

@@ -18,6 +18,8 @@ import { formatDistanceToNow } from 'date-fns';
 import SeasonQualificationsPanel from '@/components/season/SeasonQualificationsPanel';
 import SeasonStandingsTable from '@/components/season/SeasonStandingsTable';
 import SeasonTreePreview from '@/components/season/SeasonTreePreview';
+import SeasonAnnouncements from '@/components/season/management/SeasonAnnouncements';
+import SeasonAdvancementDashboard from '@/components/season/management/SeasonAdvancementDashboard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +74,7 @@ const TABS = [
   ['rules', 'Points rules'],
   ['standings', 'Standings'],
   ['qualifications', 'Qualifications'],
+  ['registrations', 'Registrations'],
   ['flow', 'Flow'],
   ['tournaments', 'Tournaments'],
   ['advancement', 'Advancement'],
@@ -1338,6 +1341,114 @@ const SeasonManage = () => {
           </div>
         )}
 
+        {activeTab === 'registrations' && (() => {
+          const nonRootNodes = (data.nodes ?? []).filter((n) => n.nodeType !== 'root');
+          const now = new Date();
+          const upcoming = nonRootNodes.filter((n) => n.registrationDeadline && new Date(n.registrationDeadline) > now);
+          const closed = nonRootNodes.filter((n) => n.registrationDeadline && new Date(n.registrationDeadline) <= now);
+          const noDeadline = nonRootNodes.filter((n) => !n.registrationDeadline);
+
+          return (
+            <div className="space-y-6">
+              <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-heading text-2xl font-semibold text-white">Registrations</h2>
+                    <p className="mt-1 font-body text-sm text-zinc-400">Registration windows and deadlines across all season tournaments.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 font-body text-[12px] font-semibold text-emerald-400">{upcoming.length} Open</span>
+                    <span className="rounded-full border border-zinc-500/25 bg-zinc-500/10 px-3 py-1.5 font-body text-[12px] font-semibold text-zinc-400">{closed.length} Closed</span>
+                    {noDeadline.length > 0 && (
+                      <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 font-body text-[12px] font-semibold text-amber-400">{noDeadline.length} No deadline</span>
+                    )}
+                  </div>
+                </div>
+
+                {nonRootNodes.length === 0 ? (
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-12 text-center">
+                    <p className="font-body text-sm text-zinc-500">No tournaments in this season yet. Build the tournament flow in the Structure tab.</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-4 border-white/10 text-zinc-400 hover:bg-white/[0.06]"
+                      onClick={() => setSearchParams({ tab: 'flow' })}
+                    >
+                      Go to Flow
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {nonRootNodes
+                      .slice()
+                      .sort((a, b) => a.displayOrder - b.displayOrder)
+                      .map((node) => {
+                        const deadline = node.registrationDeadline ? new Date(node.registrationDeadline) : null;
+                        const isOpen = deadline ? deadline > now : false;
+                        const isClosed = deadline ? deadline <= now : false;
+                        const registrationType = (node as any).registrationType as string | null;
+                        return (
+                          <div
+                            key={node.id}
+                            className="flex flex-col gap-4 rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={cn(
+                                  'rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider',
+                                  node.nodeType === 'qualifier' ? 'border-amber-500/25 bg-amber-500/10 text-amber-400' :
+                                  node.nodeType === 'event' ? 'border-violet-500/25 bg-violet-500/10 text-violet-400' :
+                                  node.nodeType === 'final' ? 'border-rose-500/25 bg-rose-500/10 text-rose-400' :
+                                  'border-white/10 bg-white/[0.04] text-zinc-400'
+                                )}>{node.nodeType}</span>
+                                <span className="font-body font-semibold text-white">{node.name || 'Unnamed'}</span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-3 font-body text-[12px] text-zinc-500">
+                                {deadline ? (
+                                  <span className={cn('flex items-center gap-1', isOpen ? 'text-emerald-400' : 'text-zinc-500')}>
+                                    <Clock className="h-3 w-3" />
+                                    {isOpen ? 'Closes' : 'Closed'} {formatDistanceToNow(deadline, { addSuffix: true })}
+                                    <span className="text-zinc-600">({deadline.toLocaleDateString()})</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-400/70">No registration deadline set</span>
+                                )}
+                                {registrationType && (
+                                  <span className="rounded border border-white/[0.06] bg-white/[0.04] px-2 py-0.5 capitalize text-zinc-400">
+                                    {registrationType.replace('_', ' ')}
+                                  </span>
+                                )}
+                                {node.region && <span className="text-zinc-600">{node.region}</span>}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {isClosed && (
+                                <span className="rounded-full border border-zinc-500/25 bg-zinc-500/10 px-2.5 py-1 font-body text-[11px] font-semibold text-zinc-500">Closed</span>
+                              )}
+                              {isOpen && (
+                                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 font-body text-[11px] font-semibold text-emerald-400">Open</span>
+                              )}
+                              {node.publishedTournamentId && (
+                                <Link
+                                  to={`/tournaments/${node.publishedTournamentId}`}
+                                  target="_blank"
+                                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 font-body text-[11px] font-medium text-zinc-300 transition-colors hover:bg-white/[0.08]"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  View Tournament
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {activeTab === 'flow' && (
           <div className="space-y-6">
             {/* Header card */}
@@ -1538,152 +1649,11 @@ const SeasonManage = () => {
         )}
 
         {activeTab === 'advancement' && (
-          <div className="space-y-6">
-            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
-              <h2 className="font-heading text-2xl font-bold text-white">Advancement Rules</h2>
-              <p className="mt-1 text-sm text-zinc-400">These rules control how teams progress between tournaments in your circuit.</p>
-            </div>
-
-            {(() => {
-              const allConnections: Array<{ fromName: string; toName: string; conn: AdvancementConnection }> = [];
-              nodeRows.filter(n => n.nodeType !== 'root').forEach(node => {
-                const conns = readOutgoingConnections(node);
-                conns.forEach(conn => {
-                  const toNode = nodeRows.find(n => n.id === conn.toNodeId);
-                  allConnections.push({
-                    fromName: node.name || 'Unnamed',
-                    toName: toNode?.name || 'Unknown',
-                    conn,
-                  });
-                });
-              });
-
-              const ruleTypeLabels: Record<string, string> = {
-                top_n: 'Top N',
-                top_percentage: 'Top %',
-                manual_selection: 'Manual',
-                points_threshold: 'Points threshold',
-              };
-              const seedModeLabels: Record<string, string> = {
-                preserve_seed: 'Preserve seeding',
-                reseed_by_points: 'Reseed by points',
-                randomize: 'Randomize',
-                manual: 'Manual',
-              };
-
-              if (data.season.status === 'draft' || data.season.status === 'published') {
-                return allConnections.length > 0 ? (
-                  <div className="space-y-3">
-                    {allConnections.map(({ fromName, toName, conn }) => (
-                      <div key={conn.id} className="rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-white">{fromName}</span>
-                          <ArrowRight className="h-4 w-4 text-zinc-600" />
-                          <span className="font-semibold text-white">{toName}</span>
-                          <span className="ml-auto rounded-lg border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-xs font-semibold text-violet-400">
-                            {ruleTypeLabels[conn.ruleType] ?? conn.ruleType}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-400">
-                          <span>
-                            {conn.ruleType === 'top_n' && `Top ${conn.ruleValue} advance`}
-                            {conn.ruleType === 'top_percentage' && `Top ${conn.ruleValue}% advance`}
-                            {conn.ruleType === 'points_threshold' && `≥ ${conn.ruleValue} points`}
-                            {conn.ruleType === 'manual_selection' && 'Manual selection'}
-                          </span>
-                          <span className="text-zinc-600">·</span>
-                          <span>{seedModeLabels[conn.seedMode] ?? conn.seedMode}</span>
-                          {conn.label && <><span className="text-zinc-600">·</span><span className="text-zinc-500">"{conn.label}"</span></>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02] py-16 text-center">
-                    <TrendingUp className="h-10 w-10 text-zinc-600" />
-                    <p className="text-sm font-medium text-zinc-400">No advancement rules configured yet</p>
-                    <p className="text-xs text-zinc-600">Go to the Structure tab and configure connections between tournaments.</p>
-                  </div>
-                );
-              }
-
-              return (
-                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 text-center">
-                  <p className="text-sm text-zinc-400">Advancement tracking begins when tournaments complete.</p>
-                </div>
-              );
-            })()}
-
-            <div className="flex items-start gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-              <Shield className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-              <p className="text-sm text-zinc-400">
-                Manual overrides are{' '}
-                <span className={overview.allowManualOverrides ? 'font-semibold text-emerald-400' : 'font-semibold text-zinc-500'}>
-                  {overview.allowManualOverrides ? 'enabled' : 'disabled'}
-                </span>{' '}
-                for this season.
-              </p>
-            </div>
-          </div>
+          <SeasonAdvancementDashboard seasonId={seasonId} />
         )}
 
         {activeTab === 'announcements' && (
-          <div className="space-y-6">
-            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
-              <h2 className="font-heading text-2xl font-bold text-white">Announcements</h2>
-              <p className="mt-1 text-sm text-zinc-400">Notify all season participants of important updates.</p>
-            </div>
-
-            {/* Compose card */}
-            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Bell className="h-4 w-4 text-zinc-400" />
-                <h3 className="font-semibold text-white">Compose announcement</h3>
-                <span className="ml-auto rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">Coming soon</span>
-              </div>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label className="text-zinc-300">Title</Label>
-                  <Input
-                    value={announceTitle}
-                    onChange={(e) => setAnnounceTitle(e.target.value)}
-                    placeholder="e.g. Schedule update for Week 3"
-                    disabled
-                    className="border-white/[0.06] bg-white/[0.03] text-zinc-300 placeholder:text-zinc-700 disabled:opacity-50"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-zinc-300">Message</Label>
-                  <Textarea
-                    value={announceBody}
-                    onChange={(e) => setAnnounceBody(e.target.value)}
-                    placeholder="Write your announcement here..."
-                    disabled
-                    className="min-h-[120px] border-white/[0.06] bg-white/[0.03] text-zinc-300 placeholder:text-zinc-700 disabled:opacity-50"
-                  />
-                </div>
-                <Button
-                  disabled
-                  className="bg-rose-500/40 text-white/50 cursor-not-allowed"
-                  onClick={() => {}}
-                >
-                  <Bell className="mr-2 h-4 w-4" />
-                  Send to all participants
-                </Button>
-                <p className="text-xs text-zinc-600">We're building the notification pipeline. This feature will be available soon.</p>
-              </div>
-            </div>
-
-            {/* History empty state */}
-            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
-              <h3 className="mb-4 font-semibold text-white">Sent announcements</h3>
-              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02] py-12 text-center">
-                <FileText className="h-10 w-10 text-zinc-600" />
-                <p className="text-sm font-medium text-zinc-400">No announcements sent yet</p>
-                <p className="text-xs text-zinc-600">Use the form above to notify all season participants of updates.</p>
-              </div>
-            </div>
-          </div>
+          <SeasonAnnouncements seasonId={seasonId} />
         )}
 
         {activeTab === 'settings' && (

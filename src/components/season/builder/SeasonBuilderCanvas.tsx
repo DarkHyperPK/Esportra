@@ -62,7 +62,7 @@ const StageCard = ({
       data-tour-id={isSelected ? 'canvas-card' : undefined}
       data-tour-card="stage"
       className={cn(
-        'w-full rounded-2xl border p-3.5 text-left backdrop-blur-xl transition-all cursor-pointer',
+        'w-full rounded-2xl border p-3.5 text-left transition-all cursor-pointer',
         isSelected
           ? 'border-white/20 bg-white/[0.06] shadow-[0_8px_32px_rgba(255,255,255,0.04)] ring-1 ring-white/10'
           : 'border-white/[0.05] bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04]',
@@ -196,7 +196,7 @@ const SeasonBuilderCanvas = ({
 
   if (nonRootNodes.length === 0) {
     return (
-      <div data-tour-id="canvas" className="rounded-[28px] border border-white/[0.06] bg-[#0a0a0c]/80 backdrop-blur-2xl">
+      <div data-tour-id="canvas" className="rounded-[28px] border border-white/[0.06] bg-[#0d0d10]">
         <div className="flex h-72 flex-col items-center justify-center gap-4 p-6 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
             <Plus className="h-5 w-5 text-zinc-600" />
@@ -213,7 +213,7 @@ const SeasonBuilderCanvas = ({
   }
 
   return (
-    <div data-tour-id="canvas" className="rounded-[28px] border border-white/[0.06] bg-[#0a0a0c]/80 backdrop-blur-2xl">
+    <div data-tour-id="canvas" className="rounded-[28px] border border-white/[0.06] bg-[#0d0d10]">
       <div className="border-b border-white/[0.04] px-5 py-4">
         <p className="font-heading text-[15px] font-semibold text-white">Season flow</p>
         <p className="font-body mt-1 text-[12px] text-zinc-600">

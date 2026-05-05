@@ -517,7 +517,7 @@ const ManageBracketPage = () => {
                 {isOrganizer && (
                     <Tabs defaultValue="bracket" className="w-full">
                         <div className="flex items-center justify-between mb-6">
-                            <TabsList className="bg-black/40 backdrop-blur-md border border-white/10 p-1 h-auto rounded-xl">
+                            <TabsList className="bg-[#0d0d10] border border-white/10 p-1 h-auto rounded-xl">
                                 <TabsTrigger value="bracket" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
                                     <GitBranch className="w-4 h-4 mr-2" />
                                     Visualizer

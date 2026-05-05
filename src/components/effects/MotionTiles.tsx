@@ -1,16 +1,20 @@
-import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import React, { useEffect, useRef, useState } from "react";
+
+interface TileData {
+  duration: number;
+  delay: number;
+}
 
 export const MotionTiles = () => {
     const [columns, setColumns] = useState(0);
     const [rows, setRows] = useState(0);
+    const tilesRef = useRef<TileData[]>([]);
 
     useEffect(() => {
-        // Calculate grid size based on window
         const updateGrid = () => {
             const w = window.innerWidth;
             const h = window.innerHeight;
-            const size = 60; // tile size
+            const size = 60;
             setColumns(Math.ceil(w / size));
             setRows(Math.ceil(h / size));
         };
@@ -18,6 +22,14 @@ export const MotionTiles = () => {
         window.addEventListener('resize', updateGrid);
         return () => window.removeEventListener('resize', updateGrid);
     }, []);
+
+    const total = columns * rows;
+    if (tilesRef.current.length !== total) {
+        tilesRef.current = Array.from({ length: total }, () => ({
+            duration: Math.random() * 5 + 5,
+            delay: Math.random() * 5,
+        }));
+    }
 
     return (
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-20 mix-blend-overlay">
@@ -28,16 +40,12 @@ export const MotionTiles = () => {
                     gridTemplateRows: `repeat(${rows}, 1fr)`
                 }}
             >
-                {Array.from({ length: columns * rows }).map((_, i) => (
-                    <motion.div
+                {tilesRef.current.map((tile, i) => (
+                    <div
                         key={i}
                         className="border-[0.5px] border-white/5"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.5, 0] }}
-                        transition={{
-                            duration: Math.random() * 5 + 5,
-                            repeat: Infinity,
-                            delay: Math.random() * 5,
+                        style={{
+                            animation: `tile-flicker ${tile.duration}s ${tile.delay}s infinite`,
                         }}
                     />
                 ))}

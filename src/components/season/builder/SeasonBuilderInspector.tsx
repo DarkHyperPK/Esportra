@@ -91,7 +91,7 @@ const SeasonBuilderInspector = ({ node, allNodes, onChange, onRemove }: SeasonBu
 
   if (!node || !tournamentConfig) {
     return (
-      <div className="flex h-full min-h-[200px] items-center justify-center rounded-[28px] border border-white/[0.06] bg-[#0a0a0c]/80 p-6 text-center backdrop-blur-2xl">
+      <div className="flex h-full min-h-[200px] items-center justify-center rounded-[28px] border border-white/[0.06] bg-[#0d0d10] p-6 text-center">
         <div>
           <p className="font-body text-[13px] font-semibold text-zinc-400">No stage selected</p>
           <p className="font-body mt-1 text-[12px] text-zinc-600">Click a stage in the flow view to configure it.</p>
@@ -140,7 +140,7 @@ const SeasonBuilderInspector = ({ node, allNodes, onChange, onRemove }: SeasonBu
   };
 
   return (
-    <div data-tour-id="inspector" className="rounded-[28px] border border-white/[0.06] bg-[#0a0a0c]/80 backdrop-blur-2xl">
+    <div data-tour-id="inspector" className="rounded-[28px] border border-white/[0.06] bg-[#0d0d10]">
       {/* Header */}
       <div className="border-b border-white/[0.04] px-5 py-4">
         <div className="flex items-start justify-between gap-3">

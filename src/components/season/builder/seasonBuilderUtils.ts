@@ -324,19 +324,6 @@ export const validateSeasonBuilderNodes = (nodes: SeasonBuilderNode[]) => {
     };
   }
 
-  const incompleteTournament = plannedTournaments.find(
-    (node) => !isTournamentConfigComplete(readTournamentConfig(node)),
-  );
-
-  if (incompleteTournament) {
-    return {
-      valid: false,
-      message: `Finish the tournament setup for "${incompleteTournament.name}" before continuing.`,
-      nodeId: incompleteTournament.id,
-      warnings: [],
-    };
-  }
-
   const scheduleIssue = plannedTournaments.find((node) => {
     const registrationDeadline = node.registrationDeadline?.trim();
     const startsAt = node.startsAt?.trim();
@@ -623,6 +610,42 @@ export const countConfiguredStages = (nodes: SeasonBuilderNode[]): { configured:
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Role hierarchy — defines which node types can advance into which targets.
+// 'final' is terminal: no outgoing connections allowed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const ADVANCEMENT_ROLE_HIERARCHY: Record<Exclude<SeasonNodeType, 'root'>, Exclude<SeasonNodeType, 'root'>[]> = {
+  qualifier: ['event', 'stage', 'final', 'custom'],
+  event: ['stage', 'final', 'custom'],
+  stage: ['final', 'custom'],
+  final: [], // terminal — no outgoing connections allowed
+  custom: ['qualifier', 'event', 'stage', 'final', 'custom'],
+};
+
+/**
+ * Returns the allowed target node types for a given source node type.
+ * `final` returns an empty array (terminal stage).
+ */
+export const getAllowedTargetTypes = (
+  sourceType: SeasonNodeType,
+): Exclude<SeasonNodeType, 'root'>[] => {
+  if (sourceType === 'root') return [];
+  return ADVANCEMENT_ROLE_HIERARCHY[sourceType] ?? [];
+};
+
+/**
+ * Returns true if an advancement from sourceType → targetType is valid
+ * according to the role hierarchy.
+ */
+export const isAdvancementAllowed = (
+  sourceType: SeasonNodeType,
+  targetType: SeasonNodeType,
+): boolean => {
+  if (targetType === 'root') return false;
+  return getAllowedTargetTypes(sourceType).includes(targetType as Exclude<SeasonNodeType, 'root'>);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Advancement graph validation
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -632,7 +655,7 @@ export interface AdvancementValidationIssue {
   message: string;
 }
 
-/** Detect cycles, orphan connections, and terminal-stage coverage. */
+/** Detect cycles, orphan connections, hierarchy violations, and terminal-stage coverage. */
 export const validateAdvancementGraph = (nodes: SeasonBuilderNode[]): AdvancementValidationIssue[] => {
   const issues: AdvancementValidationIssue[] = [];
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
@@ -642,6 +665,14 @@ export const validateAdvancementGraph = (nodes: SeasonBuilderNode[]): Advancemen
   const adjacency = new Map<string, string[]>();
   stages.forEach((n) => {
     const outgoing = readOutgoingConnections(n);
+    // Finals are terminal — flag any outgoing connections immediately
+    if (n.nodeType === 'final' && outgoing.length > 0) {
+      issues.push({
+        severity: 'error',
+        nodeId: n.id,
+        message: `"${n.name || 'Final'}" is a terminal stage. Remove its outgoing advancement connections.`,
+      });
+    }
     outgoing.forEach((conn) => {
       if (!nodeMap.has(conn.toNodeId)) {
         issues.push({
@@ -656,6 +687,18 @@ export const validateAdvancementGraph = (nodes: SeasonBuilderNode[]): Advancemen
           severity: 'error',
           nodeId: n.id,
           message: `"${n.name || 'Untitled stage'}" cannot advance into itself.`,
+        });
+        return;
+      }
+      // Role hierarchy check
+      const target = nodeMap.get(conn.toNodeId);
+      if (target && !isAdvancementAllowed(n.nodeType, target.nodeType)) {
+        const sourceName = n.name || n.nodeType;
+        const targetName = target.name || target.nodeType;
+        issues.push({
+          severity: 'error',
+          nodeId: n.id,
+          message: `"${sourceName}" (${n.nodeType}) cannot advance into "${targetName}" (${target.nodeType}). ${n.nodeType === 'final' ? 'Finals are terminal — they cannot have outgoing connections.' : `A ${n.nodeType} can only advance into: ${getAllowedTargetTypes(n.nodeType).join(', ') || 'nothing (terminal)'}.`}`,
         });
         return;
       }

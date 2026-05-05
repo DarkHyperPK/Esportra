@@ -517,3 +517,19 @@ export interface PublishedTournamentDto {
   slug: string;
   created: boolean;
 }
+
+export interface AddSeasonTournamentRequest {
+  name: string;
+  role: SeasonTournamentRole;
+  region?: string | null;
+  displayName?: string | null;
+}
+
+export interface ReorderSeasonTournamentItem {
+  seasonTournamentId: string;
+  sortOrder: number;
+}
+
+export interface ReorderSeasonTournamentsRequest {
+  updates: ReorderSeasonTournamentItem[];
+}

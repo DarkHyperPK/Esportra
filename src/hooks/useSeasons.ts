@@ -5,13 +5,14 @@ import type {
   CreateSeasonResponse,
   CreateSeasonWorkspacePayload,
   SeasonListItem,
-  SeasonNodeDraft,
   UpdateSeasonPayload,
   PublishSeasonRequest,
   PublishSeasonResponse,
   SeasonTournament,
   SeasonStanding,
   SeasonAuditLog,
+  AddSeasonTournamentRequest,
+  ReorderSeasonTournamentsRequest,
 } from '@/types/season';
 import { toSeasonNodeDraftPayload } from '@/components/season/builder/seasonBuilderUtils';
 
@@ -160,7 +161,8 @@ export const usePublishSeason = () => {
   return useMutation({
     mutationFn: ({ seasonId, req }: { seasonId: string; req: PublishSeasonRequest }) =>
       apiClient.post<PublishSeasonResponse>(`/api/seasons/${seasonId}/publish`, req),
-    onSuccess: (variables) => {
+    // onSuccess(data, variables): first arg is the API response, second is the mutation input
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
       queryClient.invalidateQueries({ queryKey: ['season', variables.seasonId] });
     },
@@ -224,7 +226,7 @@ export const useSeasonAdvancement = (seasonId: string) => {
 export const useSeasonStandings = (seasonId: string) => {
   return useQuery<SeasonStanding[]>({
     queryKey: ['seasonStandings', seasonId],
-    queryFn: () => apiClient.get<SeasonStanding[]>(`/api/public/seasons/${seasonId}/standings`),
+    queryFn: () => apiClient.get<SeasonStanding[]>(`/api/seasons/${seasonId}/standings`),
     enabled: !!seasonId,
   });
 };
@@ -234,5 +236,114 @@ export const useSeasonAuditLog = (seasonId: string) => {
     queryKey: ['seasonAuditLog', seasonId],
     queryFn: () => apiClient.get<SeasonAuditLog[]>(`/api/admin/seasons/${seasonId}/audit`),
     enabled: !!seasonId,
+  });
+};
+
+export const useAddSeasonTournament = (seasonId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (req: AddSeasonTournamentRequest) =>
+      apiClient.post<{ seasonTournamentId: string; tournamentId: string; slug: string }>(
+        `/api/seasons/${seasonId}/tournaments`,
+        req,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seasonTournaments', seasonId] });
+      queryClient.invalidateQueries({ queryKey: ['season', seasonId] });
+    },
+  });
+};
+
+export const useRemoveSeasonTournament = (seasonId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (seasonTournamentId: string) =>
+      apiClient.delete(`/api/seasons/${seasonId}/tournaments/${seasonTournamentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seasonTournaments', seasonId] });
+      queryClient.invalidateQueries({ queryKey: ['season', seasonId] });
+    },
+  });
+};
+
+export const useReorderSeasonTournaments = (seasonId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (req: ReorderSeasonTournamentsRequest) =>
+      apiClient.patch<{ success: boolean }>(`/api/seasons/${seasonId}/tournaments/reorder`, req),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seasonTournaments', seasonId] });
+      queryClient.invalidateQueries({ queryKey: ['season', seasonId] });
+    },
+  });
+};
+
+type SeasonAnnouncement = {
+  id: string;
+  season_id: string;
+  title: string;
+  body: string;
+  target_audience: 'all' | 'qualified' | 'eliminated' | 'specific_tournament';
+  target_tournament_id?: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type CreateAnnouncementRequest = {
+  title: string;
+  body: string;
+  target_audience: 'all' | 'qualified' | 'eliminated' | 'specific_tournament';
+  target_tournament_id?: string;
+};
+
+type UpdateAnnouncementRequest = {
+  title?: string;
+  body?: string;
+  target_audience?: 'all' | 'qualified' | 'eliminated' | 'specific_tournament';
+  target_tournament_id?: string;
+};
+
+export const useSeasonAnnouncements = (seasonId: string) => {
+  return useQuery<SeasonAnnouncement[]>({
+    queryKey: ['seasonAnnouncements', seasonId],
+    queryFn: () => apiClient.get<SeasonAnnouncement[]>(`/api/seasons/${seasonId}/announcements`),
+    enabled: !!seasonId,
+  });
+};
+
+export const useCreateAnnouncement = (seasonId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (req: CreateAnnouncementRequest) =>
+      apiClient.post<SeasonAnnouncement>(`/api/seasons/${seasonId}/announcements`, req),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seasonAnnouncements', seasonId] });
+    },
+  });
+};
+
+export const useUpdateAnnouncement = (seasonId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ announcementId, req }: { announcementId: string; req: UpdateAnnouncementRequest }) =>
+      apiClient.patch<SeasonAnnouncement>(
+        `/api/seasons/${seasonId}/announcements/${announcementId}`,
+        req,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seasonAnnouncements', seasonId] });
+    },
+  });
+};
+
+export const useDeleteAnnouncement = (seasonId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (announcementId: string) =>
+      apiClient.delete(`/api/seasons/${seasonId}/announcements/${announcementId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seasonAnnouncements', seasonId] });
+    },
   });
 };

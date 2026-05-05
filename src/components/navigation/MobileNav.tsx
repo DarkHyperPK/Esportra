@@ -37,6 +37,14 @@ const MobileNav = ({
   const linkClass = "block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white";
   const subLinkClass = "block rounded-xl px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/50 transition-all duration-200 hover:bg-white/5 hover:text-white/80";
 
+  const accordionMotion = {
+    initial: { opacity: 0, gridTemplateRows: '0fr' },
+    animate: { opacity: 1, gridTemplateRows: '1fr' },
+    exit: { opacity: 0, gridTemplateRows: '0fr' },
+    transition: { duration: 0.2 },
+    style: { display: 'grid', overflow: 'hidden' } as React.CSSProperties,
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -46,7 +54,7 @@ const MobileNav = ({
           exit={{ opacity: 0, gridTemplateRows: '0fr' }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           style={{ display: 'grid', overflow: 'hidden' }}
-          className="lg:hidden fixed top-[88px] left-0 right-0 mx-4 z-[998] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-[0_25px_45px_rgba(0,0,0,0.65)]"
+          className="lg:hidden fixed top-[88px] left-0 right-0 mx-4 z-[998] bg-[#0d0d10] border border-white/10 rounded-3xl shadow-[0_25px_45px_rgba(0,0,0,0.65)]"
         >
         <div style={{ minHeight: 0, overflow: 'hidden' }} className="max-h-[80vh] overflow-y-auto">
           {/* Background Effects */}
@@ -55,24 +63,9 @@ const MobileNav = ({
 
           <div className="space-y-1 px-3 pt-4 pb-4 relative z-10">
             {/* General Navigation */}
-            <motion.div
-              className="mb-3 space-y-1"
-              initial="closed"
-              animate="open"
-              variants={{
-                open: {
-                  transition: { staggerChildren: 0.05 }
-                }
-              }}
-            >
+            <div className="mb-3 space-y-1">
               {/* Venues with sub-menu */}
-              <motion.div
-                variants={{
-                  closed: { x: -20, opacity: 0 },
-                  open: { x: 0, opacity: 1 }
-                }}
-                transition={{ duration: 0.3 }}
-              >
+              <div>
                 <button
                   onClick={() => toggleMenu('venues')}
                   className="flex w-full items-center justify-between rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
@@ -82,37 +75,24 @@ const MobileNav = ({
                 </button>
                 <AnimatePresence>
                   {expandedMenu === 'venues' && (
-                    <motion.div
-                      initial={{ opacity: 0, gridTemplateRows: '0fr' }}
-                      animate={{ opacity: 1, gridTemplateRows: '1fr' }}
-                      exit={{ opacity: 0, gridTemplateRows: '0fr' }}
-                      transition={{ duration: 0.2 }}
-                      style={{ display: 'grid', overflow: 'hidden' }}
-                      className="ml-3 mt-1 border-l border-white/10 pl-2"
-                    >
+                    <motion.div {...accordionMotion} className="ml-3 mt-1 border-l border-white/10 pl-2">
                     <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
                       <Link to="/venues/search" className={subLinkClass} onClick={onClose}>Find Venues</Link>
                       <Link to="/venues/featured" className={subLinkClass} onClick={onClose}>Featured Venues</Link>
-                      {(userRole === 'venue_owner' || isSuperAdmin || admin.hasPermission('venues:view')) && (
+                      {(userRole === 'venue_owner' || isSuperAdmin) && (
                         <>
                           <Link to="/venues/list-venue" className={subLinkClass} onClick={onClose}>List Your Venue</Link>
-                          <Link to="/venues/dashboard" className={subLinkClass} onClick={onClose}>Venue Dashboard</Link>
+                          <Link to="/venues/manage" className={subLinkClass} onClick={onClose}>Manage Venues</Link>
                         </>
                       )}
                     </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.div>
+              </div>
 
               {/* Tournaments with sub-menu */}
-              <motion.div
-                variants={{
-                  closed: { x: -20, opacity: 0 },
-                  open: { x: 0, opacity: 1 }
-                }}
-                transition={{ duration: 0.3 }}
-              >
+              <div>
                 <button
                   onClick={() => toggleMenu('tournaments')}
                   className="flex w-full items-center justify-between rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
@@ -122,21 +102,14 @@ const MobileNav = ({
                 </button>
                 <AnimatePresence>
                   {expandedMenu === 'tournaments' && (
-                    <motion.div
-                      initial={{ opacity: 0, gridTemplateRows: '0fr' }}
-                      animate={{ opacity: 1, gridTemplateRows: '1fr' }}
-                      exit={{ opacity: 0, gridTemplateRows: '0fr' }}
-                      transition={{ duration: 0.2 }}
-                      style={{ display: 'grid', overflow: 'hidden' }}
-                      className="ml-3 mt-1 border-l border-white/10 pl-2"
-                    >
+                    <motion.div {...accordionMotion} className="ml-3 mt-1 border-l border-white/10 pl-2">
                     <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
-                      <Link to="/tournaments" className={subLinkClass} onClick={onClose}>Browse Tournaments</Link>
-                      <Link to="/seasons" className={subLinkClass} onClick={onClose}>Browse Seasons</Link>
-                      {(userRole === 'organizer' || isSuperAdmin || admin.hasPermission('tournaments:create')) && (
+                      <Link to="/tournaments/upcoming" className={subLinkClass} onClick={onClose}>Upcoming Tournaments</Link>
+                      <Link to="/tournaments/ongoing" className={subLinkClass} onClick={onClose}>Live Tournaments</Link>
+                      <Link to="/tournament-history" className={subLinkClass} onClick={onClose}>Tournament History</Link>
+                      {(userRole === 'organizer' || isSuperAdmin) && (
                         <>
                           <div className="h-px bg-white/10 my-1 mx-2" />
-                          <Link to="/organizer/seasons" className={subLinkClass} onClick={onClose}>Manage Seasons</Link>
                           <Link to="/organizer/tournaments" className={subLinkClass} onClick={onClose}>Manage Tournaments</Link>
                           <Link to="/tournaments/create" className={subLinkClass} onClick={onClose}>Create Tournament</Link>
                         </>
@@ -145,29 +118,17 @@ const MobileNav = ({
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.div>
+              </div>
 
               {/* Leaderboards - flat link */}
-              <motion.div
-                variants={{
-                  closed: { x: -20, opacity: 0 },
-                  open: { x: 0, opacity: 1 }
-                }}
-                transition={{ duration: 0.3 }}
-              >
+              <div>
                 <Link to="/leaderboards" className={linkClass} onClick={onClose}>
                   Leaderboards
                 </Link>
-              </motion.div>
+              </div>
 
               {/* About with sub-menu */}
-              <motion.div
-                variants={{
-                  closed: { x: -20, opacity: 0 },
-                  open: { x: 0, opacity: 1 }
-                }}
-                transition={{ duration: 0.3 }}
-              >
+              <div>
                 <button
                   onClick={() => toggleMenu('about')}
                   className="flex w-full items-center justify-between rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
@@ -177,14 +138,7 @@ const MobileNav = ({
                 </button>
                 <AnimatePresence>
                   {expandedMenu === 'about' && (
-                    <motion.div
-                      initial={{ opacity: 0, gridTemplateRows: '0fr' }}
-                      animate={{ opacity: 1, gridTemplateRows: '1fr' }}
-                      exit={{ opacity: 0, gridTemplateRows: '0fr' }}
-                      transition={{ duration: 0.2 }}
-                      style={{ display: 'grid', overflow: 'hidden' }}
-                      className="ml-3 mt-1 border-l border-white/10 pl-2"
-                    >
+                    <motion.div {...accordionMotion} className="ml-3 mt-1 border-l border-white/10 pl-2">
                     <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
                       <Link to="/about/company" className={subLinkClass} onClick={onClose}>About Us</Link>
                       <Link to="/about/contact" className={subLinkClass} onClick={onClose}>Contact</Link>
@@ -193,21 +147,15 @@ const MobileNav = ({
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.div>
+              </div>
 
               {/* Partners - flat link */}
-              <motion.div
-                variants={{
-                  closed: { x: -20, opacity: 0 },
-                  open: { x: 0, opacity: 1 }
-                }}
-                transition={{ duration: 0.3 }}
-              >
+              <div>
                 <Link to="/partners" className={linkClass} onClick={onClose}>
                   Partners
                 </Link>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
 
             {user && (
               <>
@@ -248,7 +196,7 @@ const MobileNav = ({
                 </div>
 
                 {/* Role-Specific Navigation */}
-                {admin.isAdmin && (
+                {profile?.role === 'admin' && (
                   <div className="mb-3 space-y-1">
                     <Link to="/admin/dashboard" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                       Admin Panel
@@ -257,8 +205,8 @@ const MobileNav = ({
                 )}
                 {(userRole === 'venue_owner' && !isSuperAdmin) && (
                   <div className="mb-3 space-y-1">
-                    <Link to="/venues/dashboard" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-cyan-300 transition-all duration-200 hover:border-cyan-500/40 hover:bg-cyan-500/10" onClick={onClose}>
-                      Venue Dashboard
+                    <Link to="/venues/manage" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-cyan-300 transition-all duration-200 hover:border-cyan-500/40 hover:bg-cyan-500/10" onClick={onClose}>
+                      My Venues
                     </Link>
                     <Link to="/venues/list-venue" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                       List New Venue
@@ -267,9 +215,6 @@ const MobileNav = ({
                 )}
                 {(userRole === 'organizer' && !isSuperAdmin) && (
                   <div className="mb-3 space-y-1">
-                    <Link to="/organizer/seasons" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
-                      Manage Seasons
-                    </Link>
                     <Link to="/organizer/tournaments" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                       Manage Tournaments
                     </Link>

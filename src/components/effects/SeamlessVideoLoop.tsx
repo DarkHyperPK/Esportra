@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { useLowFx } from '@/hooks/useLowFx';
 
 interface SeamlessVideoLoopProps {
     src: string;
@@ -11,11 +12,12 @@ export const SeamlessVideoLoop: React.FC<SeamlessVideoLoopProps> = ({
     className,
     style
 }) => {
+    const isLowFx = useLowFx();
     const videoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
         const video = videoRef.current;
-        if (!video) return;
+        if (!video || isLowFx) return;
 
         const handleCanPlay = () => {
             video.play().catch(e => console.log('Autoplay blocked', e));
@@ -26,7 +28,18 @@ export const SeamlessVideoLoop: React.FC<SeamlessVideoLoopProps> = ({
         return () => {
             video.removeEventListener('canplay', handleCanPlay);
         };
-    }, [src]);
+    }, [src, isLowFx]);
+
+    if (isLowFx) {
+        // Static dark gradient on low-end devices — zero decode cost
+        return (
+            <div
+                className={`relative w-full h-full overflow-hidden ${className || ''}`}
+                style={{ ...style, backgroundImage: 'radial-gradient(ellipse at 60% 40%, #0e0e14 0%, #050505 70%)' }}
+                aria-hidden="true"
+            />
+        );
+    }
 
     return (
         <div className={`relative w-full h-full overflow-hidden ${className || ''}`} style={style}>

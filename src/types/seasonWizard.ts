@@ -23,7 +23,8 @@ export const SEASON_WIZARD_STEPS: SeasonWizardStep[] = [
   { id: 1, title: 'Basics', description: 'Core season settings' },
   { id: 2, title: 'Flow', description: 'Build the tournament circuit' },
   { id: 3, title: 'Configure', description: 'Set up each tournament' },
-  { id: 4, title: 'Review', description: 'Confirm and create' },
+  { id: 4, title: 'Advancement', description: 'Wire advancement between tournaments' },
+  { id: 5, title: 'Review', description: 'Confirm and create' },
 ];
 
 export const DEFAULT_SEASON_WIZARD_DATA: SeasonWizardData = {

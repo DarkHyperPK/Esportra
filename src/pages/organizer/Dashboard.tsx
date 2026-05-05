@@ -80,11 +80,9 @@ const OrganizerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col selection:bg-rose-500/30">
-      {/* Background Effects */}
+      {/* Background grid */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
-        <div className="absolute top-[-30%] right-[-20%] w-[50vw] h-[50vw] bg-rose-600/5 blur-[150px] rounded-full" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[40vw] h-[40vw] bg-indigo-600/5 blur-[150px] rounded-full" />
       </div>
 
       <div className="relative z-10 flex-grow container mx-auto px-4 py-8">

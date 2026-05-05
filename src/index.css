@@ -7,6 +7,34 @@
   to   { transform: translateX(-50%); }
 }
 
+@keyframes tile-flicker {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Kill CSS keyframe animations globally */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Specifically kill the tile background flicker */
+  .tile-flicker, [style*="tile-flicker"] {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
+
+/* Scroll performance */
+html {
+  /* avoid 'smooth' globally — it fights with instant JS scrollTo on route changes */
+  scroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+  text-size-adjust: 100%;
+}
+
 /* Mobile optimizations */
 @layer base {
 
@@ -27,12 +55,6 @@
       -webkit-touch-callout: none;
       user-select: none;
     }
-  }
-
-  /* Smooth scrolling on mobile */
-  html {
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
   }
 }
 

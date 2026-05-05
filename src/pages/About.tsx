@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import Footer from '@/components/Footer';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { Zap, Shield, ChevronRight, Crosshair, Cpu, Globe, BarChart3 } from 'lucide-react';
+import { Zap, Shield, ChevronRight, Cpu, Globe, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { getWebsiteAssetUrl } from '@/lib/storage';
@@ -125,9 +125,8 @@ const AboutPage: React.FC = () => {
               <Cpu className="hidden md:block w-12 h-12 text-white/10" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-32">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-32">
               {[
-                { title: "COMPETITIVE INTEGRITY", desc: "Advanced anti-cheat and verification protocols ensuring every victory is earned.", icon: Crosshair },
                 { title: "SEAMLESS AUTOMATION", desc: "Zero-latency bracket management and real-time result processing.", icon: Zap },
                 { title: "GLOBAL CONNECTIVITY", desc: "A unified network bridging the gap between local venues and global arenas.", icon: Globe },
                 { title: "DATA PRECISION", desc: "Comprehensive analytics that track performance with professional-grade accuracy.", icon: BarChart3 }

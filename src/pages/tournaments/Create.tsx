@@ -8,10 +8,9 @@ import CreationModeHub from '@/components/tournament/CreationModeHub';
 import SeasonWizard from '@/components/season/wizard/SeasonWizard';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy, Workflow } from 'lucide-react';
 import { WizardContainer } from '@/components/tournament/wizard';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
 
 const CreateTournament = () => {
   const { user } = useAuth();
@@ -99,17 +98,8 @@ const CreateTournament = () => {
   if (!hasOrganization && !admin.hasPermission('tournaments:create')) {
     return (
       <div className="min-h-screen bg-esports-dark text-white flex flex-col">
-        {/* Background Effects */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 -left-32 w-96 h-96 bg-esports-purple/20 rounded-full blur-[120px]" />
-          <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-esports-accent/20 rounded-full blur-[120px]" />
-        </div>
-
         <main className="flex-grow container mx-auto px-4 py-20 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-lg mx-auto text-center"
+          <div className="max-w-lg mx-auto text-center"
           >
             {/* Icon */}
             <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 mb-8">
@@ -153,7 +143,7 @@ const CreateTournament = () => {
             <p className="text-gray-500 text-sm mt-6">
               Takes less than 2 minutes to complete
             </p>
-          </motion.div>
+          </div>
         </main>
         <Footer />
       </div>
@@ -168,7 +158,7 @@ const CreateTournament = () => {
         ) : creationMode === 'event' ? (
           <>
             <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-              <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-black/25 p-5 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
+              <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[#0d0d10] p-5 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-start gap-4">
                   <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white">
                     <Trophy className="h-5 w-5" />
@@ -195,7 +185,31 @@ const CreateTournament = () => {
             <WizardContainer />
           </>
         ) : (
-          <div className="w-full px-4 py-8 sm:px-6 lg:px-10 xl:px-14">
+          <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+            <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[#0d0d10] p-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white">
+                  <Workflow className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.22em] text-rose-400">Season flow</p>
+                  <h1 className="mt-1 text-2xl font-black tracking-tight">Create a multi-event tournament tree</h1>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Build a season shell first, then connect qualifiers, standings, and finals from the season manager.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+                onClick={() => navigate('/tournaments/create')}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to options
+              </Button>
+            </div>
+
             <SeasonWizard cancelHref="/tournaments/create" cancelLabel="Back to options" />
           </div>
         )}
