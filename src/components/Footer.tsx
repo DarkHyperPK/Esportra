@@ -79,7 +79,6 @@ const Footer = () => {
             </ul>
 
             {/* Subtle bottom-right accent */}
-            <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-blue-500/5 blur-[80px] rounded-full pointer-events-none" />
           </div>
 
         </div>
