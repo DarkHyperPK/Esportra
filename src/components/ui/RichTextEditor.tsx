@@ -78,7 +78,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       onClick={onClick}
       className={cn(
         isActive && 'bg-gray-700',
-        'text-gray-300 hover:text-white'
+        'text-gray-300 hover:text-white',
+        'shadow-none'
       )}
       title={title}
     >
