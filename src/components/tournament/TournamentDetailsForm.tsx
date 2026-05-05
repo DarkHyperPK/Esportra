@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Bold, Italic, Heading1, Heading2, List } from 'lucide-react';
@@ -27,19 +27,31 @@ const TournamentDetailsForm = ({
   onInputChange,
   onCheckboxChange
 }: TournamentDetailsFormProps) => {
-  const [editorContent, setEditorContent] = useState(formData.description);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const execCommand = (command: string, value: string = '') => {
     document.execCommand(command, false, value);
+    if (editorRef.current) {
+      onInputChange({
+        target: { name: 'description', value: editorRef.current.innerHTML }
+      } as React.ChangeEvent<HTMLTextAreaElement>);
+    }
   };
 
-  const handleEditorChange = (e: React.FormEvent<HTMLDivElement>) => {
-    const content = (e.currentTarget as HTMLDivElement).innerHTML;
-    setEditorContent(content);
-    onInputChange({
-      target: { name: 'description', value: content }
-    } as React.ChangeEvent<HTMLTextAreaElement>);
+  const handleEditorChange = () => {
+    if (editorRef.current) {
+      onInputChange({
+        target: { name: 'description', value: editorRef.current.innerHTML }
+      } as React.ChangeEvent<HTMLTextAreaElement>);
+    }
   };
+
+  // Initialize editor content when formData.description changes from outside
+  useEffect(() => {
+    if (editorRef.current && formData.description !== editorRef.current.innerHTML) {
+      editorRef.current.innerHTML = formData.description || '';
+    }
+  }, [formData.description]);
 
   return (
     <>
@@ -91,7 +103,7 @@ const TournamentDetailsForm = ({
               type="button"
               size="sm"
               variant="ghost"
-              onClick={() => execCommand('formatBlock', 'h1')}
+              onClick={() => execCommand('formatBlock', 'H1')}
               title="Heading 1"
             >
               <Heading1 className="w-4 h-4" />
@@ -100,7 +112,7 @@ const TournamentDetailsForm = ({
               type="button"
               size="sm"
               variant="ghost"
-              onClick={() => execCommand('formatBlock', 'h2')}
+              onClick={() => execCommand('formatBlock', 'H2')}
               title="Heading 2"
             >
               <Heading2 className="w-4 h-4" />
@@ -116,10 +128,11 @@ const TournamentDetailsForm = ({
             </Button>
           </div>
           <div
+            ref={editorRef}
             contentEditable
             className="w-full h-32 px-3 py-2 text-white bg-esports-dark focus:outline-none min-h-[128px]"
             onInput={handleEditorChange}
-            dangerouslySetInnerHTML={{ __html: editorContent }}
+            dangerouslySetInnerHTML={{ __html: formData.description || '' }}
           />
         </div>
       </div>

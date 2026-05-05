@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,17 +13,27 @@ import { useAuth } from '@/contexts/AuthContext';
 const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
     const { profile } = useAuth();
     const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
-    const [editorContent, setEditorContent] = useState(data.description);
+    const editorRef = useRef<HTMLDivElement>(null);
 
     const execCommand = (command: string, value: string = '') => {
         document.execCommand(command, false, value);
+        if (editorRef.current) {
+            updateData({ description: editorRef.current.innerHTML });
+        }
     };
 
-    const handleEditorChange = (e: React.FormEvent<HTMLDivElement>) => {
-        const content = (e.currentTarget as HTMLDivElement).innerHTML;
-        setEditorContent(content);
-        updateData({ description: content });
+    const handleEditorChange = () => {
+        if (editorRef.current) {
+            updateData({ description: editorRef.current.innerHTML });
+        }
     };
+
+    // Initialize editor content when data.description changes from outside
+    useEffect(() => {
+        if (editorRef.current && data.description !== editorRef.current.innerHTML) {
+            editorRef.current.innerHTML = data.description || '';
+        }
+    }, [data.description]);
 
     // Sanitize names for storage path
     const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -253,7 +263,7 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                             type="button"
                             size="sm"
                             variant="ghost"
-                            onClick={() => execCommand('formatBlock', 'h1')}
+                            onClick={() => execCommand('formatBlock', 'H1')}
                             title="Heading 1"
                         >
                             <Heading1 className="w-4 h-4" />
@@ -262,7 +272,7 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                             type="button"
                             size="sm"
                             variant="ghost"
-                            onClick={() => execCommand('formatBlock', 'h2')}
+                            onClick={() => execCommand('formatBlock', 'H2')}
                             title="Heading 2"
                         >
                             <Heading2 className="w-4 h-4" />
@@ -278,13 +288,14 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                         </Button>
                     </div>
                     <div
+                        ref={editorRef}
                         contentEditable
                         className={cn(
                             "w-full px-3 py-2 bg-gray-800 text-white placeholder:text-gray-500 focus:outline-none min-h-[150px]",
                             errors.description && 'border-red-500'
                         )}
                         onInput={handleEditorChange}
-                        dangerouslySetInnerHTML={{ __html: editorContent }}
+                        dangerouslySetInnerHTML={{ __html: data.description || '' }}
                     />
                 </div>
                 <div className="flex justify-between text-xs">
@@ -295,10 +306,10 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                     )}
                     <p className={cn(
                         "text-gray-500",
-                        editorContent.length > 4800 && "text-yellow-500",
-                        editorContent.length > 5000 && "text-red-500"
+                        data.description.length > 4800 && "text-yellow-500",
+                        data.description.length > 5000 && "text-red-500"
                     )}>
-                        {editorContent.length}/5000
+                        {data.description.length}/5000
                     </p>
                 </div>
             </div>
