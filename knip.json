@@ -1,0 +1,15 @@
+{
+  "entry": ["capacitor.config.json"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreDependencies": [
+    "@capacitor/android",
+    "@capacitor/cli",
+    "@capacitor/core",
+    "@capacitor/ios",
+    "@eslint/js",
+    "eslint-plugin-react-hooks",
+    "eslint-plugin-react-refresh",
+    "globals",
+    "typescript-eslint"
+  ]
+}

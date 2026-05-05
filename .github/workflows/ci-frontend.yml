@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Dead code check (knip — files, deps, binaries)
+        run: npm run knip:strict
+
       - name: Build
         env:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
