@@ -108,9 +108,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                         {/* Right: Content */}
                         <div className="lg:col-span-9">
                             <div className="prose prose-invert prose-lg max-w-none">
-                                <p className="text-2xl text-gray-200 font-light leading-relaxed">
-                                    {tournament.description}
-                                </p>
+                                <div
+                                    className="text-[18px] text-gray-200 font-light leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: tournament.description }}
+                                />
                             </div>
 
                             <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-12 border-t border-white/10 pt-12">

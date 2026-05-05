@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Bold, Italic, Heading1, Heading2, List } from 'lucide-react';
 
 interface FormData {
   name: string;
@@ -25,13 +27,27 @@ const TournamentDetailsForm = ({
   onInputChange,
   onCheckboxChange
 }: TournamentDetailsFormProps) => {
+  const [editorContent, setEditorContent] = useState(formData.description);
+
+  const execCommand = (command: string, value: string = '') => {
+    document.execCommand(command, false, value);
+  };
+
+  const handleEditorChange = (e: React.FormEvent<HTMLDivElement>) => {
+    const content = (e.currentTarget as HTMLDivElement).innerHTML;
+    setEditorContent(content);
+    onInputChange({
+      target: { name: 'description', value: content }
+    } as React.ChangeEvent<HTMLTextAreaElement>);
+  };
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-2">Prize Pool</label>
-          <Input 
-            placeholder="e.g., 50000" 
+          <Input
+            placeholder="e.g., 50000"
             value={formData.prizePool}
             name="prizePool"
             onChange={onInputChange}
@@ -40,8 +56,8 @@ const TournamentDetailsForm = ({
         </div>
         <div>
           <label className="block text-sm font-medium mb-2">Entry Fee</label>
-          <Input 
-            placeholder="Enter amount or type Free" 
+          <Input
+            placeholder="Enter amount or type Free"
             value={formData.entryFee}
             name="entryFee"
             onChange={onInputChange}
@@ -51,14 +67,61 @@ const TournamentDetailsForm = ({
 
       <div>
         <label className="block text-sm font-medium mb-2">Tournament Description</label>
-        <textarea 
-          className="w-full h-32 px-3 py-2 text-white bg-esports-dark rounded-md border border-gaming-gray/30 focus:outline-none focus:ring-2 focus:ring-gaming-purple"
-          placeholder="Enter tournament details, rules, and format"
-          value={formData.description}
-          name="description"
-          onChange={onInputChange}
-          required
-        />
+        <div className="border border-gaming-gray/30 rounded-md overflow-hidden">
+          <div className="flex items-center gap-1 p-2 bg-esports-dark border-b border-gaming-gray/30">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => execCommand('bold')}
+              title="Bold"
+            >
+              <Bold className="w-4 h-4" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => execCommand('italic')}
+              title="Italic"
+            >
+              <Italic className="w-4 h-4" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => execCommand('formatBlock', 'h1')}
+              title="Heading 1"
+            >
+              <Heading1 className="w-4 h-4" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => execCommand('formatBlock', 'h2')}
+              title="Heading 2"
+            >
+              <Heading2 className="w-4 h-4" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => execCommand('insertUnorderedList')}
+              title="Bullet List"
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
+          <div
+            contentEditable
+            className="w-full h-32 px-3 py-2 text-white bg-esports-dark focus:outline-none min-h-[128px]"
+            onInput={handleEditorChange}
+            dangerouslySetInnerHTML={{ __html: editorContent }}
+          />
+        </div>
       </div>
     </>
   );
