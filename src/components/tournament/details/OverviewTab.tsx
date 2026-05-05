@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Users, ChevronRight, Trophy, Clock, Zap, CheckCircle, MapPin, Globe, ExternalLink, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { VerticalAdPlacement } from './VerticalAdPlacement';
 import { TournamentSponsorSidebar } from '@/components/tournament/TournamentSponsorSidebar';
 
 import { isBattleRoyale } from '@/utils/gameFeatures';
+
+// Helper function to decode HTML entities
+const decodeHtml = (html: string) => {
+    const textArea = document.createElement('textarea');
+    textArea.innerHTML = html;
+    return textArea.value;
+};
 
 interface Stage {
     id: string;
@@ -110,7 +117,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                             <div className="prose prose-invert prose-lg max-w-none">
                                 <div
                                     className="text-[18px] text-gray-200 font-light leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: tournament.description }}
+                                    dangerouslySetInnerHTML={{ __html: decodeHtml(tournament.description || '') }}
                                 />
                             </div>
 
