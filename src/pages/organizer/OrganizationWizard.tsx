@@ -239,8 +239,6 @@ const OrganizationWizard: React.FC = () => {
         <div className="min-h-screen bg-esports-dark text-white">
             {/* Background Effects */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 -left-32 w-96 h-96 bg-esports-purple/20 rounded-full blur-[120px]" />
-                <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-esports-accent/20 rounded-full blur-[120px]" />
             </div>
 
             <div className="relative z-10 container mx-auto px-4 py-12 max-w-4xl">

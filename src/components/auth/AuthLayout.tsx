@@ -42,9 +42,6 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle, vari
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]" />
                 {/* Noise Texture */}
                 <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
-                {/* Blob Gradients */}
-                <div className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-rose-600/10 blur-[150px] rounded-full mix-blend-screen" />
-                <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-600/10 blur-[150px] rounded-full mix-blend-screen" />
             </div>
 
             <div className="relative z-10 min-h-screen flex">
@@ -68,12 +65,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle, vari
                         </Link>
 
                         {/* Center Content */}
-                        <motion.div
-                            className="max-w-lg"
-                            initial={{ opacity: 0, x: -30 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.6, delay: 0.2 }}
-                        >
+                        <div className="max-w-lg">
                             <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-4 leading-none">
                                 {variant === 'signin'
                                     ? <>WELCOME<br /><span className="text-rose-500">BACK</span></>
@@ -97,21 +89,18 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle, vari
                                     { icon: Users, text: 'Build and manage teams' },
                                     { icon: Globe, text: 'Join the global community' },
                                 ]).map((feature, i) => (
-                                    <motion.div
+                                    <div
                                         key={i}
                                         className="flex items-center gap-3 text-gray-500 group"
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ duration: 0.4, delay: 0.4 + i * 0.1 }}
                                     >
                                         <div className="p-2 rounded-lg bg-zinc-900/50 group-hover:bg-rose-500/10 transition-colors">
                                             <feature.icon className="w-4 h-4 text-rose-500" />
                                         </div>
                                         <span className="text-sm font-light">{feature.text}</span>
-                                    </motion.div>
+                                    </div>
                                 ))}
                             </div>
-                        </motion.div>
+                        </div>
 
                         {/* Footer Quote */}
                         <div className="flex items-center gap-4">
@@ -123,12 +112,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle, vari
 
                 {/* Right Panel - Form */}
                 <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
-                    <motion.div
-                        className="w-full max-w-md"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                    >
+                    <div className="w-full max-w-md">
                         {/* Mobile Logo */}
                         <div className="lg:hidden mb-8 text-center">
                             <Link to="/" className="inline-flex">
@@ -148,7 +132,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle, vari
                         <div className="p-8 rounded-2xl bg-[#121214] border border-zinc-800/50 hover:border-rose-500/30 transition-all duration-500">
                             {children}
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
             </div>
         </div>

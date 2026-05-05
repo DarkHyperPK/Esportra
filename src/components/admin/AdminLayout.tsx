@@ -42,8 +42,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:60px_60px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_70%)]" />
-        <div className="absolute top-[-20%] right-[-10%] w-[40vw] h-[40vw] bg-rose-600/5 blur-[150px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-5%] w-[30vw] h-[30vw] bg-indigo-600/5 blur-[150px] rounded-full" />
       </div>
 
       {/* Main content - no sidebar */}

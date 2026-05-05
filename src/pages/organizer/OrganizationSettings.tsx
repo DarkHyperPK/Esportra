@@ -486,7 +486,6 @@ const OrganizationSettings: React.FC = () => {
                     whileHover={{ y: -4, scale: 1.02 }}
                     className="relative overflow-hidden rounded-2xl p-6 border border-white/5 bg-gradient-to-br from-esports-purple/10 to-transparent backdrop-blur-sm"
                 >
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-esports-purple/20 rounded-full blur-2xl" />
                     <Trophy className="h-8 w-8 text-esports-purple mb-3" />
                     <div className="text-3xl font-bold font-heading">{stats.totalTournaments}</div>
                     <div className="text-gray-400 text-sm">Total Tournaments</div>
@@ -496,7 +495,6 @@ const OrganizationSettings: React.FC = () => {
                     whileHover={{ y: -4, scale: 1.02 }}
                     className="relative overflow-hidden rounded-2xl p-6 border border-white/5 bg-gradient-to-br from-esports-accent/10 to-transparent backdrop-blur-sm"
                 >
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-esports-accent/20 rounded-full blur-2xl" />
                     <Users className="h-8 w-8 text-esports-accent mb-3" />
                     <div className="text-3xl font-bold font-heading">{stats.totalParticipants}</div>
                     <div className="text-gray-400 text-sm">Total Participants</div>
@@ -506,7 +504,6 @@ const OrganizationSettings: React.FC = () => {
                     whileHover={{ y: -4, scale: 1.02 }}
                     className="relative overflow-hidden rounded-2xl p-6 border border-white/5 bg-gradient-to-br from-esports-green/10 to-transparent backdrop-blur-sm"
                 >
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-esports-green/20 rounded-full blur-2xl" />
                     <Calendar className="h-8 w-8 text-esports-green mb-3" />
                     <div className="text-3xl font-bold font-heading">{stats.activeTournaments}</div>
                     <div className="text-gray-400 text-sm">Active Tournaments</div>
