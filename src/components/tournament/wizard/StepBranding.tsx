@@ -290,8 +290,9 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                     <div
                         ref={editorRef}
                         contentEditable
+                        style={{ color: 'white' }}
                         className={cn(
-                            "w-full px-3 py-2 bg-gray-800 text-white placeholder:text-gray-500 focus:outline-none min-h-[150px]",
+                            "w-full px-3 py-2 bg-gray-800 placeholder:text-gray-500 focus:outline-none min-h-[150px]",
                             errors.description && 'border-red-500'
                         )}
                         onInput={handleEditorChange}

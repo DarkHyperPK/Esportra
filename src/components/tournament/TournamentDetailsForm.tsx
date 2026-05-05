@@ -130,6 +130,7 @@ const TournamentDetailsForm = ({
           <div
             ref={editorRef}
             contentEditable
+            style={{ color: 'white' }}
             className="w-full h-32 px-3 py-2 text-white bg-esports-dark focus:outline-none min-h-[128px]"
             onInput={handleEditorChange}
             dangerouslySetInnerHTML={{ __html: formData.description || '' }}
