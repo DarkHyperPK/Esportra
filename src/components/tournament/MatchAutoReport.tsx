@@ -38,7 +38,7 @@ interface MatchAutoReportProps {
     gameNumber: number;
     mapName: string;
     mapId: string;
-    scheduledTime: string;
+    scheduledTime?: string;
     userTeamId?: string;
     team1Id?: string;
     team2Id?: string;

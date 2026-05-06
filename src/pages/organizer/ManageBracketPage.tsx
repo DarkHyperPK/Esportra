@@ -537,6 +537,7 @@ const ManageBracketPage = () => {
                             <BracketVisualization
                                 versionId={versionId}
                                 tournamentId={tournament.id}
+                                tournamentSlug={slug}
                                 isOrganizer={isOrganizer}
                                 onRefresh={() => fetchData(true)}
                                 onByeAdvance={handleByeAdvance}
@@ -576,6 +577,7 @@ const ManageBracketPage = () => {
                         <BracketVisualization
                             versionId={versionId}
                             tournamentId={tournament.id}
+                            tournamentSlug={slug}
                             isOrganizer={isOrganizer}
                             onRefresh={() => fetchData(true)}
                             onByeAdvance={handleByeAdvance}

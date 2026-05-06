@@ -179,7 +179,8 @@ const CaptainMatchPage = () => {
         return adapted;
     }, [allGraphData?.nodes, allGraphData?.edges, teamsData]);
 
-    const bracketLoading = versionsLoading || graphLoading || teamsLoading;
+    const isOrganizerMatchView = !!urlMatchId && isOrganizer;
+    const bracketLoading = versionsLoading || graphLoading || (!isOrganizerMatchView && teamsLoading);
 
     // Calculate team count from matches
     const teamCount = useMemo(() => {
@@ -249,7 +250,7 @@ const CaptainMatchPage = () => {
             if (userParticipant) {
 
                 let isCap = false;
-                let teamId = userParticipant.team_id || userParticipant.user_id;
+                let teamId = userParticipant.team_id || userParticipant.user_id || undefined;
 
                 if (userParticipant.participant_type === 'solo') {
                     isCap = true; // Solo players are captains
@@ -259,7 +260,7 @@ const CaptainMatchPage = () => {
                     if (userTeam) {
                         const myMember = userTeam.members?.find(m => m.id === user.id);
                         isCap = userTeam.owner_id === user.id ||
-                            (myMember && (myMember.role === 'captain' || (myMember as any).is_captain === true));
+                            !!(myMember && (myMember.role === 'captain' || (myMember as any).is_captain === true));
                     }
                 }
 
@@ -278,19 +279,21 @@ const CaptainMatchPage = () => {
 
     // Find active match for the team (prefer URL matchId from notification links)
     const activeMatch = useMemo(() => {
-        if (!userTeamId || !matches.length) {
+        if (!matches.length) {
             return null;
         }
 
-        // If a matchId was provided via URL (e.g. from notification link), try to find it
-        // Skip completed matches so the view advances to the next match or end screen
         if (urlMatchId) {
             const urlMatch = matches.find(m =>
                 m.id === urlMatchId || m.id.replace(/^(db-|wb-|lb-)/, '') === urlMatchId
             );
-            if (urlMatch && urlMatch.status !== 'completed') {
+            if (urlMatch && (isOrganizer || urlMatch.status !== 'completed')) {
                 return urlMatch;
             }
+        }
+
+        if (!userTeamId) {
+            return null;
         }
 
         // Find matches involving this team
@@ -311,7 +314,7 @@ const CaptainMatchPage = () => {
         );
         return nextMatch || null;
 
-    }, [userTeamId, matches, urlMatchId]);
+    }, [isOrganizer, userTeamId, matches, urlMatchId]);
 
     // Lifted Proposal state for higher-level visibility
     const { acceptedProposal } = useTimeProposal(activeMatch?.id?.replace(/^(db-|wb-|lb-)/, ''));
@@ -559,11 +562,7 @@ const CaptainMatchPage = () => {
     });
 
     // Check-in hooks (server handles auto-walkovers via background job)
-    const {
-        isCheckinWindowClosed,
-        checkinStatus,
-        checkIn: checkInMutation
-    } = useMatchCheckin(
+    useMatchCheckin(
         activeMatch?.id.replace(/^(db-|wb-|lb-)/, ''),
         activeMatch?.team1?.id,
         activeMatch?.team2?.id
@@ -726,7 +725,9 @@ const CaptainMatchPage = () => {
                     </Button>
                     <div className="text-right">
                         <h1 className="text-xl font-bold text-white">{tournament.name}</h1>
-                        <p className="text-sm text-emerald-500 font-medium uppercase tracking-wider">Captain's Match View</p>
+                        <p className="text-sm text-emerald-500 font-medium uppercase tracking-wider">
+                            {isOrganizerMatchView ? 'Organizer Match Room' : "Captain's Match View"}
+                        </p>
                     </div>
                 </div>
 
@@ -738,7 +739,7 @@ const CaptainMatchPage = () => {
                         <div className="space-y-5">
                             <h2 className="flex items-center gap-2 text-base font-semibold text-white">
                                 <Swords className="w-4 h-4 text-esports-accent" />
-                                Your Active Match
+                                {isOrganizerMatchView ? 'Selected Match Room' : 'Your Active Match'}
                             </h2>
 
                             {activeMatch ? (
@@ -795,9 +796,9 @@ const CaptainMatchPage = () => {
                                             team2Id={activeMatch.team2?.id}
                                             team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
                                             team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
-                                            userTeamId={userTeamId}
+                                            userTeamId={isOrganizerMatchView ? undefined : userTeamId}
                                             scheduledTime={effectiveScheduledTime}
-                                            isCaptain={isCaptain}
+                                            isCaptain={!isOrganizerMatchView && isCaptain}
                                             selfPlayEnabled={!isBattleRoyale(tournament?.game || '') && (schedulingConfig?.self_play_enabled || false)}
                                             checkInWindowMinutes={schedulingConfig?.checkin_window_minutes || 15}
                                             onPartyCodeGenerated={(code) => {
@@ -820,9 +821,9 @@ const CaptainMatchPage = () => {
                                                     roundDeadline={effectiveDeadline}
                                                     team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
                                                     team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
-                                                    userTeamId={userTeamId}
+                                                    userTeamId={isOrganizerMatchView ? undefined : userTeamId}
                                                     team1Id={activeMatch.team1?.id}
-                                                    isCaptain={isCaptain}
+                                                    isCaptain={!isOrganizerMatchView && isCaptain}
                                                     onTimeAccepted={() => {
                                                         refetchBracket();
                                                         toast({ title: 'Match Scheduled!', description: 'Now proceed to check-in.' });
@@ -910,15 +911,15 @@ const CaptainMatchPage = () => {
                                                         gameNumber={nextGameNumber}
                                                         mapName={nextGameMap?.name || 'Unknown Map'}
                                                         mapId={nextGameMap?.id || ''}
-                                                        scheduledTime={activeMatch.scheduledTime}
-                                                        userTeamId={userTeamId}
+                                                        scheduledTime={activeMatch.scheduledTime ?? undefined}
+                                                        userTeamId={isOrganizerMatchView ? undefined : userTeamId}
                                                         team1Id={activeMatch.team1?.id}
                                                         team2Id={activeMatch.team2?.id}
                                                         team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
                                                         team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
-                                                        team1Logo={activeMatch.team1?.logo_url}
-                                                        team2Logo={activeMatch.team2?.logo_url}
-                                                        isCaptain={isCaptain}
+                                                        team1Logo={activeMatch.team1?.logo_url ?? undefined}
+                                                        team2Logo={activeMatch.team2?.logo_url ?? undefined}
+                                                        isCaptain={!isOrganizerMatchView && isCaptain}
                                                         className="w-full h-10"
                                                         onSuccess={() => {
                                                             toast({ title: "Game Reported", description: "Result verified and saved." });
@@ -965,6 +966,7 @@ const CaptainMatchPage = () => {
                                                 <button
                                                     className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
                                                     onClick={() => {
+                                                        if (!activeMatch.partyCode) return;
                                                         navigator.clipboard.writeText(activeMatch.partyCode);
                                                         toast({ title: "Copied", description: "Party code copied" });
                                                     }}
@@ -995,7 +997,7 @@ const CaptainMatchPage = () => {
 
                         </div>
 
-                        {userTeamId && (
+                        {!isOrganizerMatchView && userTeamId && (
                             <CaptainMatchHistory
                                 tournamentId={tournament.id}
                                 teamId={userTeamId}
@@ -1015,7 +1017,7 @@ const CaptainMatchPage = () => {
                                     </div>
                                     <MatchChat
                                         matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                        userTeamId={userTeamId}
+                                        userTeamId={isOrganizerMatchView ? undefined : userTeamId}
                                         team1Id={activeMatch.team1?.id}
                                         team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
                                         team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
@@ -1023,7 +1025,9 @@ const CaptainMatchPage = () => {
                                     <div className="px-4 py-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-200">
                                         <p className="flex gap-2">
                                             <MessageCircle className="w-4 h-4 flex-shrink-0" />
-                                            Communication is key! Use this chat to coordinate map vetoes and scheduling with your opponent.
+                                            {isOrganizerMatchView
+                                                ? 'Organizer observer mode: monitor chat, check-in status, scheduling, and match coordination.'
+                                                : 'Communication is key! Use this chat to coordinate map vetoes and scheduling with your opponent.'}
                                         </p>
                                     </div>
                                 </>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, Bot, MessageCircle } from 'lucide-react';
+import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, Bot, MessageCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import ManualAdjustmentMenu from '@/components/tournament/ManualAdjustmentMenu';
@@ -446,10 +446,13 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                className="flex-1 min-w-[80px] h-8 bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300"
+                                                                className="h-8 px-2 bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300"
                                                                 onClick={(e) => { e.stopPropagation(); onMatchRoom(match); }}
+                                                                title="Open match room"
+                                                                aria-label="Open match room"
                                                             >
-                                                                <MessageCircle className="w-3.5 h-3.5 mr-1.5" /> Match Room
+                                                                <MessageCircle className="w-3.5 h-3.5" />
+                                                                <ExternalLink className="w-3 h-3 ml-1" />
                                                             </Button>
                                                         )}
                                                     </>

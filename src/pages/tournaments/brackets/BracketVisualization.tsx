@@ -12,7 +12,7 @@ import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Copy, Check,
-  Trophy, Swords, Gamepad2, MessageCircle
+  Trophy, Swords, Gamepad2
 } from 'lucide-react';
 import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import type { BracketMatch } from '@/types/bracketTypes';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
-import MatchChat from '@/components/tournament/MatchChat';
 import { useGraphBracket } from '@/hooks/useGraphBracket';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -48,6 +47,7 @@ export interface BracketVisualizationProps {
   versionId?: string | null;
   teamCount?: number;
   tournamentId?: string | null;
+  tournamentSlug?: string | null;
   isOrganizer?: boolean;
   isCaptain?: boolean;
   userTeamId?: string;
@@ -77,6 +77,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   versionId,
   teamCount: propTeamCount = 0,
   tournamentId,
+  tournamentSlug,
   isOrganizer = false,
   onOpenMapVeto,
   onRefresh,
@@ -238,11 +239,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
   const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
   const [resultsDialogMatch, setResultsDialogMatch] = useState<BracketMatch | null>(null);
-  const [matchRoomOpen, setMatchRoomOpen] = useState(false);
-  const [matchRoomMatch, setMatchRoomMatch] = useState<BracketMatch | null>(null);
-
-
-
   // Categorize matches
   const { winnersRounds, losersRounds, finalsMatches } = useMemo(() => {
     const winners: Record<number, BracketMatch[]> = {};
@@ -547,7 +543,11 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     }
   }, [handleGoLive]);
   const openMapVeto = useCallback((m: BracketMatch) => { if (onOpenMapVeto) onOpenMapVeto(m, String(m.id)); else { setMapVetoMatch(m); setMapVetoOpen(true); } }, [onOpenMapVeto]);
-  const openMatchRoom = useCallback((m: BracketMatch) => { setMatchRoomMatch(m); setMatchRoomOpen(true); }, []);
+  const openMatchRoom = useCallback((m: BracketMatch) => {
+    if (!tournamentSlug) return;
+    const rawMatchId = getRawId(m.id);
+    window.open(`/tournaments/${encodeURIComponent(tournamentSlug)}/captain-match/${rawMatchId}`, '_blank', 'noopener,noreferrer');
+  }, [tournamentSlug]);
   const openPartyCode = useCallback((m: BracketMatch) => { setPartyCodeMatch(m); setPartyCodeOpen(true); setCopiedCode(false); }, []);
   const copyPartyCode = async () => { if (!partyCodeMatch?.partyCode) return; await navigator.clipboard.writeText(partyCodeMatch.partyCode); setCopiedCode(true); toast({ title: '📋 Copied!' }); setTimeout(() => setCopiedCode(false), 2000); };
   const handleScoreChange = useCallback((id: string, t: 't1' | 't2', v: string) => {
@@ -660,34 +660,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   }, []);
   void openFullscreen;
 
-  const matchRoomDialog = (
-    <Dialog open={matchRoomOpen} onOpenChange={setMatchRoomOpen}>
-      <DialogContent className="bg-zinc-900/95 backdrop-blur-xl border-zinc-800 max-w-2xl p-0">
-        <DialogHeader className="p-4 border-b border-zinc-800">
-          <DialogTitle className="flex items-center gap-2 text-white">
-            <MessageCircle className="w-5 h-5 text-cyan-400" />
-            Match Room
-            <span className="text-sm text-zinc-400 font-normal">
-              {matchRoomMatch?.team1?.name} vs {matchRoomMatch?.team2?.name}
-            </span>
-          </DialogTitle>
-        </DialogHeader>
-        <div className="p-4">
-          {matchRoomMatch && (
-            <MatchChat
-              matchId={getRawId(matchRoomMatch.id)}
-              userTeamId={undefined}
-              team1Id={matchRoomMatch.team1?.id}
-              team1Name={matchRoomMatch.team1?.name || 'Team 1'}
-              team2Name={matchRoomMatch.team2?.name || 'Team 2'}
-              allowMinimize={false}
-            />
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
   // Render Alternative Views
   if (format === 'round_robin') {
     return (
@@ -706,7 +678,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
             advancementCount={stage?.advancement_count}
           />
         </div>
-        {matchRoomDialog}
       </>
     );
   }
@@ -728,7 +699,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
             stage={stage}
           />
         </div>
-        {matchRoomDialog}
       </>
     );
   }
@@ -976,8 +946,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           {mapVetoMatch && tournamentId && <MapVeto matchId={getRawId(mapVetoMatch.id)} tournamentId={tournamentId} team1Id={mapVetoMatch.team1?.id} team2Id={mapVetoMatch.team2?.id} team1Name={mapVetoMatch.team1?.name} team2Name={mapVetoMatch.team2?.name} bestOf={3} matchStatus={mapVetoMatch.status as any} onComplete={() => { setMapVetoOpen(false); onRefresh?.(); }} />}
         </DialogContent>
       </Dialog>
-
-      {matchRoomDialog}
 
       <MatchResultsDialog
         open={resultsDialogOpen}
