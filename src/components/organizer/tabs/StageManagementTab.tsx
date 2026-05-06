@@ -336,21 +336,18 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 console.log('[StageManagement] Found participants raw count:', participants?.length || 0);
 
                 teams = (participants || []).map((p: any) => {
-                    // Try to find team ID from various common column names
-                    const tid = p.team_id || p.id;
                     const isTeam = p.participant_type === 'team' || p.registration_type === 'team' || !!p.team_id;
 
                     if (isTeam) {
                         return {
-                            id: p.team_id,
+                            id: p.team_id || p.id,
                             name: p.teams?.name || p.team_name || 'Unknown Team',
                             logo_url: p.teams?.logo_url || p.team_logo_url
                         };
                     } else {
-                        // Solo participant
                         return {
                             id: p.id,
-                            name: p.gamer_tag || 'Unknown Player',
+                            name: p.gamer_tag || p.team_name || 'Unknown Player',
                             logo_url: null
                         };
                     }
@@ -369,17 +366,20 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 })).filter(t => t.id);
             }
             if (teams.length < 2) {
-                // No participants yet — build TBD placeholder seeds from stage capacity
+                // No real participants — generate a null-slotted TBD bracket from stage capacity.
+                // Do NOT create fake team objects with string IDs: brkt_matches.team1_id is a
+                // UUID FK on the teams table — non-UUID strings cause a Postgres cast error (500).
+                // Instead, pass teams=[] and let bracketSize drive the structure so all slots
+                // are null (TBD). bracketSize is set after the format block; capture capacity here.
                 const capacity = stage.capacity ? Number(stage.capacity) : (stage.stage_order === 1 ? 8 : 4);
-                const placeholderCount = Math.max(capacity, 2);
-                teams = Array.from({ length: placeholderCount }, (_, i) => ({
-                    id: `tbd-${i + 1}`,
-                    name: `TBD ${i + 1}`,
-                    logo_url: null,
-                }));
+                const tbdSlots = Math.max(capacity, 2);
+                teams = [];
+                // We'll override bracketSize after the format block using this value.
+                // Stored on a local variable so the format-specific logic can still run normally.
+                (teams as any).__tbdSize = tbdSlots;
                 toast({
                     title: 'Generating empty bracket',
-                    description: `No participants found — bracket created with ${placeholderCount} TBD slots.`,
+                    description: `No participants yet — generating a ${tbdSlots}-slot TBD bracket from stage capacity.`,
                 });
             }
 
@@ -443,6 +443,13 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             const bestOf = (stage as any).best_of || stageConfig.best_of || 1;
             const advancementCount = stage.advancement_count || undefined;
+
+            // For TBD (no-participant) brackets, override bracketSize from the captured capacity
+            // so the structure is sized correctly regardless of format-specific logic above.
+            const tbdSize = (teams as any).__tbdSize as number | undefined;
+            if (tbdSize !== undefined) {
+                bracketSize = tbdSize;
+            }
 
             // Fetch tournament start date and scheduling config for auto-scheduling (Swiss/RR)
             let enrichedConfig = { ...stageConfig };
