@@ -1069,7 +1069,7 @@ const TournamentDashboard = () => {
       <TooltipProvider>
         <UITooltip>
           <TooltipTrigger asChild>
-            <div className="bg-gaming-dark border border-gaming-gray/40 rounded-lg shadow-md px-4 py-3 flex flex-col items-center min-w-[180px] max-w-[220px]">
+            <div className="bg-[#0a0a0c] border border-white/10/40 rounded-lg shadow-md px-4 py-3 flex flex-col items-center min-w-[180px] max-w-[220px]">
               <div className="flex items-center gap-2 mb-2 w-full justify-between">
                 {/* Home team */}
                 <div className="flex items-center gap-2">
@@ -1098,7 +1098,7 @@ const TournamentDashboard = () => {
               <div className="text-xs text-emerald-300 font-bold mb-1">{round}</div>
             </div>
           </TooltipTrigger>
-          <TooltipContent className="bg-gaming-dark border border-emerald-400/40 rounded-lg shadow-lg p-3">
+          <TooltipContent className="bg-[#0a0a0c] border border-emerald-400/40 rounded-lg shadow-lg p-3">
             <div className="mb-1 text-emerald-300 font-bold">{round}</div>
             <div className="flex items-center gap-2 mb-1">
               {home.logo ? (
@@ -1367,8 +1367,8 @@ const TournamentDashboard = () => {
             </div>
           )}
           <div className="animate-pulse space-y-4">
-            <div className="h-8 w-1/3 bg-gaming-gray/20 rounded"></div>
-            <div className="h-64 bg-gaming-gray/20 rounded"></div>
+            <div className="h-8 w-1/3 bg-zinc-800/20 rounded"></div>
+            <div className="h-64 bg-zinc-800/20 rounded"></div>
           </div>
         </main>
         <Footer />
@@ -1817,6 +1817,17 @@ const TournamentDashboard = () => {
               {activeTab === 'stages' && (
                 <TabsContent value="stages" forceMount key="stages">
                   <TabTransition direction={direction}>
+                    {/* Mock Mode panel pinned above stages when in draft — easy access from here */}
+                    {isOrganizer && tournament.status === 'draft' && (
+                      <div className="mb-4">
+                        <MockModePanel
+                          tournamentId={tournament.id}
+                          slug={slug ?? ''}
+                          maxTeams={tournament.max_teams}
+                          mockCount={mockCount}
+                        />
+                      </div>
+                    )}
                     {isBR ? (
                       <BRStageManagementTab
                         tournamentId={tournament.id}
@@ -2388,3 +2399,4 @@ export default function TournamentDashboardWithBoundary(props) {
     </ErrorBoundary>
   );
 } 
+

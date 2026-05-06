@@ -87,13 +87,13 @@ const TournamentSchedule = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
-          <Card className="bg-gaming-dark border-gaming-gray/30">
+          <Card className="bg-[#0a0a0c] border-white/10/30">
             <CardContent className="p-4">
               <Calendar
                 mode="single"
                 selected={date}
                 onSelect={setDate}
-                className="bg-gaming-dark text-white rounded-md border border-white/5"
+                className="bg-[#0a0a0c] text-white rounded-md border border-white/5"
                 classNames={{
                   day_selected: "bg-esports-purple text-white hover:bg-esports-purple hover:text-white focus:bg-esports-purple",
                   day_today: "bg-white/10 text-white font-bold",
@@ -115,7 +115,7 @@ const TournamentSchedule = () => {
         </div>
 
         <div className="md:col-span-2">
-          <Card className="bg-gaming-dark border-gaming-gray/30 h-full">
+          <Card className="bg-[#0a0a0c] border-white/10/30 h-full">
             <CardContent className="p-6">
               <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
                 Matches on <span className="text-esports-purple">{date ? format(date, 'MMMM do, yyyy') : 'Selected Date'}</span>
@@ -196,3 +196,4 @@ const TournamentSchedule = () => {
 };
 
 export default TournamentSchedule;
+

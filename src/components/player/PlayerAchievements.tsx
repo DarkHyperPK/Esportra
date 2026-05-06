@@ -102,14 +102,14 @@ const PlayerAchievements = () => {
   
   return (
     <div className="space-y-6">
-      <Card className="bg-gaming-dark border-gaming-gray/30">
+      <Card className="bg-[#0a0a0c] border-white/10/30">
         <CardHeader>
           <CardTitle>Your Gaming Achievements</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="all" onValueChange={(v) => setFilter(v as any)}>
             <div className="flex items-center justify-between mb-6">
-              <TabsList className="bg-gaming-gray/10">
+              <TabsList className="bg-zinc-800/10">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="unlocked">Unlocked</TabsTrigger>
                 <TabsTrigger value="locked">In Progress</TabsTrigger>
@@ -128,7 +128,7 @@ const PlayerAchievements = () => {
                   <div 
                     key={achievement.id} 
                     className={`p-4 border-2 rounded-lg ${rarityColors[achievement.rarity]} ${
-                      achievement.unlocked ? 'bg-gaming-gray/10' : 'bg-gaming-gray/5'
+                      achievement.unlocked ? 'bg-zinc-800/10' : 'bg-zinc-800/5'
                     }`}
                   >
                     <div className="flex items-center mb-3">
@@ -156,7 +156,7 @@ const PlayerAchievements = () => {
                 {filteredAchievements.map(achievement => (
                   <div 
                     key={achievement.id} 
-                    className={`p-4 border-2 rounded-lg ${rarityColors[achievement.rarity]} bg-gaming-gray/10`}
+                    className={`p-4 border-2 rounded-lg ${rarityColors[achievement.rarity]} bg-zinc-800/10`}
                   >
                     <div className="flex items-center mb-3">
                       {achievement.icon}
@@ -183,7 +183,7 @@ const PlayerAchievements = () => {
                 {filteredAchievements.map(achievement => (
                   <div 
                     key={achievement.id} 
-                    className={`p-4 border-2 rounded-lg ${rarityColors[achievement.rarity]} bg-gaming-gray/5`}
+                    className={`p-4 border-2 rounded-lg ${rarityColors[achievement.rarity]} bg-zinc-800/5`}
                   >
                     <div className="flex items-center mb-3">
                       {achievement.icon}
@@ -211,3 +211,4 @@ const PlayerAchievements = () => {
 };
 
 export default PlayerAchievements;
+

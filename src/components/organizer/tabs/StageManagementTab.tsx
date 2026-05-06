@@ -309,7 +309,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         try {
             // Get teams/participants for this stage
             let teams: Array<{ id: string; name: string; logo_url?: string | null }> = [];
-            let bracketSize: number | undefined = undefined;
+
             // Check stage config for check-in filtering
             const stageConf = typeof stage.config === 'string'
                 ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()
@@ -350,8 +350,8 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                         // Solo participant
                         return {
                             id: p.id,
-                            name: p.solo_username || p.gamer_tag || p.team_name || 'Unknown Player',
-                            logo_url: p.solo_avatar_url || null
+                            name: p.gamer_tag || 'Unknown Player',
+                            logo_url: null
                         };
                     }
                 }).filter(t => t.id);
@@ -369,10 +369,15 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 })).filter(t => t.id);
             }
 
-            if (teams.length === 0) {
-                // Allow empty bracket generation using stage capacity for sizing
-                const capacity = stage.capacity || 8;
-                bracketSize = Math.pow(2, Math.ceil(Math.log2(capacity)));
+            if (teams.length < 2) {
+                toast({
+                    title: 'Not Enough Teams',
+                    description: useCheckInOnly
+                        ? 'Need at least 2 checked-in teams to generate matches. Ensure participants have checked in.'
+                        : 'Need at least 2 registered teams to generate matches.',
+                    variant: 'destructive'
+                });
+                return;
             }
 
             // Clean up any existing bracket for this stage before re-generating
@@ -397,6 +402,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             // Generate based on stage format
             const format = stage.format || 'single_elimination';
             let generator;
+            let bracketSize: number | undefined = undefined;
 
             // Bracket Size remains undefined to allow auto-sizing based on participant count
 
@@ -424,7 +430,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     bracketSize = Math.ceil(Number(stage.capacity) / groupSize);
                     console.log('[StageManagement] Auto-calculated RR group_count:', bracketSize, 'from capacity:', stage.capacity);
                 } else {
-                    bracketSize = Math.max(1, Math.ceil(teams.length / 4));
+                    bracketSize = Math.ceil(teams.length / 4);
                     console.log('[StageManagement] Fallback RR group_count:', bracketSize, 'from teams:', teams.length);
                 }
             } else {
@@ -503,7 +509,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             setHasBrackets(prev => ({ ...prev, [stageId]: true }));
 
             // Runtime BYE warning (Medium Priority)
-            if ((format === 'single_elimination' || format === 'double_elimination') && teams.length > 0) {
+            if (format === 'single_elimination' || format === 'double_elimination') {
                 const actualBracketSize = Math.pow(2, Math.ceil(Math.log2(teams.length)));
                 const byeCount = actualBracketSize - teams.length;
                 const byePercentage = (byeCount / actualBracketSize) * 100;
@@ -692,7 +698,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 </CardHeader>
                 <CardContent className="p-0">
                     {stages.length === 0 ? (
-                        <div className="text-center py-12 border-2 border-dashed border-gaming-gray/20 rounded-xl">
+                        <div className="text-center py-12 border-2 border-dashed border-white/10/20 rounded-xl">
                             <Layers className="w-12 h-12 text-gaming-gray/40 mx-auto mb-4" />
                             <p className="text-gray-400">No stages defined yet. Add your first stage to get started.</p>
                         </div>
@@ -701,7 +707,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                             {stages.map((stage, index) => (
                                 <div
                                     key={stage.id}
-                                    className="p-6 bg-gaming-gray/10 border border-gaming-gray/30 rounded-lg hover:border-emerald-400/30 transition-all"
+                                    className="p-6 bg-zinc-800/10 border border-white/10/30 rounded-lg hover:border-emerald-400/30 transition-all"
                                 >
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                                         <div className="flex items-center gap-4">
@@ -891,7 +897,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             </Card>
 
             <Dialog open={addStageDialogOpen} onOpenChange={setAddStageDialogOpen}>
-                <DialogContent className="bg-gaming-dark border border-gaming-gray/30 sm:max-w-[425px]">
+                <DialogContent className="bg-[#0a0a0c] border border-white/10 sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle>Add Tournament Stage</DialogTitle>
                         <DialogDescription>
@@ -996,7 +1002,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             {/* Delete All Confirmation Dialog */}
             <Dialog open={deleteAllDialogOpen} onOpenChange={setDeleteAllDialogOpen}>
-                <DialogContent className="bg-gaming-dark border border-red-500/30 sm:max-w-[425px]">
+                <DialogContent className="bg-[#0a0a0c] border border-red-500/30 sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-red-400">Delete All Stages</DialogTitle>
                         <DialogDescription>
@@ -1028,7 +1034,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             {/* Delete Bracket Confirmation Dialog */}
             <Dialog open={deleteBracketDialogOpen} onOpenChange={setDeleteBracketDialogOpen}>
-                <DialogContent className="bg-gaming-dark border border-red-500/30 sm:max-w-[425px]">
+                <DialogContent className="bg-[#0a0a0c] border border-red-500/30 sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-red-400">Delete Bracket?</DialogTitle>
                         <DialogDescription>
@@ -1055,7 +1061,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             {/* Reset All Confirmation Dialog */}
             <Dialog open={resetAllDialogOpen} onOpenChange={setResetAllDialogOpen}>
-                <DialogContent className="bg-gaming-dark border border-yellow-500/30 sm:max-w-[425px]">
+                <DialogContent className="bg-[#0a0a0c] border border-yellow-500/30 sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-yellow-400">Reset All Stages</DialogTitle>
                         <DialogDescription>
@@ -1098,3 +1104,5 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         </>
     );
 };
+
+

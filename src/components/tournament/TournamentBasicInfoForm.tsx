@@ -97,7 +97,7 @@ const TournamentBasicInfoForm = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.4 }}
-            className="flex items-center gap-6 bg-gaming-gray/30 rounded-lg p-4 my-4 shadow-lg border border-gaming-gray/40"
+            className="flex items-center gap-6 bg-zinc-800/30 rounded-lg p-4 my-4 shadow-lg border border-white/10/40"
           >
             <div>
               <div className="text-xl font-bold mb-1">{selectedGame.name}</div>
@@ -205,3 +205,4 @@ const TournamentBasicInfoForm = ({
 };
 
 export default TournamentBasicInfoForm;
+

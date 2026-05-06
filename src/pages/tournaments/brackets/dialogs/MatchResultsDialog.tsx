@@ -44,7 +44,7 @@ export const MatchResultsDialog: React.FC<MatchResultsDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[720px] bg-gaming-dark border border-gaming-gray/40 max-h-[85vh] overflow-y-auto p-0">
+            <DialogContent className="sm:max-w-[720px] bg-[#0a0a0c] border border-white/10/40 max-h-[85vh] overflow-y-auto p-0">
                 <div className="p-6">
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">
@@ -201,7 +201,7 @@ export const MatchResultsDialog: React.FC<MatchResultsDialogProps> = ({
                             ) : (
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     {results.map((r, i) => (
-                                        <div key={i} className="bg-gaming-gray/20 rounded border border-gaming-gray/30 overflow-hidden group hover:border-gaming-gray/50 transition-colors">
+                                        <div key={i} className="bg-zinc-800/20 rounded border border-white/10/30 overflow-hidden group hover:border-white/10/50 transition-colors">
                                             {r.image_url ? (
                                                 <a href={r.image_url} target="_blank" rel="noopener noreferrer" className="block relative aspect-video bg-black/40">
                                                     <img src={r.image_url} loading="lazy" alt="result" className="w-full h-full object-contain" />
@@ -229,3 +229,4 @@ export const MatchResultsDialog: React.FC<MatchResultsDialogProps> = ({
 };
 
 export default MatchResultsDialog;
+

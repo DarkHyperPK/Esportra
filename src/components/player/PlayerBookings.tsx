@@ -125,7 +125,7 @@ const PlayerBookings = () => {
 
         <TabsContent value="upcoming" className="mt-6">
           {upcomingBookings.length === 0 ? (
-            <Card className="bg-gaming-dark border-gaming-gray/30">
+            <Card className="bg-[#0a0a0c] border-white/10/30">
               <CardContent className="flex flex-col items-center justify-center py-16">
                 <div className="text-gray-400 mb-4">You don't have any upcoming bookings</div>
                 <Button onClick={handleFindVenues}>Find Gaming Venues</Button>
@@ -134,7 +134,7 @@ const PlayerBookings = () => {
           ) : (
             <div className="space-y-6">
               {upcomingBookings.map((booking) => (
-                <Card key={booking.id} className="bg-gaming-dark border-gaming-gray/30">
+                <Card key={booking.id} className="bg-[#0a0a0c] border-white/10/30">
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row justify-between mb-4">
                       <div>
@@ -189,11 +189,11 @@ const PlayerBookings = () => {
         </TabsContent>
 
         <TabsContent value="past" className="mt-6">
-          <Card className="bg-gaming-dark border-gaming-gray/30">
+          <Card className="bg-[#0a0a0c] border-white/10/30">
             <CardContent className="p-6">
               <Table>
                 <TableHeader>
-                  <TableRow className="hover:bg-gaming-gray/10">
+                  <TableRow className="hover:bg-zinc-800/10">
                     <TableHead>Venue</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Time</TableHead>
@@ -205,7 +205,7 @@ const PlayerBookings = () => {
                 <TableBody>
                   {pastBookings.length > 0 ? (
                     pastBookings.map((booking) => (
-                      <TableRow key={booking.id} className="hover:bg-gaming-gray/5">
+                      <TableRow key={booking.id} className="hover:bg-zinc-800/5">
                         <TableCell>
                           <div className="font-medium">{booking.venue}</div>
                           <div className="text-sm text-gray-400">{booking.location}</div>
@@ -235,3 +235,4 @@ const PlayerBookings = () => {
 };
 
 export default PlayerBookings;
+

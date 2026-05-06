@@ -16,7 +16,7 @@ const Unauthorized = () => {
   return (
     <div className="min-h-screen bg-esports-dark text-white flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-16 flex flex-col items-center justify-center">
-        <div className="bg-gaming-dark p-8 rounded-lg border border-gaming-gray/30 max-w-lg w-full text-center">
+        <div className="bg-[#0a0a0c] p-8 rounded-lg border border-white/10/30 max-w-lg w-full text-center">
           <ShieldAlert className="w-16 h-16 mx-auto text-red-500 mb-4" />
           <h1 className="text-3xl font-bold mb-2">Access Denied</h1>
           <p className="text-gray-400 mb-6">
@@ -38,3 +38,4 @@ const Unauthorized = () => {
 };
 
 export default Unauthorized;
+

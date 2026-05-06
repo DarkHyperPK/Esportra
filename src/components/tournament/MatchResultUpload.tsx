@@ -107,7 +107,7 @@ const MatchResultUpload: React.FC<Props> = ({
     !isNaN(parseInt(team1Score)) && !isNaN(parseInt(team2Score));
 
   return (
-    <div className="bg-gaming-dark border border-gaming-gray/30 rounded-xl p-4">
+    <div className="bg-[#0a0a0c] border border-white/10/30 rounded-xl p-4">
       <h3 className="text-white font-semibold mb-1">Manual Result Report</h3>
       {mapName && (
         <p className="text-sm text-gaming-purple mb-3">
@@ -127,7 +127,7 @@ const MatchResultUpload: React.FC<Props> = ({
               value={team1Score}
               onChange={(e) => setTeam1Score(e.target.value)}
               placeholder="0"
-              className="bg-gray-900/50 border-gaming-gray/40 text-white text-center text-lg"
+              className="bg-gray-900/50 border-white/10/40 text-white text-center text-lg"
             />
           </div>
           <div>
@@ -139,7 +139,7 @@ const MatchResultUpload: React.FC<Props> = ({
               value={team2Score}
               onChange={(e) => setTeam2Score(e.target.value)}
               placeholder="0"
-              className="bg-gray-900/50 border-gaming-gray/40 text-white text-center text-lg"
+              className="bg-gray-900/50 border-white/10/40 text-white text-center text-lg"
             />
           </div>
         </div>
@@ -190,7 +190,7 @@ const MatchResultUpload: React.FC<Props> = ({
           placeholder="Add a comment (optional)"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          className="bg-gray-900/50 border-gaming-gray/40"
+          className="bg-gray-900/50 border-white/10/40"
         />
 
         <div className="text-right">

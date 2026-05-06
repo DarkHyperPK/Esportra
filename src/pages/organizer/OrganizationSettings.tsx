@@ -857,7 +857,7 @@ const OrganizationSettings: React.FC = () => {
                                         <Plus className="w-4 h-4" /> New Album
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="bg-gaming-dark border-gaming-gray text-white">
+                                <DialogContent className="bg-[#0a0a0c] border-white/10 text-white">
                                     <DialogHeader>
                                         <DialogTitle>Create New Album</DialogTitle>
                                         <DialogDescription className="text-gray-400">Group your photos and videos.</DialogDescription>
@@ -1140,3 +1140,4 @@ const OrganizationSettings: React.FC = () => {
 };
 
 export default OrganizationSettings;
+

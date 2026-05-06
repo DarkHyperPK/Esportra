@@ -25,7 +25,7 @@ const CreateTournamentForm = () => {
       
       {error && <ErrorDisplay message={error} />}
       
-      <div className="bg-gaming-dark p-6 rounded-lg border border-gaming-gray/30">
+      <div className="bg-[#0a0a0c] p-6 rounded-lg border border-white/10/30">
         <form onSubmit={handleSubmit} className="space-y-6">
           <TournamentBasicInfoForm 
             formData={formData}
@@ -59,3 +59,4 @@ const CreateTournamentForm = () => {
 };
 
 export default CreateTournamentForm;
+

@@ -523,7 +523,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             className="grid grid-cols-1 md:grid-cols-2 gap-6 py-8"
         >
             <Card
-                className="group cursor-pointer relative overflow-hidden border-gaming-gray/30 bg-gaming-dark hover:border-emerald-500/50 transition-all duration-300"
+                className="group cursor-pointer relative overflow-hidden border-white/10/30 bg-[#0a0a0c] hover:border-emerald-500/50 transition-all duration-300"
                 onClick={() => setStep('template-select')}
             >
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -548,7 +548,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             </Card>
 
             <Card
-                className="group cursor-pointer relative overflow-hidden border-gaming-gray/30 bg-gaming-dark hover:border-blue-500/50 transition-all duration-300"
+                className="group cursor-pointer relative overflow-hidden border-white/10/30 bg-[#0a0a0c] hover:border-blue-500/50 transition-all duration-300"
                 onClick={() => {
                     setStagesConfig([]);
                     setStep('manual-config');
@@ -1352,7 +1352,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                             className="relative pl-12"
                         >
                             {/* Step Number Bubble */}
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-gaming-dark border-2 border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold z-10 shadow-lg shadow-black/50">
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#0a0a0c] border-2 border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold z-10 shadow-lg shadow-black/50">
                                 {index + 1}
                             </div>
 
@@ -1389,7 +1389,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col bg-gaming-dark border-gaming-gray/30">
+                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col bg-[#0a0a0c] border-white/10/30">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-white flex items-center justify-between">
                             <span className="flex items-center gap-2">
@@ -1512,3 +1512,4 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
         </>
     );
 };
+

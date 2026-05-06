@@ -70,7 +70,7 @@ const VenueAnalytics = () => {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gaming-dark border-gaming-gray/30">
+        <Card className="bg-[#0a0a0c] border-white/10/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-400">Total Views</CardTitle>
           </CardHeader>
@@ -84,7 +84,7 @@ const VenueAnalytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gaming-dark border-gaming-gray/30">
+        <Card className="bg-[#0a0a0c] border-white/10/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-400">Card Views</CardTitle>
           </CardHeader>
@@ -98,7 +98,7 @@ const VenueAnalytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gaming-dark border-gaming-gray/30">
+        <Card className="bg-[#0a0a0c] border-white/10/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-400">Booking Clicks</CardTitle>
           </CardHeader>
@@ -112,7 +112,7 @@ const VenueAnalytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gaming-dark border-gaming-gray/30">
+        <Card className="bg-[#0a0a0c] border-white/10/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-400">Contact Clicks</CardTitle>
           </CardHeader>
@@ -128,7 +128,7 @@ const VenueAnalytics = () => {
       </div>
 
       {!activeVenueId ? (
-        <div className="rounded-xl border border-gaming-gray/30 bg-gaming-dark p-12 text-center text-gray-500">
+        <div className="rounded-xl border border-white/10/30 bg-[#0a0a0c] p-12 text-center text-gray-500">
           {venuesLoading ? (
             <Loader2 className="w-8 h-8 animate-spin mx-auto" />
           ) : (
@@ -143,7 +143,7 @@ const VenueAnalytics = () => {
           </TabsList>
 
           <TabsContent value="views">
-            <Card className="bg-gaming-dark border-gaming-gray/30">
+            <Card className="bg-[#0a0a0c] border-white/10/30">
               <CardHeader>
                 <CardTitle>Daily Views</CardTitle>
                 <CardDescription>Venue page views over the last 30 days</CardDescription>
@@ -182,7 +182,7 @@ const VenueAnalytics = () => {
           </TabsContent>
 
           <TabsContent value="bookings">
-            <Card className="bg-gaming-dark border-gaming-gray/30">
+            <Card className="bg-[#0a0a0c] border-white/10/30">
               <CardHeader>
                 <CardTitle>Booking Click-throughs</CardTitle>
                 <CardDescription>Users who clicked "Book Now" each day</CardDescription>
@@ -219,3 +219,4 @@ const VenueAnalytics = () => {
 };
 
 export default VenueAnalytics;
+

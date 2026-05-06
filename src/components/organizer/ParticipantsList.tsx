@@ -52,7 +52,7 @@ const VirtualTableRows = ({ rows, getStatusColor }: { rows: Participant[], getSt
         return (
           <TableRow
             key={participant.id}
-            className="hover:bg-gaming-gray/5 absolute w-full flex items-center"
+            className="hover:bg-zinc-800/5 absolute w-full flex items-center"
             style={{
               height: `${virtualRow.size}px`,
               transform: `translateY(${virtualRow.start}px)`,
@@ -265,7 +265,7 @@ const ParticipantsList = () => {
   };
 
   return (
-    <Card className="bg-gaming-dark border-gaming-gray/30">
+    <Card className="bg-[#0a0a0c] border-white/10/30">
       <CardContent className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Tournament Participants</h2>
@@ -273,7 +273,7 @@ const ParticipantsList = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <Input
-                className="pl-10 bg-gaming-gray/10 border-gaming-gray/30"
+                className="pl-10 bg-zinc-800/10 border-white/10/30"
                 placeholder="Search participants..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -282,10 +282,10 @@ const ParticipantsList = () => {
           </div>
         </div>
 
-        <div className="rounded-md border border-gaming-gray/30 overflow-hidden">
+        <div className="rounded-md border border-white/10/30 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gaming-gray/5 hover:bg-gaming-gray/10">
+              <TableRow className="bg-zinc-800/5 hover:bg-zinc-800/10">
                 <TableHead>{participants.some(p => p.isTeamFormat) ? 'Team' : 'Username'}</TableHead>
                 <TableHead>Captain</TableHead>
                 <TableHead>Tournament</TableHead>
@@ -304,7 +304,7 @@ const ParticipantsList = () => {
                 </TableRow>
               ) : filteredParticipants.length > 0 ? (
                 filteredParticipants.map((participant) => (
-                  <TableRow key={participant.id} className="hover:bg-gaming-gray/5">
+                  <TableRow key={participant.id} className="hover:bg-zinc-800/5">
                     <TableCell className="font-medium">{participant.username}</TableCell>
                     <TableCell>{participant.captainName}</TableCell>
                     <TableCell>{participant.tournament}</TableCell>
@@ -351,3 +351,4 @@ const ParticipantsList = () => {
 };
 
 export default ParticipantsList;
+

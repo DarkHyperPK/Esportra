@@ -318,12 +318,12 @@ const TournamentList = () => {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="bg-gaming-dark border-gaming-gray/30">
+              <Card key={i} className="bg-[#0a0a0c] border-white/10/30">
                 <CardContent className="p-6">
                   <div className="animate-pulse space-y-4">
-                    <div className="h-6 bg-gaming-gray/20 rounded w-3/4"></div>
-                    <div className="h-4 bg-gaming-gray/20 rounded w-1/2"></div>
-                    <div className="h-4 bg-gaming-gray/20 rounded w-1/4"></div>
+                    <div className="h-6 bg-zinc-800/20 rounded w-3/4"></div>
+                    <div className="h-4 bg-zinc-800/20 rounded w-1/2"></div>
+                    <div className="h-4 bg-zinc-800/20 rounded w-1/4"></div>
                   </div>
                 </CardContent>
               </Card>
@@ -361,7 +361,7 @@ const TournamentList = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-gaming-dark border border-gaming-gray/30 rounded-lg">
+          <div className="text-center py-12 bg-[#0a0a0c] border border-white/10/30 rounded-lg">
             <p className="text-gray-400 mb-2">No {activeTab ? (STATUS_TABS.find(t => t.key === activeTab)?.label.toLowerCase() ?? '') : ''} tournaments found</p>
             <p className="text-sm text-gray-500">
               {activeTab === 'ongoing'
@@ -383,3 +383,4 @@ const TournamentList = () => {
 };
 
 export default TournamentList;
+

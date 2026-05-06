@@ -14,12 +14,12 @@ const TournamentAnalytics = () => {
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-gaming-gray/10 rounded-lg animate-pulse"></div>
+            <div key={i} className="h-32 bg-zinc-800/10 rounded-lg animate-pulse"></div>
           ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="h-80 bg-gaming-gray/10 rounded-lg animate-pulse"></div>
-          <div className="h-80 bg-gaming-gray/10 rounded-lg animate-pulse"></div>
+          <div className="h-80 bg-zinc-800/10 rounded-lg animate-pulse"></div>
+          <div className="h-80 bg-zinc-800/10 rounded-lg animate-pulse"></div>
         </div>
       </div>
     );
@@ -41,7 +41,7 @@ const TournamentAnalytics = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gaming-dark border-gaming-gray/30">
+        <Card className="bg-[#0a0a0c] border-white/10/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-400">Total Tournaments</CardTitle>
           </CardHeader>
@@ -53,7 +53,7 @@ const TournamentAnalytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gaming-dark border-gaming-gray/30">
+        <Card className="bg-[#0a0a0c] border-white/10/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-400">Total Participants</CardTitle>
           </CardHeader>
@@ -65,7 +65,7 @@ const TournamentAnalytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gaming-dark border-gaming-gray/30">
+        <Card className="bg-[#0a0a0c] border-white/10/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-400">Total Prize Pool</CardTitle>
           </CardHeader>
@@ -75,7 +75,7 @@ const TournamentAnalytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gaming-dark border-gaming-gray/30">
+        <Card className="bg-[#0a0a0c] border-white/10/30">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-400">Active Tournaments</CardTitle>
           </CardHeader>
@@ -87,7 +87,7 @@ const TournamentAnalytics = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-gaming-dark border-gaming-gray/30">
+        <Card className="bg-[#0a0a0c] border-white/10/30">
           <CardHeader>
             <CardTitle>Monthly Participation</CardTitle>
             <CardDescription>Participants over the last 6 months</CardDescription>
@@ -121,7 +121,7 @@ const TournamentAnalytics = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gaming-dark border-gaming-gray/30">
+        <Card className="bg-[#0a0a0c] border-white/10/30">
           <CardHeader>
             <CardTitle>Tournaments by Game</CardTitle>
             <CardDescription>Which games are you hosting most?</CardDescription>
@@ -167,3 +167,4 @@ const TournamentAnalytics = () => {
 };
 
 export default TournamentAnalytics;
+

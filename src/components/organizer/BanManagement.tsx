@@ -136,13 +136,13 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
                   Active Bans ({activeBans.length})
                 </h3>
                 {activeBans.length === 0 ? (
-                  <div className="text-gray-400 p-4 bg-gaming-gray/10 rounded-lg">
+                  <div className="text-gray-400 p-4 bg-zinc-800/10 rounded-lg">
                     No active bans for this tournament.
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {activeBans.map((ban) => (
-                      <Card key={ban.id} className="bg-gaming-gray/20 border-red-500/30">
+                      <Card key={ban.id} className="bg-zinc-800/20 border-red-500/30">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -203,7 +203,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
                   <h3 className="text-lg font-semibold mb-4 text-gray-400">Ban History ({inactiveBans.length})</h3>
                   <div className="space-y-3">
                     {inactiveBans.map((ban) => (
-                      <Card key={ban.id} className="bg-gaming-gray/10 border-gray-700/50 opacity-60">
+                      <Card key={ban.id} className="bg-zinc-800/10 border-gray-700/50 opacity-60">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -247,7 +247,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
 
       {/* Unban Dialog */}
       <AlertDialog open={unbanDialogOpen} onOpenChange={setUnbanDialogOpen}>
-        <AlertDialogContent className="bg-gaming-dark border-gaming-gray/30">
+        <AlertDialogContent className="bg-[#0a0a0c] border-white/10/30">
           <AlertDialogHeader>
             <AlertDialogTitle>Lift Ban</AlertDialogTitle>
             <AlertDialogDescription>
@@ -272,4 +272,5 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
 };
 
 export default BanManagement;
+
 

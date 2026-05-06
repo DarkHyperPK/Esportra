@@ -30,7 +30,7 @@ const FeaturedVenues = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading ? (
             Array(6).fill(0).map((_, i) => (
-              <div key={i} className="animate-pulse bg-gaming-gray/20 rounded-lg h-64"></div>
+              <div key={i} className="animate-pulse bg-zinc-800/20 rounded-lg h-64"></div>
             ))
           ) : venues.length > 0 ? (
             venues.map((venue) => (
@@ -47,3 +47,4 @@ const FeaturedVenues = () => {
 };
 
 export default FeaturedVenues;
+

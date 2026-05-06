@@ -84,7 +84,7 @@ const TournamentList = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <Input
-                className="pl-10 bg-gaming-gray/10 border-gaming-gray/30"
+                className="pl-10 bg-zinc-800/10 border-white/10/30"
                 placeholder="Search tournaments..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -103,7 +103,7 @@ const TournamentList = () => {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse bg-gaming-gray/20 h-64 rounded-lg" />
+              <div key={i} className="animate-pulse bg-zinc-800/20 h-64 rounded-lg" />
             ))}
           </div>
         ) : filteredTournaments.length === 0 ? (
@@ -150,3 +150,4 @@ const TournamentList = () => {
 };
 
 export default TournamentList; 
+

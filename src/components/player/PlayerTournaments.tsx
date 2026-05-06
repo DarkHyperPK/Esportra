@@ -148,7 +148,7 @@ const PlayerTournaments = () => {
   };
 
   return (
-    <Card className="bg-gaming-dark border-gaming-gray/30">
+    <Card className="bg-[#0a0a0c] border-white/10/30">
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle>My Tournaments</CardTitle>
@@ -174,9 +174,9 @@ const PlayerTournaments = () => {
         {loading ? (
           <div className="space-y-4">
             {Array(3).fill(0).map((_, i) => (
-              <div key={i} className="animate-pulse bg-gaming-gray/20 p-4 rounded-lg">
-                <div className="h-6 w-1/3 bg-gaming-gray/30 rounded mb-2"></div>
-                <div className="h-4 w-1/4 bg-gaming-gray/30 rounded"></div>
+              <div key={i} className="animate-pulse bg-zinc-800/20 p-4 rounded-lg">
+                <div className="h-6 w-1/3 bg-zinc-800/30 rounded mb-2"></div>
+                <div className="h-4 w-1/4 bg-zinc-800/30 rounded"></div>
               </div>
             ))}
           </div>
@@ -185,7 +185,7 @@ const PlayerTournaments = () => {
             {tournaments.map((tournament) => (
               <div
                 key={tournament.id}
-                className="relative bg-gaming-gray/10 p-4 rounded-lg border border-gaming-gray/30 hover:border-gaming-purple/50 transition-colors cursor-pointer overflow-hidden"
+                className="relative bg-zinc-800/10 p-4 rounded-lg border border-white/10/30 hover:border-gaming-purple/50 transition-colors cursor-pointer overflow-hidden"
                 onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}`)}
               >
                 {/* Banner background */}
@@ -198,7 +198,7 @@ const PlayerTournaments = () => {
                 )}
                 <div className="relative z-10 flex items-center gap-3 mb-2">
                   {/* Game logo */}
-                  <div className="h-12 w-12 rounded bg-esports-dark flex items-center justify-center overflow-hidden border border-gaming-gray/40">
+                  <div className="h-12 w-12 rounded bg-esports-dark flex items-center justify-center overflow-hidden border border-white/10/40">
                     {gameImages[tournament.id]?.logo ? (
                       <img
                         src={gameImages[tournament.id].logo!}
@@ -249,3 +249,4 @@ const PlayerTournaments = () => {
 };
 
 export default PlayerTournaments;
+
