@@ -15,7 +15,7 @@ import { MapVeto } from '@/components/tournament/MapVeto';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
-import { BracketMatch, Participant } from '@/types/bracketTypes';
+import { BracketMatch, BracketTeam, BracketSide, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
 import { gameHasMapVeto, isBattleRoyale } from '@/utils/gameFeatures';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
@@ -168,6 +168,60 @@ const CaptainMatchPage = () => {
         enabled: teamIds.length > 0,
     });
 
+    // Fetch specific match by ID for organizer observer mode (bypasses bracket graph dependency)
+    const { data: organizerMatch } = useQuery({
+        queryKey: ['organizer-match', urlMatchId],
+        queryFn: async () => {
+            if (!urlMatchId || !isOrganizer) return null;
+            try {
+                const data = await apiClient.get<any>(`/api/brackets/matches/${urlMatchId}`);
+                if (!data) return null;
+                // Convert backend match format to BracketMatch format directly
+                const team1: BracketTeam | null = data.team1_id ? {
+                    id: data.team1_id,
+                    name: data.team1_name || 'TBD',
+                    seed: 0,
+                    logo_url: data.team1_logo,
+                } : null;
+                const team2: BracketTeam | null = data.team2_id ? {
+                    id: data.team2_id,
+                    name: data.team2_name || 'TBD',
+                    seed: 0,
+                    logo_url: data.team2_logo,
+                } : null;
+                const winner: BracketTeam | null = data.winner_id ? (team1?.id === data.winner_id ? team1 : team2?.id === data.winner_id ? team2 : null) : null;
+                const bracketMatch: BracketMatch = {
+                    id: `db-${data.id}`,
+                    round: data.round_index + 1,
+                    matchNumber: data.match_number || 1,
+                    team1,
+                    team2,
+                    winner,
+                    score: null,
+                    team1_score: data.team1_score ?? null,
+                    team2_score: data.team2_score ?? null,
+                    status: data.status || 'pending',
+                    scheduledTime: data.scheduled_time,
+                    bestOf: data.best_of || data.stage_best_of,
+                    partyCode: data.party_code,
+                    bracketSide: data.bracket_type as BracketSide || undefined,
+                    bracketType: data.bracket_type as BracketMatch['bracketType'] || data.stage_format as BracketMatch['bracketType'],
+                    nextMatchId: null,
+                    loserNextMatchId: null,
+                    stageId: data.version_id,
+                    groupId: data.group_id,
+                    x: data.x,
+                    y: data.y,
+                };
+                return bracketMatch;
+            } catch (error: any) {
+                console.error('Error fetching organizer match:', error);
+                return null;
+            }
+        },
+        enabled: !!urlMatchId && !!isOrganizer,
+    });
+
     // Convert graph data to BracketMatch format
     const matches = useMemo<BracketMatch[]>(() => {
         if (!allGraphData?.nodes || !allGraphData?.edges) {
@@ -181,6 +235,8 @@ const CaptainMatchPage = () => {
 
     const isOrganizerMatchView = !!urlMatchId && isOrganizer;
     const bracketLoading = versionsLoading || graphLoading || (!isOrganizerMatchView && teamsLoading);
+    const organizerMatchLoading = isOrganizerMatchView && !organizerMatch;
+    const pageLoading = loading || bracketLoading || organizerMatchLoading;
 
     // Calculate team count from matches
     const teamCount = useMemo(() => {
@@ -279,6 +335,12 @@ const CaptainMatchPage = () => {
 
     // Find active match for the team (prefer URL matchId from notification links)
     const activeMatch = useMemo(() => {
+        // Organizer mode: use directly fetched match if available
+        if (isOrganizer && urlMatchId && organizerMatch) {
+            return organizerMatch;
+        }
+
+        // Fallback to bracket graph data
         if (!matches.length) {
             return null;
         }
@@ -314,7 +376,7 @@ const CaptainMatchPage = () => {
         );
         return nextMatch || null;
 
-    }, [isOrganizer, userTeamId, matches, urlMatchId]);
+    }, [isOrganizer, userTeamId, matches, urlMatchId, organizerMatch]);
 
     // Lifted Proposal state for higher-level visibility
     const { acceptedProposal } = useTimeProposal(activeMatch?.id?.replace(/^(db-|wb-|lb-)/, ''));
@@ -655,7 +717,7 @@ const CaptainMatchPage = () => {
         setUploadOpen(true);
     };
 
-    if (loading || bracketLoading) {
+    if (pageLoading) {
         return <PremiumLoadingScreen text="SYNCHRONIZING MATCH DATA" />;
     }
 
