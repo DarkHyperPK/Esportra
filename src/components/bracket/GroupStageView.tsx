@@ -28,6 +28,7 @@ interface GroupStageViewProps {
     /** Pre-fetched teams data from parent - avoids duplicate fetch */
     teamsMap?: Map<string, { id: string; name: string; logo_url?: string | null }>;
     onMatchClick?: (match: BracketMatch) => void;
+    onMatchRoom?: (match: BracketMatch) => void;
     hasResultsMap?: Record<string, any[]>;
     hasProofsMap?: Record<string, string[]>;
 }
@@ -56,6 +57,7 @@ const nodeToMatch = (node: BracketNode): BracketMatch => ({
     x: node.x,
     y: node.y
 });
+void nodeToMatch;
 
 // Extracted Panel Component (matching SwissView's SwissGroupPanel)
 const GroupPanel = React.memo(({
@@ -74,6 +76,7 @@ const GroupPanel = React.memo(({
     onByeAdvance,
     advancementCount,
     onMatchClick,
+    onMatchRoom,
     hasResultsMap = {},
     hasProofsMap = {}
 }: {
@@ -92,6 +95,7 @@ const GroupPanel = React.memo(({
     onByeAdvance?: (matchId: string) => void,
     advancementCount?: number,
     onMatchClick?: (match: BracketMatch) => void,
+    onMatchRoom?: (match: BracketMatch) => void,
     hasResultsMap?: Record<string, any[]>,
     hasProofsMap?: Record<string, string[]>
 }) => {
@@ -143,6 +147,7 @@ const GroupPanel = React.memo(({
                                                     onSaveScore={saveScore}
                                                     scoreDraftRef={scoreDraftRef}
                                                     onByeAdvance={onByeAdvance}
+                                                    onMatchRoom={onMatchRoom}
                                                 />
                                             ) : (
                                                 <ReadOnlyMatchCard
@@ -195,6 +200,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     stage,
     teamsMap: propTeamsMap,
     onMatchClick,
+    onMatchRoom,
     hasResultsMap,
     hasProofsMap
 }) => {
@@ -225,7 +231,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     const teamIds = useMemo(() => {
         if (propTeamsMap && propTeamsMap.size > 0) return []; // Skip if prop provided
         const ids = new Set<string>();
-        rawMatches.forEach(node => {
+        rawMatches.forEach((node: any) => {
             if (node.team1_id) ids.add(node.team1_id);
             if (node.team2_id) ids.add(node.team2_id);
         });
@@ -239,7 +245,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
 
         const fetchTeams = async () => {
             try {
-                const data = await apiClient.post('/api/teams/batch', { ids: teamIds });
+                const data = await apiClient.post<any[]>('/api/teams/batch', { ids: teamIds });
                 const map = new Map<string, { id: string; name: string; logo_url?: string | null }>();
                 data?.forEach((team: any) => map.set(team.id, team));
                 setLocalTeamsMap(map);
@@ -435,7 +441,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
         if (!versionId) return;
 
         try {
-            const byeMatches = await apiClient.get(`/api/brackets/${versionId}/bye-matches`);
+            const byeMatches = await apiClient.get<any[]>(`/api/brackets/${versionId}/bye-matches`);
 
             if (!byeMatches || byeMatches.length === 0) {
                 toast({ title: 'No BYEs', description: 'No PENDING BYE matches to advance' });
@@ -541,6 +547,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                                 onByeAdvance={onByeAdvance}
                                 advancementCount={perGroupAdvancement}
                                 onMatchClick={onMatchClick}
+                                onMatchRoom={onMatchRoom}
                                 hasResultsMap={hasResultsMap}
                                 hasProofsMap={hasProofsMap}
                             />

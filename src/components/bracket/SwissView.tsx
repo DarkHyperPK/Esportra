@@ -27,6 +27,7 @@ interface SwissViewProps {
     stage?: any;
     activeFilter?: FilterState;
     onMatchClick?: (match: BracketMatch) => void;
+    onMatchRoom?: (match: BracketMatch) => void;
     hasResultsMap?: Record<string, any[]>;
     hasProofsMap?: Record<string, string[]>;
 }
@@ -51,6 +52,7 @@ const SwissGroupPanel = React.memo(({
     eliminationCount,
     qualificationWins,
     onMatchClick,
+    onMatchRoom,
     hasResultsMap = {},
     hasProofsMap = {}
 }: {
@@ -72,6 +74,7 @@ const SwissGroupPanel = React.memo(({
     eliminationCount?: number,
     qualificationWins?: number,
     onMatchClick?: (match: BracketMatch) => void,
+    onMatchRoom?: (match: BracketMatch) => void,
     hasResultsMap?: Record<string, any[]>,
     hasProofsMap?: Record<string, string[]>
 }) => {
@@ -126,6 +129,7 @@ const SwissGroupPanel = React.memo(({
                                                 onSaveScore={saveScore}
                                                 scoreDraftRef={scoreDraftRef}
                                                 onByeAdvance={onByeAdvance}
+                                                onMatchRoom={onMatchRoom}
                                             />
                                         ) : (
                                             <ReadOnlyMatchCard
@@ -176,6 +180,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
     stage,
     activeFilter,
     onMatchClick,
+    onMatchRoom,
     hasResultsMap,
     hasProofsMap
 }) => {
@@ -337,7 +342,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
         if (!versionId) return;
 
         try {
-            const byeMatches = await apiClient.get(`/api/brackets/${versionId}/bye-matches`);
+            const byeMatches = await apiClient.get<any[]>(`/api/brackets/${versionId}/bye-matches`);
 
             if (!byeMatches || byeMatches.length === 0) {
                 toast({ title: 'No BYEs', description: 'No PENDING BYE matches to advance' });
@@ -573,6 +578,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                                     eliminationCount={threshold}
                                     qualificationWins={threshold}
                                     onMatchClick={onMatchClick}
+                                    onMatchRoom={onMatchRoom}
                                     hasResultsMap={hasResultsMap}
                                     hasProofsMap={hasProofsMap}
                                 />
@@ -600,6 +606,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                     eliminationCount={threshold}
                     qualificationWins={threshold}
                     onMatchClick={onMatchClick}
+                    onMatchRoom={onMatchRoom}
                     hasResultsMap={hasResultsMap}
                     hasProofsMap={hasProofsMap}
                 />

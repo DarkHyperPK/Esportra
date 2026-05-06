@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, MoreVertical, Bot } from 'lucide-react';
+import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, Bot, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import ManualAdjustmentMenu from '@/components/tournament/ManualAdjustmentMenu';
-import type { BracketMatch } from '@/types/bracketTypes';
 
 // =============================================================================
 // LAYOUT CONSTANTS
@@ -37,6 +36,7 @@ interface MatchCardProps {
     versionId?: string | null;
     automatedStatus?: 'idle' | 'processing' | 'verified' | 'failed' | 'partial' | null;
     onViewResults?: (match: any) => void;
+    onMatchRoom?: (match: any) => void;
 }
 
 const areMatchPropsEqual = (prev: MatchCardProps, next: MatchCardProps) => {
@@ -54,6 +54,7 @@ const areMatchPropsEqual = (prev: MatchCardProps, next: MatchCardProps) => {
         prev.expandedMatchId === next.expandedMatchId &&
         prev.isProcessing === next.isProcessing &&
         prev.isOrganizer === next.isOrganizer &&
+        prev.onMatchRoom === next.onMatchRoom &&
         prev.proofs?.length === next.proofs?.length
     );
 };
@@ -62,11 +63,11 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     match, x, y, label,
     expandedMatchId, onToggleExpand,
     isOrganizer, isProcessing,
-    onScoreChange, onGoLive, onMapVeto, onPartyCode, onSaveScore,
+    onScoreChange, onGoLive, onMapVeto, onSaveScore,
     scoreDraftRef, proofs, onByeAdvance, onMatchClick, onAdjustmentMade,
     tournamentId, versionId,
     automatedStatus,
-    onViewResults
+    onViewResults, onMatchRoom
 }) => {
     const id = String(match.id);
     const isExp = expandedMatchId === id;
@@ -103,6 +104,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     // Calculate max score for BO3/BO5 (First to X wins)
     // BO1 has no limit (rounds can go to OT)
     const maxScore = isBo1 ? undefined : Math.ceil(bestOf / 2);
+    void maxScore;
 
     const handleScoreInput = (team: 't1' | 't2', value: string) => {
         // Allow empty input
@@ -141,11 +143,13 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     const t2Valid = match.team2?.id && match.team2.name !== 'TBD';
     const isByeMatch = (t1Valid && !t2Valid) || (!t1Valid && t2Valid);
     const byeTeam = match.team1?.id ? match.team1 : match.team2;
+    void byeTeam;
 
     // Status Badge Color
     const statusColor = isLive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : isComplete ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-zinc-800/50 text-zinc-500 border-zinc-800';
 
     const showInputs = canAct && (isLive || isEditing);
+    const canOpenMatchRoom = canAct && hasBoth && !!onMatchRoom;
 
     const style: React.CSSProperties = x !== undefined && y !== undefined ? {
         position: 'absolute', left: x, top: y, width: CARD_WIDTH, minHeight: CARD_HEIGHT, zIndex: isExp ? 50 : 10
@@ -354,7 +358,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                 bestOf={bestOf}
                             />
                         )}
-                        <ChevronDown className={`w-3 h-3 text-zinc-600 transition-transform cursor-pointer ${isExp ? 'rotate-180' : ''}`} onClick={() => onToggleExpand(id)} />
+                        <ChevronDown className={`w-3 h-3 text-zinc-600 transition-transform cursor-pointer ${isExp ? 'rotate-180' : ''}`} onClick={() => onToggleExpand?.(id)} />
                     </div>
                 </div>
 
@@ -433,10 +437,21 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                             variant="outline"
                                                             size="sm"
                                                             className="flex-1 min-w-[80px] h-8 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300"
-                                                            onClick={(e) => { e.stopPropagation(); onMapVeto(match); }}
+                                                            onClick={(e) => { e.stopPropagation(); onMapVeto?.(match); }}
                                                         >
                                                             <Swords className="w-3.5 h-3.5 mr-1.5" /> Veto
                                                         </Button>
+
+                                                        {canOpenMatchRoom && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="flex-1 min-w-[80px] h-8 bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300"
+                                                                onClick={(e) => { e.stopPropagation(); onMatchRoom(match); }}
+                                                            >
+                                                                <MessageCircle className="w-3.5 h-3.5 mr-1.5" /> Match Room
+                                                            </Button>
+                                                        )}
                                                     </>
                                                 )}
                                             </motion.div>

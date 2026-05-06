@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, Minimize2, Maximize2, ChevronDown } from 'lucide-react';
@@ -13,6 +13,7 @@ interface MatchChatProps {
     team1Id: string | undefined;
     team1Name: string;
     team2Name: string;
+    allowMinimize?: boolean;
 }
 
 const MatchChat: React.FC<MatchChatProps> = ({
@@ -21,6 +22,7 @@ const MatchChat: React.FC<MatchChatProps> = ({
     team1Id,
     team1Name,
     team2Name,
+    allowMinimize = true,
 }) => {
     const { user } = useAuth();
     const { messages, sendMessage, scrollRef, scrollToBottom, isLoading } = useMatchChat(matchId);
@@ -48,10 +50,14 @@ const MatchChat: React.FC<MatchChatProps> = ({
     const handleSend = async () => {
         if (!messageText.trim()) return;
 
-        await sendMessage.mutateAsync({
-            content: messageText.trim(),
-            teamId: userTeamId,
-        });
+        try {
+            await sendMessage.mutateAsync({
+                content: messageText.trim(),
+                teamId: userTeamId,
+            });
+        } catch {
+            return;
+        }
 
         setMessageText('');
         inputRef.current?.focus();
@@ -77,7 +83,7 @@ const MatchChat: React.FC<MatchChatProps> = ({
         );
     };
 
-    if (isMinimized) {
+    if (allowMinimize && isMinimized) {
         return (
             <Card className="bg-zinc-900/90 border-zinc-800 fixed bottom-4 right-4 w-72 z-50 shadow-2xl">
                 <div
@@ -107,14 +113,16 @@ const MatchChat: React.FC<MatchChatProps> = ({
                     <MessageCircle className="w-4 h-4 text-cyan-400" />
                     <span className="text-white font-medium text-sm">Match Chat</span>
                 </div>
-                <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 w-7 p-0 hover:bg-zinc-800"
-                    onClick={() => setIsMinimized(true)}
-                >
-                    <Minimize2 className="w-4 h-4 text-zinc-400" />
-                </Button>
+                {allowMinimize && (
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 hover:bg-zinc-800"
+                        onClick={() => setIsMinimized(true)}
+                    >
+                        <Minimize2 className="w-4 h-4 text-zinc-400" />
+                    </Button>
+                )}
             </div>
 
             {/* Messages */}
