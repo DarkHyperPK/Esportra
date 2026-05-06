@@ -1845,6 +1845,7 @@ const TournamentDashboard = () => {
                         stages={stages}
                         onUpdate={() => refetchDashboard()}
                         game={tournament.game || ''}
+                        isPublic={tournament.is_public}
                       />
                     )}
                   </TabTransition>

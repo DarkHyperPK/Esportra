@@ -60,6 +60,8 @@ export interface DashboardParticipant {
     gamer_tag: string | null;
     registered_at: string;
     created_at: string;
+    checked_in_at: string | null;
+    is_mock: boolean;
     user?: {
         username: string;
         avatar_url: string | null;
@@ -144,6 +146,8 @@ export function useTournamentDashboard(slug: string | undefined) {
                 gamer_tag:        p.gamer_tag ?? null,
                 registered_at:    p.registration_date ?? p.created_at,
                 created_at:       p.created_at,
+                checked_in_at:    p.checked_in_at ?? null,
+                is_mock:          p.is_mock === true || p.is_mock === 'true',
                 user:             p.username ? { username: p.username, avatar_url: null, full_name: null } : undefined,
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));

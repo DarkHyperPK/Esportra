@@ -24,9 +24,10 @@ interface StageManagementTabProps {
     stages: TournamentStage[];
     onUpdate: () => void;
     game: string;
+    isPublic?: boolean;
 }
 
-export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game }) => {
+export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false }) => {
     const { toast } = useToast();
     const navigate = useNavigate();
     const { slug } = useParams<{ slug: string }>();
@@ -366,16 +367,20 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 })).filter(t => t.id);
             }
             if (teams.length < 2) {
-                // No real participants — generate a null-slotted TBD bracket from stage capacity.
-                // Do NOT create fake team objects with string IDs: brkt_matches.team1_id is a
-                // UUID FK on the teams table — non-UUID strings cause a Postgres cast error (500).
-                // Instead, pass teams=[] and let bracketSize drive the structure so all slots
-                // are null (TBD). bracketSize is set after the format block; capture capacity here.
+                if (!isPublic) {
+                    // Draft mode: refuse empty brackets — organizer must generate mock teams first.
+                    toast({
+                        title: 'No participants yet',
+                        description: 'Use Mock Tournament Mode to generate fictitious teams before generating a bracket.',
+                        variant: 'destructive',
+                    });
+                    return;
+                }
+
+                // Published tournament with real but sparse registrations — generate TBD bracket.
                 const capacity = stage.capacity ? Number(stage.capacity) : (stage.stage_order === 1 ? 8 : 4);
                 const tbdSlots = Math.max(capacity, 2);
                 teams = [];
-                // We'll override bracketSize after the format block using this value.
-                // Stored on a local variable so the format-specific logic can still run normally.
                 (teams as any).__tbdSize = tbdSlots;
                 toast({
                     title: 'Generating empty bracket',
