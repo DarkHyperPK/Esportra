@@ -91,6 +91,7 @@ export interface TournamentDashboardData {
     stages: DashboardStage[];
     isOrganizer: boolean;
     staffPermissions: string[];
+    mockCount: number;
 }
 
 export function useTournamentDashboard(slug: string | undefined) {
@@ -111,6 +112,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 stages: any[];
                 isOrganizer: boolean;
                 staffPermissions: string[] | null;
+                mockCount?: number;
             }>(`/api/tournaments/${encodeURIComponent(identifier)}`);
 
             const t = result.tournament;
@@ -160,6 +162,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 stages:           mappedStages,
                 isOrganizer:      result.isOrganizer,
                 staffPermissions: result.staffPermissions ?? [],
+                mockCount:        result.mockCount ?? 0,
             };
         },
         enabled:              !!slug,

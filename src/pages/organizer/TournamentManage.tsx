@@ -97,6 +97,8 @@ import { GroupManagementTab } from '@/components/organizer/tabs/GroupManagementT
 import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
 import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
+import { MockModePanel } from '@/components/tournament/MockModePanel';
+import { useMockTournament } from '@/hooks/useMockTournament';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 const PARTICIPANTS_PAGE_SIZE = 24;
@@ -299,6 +301,7 @@ const TournamentDashboard = () => {
   const stages = dashboardData?.stages || [];
   const isOrganizer = dashboardData?.isOrganizer || false;
   const staffPermissions = (dashboardData?.staffPermissions || []) as StaffPermission[];
+  const mockCount = dashboardData?.mockCount ?? 0;
 
   // BR game results management
   const isBR = isBattleRoyale(tournament?.game || '');
@@ -357,6 +360,13 @@ const TournamentDashboard = () => {
   const [hasStaffAccess, setHasStaffAccess] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [participantsPage, setParticipantsPage] = useState(1);
+  const [publishMockGuardOpen, setPublishMockGuardOpen] = useState(false);
+
+  const { clear: clearMockForPublish } = useMockTournament({
+    tournamentId: tournament?.id ?? '',
+    slug: slug ?? '',
+    userId: user?.id,
+  });
 
   const activeParticipants = useMemo(
     () => participants.filter((participant) => !['rejected', 'cancelled', 'disqualified'].includes(participant.status)),
@@ -1513,21 +1523,67 @@ const TournamentDashboard = () => {
             <div className="flex flex-col items-end gap-3 self-end sm:self-auto">
               <div className="flex flex-wrap items-center justify-end gap-3 mt-auto">
                 {isOrganizer && (tournament.status === 'draft' || !tournament.is_public) && (
-                  <Button
-                    onClick={async () => {
-                      try {
-                        await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
-                        refetchDashboard();
-                        toast({ title: 'Tournament Published!', description: 'Your tournament is now live and public.' });
-                      } catch (err: any) {
-                        toast({ title: 'Error', description: err.message, variant: 'destructive' });
-                      }
-                    }}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.3)] group"
-                  >
-                    <Globe className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
-                    Publish Tournament
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => {
+                        if (mockCount > 0) {
+                          setPublishMockGuardOpen(true);
+                        } else {
+                          (async () => {
+                            try {
+                              await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
+                              refetchDashboard();
+                              toast({ title: 'Tournament Published!', description: 'Your tournament is now live and public.' });
+                            } catch (err: any) {
+                              toast({ title: 'Error', description: err.message, variant: 'destructive' });
+                            }
+                          })();
+                        }
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.3)] group"
+                    >
+                      <Globe className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
+                      Publish Tournament
+                    </Button>
+
+                    {/* Mock-participants-exist guard before publish */}
+                    <AlertDialog open={publishMockGuardOpen} onOpenChange={setPublishMockGuardOpen}>
+                      <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-amber-400" />
+                            Mock teams detected
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="text-zinc-400">
+                            This tournament has {mockCount} mock team{mockCount !== 1 ? 's' : ''} from simulation
+                            mode. They must be removed before publishing. Click "Clear & Publish" to remove
+                            them and publish immediately.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="bg-transparent border-white/10 hover:bg-white/5">
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            onClick={async () => {
+                              try {
+                                await clearMockForPublish.mutateAsync();
+                                await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
+                                refetchDashboard();
+                                toast({ title: 'Tournament Published!', description: 'Mock data cleared and tournament is now live.' });
+                              } catch (err: any) {
+                                toast({ title: 'Publish failed', description: err.message, variant: 'destructive' });
+                              }
+                              setPublishMockGuardOpen(false);
+                            }}
+                          >
+                            Clear & Publish
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
                 )}
 
                 {isOrganizer && tournament.status !== 'completed' && tournament.status !== 'draft' && (
@@ -1711,6 +1767,19 @@ const TournamentDashboard = () => {
                           <h2 className="text-2xl font-bold text-white mb-3">{tournament.name}</h2>
                           <p className="text-gray-300 leading-relaxed font-medium">{tournament.description || 'No description provided.'}</p>
                         </div>
+
+                        {/* Mock Mode Panel — only visible to organizer while tournament is in draft */}
+                        {isOrganizer && tournament.status === 'draft' && (
+                          <div className="mb-6">
+                            <MockModePanel
+                              tournamentId={tournament.id}
+                              slug={slug ?? ''}
+                              maxTeams={tournament.max_teams}
+                              mockCount={mockCount}
+                            />
+                          </div>
+                        )}
+
                         <div className="w-full h-px bg-white/5 my-6" />
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-0 mb-8">
                           <div className="flex flex-col lg:border-r border-white/10 px-4 gap-1">
