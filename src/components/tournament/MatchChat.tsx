@@ -160,7 +160,10 @@ const MatchChat: React.FC<MatchChatProps> = ({
                             <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                                 <div className="flex items-center gap-2 mb-1">
                                     {getTeamBadge(msg.team_id)}
-                                    <span className="text-xs text-zinc-500">{msg.sender_name}</span>
+                                    <span className="text-xs text-zinc-500">
+                                        {msg.sender_name}
+                                        {(msg as any).is_organizer && <span className="text-cyan-400 ml-1">( organizer )</span>}
+                                    </span>
                                     <span className="text-xs text-zinc-600">
                                         {format(new Date(msg.created_at), 'h:mm a')}
                                     </span>
