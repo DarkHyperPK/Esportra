@@ -193,11 +193,17 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   const { matches: adaptedMatches, teamCount } = useMemo(() => {
     if (propMatches.length > 0) return { matches: propMatches, teamCount: propTeamCount };
 
-    // Preferred: Cache 
+    // Preferred: Cache
     if (graphData?.version?.cached_ui_state) {
-      const cached = graphData.version.cached_ui_state;
-      const count = Math.max(cached.filter((m: any) => m.bracketSide === 'winners' && m.round === 1).length * 2, 4);
-      return { matches: cached, teamCount: count };
+      const raw = graphData.version.cached_ui_state;
+      // Dapper returns jsonb as a string; parse it defensively
+      const cached: any = typeof raw === 'string'
+        ? (() => { try { return JSON.parse(raw); } catch { return null; } })()
+        : raw;
+      if (Array.isArray(cached) && cached.length > 0) {
+        const count = Math.max(cached.filter((m: any) => m.bracketSide === 'winners' && m.round === 1).length * 2, 4);
+        return { matches: cached, teamCount: count };
+      }
     }
 
     // Fallback: Realtime adaptation for backwards compatibility / uninitialized cache
