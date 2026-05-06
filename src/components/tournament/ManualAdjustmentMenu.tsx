@@ -138,8 +138,7 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
                         team2Score,
                     });
 
-                    // Invalidate to sync with server truth
-                    await queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
+                    // Invalidate match-specific queries - bracket-graph updates via SignalR broadcast
                     await queryClient.invalidateQueries({ queryKey: ['match-result-reports', rawMatchId] });
                     await queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
 
