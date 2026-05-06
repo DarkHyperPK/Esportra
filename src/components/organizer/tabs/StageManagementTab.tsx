@@ -368,16 +368,19 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     logo_url: sp.teams?.logo_url
                 })).filter(t => t.id);
             }
-
             if (teams.length < 2) {
+                // No participants yet — build TBD placeholder seeds from stage capacity
+                const capacity = stage.capacity ? Number(stage.capacity) : (stage.stage_order === 1 ? 8 : 4);
+                const placeholderCount = Math.max(capacity, 2);
+                teams = Array.from({ length: placeholderCount }, (_, i) => ({
+                    id: `tbd-${i + 1}`,
+                    name: `TBD ${i + 1}`,
+                    logo_url: null,
+                }));
                 toast({
-                    title: 'Not Enough Teams',
-                    description: useCheckInOnly
-                        ? 'Need at least 2 checked-in teams to generate matches. Ensure participants have checked in.'
-                        : 'Need at least 2 registered teams to generate matches.',
-                    variant: 'destructive'
+                    title: 'Generating empty bracket',
+                    description: `No participants found — bracket created with ${placeholderCount} TBD slots.`,
                 });
-                return;
             }
 
             // Clean up any existing bracket for this stage before re-generating
@@ -1104,5 +1107,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         </>
     );
 };
+
+
 
 

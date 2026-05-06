@@ -1522,7 +1522,7 @@ const TournamentDashboard = () => {
             {/* Right: Actions & Status */}
             <div className="flex flex-col items-end gap-3 self-end sm:self-auto">
               <div className="flex flex-wrap items-center justify-end gap-3 mt-auto">
-                {isOrganizer && (tournament.status === 'draft' || !tournament.is_public) && (
+                {isOrganizer && (!tournament.is_public || !tournament.is_public) && (
                   <>
                     <Button
                       onClick={() => {
@@ -1769,7 +1769,7 @@ const TournamentDashboard = () => {
                         </div>
 
                         {/* Mock Mode Panel — only visible to organizer while tournament is in draft */}
-                        {isOrganizer && tournament.status === 'draft' && (
+                        {isOrganizer && !tournament.is_public && (
                           <div className="mb-6">
                             <MockModePanel
                               tournamentId={tournament.id}
@@ -1818,7 +1818,7 @@ const TournamentDashboard = () => {
                 <TabsContent value="stages" forceMount key="stages">
                   <TabTransition direction={direction}>
                     {/* Mock Mode panel pinned above stages when in draft — easy access from here */}
-                    {isOrganizer && tournament.status === 'draft' && (
+                    {isOrganizer && !tournament.is_public && (
                       <div className="mb-4">
                         <MockModePanel
                           tournamentId={tournament.id}
@@ -2399,4 +2399,6 @@ export default function TournamentDashboardWithBoundary(props) {
     </ErrorBoundary>
   );
 } 
+
+
 
