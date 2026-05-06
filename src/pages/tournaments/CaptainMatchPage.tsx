@@ -1059,11 +1059,12 @@ const CaptainMatchPage = () => {
 
                         </div>
 
-                        {!isOrganizerMatchView && userTeamId && (
+                        {(userTeamId || isOrganizerMatchView) && (
                             <CaptainMatchHistory
                                 tournamentId={tournament.id}
                                 teamId={userTeamId}
                                 matches={matches}
+                                isOrganizer={isOrganizerMatchView}
                             />
                         )}
                     </div>

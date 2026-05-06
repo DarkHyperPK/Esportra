@@ -10,8 +10,9 @@ import { FullScoreboard, MAP_THEMES, getMapSplash } from './FullScoreboard';
 
 interface Props {
     tournamentId: string;
-    teamId: string;
+    teamId?: string;
     matches: BracketMatch[];
+    isOrganizer?: boolean;
 }
 
 interface GameDetail {
@@ -42,7 +43,7 @@ const GameCard: React.FC<{
     onToggle: () => void;
     team1Name: string;
     team2Name: string;
-    teamId: string;
+    teamId?: string;
     opposingTeamId?: string;
     matchTeam1Id?: string;
 }> = ({ game, isTeam1, isExpanded, onToggle, team1Name, team2Name, teamId, opposingTeamId, matchTeam1Id }) => {
@@ -100,13 +101,13 @@ const GameCard: React.FC<{
     );
 };
 
-const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches }) => {
+const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches, isOrganizer }) => {
     const [expandedMatches, setExpandedMatches] = useState<Record<string, boolean>>({});
     const [expandedGames, setExpandedGames] = useState<Record<string, boolean>>({});
 
+    // Organizer mode: show all completed matches. Team mode: show only team's matches.
     const pastMatches = matches.filter(m =>
-        (m.team1?.id === teamId || m.team2?.id === teamId) &&
-        m.status === 'completed'
+        m.status === 'completed' && (isOrganizer || !teamId || m.team1?.id === teamId || m.team2?.id === teamId)
     ).sort((a, b) => Number(b.matchNumber) - Number(a.matchNumber));
 
     const { data: rawGameDetails, isLoading: detailsLoading } = useQuery({
@@ -180,7 +181,9 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches })
                                                         {isWin ? 'W' : 'L'}
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-zinc-100 group-hover:text-white transition-colors">vs {opponentName || 'TBD'}</span>
+                                                        <span className="text-sm font-bold text-zinc-100 group-hover:text-white transition-colors">
+                                                            {isOrganizer ? `${match.team1?.name || 'Team 1'} vs ${match.team2?.name || 'Team 2'}` : `vs ${opponentName || 'TBD'}`}
+                                                        </span>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Match #{match.matchNumber}</span>
                                                             {games.length > 0 && <span className="text-[10px] text-zinc-600">· {games.map(g => g.map_name).join(', ')}</span>}
