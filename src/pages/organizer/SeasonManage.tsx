@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Calendar, Trophy, RefreshCw, Plus, Settings } from 'lucide-react';
-import { StandingsCard } from '@/components/organizer/season/StandingsCard';
-import { PointRulesCard } from '@/components/organizer/season/PointRulesCard';
-import { AdvancementRulesCard } from '@/components/organizer/season/AdvancementRulesCard';
+import StandingsCard from '@/components/organizer/season/StandingsCard';
+import PointRulesCard from '@/components/organizer/season/PointRulesCard';
+import AdvancementRulesCard from '@/components/organizer/season/AdvancementRulesCard';
 
 const SeasonManage = () => {
   const { id } = useParams<{ id: string }>();
