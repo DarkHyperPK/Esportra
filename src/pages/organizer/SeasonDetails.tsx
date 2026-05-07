@@ -37,28 +37,25 @@ import {
   useSyncSeasonStaff,
   useUpdateSeasonQualification,
 } from '@/hooks/useSeason';
-import { usePublishSeason, useUpdateSeason, useArchiveSeason, useCancelSeason, useDuplicateSeason, useSeasonTournaments, useSeasonAdvancement, useSeasonAuditLog } from '@/hooks/useSeasons';
+import { usePublishSeason, useUpdateSeason, useArchiveSeason, useCancelSeason, useDuplicateSeason, useSeasonTournaments, useSeasonAuditLog } from '@/hooks/useSeasons';
 import { useSeasonRealtime } from '@/hooks/useSeasonRealtime';
 import { useHub } from '@/contexts/SignalRContext';
 import { HubPaths } from '@/lib/signalrClient';
 import { HubConnectionState } from '@microsoft/signalr';
 import { useToast } from '@/hooks/use-toast';
 import { seasonBasicsSchema } from '@/schemas/seasonSchema';
+import { cn } from '@/lib/utils';
 import type {
-  AdvancementConnection,
-  SeasonNodeDraft,
   SeasonBuilderNode,
-  SeasonNodeStatus,
   SeasonNodeType,
   SeasonParticipantMode,
   SeasonQualificationType,
   SeasonRuleDraft,
   SeasonStaffMember,
   SeasonStatus,
-  SeasonTreeNode,
   UpdateSeasonPayload,
 } from '@/types/season';
-import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch, AlertCircle, ArrowRight, Bell, Clock, Info, Shield, Activity, X, AlertTriangle, Lock, ShieldOff, Wifi, WifiOff } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, FileText, TrendingUp, GitBranch, AlertCircle, Clock, Info, Activity, X, AlertTriangle, Lock, ShieldOff, Wifi, WifiOff } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,8 +87,6 @@ const TABS = [
 
 const SEASON_STATUSES: SeasonStatus[] = ['draft', 'published', 'active', 'completed', 'archived'];
 const PARTICIPANT_MODES: SeasonParticipantMode[] = ['team', 'solo'];
-const NODE_TYPES: SeasonNodeType[] = ['root', 'qualifier', 'event', 'stage', 'final', 'custom'];
-const NODE_STATUSES: SeasonNodeStatus[] = ['draft', 'scheduled', 'live', 'completed', 'archived'];
 const STAFF_ROLES: SeasonStaffMember['role'][] = ['co_organizer', 'admin'];
 const QUALIFICATION_TYPES: SeasonQualificationType[] = ['qualified', 'wildcard', 'reserve'];
 
@@ -163,7 +158,6 @@ const SeasonDetails = () => {
   const cancelSeason = useCancelSeason();
   const duplicateSeason = useDuplicateSeason();
   const tournamentsQuery = useSeasonTournaments(seasonId ?? '');
-  const advancementQuery = useSeasonAdvancement(seasonId ?? '');
   const auditLogQuery = useSeasonAuditLog(seasonId ?? '');
 
   // Real-time season updates
@@ -190,8 +184,6 @@ const SeasonDetails = () => {
   const [nodeRows, setNodeRows] = useState<SeasonBuilderNode[]>([]);
   const [ruleRows, setRuleRows] = useState<SeasonRuleDraft[]>([]);
   const [qualificationBusyId, setQualificationBusyId] = useState<string | null>(null);
-  const [announceTitle, setAnnounceTitle] = useState('');
-  const [announceBody, setAnnounceBody] = useState('');
   const [showStructureSaveConfirm, setShowStructureSaveConfirm] = useState(false);
   const [rosterLock, setRosterLock] = useState(false);
   const [allowRosterChangesBetween, setAllowRosterChangesBetween] = useState(true);
@@ -1038,7 +1030,6 @@ const SeasonDetails = () => {
                 onChange={setNodeRows}
                 onSave={handleNodesSaveWithGuard}
                 isSaving={syncNodes.isPending}
-                surface="manage"
               />
             </div>
 
