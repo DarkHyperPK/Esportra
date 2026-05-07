@@ -9,6 +9,7 @@ import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy, Workflow } from 'lucide-react';
 import { WizardContainer } from '@/components/tournament/wizard';
+import SeasonWizard from '@/components/organizer/season/SeasonWizard';
 import { Button } from '@/components/ui/button';
 
 const CreateTournament = () => {
@@ -22,14 +23,7 @@ const CreateTournament = () => {
 
   const canCreate = canCreateTournaments || admin.hasPermission('tournaments:create');
   const requestedMode = searchParams.get('mode');
-  const creationMode = requestedMode === 'event' ? requestedMode : null;
-
-  // Handle season selection - navigate to season creation page
-  useEffect(() => {
-    if (requestedMode === 'season') {
-      navigate('/organizer/seasons/create');
-    }
-  }, [requestedMode, navigate]);
+  const creationMode = requestedMode === 'event' ? 'event' : requestedMode === 'season' ? 'season' : null;
 
   // Check if user has an organization
   useEffect(() => {
@@ -167,38 +161,34 @@ const CreateTournament = () => {
               <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[#0d0d10] p-5 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-start gap-4">
                   <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white">
-                    <Trophy className="h-5 w-5" />
+                    {creationMode === 'season' ? <Workflow className="h-5 w-5" /> : <Trophy className="h-5 w-5" />}
                   </span>
                   <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-rose-400">Single event flow</p>
-                    <h1 className="mt-1 text-2xl font-black tracking-tight">Create one tournament with multiple stages</h1>
+                    <p className="text-xs uppercase tracking-[0.22em] text-rose-400">
+                      {creationMode === 'season' ? 'Season flow' : 'Single event flow'}
+                    </p>
+                    <h1 className="mt-1 text-2xl font-black tracking-tight">
+                      {creationMode === 'season' ? 'Create a season with tournaments' : 'Create one tournament with multiple stages'}
+                    </h1>
                     <p className="mt-2 text-sm text-zinc-400">
-                      Use the existing tournament wizard for one event with groups, playoffs, match settings, and registration.
+                      {creationMode === 'season'
+                        ? 'Set up a season to link multiple tournaments and track standings across events.'
+                        : 'Use the existing tournament wizard for one event with groups, playoffs, match settings, and registration.'}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    className="border-white/15 bg-white/5 text-white hover:bg-white/10"
-                    onClick={() => navigate('/organizer/seasons')}
-                  >
-                    <Workflow className="mr-2 h-4 w-4" />
-                    Manage Seasons
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-white/15 bg-white/5 text-white hover:bg-white/10"
-                    onClick={() => navigate('/tournaments/create')}
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to options
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+                  onClick={() => setSearchParams({})}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to options
+                </Button>
               </div>
             </div>
-            <WizardContainer />
+            {creationMode === 'season' ? <SeasonWizard /> : <WizardContainer />}
           </>
         )}
       </main>

@@ -106,7 +106,7 @@ const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
               onMouseLeave={() => setActive(null)}
               onFocus={() => setActive(mode)}
               onBlur={() => setActive(null)}
-              className="relative flex cursor-pointer flex-col items-center justify-center overflow-hidden border-r border-white/[0.04] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+              className="relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden border-r border-white/[0.04] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
               style={{
                 minHeight: 'calc(100dvh - 52px)',
                 opacity: isActive ? 1 : 0.8,
