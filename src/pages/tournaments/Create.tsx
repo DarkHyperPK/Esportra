@@ -24,6 +24,13 @@ const CreateTournament = () => {
   const requestedMode = searchParams.get('mode');
   const creationMode = requestedMode === 'event' ? requestedMode : null;
 
+  // Handle season selection
+  useEffect(() => {
+    if (requestedMode === 'season') {
+      navigate('/organizer/seasons');
+    }
+  }, [requestedMode, navigate]);
+
   // Check if user has an organization
   useEffect(() => {
     const checkOrganization = async () => {

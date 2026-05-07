@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Trophy } from 'lucide-react';
+import { ArrowRight, Trophy, Workflow } from 'lucide-react';
 import { fetchGameData, type CachedGame } from '@/hooks/useRawgGame';
 
-type CreationMode = 'event';
+type CreationMode = 'event' | 'season';
 
 interface CreationModeHubProps {
   onSelect: (mode: CreationMode) => void;
@@ -56,6 +56,20 @@ const PANELS: PanelDef[] = [
     icon: Trophy,
     btnClass: 'bg-rose-500 hover:bg-rose-400 text-white',
     dotClass: 'bg-rose-400',
+  },
+  {
+    mode: 'season',
+    title: 'Season',
+    tagline: 'A series of connected tournaments with point standings.',
+    points: [
+      'Link multiple tournaments into a season',
+      'Track team standings across events',
+      'Set point rules and advancement criteria',
+    ],
+    accent: 'text-emerald-400',
+    icon: Workflow,
+    btnClass: 'bg-emerald-500 hover:bg-emerald-400 text-white',
+    dotClass: 'bg-emerald-400',
   },
 ];
 
