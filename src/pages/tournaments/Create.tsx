@@ -7,7 +7,7 @@ import { apiClient } from '@/lib/apiClient';
 import CreationModeHub from '@/components/tournament/CreationModeHub';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy, Workflow } from 'lucide-react';
 import { WizardContainer } from '@/components/tournament/wizard';
 import { Button } from '@/components/ui/button';
 
@@ -171,14 +171,24 @@ const CreateTournament = () => {
                   </div>
                 </div>
 
-                <Button
-                  variant="outline"
-                  className="border-white/15 bg-white/5 text-white hover:bg-white/10"
-                  onClick={() => navigate('/tournaments/create')}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to options
-                </Button>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+                    onClick={() => navigate('/organizer/seasons')}
+                  >
+                    <Workflow className="mr-2 h-4 w-4" />
+                    Manage Seasons
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+                    onClick={() => navigate('/tournaments/create')}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to options
+                  </Button>
+                </div>
               </div>
             </div>
             <WizardContainer />
