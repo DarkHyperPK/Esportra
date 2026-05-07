@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2, Plus, Calendar, Trophy, PlayCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Trash2, Plus, Calendar, Trophy, PlayCircle, XCircle, AlertTriangle, Workflow } from 'lucide-react';
+import Footer from '@/components/Footer';
 
 const ManageSeasons = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -60,29 +61,51 @@ const ManageSeasons = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-transparent text-white">
-        <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen bg-[#050505] text-white flex flex-col">
+        {/* Background grid */}
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
+          <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
+        </div>
+
+        <div className="relative z-10 flex-grow container mx-auto px-4 py-8">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold mb-2">My Seasons</h1>
-              <p className="text-gray-400">Loading seasons...</p>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-[1px] bg-rose-500" />
+                <span className="text-rose-500 font-mono text-xs tracking-widest uppercase">SEASON_MANAGEMENT</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight">My Seasons</h1>
+              <p className="text-zinc-500 mt-1">Loading seasons...</p>
             </div>
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col">
+      {/* Background grid */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
+      </div>
+
+      <div className="relative z-10 flex-grow container mx-auto px-4 py-8 md:py-12">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-2">My Seasons</h1>
-            <p className="text-gray-400">Manage your seasons and tournaments</p>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-[1px] bg-rose-500" />
+              <span className="text-rose-500 font-mono text-xs tracking-widest uppercase">SEASON_MANAGEMENT</span>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight">My Seasons</h1>
+            <p className="text-zinc-500 mt-1">Manage your seasons and tournaments</p>
           </div>
           <Link to="/organizer/seasons/create">
-            <Button>
+            <Button className="bg-rose-500 hover:bg-rose-600 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Create Season
             </Button>
@@ -90,23 +113,30 @@ const ManageSeasons = () => {
         </div>
 
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="all">All Seasons ({seasons.length})</TabsTrigger>
-            <TabsTrigger value="draft">Draft</TabsTrigger>
-            <TabsTrigger value="published">Published</TabsTrigger>
-            <TabsTrigger value="live">Live</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsList className="mb-6 bg-[#0a0a0c] border border-white/10">
+            <TabsTrigger value="all" className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-400">All Seasons ({seasons.length})</TabsTrigger>
+            <TabsTrigger value="draft" className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-400">Draft</TabsTrigger>
+            <TabsTrigger value="published" className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-400">Published</TabsTrigger>
+            <TabsTrigger value="live" className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-400">Live</TabsTrigger>
+            <TabsTrigger value="completed" className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-400">Completed</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab}>
             {seasons.length === 0 ? (
-              <div className="text-center py-12">
-                <Calendar className="w-12 h-12 mx-auto text-gray-600 mb-4" />
-                <p className="text-gray-400 mb-4">
-                  {activeTab === 'all' ? "You haven't created any seasons yet" : `No ${activeTab} seasons found`}
+              <div className="text-center py-16 md:py-24">
+                <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-rose-500/10 to-orange-500/10 border border-rose-500/30 mb-6">
+                  <Workflow className="h-12 w-12 text-rose-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  {activeTab === 'all' ? "No seasons yet" : `No ${activeTab} seasons`}
+                </h2>
+                <p className="text-zinc-400 mb-6 max-w-md mx-auto">
+                  {activeTab === 'all'
+                    ? "Create your first season to start organizing tournaments and tracking standings."
+                    : `You don't have any ${activeTab} seasons at the moment.`}
                 </p>
                 <Link to="/organizer/seasons/create">
-                  <Button>
+                  <Button className="bg-rose-500 hover:bg-rose-600 text-white">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Your First Season
                   </Button>
@@ -115,31 +145,31 @@ const ManageSeasons = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {seasons.map((season) => (
-                  <Card key={season.id} className="bg-[#0d0d10] border border-white/10 hover:border-white/20 transition-colors">
+                  <Card key={season.id} className="bg-[#0a0a0c] border border-white/10 hover:border-rose-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-rose-500/5">
                     <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg text-white">{season.name}</CardTitle>
-                        <Badge className={getStatusColor(season.status)}>
+                      <div className="flex justify-between items-start mb-3">
+                        <CardTitle className="text-lg text-white font-semibold">{season.name}</CardTitle>
+                        <Badge className={getStatusColor(season.status)} variant="secondary">
                           {season.status}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-400">{season.game}</p>
+                      <p className="text-sm text-zinc-400">{season.game}</p>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm text-gray-300">
-                          <Trophy className="w-4 h-4" />
-                          <span>{season.tournament_count} tournaments</span>
+                        <div className="flex items-center gap-2 text-sm text-zinc-300">
+                          <Trophy className="w-4 h-4 text-rose-400" />
+                          <span>{season.tournament_count} tournament{season.tournament_count !== 1 ? 's' : ''}</span>
                         </div>
                         {season.start_date && (
-                          <div className="flex items-center gap-2 text-sm text-gray-300">
-                            <Calendar className="w-4 h-4" />
-                            <span>{new Date(season.start_date).toLocaleDateString()}</span>
+                          <div className="flex items-center gap-2 text-sm text-zinc-300">
+                            <Calendar className="w-4 h-4 text-rose-400" />
+                            <span>{new Date(season.start_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                           </div>
                         )}
-                        <div className="flex gap-2 pt-2">
-                          <Link to={`/organizer/seasons/${season.id}`} className="flex-1">
-                            <Button variant="outline" size="sm" className="w-full border-gray-700 hover:bg-white/10">
+                        <div className="flex gap-2 pt-3">
+                          <Link to={`/organizer/season/${season.id}`} className="flex-1">
+                            <Button variant="outline" size="sm" className="w-full border-white/10 bg-white/5 hover:bg-white/10 text-white">
                               Manage
                             </Button>
                           </Link>
@@ -148,7 +178,7 @@ const ManageSeasons = () => {
                               size="sm"
                               onClick={() => handlePublish(season.id)}
                               disabled={publishSeason.isPending}
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-emerald-600 hover:bg-emerald-700"
                             >
                               <PlayCircle className="w-4 h-4" />
                             </Button>
@@ -184,27 +214,27 @@ const ManageSeasons = () => {
 
       {/* Custom Delete Confirmation Modal */}
       {deleteModalOpen && seasonToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-[#0d0d10] border border-white/10 rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-red-500/10 rounded-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-[#0a0a0c] border border-white/10 rounded-2xl p-6 max-w-md w-full animate-in fade-in zoom-in duration-200">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="p-3 bg-red-500/10 rounded-xl">
                 <AlertTriangle className="w-6 h-6 text-red-500" />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-white mb-2">Delete Season</h3>
-                <p className="text-gray-400 text-sm mb-4">
-                  Are you sure you want to delete "{seasonToDelete.name}"? This will delete the season and unlink all associated tournaments. This action cannot be undone.
+                <p className="text-zinc-400 text-sm">
+                  Are you sure you want to delete <span className="text-white font-medium">"{seasonToDelete.name}"</span>? This will delete the season and unlink all associated tournaments. This action cannot be undone.
                 </p>
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => {
                   setDeleteModalOpen(false);
                   setSeasonToDelete(null);
                 }}
-                className="flex-1 border-gray-700 hover:bg-white/10"
+                className="flex-1 border-white/10 bg-white/5 hover:bg-white/10 text-white"
               >
                 Cancel
               </Button>
@@ -212,7 +242,7 @@ const ManageSeasons = () => {
                 variant="destructive"
                 onClick={handleDeleteConfirm}
                 disabled={deleteSeason.isPending}
-                className="flex-1"
+                className="flex-1 bg-red-600 hover:bg-red-700"
               >
                 {deleteSeason.isPending ? 'Deleting...' : 'Delete'}
               </Button>
@@ -220,6 +250,7 @@ const ManageSeasons = () => {
           </div>
         </div>
       )}
+      <Footer />
     </div>
   );
 };
