@@ -48,11 +48,7 @@ const runMigrations = () => {
   if (safeGet(MIGRATION_FLAG) === '1') return;
 
   try {
-    // Season builder templates tutorial: `ssb-v2` (value '1') -> `esportra_tour_season_templates_seen`
-    const legacySsb = window.localStorage.getItem('ssb-v2');
-    if (legacySsb === '1' && !hasSeenTour('season_templates')) {
-      markTourSeen('season_templates');
-    }
+    // Season feature removed - no migrations needed
   } catch {
     /* ignore */
   }

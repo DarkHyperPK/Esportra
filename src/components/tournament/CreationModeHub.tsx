@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Trophy, Workflow } from 'lucide-react';
+import { ArrowRight, Trophy } from 'lucide-react';
 import { fetchGameData, type CachedGame } from '@/hooks/useRawgGame';
 
-type CreationMode = 'event' | 'season';
+type CreationMode = 'event';
 
 interface CreationModeHubProps {
   onSelect: (mode: CreationMode) => void;
 }
 
-const useHubMedia = (): Partial<Record<CreationMode, string>> => {
-  const [media, setMedia] = useState<Partial<Record<CreationMode, string>>>({});
+const useHubMedia = (): string | undefined => {
+  const [media, setMedia] = useState<string | undefined>();
 
   useEffect(() => {
     let alive = true;
@@ -18,11 +18,8 @@ const useHubMedia = (): Partial<Record<CreationMode, string>> => {
 
     void (async () => {
       try {
-        const [eventData, seasonData] = await Promise.all([
-          fetchGameData('Valorant', { skipRawg: true }),
-          fetchGameData('Dota 2', { skipRawg: true }),
-        ]);
-        if (alive) setMedia({ event: pick(eventData), season: pick(seasonData) });
+        const eventData = await fetchGameData('Valorant', { skipRawg: true });
+        if (alive) setMedia(pick(eventData));
       } catch {
         // decorative — fail silently
       }
@@ -60,20 +57,6 @@ const PANELS: PanelDef[] = [
     btnClass: 'bg-rose-500 hover:bg-rose-400 text-white',
     dotClass: 'bg-rose-400',
   },
-  {
-    mode: 'season',
-    title: 'Season',
-    tagline: 'A connected series of competitions under one program.',
-    points: [
-      'Drag-and-drop structure builder',
-      'Linked events with qualification paths',
-      'Season-wide standings and points systems',
-    ],
-    accent: 'text-cyan-400',
-    icon: Workflow,
-    btnClass: 'bg-cyan-500 hover:bg-cyan-400 text-white',
-    dotClass: 'bg-cyan-400',
-  },
 ];
 
 const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
@@ -85,7 +68,7 @@ const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
       {/* Top strip */}
       <div className="flex items-center justify-center border-b border-white/[0.05] px-8 py-4">
         <p className="font-body text-[11px] font-medium uppercase tracking-[0.3em] text-zinc-400">
-          Choose format
+          Create tournament
         </p>
       </div>
 
@@ -93,8 +76,7 @@ const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
       <div className="flex flex-1 flex-col sm:flex-row">
         {PANELS.map(({ mode, title, tagline, points, accent, icon: Icon, btnClass, dotClass }) => {
           const isActive = active === mode;
-          const anyActive = active !== null;
-          const image = media[mode];
+          const image = media;
 
           return (
             <div
@@ -113,9 +95,8 @@ const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
               className="relative flex cursor-pointer flex-col items-center justify-center overflow-hidden border-r border-white/[0.04] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
               style={{
                 minHeight: 'calc(100dvh - 52px)',
-                flex: isActive ? '1.18 1 0%' : anyActive ? '0.84 1 0%' : '1 1 0%',
-                opacity: anyActive && !isActive ? 0.52 : 1,
-                transition: 'flex 0.3s ease, opacity 0.2s ease',
+                opacity: isActive ? 1 : 0.8,
+                transition: 'opacity 0.2s ease',
               }}
             >
               {/* Background image */}
@@ -198,4 +179,4 @@ const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
   );
 };
 
-export default CreationModeHub;
+export default CreationModeHub;

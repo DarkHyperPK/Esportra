@@ -145,12 +145,6 @@ export const NotificationDropdown = () => {
             case 'match_ready': return 'bg-rose-500/10 border-rose-500/20';
             case 'veto_completed': return 'bg-blue-500/10 border-blue-500/20';
             case 'match_completed': return 'bg-amber-500/10 border-amber-500/20';
-            case 'season_published': return 'bg-emerald-500/10 border-emerald-500/20';
-            case 'season_registration_open': return 'bg-blue-500/10 border-blue-500/20';
-            case 'season_advancement': return 'bg-emerald-500/10 border-emerald-500/20';
-            case 'season_elimination': return 'bg-red-500/10 border-red-500/20';
-            case 'season_tournament_starting': return 'bg-amber-500/10 border-amber-500/20';
-            case 'season_cancelled': return 'bg-red-500/10 border-red-500/20';
             default: return 'bg-zinc-500/10 border-zinc-500/20';
         }
     };
@@ -190,18 +184,6 @@ export const NotificationDropdown = () => {
                 return <Map className="h-4 w-4 text-blue-400" />;
             case 'match_completed':
                 return <Trophy className="h-4 w-4 text-yellow-400" />;
-            case 'season_published':
-                return <Rocket className="h-4 w-4 text-emerald-400" />;
-            case 'season_registration_open':
-                return <ClipboardList className="h-4 w-4 text-blue-400" />;
-            case 'season_advancement':
-                return <ArrowUpRight className="h-4 w-4 text-emerald-400" />;
-            case 'season_elimination':
-                return <ShieldOff className="h-4 w-4 text-red-400" />;
-            case 'season_tournament_starting':
-                return <Clock className="h-4 w-4 text-amber-400" />;
-            case 'season_cancelled':
-                return <XCircle className="h-4 w-4 text-red-400" />;
             default:
                 return <Info className="h-4 w-4 text-zinc-400" />;
         }
