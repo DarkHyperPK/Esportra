@@ -38,6 +38,10 @@ import {
   useUpdateSeasonQualification,
 } from '@/hooks/useSeason';
 import { usePublishSeason, useUpdateSeason, useArchiveSeason, useCancelSeason, useDuplicateSeason, useSeasonTournaments, useSeasonAdvancement, useSeasonAuditLog } from '@/hooks/useSeasons';
+import { useSeasonRealtime } from '@/hooks/useSeasonRealtime';
+import { useHub } from '@/contexts/SignalRContext';
+import { HubPaths } from '@/lib/signalrClient';
+import { HubConnectionState } from '@microsoft/signalr';
 import { useToast } from '@/hooks/use-toast';
 import { seasonBasicsSchema } from '@/schemas/seasonSchema';
 import type {
@@ -54,7 +58,7 @@ import type {
   SeasonTreeNode,
   UpdateSeasonPayload,
 } from '@/types/season';
-import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch, AlertCircle, ArrowRight, Bell, Clock, Info, Shield, Activity, X, AlertTriangle, Lock, ShieldOff } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch, AlertCircle, ArrowRight, Bell, Clock, Info, Shield, Activity, X, AlertTriangle, Lock, ShieldOff, Wifi, WifiOff } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -161,6 +165,24 @@ const SeasonDetails = () => {
   const tournamentsQuery = useSeasonTournaments(seasonId ?? '');
   const advancementQuery = useSeasonAdvancement(seasonId ?? '');
   const auditLogQuery = useSeasonAuditLog(seasonId ?? '');
+
+  // Real-time season updates
+  useSeasonRealtime({
+    seasonId,
+    enabled: !!seasonId,
+    onSeasonStatusChanged: () => refetch(),
+    onTeamAdvanced: () => refetch(),
+    onAnnouncementPosted: () => refetch(),
+    onQualificationUpdated: () => refetch(),
+    onStandingsUpdated: () => standingsQuery.refetch(),
+    onStructureChanged: () => refetch(),
+  });
+
+  // Connection status for real-time updates
+  const seasonConn = useHub(HubPaths.Season);
+  const connectionStatus = seasonConn?.state === HubConnectionState.Connected ? 'connected' : 
+                          seasonConn?.state === HubConnectionState.Connecting ? 'connecting' :
+                          seasonConn?.state === HubConnectionState.Reconnecting ? 'reconnecting' : 'disconnected';
 
   const [overview, setOverview] = useState<OverviewState>(emptyOverview);
   const [staffRows, setStaffRows] = useState<SeasonStaffMember[]>([]);
@@ -605,6 +627,24 @@ const SeasonDetails = () => {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-400">Season manager</p>
               <Badge className="bg-rose-500/10 text-rose-300 hover:bg-rose-500/10">{data.season.status}</Badge>
               <Badge className="bg-white/10 text-white hover:bg-white/10">{data.season.participantMode}</Badge>
+              {connectionStatus === 'connected' && (
+                <Badge className="bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/10 flex items-center gap-1">
+                  <Wifi className="h-3 w-3" />
+                  Live
+                </Badge>
+              )}
+              {connectionStatus === 'reconnecting' && (
+                <Badge className="bg-amber-500/10 text-amber-300 hover:bg-amber-500/10 flex items-center gap-1">
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  Reconnecting
+                </Badge>
+              )}
+              {connectionStatus === 'disconnected' && (
+                <Badge className="bg-zinc-500/10 text-zinc-400 hover:bg-zinc-500/10 flex items-center gap-1">
+                  <WifiOff className="h-3 w-3" />
+                  Offline
+                </Badge>
+              )}
             </div>
             <h1 className="mt-3 text-4xl font-black tracking-tight">{data.season.name}</h1>
             <p className="mt-3 max-w-3xl text-sm text-zinc-400">
