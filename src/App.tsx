@@ -82,6 +82,7 @@ const TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentL
 const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
 const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
 const ManageSeasons = lazyWithRetry(() => import("./pages/organizer/ManageSeasons"));
+const CreateSeason = lazyWithRetry(() => import("./pages/organizer/CreateSeason"));
 const SeasonManage = lazyWithRetry(() => import("./pages/organizer/SeasonManage"));
 const EditTournament = lazyWithRetry(() => import("./pages/tournaments/Edit"));
 const TournamentBrackets = lazyWithRetry(() => import("./pages/tournaments/Brackets"));
@@ -609,6 +610,11 @@ const AppContent = React.memo(() => {
                 <Route path="/organizer/seasons" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <ManageSeasons />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/seasons/create" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <CreateSeason />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/season/:id" element={

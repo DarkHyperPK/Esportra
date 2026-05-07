@@ -24,10 +24,10 @@ const CreateTournament = () => {
   const requestedMode = searchParams.get('mode');
   const creationMode = requestedMode === 'event' ? requestedMode : null;
 
-  // Handle season selection
+  // Handle season selection - navigate to season creation page
   useEffect(() => {
     if (requestedMode === 'season') {
-      navigate('/organizer/seasons');
+      navigate('/organizer/seasons/create');
     }
   }, [requestedMode, navigate]);
 
