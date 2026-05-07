@@ -4,9 +4,14 @@
  * Groups joined: season:{seasonId} (public), season:staff:{seasonId} (organizers/staff)
  * Events: SeasonStatusChanged, TeamAdvanced, AnnouncementPosted, QualificationUpdated,
  *         StandingsUpdated, StructureChanged
+ *
+ * Features:
+ * - Exponential backoff for reconnection
+ * - Event deduplication
+ * - Graceful offline handling
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { HubConnectionState } from '@microsoft/signalr';
 import { useHub } from '@/contexts/SignalRContext';
@@ -29,6 +34,52 @@ interface Options {
   onStructureChanged?: (payload: SeasonRealtimePayload) => void;
 }
 
+// Event deduplication: track recent event IDs to prevent duplicate processing
+const EVENT_DEDUP_WINDOW = 5000; // 5 seconds
+const eventCache = new Map<string, number>();
+
+function isDuplicateEvent(eventType: string, payload: SeasonRealtimePayload): boolean {
+  const eventId = `${eventType}:${payload.seasonId}:${JSON.stringify(payload)}`;
+  const now = Date.now();
+  
+  // Clean old entries
+  for (const [key, timestamp] of eventCache.entries()) {
+    if (now - timestamp > EVENT_DEDUP_WINDOW) {
+      eventCache.delete(key);
+    }
+  }
+  
+  // Check if duplicate
+  if (eventCache.has(eventId)) {
+    return true;
+  }
+  
+  eventCache.set(eventId, now);
+  return false;
+}
+
+// Exponential backoff for reconnection
+async function withExponentialBackoff(fn: () => Promise<void>, maxRetries = 5): Promise<void> {
+  let retryCount = 0;
+  const baseDelay = 1000; // 1 second
+  const maxDelay = 30000; // 30 seconds
+  
+  while (retryCount < maxRetries) {
+    try {
+      await fn();
+      return;
+    } catch (error) {
+      retryCount++;
+      if (retryCount >= maxRetries) {
+        throw error;
+      }
+      
+      const delay = Math.min(baseDelay * Math.pow(2, retryCount - 1), maxDelay);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
 export function useSeasonRealtime({
   seasonId,
   enabled = true,
@@ -41,6 +92,7 @@ export function useSeasonRealtime({
 }: Options) {
   const conn = useHub(HubPaths.Season);
   const queryClient = useQueryClient();
+  const reconnectAttemptsRef = useRef(0);
 
   useEffect(() => {
     if (!enabled || !seasonId) return;
@@ -54,19 +106,25 @@ export function useSeasonRealtime({
       queryClient.invalidateQueries({ queryKey: ['season-tournaments', seasonId] });
     };
 
-    const wrap = (cb?: (p: SeasonRealtimePayload) => void) =>
+    const wrap = (eventType: string, cb?: (p: SeasonRealtimePayload) => void) =>
       (payload: SeasonRealtimePayload) => {
         if (!active) return;
+        
+        // Deduplicate events
+        if (isDuplicateEvent(eventType, payload)) {
+          return;
+        }
+        
         invalidate();
         cb?.(payload);
       };
 
-    const handleSeasonStatusChanged = wrap(onSeasonStatusChanged);
-    const handleTeamAdvanced = wrap(onTeamAdvanced);
-    const handleAnnouncementPosted = wrap(onAnnouncementPosted);
-    const handleQualificationUpdated = wrap(onQualificationUpdated);
-    const handleStandingsUpdated = wrap(onStandingsUpdated);
-    const handleStructureChanged = wrap(onStructureChanged);
+    const handleSeasonStatusChanged = wrap('SeasonStatusChanged', onSeasonStatusChanged);
+    const handleTeamAdvanced = wrap('TeamAdvanced', onTeamAdvanced);
+    const handleAnnouncementPosted = wrap('AnnouncementPosted', onAnnouncementPosted);
+    const handleQualificationUpdated = wrap('QualificationUpdated', onQualificationUpdated);
+    const handleStandingsUpdated = wrap('StandingsUpdated', onStandingsUpdated);
+    const handleStructureChanged = wrap('StructureChanged', onStructureChanged);
 
     conn.on('SeasonStatusChanged', handleSeasonStatusChanged);
     conn.on('TeamAdvanced', handleTeamAdvanced);
@@ -75,12 +133,37 @@ export function useSeasonRealtime({
     conn.on('StandingsUpdated', handleStandingsUpdated);
     conn.on('StructureChanged', handleStructureChanged);
 
-    const join = () => {
+    const join = async () => {
       if (!active || conn.state !== HubConnectionState.Connected) return;
-      conn.invoke('JoinSeason', seasonId).catch(console.warn);
+      
+      try {
+        await withExponentialBackoff(() => conn.invoke('JoinSeason', seasonId));
+        reconnectAttemptsRef.current = 0; // Reset on success
+      } catch (error) {
+        console.warn('Failed to join season group:', error);
+        reconnectAttemptsRef.current++;
+      }
     };
+
     join();
-    conn.onreconnected(join);
+
+    // Handle reconnection with exponential backoff
+    const handleReconnected = async () => {
+      reconnectAttemptsRef.current = 0;
+      await join();
+    };
+
+    const handleReconnecting = () => {
+      console.log('SignalR reconnecting...');
+    };
+
+    const handleClose = () => {
+      console.log('SignalR connection closed');
+    };
+
+    conn.onreconnected(handleReconnected);
+    conn.onreconnecting(handleReconnecting);
+    conn.onclose(handleClose);
 
     return () => {
       active = false;
@@ -90,8 +173,10 @@ export function useSeasonRealtime({
       conn.off('QualificationUpdated', handleQualificationUpdated);
       conn.off('StandingsUpdated', handleStandingsUpdated);
       conn.off('StructureChanged', handleStructureChanged);
-      if (conn.state === HubConnectionState.Connected)
+      
+      if (conn.state === HubConnectionState.Connected) {
         conn.invoke('LeaveSeason', seasonId).catch(() => {});
+      }
     };
   }, [conn, seasonId, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 }
