@@ -41,6 +41,31 @@ export function useRecalculateStandings() {
   });
 }
 
+export function useProcessSeasonAdvancement() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, tournamentId }: { id: string; tournamentId?: string }) =>
+      seasonApi.processAdvancement(id, tournamentId),
+    onSuccess: (data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['season-standings', id] });
+      queryClient.invalidateQueries({ queryKey: ['season-tournaments', id] });
+      toast({
+        title: 'Advancement processed',
+        description: `${data.advanced_count} team${data.advanced_count === 1 ? '' : 's'} advanced.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error processing advancement',
+        description: error instanceof Error ? error.message : 'Failed to process advancement',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 export function useSeasonPointRules(id: string) {
   return useQuery<PointRule[]>({
     queryKey: ['season-point-rules', id],

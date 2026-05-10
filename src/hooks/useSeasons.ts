@@ -140,6 +140,71 @@ export function usePublishSeason() {
   });
 }
 
+function useSeasonLifecycleMutation(
+  mutationFn: (id: string) => Promise<Season>,
+  successTitle: string,
+  successDescription: string,
+  errorTitle: string
+) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['season', data.id] });
+      toast({
+        title: successTitle,
+        description: successDescription,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: errorTitle,
+        description: error instanceof Error ? error.message : 'The season status could not be updated.',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useStartSeason() {
+  return useSeasonLifecycleMutation(
+    seasonApi.startSeason,
+    'Season started',
+    'Your season is now live.',
+    'Error starting season'
+  );
+}
+
+export function useCompleteSeason() {
+  return useSeasonLifecycleMutation(
+    seasonApi.completeSeason,
+    'Season completed',
+    'Your season has been completed.',
+    'Error completing season'
+  );
+}
+
+export function useArchiveSeason() {
+  return useSeasonLifecycleMutation(
+    seasonApi.archiveSeason,
+    'Season archived',
+    'Your season has been archived.',
+    'Error archiving season'
+  );
+}
+
+export function useSyncSeasonStatus() {
+  return useSeasonLifecycleMutation(
+    seasonApi.syncSeasonStatus,
+    'Season status synced',
+    'Season status has been synced from schedule rules.',
+    'Error syncing season status'
+  );
+}
+
 export function useCancelSeason() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

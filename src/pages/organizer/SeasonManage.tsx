@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useSeason } from '@/hooks/useSeasons';
+import { useArchiveSeason, useCompleteSeason, usePublishSeason, useSeason, useStartSeason, useSyncSeasonStatus } from '@/hooks/useSeasons';
 import {
   useRecalculateStandings,
+  useProcessSeasonAdvancement,
   useCreatePointRule,
   useCreateAdvancementRule,
   useSeasonTournaments,
@@ -14,10 +15,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Calendar, Trophy, RefreshCw, Plus, Settings } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, RefreshCw, Plus, Settings, Workflow, Play, CheckCircle2, Archive } from 'lucide-react';
 import StandingsCard from '@/components/organizer/season/StandingsCard';
 import PointRulesCard from '@/components/organizer/season/PointRulesCard';
 import AdvancementRulesCard from '@/components/organizer/season/AdvancementRulesCard';
+import type { QualificationStatus, SeedMode } from '@/types/season';
 
 const SeasonManage = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +27,12 @@ const SeasonManage = () => {
   const { data: linkedTournaments = [], isLoading: linkedTournamentsLoading } = useSeasonTournaments(id || '');
   const { data: tournaments = [] } = useTournaments(season?.game ? { game: season.game } : undefined);
   const recalculateStandings = useRecalculateStandings();
+  const processAdvancement = useProcessSeasonAdvancement();
+  const publishSeason = usePublishSeason();
+  const startSeason = useStartSeason();
+  const completeSeason = useCompleteSeason();
+  const archiveSeason = useArchiveSeason();
+  const syncSeasonStatus = useSyncSeasonStatus();
   const createPointRule = useCreatePointRule();
   const createAdvancementRule = useCreateAdvancementRule();
   const linkTournament = useLinkTournamentToSeason();
@@ -95,7 +103,7 @@ const SeasonManage = () => {
         placement_start: Number(pointRuleForm.placement_start),
         placement_end: Number(pointRuleForm.placement_end),
         points: Number(pointRuleForm.points),
-        qualification_status: pointRuleForm.qualification_status as any || undefined,
+        qualification_status: pointRuleForm.qualification_status as QualificationStatus || undefined,
       },
     }, {
       onSuccess: () => {
@@ -114,7 +122,7 @@ const SeasonManage = () => {
         placement_start: Number(advancementRuleForm.placement_start),
         placement_end: Number(advancementRuleForm.placement_end),
         advancement_count: Number(advancementRuleForm.advancement_count),
-        seed_mode: advancementRuleForm.seed_mode as any || undefined,
+        seed_mode: advancementRuleForm.seed_mode as SeedMode || undefined,
       },
     }, {
       onSuccess: () => {
@@ -137,11 +145,18 @@ const SeasonManage = () => {
     });
   };
 
+  const isLifecyclePending =
+    publishSeason.isPending ||
+    startSeason.isPending ||
+    completeSeason.isPending ||
+    archiveSeason.isPending ||
+    syncSeasonStatus.isPending;
+
   return (
     <div className="min-h-screen bg-transparent text-white">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex flex-col gap-4 mb-8 lg:flex-row lg:items-center">
           <Link to="/organizer/seasons">
             <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -155,12 +170,42 @@ const SeasonManage = () => {
               <span className="text-gray-400">{season.game}</span>
             </div>
           </div>
-          <Link to={`/organizer/seasons/${id}/settings`}>
-            <Button variant="outline" className="border-gray-700 hover:bg-white/10">
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
+          <div className="flex flex-wrap gap-2">
+            {season.status === 'draft' && (
+              <Button onClick={() => publishSeason.mutate(id || '')} disabled={isLifecyclePending || linkedTournaments.length === 0}>
+                <Workflow className="w-4 h-4 mr-2" />
+                Publish
+              </Button>
+            )}
+            {season.status === 'published' && (
+              <Button onClick={() => startSeason.mutate(id || '')} disabled={isLifecyclePending}>
+                <Play className="w-4 h-4 mr-2" />
+                Start
+              </Button>
+            )}
+            {(season.status === 'published' || season.status === 'live') && (
+              <Button onClick={() => completeSeason.mutate(id || '')} disabled={isLifecyclePending} variant="outline" className="border-gray-700 hover:bg-white/10">
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Complete
+              </Button>
+            )}
+            {season.status !== 'archived' && (
+              <Button onClick={() => archiveSeason.mutate(id || '')} disabled={isLifecyclePending} variant="outline" className="border-gray-700 hover:bg-white/10">
+                <Archive className="w-4 h-4 mr-2" />
+                Archive
+              </Button>
+            )}
+            <Button onClick={() => syncSeasonStatus.mutate(id || '')} disabled={isLifecyclePending} variant="outline" className="border-gray-700 hover:bg-white/10">
+              <RefreshCw className={`w-4 h-4 mr-2 ${syncSeasonStatus.isPending ? 'animate-spin' : ''}`} />
+              Sync Status
             </Button>
-          </Link>
+            <Link to={`/organizer/seasons/${id}/settings`}>
+              <Button variant="outline" className="border-gray-700 hover:bg-white/10">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Season Info */}
@@ -207,6 +252,44 @@ const SeasonManage = () => {
                 <p className="text-gray-300">{season.description}</p>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#0d0d10] border border-white/10 mb-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Automation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm text-gray-400">Linked tournaments</p>
+                <p className="mt-1 text-2xl font-bold">{linkedTournaments.length}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm text-gray-400">Point rules</p>
+                <p className="mt-1 text-2xl font-bold">{season.point_rules_count}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm text-gray-400">Advancement rules</p>
+                <p className="mt-1 text-2xl font-bold">{season.advancement_rules_count}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm text-gray-400">Health</p>
+                <p className="mt-1 text-sm text-gray-300">
+                  {linkedTournaments.length === 0 ? 'Link tournaments before publishing.' : 'Ready for automation checks.'}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button onClick={() => processAdvancement.mutate({ id: id || '' })} disabled={processAdvancement.isPending || linkedTournaments.length === 0} variant="outline" className="border-gray-700 hover:bg-white/10">
+                <Workflow className="w-4 h-4 mr-2" />
+                Process Advancement
+              </Button>
+              <Button onClick={() => recalculateStandings.mutate(id || '')} disabled={recalculateStandings.isPending} variant="outline" className="border-gray-700 hover:bg-white/10">
+                <RefreshCw className={`w-4 h-4 mr-2 ${recalculateStandings.isPending ? 'animate-spin' : ''}`} />
+                Recalculate Standings
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
