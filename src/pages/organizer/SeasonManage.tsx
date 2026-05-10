@@ -23,7 +23,7 @@ import type { QualificationStatus, SeedMode } from '@/types/season';
 
 const SeasonManage = () => {
   const { id } = useParams<{ id: string }>();
-  const { data: season, isLoading } = useSeason(id || '');
+  const { data: season, isLoading, isError } = useSeason(id || '');
   const { data: linkedTournaments = [], isLoading: linkedTournamentsLoading } = useSeasonTournaments(id || '');
   const { data: tournaments = [] } = useTournaments(season?.game ? { game: season.game } : undefined);
   const recalculateStandings = useRecalculateStandings();
@@ -61,12 +61,30 @@ const SeasonManage = () => {
     season_stage_order: '1',
   });
 
-  if (isLoading || !season) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-transparent text-white">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-12">
-            <p>Loading season...</p>
+            <p className="text-gray-400">Loading season...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !season) {
+    return (
+      <div className="min-h-screen bg-transparent text-white">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <p className="text-red-400 mb-4">Failed to load season. It may not exist or an error occurred.</p>
+            <Link to="/organizer/seasons">
+              <Button variant="outline" className="border-gray-700 hover:bg-white/10">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Seasons
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
