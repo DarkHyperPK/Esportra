@@ -7,9 +7,8 @@ import { apiClient } from '@/lib/apiClient';
 import CreationModeHub from '@/components/tournament/CreationModeHub';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy, Workflow } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy } from 'lucide-react';
 import { WizardContainer } from '@/components/tournament/wizard';
-import SeasonWizard from '@/components/organizer/season/SeasonWizard';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_WIZARD_DATA } from '@/types/tournamentWizard';
 
@@ -27,7 +26,7 @@ const CreateTournament = () => {
   const seasonId = searchParams.get('seasonId');
   const prefillGame = searchParams.get('game');
 
-  const creationMode = requestedMode === 'event' ? 'event' : requestedMode === 'season' ? 'season' : null;
+  const creationMode = requestedMode === 'event' ? 'event' : null;
 
   // Check if user has an organization
   useEffect(() => {
@@ -158,28 +157,32 @@ const CreateTournament = () => {
     <div className="min-h-screen bg-transparent text-white flex flex-col">
       <main className="flex-grow">
         {!creationMode ? (
-          <CreationModeHub onSelect={(mode) => setSearchParams({ mode })} />
+          <CreationModeHub onSelect={(mode) => {
+            if (mode === 'season') {
+              navigate('/organizer/seasons');
+            } else {
+              setSearchParams({ mode });
+            }
+          }} />
         ) : (
           <>
             <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
               <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[#0d0d10] p-5 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-start gap-4">
                   <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white">
-                    {creationMode === 'season' ? <Workflow className="h-5 w-5" /> : <Trophy className="h-5 w-5" />}
+                    <Trophy className="h-5 w-5" />
                   </span>
                   <div>
                     <p className="text-xs uppercase tracking-[0.22em] text-rose-400">
-                      {seasonId ? 'Season tournament' : creationMode === 'season' ? 'Season flow' : 'Single event flow'}
+                      {seasonId ? 'Season tournament' : 'Single event flow'}
                     </p>
                     <h1 className="mt-1 text-2xl font-black tracking-tight">
-                      {seasonId ? 'Create a tournament for this season' : creationMode === 'season' ? 'Create a season with tournaments' : 'Create one tournament with multiple stages'}
+                      {seasonId ? 'Create a tournament for this season' : 'Create one tournament with multiple stages'}
                     </h1>
                     <p className="mt-2 text-sm text-zinc-400">
                       {seasonId
                         ? 'This tournament will be automatically linked to the season. Configure stages, settings, and registration below.'
-                        : creationMode === 'season'
-                          ? 'Set up a season to link multiple tournaments and track standings across events.'
-                          : 'Use the existing tournament wizard for one event with groups, playoffs, match settings, and registration.'}
+                        : 'Use the existing tournament wizard for one event with groups, playoffs, match settings, and registration.'}
                     </p>
                   </div>
                 </div>
@@ -194,7 +197,7 @@ const CreateTournament = () => {
                 </Button>
               </div>
             </div>
-            {creationMode === 'season' ? <SeasonWizard /> : <WizardContainer seasonId={seasonId || undefined} initialData={prefillGame ? { ...DEFAULT_WIZARD_DATA, game: prefillGame } : undefined} />}
+            <WizardContainer seasonId={seasonId || undefined} initialData={prefillGame ? { ...DEFAULT_WIZARD_DATA, game: prefillGame } : undefined} />
           </>
         )}
       </main>
