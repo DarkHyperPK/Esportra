@@ -162,24 +162,59 @@ const SeasonGrid: React.FC<SeasonGridProps> = ({
 
   if (seasons.length === 0) {
     return (
-      <div className="text-center py-16 md:py-24">
-        <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-rose-500/10 to-orange-500/10 border border-rose-500/30 mb-6">
-          <Workflow className="h-12 w-12 text-rose-400" />
+      <div className="max-w-2xl mx-auto py-12">
+        <div className="bg-[#111111] border border-[#2a2a2a] p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <Workflow className="h-8 w-8 text-rose-400" />
+            <div>
+              <h2 className="text-lg font-bold text-white uppercase tracking-wider">
+                {activeTab === 'all' ? "No seasons yet" : `No ${activeTab} seasons`}
+              </h2>
+              <p className="text-xs text-[#a0a0a0] uppercase tracking-widest">
+                A season is a series of tournaments with cumulative standings
+              </p>
+            </div>
+          </div>
+
+          {/* How it works */}
+          <div className="mb-8 space-y-3">
+            <h3 className="text-[10px] font-bold text-[#808080] uppercase tracking-widest mb-3">How it works</h3>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 bg-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-[10px] font-bold text-white">1</span>
+              </div>
+              <div>
+                <p className="text-sm text-white font-medium">Pick your game</p>
+                <p className="text-xs text-[#808080]">Valorant, CS2, League of Legends, etc.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 bg-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-[10px] font-bold text-white">2</span>
+              </div>
+              <div>
+                <p className="text-sm text-white font-medium">Choose a template</p>
+                <p className="text-xs text-[#808080]">Weekly Circuit, Qualifier Ladder, Monthly Series, etc.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 bg-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-[10px] font-bold text-white">3</span>
+              </div>
+              <div>
+                <p className="text-sm text-white font-medium">Customize & create</p>
+                <p className="text-xs text-[#808080]">Set dates, point rules, and tournament slots.</p>
+              </div>
+            </div>
+          </div>
+
+          <Link to="/organizer/seasons/new">
+            <Button className="w-full bg-rose-500 hover:bg-rose-600 text-white h-11 text-xs font-bold uppercase tracking-widest">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Your First Season
+            </Button>
+          </Link>
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">
-          {activeTab === 'all' ? "No seasons yet" : `No ${activeTab} seasons`}
-        </h2>
-        <p className="text-zinc-400 mb-6 max-w-md mx-auto">
-          {activeTab === 'all'
-            ? "Create your first season to start organizing tournaments and tracking standings."
-            : `You don't have any ${activeTab} seasons at the moment.`}
-        </p>
-        <Link to="/organizer/seasons/new">
-          <Button className="bg-rose-500 hover:bg-rose-600 text-white">
-            <Plus className="w-4 h-4 mr-2" />
-            Create Your First Season
-          </Button>
-        </Link>
       </div>
     );
   }

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Trophy, Workflow, Settings, Building2, User } from 'lucide-react';
+import { apiClient } from '@/lib/apiClient';
 
 interface OrganizerLayoutProps {
   children: React.ReactNode;
@@ -24,6 +25,21 @@ const PAGE_TITLES: Record<string, string> = {
 
 const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
   const location = useLocation();
+  const [hasOrganization, setHasOrganization] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const checkOrg = async () => {
+      try {
+        const roles = await apiClient.get<{ organization_id?: string | null }>('/api/me/roles');
+        if (mounted) setHasOrganization(!!roles?.organization_id);
+      } catch {
+        if (mounted) setHasOrganization(false);
+      }
+    };
+    void checkOrg();
+    return () => { mounted = false; };
+  }, []);
 
   const isActive = (path: string) => {
     if (path === '/organizer/dashboard') {
@@ -67,23 +83,25 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
           })}
         </nav>
 
-        {/* Bottom section */}
-        <div className="px-3 py-3 border-t border-[#2a2a2a] flex-shrink-0">
-          <Link
-            to="/organizer/setup-organization"
-            className={`flex items-center gap-3 h-10 px-3 text-[13px] font-medium tracking-wide transition-colors relative rounded-sm ${
-              isActive('/organizer/setup-organization')
-                ? 'text-white bg-white/5'
-                : 'text-[#a0a0a0] hover:text-white hover:bg-white/[0.03]'
-            }`}
-          >
-            {isActive('/organizer/setup-organization') && (
-              <div className="absolute left-0 top-1 bottom-1 w-[2px] bg-white rounded-full" />
-            )}
-            <Building2 className="w-[18px] h-[18px] flex-shrink-0" />
-            <span>Organization</span>
-          </Link>
-        </div>
+        {/* Bottom section — only show setup link if user has no org */}
+        {hasOrganization === false && (
+          <div className="px-3 py-3 border-t border-[#2a2a2a] flex-shrink-0">
+            <Link
+              to="/organizer/setup-organization"
+              className={`flex items-center gap-3 h-10 px-3 text-[13px] font-medium tracking-wide transition-colors relative rounded-sm ${
+                isActive('/organizer/setup-organization')
+                  ? 'text-white bg-white/5'
+                  : 'text-[#a0a0a0] hover:text-white hover:bg-white/[0.03]'
+              }`}
+            >
+              {isActive('/organizer/setup-organization') && (
+                <div className="absolute left-0 top-1 bottom-1 w-[2px] bg-white rounded-full" />
+              )}
+              <Building2 className="w-[18px] h-[18px] flex-shrink-0" />
+              <span>Setup Organization</span>
+            </Link>
+          </div>
+        )}
       </aside>
 
       {/* Main Content Area */}
