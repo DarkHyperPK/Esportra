@@ -82,6 +82,7 @@ const TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentL
 const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
 const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
 const ManageSeasons = lazyWithRetry(() => import("./pages/organizer/ManageSeasons"));
+const CreateSeason = lazyWithRetry(() => import("./pages/organizer/CreateSeason"));
 const SeasonManage = lazyWithRetry(() => import("./pages/organizer/SeasonManage"));
 const SeasonPublicPage = lazyWithRetry(() => import("./pages/season/SeasonPublicPage"));
 const EditTournament = lazyWithRetry(() => import("./pages/tournaments/Edit"));
@@ -94,6 +95,7 @@ const ManageBracketPage = lazyWithRetry(() => import("./pages/organizer/ManageBr
 const FullscreenBracketPage = lazyWithRetry(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
 const OrganizationPublicProfile = lazyWithRetry(() => import("./pages/org/PublicProfile"));
 const OrganizationWizard = lazyWithRetry(() => import("./pages/organizer/OrganizationWizard"));
+const OrganizerLayout = lazyWithRetry(() => import("@/components/organizer/OrganizerLayout"));
 
 const ADMIN_ROLE_SETS = {
   anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
@@ -567,54 +569,24 @@ const AppContent = React.memo(() => {
                 } />
 
                 {/* Tournament Organizer Routes */}
-                <Route path="/organizer/dashboard" element={
+                <Route path="/organizer/*" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
-                    <OrganizerDashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/organizer/setup-organization" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <OrganizationWizard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/organizer/tournaments" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <ManageTournaments />
-                  </ProtectedRoute>
-                } />
-                <Route path="/organizer/tournament/:slug" element={
-                  <ProtectedRoute>
-                    <TournamentManage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/organizer/tournament/:slug/edit" element={
-                  <ProtectedRoute>
-                    <EditTournament />
-                  </ProtectedRoute>
-                } />
-                <Route path="/organizer/tournament/:slug/brackets" element={
-                  <ProtectedRoute>
-                    <TournamentBrackets />
-                  </ProtectedRoute>
-                } />
-                <Route path="/organizer/tournament/:slug/manage-bracket/:stageId" element={
-                  <ProtectedRoute>
-                    <ManageBracketPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/organizer/disputes" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <OrganizerDisputesPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/organizer/seasons" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <ManageSeasons />
-                  </ProtectedRoute>
-                } />
-                <Route path="/organizer/season/:id" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <SeasonManage />
+                    <OrganizerLayout>
+                      <Routes>
+                        <Route path="dashboard" element={<OrganizerDashboard />} />
+                        <Route path="setup-organization" element={<OrganizationWizard />} />
+                        <Route path="tournaments" element={<ManageTournaments />} />
+                        <Route path="tournament/:slug" element={<TournamentManage />} />
+                        <Route path="tournament/:slug/edit" element={<EditTournament />} />
+                        <Route path="tournament/:slug/brackets" element={<TournamentBrackets />} />
+                        <Route path="tournament/:slug/manage-bracket/:stageId" element={<ManageBracketPage />} />
+                        <Route path="disputes" element={<OrganizerDisputesPage />} />
+                        <Route path="seasons" element={<ManageSeasons />} />
+                        <Route path="seasons/create" element={<CreateSeason />} />
+                        <Route path="season/:id" element={<SeasonManage />} />
+                        <Route path="*" element={<Navigate to="/organizer/dashboard" replace />} />
+                      </Routes>
+                    </OrganizerLayout>
                   </ProtectedRoute>
                 } />
                 <Route path="/season/:slug" element={<SeasonPublicPage />} />
