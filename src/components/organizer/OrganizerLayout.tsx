@@ -67,16 +67,16 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 h-10 px-3 text-[13px] font-medium tracking-wide transition-colors relative rounded-sm ${
+                className={`flex items-center gap-3 h-10 px-3 text-[13px] font-bold uppercase tracking-wider transition-none relative border ${
                   active
-                    ? 'text-white bg-white/5'
-                    : 'text-[#a0a0a0] hover:text-white hover:bg-white/[0.03]'
+                    ? 'text-white bg-[#1a1a1a] border-[#404040]'
+                    : 'text-[#c0c0c0] border-transparent hover:text-white hover:border-[#2a2a2a]'
                 }`}
               >
                 {active && (
-                  <div className="absolute left-0 top-1 bottom-1 w-[2px] bg-white rounded-full" />
+                  <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-white" />
                 )}
-                <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+                <item.icon className="w-[18px] h-[18px] flex-shrink-0 opacity-80" />
                 <span>{item.label}</span>
               </Link>
             );
@@ -88,16 +88,16 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
           <div className="px-3 py-3 border-t border-[#2a2a2a] flex-shrink-0">
             <Link
               to="/organizer/setup-organization"
-              className={`flex items-center gap-3 h-10 px-3 text-[13px] font-medium tracking-wide transition-colors relative rounded-sm ${
+              className={`flex items-center gap-3 h-10 px-3 text-[13px] font-bold uppercase tracking-wider transition-none relative border ${
                 isActive('/organizer/setup-organization')
-                  ? 'text-white bg-white/5'
-                  : 'text-[#a0a0a0] hover:text-white hover:bg-white/[0.03]'
+                  ? 'text-white bg-[#1a1a1a] border-[#404040]'
+                  : 'text-[#c0c0c0] border-transparent hover:text-white hover:border-[#2a2a2a]'
               }`}
             >
               {isActive('/organizer/setup-organization') && (
-                <div className="absolute left-0 top-1 bottom-1 w-[2px] bg-white rounded-full" />
+                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-white" />
               )}
-              <Building2 className="w-[18px] h-[18px] flex-shrink-0" />
+              <Building2 className="w-[18px] h-[18px] flex-shrink-0 opacity-80" />
               <span>Setup Organization</span>
             </Link>
           </div>
