@@ -37,30 +37,30 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen bg-[#050505] text-white flex">
       {/* Left Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-[#0a0a0a] border-r border-[#2a2a2a] flex flex-col">
+      <aside className="w-64 flex-shrink-0 bg-[#0a0a0a] border-r border-[#2a2a2a] flex flex-col z-50">
         {/* Logo / Brand */}
-        <div className="h-16 flex items-center px-5 border-b border-[#2a2a2a]">
+        <div className="h-16 flex items-center px-5 border-b border-[#2a2a2a] flex-shrink-0">
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#c0c0c0]">Organizer</span>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-6 px-3 space-y-1">
+        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.path);
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 h-11 px-3 text-[13px] font-medium tracking-wide transition-none relative ${
+                className={`flex items-center gap-3 h-10 px-3 text-[13px] font-medium tracking-wide transition-colors relative rounded-sm ${
                   active
-                    ? 'text-white'
-                    : 'text-[#808080] hover:text-[#c0c0c0]'
+                    ? 'text-white bg-white/5'
+                    : 'text-[#a0a0a0] hover:text-white hover:bg-white/[0.03]'
                 }`}
               >
                 {active && (
-                  <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white" />
+                  <div className="absolute left-0 top-1 bottom-1 w-[2px] bg-white rounded-full" />
                 )}
-                <item.icon className="w-[18px] h-[18px] flex-shrink-0 opacity-80" />
+                <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
                 <span>{item.label}</span>
               </Link>
             );
@@ -68,19 +68,19 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
         </nav>
 
         {/* Bottom section */}
-        <div className="px-3 py-3 border-t border-[#2a2a2a]">
+        <div className="px-3 py-3 border-t border-[#2a2a2a] flex-shrink-0">
           <Link
             to="/organizer/setup-organization"
-            className={`flex items-center gap-3 h-11 px-3 text-[13px] font-medium tracking-wide transition-none relative ${
+            className={`flex items-center gap-3 h-10 px-3 text-[13px] font-medium tracking-wide transition-colors relative rounded-sm ${
               isActive('/organizer/setup-organization')
-                ? 'text-white'
-                : 'text-[#808080] hover:text-[#c0c0c0]'
+                ? 'text-white bg-white/5'
+                : 'text-[#a0a0a0] hover:text-white hover:bg-white/[0.03]'
             }`}
           >
             {isActive('/organizer/setup-organization') && (
-              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white" />
+              <div className="absolute left-0 top-1 bottom-1 w-[2px] bg-white rounded-full" />
             )}
-            <Building2 className="w-[18px] h-[18px] flex-shrink-0 opacity-80" />
+            <Building2 className="w-[18px] h-[18px] flex-shrink-0" />
             <span>Organization</span>
           </Link>
         </div>

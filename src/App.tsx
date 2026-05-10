@@ -584,7 +584,7 @@ const AppContent = React.memo(() => {
                         <Route path="tournament/:slug/manage-bracket/:stageId" element={<ManageBracketPage />} />
                         <Route path="disputes" element={<OrganizerDisputesPage />} />
                         <Route path="seasons" element={<ManageSeasons />} />
-                        <Route path="seasons/create" element={<CreateSeason />} />
+                        <Route path="seasons/create" element={<Navigate to="/tournaments/create?mode=season" replace />} />
                         <Route path="season/:id" element={<SeasonManage />} />
                         <Route path="*" element={<Navigate to="/organizer/dashboard" replace />} />
                       </Routes>

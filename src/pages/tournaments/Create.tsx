@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -26,11 +26,6 @@ const CreateTournament = () => {
   const requestedMode = searchParams.get('mode');
   const seasonId = searchParams.get('seasonId');
   const prefillGame = searchParams.get('game');
-
-  // Redirect legacy season creation flow to dedicated route
-  if (requestedMode === 'season' && !seasonId) {
-    return <Navigate to="/organizer/seasons/create" replace />;
-  }
 
   const creationMode = requestedMode === 'event' ? 'event' : requestedMode === 'season' ? 'season' : null;
 
