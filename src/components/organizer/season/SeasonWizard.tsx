@@ -95,7 +95,7 @@ const SeasonWizard: React.FC = () => {
 
   if (createdSeason) {
     return (
-      <div className="max-w-2xl mx-auto pt-4">
+      <div className="max-w-2xl pt-4">
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 bg-white flex items-center justify-center">
@@ -138,7 +138,7 @@ const SeasonWizard: React.FC = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto pt-4">
+    <div className="max-w-3xl pt-4">
       {/* Section: Identity */}
       <div className="mb-12">
         <h2 className="text-[10px] font-bold text-[#808080] uppercase tracking-[0.25em] mb-8">

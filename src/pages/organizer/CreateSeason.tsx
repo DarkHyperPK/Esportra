@@ -2,10 +2,8 @@ import SeasonWizard from '@/components/organizer/season/SeasonWizard';
 
 const CreateSeason = () => {
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <div className="relative z-10 py-8 px-4">
-        <SeasonWizard />
-      </div>
+    <div className="py-8 px-8 md:px-12 max-w-4xl">
+      <SeasonWizard />
     </div>
   );
 };

@@ -1,17 +1,26 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Trophy, Workflow, Settings, Building2 } from 'lucide-react';
+import { LayoutDashboard, Trophy, Workflow, Settings, Building2, User } from 'lucide-react';
 
 interface OrganizerLayoutProps {
   children: React.ReactNode;
 }
 
 const NAV_ITEMS = [
-  { path: '/organizer/dashboard', label: 'DASHBOARD', icon: LayoutDashboard },
-  { path: '/organizer/tournaments', label: 'TOURNAMENTS', icon: Trophy },
-  { path: '/organizer/seasons', label: 'SEASONS', icon: Workflow },
-  { path: '/organizer/disputes', label: 'DISPUTES', icon: Settings },
+  { path: '/organizer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/organizer/tournaments', label: 'Tournaments', icon: Trophy },
+  { path: '/organizer/seasons', label: 'Seasons', icon: Workflow },
+  { path: '/organizer/disputes', label: 'Disputes', icon: Settings },
 ];
+
+const PAGE_TITLES: Record<string, string> = {
+  '/organizer/dashboard': 'Dashboard',
+  '/organizer/tournaments': 'Tournaments',
+  '/organizer/seasons': 'Seasons',
+  '/organizer/seasons/create': 'Create Season',
+  '/organizer/disputes': 'Disputes',
+  '/organizer/setup-organization': 'Organization',
+};
 
 const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
   const location = useLocation();
@@ -23,33 +32,35 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
+  const pageTitle = PAGE_TITLES[location.pathname] || 'Organizer';
+
   return (
     <div className="min-h-screen bg-[#050505] text-white flex">
       {/* Left Sidebar */}
-      <aside className="w-72 flex-shrink-0 bg-[#0a0a0a] border-r border-[#2a2a2a] flex flex-col">
+      <aside className="w-64 flex-shrink-0 bg-[#0a0a0a] border-r border-[#2a2a2a] flex flex-col">
         {/* Logo / Brand */}
-        <div className="h-16 flex items-center px-6 border-b border-[#2a2a2a]">
-          <span className="text-xs font-bold uppercase tracking-[0.25em] text-white">ORGANIZER</span>
+        <div className="h-16 flex items-center px-5 border-b border-[#2a2a2a]">
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#c0c0c0]">Organizer</span>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-6 px-4 space-y-2">
+        <nav className="flex-1 py-6 px-3 space-y-1">
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.path);
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-4 h-12 px-4 text-xs font-semibold uppercase tracking-[0.15em] transition-none relative ${
+                className={`flex items-center gap-3 h-11 px-3 text-[13px] font-medium tracking-wide transition-none relative ${
                   active
                     ? 'text-white'
-                    : 'text-[#808080] hover:text-white hover:bg-white/[0.03]'
+                    : 'text-[#808080] hover:text-[#c0c0c0]'
                 }`}
               >
                 {active && (
-                  <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-white" />
+                  <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white" />
                 )}
-                <item.icon className="w-5 h-5 flex-shrink-0" />
+                <item.icon className="w-[18px] h-[18px] flex-shrink-0 opacity-80" />
                 <span>{item.label}</span>
               </Link>
             );
@@ -57,28 +68,41 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
         </nav>
 
         {/* Bottom section */}
-        <div className="px-4 py-4 border-t border-[#2a2a2a]">
+        <div className="px-3 py-3 border-t border-[#2a2a2a]">
           <Link
             to="/organizer/setup-organization"
-            className={`flex items-center gap-4 h-12 px-4 text-xs font-semibold uppercase tracking-[0.15em] transition-none relative ${
+            className={`flex items-center gap-3 h-11 px-3 text-[13px] font-medium tracking-wide transition-none relative ${
               isActive('/organizer/setup-organization')
                 ? 'text-white'
-                : 'text-[#808080] hover:text-white hover:bg-white/[0.03]'
+                : 'text-[#808080] hover:text-[#c0c0c0]'
             }`}
           >
             {isActive('/organizer/setup-organization') && (
-              <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-white" />
+              <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-white" />
             )}
-            <Building2 className="w-5 h-5 flex-shrink-0" />
-            <span>ORGANIZATION</span>
+            <Building2 className="w-[18px] h-[18px] flex-shrink-0 opacity-80" />
+            <span>Organization</span>
           </Link>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-[#050505]">
-        {children}
-      </main>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Bar */}
+        <header className="h-14 flex items-center justify-between px-8 border-b border-[#2a2a2a] bg-[#050505] flex-shrink-0">
+          <h1 className="text-sm font-semibold text-white tracking-wide">{pageTitle}</h1>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
+              <User className="w-4 h-4 text-[#808080]" />
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </div>
     </div>
   );
 };

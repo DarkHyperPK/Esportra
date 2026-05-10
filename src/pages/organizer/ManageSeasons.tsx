@@ -44,34 +44,16 @@ const ManageSeasons = () => {
 
   if (isLoading) {
     return (
-      <div className="px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-[1px] bg-rose-500" />
-              <span className="text-rose-500 font-mono text-xs tracking-widest uppercase">SEASON_MANAGEMENT</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight">My Seasons</h1>
-            <p className="text-zinc-500 mt-1">Loading seasons...</p>
-          </div>
-        </div>
+      <div className="px-8 py-8">
+        <p className="text-zinc-500 text-sm">Loading seasons...</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="px-4 py-8 md:py-12">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-[1px] bg-rose-500" />
-              <span className="text-rose-500 font-mono text-xs tracking-widest uppercase">SEASON_MANAGEMENT</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight">My Seasons</h1>
-            <p className="text-zinc-500 mt-1">Manage your seasons and tournaments</p>
-          </div>
+      <div className="px-8 py-8">
+        <div className="flex justify-end mb-6">
           <Link to="/organizer/seasons/create">
             <Button className="bg-rose-500 hover:bg-rose-600 text-white">
               <Plus className="w-4 h-4 mr-2" />
