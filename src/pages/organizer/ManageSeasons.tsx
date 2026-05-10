@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useSeasons, useDeleteSeason, usePublishSeason, useArchiveSeason } from '@/hooks/useSeasons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2, Plus, Calendar, Trophy, PlayCircle, XCircle, AlertTriangle, Workflow, Users } from 'lucide-react';
+import { Trash2, Plus, Calendar, Trophy, PlayCircle, XCircle, AlertTriangle, Users } from 'lucide-react';
 import type { SeasonList } from '@/types/season';
 
 const ManageSeasons = () => {
@@ -50,63 +50,9 @@ const ManageSeasons = () => {
     );
   }
 
-  // Full empty state: no seasons exist at all
+  // No seasons yet — skip empty state and go straight to creation
   if (seasons.length === 0 && activeTab === 'all') {
-    return (
-      <div className="px-8 py-8">
-        <div className="max-w-2xl mx-auto py-12">
-          <div className="bg-[#111111] border border-[#2a2a2a] p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <Workflow className="h-8 w-8 text-rose-400" />
-              <div>
-                <h2 className="text-lg font-bold text-white uppercase tracking-wider">No seasons yet</h2>
-                <p className="text-xs text-[#a0a0a0] uppercase tracking-widest">
-                  A season is a series of tournaments with cumulative standings
-                </p>
-              </div>
-            </div>
-
-            <div className="mb-8 space-y-3">
-              <h3 className="text-[10px] font-bold text-[#808080] uppercase tracking-widest mb-3">How it works</h3>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-[10px] font-bold text-white">1</span>
-                </div>
-                <div>
-                  <p className="text-sm text-white font-medium">Pick your game</p>
-                  <p className="text-xs text-[#808080]">Valorant, CS2, League of Legends, etc.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-[10px] font-bold text-white">2</span>
-                </div>
-                <div>
-                  <p className="text-sm text-white font-medium">Choose a template</p>
-                  <p className="text-xs text-[#808080]">Weekly Circuit, Qualifier Ladder, Monthly Series, etc.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-[#2a2a2a] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-[10px] font-bold text-white">3</span>
-                </div>
-                <div>
-                  <p className="text-sm text-white font-medium">Customize &amp; create</p>
-                  <p className="text-xs text-[#808080]">Set dates, point rules, and tournament slots.</p>
-                </div>
-              </div>
-            </div>
-
-            <Link to="/seasons/create">
-              <Button className="w-full bg-rose-500 hover:bg-rose-600 text-white h-11 text-xs font-bold uppercase tracking-widest">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Your First Season
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    return <Navigate to="/seasons/create" replace />;
   }
 
   return (
