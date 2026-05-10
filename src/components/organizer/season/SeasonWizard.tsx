@@ -236,12 +236,14 @@ const SeasonWizard: React.FC<SeasonWizardProps> = ({ onCancel }) => {
               </Button>
             ) : isSuccessStep ? (
               <div className="flex gap-3">
-                <Link to="/tournaments/create">
-                  <Button className="bg-rose-500 hover:bg-rose-600 text-white font-bold">
-                    <Trophy className="w-4 h-4 mr-2" />
-                    Create Tournament
-                  </Button>
-                </Link>
+                {createdSeason && (
+                  <Link to={`/tournaments/create?mode=event&seasonId=${createdSeason.id}&game=${encodeURIComponent(data.game)}`}>
+                    <Button className="bg-rose-500 hover:bg-rose-600 text-white font-bold">
+                      <Trophy className="w-4 h-4 mr-2" />
+                      Create Tournament
+                    </Button>
+                  </Link>
+                )}
                 {createdSeason && (
                   <Link to={`/organizer/season/${createdSeason.id}`}>
                     <Button variant="outline" className="border-gray-700 hover:bg-white/10 text-white">

@@ -11,6 +11,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy, Workflo
 import { WizardContainer } from '@/components/tournament/wizard';
 import SeasonWizard from '@/components/organizer/season/SeasonWizard';
 import { Button } from '@/components/ui/button';
+import { DEFAULT_WIZARD_DATA } from '@/types/tournamentWizard';
 
 const CreateTournament = () => {
   const { user } = useAuth();
@@ -24,6 +25,8 @@ const CreateTournament = () => {
   const canCreate = canCreateTournaments || admin.hasPermission('tournaments:create');
   const requestedMode = searchParams.get('mode');
   const creationMode = requestedMode === 'event' ? 'event' : requestedMode === 'season' ? 'season' : null;
+  const seasonId = searchParams.get('seasonId');
+  const prefillGame = searchParams.get('game');
 
   // Check if user has an organization
   useEffect(() => {
@@ -188,7 +191,7 @@ const CreateTournament = () => {
                 </Button>
               </div>
             </div>
-            {creationMode === 'season' ? <SeasonWizard /> : <WizardContainer />}
+            {creationMode === 'season' ? <SeasonWizard /> : <WizardContainer seasonId={seasonId || undefined} initialData={prefillGame ? { ...DEFAULT_WIZARD_DATA, game: prefillGame } : undefined} />}
           </>
         )}
       </main>

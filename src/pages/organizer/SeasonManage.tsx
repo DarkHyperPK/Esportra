@@ -394,7 +394,7 @@ const SeasonManage = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Season Tournaments</h2>
               <div className="flex gap-2">
-                <Link to="/tournaments/create">
+                <Link to={`/tournaments/create?mode=event&seasonId=${id}&game=${encodeURIComponent(season.game)}`}>
                   <Button variant="outline" className="border-gray-700 hover:bg-white/10">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Tournament
@@ -438,7 +438,7 @@ const SeasonManage = () => {
                       Create a tournament for this season, then link it here to track standings and apply point rules.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                      <Link to="/tournaments/create">
+                      <Link to={`/tournaments/create?mode=event&seasonId=${id}&game=${encodeURIComponent(season.game)}`}>
                         <Button className="bg-rose-500 hover:bg-rose-600 text-white">
                           <Plus className="w-4 h-4 mr-2" />
                           Create Tournament
