@@ -54,7 +54,7 @@ const ManageSeasons = () => {
     <>
       <div className="px-8 py-8">
         <div className="flex justify-end mb-6">
-          <Link to="/tournaments/create?mode=season">
+          <Link to="/organizer/seasons/new">
             <Button className="bg-rose-500 hover:bg-rose-600 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Create Season
@@ -174,7 +174,7 @@ const SeasonGrid: React.FC<SeasonGridProps> = ({
             ? "Create your first season to start organizing tournaments and tracking standings."
             : `You don't have any ${activeTab} seasons at the moment.`}
         </p>
-        <Link to="/tournaments/create?mode=season">
+        <Link to="/organizer/seasons/new">
           <Button className="bg-rose-500 hover:bg-rose-600 text-white">
             <Plus className="w-4 h-4 mr-2" />
             Create Your First Season
