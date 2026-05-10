@@ -199,7 +199,7 @@ const CreateSeason: React.FC = () => {
                 MANAGE SEASON
               </button>
               <button
-                onClick={() => navigate('/organizer/seasons')}
+                onClick={() => navigate('/organizer/dashboard')}
                 className="flex items-center justify-center gap-2 h-12 bg-transparent text-white border border-[#2a2a2a] text-xs font-semibold uppercase tracking-widest hover:bg-white/5 hover:border-[#404040] transition-none"
               >
                 DONE
