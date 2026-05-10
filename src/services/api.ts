@@ -184,10 +184,6 @@ export const seasonApi = {
     return await apiClient.post<Season>(`/api/seasons/${id}/sync-status`);
   },
 
-  cancelSeason: async (id: string) => {
-    return await apiClient.post<Season>(`/api/seasons/${id}/cancel`);
-  },
-
   getStandings: async (id: string, page = 1, limit = 50) => {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -204,10 +200,6 @@ export const seasonApi = {
     return await apiClient.post<{ advanced_count: number }>(`/api/seasons/${id}/advancement/process`, {
       tournament_id: tournamentId,
     });
-  },
-
-  getAuditLog: async (id: string) => {
-    return await apiClient.get(`/api/seasons/${id}/audit`);
   },
 
   getSeasonTournaments: async (id: string) => {

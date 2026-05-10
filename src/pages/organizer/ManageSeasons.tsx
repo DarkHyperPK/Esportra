@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useSeasons, useDeleteSeason, usePublishSeason, useCancelSeason } from '@/hooks/useSeasons';
+import { useSeasons, useDeleteSeason, usePublishSeason, useArchiveSeason } from '@/hooks/useSeasons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ const ManageSeasons = () => {
   const { data: seasons = [], isLoading } = useSeasons(1, 100, activeTab === 'all' ? undefined : activeTab);
   const deleteSeason = useDeleteSeason();
   const publishSeason = usePublishSeason();
-  const cancelSeason = useCancelSeason();
+  const archiveSeason = useArchiveSeason();
 
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -38,8 +38,8 @@ const ManageSeasons = () => {
     publishSeason.mutate(seasonId);
   };
 
-  const handleCancel = (seasonId: string) => {
-    cancelSeason.mutate(seasonId);
+  const handleArchive = (seasonId: string) => {
+    archiveSeason.mutate(seasonId);
   };
 
   const getStatusColor = (status: string) => {
@@ -190,9 +190,10 @@ const ManageSeasons = () => {
                           {season.status === 'published' && (
                             <Button
                               size="sm"
-                              onClick={() => handleCancel(season.id)}
-                              disabled={cancelSeason.isPending}
+                              onClick={() => handleArchive(season.id)}
+                              disabled={archiveSeason.isPending}
                               variant="destructive"
+                              title="Archive"
                             >
                               <XCircle className="w-4 h-4" />
                             </Button>

@@ -205,26 +205,3 @@ export function useSyncSeasonStatus() {
   );
 }
 
-export function useCancelSeason() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: (id: string) => seasonApi.cancelSeason(id),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['seasons'] });
-      queryClient.invalidateQueries({ queryKey: ['season', data.id] });
-      toast({
-        title: 'Season cancelled',
-        description: 'Your season has been cancelled successfully.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error cancelling season',
-        description: error instanceof Error ? error.message : 'Failed to cancel season',
-        variant: 'destructive',
-      });
-    },
-  });
-}
