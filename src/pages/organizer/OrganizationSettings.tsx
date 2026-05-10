@@ -598,7 +598,7 @@ const OrganizationSettings: React.FC = () => {
                             <CardDescription>Manage your organization's competitive seasons.</CardDescription>
                         </div>
                         <Button variant="outline" size="sm" asChild className="border-white/10 hover:bg-white/5 hover:border-rose-500/50">
-                            <Link to="/organizer/seasons/create">
+                            <Link to="/tournaments/create?mode=season">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Create Season
                             </Link>
@@ -611,7 +611,7 @@ const OrganizationSettings: React.FC = () => {
                             <Trophy className="w-12 h-12 text-gray-700 mx-auto mb-4" />
                             <p className="text-gray-500">No seasons created yet.</p>
                             <Button variant="outline" size="sm" asChild className="mt-4 border-white/10 hover:bg-white/5">
-                                <Link to="/organizer/seasons/create">Create your first season</Link>
+                                <Link to="/tournaments/create?mode=season">Create your first season</Link>
                             </Button>
                         </div>
                     ) : (

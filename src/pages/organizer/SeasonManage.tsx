@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Calendar, Trophy, RefreshCw, Plus, Settings, Workflow, Play, CheckCircle2, Archive } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, RefreshCw, Plus, Workflow, Play, CheckCircle2, Archive } from 'lucide-react';
 import StandingsCard from '@/components/organizer/season/StandingsCard';
 import PointRulesCard from '@/components/organizer/season/PointRulesCard';
 import AdvancementRulesCard from '@/components/organizer/season/AdvancementRulesCard';
@@ -217,12 +217,6 @@ const SeasonManage = () => {
               <RefreshCw className={`w-4 h-4 mr-2 ${syncSeasonStatus.isPending ? 'animate-spin' : ''}`} />
               Sync Status
             </Button>
-            <Link to={`/organizer/seasons/${id}/settings`}>
-              <Button variant="outline" className="border-gray-700 hover:bg-white/10">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </Button>
-            </Link>
           </div>
         </div>
 

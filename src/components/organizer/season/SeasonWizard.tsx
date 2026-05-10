@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, Trophy, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -12,13 +12,14 @@ import {
 import { useCreateSeason } from '@/hooks/useSeasons';
 import type { CreateSeasonRequest, SeasonWizardData } from '@/types/season';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import esportsGames from '@/data/esportsGames.json';
 import { apiClient } from '@/lib/apiClient';
 
 const SEASON_STEPS = [
   { id: 1, title: 'Basic Info', description: 'Season name and details' },
   { id: 2, title: 'Review', description: 'Review and create season' },
+  { id: 3, title: 'Next Steps', description: 'Add tournaments and configure' },
 ];
 
 interface SeasonWizardProps {
@@ -41,6 +42,7 @@ const SeasonWizard: React.FC<SeasonWizardProps> = ({ onCancel }) => {
     advancement_rules: [],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [createdSeason, setCreatedSeason] = useState<{ id: string; name: string } | null>(null);
   const { mutate: createSeason, isPending } = useCreateSeason();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -122,7 +124,8 @@ const SeasonWizard: React.FC<SeasonWizardProps> = ({ onCancel }) => {
           title: 'Season created successfully',
           description: 'Your season has been created and is ready to configure.',
         });
-        navigate(`/organizer/season/${season.id}`);
+        setCreatedSeason(season);
+        setCurrentStep(3);
       },
     });
   };
@@ -133,13 +136,15 @@ const SeasonWizard: React.FC<SeasonWizardProps> = ({ onCancel }) => {
         return <StepBasicInfo data={data} updateData={updateData} errors={errors} />;
       case 2:
         return <StepReview data={data} />;
+      case 3:
+        return <StepSuccess season={createdSeason} />;
       default:
         return null;
     }
   };
 
-  const isLastStep = currentStep === SEASON_STEPS.length;
-  const isFirstStep = currentStep === 1;
+  const isReviewStep = currentStep === 2;
+  const isSuccessStep = currentStep === 3;
 
   return (
     <div className="min-h-screen bg-transparent text-white relative overflow-hidden font-sans">
@@ -192,7 +197,7 @@ const SeasonWizard: React.FC<SeasonWizardProps> = ({ onCancel }) => {
         {/* Navigation */}
         <div className="mt-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {!isFirstStep && (
+            {currentStep > 1 && currentStep < 3 && (
               <Button
                 variant="outline"
                 onClick={prevStep}
@@ -214,7 +219,7 @@ const SeasonWizard: React.FC<SeasonWizardProps> = ({ onCancel }) => {
           </div>
 
           <div className="flex items-center gap-3">
-            {isLastStep ? (
+            {isReviewStep ? (
               <Button
                 onClick={submitSeason}
                 disabled={isPending || Object.keys(errors).length > 0}
@@ -229,6 +234,30 @@ const SeasonWizard: React.FC<SeasonWizardProps> = ({ onCancel }) => {
                   'Create Season'
                 )}
               </Button>
+            ) : isSuccessStep ? (
+              <div className="flex gap-3">
+                <Link to="/tournaments/create">
+                  <Button className="bg-rose-500 hover:bg-rose-600 text-white font-bold">
+                    <Trophy className="w-4 h-4 mr-2" />
+                    Create Tournament
+                  </Button>
+                </Link>
+                {createdSeason && (
+                  <Link to={`/organizer/season/${createdSeason.id}`}>
+                    <Button variant="outline" className="border-gray-700 hover:bg-white/10 text-white">
+                      <Workflow className="w-4 h-4 mr-2" />
+                      Manage Season
+                    </Button>
+                  </Link>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate('/organizer/seasons')}
+                  className="text-gray-400 hover:text-white hover:bg-white/10"
+                >
+                  Done
+                </Button>
+              </div>
             ) : (
               <Button
                 onClick={nextStep}
@@ -345,6 +374,39 @@ const StepReview: React.FC<{
       <p className="text-emerald-400 text-sm">
         After creating the season, you can add tournaments and configure point rules from the season management page.
       </p>
+    </div>
+  </div>
+);
+
+const StepSuccess: React.FC<{
+  season: { id: string; name: string } | null;
+}> = ({ season }) => (
+  <div className="space-y-6 text-center">
+    <div className="w-20 h-20 mx-auto bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/30">
+      <Trophy className="w-10 h-10 text-emerald-500" />
+    </div>
+    <div>
+      <h3 className="text-2xl font-bold text-white mb-2">Season Created!</h3>
+      <p className="text-gray-400">
+        <span className="text-emerald-400 font-semibold">{season?.name}</span> has been created successfully.
+      </p>
+    </div>
+    <div className="bg-black/30 rounded-lg p-6 space-y-3 text-left max-w-lg mx-auto">
+      <p className="text-sm text-gray-400">What would you like to do next?</p>
+      <div className="space-y-2">
+        <div className="flex items-start gap-3 text-sm text-gray-300">
+          <span className="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+          <span>Create a tournament and link it to this season to track standings.</span>
+        </div>
+        <div className="flex items-start gap-3 text-sm text-gray-300">
+          <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+          <span>Set up point rules to award standings points across linked tournaments.</span>
+        </div>
+        <div className="flex items-start gap-3 text-sm text-gray-300">
+          <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+          <span>Publish the season when you are ready to make it visible to players.</span>
+        </div>
+      </div>
     </div>
   </div>
 );
