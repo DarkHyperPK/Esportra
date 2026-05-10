@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2, Plus, Calendar, Trophy, PlayCircle, XCircle, AlertTriangle, Workflow } from 'lucide-react';
+import { Trash2, Plus, Calendar, Trophy, PlayCircle, XCircle, AlertTriangle, Workflow, Users } from 'lucide-react';
 import Footer from '@/components/Footer';
 
 const ManageSeasons = () => {
@@ -160,6 +160,10 @@ const ManageSeasons = () => {
                         <div className="flex items-center gap-2 text-sm text-zinc-300">
                           <Trophy className="w-4 h-4 text-rose-400" />
                           <span>{season.tournament_count} tournament{season.tournament_count !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-zinc-300">
+                          <Users className="w-4 h-4 text-rose-400" />
+                          <span>{season.participant_count} team{season.participant_count !== 1 ? 's' : ''}</span>
                         </div>
                         {season.start_date && (
                           <div className="flex items-center gap-2 text-sm text-zinc-300">

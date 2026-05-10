@@ -10,12 +10,13 @@ import {
   useLinkTournamentToSeason,
   useUnlinkTournamentFromSeason,
 } from '@/hooks/useSeasonStandings';
+import { useSeasonParticipants, useUpdateParticipantStatus, useRemoveParticipant } from '@/hooks/useSeasonParticipants';
 import { useTournaments } from '@/hooks/useTournaments';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Calendar, Trophy, RefreshCw, Plus, Workflow, Play, CheckCircle2, Archive } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, RefreshCw, Plus, Workflow, Play, CheckCircle2, Archive, Users } from 'lucide-react';
 import StandingsCard from '@/components/organizer/season/StandingsCard';
 import PointRulesCard from '@/components/organizer/season/PointRulesCard';
 import AdvancementRulesCard from '@/components/organizer/season/AdvancementRulesCard';
@@ -37,6 +38,10 @@ const SeasonManage = () => {
   const createAdvancementRule = useCreateAdvancementRule();
   const linkTournament = useLinkTournamentToSeason();
   const unlinkTournament = useUnlinkTournamentFromSeason();
+  const { data: participants = [], isLoading: participantsLoading } = useSeasonParticipants(id || '');
+  const updateParticipant = useUpdateParticipantStatus();
+  const removeParticipant = useRemoveParticipant();
+  const [participantFilter, setParticipantFilter] = useState('all');
   const [showPointRuleForm, setShowPointRuleForm] = useState(false);
   const [showAdvancementRuleForm, setShowAdvancementRuleForm] = useState(false);
   const [showLinkForm, setShowLinkForm] = useState(false);
@@ -226,7 +231,7 @@ const SeasonManage = () => {
             <CardTitle className="text-xl">Season Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-emerald-500/10 rounded-lg">
                   <Trophy className="w-6 h-6 text-emerald-500" />
@@ -256,6 +261,15 @@ const SeasonManage = () => {
                 <div>
                   <p className="text-sm text-gray-400">Point Rules</p>
                   <p className="text-2xl font-bold">{season.point_rules_count}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-rose-500/10 rounded-lg">
+                  <Users className="w-6 h-6 text-rose-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Teams</p>
+                  <p className="text-2xl font-bold">{season.participant_count}</p>
                 </div>
               </div>
             </div>
@@ -308,11 +322,96 @@ const SeasonManage = () => {
         {/* Tabs */}
         <Tabs defaultValue="standings" className="w-full">
           <TabsList className="mb-6">
+            <TabsTrigger value="teams">Teams</TabsTrigger>
             <TabsTrigger value="standings">Standings</TabsTrigger>
             <TabsTrigger value="point-rules">Point Rules</TabsTrigger>
             <TabsTrigger value="advancement-rules">Advancement Rules</TabsTrigger>
             <TabsTrigger value="tournaments">Tournaments</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="teams">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Season Teams</h2>
+              <div className="flex gap-2">
+                <Button variant={participantFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setParticipantFilter('all')}>
+                  All
+                </Button>
+                <Button variant={participantFilter === 'pending' ? 'default' : 'outline'} size="sm" onClick={() => setParticipantFilter('pending')}>
+                  Pending
+                </Button>
+                <Button variant={participantFilter === 'approved' ? 'default' : 'outline'} size="sm" onClick={() => setParticipantFilter('approved')}>
+                  Approved
+                </Button>
+              </div>
+            </div>
+            <Card className="bg-[#0d0d10] border border-white/10">
+              <CardContent className="p-6">
+                {participantsLoading ? (
+                  <p className="text-gray-400 text-center">Loading participants...</p>
+                ) : participants.length === 0 ? (
+                  <div className="text-center py-10">
+                    <Users className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                    <p className="text-gray-300 font-semibold mb-1">No teams registered yet</p>
+                    <p className="text-gray-500 text-sm">Teams will appear here when they register for this season.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {participants
+                      .filter((p) => participantFilter === 'all' || p.status === participantFilter)
+                      .map((p) => (
+                        <div key={p.id} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/30 p-4">
+                          <div className="flex items-center gap-3">
+                            {p.team_logo_url ? (
+                              <img src={p.team_logo_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
+                                <Users className="w-5 h-5 text-gray-500" />
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-semibold text-white">{p.team_name}</p>
+                              <p className="text-sm text-gray-400">{p.status} · {new Date(p.created_at).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            {p.status === 'pending' && (
+                              <Button
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700"
+                                onClick={() => updateParticipant.mutate({ seasonId: id || '', participantId: p.id, status: 'approved' })}
+                                disabled={updateParticipant.isPending}
+                              >
+                                Approve
+                              </Button>
+                            )}
+                            {p.status === 'pending' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                                onClick={() => updateParticipant.mutate({ seasonId: id || '', participantId: p.id, status: 'rejected' })}
+                                disabled={updateParticipant.isPending}
+                              >
+                                Reject
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                              onClick={() => removeParticipant.mutate({ seasonId: id || '', participantId: p.id })}
+                              disabled={removeParticipant.isPending}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="standings">
             <div className="flex justify-between items-center mb-4">

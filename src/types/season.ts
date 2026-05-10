@@ -23,6 +23,7 @@ export interface Season {
   tournament_count: number;
   point_rules_count: number;
   advancement_rules_count: number;
+  participant_count: number;
 }
 
 export interface SeasonList {
@@ -35,6 +36,7 @@ export interface SeasonList {
   end_date: string | null;
   created_at: string;
   tournament_count: number;
+  participant_count: number;
 }
 
 export interface SeasonStanding {
@@ -165,6 +167,20 @@ export interface SeasonTournamentDetails {
   season_role: TournamentRole | null;
   season_stage_order: number | null;
   current_participants: number;
+}
+
+export interface SeasonParticipant {
+  id: string;
+  season_id: string;
+  team_id: string;
+  team_name: string;
+  team_logo_url: string | null;
+  team_slug: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  registered_by: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PointRuleTemplate {

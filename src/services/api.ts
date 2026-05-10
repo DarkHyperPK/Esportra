@@ -10,7 +10,8 @@ import type {
   AdvancementRule,
   SeasonTournamentDetails,
   CreatePointRuleRequest,
-  CreateAdvancementRuleRequest
+  CreateAdvancementRuleRequest,
+  SeasonParticipant
 } from '@/types/season';
 
 // Types
@@ -167,6 +168,22 @@ export const seasonApi = {
     return await apiClient.post<Season>(`/api/seasons/${id}/publish`);
   },
 
+  startSeason: async (id: string) => {
+    return await apiClient.post<Season>(`/api/seasons/${id}/start`);
+  },
+
+  completeSeason: async (id: string) => {
+    return await apiClient.post<Season>(`/api/seasons/${id}/complete`);
+  },
+
+  archiveSeason: async (id: string) => {
+    return await apiClient.post<Season>(`/api/seasons/${id}/archive`);
+  },
+
+  syncSeasonStatus: async (id: string) => {
+    return await apiClient.post<Season>(`/api/seasons/${id}/sync-status`);
+  },
+
   cancelSeason: async (id: string) => {
     return await apiClient.post<Season>(`/api/seasons/${id}/cancel`);
   },
@@ -181,6 +198,12 @@ export const seasonApi = {
 
   recalculateStandings: async (id: string) => {
     return await apiClient.post(`/api/seasons/${id}/standings/recalculate`);
+  },
+
+  processAdvancement: async (id: string, tournamentId?: string) => {
+    return await apiClient.post<{ advanced_count: number }>(`/api/seasons/${id}/advancement/process`, {
+      tournament_id: tournamentId,
+    });
   },
 
   getAuditLog: async (id: string) => {
@@ -221,5 +244,21 @@ export const seasonApi = {
 
   unlinkTournament: async (id: string) => {
     return await apiClient.delete(`/api/tournaments/${id}/season`);
+  },
+
+  registerForSeason: async (id: string) => {
+    return await apiClient.post(`/api/seasons/${id}/register`);
+  },
+
+  getSeasonParticipants: async (id: string) => {
+    return await apiClient.get<SeasonParticipant[]>(`/api/seasons/${id}/participants`);
+  },
+
+  updateParticipantStatus: async (id: string, participantId: string, data: { status: string; notes?: string }) => {
+    return await apiClient.put(`/api/seasons/${id}/participants/${participantId}`, data);
+  },
+
+  removeParticipant: async (id: string, participantId: string) => {
+    return await apiClient.delete(`/api/seasons/${id}/participants/${participantId}`);
   }
 };
