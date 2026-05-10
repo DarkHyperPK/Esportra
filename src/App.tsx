@@ -81,7 +81,6 @@ const OrganizerDashboard = lazyWithRetry(() => import("./pages/organizer/Dashboa
 const TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentList"));
 const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
 const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
-const ManageSeasons = lazyWithRetry(() => import("./pages/organizer/ManageSeasons"));
 const CreateSeason = lazyWithRetry(() => import("./pages/organizer/CreateSeason"));
 const SeasonManage = lazyWithRetry(() => import("./pages/organizer/SeasonManage"));
 const SeasonPublicPage = lazyWithRetry(() => import("./pages/season/SeasonPublicPage"));
@@ -583,7 +582,6 @@ const AppContent = React.memo(() => {
                         <Route path="tournament/:slug/brackets" element={<TournamentBrackets />} />
                         <Route path="tournament/:slug/manage-bracket/:stageId" element={<ManageBracketPage />} />
                         <Route path="disputes" element={<OrganizerDisputesPage />} />
-                        <Route path="seasons" element={<ManageSeasons />} />
                         <Route path="season/:id" element={<SeasonManage />} />
                         <Route path="*" element={<Navigate to="/organizer/dashboard" replace />} />
                       </Routes>
