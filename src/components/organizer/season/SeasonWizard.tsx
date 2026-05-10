@@ -18,9 +18,7 @@ import { apiClient } from '@/lib/apiClient';
 
 const SEASON_STEPS = [
   { id: 1, title: 'Basic Info', description: 'Season name and details' },
-  { id: 2, title: 'Tournaments', description: 'Add tournaments to season' },
-  { id: 3, title: 'Point Rules', description: 'Configure point distribution' },
-  { id: 4, title: 'Review', description: 'Review and create season' },
+  { id: 2, title: 'Review', description: 'Review and create season' },
 ];
 
 interface SeasonWizardProps {
@@ -134,10 +132,6 @@ const SeasonWizard: React.FC<SeasonWizardProps> = ({ onCancel }) => {
       case 1:
         return <StepBasicInfo data={data} updateData={updateData} errors={errors} />;
       case 2:
-        return <StepTournaments data={data} updateData={updateData} />;
-      case 3:
-        return <StepPointRules data={data} updateData={updateData} />;
-      case 4:
         return <StepReview data={data} />;
       default:
         return null;
@@ -327,30 +321,6 @@ const StepBasicInfo: React.FC<{
       </div>
     </div>
     {errors.dates && <p className="text-red-400 text-sm">{errors.dates}</p>}
-  </div>
-);
-
-const StepTournaments: React.FC<{
-  data: SeasonWizardData;
-  updateData: (updates: Partial<SeasonWizardData>) => void;
-}> = ({ data: _data, updateData: _updateData }) => (
-  <div className="space-y-6">
-    <div className="text-center py-12">
-      <p className="text-gray-400 mb-4">Tournament management will be available after season creation</p>
-      <p className="text-sm text-gray-500">You can add tournaments to your season from the season management page</p>
-    </div>
-  </div>
-);
-
-const StepPointRules: React.FC<{
-  data: SeasonWizardData;
-  updateData: (updates: Partial<SeasonWizardData>) => void;
-}> = ({ data: _data, updateData: _updateData }) => (
-  <div className="space-y-6">
-    <div className="text-center py-12">
-      <p className="text-gray-400 mb-4">Point rule configuration will be available after season creation</p>
-      <p className="text-sm text-gray-500">You can configure point rules from the season management page</p>
-    </div>
   </div>
 );
 
