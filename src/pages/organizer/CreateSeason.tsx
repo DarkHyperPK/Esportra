@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Trophy, Workflow, Calendar, Swords, Target, Crown, CalendarDays, Check, X } from 'lucide-react';
 import { useCreateSeason } from '@/hooks/useSeasons';
@@ -28,7 +28,25 @@ const CreateSeason: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [createdSeason, setCreatedSeason] = useState<{ id: string; name: string; slug: string } | null>(null);
 
+  const gameSectionRef = useRef<HTMLDivElement>(null);
+  const templateSectionRef = useRef<HTMLDivElement>(null);
+  const customizeSectionRef = useRef<HTMLDivElement>(null);
+
+  // Reset state when component mounts (prevents stale success screen on back-nav)
   useEffect(() => {
+    setCreatedSeason(null);
+    setSelectedTemplateId(null);
+    setErrors({});
+    setData({
+      name: '',
+      game: '',
+      description: '',
+      start_date: '',
+      end_date: '',
+      banner_url: undefined,
+      logo_url: undefined,
+      organization_id: undefined,
+    });
     let mounted = true;
     const loadOrganization = async () => {
       try {
@@ -59,6 +77,10 @@ const CreateSeason: React.FC = () => {
   const handleSelectGame = (gameName: string) => {
     updateData({ game: gameName, name: '' });
     setSelectedTemplateId(null);
+    // Auto-scroll to template section after a brief delay for render
+    setTimeout(() => {
+      templateSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const handleSelectTemplate = (templateId: string) => {
@@ -69,10 +91,17 @@ const CreateSeason: React.FC = () => {
       const lastSlot = slots[slots.length - 1];
       updateData({ end_date: lastSlot?.suggestedDate ?? data.end_date });
     }
+    // Auto-scroll to customize section
+    setTimeout(() => {
+      customizeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const handleStartFromScratch = () => {
     setSelectedTemplateId('custom');
+    setTimeout(() => {
+      customizeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const validate = (): boolean => {
@@ -179,7 +208,7 @@ const CreateSeason: React.FC = () => {
             <p className="text-[#808080] text-sm max-w-xl">Build a competitive season with multiple tournaments, point rules, and advancement logic.</p>
           </div>
 
-          <section>
+          <section ref={gameSectionRef}>
             <div className="flex items-center gap-3 mb-2">
               <span className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">// STEP 01</span>
             </div>
@@ -227,7 +256,7 @@ const CreateSeason: React.FC = () => {
           </section>
 
           {data.game && (
-            <section>
+            <section ref={templateSectionRef}>
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">// STEP 02</span>
               </div>
@@ -310,7 +339,7 @@ const CreateSeason: React.FC = () => {
           )}
 
           {selectedTemplateId && (
-            <section>
+            <section ref={customizeSectionRef}>
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">// STEP 03</span>
               </div>
