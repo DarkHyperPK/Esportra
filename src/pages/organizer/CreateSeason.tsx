@@ -166,7 +166,7 @@ const CreateSeason: React.FC = () => {
         </p>
       </div>
       <button
-        onClick={() => navigate('/organizer/seasons')}
+        onClick={() => navigate('/organizer/dashboard')}
         className="flex items-center justify-center w-10 h-10 border border-[#2a2a2a] text-[#808080] hover:text-white hover:border-[#404040] transition-colors"
         title="Cancel"
       >
