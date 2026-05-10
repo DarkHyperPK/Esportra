@@ -8,6 +8,7 @@ import type {
   SeasonStanding,
   PointRule,
   AdvancementRule,
+  SeasonTournamentDetails,
   CreatePointRuleRequest,
   CreateAdvancementRuleRequest
 } from '@/types/season';
@@ -15,7 +16,14 @@ import type {
 // Types
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type Tournament = Database['public']['Tables']['tournaments']['Row'];
-export type TournamentRegistration = Database['public']['Tables']['tournament_participants']['Row'];
+export type TournamentRegistration = {
+  id: string;
+  tournament_id: string;
+  team_id?: string | null;
+  user_id?: string | null;
+  status?: string | null;
+  created_at?: string;
+};
 export type Venue = Database['public']['Tables']['venues']['Row'];
 export type VenueBooking = Database['public']['Tables']['venue_bookings']['Row'];
 export type UserRole = Database['public']['Tables']['user_roles']['Row'];
@@ -177,6 +185,10 @@ export const seasonApi = {
 
   getAuditLog: async (id: string) => {
     return await apiClient.get(`/api/seasons/${id}/audit`);
+  },
+
+  getSeasonTournaments: async (id: string) => {
+    return await apiClient.get<SeasonTournamentDetails[]>(`/api/seasons/${id}/tournaments`);
   },
 
   getPointRules: async (id: string) => {

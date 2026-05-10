@@ -6,7 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { seasonApi } from '@/services/api';
-import type { SeasonStanding, PointRule, AdvancementRule, CreatePointRuleRequest, CreateAdvancementRuleRequest } from '@/types/season';
+import type { SeasonStanding, PointRule, AdvancementRule, CreatePointRuleRequest, CreateAdvancementRuleRequest, SeasonTournamentDetails } from '@/types/season';
 import { useToast } from './use-toast';
 
 export function useSeasonStandings(id: string, page = 1, limit = 50) {
@@ -47,6 +47,69 @@ export function useSeasonPointRules(id: string) {
     queryFn: () => seasonApi.getPointRules(id),
     enabled: !!id,
     staleTime: 2 * 60_000,
+  });
+}
+
+export function useSeasonTournaments(id: string) {
+  return useQuery<SeasonTournamentDetails[]>({
+    queryKey: ['season-tournaments', id],
+    queryFn: () => seasonApi.getSeasonTournaments(id),
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+}
+
+export function useLinkTournamentToSeason() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ tournamentId, seasonId, seasonRole, seasonStageOrder }: { tournamentId: string; seasonId: string; seasonRole: string; seasonStageOrder: number }) =>
+      seasonApi.linkTournament(tournamentId, {
+        season_id: seasonId,
+        season_role: seasonRole,
+        season_stage_order: seasonStageOrder,
+      }),
+    onSuccess: (_, { seasonId }) => {
+      queryClient.invalidateQueries({ queryKey: ['season-tournaments', seasonId] });
+      queryClient.invalidateQueries({ queryKey: ['season', seasonId] });
+      toast({
+        title: 'Tournament linked',
+        description: 'Tournament has been linked to this season.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error linking tournament',
+        description: 'We could not link the tournament right now.',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useUnlinkTournamentFromSeason() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ tournamentId }: { tournamentId: string; seasonId: string }) =>
+      seasonApi.unlinkTournament(tournamentId),
+    onSuccess: (_, { seasonId }) => {
+      queryClient.invalidateQueries({ queryKey: ['season-tournaments', seasonId] });
+      queryClient.invalidateQueries({ queryKey: ['season', seasonId] });
+      toast({
+        title: 'Tournament unlinked',
+        description: 'Tournament has been removed from this season.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error unlinking tournament',
+        description: 'We could not unlink the tournament right now.',
+        variant: 'destructive',
+      });
+    },
   });
 }
 

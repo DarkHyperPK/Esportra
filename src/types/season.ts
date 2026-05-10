@@ -154,6 +154,19 @@ export interface SeasonTournament {
   season_stage_order: number;
 }
 
+export interface SeasonTournamentDetails {
+  id: string;
+  name: string;
+  slug: string;
+  game: string;
+  status: string;
+  start_date: string | null;
+  end_date: string | null;
+  season_role: TournamentRole | null;
+  season_stage_order: number | null;
+  current_participants: number;
+}
+
 export interface PointRuleTemplate {
   name: string;
   rules: CreatePointRuleRequest[];
