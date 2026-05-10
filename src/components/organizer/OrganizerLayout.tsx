@@ -18,7 +18,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/organizer/dashboard': 'Dashboard',
   '/organizer/tournaments': 'Tournaments',
   '/organizer/seasons': 'Seasons',
-  '/organizer/seasons/new': 'Create Season',
   '/organizer/disputes': 'Disputes',
   '/organizer/setup-organization': 'Organization',
 };

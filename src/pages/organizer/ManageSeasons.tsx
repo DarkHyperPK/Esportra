@@ -97,7 +97,7 @@ const ManageSeasons = () => {
               </div>
             </div>
 
-            <Link to="/organizer/seasons/new">
+            <Link to="/seasons/create">
               <Button className="w-full bg-rose-500 hover:bg-rose-600 text-white h-11 text-xs font-bold uppercase tracking-widest">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Season
@@ -113,7 +113,7 @@ const ManageSeasons = () => {
     <>
       <div className="px-8 py-8">
         <div className="flex justify-end mb-6">
-          <Link to="/organizer/seasons/new">
+          <Link to="/seasons/create">
             <Button className="bg-rose-500 hover:bg-rose-600 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Create Season

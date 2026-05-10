@@ -584,7 +584,6 @@ const AppContent = React.memo(() => {
                         <Route path="tournament/:slug/manage-bracket/:stageId" element={<ManageBracketPage />} />
                         <Route path="disputes" element={<OrganizerDisputesPage />} />
                         <Route path="seasons" element={<ManageSeasons />} />
-                        <Route path="seasons/new" element={<CreateSeason />} />
                         <Route path="season/:id" element={<SeasonManage />} />
                         <Route path="*" element={<Navigate to="/organizer/dashboard" replace />} />
                       </Routes>
@@ -592,6 +591,11 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/season/:slug" element={<SeasonPublicPage />} />
+                <Route path="/seasons/create" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <CreateSeason />
+                  </ProtectedRoute>
+                } />
                 <Route path="/tournaments" element={<BrowseTournaments />} />
                 <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />

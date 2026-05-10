@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { apiClient } from '@/lib/apiClient';
 import { useArchiveSeason, useCompleteSeason, usePublishSeason, useSeason, useStartSeason, useSyncSeasonStatus } from '@/hooks/useSeasons';
 import {
   useRecalculateStandings,
@@ -16,11 +17,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Calendar, Trophy, RefreshCw, Plus, Workflow, Play, CheckCircle2, Archive, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, RefreshCw, Plus, Workflow, Play, CheckCircle2, Archive, Users, ShieldAlert } from 'lucide-react';
 import StandingsCard from '@/components/organizer/season/StandingsCard';
 import PointRulesCard from '@/components/organizer/season/PointRulesCard';
 import AdvancementRulesCard from '@/components/organizer/season/AdvancementRulesCard';
 import type { QualificationStatus, SeedMode } from '@/types/season';
+
+interface SeasonDispute {
+  id: string;
+  title: string;
+  status: string;
+  tournament_name: string;
+  created_at: string;
+}
 
 const SeasonManage = () => {
   const { id } = useParams<{ id: string }>();
@@ -65,6 +74,37 @@ const SeasonManage = () => {
     season_role: 'event',
     season_stage_order: '1',
   });
+  const [disputes, setDisputes] = useState<SeasonDispute[]>([]);
+  const [disputesLoading, setDisputesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!id || linkedTournaments.length === 0) return;
+    const tournamentIds = new Set(linkedTournaments.map((t) => t.id));
+    let cancelled = false;
+    setDisputesLoading(true);
+    apiClient
+      .get<any[]>('/api/disputes')
+      .then((all) => {
+        if (cancelled) return;
+        const filtered = (all || []).filter((d) => tournamentIds.has(d.tournament_id));
+        setDisputes(
+          filtered.map((d) => ({
+            id: d.id,
+            title: d.title,
+            status: d.status,
+            tournament_name: d.tournament_name || 'Unknown tournament',
+            created_at: d.created_at,
+          }))
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setDisputes([]);
+      })
+      .finally(() => {
+        if (!cancelled) setDisputesLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [id, linkedTournaments]);
 
   if (isLoading) {
     return (
@@ -327,6 +367,7 @@ const SeasonManage = () => {
             <TabsTrigger value="point-rules">Point Rules</TabsTrigger>
             <TabsTrigger value="advancement-rules">Advancement Rules</TabsTrigger>
             <TabsTrigger value="tournaments">Tournaments</TabsTrigger>
+            <TabsTrigger value="disputes">Disputes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="teams">
@@ -562,6 +603,50 @@ const SeasonManage = () => {
                         <Button variant="ghost" className="text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => unlinkTournament.mutate({ tournamentId: tournament.id, seasonId: id || '' })} disabled={unlinkTournament.isPending}>
                           Unlink
                         </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="disputes">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Season Disputes</h2>
+            </div>
+            <Card className="bg-[#0d0d10] border border-white/10">
+              <CardContent className="p-6">
+                {disputesLoading ? (
+                  <p className="text-gray-400 text-center">Loading disputes...</p>
+                ) : disputes.length === 0 ? (
+                  <div className="text-center py-10">
+                    <ShieldAlert className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                    <p className="text-gray-300 font-semibold mb-1">No disputes found</p>
+                    <p className="text-gray-500 text-sm">
+                      Disputes raised for tournaments in this season will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {disputes.map((dispute) => (
+                      <div key={dispute.id} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/30 p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-yellow-500/10 rounded-lg">
+                            <ShieldAlert className="w-5 h-5 text-yellow-500" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-white">{dispute.title}</p>
+                            <p className="text-sm text-gray-400">{dispute.tournament_name} · {new Date(dispute.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <Badge className={
+                          dispute.status === 'open' ? 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40' :
+                          dispute.status === 'resolved' ? 'bg-green-500/15 text-green-300 border-green-500/40' :
+                          'bg-zinc-500/15 text-zinc-300 border-zinc-500/40'
+                        } variant="secondary">
+                          {dispute.status}
+                        </Badge>
                       </div>
                     ))}
                   </div>
