@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { seasonApi } from '@/services/api';
 import type { Season, SeasonList, CreateSeasonRequest, UpdateSeasonRequest } from '@/types/season';
 import { useToast } from './use-toast';
+import { ApiError } from '@/lib/apiClient';
 
 export function useSeasons(page = 1, limit = 50, status?: string, game?: string) {
   return useQuery<SeasonList[]>({
@@ -31,7 +32,25 @@ export function useCreateSeason() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (data: CreateSeasonRequest) => seasonApi.createSeason(data),
+    mutationFn: async (data: CreateSeasonRequest) => {
+      try {
+        return await seasonApi.createSeason(data);
+      } catch (error) {
+        if (error instanceof ApiError) {
+          console.error('[SeasonCreate] API error', {
+            status: error.status,
+            body: error.body,
+            request: data,
+          });
+        } else {
+          console.error('[SeasonCreate] Unexpected error', {
+            error,
+            request: data,
+          });
+        }
+        throw error;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
       toast({
@@ -39,10 +58,10 @@ export function useCreateSeason() {
         description: 'Your season has been created successfully.',
       });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error creating season',
-        description: error instanceof Error ? error.message : 'Failed to create season',
+        description: 'We could not create the season right now. Please check your details and try again.',
         variant: 'destructive',
       });
     },

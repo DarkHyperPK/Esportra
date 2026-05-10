@@ -104,7 +104,7 @@ const ManageSeasons = () => {
             <h1 className="text-3xl md:text-4xl font-black tracking-tight">My Seasons</h1>
             <p className="text-zinc-500 mt-1">Manage your seasons and tournaments</p>
           </div>
-          <Link to="/organizer/seasons/create">
+          <Link to="/tournaments/create?mode=season">
             <Button className="bg-rose-500 hover:bg-rose-600 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Create Season
@@ -135,7 +135,7 @@ const ManageSeasons = () => {
                     ? "Create your first season to start organizing tournaments and tracking standings."
                     : `You don't have any ${activeTab} seasons at the moment.`}
                 </p>
-                <Link to="/organizer/seasons/create">
+                <Link to="/tournaments/create?mode=season">
                   <Button className="bg-rose-500 hover:bg-rose-600 text-white">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Your First Season

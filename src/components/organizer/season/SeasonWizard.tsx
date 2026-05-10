@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useCreateSeason } from '@/hooks/useSeasons';
 import type { CreateSeasonRequest, SeasonWizardData } from '@/types/season';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import esportsGames from '@/data/esportsGames.json';
+import { apiClient } from '@/lib/apiClient';
 
 const SEASON_STEPS = [
   { id: 1, title: 'Basic Info', description: 'Season name and details' },
@@ -37,6 +46,27 @@ const SeasonWizard: React.FC<SeasonWizardProps> = ({ onCancel }) => {
   const { mutate: createSeason, isPending } = useCreateSeason();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadOrganization = async () => {
+      try {
+        const roles = await apiClient.get<{ organization_id?: string | null }>('/api/me/roles');
+        if (mounted && roles?.organization_id) {
+          setData(prev => ({ ...prev, organization_id: roles.organization_id ?? undefined }));
+        }
+      } catch (error) {
+        console.warn('[SeasonCreate] Unable to resolve organization_id for season payload', error);
+      }
+    };
+
+    void loadOrganization();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
@@ -94,7 +124,7 @@ const SeasonWizard: React.FC<SeasonWizardProps> = ({ onCancel }) => {
           title: 'Season created successfully',
           description: 'Your season has been created and is ready to configure.',
         });
-        navigate(`/organizer/seasons/${season.id}`);
+        navigate(`/organizer/season/${season.id}`);
       },
     });
   };
@@ -242,13 +272,27 @@ const StepBasicInfo: React.FC<{
 
     <div>
       <label className="block text-sm font-medium text-gray-300 mb-2">Game *</label>
-      <input
-        type="text"
-        value={data.game}
-        onChange={(e) => updateData({ game: e.target.value })}
-        className="w-full bg-black/30 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
-        placeholder="Enter game name"
-      />
+      <Select value={data.game} onValueChange={(game) => updateData({ game })}>
+        <SelectTrigger className={`w-full bg-black/30 border-gray-700 text-white focus:border-emerald-500 ${errors.game ? 'border-red-500' : ''}`}>
+          <SelectValue placeholder="Select a supported game" />
+        </SelectTrigger>
+        <SelectContent className="bg-[#0d0d10] border-white/10 text-white">
+          {esportsGames.games
+            .filter((game) => game.slug !== 'cs2')
+            .map((game) => (
+              <SelectItem
+                key={game.name}
+                value={game.name}
+                className="focus:bg-emerald-600 focus:text-white cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <img src={game.logo} alt="" className="w-5 h-5 rounded object-cover" />
+                  <span>{game.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+        </SelectContent>
+      </Select>
       {errors.game && <p className="text-red-400 text-sm mt-1">{errors.game}</p>}
     </div>
 
