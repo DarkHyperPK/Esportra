@@ -58,6 +58,9 @@ const DesktopNav = ({
               <div className="h-px bg-white/10 my-1 mx-2" />
               <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
               <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
+              <div className="h-px bg-white/10 my-1 mx-2" />
+              <FramerDropdownItem to="/organizer/seasons">Manage Seasons</FramerDropdownItem>
+              <FramerDropdownItem to="/tournaments/create?mode=season">Create Season</FramerDropdownItem>
             </>
           )}
         </FramerDropdownContent>

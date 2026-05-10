@@ -112,6 +112,9 @@ const MobileNav = ({
                           <div className="h-px bg-white/10 my-1 mx-2" />
                           <Link to="/organizer/tournaments" className={subLinkClass} onClick={onClose}>Manage Tournaments</Link>
                           <Link to="/tournaments/create" className={subLinkClass} onClick={onClose}>Create Tournament</Link>
+                          <div className="h-px bg-white/10 my-1 mx-2" />
+                          <Link to="/organizer/seasons" className={subLinkClass} onClick={onClose}>Manage Seasons</Link>
+                          <Link to="/tournaments/create?mode=season" className={subLinkClass} onClick={onClose}>Create Season</Link>
                         </>
                       )}
                     </div>

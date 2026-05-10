@@ -399,10 +399,18 @@ const SeasonManage = () => {
           <TabsContent value="tournaments">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Season Tournaments</h2>
-              <Button onClick={() => setShowLinkForm((open) => !open)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Link Tournament
-              </Button>
+              <div className="flex gap-2">
+                <Link to="/tournaments/create">
+                  <Button variant="outline" className="border-gray-700 hover:bg-white/10">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Tournament
+                  </Button>
+                </Link>
+                <Button onClick={() => setShowLinkForm((open) => !open)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Link Existing
+                </Button>
+              </div>
             </div>
             {showLinkForm && (
               <Card className="bg-[#0d0d10] border border-white/10 mb-4">
@@ -429,7 +437,25 @@ const SeasonManage = () => {
                 {linkedTournamentsLoading ? (
                   <p className="text-gray-400 text-center">Loading tournaments...</p>
                 ) : linkedTournaments.length === 0 ? (
-                  <p className="text-gray-400 text-center">No tournaments linked yet</p>
+                  <div className="text-center py-10">
+                    <Trophy className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                    <p className="text-gray-300 font-semibold mb-1">No tournaments linked yet</p>
+                    <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
+                      Create a tournament for this season, then link it here to track standings and apply point rules.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <Link to="/tournaments/create">
+                        <Button className="bg-rose-500 hover:bg-rose-600 text-white">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Tournament
+                        </Button>
+                      </Link>
+                      <Button variant="outline" className="border-gray-700 hover:bg-white/10" onClick={() => setShowLinkForm(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Link Existing Tournament
+                      </Button>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     {linkedTournaments.map((tournament) => (
