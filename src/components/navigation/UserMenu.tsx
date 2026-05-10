@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { User, Users, MessageSquare, ArrowRightLeft, Building2, Award, Settings, Workflow } from "lucide-react";
+import { User, Users, MessageSquare, ArrowRightLeft, Building2, Award, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -321,11 +321,9 @@ const UserMenu = ({
               <>
                 {hasOrganization ? (
                   <>
-                    <FramerDropdownItem to="/organizer/dashboard?tab=organization" icon={<Building2 className="h-4 w-4" />}>My Organization</FramerDropdownItem>
                     <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
                     <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
-                    <FramerDropdownItem to="/organizer/seasons" icon={<Workflow className="h-4 w-4" />}>Manage Seasons</FramerDropdownItem>
-                    <FramerDropdownItem to="/tournaments/create?mode=season">Create Season</FramerDropdownItem>
+                    <FramerDropdownItem to="/seasons/create">Create Season</FramerDropdownItem>
                   </>
                 ) : (
                   <FramerDropdownItem to="/organizer/setup-organization" icon={<Building2 className="h-4 w-4" />}>

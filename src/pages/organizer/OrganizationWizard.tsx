@@ -154,7 +154,7 @@ const OrganizationWizard: React.FC = () => {
             window.dispatchEvent(new Event('organizationCreated'));
 
             toast({ title: 'Success!', description: 'Your organization has been created.' });
-            navigate('/organizer/dashboard?tab=organization');
+            navigate('/organizer/tournaments');
         } catch (error: any) {
             console.error('Error creating organization:', error);
             toast({ title: 'Error', description: error.message, variant: 'destructive' });

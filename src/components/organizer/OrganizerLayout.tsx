@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Trophy, Settings, Building2, User } from 'lucide-react';
+import { Trophy, Settings, Building2, User } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
 interface OrganizerLayoutProps {
@@ -8,13 +8,11 @@ interface OrganizerLayoutProps {
 }
 
 const NAV_ITEMS = [
-  { path: '/organizer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/organizer/tournaments', label: 'Tournaments', icon: Trophy },
   { path: '/organizer/disputes', label: 'Disputes', icon: Settings },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
-  '/organizer/dashboard': 'Dashboard',
   '/organizer/tournaments': 'Tournaments',
   '/organizer/disputes': 'Disputes',
   '/organizer/setup-organization': 'Organization',

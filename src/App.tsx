@@ -77,8 +77,6 @@ const AnomalyDetection = lazyWithRetry(() => import("./pages/admin/tools/Anomaly
 const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dashboard"));
 
 // Tournament Organizer
-const OrganizerDashboard = lazyWithRetry(() => import("./pages/organizer/Dashboard"));
-const TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentList"));
 const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
 const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
 const CreateSeason = lazyWithRetry(() => import("./pages/organizer/CreateSeason"));
@@ -574,7 +572,6 @@ const AppContent = React.memo(() => {
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <OrganizerLayout>
                       <Routes>
-                        <Route path="dashboard" element={<OrganizerDashboard />} />
                         <Route path="setup-organization" element={<OrganizationWizard />} />
                         <Route path="tournaments" element={<ManageTournaments />} />
                         <Route path="tournament/:slug" element={<TournamentManage />} />
@@ -582,13 +579,17 @@ const AppContent = React.memo(() => {
                         <Route path="tournament/:slug/brackets" element={<TournamentBrackets />} />
                         <Route path="tournament/:slug/manage-bracket/:stageId" element={<ManageBracketPage />} />
                         <Route path="disputes" element={<OrganizerDisputesPage />} />
-                        <Route path="season/:id" element={<SeasonManage />} />
-                        <Route path="*" element={<Navigate to="/organizer/dashboard" replace />} />
+                        <Route path="*" element={<Navigate to="/organizer/tournaments" replace />} />
                       </Routes>
                     </OrganizerLayout>
                   </ProtectedRoute>
                 } />
                 <Route path="/season/:slug" element={<SeasonPublicPage />} />
+                <Route path="/season/manage/:id" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <SeasonManage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/seasons/create" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <CreateSeason />

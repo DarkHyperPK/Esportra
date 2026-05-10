@@ -158,14 +158,14 @@ const CreateSeason: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
-                onClick={() => navigate(`/organizer/season/${createdSeason.id}`)}
+                onClick={() => navigate(`/season/manage/${createdSeason.id}`)}
                 className="flex items-center justify-center gap-2 h-12 bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-[#e0e0e0] active:bg-[#cccccc] transition-none"
               >
                 <Workflow className="w-4 h-4" />
                 MANAGE SEASON
               </button>
               <button
-                onClick={() => navigate('/organizer/dashboard')}
+                onClick={() => navigate('/organizer/tournaments')}
                 className="flex items-center justify-center gap-2 h-12 bg-transparent text-white border border-[#2a2a2a] text-xs font-semibold uppercase tracking-widest hover:bg-white/5 hover:border-[#404040] transition-none"
               >
                 DONE
@@ -181,13 +181,13 @@ const CreateSeason: React.FC = () => {
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="sticky top-0 z-50 bg-[#050505]/95 backdrop-blur-sm border-b border-[#1a1a1a]">
         <div className="max-w-6xl mx-auto px-8 h-14 flex items-center justify-between">
-          <button onClick={() => navigate('/organizer/dashboard')} className="text-white font-bold text-lg tracking-wider uppercase hover:opacity-80 transition-opacity">
+          <button onClick={() => navigate('/organizer/tournaments')} className="text-white font-bold text-lg tracking-wider uppercase hover:opacity-80 transition-opacity">
             ESPORT<span className="text-rose-500">RA</span>
           </button>
           <div className="flex items-center gap-4">
             <span className="text-[10px] font-bold text-[#555555] uppercase tracking-widest hidden sm:block">CREATE SEASON</span>
             <button
-              onClick={() => navigate('/organizer/dashboard')}
+              onClick={() => navigate('/organizer/tournaments')}
               className="flex items-center justify-center w-8 h-8 border border-[#2a2a2a] text-[#808080] hover:text-white hover:border-[#404040] transition-colors"
               title="Cancel"
             >

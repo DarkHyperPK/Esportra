@@ -124,10 +124,10 @@ const SeasonManage = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-12">
             <p className="text-red-400 mb-4">Failed to load season. It may not exist or an error occurred.</p>
-            <Link to="/organizer/dashboard">
+            <Link to="/organizer/tournaments">
               <Button variant="outline" className="border-gray-700 hover:bg-white/10">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
+                Back to Tournaments
               </Button>
             </Link>
           </div>

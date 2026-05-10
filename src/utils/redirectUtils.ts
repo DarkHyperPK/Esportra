@@ -10,7 +10,7 @@ export const getDashboardPath = (profile: UserProfile | null): string => {
     case 'admin':
       return '/admin/dashboard';
     case 'organizer':
-      return '/organizer/dashboard';
+      return '/organizer/tournaments';
     case 'venue_owner':
       return '/venues/dashboard';
     case 'player':

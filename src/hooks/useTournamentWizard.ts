@@ -371,7 +371,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                 clearDraft();
                 toast({ title: 'Tournament Created!', description: seasonId ? 'Tournament created and linked to season.' : 'Your tournament has been created successfully.' });
                 if (seasonId) {
-                    navigate(`/organizer/season/${seasonId}`);
+                    navigate(`/season/manage/${seasonId}`);
                 } else {
                     navigate(`/organizer/tournament/${tournament?.slug || tournament?.id}`);
                 }
