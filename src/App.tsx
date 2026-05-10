@@ -162,6 +162,7 @@ const SettingsRedirect = () => {
 
 const AppContent = React.memo(() => {
   const location = useLocation();
+  const hideTopNav = location.pathname.endsWith('/brackets/fullscreen') || location.pathname.startsWith('/organizer');
 
   // Scroll to top on route change
   useEffect(() => {
@@ -183,7 +184,8 @@ const AppContent = React.memo(() => {
 
       <Toaster />
       <Sonner />
-      {!location.pathname.endsWith('/brackets/fullscreen') && (
+
+      {!hideTopNav && (
         <>
           <Navbar />
           <BetaNoticeBanner />
