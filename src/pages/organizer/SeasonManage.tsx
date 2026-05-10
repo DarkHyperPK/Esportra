@@ -13,7 +13,7 @@ import {
 } from '@/hooks/useSeasonStandings';
 import { useSeasonParticipants, useUpdateParticipantStatus, useRemoveParticipant } from '@/hooks/useSeasonParticipants';
 import { useTournaments } from '@/hooks/useTournaments';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -219,155 +219,171 @@ const SeasonManage = () => {
     <div className="min-h-screen bg-transparent text-white">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex flex-col gap-4 mb-8 lg:flex-row lg:items-center">
-          <Link to="/organizer/seasons">
-            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Seasons
-            </Button>
+        <div className="mb-10">
+          <Link to="/organizer/seasons" className="inline-flex items-center gap-2 text-[10px] font-bold text-[#808080] uppercase tracking-widest hover:text-white transition-colors mb-6">
+            <ArrowLeft className="w-3 h-3" />
+            BACK TO SEASONS
           </Link>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-2">{season.name}</h1>
-            <div className="flex items-center gap-4">
-              <Badge className={getStatusColor(season.status)}>{season.status}</Badge>
-              <span className="text-gray-400">{season.game}</span>
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-[2px] bg-rose-500" />
+                <span className="text-rose-400 text-[10px] font-bold tracking-[0.25em] uppercase">SEASON MANAGE</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight leading-[0.95] mb-4">{season.name}</h1>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${getStatusColor(season.status)} text-white`}>
+                  {season.status}
+                </span>
+                <span className="text-[#808080] text-sm">{season.game}</span>
+                <span className="text-[#808080] text-sm">
+                  {season.start_date ? new Date(season.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'}
+                  {' — '}
+                  {season.end_date ? new Date(season.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {season.status === 'draft' && (
-              <Button onClick={() => publishSeason.mutate(id || '')} disabled={isLifecyclePending || linkedTournaments.length === 0}>
-                <Workflow className="w-4 h-4 mr-2" />
-                Publish
-              </Button>
-            )}
-            {season.status === 'published' && (
-              <Button onClick={() => startSeason.mutate(id || '')} disabled={isLifecyclePending}>
-                <Play className="w-4 h-4 mr-2" />
-                Start
-              </Button>
-            )}
-            {(season.status === 'published' || season.status === 'live') && (
-              <Button onClick={() => completeSeason.mutate(id || '')} disabled={isLifecyclePending} variant="outline" className="border-gray-700 hover:bg-white/10">
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Complete
-              </Button>
-            )}
-            {season.status !== 'archived' && (
-              <Button onClick={() => archiveSeason.mutate(id || '')} disabled={isLifecyclePending} variant="outline" className="border-gray-700 hover:bg-white/10">
-                <Archive className="w-4 h-4 mr-2" />
-                Archive
-              </Button>
-            )}
-            <Button onClick={() => syncSeasonStatus.mutate(id || '')} disabled={isLifecyclePending} variant="outline" className="border-gray-700 hover:bg-white/10">
-              <RefreshCw className={`w-4 h-4 mr-2 ${syncSeasonStatus.isPending ? 'animate-spin' : ''}`} />
-              Sync Status
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {season.status === 'draft' && (
+                <button
+                  onClick={() => publishSeason.mutate(id || '')}
+                  disabled={isLifecyclePending || linkedTournaments.length === 0}
+                  className="flex items-center gap-2 h-10 px-4 bg-white text-black text-[10px] font-bold uppercase tracking-widest hover:bg-[#e0e0e0] active:bg-[#cccccc] disabled:opacity-40 disabled:cursor-not-allowed transition-none"
+                >
+                  <Workflow className="w-4 h-4" />
+                  PUBLISH
+                </button>
+              )}
+              {season.status === 'published' && (
+                <button
+                  onClick={() => startSeason.mutate(id || '')}
+                  disabled={isLifecyclePending}
+                  className="flex items-center gap-2 h-10 px-4 bg-white text-black text-[10px] font-bold uppercase tracking-widest hover:bg-[#e0e0e0] active:bg-[#cccccc] disabled:opacity-40 disabled:cursor-not-allowed transition-none"
+                >
+                  <Play className="w-4 h-4" />
+                  START
+                </button>
+              )}
+              {(season.status === 'published' || season.status === 'live') && (
+                <button
+                  onClick={() => completeSeason.mutate(id || '')}
+                  disabled={isLifecyclePending}
+                  className="flex items-center gap-2 h-10 px-4 border border-[#2a2a2a] text-white text-[10px] font-bold uppercase tracking-widest hover:border-[#404040] hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-none"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  COMPLETE
+                </button>
+              )}
+              {season.status !== 'archived' && (
+                <button
+                  onClick={() => archiveSeason.mutate(id || '')}
+                  disabled={isLifecyclePending}
+                  className="flex items-center gap-2 h-10 px-4 border border-[#2a2a2a] text-white text-[10px] font-bold uppercase tracking-widest hover:border-[#404040] hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-none"
+                >
+                  <Archive className="w-4 h-4" />
+                  ARCHIVE
+                </button>
+              )}
+              <button
+                onClick={() => syncSeasonStatus.mutate(id || '')}
+                disabled={isLifecyclePending}
+                className="flex items-center gap-2 h-10 px-4 border border-[#2a2a2a] text-white text-[10px] font-bold uppercase tracking-widest hover:border-[#404040] hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-none"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncSeasonStatus.isPending ? 'animate-spin' : ''}`} />
+                SYNC
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Season Info */}
-        <Card className="bg-[#0d0d10] border border-white/10 mb-6">
-          <CardHeader>
-            <CardTitle className="text-xl">Season Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-emerald-500/10 rounded-lg">
-                  <Trophy className="w-6 h-6 text-emerald-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Tournaments</p>
-                  <p className="text-2xl font-bold">{season.tournament_count}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <Calendar className="w-6 h-6 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Date Range</p>
-                  <p className="text-sm font-medium">
-                    {season.start_date ? new Date(season.start_date).toLocaleDateString() : 'Not set'}
-                    {' - '}
-                    {season.end_date ? new Date(season.end_date).toLocaleDateString() : 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-purple-500/10 rounded-lg">
-                  <Trophy className="w-6 h-6 text-purple-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Point Rules</p>
-                  <p className="text-2xl font-bold">{season.point_rules_count}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-rose-500/10 rounded-lg">
-                  <Users className="w-6 h-6 text-rose-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Teams</p>
-                  <p className="text-2xl font-bold">{season.participant_count}</p>
-                </div>
-              </div>
-            </div>
-            {season.description && (
-              <div className="mt-6 pt-6 border-t border-white/10">
-                <p className="text-gray-300">{season.description}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Overview Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#1a1a1a] mb-8">
+          <div className="bg-[#0a0a0a] p-6">
+            <Trophy className="w-5 h-5 text-rose-400 mb-3" />
+            <p className="text-3xl font-black text-white mb-1">{season.tournament_count}</p>
+            <p className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">TOURNAMENTS</p>
+          </div>
+          <div className="bg-[#0a0a0a] p-6">
+            <Calendar className="w-5 h-5 text-blue-400 mb-3" />
+            <p className="text-sm font-bold text-white mb-1">
+              {season.start_date ? new Date(season.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'TBD'}
+            </p>
+            <p className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">START DATE</p>
+          </div>
+          <div className="bg-[#0a0a0a] p-6">
+            <Trophy className="w-5 h-5 text-purple-400 mb-3" />
+            <p className="text-3xl font-black text-white mb-1">{season.point_rules_count}</p>
+            <p className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">POINT RULES</p>
+          </div>
+          <div className="bg-[#0a0a0a] p-6">
+            <Users className="w-5 h-5 text-emerald-400 mb-3" />
+            <p className="text-3xl font-black text-white mb-1">{season.participant_count}</p>
+            <p className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">TEAMS</p>
+          </div>
+        </div>
 
-        <Card className="bg-[#0d0d10] border border-white/10 mb-6">
-          <CardHeader>
-            <CardTitle className="text-xl">Automation</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                <p className="text-sm text-gray-400">Linked tournaments</p>
-                <p className="mt-1 text-2xl font-bold">{linkedTournaments.length}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                <p className="text-sm text-gray-400">Point rules</p>
-                <p className="mt-1 text-2xl font-bold">{season.point_rules_count}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                <p className="text-sm text-gray-400">Advancement rules</p>
-                <p className="mt-1 text-2xl font-bold">{season.advancement_rules_count}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                <p className="text-sm text-gray-400">Health</p>
-                <p className="mt-1 text-sm text-gray-300">
-                  {linkedTournaments.length === 0 ? 'Link tournaments before publishing.' : 'Ready for automation checks.'}
-                </p>
-              </div>
+        {/* Automation + Pipeline */}
+        <div className="border border-[#1a1a1a] bg-[#0a0a0a] p-6 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xs font-bold text-white uppercase tracking-[0.2em]">AUTOMATION</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => processAdvancement.mutate({ id: id || '' })}
+                disabled={processAdvancement.isPending || linkedTournaments.length === 0}
+                className="flex items-center gap-2 h-9 px-3 border border-[#2a2a2a] text-[#808080] text-[10px] font-bold uppercase tracking-widest hover:text-white hover:border-[#404040] disabled:opacity-40 disabled:cursor-not-allowed transition-none"
+              >
+                <Workflow className="w-3 h-3" />
+                PROCESS
+              </button>
+              <button
+                onClick={() => recalculateStandings.mutate(id || '')}
+                disabled={recalculateStandings.isPending}
+                className="flex items-center gap-2 h-9 px-3 border border-[#2a2a2a] text-[#808080] text-[10px] font-bold uppercase tracking-widest hover:text-white hover:border-[#404040] disabled:opacity-40 disabled:cursor-not-allowed transition-none"
+              >
+                <RefreshCw className={`w-3 h-3 ${recalculateStandings.isPending ? 'animate-spin' : ''}`} />
+                RECALCULATE
+              </button>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button onClick={() => processAdvancement.mutate({ id: id || '' })} disabled={processAdvancement.isPending || linkedTournaments.length === 0} variant="outline" className="border-gray-700 hover:bg-white/10">
-                <Workflow className="w-4 h-4 mr-2" />
-                Process Advancement
-              </Button>
-              <Button onClick={() => recalculateStandings.mutate(id || '')} disabled={recalculateStandings.isPending} variant="outline" className="border-gray-700 hover:bg-white/10">
-                <RefreshCw className={`w-4 h-4 mr-2 ${recalculateStandings.isPending ? 'animate-spin' : ''}`} />
-                Recalculate Standings
-              </Button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#1a1a1a]">
+            <div className="bg-[#050505] p-4">
+              <p className="text-[10px] font-bold text-[#555555] uppercase tracking-wider mb-1">LINKED</p>
+              <p className="text-2xl font-black text-white">{linkedTournaments.length}</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="bg-[#050505] p-4">
+              <p className="text-[10px] font-bold text-[#555555] uppercase tracking-wider mb-1">POINT RULES</p>
+              <p className="text-2xl font-black text-white">{season.point_rules_count}</p>
+            </div>
+            <div className="bg-[#050505] p-4">
+              <p className="text-[10px] font-bold text-[#555555] uppercase tracking-wider mb-1">ADVANCEMENT</p>
+              <p className="text-2xl font-black text-white">{season.advancement_rules_count}</p>
+            </div>
+            <div className="bg-[#050505] p-4">
+              <p className="text-[10px] font-bold text-[#555555] uppercase tracking-wider mb-1">HEALTH</p>
+              <p className="text-xs font-medium text-[#808080]">
+                {linkedTournaments.length === 0 ? 'Link tournaments before publishing.' : 'Ready for automation.'}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Tabs */}
         <Tabs defaultValue="standings" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="teams">Teams</TabsTrigger>
-            <TabsTrigger value="standings">Standings</TabsTrigger>
-            <TabsTrigger value="point-rules">Point Rules</TabsTrigger>
-            <TabsTrigger value="advancement-rules">Advancement Rules</TabsTrigger>
-            <TabsTrigger value="tournaments">Tournaments</TabsTrigger>
-            <TabsTrigger value="disputes">Disputes</TabsTrigger>
+          <TabsList className="mb-8 bg-transparent border-b border-[#1a1a1a] rounded-none w-full justify-start h-auto p-0 gap-0">
+            {['teams', 'standings', 'point-rules', 'advancement-rules', 'tournaments', 'disputes'].map((tab) => (
+              <TabsTrigger
+                key={tab}
+                value={tab}
+                className="data-[state=active]:border-b-2 data-[state=active]:border-rose-500 data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:bg-transparent text-[#555555] text-[10px] font-bold uppercase tracking-[0.15em] px-4 py-3 rounded-none border-0 bg-transparent hover:text-white transition-colors"
+              >
+                {tab === 'teams' && 'TEAMS'}
+                {tab === 'standings' && 'STANDINGS'}
+                {tab === 'point-rules' && 'POINT RULES'}
+                {tab === 'advancement-rules' && 'ADVANCEMENT'}
+                {tab === 'tournaments' && 'TOURNAMENTS'}
+                {tab === 'disputes' && 'DISPUTES'}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="teams">

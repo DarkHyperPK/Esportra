@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Trophy, Calendar, Users, ArrowRight, Gamepad2, Loader2, Swords } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -100,206 +98,234 @@ export default function SeasonPublicPage() {
     );
   }
 
+  const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD';
+
+  const getRankBadge = (rank: number) => {
+    if (rank === 0) return <span className="w-8 h-8 flex items-center justify-center bg-rose-500 text-black text-sm font-black">1</span>;
+    if (rank === 1) return <span className="w-8 h-8 flex items-center justify-center bg-[#2a2a2a] text-white text-sm font-bold">2</span>;
+    if (rank === 2) return <span className="w-8 h-8 flex items-center justify-center bg-[#2a2a2a] text-white text-sm font-bold">3</span>;
+    return <span className="w-8 h-8 flex items-center justify-center text-[#555555] text-sm font-bold">{rank + 1}</span>;
+  };
+
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      {/* Background grid */}
+      {/* Subtle dot grid */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
-        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
       </div>
 
       <div className="relative z-10">
-        {/* Hero Header */}
-        <div className="relative overflow-hidden">
+        {/* HERO */}
+        <div className="relative overflow-hidden border-b border-[#1a1a1a]">
           {season.banner_url && (
             <div className="absolute inset-0 z-0">
-              <img src={season.banner_url} alt="" className="w-full h-full object-cover opacity-30" />
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/60 to-[#050505]" />
+              <img src={season.banner_url} alt="" className="w-full h-full object-cover opacity-20" />
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/70 to-[#050505]" />
             </div>
           )}
-          <div className="relative z-10 container mx-auto px-4 py-12 md:py-20">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-[1px] bg-rose-500" />
-                <span className="text-rose-500 font-mono text-xs tracking-widest uppercase">SEASON</span>
+          <div className="relative z-10 px-8 py-16 md:py-24">
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-[2px] bg-rose-500" />
+                <span className="text-rose-400 text-[10px] font-bold tracking-[0.25em] uppercase">SEASON</span>
               </div>
-              <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4">{season.name}</h1>
-              <div className="flex flex-wrap items-center gap-3 mb-6">
-                <Badge className={`${getStatusColor(season.status)} text-white`}>{season.status}</Badge>
-                <span className="flex items-center gap-2 text-gray-400">
+              <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tight mb-6 leading-[0.95]">{season.name}</h1>
+              <div className="flex flex-wrap items-center gap-4 mb-8">
+                <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${getStatusColor(season.status)} text-white`}>
+                  {season.status}
+                </span>
+                <span className="flex items-center gap-2 text-[#808080] text-sm">
                   <Gamepad2 className="w-4 h-4" /> {season.game}
                 </span>
                 {(season.start_date || season.end_date) && (
-                  <span className="flex items-center gap-2 text-gray-400">
+                  <span className="flex items-center gap-2 text-[#808080] text-sm">
                     <Calendar className="w-4 h-4" />
-                    {season.start_date ? new Date(season.start_date).toLocaleDateString() : 'TBD'}
-                    {' - '}
-                    {season.end_date ? new Date(season.end_date).toLocaleDateString() : 'TBD'}
+                    {formatDate(season.start_date)} — {formatDate(season.end_date)}
                   </span>
                 )}
               </div>
               {season.description && (
-                <p className="text-gray-300 text-lg max-w-2xl">{season.description}</p>
+                <p className="text-[#a0a0a0] text-lg max-w-2xl leading-relaxed">{season.description}</p>
               )}
             </div>
           </div>
         </div>
 
-        {/* Stats Bar */}
-        <div className="container mx-auto px-4 mb-8">
-          <div className="max-w-4xl mx-auto grid grid-cols-3 gap-4">
-            <div className="rounded-xl border border-white/10 bg-[#0a0a0c] p-4 text-center">
-              <Trophy className="w-6 h-6 text-rose-400 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{tournaments.length}</p>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Tournaments</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-[#0a0a0c] p-4 text-center">
-              <Users className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{participants.length}</p>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Teams</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-[#0a0a0c] p-4 text-center">
-              <Swords className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{standings.length}</p>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">In Standings</p>
-            </div>
+        {/* STATS BAR */}
+        <div className="px-8 py-8 border-b border-[#1a1a1a]">
+          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-px bg-[#1a1a1a]">
+            {[
+              { icon: Trophy, label: 'TOURNAMENTS', value: tournaments.length, accent: 'text-rose-400' },
+              { icon: Users, label: 'TEAMS', value: participants.length, accent: 'text-emerald-400' },
+              { icon: Swords, label: 'IN STANDINGS', value: standings.length, accent: 'text-blue-400' },
+              { icon: Calendar, label: 'DURATION', value: season.start_date && season.end_date ? `${Math.ceil((new Date(season.end_date).getTime() - new Date(season.start_date).getTime()) / (1000 * 60 * 60 * 24))} DAYS` : 'TBD', accent: 'text-amber-400' },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-[#0a0a0a] p-6">
+                <stat.icon className={`w-5 h-5 ${stat.accent} mb-3`} />
+                <p className="text-3xl font-black text-white mb-1">{stat.value}</p>
+                <p className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">{stat.label}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Register CTA */}
+        {/* REGISTER CTA */}
         {(season.status === 'published' || season.status === 'live') && (
-          <div className="container mx-auto px-4 mb-10">
-            <div className="max-w-4xl mx-auto rounded-2xl border border-rose-500/20 bg-rose-500/5 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="px-8 py-8 border-b border-[#1a1a1a]">
+            <div className="max-w-6xl mx-auto border border-rose-500/20 bg-rose-500/5 p-8 flex flex-col md:flex-row items-center justify-between gap-6">
               <div>
-                <h3 className="text-lg font-bold text-white">Register your team</h3>
-                <p className="text-gray-400 text-sm">Join this season and compete against {participants.length} other team{participants.length !== 1 ? 's' : ''}.</p>
+                <h3 className="text-xl font-bold text-white uppercase tracking-wider mb-1">REGISTER YOUR TEAM</h3>
+                <p className="text-[#808080] text-sm">Join this season and compete against {participants.length} other team{participants.length !== 1 ? 's' : ''}.</p>
               </div>
               <Button
                 onClick={handleRegister}
                 disabled={registerMutation.isPending}
-                className="bg-rose-500 hover:bg-rose-600 text-white font-bold"
+                className="h-12 px-8 bg-white text-black text-xs font-bold uppercase tracking-[0.15em] hover:bg-[#e0e0e0] active:bg-[#cccccc] transition-none"
               >
-                {registerMutation.isPending ? 'Submitting...' : 'Register for Season'}
+                {registerMutation.isPending ? 'SUBMITTING...' : 'REGISTER FOR SEASON'}
               </Button>
             </div>
           </div>
         )}
 
-        <div className="container mx-auto px-4 pb-20">
-          <div className="max-w-4xl mx-auto space-y-10">
-            {/* Tournament Schedule */}
+        <div className="px-8 py-16">
+          <div className="max-w-6xl mx-auto space-y-20">
+            {/* TOURNAMENT PIPELINE */}
             <section>
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                <Calendar className="w-6 h-6 text-rose-400" />
-                Tournament Schedule
-              </h2>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">// THE PIPELINE</span>
+              </div>
+              <h2 className="text-4xl font-black uppercase tracking-tight mb-10">TOURNAMENT SCHEDULE</h2>
+
               {tournaments.length === 0 ? (
-                <Card className="bg-[#0a0a0c] border border-white/10">
-                  <CardContent className="p-8 text-center text-gray-400">No tournaments scheduled yet.</CardContent>
-                </Card>
+                <div className="border border-[#2a2a2a] bg-[#0a0a0a] p-10 text-center">
+                  <p className="text-[#555555] text-sm uppercase tracking-wider">No tournaments scheduled yet.</p>
+                </div>
               ) : (
-                <div className="space-y-4">
-                  {tournaments.map((t) => (
-                    <Card key={t.id} className="bg-[#0a0a0c] border border-white/10 hover:border-rose-500/30 transition-colors">
-                      <CardContent className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-3 mb-1">
-                            <Badge className={`${getTournamentStatusColor(t.status)} text-white`}>{t.status}</Badge>
-                            {t.season_role && <span className="text-xs text-gray-500 uppercase">{t.season_role}</span>}
-                          </div>
-                          <h3 className="text-lg font-semibold">{t.name}</h3>
-                          <p className="text-sm text-gray-400">
-                            {t.start_date ? new Date(t.start_date).toLocaleDateString() : 'TBD'}
-                            {' - '}
-                            {t.end_date ? new Date(t.end_date).toLocaleDateString() : 'TBD'}
-                            {' · '}
-                            {t.current_participants} participants
-                          </p>
+                <div className="space-y-6">
+                  {/* Timeline header */}
+                  <div className="flex items-center gap-0 mb-8 overflow-x-auto pb-2">
+                    {tournaments.map((t, i) => (
+                      <div key={t.id} className="flex items-center gap-0 flex-shrink-0">
+                        <div className="flex flex-col items-center">
+                          <div className={`w-3 h-3 rotate-45 ${i === tournaments.length - 1 ? 'bg-rose-500' : 'bg-white'}`} />
+                          <span className="text-[9px] font-bold text-[#555555] uppercase tracking-widest mt-2 whitespace-nowrap">
+                            {t.season_role || `STAGE ${i + 1}`}
+                          </span>
                         </div>
-                        <Link to={`/tournament/${t.slug}`}>
-                          <Button variant="outline" size="sm" className="border-gray-700 hover:bg-white/10">
-                            View <ArrowRight className="w-4 h-4 ml-2" />
-                          </Button>
-                        </Link>
-                      </CardContent>
-                    </Card>
+                        {i < tournaments.length - 1 && (
+                          <div className="w-16 h-[1px] bg-[#2a2a2a] mx-2" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Tournament cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {tournaments.map((t) => (
+                      <div key={t.id} className="border border-[#1a1a1a] bg-[#0a0a0a] p-6 hover:border-rose-500/30 transition-colors group">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${getTournamentStatusColor(t.status)} text-white`}>
+                            {t.status}
+                          </span>
+                          {t.season_role && (
+                            <span className="text-[9px] font-bold text-[#555555] uppercase tracking-widest">{t.season_role}</span>
+                          )}
+                        </div>
+                        <h3 className="text-lg font-bold text-white uppercase tracking-wider mb-2 group-hover:text-rose-400 transition-colors">{t.name}</h3>
+                        <p className="text-sm text-[#808080] mb-4">
+                          {formatDate(t.start_date)} — {formatDate(t.end_date)}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-[#555555]">{t.current_participants} participants</span>
+                          <Link to={`/tournament/${t.slug}`}>
+                            <span className="text-xs font-bold text-[#808080] uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1">
+                              VIEW <ArrowRight className="w-3 h-3" />
+                            </span>
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* STANDINGS */}
+            <section>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">// RANKINGS</span>
+              </div>
+              <h2 className="text-4xl font-black uppercase tracking-tight mb-10">SEASON STANDINGS</h2>
+
+              {standings.length === 0 ? (
+                <div className="border border-[#2a2a2a] bg-[#0a0a0a] p-10 text-center">
+                  <p className="text-[#555555] text-sm uppercase tracking-wider">No standings data yet.</p>
+                </div>
+              ) : (
+                <div className="border border-[#1a1a1a]">
+                  <div className="grid grid-cols-12 gap-0 border-b border-[#2a2a2a] bg-[#0a0a0a]">
+                    <div className="col-span-1 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider">RANK</div>
+                    <div className="col-span-7 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider">TEAM</div>
+                    <div className="col-span-2 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider text-center">STATUS</div>
+                    <div className="col-span-2 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider text-right">POINTS</div>
+                  </div>
+                  {standings.map((s, i) => (
+                    <div key={s.id} className="grid grid-cols-12 gap-0 border-b border-[#1a1a1a] hover:bg-white/[0.02] transition-colors">
+                      <div className="col-span-1 px-4 py-4 flex items-center">{getRankBadge(i)}</div>
+                      <div className="col-span-7 px-4 py-4 flex items-center gap-3">
+                        {s.team_logo_url && (
+                          <img src={s.team_logo_url} alt="" className="w-8 h-8 object-cover" />
+                        )}
+                        <span className="font-semibold text-white">{s.team_name || 'Unknown Team'}</span>
+                      </div>
+                      <div className="col-span-2 px-4 py-4 flex items-center justify-center">
+                        {s.qualification_status && (
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border ${
+                            s.qualification_status === 'qualified'
+                              ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'
+                              : s.qualification_status === 'eliminated'
+                                ? 'border-red-500/30 text-red-400 bg-red-500/10'
+                                : 'border-[#2a2a2a] text-[#808080] bg-[#111111]'
+                          }`}>
+                            {s.qualification_status}
+                          </span>
+                        )}
+                      </div>
+                      <div className="col-span-2 px-4 py-4 flex items-center justify-end">
+                        <span className="text-xl font-black text-white">{s.total_points}</span>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
             </section>
 
-            {/* Standings */}
+            {/* REGISTERED TEAMS */}
             <section>
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                <Trophy className="w-6 h-6 text-yellow-400" />
-                Season Standings
-              </h2>
-              {standings.length === 0 ? (
-                <Card className="bg-[#0a0a0c] border border-white/10">
-                  <CardContent className="p-8 text-center text-gray-400">No standings data yet.</CardContent>
-                </Card>
-              ) : (
-                <Card className="bg-[#0a0a0c] border border-white/10 overflow-hidden">
-                  <CardContent className="p-0">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-white/10">
-                          <th className="text-left p-4 text-gray-400 font-medium text-sm">Rank</th>
-                          <th className="text-left p-4 text-gray-400 font-medium text-sm">Team</th>
-                          <th className="text-right p-4 text-gray-400 font-medium text-sm">Points</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {standings.map((s, i) => (
-                          <tr key={s.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <td className="p-4">
-                              <span className="font-bold text-lg">{i + 1}</span>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                {s.team_logo_url && (
-                                  <img src={s.team_logo_url} alt="" className="w-8 h-8 rounded-full object-cover" />
-                                )}
-                                <span className="font-medium">{s.team_name || 'Unknown Team'}</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-right">
-                              <span className="text-xl font-bold text-emerald-400">{s.total_points}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </CardContent>
-                </Card>
-              )}
-            </section>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">// COMPETITORS</span>
+              </div>
+              <h2 className="text-4xl font-black uppercase tracking-tight mb-10">REGISTERED TEAMS</h2>
 
-            {/* Registered Teams */}
-            <section>
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                <Users className="w-6 h-6 text-emerald-400" />
-                Registered Teams
-              </h2>
               {participants.length === 0 ? (
-                <Card className="bg-[#0a0a0c] border border-white/10">
-                  <CardContent className="p-8 text-center text-gray-400">No teams registered yet.</CardContent>
-                </Card>
+                <div className="border border-[#2a2a2a] bg-[#0a0a0a] p-10 text-center">
+                  <p className="text-[#555555] text-sm uppercase tracking-wider">No teams registered yet.</p>
+                </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-px bg-[#1a1a1a]">
                   {participants.map((p) => (
-                    <Card key={p.id} className="bg-[#0a0a0c] border border-white/10">
-                      <CardContent className="p-4 flex flex-col items-center text-center">
-                        {p.team_logo_url ? (
-                          <img src={p.team_logo_url} alt={p.team_name} className="w-12 h-12 rounded-full object-cover mb-2" />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center mb-2">
-                            <Users className="w-5 h-5 text-gray-500" />
-                          </div>
-                        )}
-                        <p className="font-medium text-sm truncate w-full">{p.team_name}</p>
-                      </CardContent>
-                    </Card>
+                    <div key={p.id} className="bg-[#0a0a0a] p-6 flex flex-col items-center text-center group hover:bg-[#111111] transition-colors">
+                      {p.team_logo_url ? (
+                        <img src={p.team_logo_url} alt={p.team_name} className="w-14 h-14 object-cover mb-3" />
+                      ) : (
+                        <div className="w-14 h-14 bg-[#1a1a1a] flex items-center justify-center mb-3">
+                          <Users className="w-6 h-6 text-[#404040]" />
+                        </div>
+                      )}
+                      <p className="font-semibold text-sm text-white truncate w-full">{p.team_name}</p>
+                      <p className="text-[10px] text-[#555555] uppercase tracking-wider mt-1">{p.status}</p>
+                    </div>
                   ))}
                 </div>
               )}
