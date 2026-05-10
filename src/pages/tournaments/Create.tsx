@@ -168,15 +168,17 @@ const CreateTournament = () => {
                   </span>
                   <div>
                     <p className="text-xs uppercase tracking-[0.22em] text-rose-400">
-                      {creationMode === 'season' ? 'Season flow' : 'Single event flow'}
+                      {seasonId ? 'Season tournament' : creationMode === 'season' ? 'Season flow' : 'Single event flow'}
                     </p>
                     <h1 className="mt-1 text-2xl font-black tracking-tight">
-                      {creationMode === 'season' ? 'Create a season with tournaments' : 'Create one tournament with multiple stages'}
+                      {seasonId ? 'Create a tournament for this season' : creationMode === 'season' ? 'Create a season with tournaments' : 'Create one tournament with multiple stages'}
                     </h1>
                     <p className="mt-2 text-sm text-zinc-400">
-                      {creationMode === 'season'
-                        ? 'Set up a season to link multiple tournaments and track standings across events.'
-                        : 'Use the existing tournament wizard for one event with groups, playoffs, match settings, and registration.'}
+                      {seasonId
+                        ? 'This tournament will be automatically linked to the season. Configure stages, settings, and registration below.'
+                        : creationMode === 'season'
+                          ? 'Set up a season to link multiple tournaments and track standings across events.'
+                          : 'Use the existing tournament wizard for one event with groups, playoffs, match settings, and registration.'}
                     </p>
                   </div>
                 </div>
@@ -184,10 +186,10 @@ const CreateTournament = () => {
                 <Button
                   variant="outline"
                   className="border-white/15 bg-white/5 text-white hover:bg-white/10"
-                  onClick={() => setSearchParams({})}
+                  onClick={() => seasonId ? navigate(`/organizer/season/${seasonId}`) : setSearchParams({})}
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to options
+                  {seasonId ? 'Back to season' : 'Back to options'}
                 </Button>
               </div>
             </div>
