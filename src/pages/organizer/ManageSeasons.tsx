@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSeasons, useDeleteSeason, usePublishSeason, useArchiveSeason } from '@/hooks/useSeasons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2, Plus, Calendar, Trophy, PlayCircle, XCircle, AlertTriangle, Users } from 'lucide-react';
+import { Trash2, Plus, Calendar, Trophy, PlayCircle, XCircle, AlertTriangle, Users, Layers } from 'lucide-react';
 import type { SeasonList } from '@/types/season';
 
 const ManageSeasons = () => {
   const [activeTab, setActiveTab] = useState('all');
-  const { data: seasons = [], isLoading } = useSeasons(1, 100, activeTab === 'all' ? undefined : activeTab);
+  const navigate = useNavigate();
+  const { data: seasons = [], isLoading, isError } = useSeasons(1, 100, activeTab === 'all' ? undefined : activeTab);
   const deleteSeason = useDeleteSeason();
   const publishSeason = usePublishSeason();
   const archiveSeason = useArchiveSeason();
@@ -44,22 +45,56 @@ const ManageSeasons = () => {
 
   if (isLoading) {
     return (
-      <div className="px-8 py-8">
-        <p className="text-zinc-500 text-sm">Loading seasons...</p>
+      <div className="px-8 py-16 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-zinc-500">
+          <div className="w-6 h-6 border-2 border-zinc-600 border-t-rose-500 rounded-full animate-spin" />
+          <p className="text-sm">Loading seasons...</p>
+        </div>
       </div>
     );
   }
 
-  // No seasons yet — skip empty state and go straight to creation
+  if (isError) {
+    return (
+      <div className="px-8 py-16 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+          <AlertTriangle className="w-8 h-8 text-amber-500" />
+          <p className="text-white font-medium">Failed to load seasons</p>
+          <p className="text-zinc-400 text-sm">There was a problem fetching your seasons. Please try refreshing the page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Proper empty state — no aggressive redirect
   if (seasons.length === 0 && activeTab === 'all') {
-    return <Navigate to="/seasons/create" replace />;
+    return (
+      <div className="px-8 py-16 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-6 text-center max-w-sm">
+          <div className="w-16 h-16 bg-[#111] border border-white/10 rounded-2xl flex items-center justify-center">
+            <Layers className="w-8 h-8 text-zinc-500" />
+          </div>
+          <div>
+            <h3 className="text-white font-semibold text-lg mb-2">No seasons yet</h3>
+            <p className="text-zinc-400 text-sm">Create your first season to start managing multi-event tournament trees.</p>
+          </div>
+          <button
+            onClick={() => navigate('/organizer/seasons/create')}
+            className="flex items-center gap-2 px-6 h-11 bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Create Season
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <>
       <div className="px-8 py-8">
         <div className="flex justify-end mb-6">
-          <Link to="/seasons/create">
+          <Link to="/organizer/seasons/create">
             <Button className="bg-rose-500 hover:bg-rose-600 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Create Season
@@ -206,7 +241,7 @@ const SeasonGrid: React.FC<SeasonGridProps> = ({
                 </div>
               )}
               <div className="flex gap-2 pt-3">
-                <Link to={`/organizer/season/${season.id}`} className="flex-1">
+                <Link to={`/organizer/seasons/${season.id}`} className="flex-1">
                   <Button variant="outline" size="sm" className="w-full border-white/10 bg-white/5 hover:bg-white/10 text-white">
                     Manage
                   </Button>
