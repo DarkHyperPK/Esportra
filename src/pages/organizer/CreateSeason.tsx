@@ -123,6 +123,7 @@ const CreateSeason: React.FC = () => {
       name: data.name,
       game: data.game,
       description: data.description,
+      participant_mode: 'team',
       start_date: data.start_date,
       end_date: data.end_date,
       banner_url: data.banner_url,

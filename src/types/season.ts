@@ -98,6 +98,7 @@ export interface CreateSeasonRequest {
   name: string;
   game: string;
   description?: string;
+  participant_mode?: SeasonParticipantMode;
   start_date?: string;
   end_date?: string;
   banner_url?: string;
@@ -391,6 +392,8 @@ export interface SeasonDetail {
   allowManualOverrides: boolean;
   startDate: string | null;
   endDate: string | null;
+  bannerUrl?: string | null;
+  logoUrl?: string | null;
   settings: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
