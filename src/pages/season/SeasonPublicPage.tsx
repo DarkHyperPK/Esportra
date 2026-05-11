@@ -9,7 +9,9 @@ import { useRegisterForSeason } from '@/hooks/useSeasonParticipants';
 import type { Season, SeasonStanding, SeasonTournamentDetails, SeasonParticipant } from '@/types/season';
 
 export default function SeasonPublicPage() {
-  const { slug } = useParams<{ slug: string }>();
+  // Route may use :slug or :id depending on the path — accept either
+  const params = useParams<{ slug?: string; id?: string }>();
+  const slug = params.slug ?? params.id;
   const { user } = useAuth();
   const { toast } = useToast();
   const registerMutation = useRegisterForSeason();

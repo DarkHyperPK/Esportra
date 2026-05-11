@@ -158,7 +158,7 @@ const CreateSeason: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
-                onClick={() => navigate(`/season/manage/${createdSeason.id}`)}
+                onClick={() => navigate(`/organizer/seasons/${createdSeason.id}`)}
                 className="flex items-center justify-center gap-2 h-12 bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-[#e0e0e0] active:bg-[#cccccc] transition-none"
               >
                 <Workflow className="w-4 h-4" />

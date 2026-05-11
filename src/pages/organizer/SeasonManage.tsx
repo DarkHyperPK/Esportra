@@ -638,44 +638,65 @@ const SeasonManage = () => {
 
   const renderSidebarContent = () => (
     <>
-      <div className="px-5 py-5 border-b border-[#1a1a1a] shrink-0">
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border ${STATUS_STYLES[data.season.status]}`}>
+      {/* Season identity */}
+      <div className="px-4 pt-5 pb-4 border-b border-white/[0.06] shrink-0">
+        <Link
+          to="/organizer/seasons"
+          className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 transition-colors mb-4 text-xs font-medium"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          All seasons
+        </Link>
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden">
+            {data.season.logoUrl
+              ? <img src={data.season.logoUrl} alt="" className="w-full h-full object-cover" />
+              : <Trophy className="w-4 h-4 text-zinc-500" />
+            }
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white leading-tight truncate">{data.season.name}</p>
+            <p className="text-xs text-zinc-500 truncate mt-0.5">{data.season.game}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 mt-3">
+          <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${STATUS_STYLES[data.season.status]}`}>
             {data.season.status}
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border border-[#2a2a2a] text-[#808080]">
+          <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border border-white/[0.08] text-zinc-500">
             {data.season.participantMode}
           </span>
         </div>
-        <p className="text-[11px] text-[#555555] font-mono truncate">{data.season.game}</p>
+
         {data.season.status === 'draft' && (
           <button
             onClick={() => { setIsMobileNavOpen(false); handlePublish(); }}
             disabled={publishSeason.isPending}
-            className="mt-4 w-full h-8 bg-white text-black text-[10px] font-bold uppercase tracking-wider hover:bg-[#e0e0e0] transition-none flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="mt-3 w-full h-9 bg-rose-500 hover:bg-rose-400 active:bg-rose-600 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <CheckCircle2 className="w-3 h-3" />
-            {publishSeason.isPending ? 'Publishing...' : 'Publish Season'}
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            {publishSeason.isPending ? 'Publishing…' : 'Publish Season'}
           </button>
         )}
         {data.season.status === 'completed' && (
           <button
             onClick={() => { setIsMobileNavOpen(false); handleArchive(); }}
             disabled={archiveSeason.isPending}
-            className="mt-4 w-full h-8 bg-white text-black text-[10px] font-bold uppercase tracking-wider hover:bg-[#e0e0e0] transition-none flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="mt-3 w-full h-9 bg-white/[0.07] hover:bg-white/10 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors border border-white/[0.08] disabled:opacity-50"
           >
-            <Archive className="w-3 h-3" />
-            {archiveSeason.isPending ? 'Archiving...' : 'Archive Season'}
+            <Archive className="w-3.5 h-3.5" />
+            {archiveSeason.isPending ? 'Archiving…' : 'Archive'}
           </button>
         )}
       </div>
 
-      <nav className="flex-1 px-2 py-4 space-y-4 overflow-y-auto">
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-3 space-y-5 overflow-y-auto">
         {NAV_GROUPS.map((group, gi) => (
           <div key={gi}>
             {group.label && (
-              <p className="px-3 mb-1 text-[10px] font-bold text-[#3a3a3a] uppercase tracking-[0.22em]">
-                // {group.label}
+              <p className="px-2 mb-1.5 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
+                {group.label}
               </p>
             )}
             <div className="space-y-0.5">
@@ -685,14 +706,14 @@ const SeasonManage = () => {
                   <button
                     key={id}
                     onClick={() => { setTab(id as string); setIsMobileNavOpen(false); }}
-                    className={`w-full flex items-center gap-2.5 px-3 h-8 text-left transition-colors ${
+                    className={`w-full flex items-center gap-3 px-2.5 h-8 rounded-lg text-left transition-colors text-sm ${
                       isActive
-                        ? 'border-l-2 border-rose-500 bg-rose-500/[0.06] text-white'
-                        : 'border-l-2 border-transparent text-[#707070] hover:text-white hover:bg-white/[0.04]'
+                        ? 'bg-rose-500/10 text-rose-400'
+                        : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
                     }`}
                   >
-                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-rose-500' : ''}`} />
-                    <span className="text-[11px] font-semibold uppercase tracking-wider">{label}</span>
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-rose-400' : 'text-zinc-500'}`} />
+                    <span className="font-medium">{label}</span>
                   </button>
                 );
               })}
@@ -701,23 +722,30 @@ const SeasonManage = () => {
         ))}
       </nav>
 
-      <div className="px-2 py-3 border-t border-[#1a1a1a] space-y-0.5 shrink-0">
+      {/* Footer actions */}
+      <div className="px-3 py-3 border-t border-white/[0.06] space-y-0.5 shrink-0">
         <button
           onClick={() => { setIsMobileNavOpen(false); handleRecalculate(); }}
           disabled={recalculateSeason.isPending}
-          className="w-full flex items-center gap-2.5 px-3 h-8 text-left text-[#606060] hover:text-white hover:bg-white/[0.04] transition-colors border-l-2 border-transparent disabled:opacity-40"
+          className="w-full flex items-center gap-3 px-2.5 h-8 rounded-lg text-left text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05] transition-colors text-sm disabled:opacity-40"
         >
-          <RefreshCw className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider">Recalculate</span>
+          <RefreshCw className={`w-4 h-4 shrink-0 ${recalculateSeason.isPending ? 'animate-spin' : ''}`} />
+          <span className="font-medium">Recalculate</span>
         </button>
         <button
           onClick={() => { setIsMobileNavOpen(false); handleDuplicate(); }}
           disabled={duplicateSeason.isPending}
-          className="w-full flex items-center gap-2.5 px-3 h-8 text-left text-[#606060] hover:text-white hover:bg-white/[0.04] transition-colors border-l-2 border-transparent disabled:opacity-40"
+          className="w-full flex items-center gap-3 px-2.5 h-8 rounded-lg text-left text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05] transition-colors text-sm disabled:opacity-40"
         >
-          <Copy className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider">Duplicate</span>
+          <Copy className="w-4 h-4 shrink-0" />
+          <span className="font-medium">Duplicate</span>
         </button>
+        <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 px-2.5 h-8 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05] text-sm font-medium">
+          <Link to={`/seasons/${data.season.slug}`} target="_blank">
+            <ExternalLink className="w-4 h-4 shrink-0 text-zinc-500" />
+            Public view
+          </Link>
+        </Button>
       </div>
     </>
   );
@@ -725,7 +753,7 @@ const SeasonManage = () => {
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       {/* Fixed sidebar (desktop) */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden lg:flex flex-col w-56 border-r border-[#1a1a1a] bg-[#0a0a0a] overflow-hidden">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden lg:flex flex-col w-60 border-r border-white/[0.06] bg-[#080809] overflow-hidden">
         {renderSidebarContent()}
       </aside>
 
@@ -733,15 +761,16 @@ const SeasonManage = () => {
       {isMobileNavOpen && (
         <>
           <div
-            className="fixed inset-0 z-50 bg-black/60 lg:hidden"
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden"
             onClick={() => setIsMobileNavOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-50 w-64 bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col overflow-hidden lg:hidden">
-            <div className="flex items-center justify-between px-5 h-14 border-b border-[#1a1a1a] shrink-0">
-              <span className="text-white text-[11px] font-bold uppercase tracking-wider truncate">{data.season.name}</span>
+          <div className="fixed inset-y-0 left-0 z-50 w-72 bg-[#080809] border-r border-white/[0.06] flex flex-col overflow-hidden lg:hidden">
+            <div className="flex items-center justify-between px-4 h-14 border-b border-white/[0.06] shrink-0">
+              <span className="text-white text-sm font-semibold truncate">{data.season.name}</span>
               <button
                 onClick={() => setIsMobileNavOpen(false)}
-                className="flex items-center justify-center w-8 h-8 border border-[#2a2a2a] text-[#808080] hover:text-white hover:border-[#404040] transition-colors shrink-0 ml-2"
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0 ml-2"
+                aria-label="Close navigation"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -752,31 +781,23 @@ const SeasonManage = () => {
       )}
 
       {/* Sticky top bar */}
-      <header className="sticky top-0 z-40 bg-[#050505]/95 backdrop-blur-sm border-b border-[#1a1a1a] h-14 flex items-center px-5 gap-3 lg:pl-60">
+      <header className="sticky top-0 z-40 bg-[#050505]/90 backdrop-blur-md border-b border-white/[0.06] h-14 flex items-center px-4 gap-3 lg:pl-64">
         <button
-          className="lg:hidden flex items-center justify-center w-8 h-8 border border-[#2a2a2a] text-[#808080] hover:text-white hover:border-[#404040] transition-colors shrink-0"
+          className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"
           onClick={() => setIsMobileNavOpen(true)}
           aria-label="Open navigation"
         >
           <Menu className="w-4 h-4" />
         </button>
-        <Link to="/organizer/seasons" className="hidden lg:flex items-center gap-1.5 text-[#707070] hover:text-white transition-colors shrink-0">
-          <ChevronLeft className="w-4 h-4" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Seasons</span>
-        </Link>
-        <span className="text-[#2a2a2a] shrink-0 hidden lg:block">/</span>
-        <span className="text-white text-[11px] font-bold uppercase tracking-wider truncate flex-1 min-w-0">{data.season.name}</span>
-        <div className="flex items-center gap-2 ml-auto shrink-0">
-          <Button asChild variant="ghost" size="sm" className="hidden sm:flex text-[#808080] hover:text-white h-7 px-3 text-[10px] uppercase tracking-wider gap-1.5 border border-[#2a2a2a] hover:border-[#404040] rounded-none bg-transparent">
-            <Link to={`/seasons/${seasonId}`}>
-              Public view
-              <ExternalLink className="w-3 h-3" />
-            </Link>
-          </Button>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className={`hidden sm:inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${STATUS_STYLES[data.season.status]}`}>
+            {data.season.status}
+          </span>
+          <span className="text-white text-sm font-semibold truncate">{data.season.name}</span>
         </div>
       </header>
 
-      <div className="w-full px-4 py-6 sm:px-6 lg:ml-56 lg:px-8 lg:py-8">
+      <div className="w-full px-4 py-6 sm:px-6 lg:ml-60 lg:px-8 lg:py-8">
         {activeTab === 'overview' && (
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
