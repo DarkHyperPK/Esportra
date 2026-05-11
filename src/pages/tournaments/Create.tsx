@@ -5,10 +5,9 @@ import { useRole } from '@/contexts/RoleContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { apiClient } from '@/lib/apiClient';
 import CreationModeHub from '@/components/tournament/CreationModeHub';
-import SeasonWizard from '@/components/season/wizard/SeasonWizard';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy, Workflow } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy } from 'lucide-react';
 import { WizardContainer } from '@/components/tournament/wizard';
 import { Button } from '@/components/ui/button';
 
@@ -23,7 +22,8 @@ const CreateTournament = () => {
 
   const canCreate = canCreateTournaments || admin.hasPermission('tournaments:create');
   const requestedMode = searchParams.get('mode');
-  const creationMode = requestedMode === 'event' || requestedMode === 'season' ? requestedMode : null;
+  // Only 'event' mode is handled inline; 'season' redirects to dedicated route
+  const creationMode = requestedMode === 'event' ? requestedMode : null;
 
   // Check if user has an organization
   useEffect(() => {
@@ -33,7 +33,7 @@ const CreateTournament = () => {
         return;
       }
       try {
-        const roles = await apiClient.get<any>('/api/me/roles');
+        const roles = await apiClient.get<{ organization_id?: string | null }>('/api/me/roles');
         setHasOrganization(!!roles?.organization_id);
       } catch {
         setHasOrganization(false);
@@ -43,6 +43,14 @@ const CreateTournament = () => {
     };
     checkOrganization();
   }, [user?.id, currentRole, admin]);
+
+  const handleModeSelect = (mode: 'event' | 'season') => {
+    if (mode === 'season') {
+      navigate('/organizer/seasons/create');
+    } else {
+      setSearchParams({ mode });
+    }
+  };
 
   if (!user) {
     return (
@@ -82,7 +90,6 @@ const CreateTournament = () => {
     );
   }
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-esports-dark text-white flex items-center justify-center">
@@ -94,30 +101,21 @@ const CreateTournament = () => {
     );
   }
 
-  // No organization - show gate (skip for admins with tournament permissions)
   if (!hasOrganization && !admin.hasPermission('tournaments:create')) {
     return (
       <div className="min-h-screen bg-esports-dark text-white flex flex-col">
         <main className="flex-grow container mx-auto px-4 py-20 relative z-10">
-          <div className="max-w-lg mx-auto text-center"
-          >
-            {/* Icon */}
+          <div className="max-w-lg mx-auto text-center">
             <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 mb-8">
               <Building2 className="h-12 w-12 text-amber-400" />
             </div>
-
-            {/* Title */}
             <h1 className="text-3xl md:text-4xl font-bold font-heading mb-4">
               Setup Your Organization First
             </h1>
-
-            {/* Description */}
             <p className="text-gray-400 text-lg mb-8 max-w-md mx-auto">
               Before you can host tournaments, you need to create your organization.
               This will be your public brand that players will see.
             </p>
-
-            {/* Benefits */}
             <div className="grid grid-cols-1 gap-3 mb-10 text-left max-w-sm mx-auto">
               {[
                 'Your organization name appears on all tournaments',
@@ -130,8 +128,6 @@ const CreateTournament = () => {
                 </div>
               ))}
             </div>
-
-            {/* CTA Button */}
             <Button
               onClick={() => navigate('/organizer/setup-organization')}
               className="px-8 py-6 text-lg font-semibold bg-gradient-to-r from-esports-purple to-esports-accent hover:from-esports-purple/90 hover:to-esports-accent/90 shadow-lg shadow-esports-purple/25 gap-2"
@@ -139,7 +135,6 @@ const CreateTournament = () => {
               Setup Organization
               <ArrowRight className="h-5 w-5" />
             </Button>
-
             <p className="text-gray-500 text-sm mt-6">
               Takes less than 2 minutes to complete
             </p>
@@ -154,8 +149,8 @@ const CreateTournament = () => {
     <div className="min-h-screen bg-transparent text-white flex flex-col">
       <main className="flex-grow">
         {!creationMode ? (
-          <CreationModeHub onSelect={(mode) => setSearchParams({ mode })} />
-        ) : creationMode === 'event' ? (
+          <CreationModeHub onSelect={handleModeSelect} />
+        ) : (
           <>
             <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
               <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[#0d0d10] p-5 md:flex-row md:items-center md:justify-between">
@@ -171,7 +166,6 @@ const CreateTournament = () => {
                     </p>
                   </div>
                 </div>
-
                 <Button
                   variant="outline"
                   className="border-white/15 bg-white/5 text-white hover:bg-white/10"
@@ -184,34 +178,6 @@ const CreateTournament = () => {
             </div>
             <WizardContainer />
           </>
-        ) : (
-          <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-            <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[#0d0d10] p-5 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-start gap-4">
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white">
-                  <Workflow className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-rose-400">Season flow</p>
-                  <h1 className="mt-1 text-2xl font-black tracking-tight">Create a multi-event tournament tree</h1>
-                  <p className="mt-2 text-sm text-zinc-400">
-                    Build a season shell first, then connect qualifiers, standings, and finals from the season manager.
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                variant="outline"
-                className="border-white/15 bg-white/5 text-white hover:bg-white/10"
-                onClick={() => navigate('/tournaments/create')}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to options
-              </Button>
-            </div>
-
-            <SeasonWizard cancelHref="/tournaments/create" cancelLabel="Back to options" />
-          </div>
         )}
       </main>
       <Footer />
