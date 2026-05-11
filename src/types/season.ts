@@ -1,4 +1,8 @@
-export type SeasonStatus = 'draft' | 'published' | 'live' | 'completed' | 'archived';
+export type SeasonStatus = 'draft' | 'published' | 'active' | 'completed' | 'archived';
+export type SeasonParticipantMode = 'team' | 'solo';
+export type SeasonNodeType = 'root' | 'qualifier' | 'event' | 'stage' | 'final' | 'custom';
+export type SeasonNodeStatus = 'draft' | 'scheduled' | 'live' | 'completed' | 'archived';
+export type SeasonQualificationType = 'qualified' | 'wildcard' | 'reserve';
 export type TournamentRole = 'qualifier' | 'event' | 'finals' | 'custom';
 export type QualificationStatus = 'qualified' | 'eliminated' | 'pending';
 export type SeedMode = 'random' | 'manual' | 'top_seeded';
@@ -50,6 +54,18 @@ export interface SeasonStanding {
   version: number;
   created_at: string;
   updated_at: string;
+  // camelCase fields (from apiClient snake_case conversion + new endpoint shape)
+  entityId?: string;
+  seasonId?: string;
+  teamId?: string;
+  teamName?: string | null;
+  teamLogoUrl?: string | null;
+  totalPoints?: number;
+  qualificationStatus?: QualificationStatus | string | null;
+  rank?: number;
+  displayName?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PointRule {
@@ -167,6 +183,13 @@ export interface SeasonTournamentDetails {
   season_role: TournamentRole | null;
   season_stage_order: number | null;
   current_participants: number;
+  // camelCase fields (from apiClient + new endpoint shape)
+  tournamentId?: string | null;
+  tournamentName?: string | null;
+  tournamentStatus?: string | null;
+  displayName?: string | null;
+  role: string;
+  region?: string | null;
 }
 
 export interface SeasonParticipant {
@@ -186,4 +209,201 @@ export interface SeasonParticipant {
 export interface PointRuleTemplate {
   name: string;
   rules: CreatePointRuleRequest[];
+}
+
+// ── Staff ──────────────────────────────────────────────────────────────────
+export interface SeasonStaffMember {
+  userId: string;
+  role: 'co_organizer' | 'admin';
+  username?: string | null;
+  fullName?: string | null;
+}
+
+// ── Node data (from GET /api/seasons/{id}) ──────────────────────────────────
+export interface SeasonNodeData {
+  id: string;
+  seasonId: string;
+  parentNodeId: string | null;
+  name: string;
+  slug: string | null;
+  nodeType: SeasonNodeType;
+  displayOrder: number;
+  region: string | null;
+  city: string | null;
+  country: string | null;
+  linkedTournamentId: string | null;
+  linkedStageId: string | null;
+  status: SeasonNodeStatus;
+  registrationDeadline: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+  linkedTournamentName: string | null;
+  linkedStageName: string | null;
+}
+
+// ── Builder node (extends SeasonNodeData with UI-only fields) ───────────────
+export type SeasonBuilderNode = SeasonNodeData & {
+  publishedTournamentId?: string | null;
+};
+
+// ── Draft payload (sent to the backend on sync) ─────────────────────────────
+export interface SeasonNodeDraft {
+  id?: string;
+  seasonId?: string;
+  parentNodeId?: string | null;
+  name: string;
+  slug?: string | null;
+  nodeType: SeasonNodeType;
+  displayOrder: number;
+  region?: string | null;
+  city?: string | null;
+  country?: string | null;
+  linkedTournamentId?: string | null;
+  linkedStageId?: string | null;
+  status?: SeasonNodeStatus;
+  registrationDeadline?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+// ── Rule data (from GET /api/seasons/{id}) ──────────────────────────────────
+export interface SeasonRuleData {
+  id: string;
+  sourceNodeId: string;
+  sourceStageId: string | null;
+  destinationNodeId: string | null;
+  placementFrom: number;
+  placementTo: number;
+  pointsAwarded: number;
+  qualificationStatus: string | null;
+  autoCreateQualification: boolean;
+  regionKey: string | null;
+}
+
+// ── Rule draft (builder state) ──────────────────────────────────────────────
+export interface SeasonRuleDraft {
+  id?: string;
+  sourceNodeId: string;
+  sourceStageId: string | null;
+  destinationNodeId: string | null;
+  placementFrom: number;
+  placementTo: number;
+  pointsAwarded: number;
+  qualificationStatus: SeasonQualificationType | string | null;
+  autoCreateQualification: boolean;
+  regionKey: string | null;
+}
+
+// ── Tree node (for preview) ─────────────────────────────────────────────────
+export interface SeasonTreeNode {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  children?: SeasonTreeNode[];
+}
+
+// ── Advancement connection ──────────────────────────────────────────────────
+export interface AdvancementConnection {
+  sourceNodeId: string;
+  targetNodeId: string;
+  placementStart: number;
+  placementEnd: number;
+  advancementCount: number;
+}
+
+// ── Qualification record ────────────────────────────────────────────────────
+export interface SeasonQualificationRecord {
+  id: string;
+  seasonId: string;
+  destinationNodeId: string | null;
+  status: string;
+  qualificationType: string | null;
+  displayName: string | null;
+  sourceNodeName?: string | null;
+  teamId: string | null;
+  userId: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Audit log entry ─────────────────────────────────────────────────────────
+export interface SeasonAuditLogEntry {
+  id: string;
+  seasonId: string;
+  actorId: string;
+  actorUsername: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  details: Record<string, unknown> | null;
+  reason?: string | null;
+  createdAt: string;
+}
+
+// ── Advancement connection (season-level) ────────────────────────────────────
+export interface SeasonAdvancementConnection {
+  id: string;
+  seasonId: string;
+  sourceNodeId: string;
+  sourceNodeName: string;
+  targetNodeId: string;
+  targetNodeName: string;
+  placementStart: number;
+  placementEnd: number;
+  advancementCount: number;
+}
+
+// ── Update payload (PUT /api/seasons/{id}) ─────────────────────────────────
+export interface UpdateSeasonPayload {
+  name: string;
+  game: string;
+  participantMode?: string;
+  status?: string;
+  slug: string;
+  description: string | null;
+  isPublic: boolean;
+  allowManualOverrides?: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  bannerUrl: string | null;
+  logoUrl: string | null;
+  settings?: Record<string, unknown>;
+}
+
+// ── Season detail (camelCase from apiClient) ───────────────────────────────
+export interface SeasonDetail {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  game: string;
+  participantMode: SeasonParticipantMode;
+  status: SeasonStatus;
+  ownerUserId: string;
+  organizationId: string | null;
+  isPublic: boolean;
+  allowManualOverrides: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  settings: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+  ownerUsername: string;
+  ownerFullName: string | null;
+}
+
+// ── Detail response (GET /api/seasons/{id}) ────────────────────────────────
+export interface SeasonDetailResponse {
+  season: SeasonDetail;
+  nodes: SeasonNodeData[];
+  tree: SeasonTreeNode[];
+  rules: SeasonRuleData[];
+  staff: SeasonStaffMember[];
+  permissions: { canManage: boolean; isPublic: boolean };
 }

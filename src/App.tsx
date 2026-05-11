@@ -77,11 +77,13 @@ const AnomalyDetection = lazyWithRetry(() => import("./pages/admin/tools/Anomaly
 const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dashboard"));
 
 // Tournament Organizer
-const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
-const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
+const OrganizerDashboard = lazyWithRetry(() => import("./pages/organizer/Dashboard"));
+const ManageSeasons = lazyWithRetry(() => import("./pages/organizer/ManageSeasons"));
 const CreateSeason = lazyWithRetry(() => import("./pages/organizer/CreateSeason"));
 const SeasonManage = lazyWithRetry(() => import("./pages/organizer/SeasonManage"));
-const SeasonPublicPage = lazyWithRetry(() => import("./pages/season/SeasonPublicPage"));
+const TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentList"));
+const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
+const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
 const EditTournament = lazyWithRetry(() => import("./pages/tournaments/Edit"));
 const TournamentBrackets = lazyWithRetry(() => import("./pages/tournaments/Brackets"));
 const TournamentDetailsUser = lazyWithRetry(() => import("./pages/tournaments/Details"));
@@ -92,7 +94,9 @@ const ManageBracketPage = lazyWithRetry(() => import("./pages/organizer/ManageBr
 const FullscreenBracketPage = lazyWithRetry(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
 const OrganizationPublicProfile = lazyWithRetry(() => import("./pages/org/PublicProfile"));
 const OrganizationWizard = lazyWithRetry(() => import("./pages/organizer/OrganizationWizard"));
-const OrganizerLayout = lazyWithRetry(() => import("@/components/organizer/OrganizerLayout"));
+const AdminSeasonAudit = lazyWithRetry(() => import("./pages/admin/AdminSeasonAudit"));
+const AdminSeasonOverride = lazyWithRetry(() => import("./pages/admin/AdminSeasonOverride"));
+const AdminSeasonAnalytics = lazyWithRetry(() => import("./pages/admin/AdminSeasonAnalytics"));
 
 const ADMIN_ROLE_SETS = {
   anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
@@ -118,6 +122,9 @@ const EditVenue = lazyWithRetry(() => import("./pages/venues/EditVenue"));
 // Tournaments
 const BrowseTournaments = lazyWithRetry(() => import("./pages/tournaments/List"));
 const CreateTournament = lazyWithRetry(() => import("./pages/tournaments/Create"));
+const SeasonsList = lazyWithRetry(() => import("./pages/seasons/List"));
+const SeasonsDetails = lazyWithRetry(() => import("./pages/seasons/Details"));
+const SeasonPublic = lazyWithRetry(() => import("./pages/seasons/SeasonPublic"));
 
 // About
 const ContactPage = lazyWithRetry(() => import("./pages/about/Contact"));
@@ -159,7 +166,6 @@ const SettingsRedirect = () => {
 
 const AppContent = React.memo(() => {
   const location = useLocation();
-  const hideTopNav = location.pathname.endsWith('/brackets/fullscreen') || location.pathname.startsWith('/organizer');
 
   // Scroll to top on route change
   useEffect(() => {
@@ -181,8 +187,7 @@ const AppContent = React.memo(() => {
 
       <Toaster />
       <Sonner />
-
-      {!hideTopNav && (
+      {!location.pathname.endsWith('/brackets/fullscreen') && (
         <>
           <Navbar />
           <BetaNoticeBanner />
@@ -568,34 +573,65 @@ const AppContent = React.memo(() => {
                 } />
 
                 {/* Tournament Organizer Routes */}
-                <Route path="/organizer/*" element={
+                <Route path="/organizer/dashboard" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
-                    <OrganizerLayout>
-                      <Routes>
-                        <Route path="setup-organization" element={<OrganizationWizard />} />
-                        <Route path="tournaments" element={<ManageTournaments />} />
-                        <Route path="tournament/:slug" element={<TournamentManage />} />
-                        <Route path="tournament/:slug/edit" element={<EditTournament />} />
-                        <Route path="tournament/:slug/brackets" element={<TournamentBrackets />} />
-                        <Route path="tournament/:slug/manage-bracket/:stageId" element={<ManageBracketPage />} />
-                        <Route path="disputes" element={<OrganizerDisputesPage />} />
-                        <Route path="*" element={<Navigate to="/organizer/tournaments" replace />} />
-                      </Routes>
-                    </OrganizerLayout>
+                    <OrganizerDashboard />
                   </ProtectedRoute>
                 } />
-                <Route path="/season/:slug" element={<SeasonPublicPage />} />
-                <Route path="/season/manage/:id" element={
+                <Route path="/organizer/setup-organization" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
-                    <SeasonManage />
+                    <OrganizationWizard />
                   </ProtectedRoute>
                 } />
-                <Route path="/seasons/create" element={
+                <Route path="/organizer/tournaments" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <ManageTournaments />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/seasons" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <ManageSeasons />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/seasons/create" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <CreateSeason />
                   </ProtectedRoute>
                 } />
+                <Route path="/organizer/seasons/:id" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <SeasonManage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/tournament/:slug" element={
+                  <ProtectedRoute>
+                    <TournamentManage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/tournament/:slug/edit" element={
+                  <ProtectedRoute>
+                    <EditTournament />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/tournament/:slug/brackets" element={
+                  <ProtectedRoute>
+                    <TournamentBrackets />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/tournament/:slug/manage-bracket/:stageId" element={
+                  <ProtectedRoute>
+                    <ManageBracketPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/disputes" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <OrganizerDisputesPage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/tournaments" element={<BrowseTournaments />} />
+                <Route path="/seasons" element={<SeasonsList />} />
+                <Route path="/seasons/:id" element={<SeasonsDetails />} />
+                <Route path="/seasons/:slug" element={<SeasonPublic />} />
                 <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
                 <Route path="/player/:username" element={<PlayerProfile />} />
@@ -668,6 +704,11 @@ const AppContent = React.memo(() => {
 
                 {/* Admin Protected Route for TournamentDetails */}
                 <Route path="/admin/tournaments/:id" element={<AdminProtectedRoute><TournamentDetails /></AdminProtectedRoute>} />
+
+                {/* Admin Season Routes */}
+                <Route path="/admin/seasons/:id/audit" element={<AdminProtectedRoute><AdminSeasonAudit /></AdminProtectedRoute>} />
+                <Route path="/admin/seasons/:id/override" element={<AdminProtectedRoute><AdminSeasonOverride /></AdminProtectedRoute>} />
+                <Route path="/admin/seasons/analytics" element={<AdminProtectedRoute><AdminSeasonAnalytics /></AdminProtectedRoute>} />
 
                 {/* Tournament History Route */}
                 <Route path="/tournament-history" element={<TournamentHistoryPage />} />

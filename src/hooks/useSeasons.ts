@@ -6,9 +6,17 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { seasonApi } from '@/services/api';
-import type { Season, SeasonList, CreateSeasonRequest, UpdateSeasonRequest } from '@/types/season';
+import type {
+  Season,
+  SeasonList,
+  CreateSeasonRequest,
+  UpdateSeasonPayload,
+  SeasonAdvancementConnection,
+  SeasonAuditLogEntry,
+} from '@/types/season';
 import { useToast } from './use-toast';
 import { ApiError } from '@/lib/apiClient';
+export { useSeasonTournaments } from './useSeasonStandings';
 
 export function useSeasons(page = 1, limit = 50, status?: string, game?: string) {
   return useQuery<SeasonList[]>({
@@ -68,16 +76,15 @@ export function useCreateSeason() {
   });
 }
 
-export function useUpdateSeason() {
+export function useUpdateSeason(id: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateSeasonRequest }) => 
-      seasonApi.updateSeason(id, data),
-    onSuccess: (data) => {
+    mutationFn: (data: UpdateSeasonPayload) => seasonApi.updateSeasonDetail(id, data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
-      queryClient.invalidateQueries({ queryKey: ['season', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['season-detail', id] });
       toast({
         title: 'Season updated',
         description: 'Your season has been updated successfully.',
@@ -121,10 +128,11 @@ export function usePublishSeason() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (id: string) => seasonApi.publishSeason(id),
+    mutationFn: ({ seasonId, req }: { seasonId: string; req?: { allowIncomplete?: boolean; activate?: boolean } }) =>
+      seasonApi.publishSeason(seasonId, req),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
-      queryClient.invalidateQueries({ queryKey: ['season', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['season-detail', data.id] });
       toast({
         title: 'Season published',
         description: 'Your season has been published successfully.',
@@ -205,3 +213,68 @@ export function useSyncSeasonStatus() {
   );
 }
 
+export function useCancelSeason() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ seasonId, reason }: { seasonId: string; reason: string }) =>
+      seasonApi.cancelSeason(seasonId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      toast({
+        title: 'Season cancelled',
+        description: 'The season has been cancelled.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error cancelling season',
+        description: error instanceof Error ? error.message : 'Failed to cancel season',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useDuplicateSeason() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ seasonId, newName, newSlug }: { seasonId: string; newName: string; newSlug: string }) =>
+      seasonApi.duplicateSeason(seasonId, newName, newSlug),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      toast({
+        title: 'Season duplicated',
+        description: 'A copy of the season has been created.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error duplicating season',
+        description: error instanceof Error ? error.message : 'Failed to duplicate season',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useSeasonAdvancement(id: string) {
+  return useQuery<SeasonAdvancementConnection[]>({
+    queryKey: ['season-advancement', id],
+    queryFn: () => seasonApi.getSeasonAdvancement(id),
+    enabled: !!id,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSeasonAuditLog(id: string) {
+  return useQuery<SeasonAuditLogEntry[]>({
+    queryKey: ['season-audit-log', id],
+    queryFn: () => seasonApi.getSeasonAuditLog(id),
+    enabled: !!id,
+    staleTime: 5 * 60_000,
+  });
+}

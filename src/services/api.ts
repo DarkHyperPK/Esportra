@@ -5,13 +5,18 @@ import type {
   SeasonList,
   CreateSeasonRequest,
   UpdateSeasonRequest,
+  UpdateSeasonPayload,
   SeasonStanding,
   PointRule,
   AdvancementRule,
   SeasonTournamentDetails,
   CreatePointRuleRequest,
   CreateAdvancementRuleRequest,
-  SeasonParticipant
+  SeasonParticipant,
+  SeasonDetailResponse,
+  SeasonQualificationRecord,
+  SeasonAuditLogEntry,
+  SeasonAdvancementConnection,
 } from '@/types/season';
 
 // Types
@@ -152,6 +157,10 @@ export const seasonApi = {
     return await apiClient.get<Season>(`/api/seasons/${id}`);
   },
 
+  getSeasonDetail: async (id: string) => {
+    return await apiClient.get<SeasonDetailResponse>(`/api/seasons/${id}`);
+  },
+
   createSeason: async (season: CreateSeasonRequest) => {
     return await apiClient.post<Season>('/api/seasons', season);
   },
@@ -160,12 +169,16 @@ export const seasonApi = {
     return await apiClient.put<Season>(`/api/seasons/${id}`, season);
   },
 
+  updateSeasonDetail: async (id: string, payload: UpdateSeasonPayload) => {
+    return await apiClient.put<SeasonDetailResponse>(`/api/seasons/${id}`, payload);
+  },
+
   deleteSeason: async (id: string) => {
     return await apiClient.delete(`/api/seasons/${id}`);
   },
 
-  publishSeason: async (id: string) => {
-    return await apiClient.post<Season>(`/api/seasons/${id}/publish`);
+  publishSeason: async (id: string, req?: { allowIncomplete?: boolean; activate?: boolean }) => {
+    return await apiClient.post<{ tournamentsCreated: number; connectionsWired: number; id: string }>(`/api/seasons/${id}/publish`, req ?? {});
   },
 
   startSeason: async (id: string) => {
@@ -252,5 +265,45 @@ export const seasonApi = {
 
   removeParticipant: async (id: string, participantId: string) => {
     return await apiClient.delete(`/api/seasons/${id}/participants/${participantId}`);
-  }
+  },
+
+  getSeasonQualifications: async (id: string) => {
+    return await apiClient.get<SeasonQualificationRecord[]>(`/api/seasons/${id}/qualifications`);
+  },
+
+  updateQualification: async (id: string, recordId: string, payload: object) => {
+    return await apiClient.put(`/api/seasons/${id}/qualifications/${recordId}`, payload);
+  },
+
+  syncSeasonNodes: async (id: string, nodes: unknown[]) => {
+    return await apiClient.put(`/api/seasons/${id}/nodes`, { nodes });
+  },
+
+  syncSeasonRules: async (id: string, rules: unknown[]) => {
+    return await apiClient.put(`/api/seasons/${id}/points-rules`, { rules });
+  },
+
+  syncSeasonStaff: async (id: string, staff: unknown[]) => {
+    return await apiClient.put(`/api/seasons/${id}/staff`, { staff });
+  },
+
+  recalculateSeason: async (id: string) => {
+    return await apiClient.post(`/api/seasons/${id}/recalculate`);
+  },
+
+  cancelSeason: async (id: string, reason: string) => {
+    return await apiClient.post<{ success: boolean; status: string }>(`/api/seasons/${id}/cancel`, { reason });
+  },
+
+  duplicateSeason: async (id: string, newName: string, newSlug: string) => {
+    return await apiClient.post<{ success: boolean; seasonId: string }>(`/api/seasons/${id}/duplicate`, { newName, newSlug });
+  },
+
+  getSeasonAdvancement: async (id: string) => {
+    return await apiClient.get<SeasonAdvancementConnection[]>(`/api/seasons/${id}/advancement`);
+  },
+
+  getSeasonAuditLog: async (id: string) => {
+    return await apiClient.get<SeasonAuditLogEntry[]>(`/api/admin/seasons/${id}/audit`);
+  },
 };

@@ -35,7 +35,7 @@ const ManageSeasons = () => {
   };
 
   const handlePublish = (seasonId: string) => {
-    publishSeason.mutate(seasonId);
+    publishSeason.mutate({ seasonId });
   };
 
   const handleArchive = (seasonId: string) => {

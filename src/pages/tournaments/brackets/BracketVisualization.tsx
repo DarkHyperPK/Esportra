@@ -8,16 +8,19 @@
  * CARD HEIGHT: Fixed at 200px to prevent overlapping
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Copy, Check,
-  Trophy, Swords, Gamepad2
+  Radio, Copy, Check, ZoomIn, ZoomOut,
+  Trophy, PlayCircle, Swords, Gamepad2, ChevronDown, RefreshCw, Eye, Settings2, Maximize2, Bot
 } from 'lucide-react';
 import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import type { BracketMatch } from '@/types/bracketTypes';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
@@ -47,7 +50,6 @@ export interface BracketVisualizationProps {
   versionId?: string | null;
   teamCount?: number;
   tournamentId?: string | null;
-  tournamentSlug?: string | null;
   isOrganizer?: boolean;
   isCaptain?: boolean;
   userTeamId?: string;
@@ -77,7 +79,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   versionId,
   teamCount: propTeamCount = 0,
   tournamentId,
-  tournamentSlug,
   isOrganizer = false,
   onOpenMapVeto,
   onRefresh,
@@ -109,6 +110,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
       // New system: match_result_reports with screenshot_urls
       try {
+        const matchIds = Object.keys(automatedGames || {});
         // Also fetch from brkt_matches for this tournament
         const allReports = await apiClient.get<any[]>(
           `/api/tournaments/${tournamentId}/result-reports`
@@ -188,7 +190,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   }, [teamsData]);
 
   // Adapt data
-  const { matches: adaptedMatches } = useMemo(() => {
+  const { matches: adaptedMatches, teamCount } = useMemo(() => {
     if (propMatches.length > 0) return { matches: propMatches, teamCount: propTeamCount };
 
     // Always use live nodes/edges — the graph endpoint serves real-time DB state.
@@ -239,8 +241,11 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
   const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
   const [resultsDialogMatch, setResultsDialogMatch] = useState<BracketMatch | null>(null);
+
+
+
   // Categorize matches
-  const { winnersRounds, losersRounds, finalsMatches } = useMemo(() => {
+  const { winnersRounds, losersRounds, finalsMatches, maxWinnersRound } = useMemo(() => {
     const winners: Record<number, BracketMatch[]> = {};
     const losers: Record<number, BracketMatch[]> = {};
     const finals: BracketMatch[] = [];
@@ -263,6 +268,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       winnersRounds: winners,
       losersRounds: losers,
       finalsMatches: finals.sort((a, b) => a.round - b.round || a.matchNumber - b.matchNumber),
+      maxWinnersRound: Math.max(...Object.keys(winners).map(Number), 0)
     };
   }, [matches]);
 
@@ -323,6 +329,8 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           slot = idx;
         } else {
           // Subsequent Rounds: Center between children
+          const prevRound = wRounds[rIdx - 1];
+
           // Find matches in previous round where target_match_id == this match id
           const children = graphData?.edges?.filter(e =>
             String(e.target_match_id) === rawId || String(e.target_match_id) === id
@@ -543,11 +551,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     }
   }, [handleGoLive]);
   const openMapVeto = useCallback((m: BracketMatch) => { if (onOpenMapVeto) onOpenMapVeto(m, String(m.id)); else { setMapVetoMatch(m); setMapVetoOpen(true); } }, [onOpenMapVeto]);
-  const openMatchRoom = useCallback((m: BracketMatch) => {
-    if (!tournamentSlug) return;
-    const rawMatchId = getRawId(m.id);
-    window.open(`/tournaments/${encodeURIComponent(tournamentSlug)}/captain-match/${rawMatchId}`, '_blank', 'noopener,noreferrer');
-  }, [tournamentSlug]);
   const openPartyCode = useCallback((m: BracketMatch) => { setPartyCodeMatch(m); setPartyCodeOpen(true); setCopiedCode(false); }, []);
   const copyPartyCode = async () => { if (!partyCodeMatch?.partyCode) return; await navigator.clipboard.writeText(partyCodeMatch.partyCode); setCopiedCode(true); toast({ title: '📋 Copied!' }); setTimeout(() => setCopiedCode(false), 2000); };
   const handleScoreChange = useCallback((id: string, t: 't1' | 't2', v: string) => {
@@ -635,7 +638,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       isOrganizer={isOrganizer}
       isProcessing={isProcessing}
       versionId={versionId}
-      tournamentId={tournamentId ?? undefined}
+      tournamentId={tournamentId}
       onScoreChange={handleScoreChange}
       onGoLive={openGoLive}
       onMapVeto={openMapVeto}
@@ -649,57 +652,49 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         setResultsDialogMatch(m);
         setResultsDialogOpen(true);
       }}
-      onMatchRoom={openMatchRoom}
     />
-  ), [expandedMatch, isOrganizer, isProcessing, handleScoreChange, toggleExpand, openGoLive, openMapVeto, openPartyCode, saveScore, proofs, onByeAdvance, openMatchRoom]);
+  ), [expandedMatch, isOrganizer, isProcessing, handleScoreChange, toggleExpand, openGoLive, openMapVeto, openPartyCode, saveScore, proofs, onByeAdvance]);
 
   // Open bracket in fullscreen new tab
   const openFullscreen = useCallback(() => {
     const url = window.location.href;
     window.open(url, '_blank', 'fullscreen=yes,menubar=no,toolbar=no,location=no,status=no');
   }, []);
-  void openFullscreen;
 
   // Render Alternative Views
   if (format === 'round_robin') {
     return (
-      <>
-        <div className="p-6">
-          <GroupStageView
-            stageId={graphData?.version?.stage_id || ''}
-            matches={graphData?.nodes || []}
-            isOrganizer={isOrganizer}
-            onMatchUpdate={handleRefresh}
-            teamsMap={teamsMap}
-            tournamentId={tournamentId ?? undefined}
-            onMatchRoom={openMatchRoom}
-            onByeAdvance={onByeAdvance}
-            stage={stage}
-            advancementCount={stage?.advancement_count}
-          />
-        </div>
-      </>
+      <div className="p-6">
+        <GroupStageView
+          stageId={graphData?.version?.stage_id || ''}
+          matches={graphData?.nodes || []}
+          isOrganizer={isOrganizer}
+          onMatchUpdate={handleRefresh}
+          teamsMap={teamsMap}
+          tournamentId={tournamentId}
+          onByeAdvance={onByeAdvance}
+          stage={stage}
+          advancementCount={stage?.advancement_count}
+        />
+      </div>
     );
   }
 
 
   if (format === 'swiss') {
     return (
-      <>
-        <div className="p-6">
-          <SwissView
-            stageId={graphData?.version?.stage_id || ''}
-            versionId={versionId || ''}
-            matches={matches}
-            isOrganizer={isOrganizer}
-            onMatchUpdate={handleRefresh}
-            tournamentId={tournamentId ?? undefined}
-            onMatchRoom={openMatchRoom}
-            onByeAdvance={onByeAdvance}
-            stage={stage}
-          />
-        </div>
-      </>
+      <div className="p-6">
+        <SwissView
+          stageId={graphData?.version?.stage_id || ''}
+          versionId={versionId || ''}
+          matches={matches}
+          isOrganizer={isOrganizer}
+          onMatchUpdate={handleRefresh}
+          tournamentId={tournamentId}
+          onByeAdvance={onByeAdvance}
+          stage={stage}
+        />
+      </div>
     );
   }
 

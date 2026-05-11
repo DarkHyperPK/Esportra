@@ -203,15 +203,6 @@ const OrganizerDashboard = () => {
                 </button>
 
                 <button
-                  onClick={() => navigate('/organizer/seasons')}
-                  className="flex items-center w-full px-4 py-3 text-left rounded-xl transition-all duration-200 group text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent"
-                >
-                  <Workflow className="mr-3 h-4 w-4 text-zinc-500 group-hover:text-rose-500" />
-                  <span className="text-sm font-medium">Seasons</span>
-                  <ChevronRight className="ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-
-                <button
                   onClick={() => setActiveTab("organization")}
                   className={cn(
                     "flex items-center w-full px-4 py-3 text-left rounded-xl transition-all duration-200 group",

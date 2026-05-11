@@ -1768,6 +1768,18 @@ const TournamentDashboard = () => {
                           <p className="text-gray-300 leading-relaxed font-medium">{tournament.description || 'No description provided.'}</p>
                         </div>
 
+                        {/* Mock Mode Panel — only visible to organizer while tournament is in draft */}
+                        {isOrganizer && !tournament.is_public && (
+                          <div className="mb-6">
+                            <MockModePanel
+                              tournamentId={tournament.id}
+                              slug={slug ?? ''}
+                              maxTeams={tournament.max_teams}
+                              mockCount={mockCount}
+                            />
+                          </div>
+                        )}
+
                         <div className="w-full h-px bg-white/5 my-6" />
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-0 mb-8">
                           <div className="flex flex-col lg:border-r border-white/10 px-4 gap-1">
@@ -2090,7 +2102,7 @@ const TournamentDashboard = () => {
                           Staff members added to your organization automatically gain access to all your tournaments.
                         </p>
                         <Button
-                          onClick={() => navigate('/organizer/tournaments')}
+                          onClick={() => navigate('/organizer/dashboard?tab=staff')}
                           className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl transition-all hover:scale-105"
                         >
                           Go to Organization Settings

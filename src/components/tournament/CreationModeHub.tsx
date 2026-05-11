@@ -8,8 +8,8 @@ interface CreationModeHubProps {
   onSelect: (mode: CreationMode) => void;
 }
 
-const useHubMedia = (): string | undefined => {
-  const [media, setMedia] = useState<string | undefined>();
+const useHubMedia = (): Partial<Record<CreationMode, string>> => {
+  const [media, setMedia] = useState<Partial<Record<CreationMode, string>>>({});
 
   useEffect(() => {
     let alive = true;
@@ -18,8 +18,11 @@ const useHubMedia = (): string | undefined => {
 
     void (async () => {
       try {
-        const eventData = await fetchGameData('Valorant', { skipRawg: true });
-        if (alive) setMedia(pick(eventData));
+        const [eventData, seasonData] = await Promise.all([
+          fetchGameData('Valorant', { skipRawg: true }),
+          fetchGameData('Dota 2', { skipRawg: true }),
+        ]);
+        if (alive) setMedia({ event: pick(eventData), season: pick(seasonData) });
       } catch {
         // decorative — fail silently
       }
@@ -60,16 +63,16 @@ const PANELS: PanelDef[] = [
   {
     mode: 'season',
     title: 'Season',
-    tagline: 'A series of connected tournaments with point standings.',
+    tagline: 'A connected series of competitions under one program.',
     points: [
-      'Link multiple tournaments into a season',
-      'Track team standings across events',
-      'Set point rules and advancement criteria',
+      'Drag-and-drop structure builder',
+      'Linked events with qualification paths',
+      'Season-wide standings and points systems',
     ],
-    accent: 'text-emerald-400',
+    accent: 'text-cyan-400',
     icon: Workflow,
-    btnClass: 'bg-emerald-500 hover:bg-emerald-400 text-white',
-    dotClass: 'bg-emerald-400',
+    btnClass: 'bg-cyan-500 hover:bg-cyan-400 text-white',
+    dotClass: 'bg-cyan-400',
   },
 ];
 
@@ -82,7 +85,7 @@ const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
       {/* Top strip */}
       <div className="flex items-center justify-center border-b border-white/[0.05] px-8 py-4">
         <p className="font-body text-[11px] font-medium uppercase tracking-[0.3em] text-zinc-400">
-          Create tournament
+          Choose format
         </p>
       </div>
 
@@ -90,7 +93,8 @@ const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
       <div className="flex flex-1 flex-col sm:flex-row">
         {PANELS.map(({ mode, title, tagline, points, accent, icon: Icon, btnClass, dotClass }) => {
           const isActive = active === mode;
-          const image = media;
+          const anyActive = active !== null;
+          const image = media[mode];
 
           return (
             <div
@@ -106,11 +110,12 @@ const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
               onMouseLeave={() => setActive(null)}
               onFocus={() => setActive(mode)}
               onBlur={() => setActive(null)}
-              className="relative flex flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden border-r border-white/[0.04] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+              className="relative flex cursor-pointer flex-col items-center justify-center overflow-hidden border-r border-white/[0.04] last:border-r-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
               style={{
                 minHeight: 'calc(100dvh - 52px)',
-                opacity: isActive ? 1 : 0.8,
-                transition: 'opacity 0.2s ease',
+                flex: isActive ? '1.18 1 0%' : anyActive ? '0.84 1 0%' : '1 1 0%',
+                opacity: anyActive && !isActive ? 0.52 : 1,
+                transition: 'flex 0.3s ease, opacity 0.2s ease',
               }}
             >
               {/* Background image */}

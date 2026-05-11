@@ -1,763 +1,2200 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
-import { useArchiveSeason, useCompleteSeason, usePublishSeason, useSeason, useStartSeason, useSyncSeasonStatus } from '@/hooks/useSeasons';
+import Footer from '@/components/Footer';
+import SeasonStructureBuilder from '@/components/season/builder/SeasonStructureBuilder';
+import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import {
-  useRecalculateStandings,
-  useProcessSeasonAdvancement,
-  useCreatePointRule,
-  useCreateAdvancementRule,
-  useSeasonTournaments,
-  useLinkTournamentToSeason,
-  useUnlinkTournamentFromSeason,
-} from '@/hooks/useSeasonStandings';
-import { useSeasonParticipants, useUpdateParticipantStatus, useRemoveParticipant } from '@/hooks/useSeasonParticipants';
-import { useTournaments } from '@/hooks/useTournaments';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+  buildSeasonTreeFromDrafts,
+  getPhaseMetaForType,
+  hydrateSeasonBuilderNodes,
+  isTournamentConfigComplete,
+  readOutgoingConnections,
+  readTournamentConfig,
+  toSeasonNodeDraftPayload,
+  validateSeasonBuilderNodes,
+} from '@/components/season/builder/seasonBuilderUtils';
+import { formatDistanceToNow } from 'date-fns';
+import SeasonQualificationsPanel from '@/components/season/SeasonQualificationsPanel';
+import SeasonStandingsTable from '@/components/season/SeasonStandingsTable';
+import SeasonTreePreview from '@/components/season/SeasonTreePreview';
+import SeasonAnnouncements from '@/components/season/management/SeasonAnnouncements';
+import SeasonAdvancementDashboard from '@/components/season/management/SeasonAdvancementDashboard';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Calendar, Trophy, RefreshCw, Plus, Workflow, Play, CheckCircle2, Archive, Users, ShieldAlert } from 'lucide-react';
-import StandingsCard from '@/components/organizer/season/StandingsCard';
-import PointRulesCard from '@/components/organizer/season/PointRulesCard';
-import AdvancementRulesCard from '@/components/organizer/season/AdvancementRulesCard';
-import type { QualificationStatus, SeedMode } from '@/types/season';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  useRecalculateSeason,
+  useSeason,
+  useSeasonQualifications,
+  useSeasonStandings,
+  useSyncSeasonNodes,
+  useSyncSeasonRules,
+  useSyncSeasonStaff,
+  useUpdateSeasonQualification,
+} from '@/hooks/useSeason';
+import { usePublishSeason, useUpdateSeason, useArchiveSeason, useCancelSeason, useDuplicateSeason, useSeasonTournaments, useSeasonAdvancement, useSeasonAuditLog } from '@/hooks/useSeasons';
+import { useToast } from '@/hooks/use-toast';
+import { seasonBasicsSchema } from '@/schemas/seasonSchema';
+import type {
+  AdvancementConnection,
+  SeasonNodeDraft,
+  SeasonBuilderNode,
+  SeasonNodeStatus,
+  SeasonNodeType,
+  SeasonParticipantMode,
+  SeasonQualificationType,
+  SeasonRuleDraft,
+  SeasonStaffMember,
+  SeasonStatus,
+  SeasonTreeNode,
+  UpdateSeasonPayload,
+} from '@/types/season';
+import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch, AlertCircle, ArrowRight, Bell, Clock, Info, Shield, Activity, X, AlertTriangle, Lock, ShieldOff, LayoutDashboard, Workflow, Trophy, ClipboardList, Target, Menu, ChevronLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import esportsGames from '@/data/esportsGames.json';
 
-interface SeasonDispute {
-  id: string;
-  title: string;
-  status: string;
-  tournament_name: string;
-  created_at: string;
-}
+const NAV_GROUPS = [
+  {
+    label: null,
+    items: [
+      { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'CIRCUIT',
+    items: [
+      { id: 'structure', label: 'Structure', icon: GitBranch },
+      { id: 'flow', label: 'Flow', icon: Workflow },
+      { id: 'tournaments', label: 'Tournaments', icon: Trophy },
+    ],
+  },
+  {
+    label: 'PEOPLE',
+    items: [
+      { id: 'staff', label: 'Staff', icon: Users },
+      { id: 'registrations', label: 'Registrations', icon: ClipboardList },
+      { id: 'qualifications', label: 'Qualifications', icon: CheckCircle2 },
+    ],
+  },
+  {
+    label: 'COMPETITION',
+    items: [
+      { id: 'rules', label: 'Points rules', icon: Target },
+      { id: 'standings', label: 'Standings', icon: TrendingUp },
+      { id: 'advancement', label: 'Advancement', icon: ArrowRight },
+    ],
+  },
+  {
+    label: 'COMMS',
+    items: [
+      { id: 'announcements', label: 'Announcements', icon: Bell },
+    ],
+  },
+  {
+    label: 'SYSTEM',
+    items: [
+      { id: 'analytics', label: 'Analytics', icon: Activity },
+      { id: 'settings', label: 'Settings', icon: Settings },
+      { id: 'audit', label: 'Audit Log', icon: FileText },
+    ],
+  },
+] as const;
+
+const STATUS_STYLES: Record<SeasonStatus, string> = {
+  draft: 'border-zinc-700/40 text-zinc-400 bg-zinc-500/10',
+  published: 'border-blue-500/30 text-blue-400 bg-blue-500/10',
+  active: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10',
+  completed: 'border-white/20 text-zinc-300 bg-white/10',
+  archived: 'border-zinc-700/30 text-zinc-600 bg-zinc-700/10',
+};
+
+const SEASON_STATUSES: SeasonStatus[] = ['draft', 'published', 'active', 'completed', 'archived'];
+const PARTICIPANT_MODES: SeasonParticipantMode[] = ['team', 'solo'];
+const NODE_TYPES: SeasonNodeType[] = ['root', 'qualifier', 'event', 'stage', 'final', 'custom'];
+const NODE_STATUSES: SeasonNodeStatus[] = ['draft', 'scheduled', 'live', 'completed', 'archived'];
+const STAFF_ROLES: SeasonStaffMember['role'][] = ['co_organizer', 'admin'];
+const QUALIFICATION_TYPES: SeasonQualificationType[] = ['qualified', 'wildcard', 'reserve'];
+
+type OverviewState = {
+  name: string;
+  game: string;
+  participantMode: SeasonParticipantMode;
+  status: SeasonStatus;
+  slug: string;
+  description: string;
+  isPublic: boolean;
+  allowManualOverrides: boolean;
+  startDate: string;
+  endDate: string;
+  bannerUrl: string | null;
+  logoUrl: string | null;
+};
+
+const emptyOverview: OverviewState = {
+  name: '',
+  game: '',
+  participantMode: 'team',
+  status: 'draft',
+  slug: '',
+  description: '',
+  isPublic: false,
+  allowManualOverrides: true,
+  startDate: '',
+  endDate: '',
+  bannerUrl: null,
+  logoUrl: null,
+};
+
+const toNullable = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const formatDateInput = (value?: string | null) => (value ? value.slice(0, 10) : '');
+
+const createEmptyRule = (sourceNodeId: string): SeasonRuleDraft => ({
+  sourceNodeId,
+  placementFrom: 1,
+  placementTo: 1,
+  pointsAwarded: 0,
+  sourceStageId: null,
+  destinationNodeId: null,
+  qualificationStatus: 'qualified',
+  autoCreateQualification: true,
+  regionKey: '',
+});
 
 const SeasonManage = () => {
-  const { id } = useParams<{ id: string }>();
-  const { data: season, isLoading, isError } = useSeason(id || '');
-  const { data: linkedTournaments = [], isLoading: linkedTournamentsLoading } = useSeasonTournaments(id || '');
-  const { data: tournaments = [] } = useTournaments(season?.game ? { game: season.game } : undefined);
-  const recalculateStandings = useRecalculateStandings();
-  const processAdvancement = useProcessSeasonAdvancement();
+  const { id: seasonId } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { toast } = useToast();
+
+  const { data, isLoading, error, refetch } = useSeason(seasonId);
+  const standingsQuery = useSeasonStandings(seasonId);
+  const qualificationsQuery = useSeasonQualifications(seasonId);
+  const updateSeason = useUpdateSeason(seasonId ?? '');
+  const syncStaff = useSyncSeasonStaff(seasonId ?? '');
+  const syncNodes = useSyncSeasonNodes(seasonId ?? '');
+  const syncRules = useSyncSeasonRules(seasonId ?? '');
+  const recalculateSeason = useRecalculateSeason(seasonId ?? '');
+  const updateQualification = useUpdateSeasonQualification(seasonId ?? '');
   const publishSeason = usePublishSeason();
-  const startSeason = useStartSeason();
-  const completeSeason = useCompleteSeason();
   const archiveSeason = useArchiveSeason();
-  const syncSeasonStatus = useSyncSeasonStatus();
-  const createPointRule = useCreatePointRule();
-  const createAdvancementRule = useCreateAdvancementRule();
-  const linkTournament = useLinkTournamentToSeason();
-  const unlinkTournament = useUnlinkTournamentFromSeason();
-  const { data: participants = [], isLoading: participantsLoading } = useSeasonParticipants(id || '');
-  const updateParticipant = useUpdateParticipantStatus();
-  const removeParticipant = useRemoveParticipant();
-  const [participantFilter, setParticipantFilter] = useState('all');
-  const [showPointRuleForm, setShowPointRuleForm] = useState(false);
-  const [showAdvancementRuleForm, setShowAdvancementRuleForm] = useState(false);
-  const [showLinkForm, setShowLinkForm] = useState(false);
-  const [pointRuleForm, setPointRuleForm] = useState({
-    tournament_id: '',
-    placement_start: '1',
-    placement_end: '1',
-    points: '10',
-    qualification_status: '',
-  });
-  const [advancementRuleForm, setAdvancementRuleForm] = useState({
-    source_tournament_id: '',
-    target_tournament_id: '',
-    placement_start: '1',
-    placement_end: '1',
-    advancement_count: '1',
-    seed_mode: 'top_seeded',
-  });
-  const [linkForm, setLinkForm] = useState({
-    tournament_id: '',
-    season_role: 'event',
-    season_stage_order: '1',
-  });
-  const [disputes, setDisputes] = useState<SeasonDispute[]>([]);
-  const [disputesLoading, setDisputesLoading] = useState(false);
+  const cancelSeason = useCancelSeason();
+  const duplicateSeason = useDuplicateSeason();
+  const tournamentsQuery = useSeasonTournaments(seasonId ?? '');
+  const advancementQuery = useSeasonAdvancement(seasonId ?? '');
+  const auditLogQuery = useSeasonAuditLog(seasonId ?? '');
+
+  const [overview, setOverview] = useState<OverviewState>(emptyOverview);
+  const [staffRows, setStaffRows] = useState<SeasonStaffMember[]>([]);
+  const [newStaff, setNewStaff] = useState<{ userId: string; role: SeasonStaffMember['role'] }>({ userId: '', role: 'co_organizer' });
+  const [nodeRows, setNodeRows] = useState<SeasonBuilderNode[]>([]);
+  const [ruleRows, setRuleRows] = useState<SeasonRuleDraft[]>([]);
+  const [qualificationBusyId, setQualificationBusyId] = useState<string | null>(null);
+  const [announceTitle, setAnnounceTitle] = useState('');
+  const [announceBody, setAnnounceBody] = useState('');
+  const [showStructureSaveConfirm, setShowStructureSaveConfirm] = useState(false);
+  const [rosterLock, setRosterLock] = useState(false);
+  const [allowRosterChangesBetween, setAllowRosterChangesBetween] = useState(true);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  const activeTab = searchParams.get('tab') ?? 'overview';
 
   useEffect(() => {
-    if (!id || linkedTournaments.length === 0) return;
-    const tournamentIds = new Set(linkedTournaments.map((t) => t.id));
-    let cancelled = false;
-    setDisputesLoading(true);
-    apiClient
-      .get<any[]>('/api/disputes')
-      .then((all) => {
-        if (cancelled) return;
-        const filtered = (all || []).filter((d) => tournamentIds.has(d.tournament_id));
-        setDisputes(
-          filtered.map((d) => ({
-            id: d.id,
-            title: d.title,
-            status: d.status,
-            tournament_name: d.tournament_name || 'Unknown tournament',
-            created_at: d.created_at,
-          }))
-        );
-      })
-      .catch(() => {
-        if (!cancelled) setDisputes([]);
-      })
-      .finally(() => {
-        if (!cancelled) setDisputesLoading(false);
+    if (!data) return;
+
+    setOverview({
+      name: data.season.name,
+      game: data.season.game,
+      participantMode: data.season.participantMode,
+      status: data.season.status,
+      slug: data.season.slug,
+      description: data.season.description ?? '',
+      isPublic: data.season.isPublic,
+      allowManualOverrides: data.season.allowManualOverrides,
+      startDate: formatDateInput(data.season.startDate),
+      endDate: formatDateInput(data.season.endDate),
+      bannerUrl: data.season.bannerUrl ?? null,
+      logoUrl: data.season.logoUrl ?? null,
+    });
+
+    setStaffRows(
+      (data.staff ?? []).map((member) => ({
+        ...member,
+        userId: member.userId,
+      })),
+    );
+
+    setNodeRows(hydrateSeasonBuilderNodes(data.nodes));
+
+    setRuleRows(
+      data.rules.map((rule) => ({
+        id: rule.id,
+        sourceNodeId: rule.sourceNodeId,
+        placementFrom: rule.placementFrom,
+        placementTo: rule.placementTo,
+        pointsAwarded: rule.pointsAwarded,
+        sourceStageId: rule.sourceStageId ?? '',
+        destinationNodeId: rule.destinationNodeId ?? null,
+        qualificationStatus: rule.qualificationStatus ?? 'qualified',
+        autoCreateQualification: rule.autoCreateQualification,
+        regionKey: rule.regionKey ?? '',
+      })),
+    );
+
+    const seasonSettings = data.season.settings as Record<string, unknown> | null | undefined;
+    setRosterLock(typeof seasonSettings?.rosterLock === 'boolean' ? seasonSettings.rosterLock : false);
+    setAllowRosterChangesBetween(typeof seasonSettings?.allowRosterChangesBetween === 'boolean' ? seasonSettings.allowRosterChangesBetween : true);
+  }, [data]);
+
+  const seasonTreePreview = useMemo(
+    () => (seasonId ? buildSeasonTreeFromDrafts(seasonId, nodeRows) : []),
+    [nodeRows, seasonId],
+  );
+
+  const nodeOptions = useMemo(
+    () =>
+      nodeRows.map((node, index) => ({
+        id: node.id || `draft-${index}`,
+        name: node.name || `Node ${index + 1}`,
+        nodeType: node.nodeType,
+      })),
+    [nodeRows],
+  );
+
+  const gameOptions = useMemo(() => esportsGames.games.map((game) => game.name), []);
+
+  const setTab = (tab: string) => {
+    setSearchParams({ tab }, { replace: true });
+  };
+
+  const handleOverviewSave = async () => {
+    if (!seasonId) return;
+
+    const validation = seasonBasicsSchema.safeParse(overview);
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast({
+        title: 'Validation failed',
+        description: firstError?.message ?? 'Please check the overview fields.',
+        variant: 'destructive',
       });
-    return () => { cancelled = true; };
-  }, [id, linkedTournaments]);
+      return;
+    }
+
+    if (overview.startDate && overview.endDate && new Date(overview.endDate) < new Date(overview.startDate)) {
+      toast({
+        title: 'Validation failed',
+        description: 'End date must be on or after the start date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const payload: UpdateSeasonPayload = {
+      name: overview.name.trim(),
+      game: overview.game,
+      participantMode: overview.participantMode,
+      status: overview.status,
+      slug: overview.slug.trim(),
+      description: toNullable(overview.description),
+      isPublic: overview.isPublic,
+      allowManualOverrides: overview.allowManualOverrides,
+      startDate: toNullable(overview.startDate),
+      endDate: toNullable(overview.endDate),
+      bannerUrl: overview.bannerUrl,
+      logoUrl: overview.logoUrl,
+      settings: { rosterLock, allowRosterChangesBetween },
+    };
+
+    try {
+      await updateSeason.mutateAsync(payload);
+      toast({ title: 'Season updated', description: 'Overview changes are now saved.' });
+    } catch (saveError) {
+      toast({
+        title: 'Overview update failed',
+        description: saveError instanceof Error ? saveError.message : 'Could not save the season overview.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleStaffSave = async () => {
+    if (!seasonId) return;
+
+    const payload = staffRows
+      .map((member) => ({ ...member, userId: member.userId.trim() }))
+      .filter((member) => member.userId.length > 0);
+
+    try {
+      await syncStaff.mutateAsync(payload);
+      toast({ title: 'Staff updated', description: 'Season staff access has been synced.' });
+    } catch (saveError) {
+      toast({
+        title: 'Staff sync failed',
+        description: saveError instanceof Error ? saveError.message : 'Could not save season staff.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleNodesSave = async () => {
+    if (!seasonId) return;
+
+    const nodeValidation = validateSeasonBuilderNodes(nodeRows);
+    if (!nodeValidation.valid) {
+      toast({
+        title: 'Validation failed',
+        description: nodeValidation.message ?? 'Please finish the tournament flow before saving.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const payload = toSeasonNodeDraftPayload(nodeRows).map((node) => ({
+      ...node,
+      slug: toNullable(node.slug ?? ''),
+      region: toNullable(node.region ?? ''),
+      city: toNullable(node.city ?? ''),
+      country: toNullable(node.country ?? ''),
+      linkedTournamentId: node.linkedTournamentId ?? null,
+      linkedStageId: toNullable(node.linkedStageId ?? ''),
+      registrationDeadline: toNullable(node.registrationDeadline ?? ''),
+      startsAt: toNullable(node.startsAt ?? ''),
+      endsAt: toNullable(node.endsAt ?? ''),
+    }));
+
+    try {
+      await syncNodes.mutateAsync(payload);
+      toast({ title: 'Tournament flow saved', description: 'Planned tournaments and advancement are now synced to the backend.' });
+    } catch (saveError) {
+      toast({
+        title: 'Structure sync failed',
+        description: saveError instanceof Error ? saveError.message : 'Could not save season nodes.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleNodesSaveWithGuard = () => {
+    const isStructureLocked =
+      data?.season.status === 'published' ||
+      data?.season.status === 'active' ||
+      data?.season.status === 'completed';
+    if (isStructureLocked) {
+      setShowStructureSaveConfirm(true);
+    } else {
+      handleNodesSave();
+    }
+  };
+
+  const handleRevokeQualification = async (recordId: string, displayName: string) => {
+    if (!confirm(`Revoke qualification for ${displayName}? This cannot be automatically undone.`)) return;
+    setQualificationBusyId(recordId);
+    try {
+      await updateQualification.mutateAsync({ recordId, status: 'revoked', notes: 'Manually revoked by organizer' });
+      toast({ title: `Qualification revoked for ${displayName}` });
+    } catch (err) {
+      toast({
+        title: 'Revoke failed',
+        description: err instanceof Error ? err.message : 'Could not revoke.',
+        variant: 'destructive',
+      });
+    } finally {
+      setQualificationBusyId(null);
+    }
+  };
+
+  const handleRulesSave = async () => {    if (!seasonId) return;
+
+    const invalidRule = ruleRows.find((rule) => rule.sourceNodeId && rule.placementFrom > rule.placementTo);
+    if (invalidRule) {
+      toast({
+        title: 'Validation failed',
+        description: `Placement range is invalid: "from" (${invalidRule.placementFrom}) cannot be greater than "to" (${invalidRule.placementTo}).`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const payload = ruleRows
+      .filter((rule) => rule.sourceNodeId)
+      .map((rule) => ({
+        ...rule,
+        sourceStageId: toNullable(rule.sourceStageId ?? ''),
+        destinationNodeId: rule.destinationNodeId ?? null,
+        qualificationStatus: rule.qualificationStatus ?? null,
+        regionKey: toNullable(rule.regionKey ?? ''),
+      }));
+
+    try {
+      await syncRules.mutateAsync(payload);
+      toast({ title: 'Rules saved', description: 'Points and qualification rules are now updated.' });
+    } catch (saveError) {
+      toast({
+        title: 'Rule sync failed',
+        description: saveError instanceof Error ? saveError.message : 'Could not save season rules.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRecalculate = async () => {
+    if (!seasonId) return;
+
+    try {
+      await recalculateSeason.mutateAsync();
+      toast({ title: 'Season recalculated', description: 'Standings and qualification records were refreshed.' });
+    } catch (recalculateError) {
+      toast({
+        title: 'Recalculation failed',
+        description: recalculateError instanceof Error ? recalculateError.message : 'Could not recalculate this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleQualificationManage = async (payload: {
+    recordId: string;
+    status?: string;
+    qualificationType?: SeasonQualificationType;
+    destinationNodeId?: string;
+    notes?: string;
+  }) => {
+    if (!seasonId) return;
+    setQualificationBusyId(payload.recordId);
+
+    try {
+      await updateQualification.mutateAsync(payload);
+      toast({ title: 'Qualification updated', description: 'The qualification workflow state is now saved.' });
+    } catch (qualificationError) {
+      toast({
+        title: 'Qualification update failed',
+        description: qualificationError instanceof Error ? qualificationError.message : 'Could not update the qualification.',
+        variant: 'destructive',
+      });
+    } finally {
+      setQualificationBusyId(null);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!seasonId) return;
+
+    try {
+      const result = await publishSeason.mutateAsync({
+        seasonId,
+        req: { allowIncomplete: false, activate: false },
+      });
+      toast({
+        title: 'Season published',
+        description: `${result.tournamentsCreated} tournaments created, ${result.connectionsWired} advancement connections wired.`,
+      });
+      refetch();
+    } catch (publishError) {
+      toast({
+        title: 'Publish failed',
+        description: publishError instanceof Error ? publishError.message : 'Could not publish this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!seasonId) return;
+
+    try {
+      await archiveSeason.mutateAsync(seasonId);
+      toast({ title: 'Season archived', description: 'The season has been archived.' });
+      refetch();
+    } catch (archiveError) {
+      toast({
+        title: 'Archive failed',
+        description: archiveError instanceof Error ? archiveError.message : 'Could not archive this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!seasonId) return;
+
+    const reason = prompt('Please provide a reason for cancelling this season:');
+    if (!reason) return;
+
+    try {
+      await cancelSeason.mutateAsync({ seasonId, reason });
+      toast({ title: 'Season cancelled', description: 'The season has been cancelled.' });
+      refetch();
+    } catch (cancelError) {
+      toast({
+        title: 'Cancel failed',
+        description: cancelError instanceof Error ? cancelError.message : 'Could not cancel this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!seasonId || !data) return;
+
+    const newName = prompt('Enter a name for the duplicated season:', `${data.season.name} (Copy)`);
+    if (!newName) return;
+
+    const newSlug = prompt('Enter a slug for the duplicated season:', `${data.season.slug}-copy`);
+    if (!newSlug) return;
+
+    try {
+      const result = await duplicateSeason.mutateAsync({ seasonId, newName, newSlug });
+      toast({ title: 'Season duplicated', description: `New season created: ${result.seasonId}` });
+      window.location.href = `/organizer/seasons/${result.seasonId}`;
+    } catch (duplicateError) {
+      toast({
+        title: 'Duplicate failed',
+        description: duplicateError instanceof Error ? duplicateError.message : 'Could not duplicate this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!seasonId || !data) return;
+
+    if (data.season.status !== 'draft') {
+      toast({
+        title: 'Cannot delete',
+        description: 'Only draft seasons can be deleted.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this season? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`/api/seasons/${seasonId}`);
+      toast({ title: 'Season deleted', description: 'The season has been deleted.' });
+      window.location.href = '/organizer/seasons';
+    } catch (deleteError) {
+      toast({
+        title: 'Deletion failed',
+        description: deleteError instanceof Error ? deleteError.message : 'Could not delete this season.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  if (!seasonId) {
+    return <div className="min-h-screen bg-[#050505]" />;
+  }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-transparent text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-12">
-            <p className="text-gray-400">Loading season...</p>
+      <div className="min-h-screen bg-[#050505] text-white">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="rounded-3xl border border-white/10 bg-black/20 p-10 text-center text-zinc-400">
+            Loading season workspace...
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
-  if (isError || !season) {
+  if (error || !data) {
     return (
-      <div className="min-h-screen bg-transparent text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-12">
-            <p className="text-red-400 mb-4">Failed to load season. It may not exist or an error occurred.</p>
-            <Link to="/organizer/tournaments">
-              <Button variant="outline" className="border-gray-700 hover:bg-white/10">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Tournaments
-              </Button>
-            </Link>
+      <div className="min-h-screen bg-[#050505] text-white">
+        <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-8">
+            <p className="font-semibold text-red-100">Could not load this season.</p>
+            <p className="mt-2 text-sm text-red-200/80">{error instanceof Error ? error.message : 'Season not found.'}</p>
+            <Button onClick={() => refetch()} className="mt-4 bg-white/10 text-white hover:bg-white/20">
+              Retry
+            </Button>
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return 'bg-gray-500';
-      case 'published':
-        return 'bg-blue-500';
-      case 'live':
-        return 'bg-green-500';
-      case 'completed':
-        return 'bg-purple-500';
-      case 'archived':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
+  const renderSidebarContent = () => (
+    <>
+      <div className="px-5 py-5 border-b border-[#1a1a1a] shrink-0">
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border ${STATUS_STYLES[data.season.status]}`}>
+            {data.season.status}
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border border-[#2a2a2a] text-[#808080]">
+            {data.season.participantMode}
+          </span>
+        </div>
+        <p className="text-[11px] text-[#555555] font-mono truncate">{data.season.game}</p>
+        {data.season.status === 'draft' && (
+          <button
+            onClick={() => { setIsMobileNavOpen(false); handlePublish(); }}
+            disabled={publishSeason.isPending}
+            className="mt-4 w-full h-8 bg-white text-black text-[10px] font-bold uppercase tracking-wider hover:bg-[#e0e0e0] transition-none flex items-center justify-center gap-1.5 disabled:opacity-50"
+          >
+            <CheckCircle2 className="w-3 h-3" />
+            {publishSeason.isPending ? 'Publishing...' : 'Publish Season'}
+          </button>
+        )}
+        {data.season.status === 'completed' && (
+          <button
+            onClick={() => { setIsMobileNavOpen(false); handleArchive(); }}
+            disabled={archiveSeason.isPending}
+            className="mt-4 w-full h-8 bg-white text-black text-[10px] font-bold uppercase tracking-wider hover:bg-[#e0e0e0] transition-none flex items-center justify-center gap-1.5 disabled:opacity-50"
+          >
+            <Archive className="w-3 h-3" />
+            {archiveSeason.isPending ? 'Archiving...' : 'Archive Season'}
+          </button>
+        )}
+      </div>
 
-  const availableTournaments = tournaments.filter((tournament) =>
-    !linkedTournaments.some((linkedTournament) => linkedTournament.id === tournament.id)
+      <nav className="flex-1 px-2 py-4 space-y-4 overflow-y-auto">
+        {NAV_GROUPS.map((group, gi) => (
+          <div key={gi}>
+            {group.label && (
+              <p className="px-3 mb-1 text-[10px] font-bold text-[#3a3a3a] uppercase tracking-[0.22em]">
+                // {group.label}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map(({ id, label, icon: Icon }) => {
+                const isActive = activeTab === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => { setTab(id as string); setIsMobileNavOpen(false); }}
+                    className={`w-full flex items-center gap-2.5 px-3 h-8 text-left transition-colors ${
+                      isActive
+                        ? 'border-l-2 border-rose-500 bg-rose-500/[0.06] text-white'
+                        : 'border-l-2 border-transparent text-[#707070] hover:text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-rose-500' : ''}`} />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      <div className="px-2 py-3 border-t border-[#1a1a1a] space-y-0.5 shrink-0">
+        <button
+          onClick={() => { setIsMobileNavOpen(false); handleRecalculate(); }}
+          disabled={recalculateSeason.isPending}
+          className="w-full flex items-center gap-2.5 px-3 h-8 text-left text-[#606060] hover:text-white hover:bg-white/[0.04] transition-colors border-l-2 border-transparent disabled:opacity-40"
+        >
+          <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider">Recalculate</span>
+        </button>
+        <button
+          onClick={() => { setIsMobileNavOpen(false); handleDuplicate(); }}
+          disabled={duplicateSeason.isPending}
+          className="w-full flex items-center gap-2.5 px-3 h-8 text-left text-[#606060] hover:text-white hover:bg-white/[0.04] transition-colors border-l-2 border-transparent disabled:opacity-40"
+        >
+          <Copy className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider">Duplicate</span>
+        </button>
+      </div>
+    </>
   );
 
-  const submitPointRule = () => {
-    if (!id) return;
-    createPointRule.mutate({
-      id,
-      rule: {
-        tournament_id: pointRuleForm.tournament_id || undefined,
-        placement_start: Number(pointRuleForm.placement_start),
-        placement_end: Number(pointRuleForm.placement_end),
-        points: Number(pointRuleForm.points),
-        qualification_status: pointRuleForm.qualification_status as QualificationStatus || undefined,
-      },
-    }, {
-      onSuccess: () => {
-        setShowPointRuleForm(false);
-      },
-    });
-  };
-
-  const submitAdvancementRule = () => {
-    if (!id || !advancementRuleForm.source_tournament_id) return;
-    createAdvancementRule.mutate({
-      id,
-      rule: {
-        source_tournament_id: advancementRuleForm.source_tournament_id,
-        target_tournament_id: advancementRuleForm.target_tournament_id || undefined,
-        placement_start: Number(advancementRuleForm.placement_start),
-        placement_end: Number(advancementRuleForm.placement_end),
-        advancement_count: Number(advancementRuleForm.advancement_count),
-        seed_mode: advancementRuleForm.seed_mode as SeedMode || undefined,
-      },
-    }, {
-      onSuccess: () => {
-        setShowAdvancementRuleForm(false);
-      },
-    });
-  };
-
-  const [linkFormErrors, setLinkFormErrors] = useState<Record<string, string>>({});
-
-  const submitLinkTournament = () => {
-    if (!id) return;
-    const errs: Record<string, string> = {};
-    if (!linkForm.tournament_id) errs.tournament_id = 'SELECT A TOURNAMENT';
-    if (!linkForm.season_role) errs.season_role = 'SELECT A ROLE';
-    const order = Number(linkForm.season_stage_order);
-    if (!linkForm.season_stage_order || isNaN(order) || order < 1) errs.order = 'INVALID STAGE ORDER';
-    // Check for duplicate stage order
-    if (linkedTournaments.some(t => t.season_stage_order === order)) errs.order = 'STAGE ORDER ALREADY EXISTS';
-    if (Object.keys(errs).length > 0) {
-      setLinkFormErrors(errs);
-      return;
-    }
-    setLinkFormErrors({});
-    linkTournament.mutate({
-      tournamentId: linkForm.tournament_id,
-      seasonId: id,
-      seasonRole: linkForm.season_role,
-      seasonStageOrder: order,
-    }, {
-      onSuccess: () => {
-        setShowLinkForm(false);
-        setLinkForm({ tournament_id: '', season_role: 'event', season_stage_order: '1' });
-      },
-    });
-  };
-
-  const isLifecyclePending =
-    publishSeason.isPending ||
-    startSeason.isPending ||
-    completeSeason.isPending ||
-    archiveSeason.isPending ||
-    syncSeasonStatus.isPending;
-
   return (
-    <div className="min-h-screen bg-transparent text-white">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-10">
-          <Link to="/organizer/seasons" className="inline-flex items-center gap-2 text-[10px] font-bold text-[#808080] uppercase tracking-widest hover:text-white transition-colors mb-6">
-            <ArrowLeft className="w-3 h-3" />
-            BACK TO SEASONS
-          </Link>
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-[2px] bg-rose-500" />
-                <span className="text-rose-400 text-[10px] font-bold tracking-[0.25em] uppercase">SEASON MANAGE</span>
-              </div>
-              <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight leading-[0.95] mb-4">{season.name}</h1>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${getStatusColor(season.status)} text-white`}>
-                  {season.status}
-                </span>
-                <span className="text-[#808080] text-sm">{season.game}</span>
-                <span className="text-[#808080] text-sm">
-                  {season.start_date ? new Date(season.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'}
-                  {' — '}
-                  {season.end_date ? new Date(season.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'}
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {season.status === 'draft' && (
-                <button
-                  onClick={() => publishSeason.mutate(id || '')}
-                  disabled={isLifecyclePending || linkedTournaments.length === 0}
-                  className="flex items-center gap-2 h-10 px-4 bg-white text-black text-[10px] font-bold uppercase tracking-widest hover:bg-[#e0e0e0] active:bg-[#cccccc] disabled:opacity-40 disabled:cursor-not-allowed transition-none"
-                >
-                  <Workflow className="w-4 h-4" />
-                  PUBLISH
-                </button>
-              )}
-              {season.status === 'published' && (
-                <button
-                  onClick={() => startSeason.mutate(id || '')}
-                  disabled={isLifecyclePending}
-                  className="flex items-center gap-2 h-10 px-4 bg-white text-black text-[10px] font-bold uppercase tracking-widest hover:bg-[#e0e0e0] active:bg-[#cccccc] disabled:opacity-40 disabled:cursor-not-allowed transition-none"
-                >
-                  <Play className="w-4 h-4" />
-                  START
-                </button>
-              )}
-              {(season.status === 'published' || season.status === 'live') && (
-                <button
-                  onClick={() => completeSeason.mutate(id || '')}
-                  disabled={isLifecyclePending}
-                  className="flex items-center gap-2 h-10 px-4 border border-[#2a2a2a] text-white text-[10px] font-bold uppercase tracking-widest hover:border-[#404040] hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-none"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  COMPLETE
-                </button>
-              )}
-              {season.status !== 'archived' && (
-                <button
-                  onClick={() => archiveSeason.mutate(id || '')}
-                  disabled={isLifecyclePending}
-                  className="flex items-center gap-2 h-10 px-4 border border-[#2a2a2a] text-white text-[10px] font-bold uppercase tracking-widest hover:border-[#404040] hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-none"
-                >
-                  <Archive className="w-4 h-4" />
-                  ARCHIVE
-                </button>
-              )}
+    <div className="min-h-screen bg-[#050505] text-white">
+      {/* Fixed sidebar (desktop) */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden lg:flex flex-col w-56 border-r border-[#1a1a1a] bg-[#0a0a0a] overflow-hidden">
+        {renderSidebarContent()}
+      </aside>
+
+      {/* Mobile nav drawer */}
+      {isMobileNavOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/60 lg:hidden"
+            onClick={() => setIsMobileNavOpen(false)}
+          />
+          <div className="fixed inset-y-0 left-0 z-50 w-64 bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col overflow-hidden lg:hidden">
+            <div className="flex items-center justify-between px-5 h-14 border-b border-[#1a1a1a] shrink-0">
+              <span className="text-white text-[11px] font-bold uppercase tracking-wider truncate">{data.season.name}</span>
               <button
-                onClick={() => syncSeasonStatus.mutate(id || '')}
-                disabled={isLifecyclePending}
-                className="flex items-center gap-2 h-10 px-4 border border-[#2a2a2a] text-white text-[10px] font-bold uppercase tracking-widest hover:border-[#404040] hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-none"
+                onClick={() => setIsMobileNavOpen(false)}
+                className="flex items-center justify-center w-8 h-8 border border-[#2a2a2a] text-[#808080] hover:text-white hover:border-[#404040] transition-colors shrink-0 ml-2"
               >
-                <RefreshCw className={`w-4 h-4 ${syncSeasonStatus.isPending ? 'animate-spin' : ''}`} />
-                SYNC
+                <X className="w-4 h-4" />
               </button>
             </div>
+            {renderSidebarContent()}
           </div>
+        </>
+      )}
+
+      {/* Sticky top bar */}
+      <header className="sticky top-0 z-40 bg-[#050505]/95 backdrop-blur-sm border-b border-[#1a1a1a] h-14 flex items-center px-5 gap-3 lg:pl-60">
+        <button
+          className="lg:hidden flex items-center justify-center w-8 h-8 border border-[#2a2a2a] text-[#808080] hover:text-white hover:border-[#404040] transition-colors shrink-0"
+          onClick={() => setIsMobileNavOpen(true)}
+          aria-label="Open navigation"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
+        <Link to="/organizer/seasons" className="hidden lg:flex items-center gap-1.5 text-[#707070] hover:text-white transition-colors shrink-0">
+          <ChevronLeft className="w-4 h-4" />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Seasons</span>
+        </Link>
+        <span className="text-[#2a2a2a] shrink-0 hidden lg:block">/</span>
+        <span className="text-white text-[11px] font-bold uppercase tracking-wider truncate flex-1 min-w-0">{data.season.name}</span>
+        <div className="flex items-center gap-2 ml-auto shrink-0">
+          <Button asChild variant="ghost" size="sm" className="hidden sm:flex text-[#808080] hover:text-white h-7 px-3 text-[10px] uppercase tracking-wider gap-1.5 border border-[#2a2a2a] hover:border-[#404040] rounded-none bg-transparent">
+            <Link to={`/seasons/${seasonId}`}>
+              Public view
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          </Button>
         </div>
+      </header>
 
-        {/* Overview Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#1a1a1a] mb-8">
-          <div className="bg-[#0a0a0a] p-6">
-            <Trophy className="w-5 h-5 text-rose-400 mb-3" />
-            <p className="text-3xl font-black text-white mb-1">{season.tournament_count}</p>
-            <p className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">TOURNAMENTS</p>
-          </div>
-          <div className="bg-[#0a0a0a] p-6">
-            <Calendar className="w-5 h-5 text-blue-400 mb-3" />
-            <p className="text-sm font-bold text-white mb-1">
-              {season.start_date ? new Date(season.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'TBD'}
-            </p>
-            <p className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">START DATE</p>
-          </div>
-          <div className="bg-[#0a0a0a] p-6">
-            <Trophy className="w-5 h-5 text-purple-400 mb-3" />
-            <p className="text-3xl font-black text-white mb-1">{season.point_rules_count}</p>
-            <p className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">POINT RULES</p>
-          </div>
-          <div className="bg-[#0a0a0a] p-6">
-            <Users className="w-5 h-5 text-emerald-400 mb-3" />
-            <p className="text-3xl font-black text-white mb-1">{season.participant_count}</p>
-            <p className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">TEAMS</p>
-          </div>
-        </div>
-
-        {/* Automation + Pipeline */}
-        <div className="border border-[#1a1a1a] bg-[#0a0a0a] p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xs font-bold text-white uppercase tracking-[0.2em]">AUTOMATION</h3>
-            <div className="flex gap-2">
-              <button
-                onClick={() => processAdvancement.mutate({ id: id || '' })}
-                disabled={processAdvancement.isPending || linkedTournaments.length === 0}
-                className="flex items-center gap-2 h-9 px-3 border border-[#2a2a2a] text-[#808080] text-[10px] font-bold uppercase tracking-widest hover:text-white hover:border-[#404040] disabled:opacity-40 disabled:cursor-not-allowed transition-none"
-              >
-                <Workflow className="w-3 h-3" />
-                PROCESS
-              </button>
-              <button
-                onClick={() => recalculateStandings.mutate(id || '')}
-                disabled={recalculateStandings.isPending}
-                className="flex items-center gap-2 h-9 px-3 border border-[#2a2a2a] text-[#808080] text-[10px] font-bold uppercase tracking-widest hover:text-white hover:border-[#404040] disabled:opacity-40 disabled:cursor-not-allowed transition-none"
-              >
-                <RefreshCw className={`w-3 h-3 ${recalculateStandings.isPending ? 'animate-spin' : ''}`} />
-                RECALCULATE
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#1a1a1a]">
-            <div className="bg-[#050505] p-4">
-              <p className="text-[10px] font-bold text-[#555555] uppercase tracking-wider mb-1">LINKED</p>
-              <p className="text-2xl font-black text-white">{linkedTournaments.length}</p>
-            </div>
-            <div className="bg-[#050505] p-4">
-              <p className="text-[10px] font-bold text-[#555555] uppercase tracking-wider mb-1">POINT RULES</p>
-              <p className="text-2xl font-black text-white">{season.point_rules_count}</p>
-            </div>
-            <div className="bg-[#050505] p-4">
-              <p className="text-[10px] font-bold text-[#555555] uppercase tracking-wider mb-1">ADVANCEMENT</p>
-              <p className="text-2xl font-black text-white">{season.advancement_rules_count}</p>
-            </div>
-            <div className="bg-[#050505] p-4">
-              <p className="text-[10px] font-bold text-[#555555] uppercase tracking-wider mb-1">HEALTH</p>
-              <p className="text-xs font-medium text-[#808080]">
-                {linkedTournaments.length === 0 ? 'Link tournaments before publishing.' : 'Ready for automation.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue="standings" className="w-full">
-          <TabsList className="mb-8 bg-transparent border-b border-[#1a1a1a] rounded-none w-full justify-start h-auto p-0 gap-0">
-            {['teams', 'standings', 'point-rules', 'advancement-rules', 'tournaments', 'disputes'].map((tab) => (
-              <TabsTrigger
-                key={tab}
-                value={tab}
-                className="data-[state=active]:border-b-2 data-[state=active]:border-rose-500 data-[state=active]:text-white data-[state=active]:shadow-none data-[state=active]:bg-transparent text-[#555555] text-[10px] font-bold uppercase tracking-[0.15em] px-4 py-3 rounded-none border-0 bg-transparent hover:text-white transition-colors"
-              >
-                {tab === 'teams' && 'TEAMS'}
-                {tab === 'standings' && 'STANDINGS'}
-                {tab === 'point-rules' && 'POINT RULES'}
-                {tab === 'advancement-rules' && 'ADVANCEMENT'}
-                {tab === 'tournaments' && 'TOURNAMENTS'}
-                {tab === 'disputes' && 'DISPUTES'}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <TabsContent value="teams">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Season Teams</h2>
-              <div className="flex gap-2">
-                <Button variant={participantFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setParticipantFilter('all')}>
-                  All
-                </Button>
-                <Button variant={participantFilter === 'pending' ? 'default' : 'outline'} size="sm" onClick={() => setParticipantFilter('pending')}>
-                  Pending
-                </Button>
-                <Button variant={participantFilter === 'approved' ? 'default' : 'outline'} size="sm" onClick={() => setParticipantFilter('approved')}>
-                  Approved
-                </Button>
-              </div>
-            </div>
-            <Card className="bg-[#0d0d10] border border-white/10">
-              <CardContent className="p-6">
-                {participantsLoading ? (
-                  <p className="text-gray-400 text-center">Loading participants...</p>
-                ) : participants.length === 0 ? (
-                  <div className="text-center py-10">
-                    <Users className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                    <p className="text-gray-300 font-semibold mb-1">No teams registered yet</p>
-                    <p className="text-gray-500 text-sm">Teams will appear here when they register for this season.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {participants
-                      .filter((p) => participantFilter === 'all' || p.status === participantFilter)
-                      .map((p) => (
-                        <div key={p.id} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/30 p-4">
-                          <div className="flex items-center gap-3">
-                            {p.team_logo_url ? (
-                              <img src={p.team_logo_url} alt="" className="w-10 h-10 rounded-full object-cover" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
-                                <Users className="w-5 h-5 text-gray-500" />
-                              </div>
-                            )}
-                            <div>
-                              <p className="font-semibold text-white">{p.team_name}</p>
-                              <p className="text-sm text-gray-400">{p.status} · {new Date(p.created_at).toLocaleDateString()}</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            {p.status === 'pending' && (
-                              <Button
-                                size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700"
-                                onClick={() => updateParticipant.mutate({ seasonId: id || '', participantId: p.id, status: 'approved' })}
-                                disabled={updateParticipant.isPending}
-                              >
-                                Approve
-                              </Button>
-                            )}
-                            {p.status === 'pending' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-red-500/50 text-red-400 hover:bg-red-500/10"
-                                onClick={() => updateParticipant.mutate({ seasonId: id || '', participantId: p.id, status: 'rejected' })}
-                                disabled={updateParticipant.isPending}
-                              >
-                                Reject
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                              onClick={() => removeParticipant.mutate({ seasonId: id || '', participantId: p.id })}
-                              disabled={removeParticipant.isPending}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
+      <div className="w-full px-4 py-6 sm:px-6 lg:ml-56 lg:px-8 lg:py-8">
+        {activeTab === 'overview' && (
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+              <h2 className="text-2xl font-semibold">Season overview</h2>
+              <div className="mt-6 grid gap-5 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Name</Label>
+                  <Input
+                    value={overview.name}
+                    onChange={(event) => setOverview((current) => ({ ...current, name: event.target.value }))}
+                    className="border-white/10 bg-white/5 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Game</Label>
+                  <Select value={overview.game} onValueChange={(value) => setOverview((current) => ({ ...current, game: value }))}>
+                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
+                      <SelectValue placeholder="Select a game" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {gameOptions.map((game) => (
+                        <SelectItem key={game} value={game}>{game}</SelectItem>
                       ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <TabsContent value="standings">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Season Standings</h2>
-              <Button
-                onClick={() => recalculateStandings.mutate(id || '')}
-                disabled={recalculateStandings.isPending}
-                variant="outline"
-                className="border-gray-700 hover:bg-white/10"
+                <div className="space-y-2">
+                  <Label>Participant mode</Label>
+                  <Select
+                    value={overview.participantMode}
+                    onValueChange={(value: SeasonParticipantMode) => setOverview((current) => ({ ...current, participantMode: value }))}
+                  >
+                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PARTICIPANT_MODES.map((mode) => (
+                        <SelectItem key={mode} value={mode}>{mode}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={overview.status}
+                    onValueChange={(value: SeasonStatus) => setOverview((current) => ({ ...current, status: value }))}
+                  >
+                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SEASON_STATUSES.map((status) => (
+                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Slug</Label>
+                  <Input
+                    value={overview.slug}
+                    onChange={(event) => setOverview((current) => ({ ...current, slug: event.target.value }))}
+                    className="border-white/10 bg-white/5 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Start date</Label>
+                  <Input
+                    type="date"
+                    value={overview.startDate}
+                    onChange={(event) => setOverview((current) => ({ ...current, startDate: event.target.value }))}
+                    className="border-white/10 bg-white/5 text-white"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>End date</Label>
+                  <Input
+                    type="date"
+                    value={overview.endDate}
+                    onChange={(event) => setOverview((current) => ({ ...current, endDate: event.target.value }))}
+                    className="border-white/10 bg-white/5 text-white"
+                  />
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-white">Public season page</p>
+                      <p className="mt-1 text-sm text-zinc-400">Expose the season tree, standings, and qualification state publicly.</p>
+                    </div>
+                    <Switch
+                      checked={overview.isPublic}
+                      onCheckedChange={(checked) => setOverview((current) => ({ ...current, isPublic: checked }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-white">Manual overrides</p>
+                      <p className="mt-1 text-sm text-zinc-400">Allow organizer corrections for qualification routing.</p>
+                    </div>
+                    <Switch
+                      checked={overview.allowManualOverrides}
+                      onCheckedChange={(checked) => setOverview((current) => ({ ...current, allowManualOverrides: checked }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={overview.description}
+                    onChange={(event) => setOverview((current) => ({ ...current, description: event.target.value }))}
+                    className="min-h-[180px] border-white/10 bg-white/5 text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Media section */}
+              <div className="mt-6 border-t border-white/10 pt-6">
+                <h3 className="text-lg font-semibold text-white">Season branding</h3>
+                <p className="mt-1 text-sm text-zinc-400">Upload a banner and logo for your season's public page and social cards.</p>
+                <div className="mt-5 grid gap-6 md:grid-cols-[1fr_140px]">
+                  <ImageUploader
+                    value={overview.bannerUrl}
+                    onChange={(url) => setOverview((current) => ({ ...current, bannerUrl: url }))}
+                    bucket="season-images"
+                    folder="banners"
+                    aspectRatio="banner"
+                    label="Season banner"
+                    helperText="Recommended: 1920×1080 (16:9). Displayed at the top of the season page."
+                  />
+                  <ImageUploader
+                    value={overview.logoUrl}
+                    onChange={(url) => setOverview((current) => ({ ...current, logoUrl: url }))}
+                    bucket="season-images"
+                    folder="logos"
+                    aspectRatio="logo"
+                    label="Logo"
+                    helperText="1:1 ratio. Used in listings."
+                  />
+                </div>
+              </div>
+
+              <Button className="mt-6 bg-rose-500 text-white hover:bg-rose-600" onClick={handleOverviewSave} disabled={updateSeason.isPending}>
+                Save overview
+              </Button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+                <h2 className="text-xl font-semibold">Quick snapshot</h2>
+                <div className="mt-5 grid gap-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Owner</p>
+                    <p className="mt-1 font-semibold text-white">{data.season.ownerFullName || data.season.ownerUsername || 'Unknown'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Tree nodes</p>
+                    <p className="mt-1 font-semibold text-white">{data.nodes.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Points rules</p>
+                    <p className="mt-1 font-semibold text-white">{data.rules.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+                <h2 className="text-xl font-semibold">Tree preview</h2>
+                <SeasonTreePreview tree={seasonTreePreview} className="mt-5" compact />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'staff' && (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-heading text-2xl font-bold text-white">Season Staff</h2>
+                  <p className="mt-1 font-body text-sm text-zinc-400">Add co-organizers and admins who can manage this season.</p>
+                </div>
+                {staffRows.length > 0 && (
+                  <Badge className="w-fit bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
+                    {staffRows.length} member{staffRows.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Staff list + add form */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              {/* Empty state */}
+              {staffRows.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.02] py-14 text-center">
+                  <Users className="h-10 w-10 text-zinc-600" />
+                  <p className="text-sm font-medium text-zinc-400">No staff members added.</p>
+                  <p className="text-xs text-zinc-600">Add co-organizers or admins below.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {staffRows.map((member, index) => {
+                    const displayName = member.fullName || member.username || member.userId;
+                    const initials = member.userId.slice(0, 2).toUpperCase();
+                    const isCoOrganizer = member.role === 'co_organizer';
+                    return (
+                      <div
+                        key={`${member.userId}-${index}`}
+                        className="flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3"
+                      >
+                        {/* Avatar */}
+                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${isCoOrganizer ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
+                          {initials}
+                        </div>
+
+                        {/* Info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-white">{displayName}</p>
+                          {displayName !== member.userId && (
+                            <p className="truncate font-body text-xs text-zinc-500">{member.userId}</p>
+                          )}
+                        </div>
+
+                        {/* Role badge */}
+                        <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${isCoOrganizer ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-400'}`}>
+                          {isCoOrganizer ? 'Co-organizer' : 'Admin'}
+                        </span>
+
+                        {/* Remove */}
+                        <button
+                          type="button"
+                          onClick={() => setStaffRows((current) => current.filter((_, i) => i !== index))}
+                          className="shrink-0 rounded-lg p-1.5 text-zinc-600 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                          aria-label="Remove staff member"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Inline add form */}
+              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:flex-row sm:items-center">
+                <Input
+                  value={newStaff.userId}
+                  onChange={(e) => setNewStaff((s) => ({ ...s, userId: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const trimmed = newStaff.userId.trim();
+                      if (!trimmed) return;
+                      setStaffRows((current) => [...current, { userId: trimmed, role: newStaff.role }]);
+                      setNewStaff({ userId: '', role: 'co_organizer' });
+                    }
+                  }}
+                  placeholder="User ID"
+                  className="border-white/[0.08] bg-black/20 text-white placeholder:text-zinc-600 sm:flex-1"
+                />
+                <Select
+                  value={newStaff.role}
+                  onValueChange={(value: SeasonStaffMember['role']) => setNewStaff((s) => ({ ...s, role: value }))}
+                >
+                  <SelectTrigger className="border-white/[0.08] bg-black/20 text-white sm:w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STAFF_ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {role === 'co_organizer' ? 'Co-organizer' : 'Admin'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0 border-white/[0.08] bg-white/[0.05] text-white hover:bg-white/[0.10]"
+                  onClick={() => {
+                    const trimmed = newStaff.userId.trim();
+                    if (!trimmed) return;
+                    setStaffRows((current) => [...current, { userId: trimmed, role: newStaff.role }]);
+                    setNewStaff({ userId: '', role: 'co_organizer' });
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            {/* Save */}
+            <Button className="bg-rose-500 text-white hover:bg-rose-600" onClick={handleStaffSave} disabled={syncStaff.isPending}>
+              Save staff
+            </Button>
+          </div>
+        )}
+
+        {activeTab === 'structure' && (
+          <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="flex flex-col gap-4">
+              {(data.season.status === 'published' || data.season.status === 'active' || data.season.status === 'completed') && (
+                <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-4">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                  <p className="font-body text-sm text-amber-300">
+                    <span className="font-semibold">This season has been published.</span> Changes to the tournament structure may conflict with active registration and advancement. Make structural changes only during maintenance windows.
+                  </p>
+                </div>
+              )}
+              <SeasonStructureBuilder
+                title="Season structure"
+                description="Configure each tournament inline — format, team size, prize pool — and wire advancement between them. Select a card to edit it in the Inspector."
+                nodes={nodeRows}
+                onChange={setNodeRows}
+                onSave={handleNodesSaveWithGuard}
+                isSaving={syncNodes.isPending}
+                surface="manage"
+              />
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+                <h2 className="text-xl font-semibold">Live preview</h2>
+                <SeasonTreePreview tree={seasonTreePreview} className="mt-5" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <AlertDialog open={showStructureSaveConfirm} onOpenChange={setShowStructureSaveConfirm}>
+          <AlertDialogContent className="border-white/10 bg-[#0a0a0c] text-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-heading text-white">Update published season structure?</AlertDialogTitle>
+              <AlertDialogDescription className="font-body text-zinc-400">
+                Modifying the structure of a published season may affect teams currently in registration or advancement. This change cannot be automatically reversed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-white/10 bg-white/5 text-white hover:bg-white/10">Go back</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-rose-500 text-white hover:bg-rose-600"
+                onClick={() => {
+                  setShowStructureSaveConfirm(false);
+                  handleNodesSave();
+                }}
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${recalculateStandings.isPending ? 'animate-spin' : ''}`} />
+                Save anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {activeTab === 'rules' && (
+          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold">Points and qualification rules</h2>
+                <p className="mt-2 text-sm text-zinc-400">Award season points, create qualification records automatically, and route entries into downstream nodes.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+                onClick={() => setRuleRows((current) => [...current, createEmptyRule(nodeOptions[0]?.id ?? '')])}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add rule
+              </Button>
+            </div>
+
+            <div className="mt-6 space-y-5">
+              {ruleRows.length === 0 && (
+                <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-8 text-sm text-zinc-400">
+                  No rules yet. Add one or more rules to award points or qualify entries into downstream nodes.
+                </div>
+              )}
+
+              {ruleRows.map((rule, index) => (
+                <div key={rule.id ?? `rule-${index}`} className="rounded-[28px] border border-white/10 bg-white/5 p-5">
+                  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Rule {index + 1}</p>
+                      <p className="text-lg font-semibold text-white">Placement {rule.placementFrom} to {rule.placementTo}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20"
+                      onClick={() => setRuleRows((current) => current.filter((_, currentIndex) => currentIndex !== index))}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remove
+                    </Button>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>Source node</Label>
+                      <Select
+                        value={rule.sourceNodeId}
+                        onValueChange={(value) => {
+                          const next = [...ruleRows];
+                          next[index] = { ...next[index], sourceNodeId: value };
+                          setRuleRows(next);
+                        }}
+                      >
+                        <SelectTrigger className="border-white/10 bg-black/20 text-white">
+                          <SelectValue placeholder="Select source node" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {nodeOptions.map((option) => (
+                            <SelectItem key={option.id} value={option.id}>{option.name} · {option.nodeType}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Source stage ID</Label>
+                      <Input
+                        value={rule.sourceStageId ?? ''}
+                        onChange={(event) => {
+                          const next = [...ruleRows];
+                          next[index] = { ...next[index], sourceStageId: event.target.value };
+                          setRuleRows(next);
+                        }}
+                        placeholder="Optional stage UUID"
+                        className="border-white/10 bg-black/20 text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Destination node</Label>
+                      <Select
+                        value={rule.destinationNodeId ?? '__none__'}
+                        onValueChange={(value) => {
+                          const next = [...ruleRows];
+                          next[index] = { ...next[index], destinationNodeId: value === '__none__' ? null : value };
+                          setRuleRows(next);
+                        }}
+                      >
+                        <SelectTrigger className="border-white/10 bg-black/20 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">No destination node</SelectItem>
+                          {nodeOptions.map((option) => (
+                            <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Placement from</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={rule.placementFrom}
+                        onChange={(event) => {
+                          const next = [...ruleRows];
+                          next[index] = { ...next[index], placementFrom: Number(event.target.value) };
+                          setRuleRows(next);
+                        }}
+                        className="border-white/10 bg-black/20 text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Placement to</Label>
+                      <Input
+                        type="number"
+                        min={rule.placementFrom}
+                        value={rule.placementTo}
+                        onChange={(event) => {
+                          const next = [...ruleRows];
+                          next[index] = { ...next[index], placementTo: Number(event.target.value) };
+                          setRuleRows(next);
+                        }}
+                        className="border-white/10 bg-black/20 text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Points awarded</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={rule.pointsAwarded}
+                        onChange={(event) => {
+                          const next = [...ruleRows];
+                          next[index] = { ...next[index], pointsAwarded: Number(event.target.value) };
+                          setRuleRows(next);
+                        }}
+                        className="border-white/10 bg-black/20 text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Qualification type</Label>
+                      <Select
+                        value={rule.qualificationStatus ?? '__none__'}
+                        onValueChange={(value) => {
+                          const next = [...ruleRows];
+                          next[index] = {
+                            ...next[index],
+                            qualificationStatus: value === '__none__' ? null : (value as SeasonQualificationType),
+                          };
+                          setRuleRows(next);
+                        }}
+                      >
+                        <SelectTrigger className="border-white/10 bg-black/20 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">No qualification</SelectItem>
+                          {QUALIFICATION_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>{type}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Region key</Label>
+                      <Input
+                        value={rule.regionKey ?? ''}
+                        onChange={(event) => {
+                          const next = [...ruleRows];
+                          next[index] = { ...next[index], regionKey: event.target.value };
+                          setRuleRows(next);
+                        }}
+                        placeholder="Optional partition key"
+                        className="border-white/10 bg-black/20 text-white"
+                      />
+                    </div>
+
+                    <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-semibold text-white">Auto-create qualification</p>
+                          <p className="mt-1 text-sm text-zinc-400">Generate a qualification record automatically when this rule matches.</p>
+                        </div>
+                        <Switch
+                          checked={rule.autoCreateQualification}
+                          onCheckedChange={(checked) => {
+                            const next = [...ruleRows];
+                            next[index] = { ...next[index], autoCreateQualification: checked };
+                            setRuleRows(next);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Button className="mt-6 bg-rose-500 text-white hover:bg-rose-600" onClick={handleRulesSave} disabled={syncRules.isPending}>
+              Save rules
+            </Button>
+          </div>
+        )}
+
+        {activeTab === 'standings' && (
+          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold">Standings</h2>
+                <p className="mt-2 text-sm text-zinc-400">This table is driven by the season ledger and downstream recalculation engine.</p>
+              </div>
+              <Button className="bg-rose-500 text-white hover:bg-rose-600" onClick={handleRecalculate} disabled={recalculateSeason.isPending}>
+                <RefreshCw className="mr-2 h-4 w-4" />
                 Recalculate
               </Button>
             </div>
-            <StandingsCard seasonId={id || ''} />
-          </TabsContent>
+            <SeasonStandingsTable standings={standingsQuery.data ?? []} />
+          </div>
+        )}
 
-          <TabsContent value="point-rules">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Point Rules</h2>
-              <Button onClick={() => setShowPointRuleForm((open) => !open)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Point Rule
-              </Button>
-            </div>
-            {showPointRuleForm && (
-              <Card className="bg-[#0d0d10] border border-white/10 mb-4">
-                <CardContent className="p-4 grid grid-cols-1 md:grid-cols-6 gap-3">
-                  <select value={pointRuleForm.tournament_id} onChange={(e) => setPointRuleForm((prev) => ({ ...prev, tournament_id: e.target.value }))} className="bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white md:col-span-2">
-                    <option value="">All tournaments</option>
-                    {linkedTournaments.map((tournament) => (
-                      <option key={tournament.id} value={tournament.id}>{tournament.name}</option>
-                    ))}
-                  </select>
-                  <input type="number" min="1" value={pointRuleForm.placement_start} onChange={(e) => setPointRuleForm((prev) => ({ ...prev, placement_start: e.target.value }))} className="bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="From rank" />
-                  <input type="number" min="1" value={pointRuleForm.placement_end} onChange={(e) => setPointRuleForm((prev) => ({ ...prev, placement_end: e.target.value }))} className="bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="To rank" />
-                  <input type="number" min="0" value={pointRuleForm.points} onChange={(e) => setPointRuleForm((prev) => ({ ...prev, points: e.target.value }))} className="bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="Points" />
-                  <Button onClick={submitPointRule} disabled={createPointRule.isPending}>Save</Button>
-                </CardContent>
-              </Card>
-            )}
-            <PointRulesCard seasonId={id || ''} />
-          </TabsContent>
-
-          <TabsContent value="advancement-rules">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Advancement Rules</h2>
-              <Button onClick={() => setShowAdvancementRuleForm((open) => !open)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Advancement Rule
-              </Button>
-            </div>
-            {showAdvancementRuleForm && (
-              <Card className="bg-[#0d0d10] border border-white/10 mb-4">
-                <CardContent className="p-4 grid grid-cols-1 md:grid-cols-6 gap-3">
-                  <select value={advancementRuleForm.source_tournament_id} onChange={(e) => setAdvancementRuleForm((prev) => ({ ...prev, source_tournament_id: e.target.value }))} className="bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white md:col-span-2">
-                    <option value="">Source tournament</option>
-                    {linkedTournaments.map((tournament) => (
-                      <option key={tournament.id} value={tournament.id}>{tournament.name}</option>
-                    ))}
-                  </select>
-                  <select value={advancementRuleForm.target_tournament_id} onChange={(e) => setAdvancementRuleForm((prev) => ({ ...prev, target_tournament_id: e.target.value }))} className="bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white md:col-span-2">
-                    <option value="">No target</option>
-                    {linkedTournaments.map((tournament) => (
-                      <option key={tournament.id} value={tournament.id}>{tournament.name}</option>
-                    ))}
-                  </select>
-                  <input type="number" min="1" value={advancementRuleForm.placement_start} onChange={(e) => setAdvancementRuleForm((prev) => ({ ...prev, placement_start: e.target.value }))} className="bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="From rank" />
-                  <input type="number" min="1" value={advancementRuleForm.placement_end} onChange={(e) => setAdvancementRuleForm((prev) => ({ ...prev, placement_end: e.target.value }))} className="bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="To rank" />
-                  <input type="number" min="1" value={advancementRuleForm.advancement_count} onChange={(e) => setAdvancementRuleForm((prev) => ({ ...prev, advancement_count: e.target.value }))} className="bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white" placeholder="Advance count" />
-                  <Button onClick={submitAdvancementRule} disabled={createAdvancementRule.isPending || !advancementRuleForm.source_tournament_id}>Save</Button>
-                </CardContent>
-              </Card>
-            )}
-            <AdvancementRulesCard seasonId={id || ''} />
-          </TabsContent>
-
-          <TabsContent value="tournaments">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-white uppercase tracking-wider">SEASON TOURNAMENTS</h2>
-              <div className="flex gap-2">
-                <Link to={`/tournaments/create?mode=event&seasonId=${id}&game=${encodeURIComponent(season.game)}`}>
-                  <button className="flex items-center gap-2 h-9 px-4 border border-[#2a2a2a] text-[#808080] text-[10px] font-bold uppercase tracking-widest hover:text-white hover:border-[#404040] transition-none">
-                    <Plus className="w-3 h-3" />
-                    CREATE
-                  </button>
-                </Link>
-                <button
-                  onClick={() => setShowLinkForm((open) => !open)}
-                  className={`flex items-center gap-2 h-9 px-4 text-[10px] font-bold uppercase tracking-widest transition-none ${
-                    showLinkForm
-                      ? 'bg-white text-black'
-                      : 'border border-[#2a2a2a] text-[#808080] hover:text-white hover:border-[#404040]'
-                  }`}
-                >
-                  <Plus className="w-3 h-3" />
-                  LINK EXISTING
-                </button>
+        {activeTab === 'qualifications' && (
+          <div className="space-y-6">
+            <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+              <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold">Qualification workflow</h2>
+                  <p className="mt-2 text-sm text-zinc-400">Review earned spots, invite reserves, and route winners into downstream brackets.</p>
+                </div>
+                <Button className="bg-rose-500 text-white hover:bg-rose-600" onClick={handleRecalculate} disabled={recalculateSeason.isPending}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh records
+                </Button>
               </div>
+
+              <SeasonQualificationsPanel
+                qualifications={qualificationsQuery.data ?? []}
+                canManage
+                destinationOptions={nodeOptions.map((option) => ({ id: option.id, name: option.name }))}
+                pendingRecordId={qualificationBusyId}
+                onManage={handleQualificationManage}
+              />
             </div>
 
-            {showLinkForm && (
-              <div className="border border-[#1a1a1a] bg-[#0a0a0a] p-6 mb-6">
-                <h3 className="text-xs font-bold text-white uppercase tracking-[0.2em] border-b border-[#2a2a2a] pb-3 mb-6">LINK TOURNAMENT</h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-[#808080] uppercase tracking-widest mb-2">TOURNAMENT *</label>
-                    <select
-                      value={linkForm.tournament_id}
-                      onChange={(e) => { setLinkForm((prev) => ({ ...prev, tournament_id: e.target.value })); setLinkFormErrors(prev => { const n = {...prev}; delete n.tournament_id; return n; }); }}
-                      className={`w-full h-12 px-4 bg-[#050505] text-white text-sm border-2 ${linkFormErrors.tournament_id ? 'border-[#ef4444]' : 'border-[#2a2a2a]'} focus:border-white focus:outline-none transition-colors`}
-                    >
-                      <option value="">Select tournament</option>
-                      {availableTournaments.length === 0 && (
-                        <option value="" disabled>No available tournaments for {season.game}</option>
-                      )}
-                      {availableTournaments.map((tournament) => (
-                        <option key={tournament.id} value={tournament.id}>{tournament.name}</option>
-                      ))}
-                    </select>
-                    {linkFormErrors.tournament_id && <p className="text-[#ef4444] text-[10px] uppercase tracking-wider mt-2">{linkFormErrors.tournament_id}</p>}
+            {data.permissions.canManage && (() => {
+              const revokable = (qualificationsQuery.data ?? []).filter(
+                (record) =>
+                  (record.status === 'earned' || record.status === 'confirmed' || record.status === 'accepted') &&
+                  record.displayName !== null,
+              );
+              if (revokable.length === 0) return null;
+              return (
+                <div className="rounded-3xl border border-red-500/15 bg-red-500/[0.04] p-6">
+                  <div className="mb-1 flex items-center gap-2">
+                    <ShieldOff className="h-4 w-4 text-red-400" />
+                    <h3 className="font-heading text-lg font-semibold text-red-400">Revoke qualification</h3>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#808080] uppercase tracking-widest mb-2">ROLE *</label>
-                    <select
-                      value={linkForm.season_role}
-                      onChange={(e) => setLinkForm((prev) => ({ ...prev, season_role: e.target.value }))}
-                      className="w-full h-12 px-4 bg-[#050505] text-white text-sm border-2 border-[#2a2a2a] focus:border-white focus:outline-none transition-colors"
-                    >
-                      <option value="qualifier">Qualifier</option>
-                      <option value="event">Event</option>
-                      <option value="finals">Finals</option>
-                      <option value="custom">Custom</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#808080] uppercase tracking-widest mb-2">STAGE ORDER *</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={linkForm.season_stage_order}
-                      onChange={(e) => { setLinkForm((prev) => ({ ...prev, season_stage_order: e.target.value })); setLinkFormErrors(prev => { const n = {...prev}; delete n.order; return n; }); }}
-                      className={`w-full h-12 px-4 bg-[#050505] text-white text-sm border-2 ${linkFormErrors.order ? 'border-[#ef4444]' : 'border-[#2a2a2a]'} focus:border-white focus:outline-none transition-colors`}
-                      placeholder="1"
-                    />
-                    {linkFormErrors.order && <p className="text-[#ef4444] text-[10px] uppercase tracking-wider mt-2">{linkFormErrors.order}</p>}
-                  </div>
-                </div>
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={submitLinkTournament}
-                    disabled={linkTournament.isPending}
-                    className="flex items-center gap-2 h-10 px-6 bg-white text-black text-[10px] font-bold uppercase tracking-widest hover:bg-[#e0e0e0] active:bg-[#cccccc] disabled:opacity-40 transition-none"
-                  >
-                    {linkTournament.isPending ? 'LINKING...' : 'LINK TOURNAMENT'}
-                  </button>
-                  <button
-                    onClick={() => { setShowLinkForm(false); setLinkFormErrors({}); }}
-                    className="flex items-center gap-2 h-10 px-6 border border-[#2a2a2a] text-[#808080] text-[10px] font-bold uppercase tracking-widest hover:text-white hover:border-[#404040] transition-none"
-                  >
-                    CANCEL
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {linkedTournamentsLoading ? (
-              <p className="text-[#808080] text-sm uppercase tracking-wider text-center py-10">Loading tournaments...</p>
-            ) : linkedTournaments.length === 0 ? (
-              <div className="border border-[#2a2a2a] bg-[#0a0a0a] p-10 text-center">
-                <Trophy className="w-10 h-10 text-[#2a2a2a] mx-auto mb-4" />
-                <p className="text-white font-semibold mb-2 uppercase tracking-wider text-sm">No tournaments linked</p>
-                <p className="text-[#808080] text-xs mb-6 max-w-sm mx-auto">Create a tournament for this season, then link it here to track standings and apply point rules.</p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Link to={`/tournaments/create?mode=event&seasonId=${id}&game=${encodeURIComponent(season.game)}`}>
-                    <button className="flex items-center justify-center gap-2 h-12 px-6 bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-[#e0e0e0] transition-none">
-                      <Plus className="w-4 h-4" />
-                      CREATE TOURNAMENT
-                    </button>
-                  </Link>
-                  <button
-                    onClick={() => setShowLinkForm(true)}
-                    className="flex items-center justify-center gap-2 h-12 px-6 border border-[#2a2a2a] text-[#808080] text-xs font-bold uppercase tracking-widest hover:text-white hover:border-[#404040] transition-none"
-                  >
-                    <Plus className="w-4 h-4" />
-                    LINK EXISTING
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="border border-[#1a1a1a]">
-                <div className="grid grid-cols-12 gap-0 border-b border-[#2a2a2a] bg-[#0a0a0a]">
-                  <div className="col-span-5 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider">TOURNAMENT</div>
-                  <div className="col-span-2 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider text-center">ROLE</div>
-                  <div className="col-span-2 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider text-center">STAGE</div>
-                  <div className="col-span-2 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider text-center">PARTICIPANTS</div>
-                  <div className="col-span-1 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider text-right"></div>
-                </div>
-                {linkedTournaments.map((tournament) => (
-                  <div key={tournament.id} className="grid grid-cols-12 gap-0 border-b border-[#1a1a1a] hover:bg-white/[0.02] transition-colors">
-                    <div className="col-span-5 px-4 py-4 flex items-center">
-                      <span className="font-semibold text-white">{tournament.name}</span>
-                    </div>
-                    <div className="col-span-2 px-4 py-4 flex items-center justify-center">
-                      <span className="text-xs text-[#808080] uppercase tracking-wider">{tournament.season_role || 'event'}</span>
-                    </div>
-                    <div className="col-span-2 px-4 py-4 flex items-center justify-center">
-                      <span className="text-xs text-white font-mono">{tournament.season_stage_order || '-'}</span>
-                    </div>
-                    <div className="col-span-2 px-4 py-4 flex items-center justify-center">
-                      <span className="text-xs text-[#808080]">{tournament.current_participants}</span>
-                    </div>
-                    <div className="col-span-1 px-4 py-4 flex items-center justify-end">
-                      <button
-                        onClick={() => unlinkTournament.mutate({ tournamentId: tournament.id, seasonId: id || '' })}
-                        disabled={unlinkTournament.isPending}
-                        className="text-[10px] font-bold text-[#ef4444] uppercase tracking-widest hover:text-red-300 disabled:opacity-40 transition-none"
+                  <p className="mb-5 font-body text-sm text-amber-300/70">
+                    Revoking a qualification permanently changes its status to revoked. Use this to DQ a team from advancing. This cannot be automatically undone.
+                  </p>
+                  <div className="space-y-2">
+                    {revokable.map((record) => (
+                      <div
+                        key={record.id}
+                        className="flex flex-col gap-3 rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        UNLINK
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="disputes">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Season Disputes</h2>
-            </div>
-            <Card className="bg-[#0d0d10] border border-white/10">
-              <CardContent className="p-6">
-                {disputesLoading ? (
-                  <p className="text-gray-400 text-center">Loading disputes...</p>
-                ) : disputes.length === 0 ? (
-                  <div className="text-center py-10">
-                    <ShieldAlert className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                    <p className="text-gray-300 font-semibold mb-1">No disputes found</p>
-                    <p className="text-gray-500 text-sm">
-                      Disputes raised for tournaments in this season will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {disputes.map((dispute) => (
-                      <div key={dispute.id} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/30 p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-yellow-500/10 rounded-lg">
-                            <ShieldAlert className="w-5 h-5 text-yellow-500" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-white">{dispute.title}</p>
-                            <p className="text-sm text-gray-400">{dispute.tournament_name} · {new Date(dispute.created_at).toLocaleDateString()}</p>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-white">{record.displayName}</p>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                            {record.sourceNodeName && <span>{record.sourceNodeName}</span>}
+                            {record.sourceNodeName && <span className="text-zinc-700">·</span>}
+                            <span className="rounded-md border border-white/[0.06] bg-white/[0.04] px-1.5 py-0.5 capitalize">
+                              {record.status}
+                            </span>
+                            {record.qualificationType && (
+                              <>
+                                <span className="text-zinc-700">·</span>
+                                <span className="capitalize text-zinc-400">{record.qualificationType}</span>
+                              </>
+                            )}
                           </div>
                         </div>
-                        <Badge className={
-                          dispute.status === 'open' ? 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40' :
-                          dispute.status === 'resolved' ? 'bg-green-500/15 text-green-300 border-green-500/40' :
-                          'bg-zinc-500/15 text-zinc-300 border-zinc-500/40'
-                        } variant="secondary">
-                          {dispute.status}
-                        </Badge>
+                        <Button
+                          size="sm"
+                          className="shrink-0 bg-rose-500 text-white hover:bg-rose-600"
+                          disabled={qualificationBusyId === record.id}
+                          onClick={() => handleRevokeQualification(record.id, record.displayName!)}
+                        >
+                          <ShieldOff className="mr-1.5 h-3.5 w-3.5" />
+                          {qualificationBusyId === record.id ? 'Revoking...' : 'Revoke'}
+                        </Button>
                       </div>
                     ))}
                   </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {activeTab === 'registrations' && (() => {
+          const nonRootNodes = (data.nodes ?? []).filter((n) => n.nodeType !== 'root');
+          const now = new Date();
+          const upcoming = nonRootNodes.filter((n) => n.registrationDeadline && new Date(n.registrationDeadline) > now);
+          const closed = nonRootNodes.filter((n) => n.registrationDeadline && new Date(n.registrationDeadline) <= now);
+          const noDeadline = nonRootNodes.filter((n) => !n.registrationDeadline);
+
+          return (
+            <div className="space-y-6">
+              <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-heading text-2xl font-semibold text-white">Registrations</h2>
+                    <p className="mt-1 font-body text-sm text-zinc-400">Registration windows and deadlines across all season tournaments.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 font-body text-[12px] font-semibold text-emerald-400">{upcoming.length} Open</span>
+                    <span className="rounded-full border border-zinc-500/25 bg-zinc-500/10 px-3 py-1.5 font-body text-[12px] font-semibold text-zinc-400">{closed.length} Closed</span>
+                    {noDeadline.length > 0 && (
+                      <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 font-body text-[12px] font-semibold text-amber-400">{noDeadline.length} No deadline</span>
+                    )}
+                  </div>
+                </div>
+
+                {nonRootNodes.length === 0 ? (
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-12 text-center">
+                    <p className="font-body text-sm text-zinc-500">No tournaments in this season yet. Build the tournament flow in the Structure tab.</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-4 border-white/10 text-zinc-400 hover:bg-white/[0.06]"
+                      onClick={() => setSearchParams({ tab: 'flow' })}
+                    >
+                      Go to Flow
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {nonRootNodes
+                      .slice()
+                      .sort((a, b) => a.displayOrder - b.displayOrder)
+                      .map((node) => {
+                        const deadline = node.registrationDeadline ? new Date(node.registrationDeadline) : null;
+                        const isOpen = deadline ? deadline > now : false;
+                        const isClosed = deadline ? deadline <= now : false;
+                        const registrationType = (node as any).registrationType as string | null;
+                        return (
+                          <div
+                            key={node.id}
+                            className="flex flex-col gap-4 rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={cn(
+                                  'rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider',
+                                  node.nodeType === 'qualifier' ? 'border-amber-500/25 bg-amber-500/10 text-amber-400' :
+                                  node.nodeType === 'event' ? 'border-violet-500/25 bg-violet-500/10 text-violet-400' :
+                                  node.nodeType === 'final' ? 'border-rose-500/25 bg-rose-500/10 text-rose-400' :
+                                  'border-white/10 bg-white/[0.04] text-zinc-400'
+                                )}>{node.nodeType}</span>
+                                <span className="font-body font-semibold text-white">{node.name || 'Unnamed'}</span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-3 font-body text-[12px] text-zinc-500">
+                                {deadline ? (
+                                  <span className={cn('flex items-center gap-1', isOpen ? 'text-emerald-400' : 'text-zinc-500')}>
+                                    <Clock className="h-3 w-3" />
+                                    {isOpen ? 'Closes' : 'Closed'} {formatDistanceToNow(deadline, { addSuffix: true })}
+                                    <span className="text-zinc-600">({deadline.toLocaleDateString()})</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-400/70">No registration deadline set</span>
+                                )}
+                                {registrationType && (
+                                  <span className="rounded border border-white/[0.06] bg-white/[0.04] px-2 py-0.5 capitalize text-zinc-400">
+                                    {registrationType.replace('_', ' ')}
+                                  </span>
+                                )}
+                                {node.region && <span className="text-zinc-600">{node.region}</span>}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {isClosed && (
+                                <span className="rounded-full border border-zinc-500/25 bg-zinc-500/10 px-2.5 py-1 font-body text-[11px] font-semibold text-zinc-500">Closed</span>
+                              )}
+                              {isOpen && (
+                                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 font-body text-[11px] font-semibold text-emerald-400">Open</span>
+                              )}
+                              {node.publishedTournamentId && (
+                                <Link
+                                  to={`/tournaments/${node.publishedTournamentId}`}
+                                  target="_blank"
+                                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 font-body text-[11px] font-medium text-zinc-300 transition-colors hover:bg-white/[0.08]"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  View Tournament
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </div>
+            </div>
+          );
+        })()}
+
+        {activeTab === 'flow' && (
+          <div className="space-y-6">
+            {/* Header card */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-heading text-2xl font-bold text-white">{data.season.name}</h2>
+                  <p className="mt-1 text-sm text-zinc-400">{data.season.game} · {nodeRows.filter(n => n.nodeType !== 'root').length}-tournament circuit</p>
+                </div>
+                <Badge className="w-fit bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
+                  {data.season.status}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Tree preview */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h3 className="mb-4 font-heading text-lg font-semibold text-white">Circuit visualization</h3>
+              {nodeRows.filter(n => n.nodeType !== 'root').length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.02] py-16 text-center">
+                  <GitBranch className="h-10 w-10 text-zinc-600" />
+                  <p className="text-sm font-medium text-zinc-400">No tournaments planned yet</p>
+                  <p className="text-xs text-zinc-600">Go to the Structure tab to build the circuit</p>
+                </div>
+              ) : (
+                <SeasonTreePreview tree={seasonTreePreview} />
+              )}
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {(
+                [
+                  ['qualifier', 'Qualifiers'],
+                  ['event', 'Events'],
+                  ['final', 'Finals'],
+                ] as [SeasonNodeType, string][]
+              ).map(([type, label]) => {
+                const count = nodeRows.filter(n => n.nodeType === type).length;
+                const meta = getPhaseMetaForType(type as Exclude<SeasonNodeType, 'root'>);
+                return (
+                  <div key={type} className="rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4">
+                    <p className={`text-xs uppercase tracking-widest ${meta.accent}`}>{label}</p>
+                    <p className="mt-1 text-2xl font-bold text-white">{count}</p>
+                  </div>
+                );
+              })}
+              <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4">
+                <p className="text-xs uppercase tracking-widest text-zinc-500">Connections</p>
+                <p className="mt-1 text-2xl font-bold text-white">
+                  {nodeRows.reduce((acc, n) => acc + readOutgoingConnections(n).length, 0)}
+                </p>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h3 className="mb-4 font-heading text-sm font-semibold uppercase tracking-widest text-zinc-500">Legend</h3>
+              <div className="flex flex-wrap gap-3">
+                {(['qualifier', 'event', 'stage', 'final', 'custom'] as Exclude<SeasonNodeType, 'root'>[]).map((type) => {
+                  const meta = getPhaseMetaForType(type);
+                  return (
+                    <div key={type} className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium ${meta.accentBg} ${meta.accentBorder} ${meta.accent}`}>
+                      <span className={`h-2 w-2 rounded-full ${meta.accentBg} border ${meta.accentBorder}`} />
+                      {meta.label}
+                    </div>
+                  );
+                })}
+                <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-400">
+                  <span className="h-2 w-2 rounded-full bg-white/10 border border-white/20" />
+                  Root
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'tournaments' && (
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-heading text-2xl font-bold text-white">Season Tournaments</h2>
+                  <p className="mt-1 text-sm text-zinc-400">Tournaments associated with this season circuit.</p>
+                </div>
+                <Badge className="bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
+                  {tournamentsQuery.data?.length ?? 0} tournaments
+                </Badge>
+              </div>
+            </div>
+
+            {data.season.status === 'draft' && (
+              <div className="flex items-start gap-3 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+                <p className="text-sm text-blue-300">
+                  Tournaments will be created when you publish this season. The circuit below shows your planned structure.
+                </p>
+              </div>
+            )}
+
+            {tournamentsQuery.isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.03]" />
+                ))}
+              </div>
+            ) : tournamentsQuery.error ? (
+              <div className="flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 p-4">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                <p className="text-sm text-red-300">Failed to load tournaments. Please retry.</p>
+              </div>
+            ) : tournamentsQuery.data && tournamentsQuery.data.length > 0 ? (
+              <div className="space-y-3">
+                {tournamentsQuery.data.map((st) => {
+                  const roleMeta: Record<string, string> = {
+                    qualifier: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+                    event: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+                    regional_final: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                    grand_final: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                    playoff: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                    last_chance_qualifier: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+                    custom: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+                  };
+                  const statusMeta: Record<string, string> = {
+                    draft: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+                    scheduled: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                    live: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                    completed: 'bg-white/10 text-white border-white/20',
+                    cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
+                  };
+                  const roleClass = roleMeta[st.role] ?? roleMeta.custom;
+                  const statusClass = statusMeta[st.tournamentStatus ?? 'draft'] ?? statusMeta.draft;
+                  return (
+                    <div key={st.id} className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4 transition hover:border-white/[0.10]">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span className={`shrink-0 rounded-lg border px-2 py-0.5 text-xs font-semibold capitalize ${roleClass}`}>
+                          {st.role.replace(/_/g, ' ')}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-white">{st.displayName || st.tournamentName}</p>
+                          <p className="text-xs text-zinc-500">{st.region ? `Region: ${st.region}` : 'No region'}</p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className={`rounded-lg border px-2 py-0.5 text-xs font-medium capitalize ${statusClass}`}>
+                          {st.tournamentStatus ?? st.status}
+                        </span>
+                        <Button asChild size="sm" variant="ghost" className="h-8 w-8 p-0 text-zinc-400 hover:text-white">
+                          <a href={`/organizer/tournaments/${st.tournamentId}/manage`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : data.season.status === 'draft' && nodeRows.filter(n => n.nodeType !== 'root').length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-widest text-zinc-600">Planned tournaments (pre-publish)</p>
+                {nodeRows.filter(n => n.nodeType !== 'root').map((node) => {
+                  const config = readTournamentConfig(node);
+                  const isReady = config.format && config.teamSize && config.maxTeams && config.registrationType;
+                  const meta = getPhaseMetaForType(node.nodeType as Exclude<SeasonNodeType, 'root'>);
+                  return (
+                    <div key={node.id} className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.04] bg-white/[0.02] p-4 opacity-70">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span className={`shrink-0 rounded-lg border px-2 py-0.5 text-xs font-semibold ${meta.accentBg} ${meta.accentBorder} ${meta.accent}`}>
+                          {meta.label.replace(/s$/, '')}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-zinc-300">{node.name || 'Unnamed tournament'}</p>
+                          {config.format && (
+                            <p className="text-xs text-zinc-600">{config.format.replace(/_/g, ' ')} · {config.teamSize ? `${config.teamSize}v${config.teamSize}` : ''} · Best of {config.bestOf ?? 1}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className={`rounded-lg border px-2 py-0.5 text-xs font-medium ${isReady ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+                          {isReady ? 'Ready' : 'Needs config'}
+                        </span>
+                        <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-zinc-500">
+                          On publish
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02] py-16 text-center">
+                <Activity className="h-10 w-10 text-zinc-600" />
+                <p className="text-sm font-medium text-zinc-400">No tournaments yet</p>
+                <p className="text-xs text-zinc-600">Add tournaments to the structure to see them here.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'advancement' && (
+          <SeasonAdvancementDashboard seasonId={seasonId} />
+        )}
+
+        {activeTab === 'announcements' && (
+          <SeasonAnnouncements seasonId={seasonId} />
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h2 className="font-heading text-2xl font-bold text-white">Season Settings</h2>
+              <p className="mt-1 text-sm text-zinc-400">Configure season-wide policies and manage lifecycle actions.</p>
+            </div>
+
+            {/* Season Policies */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <h3 className="mb-1 font-heading text-lg font-semibold text-white">Season policies</h3>
+              <p className="mb-5 text-sm text-zinc-500">These settings affect how the season behaves once active.</p>
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">Manual overrides</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">Allow organizer corrections for qualification routing.</p>
+                    </div>
+                    <Switch
+                      checked={overview.allowManualOverrides}
+                      onCheckedChange={(checked) => {
+                        setOverview((current) => ({ ...current, allowManualOverrides: checked }));
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">Public season page</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">Expose the season tree, standings, and qualification state publicly.</p>
+                    </div>
+                    <Switch
+                      checked={overview.isPublic}
+                      onCheckedChange={(checked) => {
+                        setOverview((current) => ({ ...current, isPublic: checked }));
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <Button className="mt-5 bg-rose-500 text-white hover:bg-rose-600" onClick={handleOverviewSave} disabled={updateSeason.isPending}>
+                Save policies
+              </Button>
+            </div>
+
+            {/* Roster Management */}
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="mb-1 flex items-center gap-2">
+                <Lock className="h-4 w-4 text-zinc-400" />
+                <h3 className="font-heading text-lg font-semibold text-white">Roster Management</h3>
+              </div>
+              <p className="mb-5 font-body text-sm text-zinc-500">Control how team rosters are managed across the season circuit.</p>
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">Lock rosters after first tournament</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">
+                        Once a team competes in their first tournament, their roster is frozen for the remainder of the season.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={rosterLock}
+                      onCheckedChange={setRosterLock}
+                    />
+                  </div>
+                </div>
+
+                <div className={`rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 transition-opacity ${rosterLock ? 'opacity-40 pointer-events-none' : ''}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">Allow roster changes between tournaments</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">
+                        Teams may adjust their roster in the window between tournament events. Disabled when roster lock is on.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={allowRosterChangesBetween}
+                      onCheckedChange={setAllowRosterChangesBetween}
+                      disabled={rosterLock}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">Manual override allowed</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">Allow organizer corrections to roster assignments regardless of lock state.</p>
+                    </div>
+                    <Switch
+                      checked={overview.allowManualOverrides}
+                      onCheckedChange={(checked) => {
+                        setOverview((current) => ({ ...current, allowManualOverrides: checked }));
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <Button className="mt-5 bg-rose-500 text-white hover:bg-rose-600" onClick={handleOverviewSave} disabled={updateSeason.isPending}>
+                Save roster settings
+              </Button>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="rounded-3xl border border-red-500/20 bg-[#0a0a0c] p-6">
+              <div className="mb-5 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-400" />
+                <h3 className="font-heading text-lg font-semibold text-red-400">Danger Zone</h3>
+              </div>
+              <div className="space-y-4">
+                {data.season.status === 'completed' && (
+                  <div className="flex items-center justify-between gap-4 rounded-2xl border border-red-500/10 bg-red-500/5 p-4">
+                    <div>
+                      <p className="font-medium text-white">Archive season</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">Move this season to archived state. It will no longer appear in active listings.</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="shrink-0 border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                      onClick={handleArchive}
+                      disabled={archiveSeason.isPending}
+                    >
+                      <Archive className="mr-2 h-4 w-4" />
+                      Archive
+                    </Button>
+                  </div>
+                )}
+
+                {(data.season.status === 'draft' || data.season.status === 'published' || data.season.status === 'active') && (
+                  <div className="flex items-center justify-between gap-4 rounded-2xl border border-red-500/10 bg-red-500/5 p-4">
+                    <div>
+                      <p className="font-medium text-white">Cancel season</p>
+                      <p className="mt-0.5 text-sm text-zinc-400">Permanently cancel this season. All participants will be notified. This cannot be undone.</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="shrink-0 border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                      onClick={handleCancel}
+                      disabled={cancelSeason.isPending}
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Cancel season
+                    </Button>
+                  </div>
+                )}
+
+                {data.season.status !== 'completed' && data.season.status !== 'draft' && data.season.status !== 'published' && data.season.status !== 'active' && (
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
+                    <p className="text-sm text-zinc-500">No destructive actions available for a season in <span className="font-medium text-zinc-400">{data.season.status}</span> status.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'audit' && (
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-heading text-2xl font-bold text-white">Audit Log</h2>
+                  <p className="mt-1 text-sm text-zinc-400">A full record of all changes made to this season.</p>
+                </div>
+                {auditLogQuery.data && (
+                  <Badge className="bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
+                    {auditLogQuery.data.length} entries
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {auditLogQuery.isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.03]" />
+                ))}
+              </div>
+            ) : auditLogQuery.data && auditLogQuery.data.length > 0 ? (
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                <div className="relative space-y-0">
+                  {auditLogQuery.data.map((log, index) => {
+                    const actionColors: Record<string, string> = {
+                      publish: 'bg-emerald-500 border-emerald-500/50',
+                      cancel: 'bg-red-500 border-red-500/50',
+                      archive: 'bg-amber-500 border-amber-500/50',
+                      update: 'bg-zinc-500 border-zinc-500/50',
+                    };
+                    const actionKey = Object.keys(actionColors).find(key => log.action.toLowerCase().includes(key));
+                    const dotClass = actionKey ? actionColors[actionKey] : 'bg-zinc-600 border-zinc-600/50';
+                    const isLast = index === auditLogQuery.data!.length - 1;
+                    return (
+                      <div key={log.id} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className={`relative z-10 h-3 w-3 shrink-0 rounded-full border-2 mt-1.5 ${dotClass}`} />
+                          {!isLast && <div className="w-px flex-1 bg-white/[0.06] my-1" />}
+                        </div>
+                        <div className={`pb-5 min-w-0 flex-1 ${isLast ? 'pb-0' : ''}`}>
+                          <div className="flex flex-wrap items-baseline gap-2">
+                            <span className="font-semibold text-white capitalize">{log.action.replace(/_/g, ' ')}</span>
+                            {log.actorUsername && <span className="text-xs text-zinc-500">by {log.actorUsername}</span>}
+                            <span className="ml-auto flex items-center gap-1 text-xs text-zinc-600">
+                              <Clock className="h-3 w-3" />
+                              {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
+                            </span>
+                          </div>
+                          {log.reason && (
+                            <p className="mt-0.5 text-sm text-zinc-500">"{log.reason}"</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02] py-16 text-center">
+                <FileText className="h-10 w-10 text-zinc-600" />
+                <p className="text-sm font-medium text-zinc-400">No audit entries yet</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'analytics' && (() => {
+          const nonRootNodes = nodeRows.filter(n => n.nodeType !== 'root');
+          const configuredCount = nonRootNodes.filter(n => isTournamentConfigComplete(readTournamentConfig(n))).length;
+          const totalConnections = nodeRows.reduce((acc, n) => acc + readOutgoingConnections(n).length, 0);
+          const topStandings = (standingsQuery.data ?? []).slice(0, 5);
+          const quals = qualificationsQuery.data ?? [];
+          const confirmedCount = quals.filter(q => q.status === 'confirmed' || q.status === 'accepted').length;
+          const pendingCount = quals.filter(q => q.status === 'invited').length;
+          const revokedCount = quals.filter(q => q.status === 'revoked').length;
+          const linkedTournaments = tournamentsQuery.data ?? [];
+          const draftCount = linkedTournaments.filter(t => (t.tournamentStatus ?? t.status) === 'draft').length;
+          const scheduledCount = linkedTournaments.filter(t => (t.tournamentStatus ?? t.status) === 'scheduled').length;
+          const liveCount = linkedTournaments.filter(t => (t.tournamentStatus ?? t.status) === 'live').length;
+          const completedCount = linkedTournaments.filter(t => (t.tournamentStatus ?? t.status) === 'completed').length;
+
+          return (
+            <div className="space-y-6">
+
+              {/* Header */}
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5 text-rose-400" />
+                  <div>
+                    <h2 className="font-heading text-2xl font-bold text-white">Analytics</h2>
+                    <p className="mt-0.5 text-sm text-zinc-400">Season health at a glance — structure, standings, and qualification pipeline.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Registration Funnel */}
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                <div className="mb-5 flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 text-zinc-400" />
+                  <h3 className="font-heading text-lg font-semibold text-white">Registration Funnel</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+                    <p className="font-body text-xs uppercase tracking-widest text-zinc-500">Planned</p>
+                    <p className="mt-2 font-heading text-3xl font-bold text-white">{nonRootNodes.length}</p>
+                    <p className="mt-1 font-body text-xs text-zinc-600">Tournaments in circuit</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+                    <p className="font-body text-xs uppercase tracking-widest text-zinc-500">Configured</p>
+                    <p className={`mt-2 font-heading text-3xl font-bold ${configuredCount === nonRootNodes.length && nonRootNodes.length > 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {configuredCount}
+                      <span className="ml-1 font-body text-base font-normal text-zinc-600">/ {nonRootNodes.length}</span>
+                    </p>
+                    <p className="mt-1 font-body text-xs text-zinc-600">Format, size, and registration set</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+                    <p className="font-body text-xs uppercase tracking-widest text-zinc-500">Connections</p>
+                    <p className={`mt-2 font-heading text-3xl font-bold ${totalConnections > 0 ? 'text-emerald-400' : 'text-zinc-500'}`}>{totalConnections}</p>
+                    <p className="mt-1 font-body text-xs text-zinc-600">Advancement edges wired</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Qualifier Participation — tournament readiness table */}
+              {nonRootNodes.length > 0 && (
+                <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                  <div className="mb-5 flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-zinc-400" />
+                    <h3 className="font-heading text-lg font-semibold text-white">Tournament Readiness</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/[0.06]">
+                          <th className="pb-3 text-left font-body text-xs font-semibold uppercase tracking-widest text-zinc-500">Tournament</th>
+                          <th className="pb-3 text-left font-body text-xs font-semibold uppercase tracking-widest text-zinc-500">Type</th>
+                          <th className="pb-3 text-left font-body text-xs font-semibold uppercase tracking-widest text-zinc-500">Configured</th>
+                          <th className="pb-3 text-left font-body text-xs font-semibold uppercase tracking-widest text-zinc-500">Starts</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {nonRootNodes.map((node) => {
+                          const isReady = isTournamentConfigComplete(readTournamentConfig(node));
+                          const meta = getPhaseMetaForType(node.nodeType as Exclude<SeasonNodeType, 'root'>);
+                          return (
+                            <tr key={node.id ?? node.name} className="group">
+                              <td className="py-3 pr-4 font-semibold text-white">{node.name || 'Unnamed'}</td>
+                              <td className="py-3 pr-4">
+                                <span className={`rounded-md border px-2 py-0.5 text-xs font-medium capitalize ${meta.accentBg} ${meta.accentBorder} ${meta.accent}`}>
+                                  {meta.label}
+                                </span>
+                              </td>
+                              <td className="py-3 pr-4">
+                                {isReady
+                                  ? <span className="flex items-center gap-1 text-xs font-semibold text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" />Ready</span>
+                                  : <span className="flex items-center gap-1 text-xs font-semibold text-amber-400"><AlertCircle className="h-3.5 w-3.5" />Needs config</span>
+                                }
+                              </td>
+                              <td className="py-3 font-body text-xs text-zinc-500">
+                                {node.startsAt
+                                  ? new Date(node.startsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                                  : <span className="text-zinc-700">—</span>
+                                }
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Standings Snapshot */}
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-zinc-400" />
+                    <h3 className="font-heading text-lg font-semibold text-white">Standings Snapshot</h3>
+                  </div>
+                  <span className="font-body text-xs text-zinc-600">Top 5</span>
+                </div>
+                {topStandings.length > 0 ? (
+                  <div className="space-y-2">
+                    {topStandings.map((entry) => (
+                      <div key={entry.entityId} className="flex items-center gap-3 rounded-2xl border border-white/[0.04] bg-white/[0.02] px-4 py-3">
+                        <span className={`w-6 shrink-0 font-heading text-sm font-bold ${entry.rank <= 3 ? 'text-amber-400' : 'text-zinc-600'}`}>
+                          #{entry.rank}
+                        </span>
+                        <p className="min-w-0 flex-1 truncate font-semibold text-white">{entry.displayName}</p>
+                        <span className="shrink-0 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 font-body text-xs font-semibold text-emerald-400">
+                          {entry.totalPoints} pts
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="font-body text-sm text-zinc-500">
+                    Standings are calculated after tournaments complete.
+                  </p>
+                )}
+              </div>
+
+              {/* Qualification Summary */}
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                <div className="mb-5 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-zinc-400" />
+                  <h3 className="font-heading text-lg font-semibold text-white">Qualification Pipeline</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
+                    <p className="font-body text-xs uppercase tracking-widest text-zinc-500">Total</p>
+                    <p className="mt-2 font-heading text-2xl font-bold text-white">{quals.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-500/10 bg-emerald-500/[0.04] p-4 text-center">
+                    <p className="font-body text-xs uppercase tracking-widest text-emerald-600">Confirmed</p>
+                    <p className="mt-2 font-heading text-2xl font-bold text-emerald-400">{confirmedCount}</p>
+                  </div>
+                  <div className="rounded-2xl border border-amber-500/10 bg-amber-500/[0.04] p-4 text-center">
+                    <p className="font-body text-xs uppercase tracking-widest text-amber-600">Pending</p>
+                    <p className="mt-2 font-heading text-2xl font-bold text-amber-400">{pendingCount}</p>
+                  </div>
+                  <div className="rounded-2xl border border-red-500/10 bg-red-500/[0.04] p-4 text-center">
+                    <p className="font-body text-xs uppercase tracking-widest text-red-600">Revoked</p>
+                    <p className="mt-2 font-heading text-2xl font-bold text-red-400">{revokedCount}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Linked Tournaments Health */}
+              {linkedTournaments.length > 0 && (
+                <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-zinc-400" />
+                      <h3 className="font-heading text-lg font-semibold text-white">Linked Tournaments</h3>
+                    </div>
+                    <span className="font-body text-xs text-zinc-500">{linkedTournaments.length} total</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {draftCount > 0 && (
+                      <span className="rounded-full border border-zinc-500/20 bg-zinc-500/10 px-3 py-1 font-body text-xs font-semibold text-zinc-400">
+                        {draftCount} Draft
+                      </span>
+                    )}
+                    {scheduledCount > 0 && (
+                      <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 font-body text-xs font-semibold text-blue-400">
+                        {scheduledCount} Scheduled
+                      </span>
+                    )}
+                    {liveCount > 0 && (
+                      <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 font-body text-xs font-semibold text-emerald-400">
+                        {liveCount} Live
+                      </span>
+                    )}
+                    {completedCount > 0 && (
+                      <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 font-body text-xs font-semibold text-zinc-300">
+                        {completedCount} Completed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          );
+        })()}
       </div>
+
+      <Footer />
     </div>
   );
 };
 
 export default SeasonManage;
+
