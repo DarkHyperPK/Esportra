@@ -143,13 +143,14 @@ export const roleApi = {
 
 // Season API
 export const seasonApi = {
-  getSeasons: async (page = 1, limit = 50, status?: string, game?: string) => {
+  getSeasons: async (page = 1, limit = 50, status?: string, game?: string, mine?: boolean) => {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString()
     });
     if (status) params.append('status', status);
     if (game) params.append('game', game);
+    if (mine) params.append('mine', 'true');
     return await apiClient.get<SeasonList[]>(`/api/seasons?${params}`);
   },
 

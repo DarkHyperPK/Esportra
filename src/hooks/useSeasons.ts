@@ -18,10 +18,10 @@ import { useToast } from './use-toast';
 import { ApiError } from '@/lib/apiClient';
 export { useSeasonTournaments } from './useSeasonStandings';
 
-export function useSeasons(page = 1, limit = 50, status?: string, game?: string) {
+export function useSeasons(page = 1, limit = 50, status?: string, game?: string, mine?: boolean) {
   return useQuery<SeasonList[]>({
-    queryKey: ['seasons', page, limit, status, game],
-    queryFn: () => seasonApi.getSeasons(page, limit, status, game),
+    queryKey: ['seasons', page, limit, status, game, mine],
+    queryFn: () => seasonApi.getSeasons(page, limit, status, game, mine),
     staleTime: 2 * 60_000,
   });
 }

@@ -11,7 +11,7 @@ import type { SeasonList } from '@/types/season';
 const ManageSeasons = () => {
   const [activeTab, setActiveTab] = useState('all');
   const navigate = useNavigate();
-  const { data: seasons = [], isLoading, isError } = useSeasons(1, 100, activeTab === 'all' ? undefined : activeTab);
+  const { data: seasons = [], isLoading, isError } = useSeasons(1, 100, activeTab === 'all' ? undefined : activeTab === 'live' ? 'active' : activeTab, undefined, true);
   const deleteSeason = useDeleteSeason();
   const publishSeason = usePublishSeason();
   const archiveSeason = useArchiveSeason();
@@ -193,7 +193,7 @@ const SeasonGrid: React.FC<SeasonGridProps> = ({
     switch (status) {
       case 'draft': return 'bg-gray-500';
       case 'published': return 'bg-blue-500';
-      case 'live': return 'bg-green-500';
+      case 'active': return 'bg-green-500';
       case 'completed': return 'bg-purple-500';
       case 'archived': return 'bg-red-500';
       default: return 'bg-gray-500';

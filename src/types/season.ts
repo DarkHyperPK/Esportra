@@ -1,4 +1,4 @@
-export type SeasonStatus = 'draft' | 'published' | 'active' | 'completed' | 'archived';
+export type SeasonStatus = 'draft' | 'published' | 'active' | 'completed' | 'archived' | 'cancelled';
 export type SeasonParticipantMode = 'team' | 'solo';
 export type SeasonNodeType = 'root' | 'qualifier' | 'event' | 'stage' | 'final' | 'custom';
 export type SeasonNodeStatus = 'draft' | 'scheduled' | 'live' | 'completed' | 'archived';
