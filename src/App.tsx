@@ -15,7 +15,6 @@ import { SignalRProvider } from "@/contexts/SignalRContext";
 import { TransitionLayout } from "@/components/TransitionLayout";
 import { LoadingSpinner } from "@/components/effects/LoadingSpinner";
 import { SuspensionGuard } from "@/components/auth/SuspensionGuard";
-import { useGlobalSmoothScroll } from "@/hooks/useGlobalSmoothScroll";
 
 import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
 
@@ -176,12 +175,11 @@ const SettingsRedirect = () => {
 
 const AppContent = React.memo(() => {
   const location = useLocation();
-  const { scrollTo } = useGlobalSmoothScroll();
 
   // Scroll to top on route change
   useEffect(() => {
-    scrollTo(0, { immediate: true });
-  }, [location.pathname, scrollTo]);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location.pathname]);
 
   return (
     <>
