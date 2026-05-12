@@ -71,47 +71,47 @@ import esportsGames from '@/data/esportsGames.json';
 
 const NAV_GROUPS = [
   {
-    label: null,
+    label: 'COMMAND',
     items: [
-      { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+      { id: 'overview', label: 'Command Center', description: 'Health, schedule, next actions', icon: LayoutDashboard },
     ],
   },
   {
-    label: 'CIRCUIT',
+    label: 'BUILD',
     items: [
-      { id: 'structure', label: 'Structure', icon: GitBranch },
-      { id: 'flow', label: 'Flow', icon: Workflow },
-      { id: 'tournaments', label: 'Tournaments', icon: Trophy },
+      { id: 'structure', label: 'Structure Builder', description: 'Design tournament nodes', icon: GitBranch },
+      { id: 'flow', label: 'Flow Map', description: 'Preview advancement paths', icon: Workflow },
+      { id: 'tournaments', label: 'Tournament Registry', description: 'Manage linked events', icon: Trophy },
     ],
   },
   {
-    label: 'PEOPLE',
+    label: 'OPERATIONS',
     items: [
-      { id: 'staff', label: 'Staff', icon: Users },
-      { id: 'registrations', label: 'Registrations', icon: ClipboardList },
-      { id: 'qualifications', label: 'Qualifications', icon: CheckCircle2 },
+      { id: 'staff', label: 'Staff Access', description: 'Admins and co-organizers', icon: Users },
+      { id: 'registrations', label: 'Registrations', description: 'Participants and invites', icon: ClipboardList },
+      { id: 'qualifications', label: 'Qualifications', description: 'Qualified teams pipeline', icon: CheckCircle2 },
     ],
   },
   {
     label: 'COMPETITION',
     items: [
-      { id: 'rules', label: 'Points rules', icon: Target },
-      { id: 'standings', label: 'Standings', icon: TrendingUp },
-      { id: 'advancement', label: 'Advancement', icon: ArrowRight },
+      { id: 'rules', label: 'Points Rules', description: 'Scoring and placement logic', icon: Target },
+      { id: 'standings', label: 'Standings', description: 'Leaderboard and points', icon: TrendingUp },
+      { id: 'advancement', label: 'Advancement', description: 'Promotions between nodes', icon: ArrowRight },
     ],
   },
   {
     label: 'COMMS',
     items: [
-      { id: 'announcements', label: 'Announcements', icon: Bell },
+      { id: 'announcements', label: 'Announcements', description: 'Broadcast season updates', icon: Bell },
     ],
   },
   {
     label: 'SYSTEM',
     items: [
-      { id: 'analytics', label: 'Analytics', icon: Activity },
-      { id: 'settings', label: 'Settings', icon: Settings },
-      { id: 'audit', label: 'Audit Log', icon: FileText },
+      { id: 'analytics', label: 'Analytics', description: 'Readiness and health', icon: Activity },
+      { id: 'settings', label: 'Settings', description: 'Policies and lifecycle', icon: Settings },
+      { id: 'audit', label: 'Audit Log', description: 'Change history', icon: FileText },
     ],
   },
 ] as const;
@@ -268,7 +268,7 @@ const SeasonManage = () => {
     registrationDeadline: '',
   });
 
-  const activeTab = searchParams.get('tab') ?? 'tournaments';
+  const activeTab = searchParams.get('tab') ?? 'overview';
 
   useEffect(() => {
     if (!data) return;
@@ -743,85 +743,95 @@ const SeasonManage = () => {
   const plannedTournamentNodes = nodeRows.filter((node) => node.nodeType !== 'root');
   const readyPlannedTournamentCount = plannedTournamentNodes.filter((node) => isTournamentConfigComplete(readTournamentConfig(node))).length;
   const liveTournamentCount = seasonTournaments.filter((tournament) => (tournament.tournamentStatus ?? tournament.status) === 'live').length;
+  const allNavItems = NAV_GROUPS.flatMap((group) => group.items);
+  const activeNavItem = allNavItems.find((item) => item.id === activeTab) ?? allNavItems[0];
+  const ActiveNavIcon = activeNavItem.icon;
 
   const renderSidebarContent = () => (
     <>
-      {/* Season identity */}
-      <div className="px-4 pt-5 pb-4 border-b border-white/[0.06] shrink-0">
+      <div className="shrink-0 border-b border-white/[0.08] p-5">
         <Link
           to="/organizer/seasons"
-          className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 transition-colors mb-4 text-xs font-medium"
+          className="mb-5 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500 transition-colors hover:text-zinc-200"
         >
-          <ChevronLeft className="w-3.5 h-3.5" />
-          All seasons
+          <ChevronLeft className="h-3.5 w-3.5" />
+          Seasons
         </Link>
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0 overflow-hidden">
-            {data.season.logoUrl
-              ? <img src={data.season.logoUrl} alt="" className="w-full h-full object-cover" />
-              : <Trophy className="w-4 h-4 text-zinc-500" />
-            }
+        <div className="overflow-hidden border border-white/10 bg-white/[0.03]">
+          {data.season.bannerUrl && (
+            <div className="h-20 border-b border-white/10 bg-cover bg-center" style={{ backgroundImage: `url(${data.season.bannerUrl})` }} />
+          )}
+          <div className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden border border-white/10 bg-black">
+                {data.season.logoUrl
+                  ? <img src={data.season.logoUrl} alt="" className="h-full w-full object-cover" />
+                  : <Trophy className="h-5 w-5 text-rose-400" />
+                }
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-base font-black uppercase tracking-tight text-white">{data.season.name}</p>
+                <p className="mt-1 truncate text-xs text-zinc-500">{data.season.game}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className={`inline-flex items-center border px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] ${STATUS_STYLES[data.season.status]}`}>
+                {data.season.status}
+              </span>
+              <span className="inline-flex items-center border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">
+                {data.season.participantMode}
+              </span>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white leading-tight truncate">{data.season.name}</p>
-            <p className="text-xs text-zinc-500 truncate mt-0.5">{data.season.game}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 mt-3">
-          <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${STATUS_STYLES[data.season.status]}`}>
-            {data.season.status}
-          </span>
-          <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border border-white/[0.08] text-zinc-500">
-            {data.season.participantMode}
-          </span>
         </div>
 
         {data.season.status === 'draft' && (
           <button
             onClick={() => { setIsMobileNavOpen(false); handlePublish(); }}
             disabled={publishSeason.isPending}
-            className="mt-3 w-full h-9 bg-rose-500 hover:bg-rose-400 active:bg-rose-600 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-4 flex h-11 w-full items-center justify-center gap-2 bg-rose-500 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-white transition-colors hover:bg-rose-400 active:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            {publishSeason.isPending ? 'Publishing…' : 'Publish Season'}
+            <CheckCircle2 className="h-4 w-4" />
+            {publishSeason.isPending ? 'Publishing…' : 'Publish'}
           </button>
         )}
         {data.season.status === 'completed' && (
           <button
             onClick={() => { setIsMobileNavOpen(false); handleArchive(); }}
             disabled={archiveSeason.isPending}
-            className="mt-3 w-full h-9 bg-white/[0.07] hover:bg-white/10 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors border border-white/[0.08] disabled:opacity-50"
+            className="mt-4 flex h-11 w-full items-center justify-center gap-2 border border-white/10 bg-white/[0.04] font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-white transition-colors hover:bg-white/[0.08] disabled:opacity-50"
           >
-            <Archive className="w-3.5 h-3.5" />
+            <Archive className="h-4 w-4" />
             {archiveSeason.isPending ? 'Archiving…' : 'Archive'}
           </button>
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-3 space-y-5 overflow-y-auto">
-        {NAV_GROUPS.map((group, gi) => (
-          <div key={gi}>
-            {group.label && (
-              <p className="px-2 mb-1.5 text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
-                {group.label}
-              </p>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map(({ id, label, icon: Icon }) => {
+      <nav className="flex-1 space-y-5 overflow-y-auto px-4 py-5">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="mb-2 px-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-700">
+              {group.label}
+            </p>
+            <div className="space-y-1">
+              {group.items.map(({ id, label, description, icon: Icon }) => {
                 const isActive = activeTab === id;
                 return (
                   <button
                     key={id}
                     onClick={() => { setTab(id as string); setIsMobileNavOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-2.5 h-8 rounded-lg text-left transition-colors text-sm ${
+                    className={cn(
+                      'group flex w-full items-start gap-3 border p-3 text-left transition-colors',
                       isActive
-                        ? 'bg-rose-500/10 text-rose-400'
-                        : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
-                    }`}
+                        ? 'border-rose-500/40 bg-rose-500/[0.08] text-white'
+                        : 'border-transparent text-zinc-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-white',
+                    )}
                   >
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-rose-400' : 'text-zinc-500'}`} />
-                    <span className="font-medium">{label}</span>
+                    <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', isActive ? 'text-rose-400' : 'text-zinc-600 group-hover:text-zinc-300')} />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold leading-4">{label}</span>
+                      <span className="mt-1 block text-xs leading-4 text-zinc-600 group-hover:text-zinc-500">{description}</span>
+                    </span>
                   </button>
                 );
               })}
@@ -830,38 +840,42 @@ const SeasonManage = () => {
         ))}
       </nav>
 
-      {/* Footer actions */}
-      <div className="px-3 py-3 border-t border-white/[0.06] space-y-0.5 shrink-0">
+      <div className="shrink-0 space-y-2 border-t border-white/[0.08] p-4">
         <button
           onClick={() => { setIsMobileNavOpen(false); handleRecalculate(); }}
           disabled={recalculateSeason.isPending}
-          className="w-full flex items-center gap-3 px-2.5 h-8 rounded-lg text-left text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05] transition-colors text-sm disabled:opacity-40"
+          className="flex h-10 w-full items-center gap-3 border border-white/10 bg-white/[0.03] px-3 text-left text-sm font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
         >
-          <RefreshCw className={`w-4 h-4 shrink-0 ${recalculateSeason.isPending ? 'animate-spin' : ''}`} />
-          <span className="font-medium">Recalculate</span>
+          <RefreshCw className={`h-4 w-4 shrink-0 ${recalculateSeason.isPending ? 'animate-spin' : ''}`} />
+          Recalculate season
         </button>
-        <button
-          onClick={() => { setIsMobileNavOpen(false); handleDuplicate(); }}
-          disabled={duplicateSeason.isPending}
-          className="w-full flex items-center gap-3 px-2.5 h-8 rounded-lg text-left text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05] transition-colors text-sm disabled:opacity-40"
-        >
-          <Copy className="w-4 h-4 shrink-0" />
-          <span className="font-medium">Duplicate</span>
-        </button>
-        <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 px-2.5 h-8 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05] text-sm font-medium">
-          <Link to={`/season/${data.season.slug}`} target="_blank">
-            <ExternalLink className="w-4 h-4 shrink-0 text-zinc-500" />
-            Public view
-          </Link>
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => { setIsMobileNavOpen(false); handleDuplicate(); }}
+            disabled={duplicateSeason.isPending}
+            className="flex h-10 items-center justify-center gap-2 border border-white/10 bg-white/[0.03] text-xs font-semibold text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
+          >
+            <Copy className="h-3.5 w-3.5 shrink-0" />
+            Duplicate
+          </button>
+          <Button asChild variant="ghost" size="sm" className="h-10 rounded-none border border-white/10 bg-white/[0.03] text-xs font-semibold text-zinc-400 hover:bg-white/[0.06] hover:text-white">
+            <Link to={`/season/${data.season.slug}`} target="_blank">
+              <ExternalLink className="mr-2 h-3.5 w-3.5 shrink-0" />
+              Public
+            </Link>
+          </Button>
+        </div>
       </div>
     </>
   );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#050505] text-white">
+      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:80px_80px]" />
+      <div className="low-fx-gradient pointer-events-none fixed -top-44 right-0 h-[42rem] w-[42rem] rounded-full bg-rose-600/10 blur-[150px]" />
+      <div className="low-fx-gradient pointer-events-none fixed bottom-0 left-72 h-[34rem] w-[34rem] rounded-full bg-violet-600/10 blur-[150px]" />
       {/* Fixed sidebar (desktop) */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden lg:flex flex-col w-60 border-r border-white/[0.06] bg-[#080809] overflow-hidden">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-80 flex-col overflow-hidden border-r border-white/[0.08] bg-[#070707]/95 backdrop-blur-xl lg:flex">
         {renderSidebarContent()}
       </aside>
 
@@ -872,7 +886,7 @@ const SeasonManage = () => {
             className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden"
             onClick={() => setIsMobileNavOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-50 w-72 bg-[#080809] border-r border-white/[0.06] flex flex-col overflow-hidden lg:hidden">
+          <div className="fixed inset-y-0 left-0 z-50 flex w-[22rem] max-w-[90vw] flex-col overflow-hidden border-r border-white/[0.08] bg-[#070707] lg:hidden">
             <div className="flex items-center justify-between px-4 h-14 border-b border-white/[0.06] shrink-0">
               <span className="text-white text-sm font-semibold truncate">{data.season.name}</span>
               <button
@@ -889,7 +903,7 @@ const SeasonManage = () => {
       )}
 
       {/* Sticky top bar */}
-      <header className="sticky top-0 z-40 bg-[#050505]/90 backdrop-blur-md border-b border-white/[0.06] h-14 flex items-center px-4 gap-3 lg:pl-64">
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-white/[0.06] bg-[#050505]/90 px-4 backdrop-blur-md lg:hidden">
         <button
           className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"
           onClick={() => setIsMobileNavOpen(true)}
@@ -897,7 +911,7 @@ const SeasonManage = () => {
         >
           <Menu className="w-4 h-4" />
         </button>
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className={`hidden sm:inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${STATUS_STYLES[data.season.status]}`}>
             {data.season.status}
           </span>
@@ -905,187 +919,285 @@ const SeasonManage = () => {
         </div>
       </header>
 
-      <div className="w-full px-4 py-6 sm:px-6 lg:ml-60 lg:px-8 lg:py-8">
-        {activeTab === 'overview' && (
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-              <h2 className="text-2xl font-semibold">Season overview</h2>
-              <div className="mt-6 grid gap-5 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Name</Label>
-                  <Input
-                    value={overview.name}
-                    onChange={(event) => setOverview((current) => ({ ...current, name: event.target.value }))}
-                    className="border-white/10 bg-white/5 text-white"
-                  />
+      <main className="relative z-10 w-full px-4 py-6 sm:px-6 lg:ml-80 lg:px-10 lg:py-10">
+        <section className="mb-8 overflow-hidden border border-white/10 bg-black/45 shadow-2xl shadow-black/30 backdrop-blur-xl">
+          {data.season.bannerUrl && (
+            <div className="h-32 border-b border-white/10 bg-cover bg-center opacity-70" style={{ backgroundImage: `url(${data.season.bannerUrl})` }} />
+          )}
+          <div className="p-6 lg:p-8">
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+              <div className="min-w-0">
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-2 border border-rose-500/25 bg-rose-500/10 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-rose-300">
+                    <ActiveNavIcon className="h-3.5 w-3.5" />
+                    {activeNavItem.label}
+                  </span>
+                  <span className={`inline-flex items-center border px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] ${STATUS_STYLES[data.season.status]}`}>
+                    {data.season.status}
+                  </span>
                 </div>
-                <div className="space-y-2">
-                  <Label>Game</Label>
-                  <Select value={overview.game} onValueChange={(value) => setOverview((current) => ({ ...current, game: value }))}>
-                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
-                      <SelectValue placeholder="Select a game" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {gameOptions.map((game) => (
-                        <SelectItem key={game} value={game}>{game}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <h1 className="max-w-5xl truncate text-4xl font-black uppercase tracking-[-0.05em] text-white md:text-6xl">
+                  {data.season.name}
+                </h1>
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-400 md:text-base">
+                  {activeNavItem.description}. Manage the complete season lifecycle from structure and tournaments to teams, standings, communications, and publishing.
+                </p>
+              </div>
+              <div className="grid min-w-full grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[520px]">
+                <div className="border border-white/10 bg-white/[0.03] p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">Nodes</p>
+                  <p className="mt-2 text-2xl font-black text-white">{plannedTournamentNodes.length}</p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Participant mode</Label>
-                  <Select
-                    value={overview.participantMode}
-                    onValueChange={(value: SeasonParticipantMode) => setOverview((current) => ({ ...current, participantMode: value }))}
-                  >
-                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PARTICIPANT_MODES.map((mode) => (
-                        <SelectItem key={mode} value={mode}>{mode}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="border border-white/10 bg-white/[0.03] p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">Ready</p>
+                  <p className="mt-2 text-2xl font-black text-emerald-400">{readyPlannedTournamentCount}</p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={overview.status}
-                    onValueChange={(value: SeasonStatus) => setOverview((current) => ({ ...current, status: value }))}
-                  >
-                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SEASON_STATUSES.map((status) => (
-                        <SelectItem key={status} value={status}>{status}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="border border-white/10 bg-white/[0.03] p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">Linked</p>
+                  <p className="mt-2 text-2xl font-black text-white">{seasonTournaments.length}</p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Slug</Label>
-                  <Input
-                    value={overview.slug}
-                    onChange={(event) => setOverview((current) => ({ ...current, slug: event.target.value }))}
-                    className="border-white/10 bg-white/5 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Start date</Label>
-                  <Input
-                    type="date"
-                    value={overview.startDate}
-                    onChange={(event) => setOverview((current) => ({ ...current, startDate: event.target.value }))}
-                    className="border-white/10 bg-white/5 text-white"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>End date</Label>
-                  <Input
-                    type="date"
-                    value={overview.endDate}
-                    onChange={(event) => setOverview((current) => ({ ...current, endDate: event.target.value }))}
-                    className="border-white/10 bg-white/5 text-white"
-                  />
-                </div>
-
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-white">Public season page</p>
-                      <p className="mt-1 text-sm text-zinc-400">Expose the season tree, standings, and qualification state publicly.</p>
-                    </div>
-                    <Switch
-                      checked={overview.isPublic}
-                      onCheckedChange={(checked) => setOverview((current) => ({ ...current, isPublic: checked }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-white">Manual overrides</p>
-                      <p className="mt-1 text-sm text-zinc-400">Allow organizer corrections for qualification routing.</p>
-                    </div>
-                    <Switch
-                      checked={overview.allowManualOverrides}
-                      onCheckedChange={(checked) => setOverview((current) => ({ ...current, allowManualOverrides: checked }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={overview.description}
-                    onChange={(event) => setOverview((current) => ({ ...current, description: event.target.value }))}
-                    className="min-h-[180px] border-white/10 bg-white/5 text-white"
-                  />
+                <div className="border border-white/10 bg-white/[0.03] p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">Live</p>
+                  <p className="mt-2 text-2xl font-black text-rose-400">{liveTournamentCount}</p>
                 </div>
               </div>
-
-              {/* Media section */}
-              <div className="mt-6 border-t border-white/10 pt-6">
-                <h3 className="text-lg font-semibold text-white">Season branding</h3>
-                <p className="mt-1 text-sm text-zinc-400">Upload a banner and logo for your season's public page and social cards.</p>
-                <div className="mt-5 grid gap-6 md:grid-cols-[1fr_140px]">
-                  <ImageUploader
-                    value={overview.bannerUrl}
-                    onChange={(url) => setOverview((current) => ({ ...current, bannerUrl: url }))}
-                    bucket="season-images"
-                    folder="banners"
-                    aspectRatio="banner"
-                    label="Season banner"
-                    helperText="Recommended: 1920×1080 (16:9). Displayed at the top of the season page."
-                  />
-                  <ImageUploader
-                    value={overview.logoUrl}
-                    onChange={(url) => setOverview((current) => ({ ...current, logoUrl: url }))}
-                    bucket="season-images"
-                    folder="logos"
-                    aspectRatio="logo"
-                    label="Logo"
-                    helperText="1:1 ratio. Used in listings."
-                  />
-                </div>
-              </div>
-
-              <Button className="mt-6 bg-rose-500 text-white hover:bg-rose-600" onClick={handleOverviewSave} disabled={updateSeason.isPending}>
-                Save overview
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button className="rounded-none bg-rose-500 text-white hover:bg-rose-400" onClick={() => setTab('structure')}>
+                <GitBranch className="mr-2 h-4 w-4" />
+                Structure Builder
+              </Button>
+              <Button variant="outline" className="rounded-none border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.07]" onClick={() => setTab('tournaments')}>
+                <Trophy className="mr-2 h-4 w-4" />
+                Tournament Registry
+              </Button>
+              <Button asChild variant="outline" className="rounded-none border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.07]">
+                <Link to={`/season/${data.season.slug}`} target="_blank">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Public Page
+                </Link>
               </Button>
             </div>
+          </div>
+        </section>
 
+        {activeTab === 'overview' && (
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
             <div className="space-y-6">
-              <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-                <h2 className="text-xl font-semibold">Quick snapshot</h2>
-                <div className="mt-5 grid gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Owner</p>
-                    <p className="mt-1 font-semibold text-white">{data.season.ownerFullName || data.season.ownerUsername || 'Unknown'}</p>
+              <div className="border border-white/10 bg-black/40 p-6 backdrop-blur-xl lg:p-8">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-rose-400">Command Center</p>
+                    <h2 className="mt-3 text-3xl font-black uppercase tracking-tight text-white">Season operations dashboard</h2>
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+                      Finish the season setup from one place: build the tournament structure, wire advancement, publish, then manage teams and standings.
+                    </p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Tree nodes</p>
-                    <p className="mt-1 font-semibold text-white">{data.nodes.length}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Points rules</p>
-                    <p className="mt-1 font-semibold text-white">{data.rules.length}</p>
-                  </div>
+                  <Button className="rounded-none bg-rose-500 px-6 text-white hover:bg-rose-400" onClick={() => setTab('structure')}>
+                    Continue setup
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    { label: 'Structure', value: `${readyPlannedTournamentCount}/${plannedTournamentNodes.length}`, hint: 'nodes ready', icon: GitBranch, tone: readyPlannedTournamentCount === plannedTournamentNodes.length && plannedTournamentNodes.length > 0 ? 'text-emerald-400' : 'text-amber-400', tab: 'structure' },
+                    { label: 'Tournaments', value: seasonTournaments.length, hint: 'linked events', icon: Trophy, tone: seasonTournaments.length > 0 ? 'text-emerald-400' : 'text-zinc-400', tab: 'tournaments' },
+                    { label: 'Rules', value: data.rules.length, hint: 'points rules', icon: Target, tone: data.rules.length > 0 ? 'text-emerald-400' : 'text-zinc-400', tab: 'rules' },
+                    { label: 'Staff', value: staffRows.length, hint: 'operators', icon: Users, tone: staffRows.length > 0 ? 'text-emerald-400' : 'text-zinc-400', tab: 'staff' },
+                  ].map(({ label, value, hint, icon: Icon, tone, tab }) => (
+                    <button
+                      key={label}
+                      onClick={() => setTab(tab)}
+                      className="group border border-white/10 bg-white/[0.03] p-5 text-left transition-colors hover:border-white/20 hover:bg-white/[0.05]"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <Icon className="h-5 w-5 text-zinc-600 transition-colors group-hover:text-zinc-300" />
+                        <ArrowRight className="h-4 w-4 text-zinc-700 transition-colors group-hover:text-rose-400" />
+                      </div>
+                      <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">{label}</p>
+                      <p className={`mt-2 text-3xl font-black ${tone}`}>{value}</p>
+                      <p className="mt-1 text-xs text-zinc-500">{hint}</p>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
-                <h2 className="text-xl font-semibold">Tree preview</h2>
-                <SeasonTreePreview tree={seasonTreePreview} className="mt-5" compact />
+              <div className="grid gap-6 lg:grid-cols-3">
+                <button
+                  onClick={() => setTab('structure')}
+                  className="border border-rose-500/30 bg-rose-500/[0.05] p-6 text-left transition-colors hover:bg-rose-500/[0.08]"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center border border-rose-500/30 bg-rose-500/10 text-rose-300">
+                    <GitBranch className="h-6 w-6" />
+                  </div>
+                  <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.28em] text-rose-300">Step 01</p>
+                  <h3 className="mt-2 text-xl font-black uppercase tracking-tight text-white">Build structure</h3>
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">Create qualifiers, finals, custom nodes, schedule windows, and tournament configuration.</p>
+                </button>
+                <button
+                  onClick={() => setTab('flow')}
+                  className="border border-white/10 bg-white/[0.03] p-6 text-left transition-colors hover:border-white/20 hover:bg-white/[0.05]"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center border border-white/10 bg-black text-violet-300">
+                    <Workflow className="h-6 w-6" />
+                  </div>
+                  <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-600">Step 02</p>
+                  <h3 className="mt-2 text-xl font-black uppercase tracking-tight text-white">Wire flow</h3>
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">Preview how winners, points, and qualification rules advance through the season.</p>
+                </button>
+                <button
+                  onClick={() => setTab('tournaments')}
+                  className="border border-white/10 bg-white/[0.03] p-6 text-left transition-colors hover:border-white/20 hover:bg-white/[0.05]"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center border border-white/10 bg-black text-amber-300">
+                    <Trophy className="h-6 w-6" />
+                  </div>
+                  <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-600">Step 03</p>
+                  <h3 className="mt-2 text-xl font-black uppercase tracking-tight text-white">Manage events</h3>
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">Track created tournaments, draft nodes, live events, and public entry points.</p>
+                </button>
+              </div>
+
+              <div className="border border-white/10 bg-black/40 p-6 backdrop-blur-xl lg:p-8">
+                <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Season packet</p>
+                    <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Identity and publishing controls</h2>
+                  </div>
+                  <Button className="rounded-none bg-white text-black hover:bg-zinc-200" onClick={handleOverviewSave} disabled={updateSeason.isPending}>
+                    Save changes
+                  </Button>
+                </div>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Name</Label>
+                    <Input value={overview.name} onChange={(event) => setOverview((current) => ({ ...current, name: event.target.value }))} className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Game</Label>
+                    <Select value={overview.game} onValueChange={(value) => setOverview((current) => ({ ...current, game: value }))}>
+                      <SelectTrigger className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white">
+                        <SelectValue placeholder="Select a game" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gameOptions.map((game) => (
+                          <SelectItem key={game} value={game}>{game}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Participant mode</Label>
+                    <Select value={overview.participantMode} onValueChange={(value: SeasonParticipantMode) => setOverview((current) => ({ ...current, participantMode: value }))}>
+                      <SelectTrigger className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PARTICIPANT_MODES.map((mode) => (
+                          <SelectItem key={mode} value={mode}>{mode}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select value={overview.status} onValueChange={(value: SeasonStatus) => setOverview((current) => ({ ...current, status: value }))}>
+                      <SelectTrigger className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SEASON_STATUSES.map((status) => (
+                          <SelectItem key={status} value={status}>{status}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Slug</Label>
+                    <Input value={overview.slug} onChange={(event) => setOverview((current) => ({ ...current, slug: event.target.value }))} className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Start</Label>
+                      <Input type="date" value={overview.startDate} onChange={(event) => setOverview((current) => ({ ...current, startDate: event.target.value }))} className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>End</Label>
+                      <Input type="date" value={overview.endDate} onChange={(event) => setOverview((current) => ({ ...current, endDate: event.target.value }))} className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white" />
+                    </div>
+                  </div>
+                  <div className="border border-white/10 bg-white/[0.03] p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-white">Public season page</p>
+                        <p className="mt-1 text-sm text-zinc-500">Expose tree, standings, and qualification state publicly.</p>
+                      </div>
+                      <Switch checked={overview.isPublic} onCheckedChange={(checked) => setOverview((current) => ({ ...current, isPublic: checked }))} />
+                    </div>
+                  </div>
+                  <div className="border border-white/10 bg-white/[0.03] p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-white">Manual overrides</p>
+                        <p className="mt-1 text-sm text-zinc-500">Allow organizer corrections for routing.</p>
+                      </div>
+                      <Switch checked={overview.allowManualOverrides} onCheckedChange={(checked) => setOverview((current) => ({ ...current, allowManualOverrides: checked }))} />
+                    </div>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Mission brief</Label>
+                    <Textarea value={overview.description} onChange={(event) => setOverview((current) => ({ ...current, description: event.target.value }))} className="min-h-[150px] rounded-none border-white/10 bg-white/[0.03] text-white" />
+                  </div>
+                </div>
+
+                <div className="mt-8 border-t border-white/10 pt-6">
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Season branding</h3>
+                  <p className="mt-1 text-sm text-zinc-500">Upload a banner and logo for the public season experience.</p>
+                  <div className="mt-5 grid gap-6 md:grid-cols-[1fr_150px]">
+                    <ImageUploader value={overview.bannerUrl} onChange={(url) => setOverview((current) => ({ ...current, bannerUrl: url }))} bucket="season-images" folder="banners" aspectRatio="banner" label="Season banner" helperText="Recommended: 1920×1080." />
+                    <ImageUploader value={overview.logoUrl} onChange={(url) => setOverview((current) => ({ ...current, logoUrl: url }))} bucket="season-images" folder="logos" aspectRatio="logo" label="Logo" helperText="1:1 ratio." />
+                  </div>
+                </div>
               </div>
             </div>
+
+            <aside className="space-y-6">
+              <div className="border border-white/10 bg-black/40 p-6 backdrop-blur-xl">
+                <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Readiness</p>
+                <div className="mt-5 space-y-4">
+                  {[
+                    { label: 'Structure nodes configured', complete: plannedTournamentNodes.length > 0 && readyPlannedTournamentCount === plannedTournamentNodes.length },
+                    { label: 'At least one tournament exists', complete: seasonTournaments.length > 0 || plannedTournamentNodes.length > 0 },
+                    { label: 'Points rules prepared', complete: data.rules.length > 0 },
+                    { label: 'Public visibility reviewed', complete: overview.isPublic || data.season.status === 'draft' },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-start gap-3">
+                      <div className={cn('mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border', item.complete ? 'border-emerald-500 bg-emerald-500 text-black' : 'border-zinc-700 bg-white/[0.03] text-zinc-600')}>
+                        {item.complete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock className="h-3 w-3" />}
+                      </div>
+                      <p className={cn('text-sm leading-5', item.complete ? 'text-zinc-300' : 'text-zinc-500')}>{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {data.season.status === 'draft' && (
+                  <Button className="mt-6 w-full rounded-none bg-rose-500 text-white hover:bg-rose-400" onClick={handlePublish} disabled={publishSeason.isPending}>
+                    {publishSeason.isPending ? 'Publishing...' : 'Publish season'}
+                  </Button>
+                )}
+              </div>
+
+              <div className="border border-white/10 bg-black/40 p-6 backdrop-blur-xl">
+                <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Tree Preview</p>
+                <SeasonTreePreview tree={seasonTreePreview} className="mt-5" compact />
+              </div>
+
+              <div className="border border-white/10 bg-black/40 p-6 backdrop-blur-xl">
+                <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Ownership</p>
+                <p className="mt-3 text-lg font-bold text-white">{data.season.ownerFullName || data.season.ownerUsername || 'Unknown'}</p>
+                <p className="mt-1 text-sm text-zinc-500">{formatDisplayDate(data.season.startDate)} → {formatDisplayDate(data.season.endDate)}</p>
+              </div>
+            </aside>
           </div>
         )}
 
@@ -2527,7 +2639,7 @@ const SeasonManage = () => {
             </div>
           );
         })()}
-      </div>
+      </main>
 
       <Footer />
     </div>
