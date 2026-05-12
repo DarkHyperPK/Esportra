@@ -168,7 +168,45 @@ const toNullable = (value: string) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const formatDisplayDate = (value?: string | null) => {
+  if (!value) return 'Unscheduled';
+
+  return new Date(value).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
+
 const formatDateInput = (value?: string | null) => (value ? value.slice(0, 10) : '');
+
+const getTournamentStatusClass = (status?: string | null) => {
+  const styles: Record<string, string> = {
+    draft: 'border-zinc-500/20 bg-zinc-500/10 text-zinc-300',
+    scheduled: 'border-blue-500/25 bg-blue-500/10 text-blue-300',
+    live: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300',
+    completed: 'border-white/20 bg-white/10 text-white',
+    cancelled: 'border-red-500/25 bg-red-500/10 text-red-300',
+  };
+
+  return styles[status ?? 'draft'] ?? styles.draft;
+};
+
+const getTournamentRoleClass = (role?: string | null) => {
+  const styles: Record<string, string> = {
+    qualifier: 'border-cyan-500/25 bg-cyan-500/10 text-cyan-300',
+    event: 'border-violet-500/25 bg-violet-500/10 text-violet-300',
+    regional_final: 'border-fuchsia-500/25 bg-fuchsia-500/10 text-fuchsia-300',
+    grand_final: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+    playoff: 'border-amber-500/25 bg-amber-500/10 text-amber-300',
+    last_chance_qualifier: 'border-orange-500/25 bg-orange-500/10 text-orange-300',
+    custom: 'border-zinc-500/20 bg-zinc-500/10 text-zinc-300',
+  };
+
+  return styles[role ?? 'custom'] ?? styles.custom;
+};
+
+const formatTournamentLabel = (value?: string | null) => (value ? value.replace(/_/g, ' ') : 'custom');
 
 const createEmptyRule = (sourceNodeId: string): SeasonRuleDraft => ({
   sourceNodeId,
@@ -700,6 +738,11 @@ const SeasonManage = () => {
       </div>
     );
   }
+
+  const seasonTournaments = tournamentsQuery.data ?? [];
+  const plannedTournamentNodes = nodeRows.filter((node) => node.nodeType !== 'root');
+  const readyPlannedTournamentCount = plannedTournamentNodes.filter((node) => isTournamentConfigComplete(readTournamentConfig(node))).length;
+  const liveTournamentCount = seasonTournaments.filter((tournament) => (tournament.tournamentStatus ?? tournament.status) === 'live').length;
 
   const renderSidebarContent = () => (
     <>
@@ -1719,141 +1762,204 @@ const SeasonManage = () => {
 
         {activeTab === 'tournaments' && (
           <div className="space-y-6">
-            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="font-heading text-2xl font-bold text-white">Season Tournaments</h2>
-                  <p className="mt-1 text-sm text-zinc-400">Create and configure season-owned tournaments inline before publishing.</p>
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#09090b] p-6 shadow-2xl shadow-black/40 md:p-8">
+              <div className="low-fx-gradient absolute -right-24 -top-28 h-72 w-72 rounded-full bg-rose-500/15 blur-3xl" />
+              <div className="low-fx-gradient absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-violet-500/10 blur-3xl" />
+              <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                <div className="max-w-2xl">
+                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-rose-300">
+                    <Trophy className="h-3.5 w-3.5" />
+                    Tournament command
+                  </div>
+                  <h2 className="font-heading text-3xl font-black tracking-tight text-white md:text-4xl">Build the circuit without the clutter.</h2>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">
+                    Manage live tournament records, planned season nodes, readiness, status, and schedule from one consistent workspace.
+                  </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
-                    {tournamentsQuery.data?.length ?? 0} tournaments
-                  </Badge>
-                  <Button
-                    size="sm"
-                    className="bg-rose-500 text-white hover:bg-rose-600"
-                    onClick={() => setIsAddTournamentOpen(true)}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Tournament
-                  </Button>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:w-[520px]">
+                  {[
+                    ['Live', liveTournamentCount],
+                    ['Created', seasonTournaments.length],
+                    ['Planned', plannedTournamentNodes.length],
+                    ['Ready', readyPlannedTournamentCount],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-2xl border border-white/[0.08] bg-black/30 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500">{label}</p>
+                      <p className="mt-2 text-2xl font-black text-white">{value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {data.season.status === 'draft' && (
-              <div className="flex items-start gap-3 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
-                <p className="text-sm text-blue-300">
-                  Add tournaments from the Structure tab. Publishing creates the real tournament records atomically from this season-owned plan.
-                </p>
-              </div>
-            )}
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="space-y-4">
+                <div className="flex flex-col gap-4 rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Tournament registry</p>
+                    <p className="mt-1 text-xs text-zinc-500">Created season tournaments appear here with status, role, schedule, and quick access.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-zinc-300 hover:bg-white/[0.04]">
+                      {seasonTournaments.length} records
+                    </Badge>
+                    <Button
+                      size="sm"
+                      className="rounded-full bg-rose-500 px-4 text-white hover:bg-rose-400"
+                      onClick={() => setIsAddTournamentOpen(true)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Tournament
+                    </Button>
+                  </div>
+                </div>
 
-            {tournamentsQuery.isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-20 animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.03]" />
-                ))}
-              </div>
-            ) : tournamentsQuery.error ? (
-              <div className="flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 p-4">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
-                <p className="text-sm text-red-300">Failed to load tournaments. Please retry.</p>
-              </div>
-            ) : tournamentsQuery.data && tournamentsQuery.data.length > 0 ? (
-              <div className="space-y-3">
-                {tournamentsQuery.data.map((st) => {
-                  const roleMeta: Record<string, string> = {
-                    qualifier: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-                    event: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
-                    regional_final: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-                    grand_final: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-                    playoff: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-                    last_chance_qualifier: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-                    custom: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
-                  };
-                  const statusMeta: Record<string, string> = {
-                    draft: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
-                    scheduled: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-                    live: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-                    completed: 'bg-white/10 text-white border-white/20',
-                    cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
-                  };
-                  const roleClass = roleMeta[st.role] ?? roleMeta.custom;
-                  const statusClass = statusMeta[st.tournamentStatus ?? 'draft'] ?? statusMeta.draft;
-                  return (
-                    <div key={st.id} className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.06] bg-[#0a0a0c] p-4 transition hover:border-white/[0.10]">
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <span className={`shrink-0 rounded-lg border px-2 py-0.5 text-xs font-semibold capitalize ${roleClass}`}>
-                          {st.role.replace(/_/g, ' ')}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-white">{st.displayName || st.tournamentName}</p>
-                          <p className="text-xs text-zinc-500">{st.region ? `Region: ${st.region}` : 'No region'}</p>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className={`rounded-lg border px-2 py-0.5 text-xs font-medium capitalize ${statusClass}`}>
-                          {st.tournamentStatus ?? st.status}
-                        </span>
-                        <Button asChild size="sm" variant="ghost" className="h-8 w-8 p-0 text-zinc-400 hover:text-white">
-                          <a href={`/organizer/tournament/${st.slug || st.tournamentId}`} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      </div>
+                {tournamentsQuery.isLoading ? (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="h-52 animate-pulse rounded-3xl border border-white/[0.06] bg-white/[0.03]" />
+                    ))}
+                  </div>
+                ) : tournamentsQuery.error ? (
+                  <div className="flex items-start gap-3 rounded-3xl border border-red-500/20 bg-red-500/5 p-5">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-200">Failed to load tournaments</p>
+                      <p className="mt-1 text-xs text-red-300/70">Please retry after checking the season API response.</p>
                     </div>
-                  );
-                })}
-              </div>
-            ) : data.season.status === 'draft' && nodeRows.filter(n => n.nodeType !== 'root').length > 0 ? (
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-widest text-zinc-600">Planned tournaments (pre-publish)</p>
-                {nodeRows.filter(n => n.nodeType !== 'root').map((node) => {
-                  const config = readTournamentConfig(node);
-                  const isReady = config.format && config.teamSize && config.maxTeams && config.registrationType;
-                  const meta = getPhaseMetaForType(node.nodeType as Exclude<SeasonNodeType, 'root'>);
-                  return (
-                    <div key={node.id} className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.04] bg-white/[0.02] p-4 opacity-70">
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <span className={`shrink-0 rounded-lg border px-2 py-0.5 text-xs font-semibold ${meta.accentBg} ${meta.accentBorder} ${meta.accent}`}>
-                          {meta.label.replace(/s$/, '')}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-zinc-300">{node.name || 'Unnamed tournament'}</p>
-                          {config.format && (
-                            <p className="text-xs text-zinc-600">{config.format.replace(/_/g, ' ')} · {config.teamSize ? `${config.teamSize}v${config.teamSize}` : ''} · Best of {config.bestOf ?? 1}</p>
-                          )}
+                  </div>
+                ) : seasonTournaments.length > 0 ? (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {seasonTournaments.map((st, index) => {
+                      const status = st.tournamentStatus ?? st.status ?? 'draft';
+                      const role = st.role ?? st.season_role ?? 'custom';
+                      const title = st.displayName || st.tournamentName || st.name || 'Untitled tournament';
+                      const hrefId = st.slug || st.tournamentId || st.id;
+
+                      return (
+                        <div key={st.id} className="group relative overflow-hidden rounded-3xl border border-white/[0.07] bg-[#0a0a0c] p-5 transition hover:-translate-y-0.5 hover:border-rose-500/25 hover:bg-[#0d0d10]">
+                          <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-white/[0.025]" />
+                          <div className="relative flex items-start justify-between gap-4">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-sm font-black text-white">
+                                {String(index + 1).padStart(2, '0')}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate font-heading text-lg font-bold text-white">{title}</p>
+                                <p className="mt-1 truncate text-xs text-zinc-500">{st.region ? `${st.region} region` : 'Global circuit node'}</p>
+                              </div>
+                            </div>
+                            <Button asChild size="sm" variant="ghost" className="h-9 w-9 shrink-0 rounded-full p-0 text-zinc-500 hover:bg-white/10 hover:text-white">
+                              <a href={`/organizer/tournament/${hrefId}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          </div>
+
+                          <div className="relative mt-5 flex flex-wrap gap-2">
+                            <span className={`rounded-full border px-3 py-1 text-[11px] font-bold capitalize ${getTournamentRoleClass(role)}`}>
+                              {formatTournamentLabel(role)}
+                            </span>
+                            <span className={`rounded-full border px-3 py-1 text-[11px] font-bold capitalize ${getTournamentStatusClass(status)}`}>
+                              {formatTournamentLabel(status)}
+                            </span>
+                          </div>
+
+                          <div className="relative mt-5 grid gap-3 sm:grid-cols-3">
+                            <div className="rounded-2xl border border-white/[0.05] bg-white/[0.025] p-3">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">Starts</p>
+                              <p className="mt-1 text-xs font-semibold text-zinc-300">{formatDisplayDate(st.start_date)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/[0.05] bg-white/[0.025] p-3">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">Ends</p>
+                              <p className="mt-1 text-xs font-semibold text-zinc-300">{formatDisplayDate(st.end_date)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/[0.05] bg-white/[0.025] p-3">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">Teams</p>
+                              <p className="mt-1 text-xs font-semibold text-zinc-300">{st.current_participants ?? 0} joined</p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className={`rounded-lg border px-2 py-0.5 text-xs font-medium ${isReady ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
-                          {isReady ? 'Ready' : 'Needs config'}
-                        </span>
-                        <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-zinc-500">
-                          On publish
-                        </span>
-                      </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex min-h-[360px] flex-col items-center justify-center rounded-3xl border border-dashed border-white/[0.08] bg-white/[0.02] px-6 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-white/[0.08] bg-white/[0.04]">
+                      <Activity className="h-8 w-8 text-zinc-500" />
                     </div>
-                  );
-                })}
+                    <p className="mt-5 text-lg font-bold text-white">No created tournaments yet</p>
+                    <p className="mt-2 max-w-md text-sm leading-6 text-zinc-500">
+                      Start with the planned nodes from your structure, or create a tournament directly from this registry.
+                    </p>
+                    <Button
+                      size="sm"
+                      className="mt-6 rounded-full bg-rose-500 px-5 text-white hover:bg-rose-400"
+                      onClick={() => setIsAddTournamentOpen(true)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Tournament
+                    </Button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02] py-16 text-center">
-                <Activity className="h-10 w-10 text-zinc-600" />
-                <p className="text-sm font-medium text-zinc-400">No tournaments yet</p>
-                <p className="text-xs text-zinc-600">Add season-owned tournaments inline from the structure builder.</p>
-                <Button
-                  size="sm"
-                  className="mt-2 bg-rose-500 text-white hover:bg-rose-600"
-                  onClick={() => setIsAddTournamentOpen(true)}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Tournament
-                </Button>
-              </div>
-            )}
+
+              <aside className="space-y-4">
+                {data.season.status === 'draft' && (
+                  <div className="rounded-3xl border border-blue-500/15 bg-blue-500/[0.04] p-5">
+                    <div className="flex items-center gap-2 text-blue-300">
+                      <Info className="h-4 w-4" />
+                      <p className="text-sm font-semibold">Draft workflow</p>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-blue-200/70">
+                      Planned nodes are your blueprint. Publishing turns ready nodes into real tournament records and wires advancement.
+                    </p>
+                  </div>
+                )}
+
+                <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Planned flow</p>
+                      <p className="mt-1 text-xs text-zinc-500">{readyPlannedTournamentCount} of {plannedTournamentNodes.length} ready</p>
+                    </div>
+                    <GitBranch className="h-5 w-5 text-zinc-500" />
+                  </div>
+
+                  <div className="mt-5 space-y-3">
+                    {plannedTournamentNodes.length > 0 ? plannedTournamentNodes.map((node) => {
+                      const config = readTournamentConfig(node);
+                      const isReady = isTournamentConfigComplete(config);
+                      const meta = getPhaseMetaForType(node.nodeType as Exclude<SeasonNodeType, 'root'>);
+
+                      return (
+                        <div key={node.id} className="rounded-2xl border border-white/[0.05] bg-white/[0.025] p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${meta.accentBg} ${meta.accentBorder} ${meta.accent}`}>
+                                {meta.label.replace(/s$/, '')}
+                              </span>
+                              <p className="mt-3 truncate text-sm font-semibold text-zinc-200">{node.name || 'Unnamed tournament'}</p>
+                              <p className="mt-1 text-xs text-zinc-600">
+                                {config.format ? `${formatTournamentLabel(config.format)} · ${config.teamSize ? `${config.teamSize}v${config.teamSize}` : 'Team size unset'}` : 'Format not configured'}
+                              </p>
+                            </div>
+                            <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${isReady ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-amber-500/25 bg-amber-500/10 text-amber-300'}`}>
+                              {isReady ? 'Ready' : 'Setup'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }) : (
+                      <div className="rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.02] p-5 text-center">
+                        <p className="text-sm font-medium text-zinc-400">No planned nodes</p>
+                        <p className="mt-1 text-xs text-zinc-600">Use Structure to design the season flow.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </aside>
+            </div>
           </div>
         )}
 

@@ -235,7 +235,6 @@ const TournamentDetails = () => {
 
       const gameKey = tournament?.game?.toLowerCase();
       const isValorant = gameKey === 'valorant';
-      const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
 
       return participants.map(p => {
         const display_name = (isValorant && p.solo_riot_tag)

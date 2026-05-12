@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Calendar, Check, ChevronRight, Gamepad2, GitBranch, Globe2, Layers, Settings, Target, Trophy, X } from 'lucide-react';
+import { AlertTriangle, Calendar, Check, ChevronRight, Gamepad2, GitBranch, Globe2, Layers, Settings, Target, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -218,7 +218,7 @@ const SeasonWizard = () => {
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="fixed inset-0 pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:80px_80px]" />
-      <div className="fixed -top-40 right-0 w-[60vw] h-[60vw] rounded-full bg-rose-600/10 blur-[150px] mix-blend-screen pointer-events-none" />
+      <div className="low-fx-gradient fixed -top-40 right-0 w-[60vw] h-[60vw] rounded-full bg-rose-600/10 blur-[150px] mix-blend-screen pointer-events-none" />
 
       {createdSeason && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-rose-500/10 backdrop-blur-md">
@@ -232,35 +232,6 @@ const SeasonWizard = () => {
           </div>
         </div>
       )}
-
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/90 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8">
-          <button onClick={() => navigate('/organizer/tournaments')} className="font-black uppercase tracking-[0.24em] text-white">
-            ESPORT<span className="text-rose-500">RA</span>
-          </button>
-          <div className="hidden items-center gap-2 md:flex">
-            {(['directive', 'blueprint', 'launch'] as SectionId[]).map((section, index) => (
-              <button
-                key={section}
-                onClick={() => scrollTo(section === 'directive' ? directiveRef.current : section === 'blueprint' ? blueprintRef.current : launchRef.current)}
-                className={cn(
-                  'h-9 border px-3 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors',
-                  activeSection === section ? 'border-rose-500/60 bg-rose-500/10 text-rose-300' : 'border-white/10 bg-white/[0.03] text-zinc-500 hover:border-white/20 hover:text-white',
-                )}
-              >
-                {String(index + 1).padStart(2, '0')} {section}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => navigate('/organizer/tournaments')}
-            className="flex h-9 w-9 items-center justify-center border border-white/10 text-zinc-500 transition-colors hover:border-white/30 hover:text-white"
-            aria-label="Exit"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </header>
 
       <main className="relative mx-auto max-w-7xl px-5 py-10 lg:px-8 lg:py-14">
         <section className="mb-16 max-w-4xl">

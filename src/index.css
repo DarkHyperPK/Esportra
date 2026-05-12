@@ -154,6 +154,27 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
 /* Smooth navbar transitions */
 nav {
   transition: background-color 0.3s ease-in-out, backdrop-filter 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
@@ -673,6 +694,13 @@ html[data-low-fx="true"] {
   .blur,
   [class*="blur-["] {
     filter: none !important;
+  }
+
+  .low-fx-gradient {
+    filter: blur(64px) !important;
+    opacity: 0.85;
+    mix-blend-mode: normal !important;
+    transform: translateZ(0);
   }
 
   /* Backdrop-blur utility variants (Tailwind generates `.backdrop-blur-*`). */

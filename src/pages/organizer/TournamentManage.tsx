@@ -1779,7 +1779,6 @@ const TournamentDashboard = () => {
                             />
                           </div>
                         )}
-
                         <div className="w-full h-px bg-white/5 my-6" />
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-0 mb-8">
                           <div className="flex flex-col lg:border-r border-white/10 px-4 gap-1">
