@@ -866,7 +866,7 @@ const SeasonManage = () => {
   const ActiveNavIcon = activeNavItem.icon;
 
   const renderSidebarContent = () => (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 border-b border-white/[0.08] p-4">
         <Link
           to="/organizer/seasons"
@@ -925,7 +925,7 @@ const SeasonManage = () => {
         )}
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4">
+      <nav className="relative z-10 block min-h-[240px] flex-1 space-y-4 overflow-y-auto border-y border-white/[0.06] bg-[#070707] px-3 py-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
             <p className="mb-2 px-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-700">
@@ -963,7 +963,7 @@ const SeasonManage = () => {
         ))}
       </nav>
 
-      <div className="shrink-0 space-y-2 border-t border-white/[0.08] p-4">
+      <div className="relative z-20 shrink-0 space-y-2 border-t border-white/[0.08] bg-[#070707] p-4">
         <button
           onClick={() => { setIsMobileNavOpen(false); handleRecalculate(); }}
           disabled={recalculateSeason.isPending}
@@ -989,7 +989,7 @@ const SeasonManage = () => {
           </Button>
         </div>
       </div>
-    </>
+    </div>
   );
 
   return (
