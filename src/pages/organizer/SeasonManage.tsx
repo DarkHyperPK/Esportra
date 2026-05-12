@@ -871,11 +871,8 @@ const SeasonManage = () => {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#050505] text-white">
-      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:80px_80px]" />
-      <div className="low-fx-gradient pointer-events-none fixed -top-44 right-0 h-[42rem] w-[42rem] rounded-full bg-rose-600/10 blur-[150px]" />
-      <div className="low-fx-gradient pointer-events-none fixed bottom-0 left-72 h-[34rem] w-[34rem] rounded-full bg-violet-600/10 blur-[150px]" />
       {/* Fixed sidebar (desktop) */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-80 flex-col overflow-hidden border-r border-white/[0.08] bg-[#070707]/95 backdrop-blur-xl lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col overflow-hidden border-r border-white/[0.08] bg-[#070707] lg:flex">
         {renderSidebarContent()}
       </aside>
 
@@ -883,7 +880,7 @@ const SeasonManage = () => {
       {isMobileNavOpen && (
         <>
           <div
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-50 bg-black/70 lg:hidden"
             onClick={() => setIsMobileNavOpen(false)}
           />
           <div className="fixed inset-y-0 left-0 z-50 flex w-[22rem] max-w-[90vw] flex-col overflow-hidden border-r border-white/[0.08] bg-[#070707] lg:hidden">
@@ -903,7 +900,7 @@ const SeasonManage = () => {
       )}
 
       {/* Sticky top bar */}
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-white/[0.06] bg-[#050505]/90 px-4 backdrop-blur-md lg:hidden">
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-white/[0.06] bg-[#050505] px-4 lg:hidden">
         <button
           className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"
           onClick={() => setIsMobileNavOpen(true)}
@@ -919,8 +916,8 @@ const SeasonManage = () => {
         </div>
       </header>
 
-      <main className="relative z-10 w-full px-4 py-6 sm:px-6 lg:ml-80 lg:px-10 lg:py-10">
-        <section className="mb-8 overflow-hidden border border-white/10 bg-black/45 shadow-2xl shadow-black/30 backdrop-blur-xl">
+      <main className="relative z-10 px-4 py-6 sm:px-6 lg:ml-72 lg:px-8 lg:py-8">
+        <section className="mb-8 overflow-hidden border border-white/10 bg-[#08080a]">
           {data.season.bannerUrl && (
             <div className="h-32 border-b border-white/10 bg-cover bg-center opacity-70" style={{ backgroundImage: `url(${data.season.bannerUrl})` }} />
           )}
@@ -943,7 +940,7 @@ const SeasonManage = () => {
                   {activeNavItem.description}. Manage the complete season lifecycle from structure and tournaments to teams, standings, communications, and publishing.
                 </p>
               </div>
-              <div className="grid min-w-full grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[520px]">
+              <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4 xl:max-w-[460px]">
                 <div className="border border-white/10 bg-white/[0.03] p-4">
                   <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">Nodes</p>
                   <p className="mt-2 text-2xl font-black text-white">{plannedTournamentNodes.length}</p>
@@ -982,9 +979,9 @@ const SeasonManage = () => {
         </section>
 
         {activeTab === 'overview' && (
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="space-y-6">
-              <div className="border border-white/10 bg-black/40 p-6 backdrop-blur-xl lg:p-8">
+              <div className="border border-white/10 bg-[#08080a] p-6 lg:p-8">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-rose-400">Command Center</p>
@@ -1059,7 +1056,7 @@ const SeasonManage = () => {
                 </button>
               </div>
 
-              <div className="border border-white/10 bg-black/40 p-6 backdrop-blur-xl lg:p-8">
+              <div className="border border-white/10 bg-[#08080a] p-6 lg:p-8">
                 <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Season packet</p>
@@ -1163,7 +1160,7 @@ const SeasonManage = () => {
             </div>
 
             <aside className="space-y-6">
-              <div className="border border-white/10 bg-black/40 p-6 backdrop-blur-xl">
+              <div className="border border-white/10 bg-[#08080a] p-6">
                 <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Readiness</p>
                 <div className="mt-5 space-y-4">
                   {[
@@ -1187,12 +1184,12 @@ const SeasonManage = () => {
                 )}
               </div>
 
-              <div className="border border-white/10 bg-black/40 p-6 backdrop-blur-xl">
+              <div className="border border-white/10 bg-[#08080a] p-6">
                 <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Tree Preview</p>
                 <SeasonTreePreview tree={seasonTreePreview} className="mt-5" compact />
               </div>
 
-              <div className="border border-white/10 bg-black/40 p-6 backdrop-blur-xl">
+              <div className="border border-white/10 bg-[#08080a] p-6">
                 <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Ownership</p>
                 <p className="mt-3 text-lg font-bold text-white">{data.season.ownerFullName || data.season.ownerUsername || 'Unknown'}</p>
                 <p className="mt-1 text-sm text-zinc-500">{formatDisplayDate(data.season.startDate)} → {formatDisplayDate(data.season.endDate)}</p>
@@ -1349,7 +1346,7 @@ const SeasonManage = () => {
             </div>
 
             <div className="space-y-6">
-              <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+              <div className="rounded-[32px] border border-white/10 bg-[#08080a] p-6">
                 <h2 className="text-xl font-semibold">Live preview</h2>
                 <SeasonTreePreview tree={seasonTreePreview} className="mt-5" />
               </div>
@@ -1381,7 +1378,7 @@ const SeasonManage = () => {
         </AlertDialog>
 
         {activeTab === 'rules' && (
-          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+          <div className="rounded-[32px] border border-white/10 bg-[#08080a] p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold">Points and qualification rules</h2>
@@ -1593,7 +1590,7 @@ const SeasonManage = () => {
         )}
 
         {activeTab === 'standings' && (
-          <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+          <div className="rounded-[32px] border border-white/10 bg-[#08080a] p-6">
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold">Standings</h2>
@@ -1610,7 +1607,7 @@ const SeasonManage = () => {
 
         {activeTab === 'qualifications' && (
           <div className="space-y-6">
-            <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+            <div className="rounded-[32px] border border-white/10 bg-[#08080a] p-6">
               <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-2xl font-semibold">Qualification workflow</h2>
@@ -1696,7 +1693,7 @@ const SeasonManage = () => {
 
           return (
             <div className="space-y-6">
-              <div className="rounded-[32px] border border-white/10 bg-black/30 p-6 backdrop-blur-xl">
+              <div className="rounded-[32px] border border-white/10 bg-[#08080a] p-6">
                 <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="font-heading text-2xl font-semibold text-white">Registrations</h2>
@@ -1874,9 +1871,7 @@ const SeasonManage = () => {
 
         {activeTab === 'tournaments' && (
           <div className="space-y-6">
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#09090b] p-6 shadow-2xl shadow-black/40 md:p-8">
-              <div className="low-fx-gradient absolute -right-24 -top-28 h-72 w-72 rounded-full bg-rose-500/15 blur-3xl" />
-              <div className="low-fx-gradient absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-violet-500/10 blur-3xl" />
+            <div className="relative overflow-hidden border border-white/[0.08] bg-[#09090b] p-6 md:p-8">
               <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
                 <div className="max-w-2xl">
                   <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-rose-300">
@@ -1895,7 +1890,7 @@ const SeasonManage = () => {
                     ['Planned', plannedTournamentNodes.length],
                     ['Ready', readyPlannedTournamentCount],
                   ].map(([label, value]) => (
-                    <div key={label} className="rounded-2xl border border-white/[0.08] bg-black/30 p-4">
+                    <div key={label} className="rounded-2xl border border-white/[0.08] bg-[#08080a] p-4">
                       <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500">{label}</p>
                       <p className="mt-2 text-2xl font-black text-white">{value}</p>
                     </div>
@@ -2090,7 +2085,7 @@ const SeasonManage = () => {
                   value={newTournament.name}
                   onChange={(event) => setNewTournament((current) => ({ ...current, name: event.target.value }))}
                   placeholder="Open Qualifier 1"
-                  className="border-white/10 bg-black/30 text-white"
+                  className="border-white/10 bg-[#08080a] text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -2099,7 +2094,7 @@ const SeasonManage = () => {
                   value={newTournament.role}
                   onValueChange={(value) => setNewTournament((current) => ({ ...current, role: value }))}
                 >
-                  <SelectTrigger className="border-white/10 bg-black/30 text-white">
+                  <SelectTrigger className="border-white/10 bg-[#08080a] text-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -2115,7 +2110,7 @@ const SeasonManage = () => {
                   value={newTournament.region}
                   onChange={(event) => setNewTournament((current) => ({ ...current, region: event.target.value }))}
                   placeholder="MENA"
-                  className="border-white/10 bg-black/30 text-white"
+                  className="border-white/10 bg-[#08080a] text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -2124,7 +2119,7 @@ const SeasonManage = () => {
                   value={newTournament.format}
                   onValueChange={(value) => setNewTournament((current) => ({ ...current, format: value }))}
                 >
-                  <SelectTrigger className="border-white/10 bg-black/30 text-white">
+                  <SelectTrigger className="border-white/10 bg-[#08080a] text-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -2143,7 +2138,7 @@ const SeasonManage = () => {
                   min={2}
                   value={newTournament.maxTeams}
                   onChange={(event) => setNewTournament((current) => ({ ...current, maxTeams: event.target.value }))}
-                  className="border-white/10 bg-black/30 text-white"
+                  className="border-white/10 bg-[#08080a] text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -2153,7 +2148,7 @@ const SeasonManage = () => {
                   min={1}
                   value={newTournament.teamSize}
                   onChange={(event) => setNewTournament((current) => ({ ...current, teamSize: event.target.value }))}
-                  className="border-white/10 bg-black/30 text-white"
+                  className="border-white/10 bg-[#08080a] text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -2162,7 +2157,7 @@ const SeasonManage = () => {
                   type="date"
                   value={newTournament.registrationDeadline}
                   onChange={(event) => setNewTournament((current) => ({ ...current, registrationDeadline: event.target.value }))}
-                  className="border-white/10 bg-black/30 text-white"
+                  className="border-white/10 bg-[#08080a] text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -2171,7 +2166,7 @@ const SeasonManage = () => {
                   type="date"
                   value={newTournament.startDate}
                   onChange={(event) => setNewTournament((current) => ({ ...current, startDate: event.target.value }))}
-                  className="border-white/10 bg-black/30 text-white"
+                  className="border-white/10 bg-[#08080a] text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -2180,7 +2175,7 @@ const SeasonManage = () => {
                   type="date"
                   value={newTournament.endDate}
                   onChange={(event) => setNewTournament((current) => ({ ...current, endDate: event.target.value }))}
-                  className="border-white/10 bg-black/30 text-white"
+                  className="border-white/10 bg-[#08080a] text-white"
                 />
               </div>
             </div>
@@ -2640,11 +2635,10 @@ const SeasonManage = () => {
           );
         })()}
       </main>
-
-      <Footer />
     </div>
   );
 };
 
 export default SeasonManage;
+
 
