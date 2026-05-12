@@ -54,7 +54,7 @@ import type {
   SeasonTreeNode,
   UpdateSeasonPayload,
 } from '@/types/season';
-import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch, AlertCircle, ArrowRight, Bell, Clock, Info, Shield, Activity, X, AlertTriangle, Lock, ShieldOff, LayoutDashboard, Workflow, Trophy, ClipboardList, Target, Menu, ChevronLeft } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch, AlertCircle, ArrowRight, Bell, Clock, Info, Shield, Activity, X, AlertTriangle, Lock, ShieldOff, LayoutDashboard, Workflow, Trophy, ClipboardList, Target, Menu, ChevronLeft, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   AlertDialog,
@@ -69,40 +69,37 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import esportsGames from '@/data/esportsGames.json';
 
-const NAV_GROUPS = [
+type SeasonManageNavItem = {
+  id: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+};
+
+const NAV_GROUPS: Array<{ label: string; items: SeasonManageNavItem[] }> = [
   {
-    label: 'COMMAND',
+    label: 'GUIDE',
     items: [
-      { id: 'overview', label: 'Command Center', description: 'Health, schedule, next actions', icon: LayoutDashboard },
+      { id: 'overview', label: 'Setup Guide', description: 'Step-by-step season launch plan', icon: LayoutDashboard },
     ],
   },
   {
-    label: 'BUILD',
+    label: 'SETUP FLOW',
     items: [
-      { id: 'structure', label: 'Structure Builder', description: 'Design tournament nodes', icon: GitBranch },
-      { id: 'flow', label: 'Flow Map', description: 'Preview advancement paths', icon: Workflow },
-      { id: 'tournaments', label: 'Tournament Registry', description: 'Manage linked events', icon: Trophy },
+      { id: 'structure', label: '1. Structure & templates', description: 'Phases, dates, tournament config', icon: GitBranch },
+      { id: 'rules', label: '2. Scoring rules', description: 'Points and qualification logic', icon: Target },
+      { id: 'flow', label: '3. Advancement flow', description: 'How teams move between nodes', icon: Workflow },
+      { id: 'tournaments', label: '4. Tournament registry', description: 'Created and linked events', icon: Trophy },
+      { id: 'registrations', label: '5. Registrations', description: 'Entry windows and deadlines', icon: ClipboardList },
+      { id: 'standings', label: '6. Leaderboards', description: 'Recalculate and verify rankings', icon: TrendingUp },
     ],
   },
   {
     label: 'OPERATIONS',
     items: [
       { id: 'staff', label: 'Staff Access', description: 'Admins and co-organizers', icon: Users },
-      { id: 'registrations', label: 'Registrations', description: 'Participants and invites', icon: ClipboardList },
       { id: 'qualifications', label: 'Qualifications', description: 'Qualified teams pipeline', icon: CheckCircle2 },
-    ],
-  },
-  {
-    label: 'COMPETITION',
-    items: [
-      { id: 'rules', label: 'Points Rules', description: 'Scoring and placement logic', icon: Target },
-      { id: 'standings', label: 'Standings', description: 'Leaderboard and points', icon: TrendingUp },
       { id: 'advancement', label: 'Advancement', description: 'Promotions between nodes', icon: ArrowRight },
-    ],
-  },
-  {
-    label: 'COMMS',
-    items: [
       { id: 'announcements', label: 'Announcements', description: 'Broadcast season updates', icon: Bell },
     ],
   },
@@ -114,7 +111,7 @@ const NAV_GROUPS = [
       { id: 'audit', label: 'Audit Log', description: 'Change history', icon: FileText },
     ],
   },
-] as const;
+];
 
 const STATUS_STYLES: Record<SeasonStatus, string> = {
   draft: 'border-zinc-700/40 text-zinc-400 bg-zinc-500/10',
@@ -743,13 +740,134 @@ const SeasonManage = () => {
   const plannedTournamentNodes = nodeRows.filter((node) => node.nodeType !== 'root');
   const readyPlannedTournamentCount = plannedTournamentNodes.filter((node) => isTournamentConfigComplete(readTournamentConfig(node))).length;
   const liveTournamentCount = seasonTournaments.filter((tournament) => (tournament.tournamentStatus ?? tournament.status) === 'live').length;
+  const invalidSeasonDates = Boolean(overview.startDate && overview.endDate && new Date(overview.endDate) < new Date(overview.startDate));
+  const structureValidation = validateSeasonBuilderNodes(nodeRows);
+  const missingConfigNodes = plannedTournamentNodes.filter((node) => !isTournamentConfigComplete(readTournamentConfig(node)));
+  const missingScheduleNodes = plannedTournamentNodes.filter((node) => !node.registrationDeadline || !node.startsAt || !node.endsAt);
+  const invalidScheduleNodes = plannedTournamentNodes.filter((node) => {
+    if (node.registrationDeadline && node.startsAt && new Date(node.registrationDeadline) > new Date(node.startsAt)) return true;
+    if (node.startsAt && node.endsAt && new Date(node.endsAt) < new Date(node.startsAt)) return true;
+    return false;
+  });
+  const totalAdvancementConnections = plannedTournamentNodes.reduce((total, node) => total + readOutgoingConnections(node).length, 0);
+  const hasRuleRows = ruleRows.some((rule) => rule.sourceNodeId);
+  const hasInvalidRuleRows = ruleRows.some((rule) => rule.sourceNodeId && rule.placementFrom > rule.placementTo);
+  const hasRuleDestination = ruleRows.some((rule) => Boolean(rule.destinationNodeId));
+  const identityReady = Boolean(overview.name.trim() && overview.slug.trim() && overview.game && overview.startDate && overview.endDate && !invalidSeasonDates);
+  const structureReady = structureValidation.valid && plannedTournamentNodes.length > 0 && missingConfigNodes.length === 0 && missingScheduleNodes.length === 0 && invalidScheduleNodes.length === 0;
+  const rulesReady = hasRuleRows && !hasInvalidRuleRows;
+  const flowReady = plannedTournamentNodes.length <= 1 || totalAdvancementConnections > 0 || hasRuleDestination;
+  const tournamentsReady = seasonTournaments.length > 0 || data.season.status === 'draft';
+  const leaderboardReady = rulesReady && (standingsQuery.data?.length ?? 0) > 0;
+  const setupSteps = [
+    {
+      id: 'identity',
+      tab: 'overview',
+      label: 'Season identity',
+      summary: 'Name, game, slug, date range, public visibility, and branding.',
+      action: 'Review identity',
+      complete: identityReady,
+      blocked: false,
+      checks: [
+        overview.name.trim() ? 'Season name set' : 'Add a season name',
+        overview.slug.trim() ? 'Slug set' : 'Add a public slug',
+        overview.startDate && overview.endDate ? 'Season dates set' : 'Set season start and end dates',
+        invalidSeasonDates ? 'Fix season date order' : 'Season date range valid',
+      ],
+    },
+    {
+      id: 'structure',
+      tab: 'structure',
+      label: 'Structure and templates',
+      summary: 'Create the real season circuit: qualifiers, stages, finals, tournament templates, and schedules.',
+      action: 'Build structure',
+      complete: structureReady,
+      blocked: !identityReady,
+      checks: [
+        structureValidation.valid ? 'Tree has valid nodes' : structureValidation.message ?? 'Create the season tree',
+        plannedTournamentNodes.length > 0 ? `${plannedTournamentNodes.length} tournament node${plannedTournamentNodes.length === 1 ? '' : 's'} planned` : 'Add at least one tournament node',
+        missingConfigNodes.length === 0 ? 'Tournament templates configured' : `${missingConfigNodes.length} node${missingConfigNodes.length === 1 ? '' : 's'} missing format/team size/registration template`,
+        missingScheduleNodes.length === 0 ? 'Registration and tournament dates set' : `${missingScheduleNodes.length} node${missingScheduleNodes.length === 1 ? '' : 's'} missing registration/start/end dates`,
+        invalidScheduleNodes.length === 0 ? 'Tournament schedule order valid' : `${invalidScheduleNodes.length} node${invalidScheduleNodes.length === 1 ? '' : 's'} have invalid schedule order`,
+      ],
+    },
+    {
+      id: 'rules',
+      tab: 'rules',
+      label: 'Scoring and qualification rules',
+      summary: 'Define points, placements, qualification status, and optional destination nodes.',
+      action: 'Configure rules',
+      complete: rulesReady,
+      blocked: !structureReady,
+      checks: [
+        hasRuleRows ? `${ruleRows.filter((rule) => rule.sourceNodeId).length} rule${ruleRows.filter((rule) => rule.sourceNodeId).length === 1 ? '' : 's'} configured` : 'Add at least one points or qualification rule',
+        hasInvalidRuleRows ? 'Fix invalid placement ranges' : 'Placement ranges valid',
+      ],
+    },
+    {
+      id: 'flow',
+      tab: 'flow',
+      label: 'Advancement flow',
+      summary: 'Verify how winners and qualified teams move from one tournament node to the next.',
+      action: 'Review flow',
+      complete: flowReady,
+      blocked: !structureReady || !rulesReady,
+      checks: [
+        plannedTournamentNodes.length <= 1 ? 'Single-node season does not require downstream routing' : 'Multi-node season detected',
+        totalAdvancementConnections > 0 ? `${totalAdvancementConnections} structure connection${totalAdvancementConnections === 1 ? '' : 's'} wired` : 'Wire structure connections or rule destinations',
+        hasRuleDestination ? 'Rule destinations configured' : 'No rule destination selected yet',
+      ],
+    },
+    {
+      id: 'tournaments',
+      tab: 'tournaments',
+      label: 'Tournament registry',
+      summary: 'Publish or create linked tournament records from the approved structure.',
+      action: data.season.status === 'draft' ? 'Publish to create tournaments' : 'Manage tournaments',
+      complete: tournamentsReady,
+      blocked: !structureReady || !rulesReady || !flowReady,
+      checks: [
+        seasonTournaments.length > 0 ? `${seasonTournaments.length} linked tournament${seasonTournaments.length === 1 ? '' : 's'}` : 'No linked tournaments yet',
+        data.season.status === 'draft' ? 'Publishing will create tournament records' : 'Season has been published',
+      ],
+    },
+    {
+      id: 'registrations',
+      tab: 'registrations',
+      label: 'Registration windows',
+      summary: 'Confirm registration deadlines happen before tournament start dates.',
+      action: 'Validate registrations',
+      complete: missingScheduleNodes.length === 0 && invalidScheduleNodes.length === 0,
+      blocked: !structureReady,
+      checks: [
+        missingScheduleNodes.length === 0 ? 'All registration deadlines exist' : `${missingScheduleNodes.length} tournament node${missingScheduleNodes.length === 1 ? '' : 's'} missing registration or event dates`,
+        invalidScheduleNodes.length === 0 ? 'Registration deadlines are before starts' : 'Fix registration/start/end date ordering',
+      ],
+    },
+    {
+      id: 'standings',
+      tab: 'standings',
+      label: 'Leaderboards and recalculation',
+      summary: 'Recalculate standings and confirm the leaderboard is ready before launch or after results.',
+      action: 'Open leaderboards',
+      complete: leaderboardReady,
+      blocked: !rulesReady,
+      checks: [
+        rulesReady ? 'Scoring rules available for leaderboard calculation' : 'Scoring rules required first',
+        (standingsQuery.data?.length ?? 0) > 0 ? `${standingsQuery.data?.length ?? 0} leaderboard row${(standingsQuery.data?.length ?? 0) === 1 ? '' : 's'} available` : 'Run recalculation after tournaments have results',
+      ],
+    },
+  ];
+  const completedSetupSteps = setupSteps.filter((step) => step.complete).length;
+  const nextSetupStep = setupSteps.find((step) => !step.complete) ?? setupSteps[setupSteps.length - 1];
+  const canPublishFromGuide = identityReady && structureReady && rulesReady && flowReady && missingScheduleNodes.length === 0 && invalidScheduleNodes.length === 0;
   const allNavItems = NAV_GROUPS.flatMap((group) => group.items);
   const activeNavItem = allNavItems.find((item) => item.id === activeTab) ?? allNavItems[0];
   const ActiveNavIcon = activeNavItem.icon;
 
   const renderSidebarContent = () => (
     <>
-      <div className="shrink-0 border-b border-white/[0.08] p-5">
+      <div className="shrink-0 border-b border-white/[0.08] p-4">
         <Link
           to="/organizer/seasons"
           className="mb-5 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500 transition-colors hover:text-zinc-200"
@@ -759,9 +877,9 @@ const SeasonManage = () => {
         </Link>
         <div className="overflow-hidden border border-white/10 bg-white/[0.03]">
           {data.season.bannerUrl && (
-            <div className="h-20 border-b border-white/10 bg-cover bg-center" style={{ backgroundImage: `url(${data.season.bannerUrl})` }} />
+            <div className="h-14 border-b border-white/10 bg-cover bg-center" style={{ backgroundImage: `url(${data.season.bannerUrl})` }} />
           )}
-          <div className="p-4">
+          <div className="p-3">
             <div className="flex items-start gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden border border-white/10 bg-black">
                 {data.season.logoUrl
@@ -774,7 +892,7 @@ const SeasonManage = () => {
                 <p className="mt-1 truncate text-xs text-zinc-500">{data.season.game}</p>
               </div>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <span className={`inline-flex items-center border px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] ${STATUS_STYLES[data.season.status]}`}>
                 {data.season.status}
               </span>
@@ -788,7 +906,7 @@ const SeasonManage = () => {
         {data.season.status === 'draft' && (
           <button
             onClick={() => { setIsMobileNavOpen(false); handlePublish(); }}
-            disabled={publishSeason.isPending}
+            disabled={!canPublishFromGuide || publishSeason.isPending}
             className="mt-4 flex h-11 w-full items-center justify-center gap-2 bg-rose-500 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-white transition-colors hover:bg-rose-400 active:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CheckCircle2 className="h-4 w-4" />
@@ -807,7 +925,7 @@ const SeasonManage = () => {
         )}
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-4 py-5">
+      <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
             <p className="mb-2 px-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-700">
@@ -816,22 +934,27 @@ const SeasonManage = () => {
             <div className="space-y-1">
               {group.items.map(({ id, label, description, icon: Icon }) => {
                 const isActive = activeTab === id;
+                const navStep = setupSteps.find((step) => step.tab === id);
+                const NavStatusIcon = navStep?.complete ? CheckCircle2 : navStep?.blocked ? Lock : navStep ? AlertTriangle : null;
                 return (
                   <button
                     key={id}
-                    onClick={() => { setTab(id as string); setIsMobileNavOpen(false); }}
+                    onClick={() => { setTab(id); setIsMobileNavOpen(false); }}
                     className={cn(
-                      'group flex w-full items-start gap-3 border p-3 text-left transition-colors',
+                      'group flex w-full items-start gap-2 border p-2.5 text-left transition-colors',
                       isActive
                         ? 'border-rose-500/40 bg-rose-500/[0.08] text-white'
                         : 'border-transparent text-zinc-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-white',
                     )}
                   >
                     <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', isActive ? 'text-rose-400' : 'text-zinc-600 group-hover:text-zinc-300')} />
-                    <span className="min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold leading-4">{label}</span>
                       <span className="mt-1 block text-xs leading-4 text-zinc-600 group-hover:text-zinc-500">{description}</span>
                     </span>
+                    {NavStatusIcon && (
+                      <NavStatusIcon className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', navStep?.complete ? 'text-emerald-400' : navStep?.blocked ? 'text-zinc-600' : 'text-amber-400')} />
+                    )}
                   </button>
                 );
               })}
@@ -960,13 +1083,17 @@ const SeasonManage = () => {
               </div>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button className="rounded-none bg-rose-500 text-white hover:bg-rose-400" onClick={() => setTab('structure')}>
-                <GitBranch className="mr-2 h-4 w-4" />
-                Structure Builder
+              <Button className="rounded-none bg-rose-500 text-white hover:bg-rose-400" onClick={() => setTab(nextSetupStep.tab)}>
+                Continue: {nextSetupStep.label}
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button variant="outline" className="rounded-none border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.07]" onClick={() => setTab('tournaments')}>
-                <Trophy className="mr-2 h-4 w-4" />
-                Tournament Registry
+              <Button variant="outline" className="rounded-none border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.07]" onClick={() => setTab('overview')}>
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Setup Guide
+              </Button>
+              <Button variant="outline" className="rounded-none border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.07]" onClick={handleRecalculate} disabled={recalculateSeason.isPending}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${recalculateSeason.isPending ? 'animate-spin' : ''}`} />
+                Recalculate
               </Button>
               <Button asChild variant="outline" className="rounded-none border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.07]">
                 <Link to={`/season/${data.season.slug}`} target="_blank">
@@ -982,88 +1109,76 @@ const SeasonManage = () => {
           <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="space-y-6">
               <div className="border border-white/10 bg-[#08080a] p-6 lg:p-8">
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-rose-400">Command Center</p>
-                    <h2 className="mt-3 text-3xl font-black uppercase tracking-tight text-white">Season operations dashboard</h2>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-                      Finish the season setup from one place: build the tournament structure, wire advancement, publish, then manage teams and standings.
+                    <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-rose-400">Setup Guide</p>
+                    <h2 className="mt-3 text-3xl font-black uppercase tracking-tight text-white">Launch this season step by step</h2>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400">
+                      Follow the checklist in order. Each step validates one part of the season lifecycle: identity, structure templates, schedules, scoring rules, advancement routing, tournaments, registrations, and leaderboards.
                     </p>
                   </div>
-                  <Button className="rounded-none bg-rose-500 px-6 text-white hover:bg-rose-400" onClick={() => setTab('structure')}>
-                    Continue setup
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  {[
-                    { label: 'Structure', value: `${readyPlannedTournamentCount}/${plannedTournamentNodes.length}`, hint: 'nodes ready', icon: GitBranch, tone: readyPlannedTournamentCount === plannedTournamentNodes.length && plannedTournamentNodes.length > 0 ? 'text-emerald-400' : 'text-amber-400', tab: 'structure' },
-                    { label: 'Tournaments', value: seasonTournaments.length, hint: 'linked events', icon: Trophy, tone: seasonTournaments.length > 0 ? 'text-emerald-400' : 'text-zinc-400', tab: 'tournaments' },
-                    { label: 'Rules', value: data.rules.length, hint: 'points rules', icon: Target, tone: data.rules.length > 0 ? 'text-emerald-400' : 'text-zinc-400', tab: 'rules' },
-                    { label: 'Staff', value: staffRows.length, hint: 'operators', icon: Users, tone: staffRows.length > 0 ? 'text-emerald-400' : 'text-zinc-400', tab: 'staff' },
-                  ].map(({ label, value, hint, icon: Icon, tone, tab }) => (
-                    <button
-                      key={label}
-                      onClick={() => setTab(tab)}
-                      className="group border border-white/10 bg-white/[0.03] p-5 text-left transition-colors hover:border-white/20 hover:bg-white/[0.05]"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <Icon className="h-5 w-5 text-zinc-600 transition-colors group-hover:text-zinc-300" />
-                        <ArrowRight className="h-4 w-4 text-zinc-700 transition-colors group-hover:text-rose-400" />
-                      </div>
-                      <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">{label}</p>
-                      <p className={`mt-2 text-3xl font-black ${tone}`}>{value}</p>
-                      <p className="mt-1 text-xs text-zinc-500">{hint}</p>
-                    </button>
-                  ))}
+                  <div className="min-w-[180px] border border-white/10 bg-white/[0.03] p-4">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-600">Progress</p>
+                    <p className="mt-2 text-3xl font-black text-white">{completedSetupSteps}/{setupSteps.length}</p>
+                    <div className="mt-3 h-1.5 bg-white/[0.06]">
+                      <div className="h-full bg-rose-500" style={{ width: `${Math.round((completedSetupSteps / setupSteps.length) * 100)}%` }} />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid gap-6 lg:grid-cols-3">
-                <button
-                  onClick={() => setTab('structure')}
-                  className="border border-rose-500/30 bg-rose-500/[0.05] p-6 text-left transition-colors hover:bg-rose-500/[0.08]"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center border border-rose-500/30 bg-rose-500/10 text-rose-300">
-                    <GitBranch className="h-6 w-6" />
-                  </div>
-                  <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.28em] text-rose-300">Step 01</p>
-                  <h3 className="mt-2 text-xl font-black uppercase tracking-tight text-white">Build structure</h3>
-                  <p className="mt-3 text-sm leading-6 text-zinc-400">Create qualifiers, finals, custom nodes, schedule windows, and tournament configuration.</p>
-                </button>
-                <button
-                  onClick={() => setTab('flow')}
-                  className="border border-white/10 bg-white/[0.03] p-6 text-left transition-colors hover:border-white/20 hover:bg-white/[0.05]"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center border border-white/10 bg-black text-violet-300">
-                    <Workflow className="h-6 w-6" />
-                  </div>
-                  <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-600">Step 02</p>
-                  <h3 className="mt-2 text-xl font-black uppercase tracking-tight text-white">Wire flow</h3>
-                  <p className="mt-3 text-sm leading-6 text-zinc-400">Preview how winners, points, and qualification rules advance through the season.</p>
-                </button>
-                <button
-                  onClick={() => setTab('tournaments')}
-                  className="border border-white/10 bg-white/[0.03] p-6 text-left transition-colors hover:border-white/20 hover:bg-white/[0.05]"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center border border-white/10 bg-black text-amber-300">
-                    <Trophy className="h-6 w-6" />
-                  </div>
-                  <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-600">Step 03</p>
-                  <h3 className="mt-2 text-xl font-black uppercase tracking-tight text-white">Manage events</h3>
-                  <p className="mt-3 text-sm leading-6 text-zinc-400">Track created tournaments, draft nodes, live events, and public entry points.</p>
-                </button>
+              <div className="space-y-3">
+                {setupSteps.map((step, index) => {
+                  const StatusIcon = step.complete ? CheckCircle2 : step.blocked ? Lock : AlertTriangle;
+                  return (
+                    <div key={step.id} className={cn('border bg-[#08080a] p-5', step.complete ? 'border-emerald-500/20' : step.blocked ? 'border-white/10 opacity-70' : 'border-amber-500/25')}>
+                      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex gap-4">
+                          <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center border font-mono text-xs font-black', step.complete ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : step.blocked ? 'border-zinc-700 bg-white/[0.03] text-zinc-500' : 'border-amber-500/30 bg-amber-500/10 text-amber-300')}>
+                            {String(index + 1).padStart(2, '0')}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-lg font-black uppercase tracking-tight text-white">{step.label}</h3>
+                              <span className={cn('inline-flex items-center gap-1.5 border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em]', step.complete ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : step.blocked ? 'border-zinc-700 bg-white/[0.03] text-zinc-500' : 'border-amber-500/25 bg-amber-500/10 text-amber-300')}>
+                                <StatusIcon className="h-3 w-3" />
+                                {step.complete ? 'Complete' : step.blocked ? 'Locked' : 'Needs work'}
+                              </span>
+                            </div>
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">{step.summary}</p>
+                            <div className="mt-4 grid gap-2 md:grid-cols-2">
+                              {step.checks.map((check) => (
+                                <div key={check} className="flex items-start gap-2 text-sm text-zinc-500">
+                                  <span className="mt-1 h-1.5 w-1.5 shrink-0 bg-zinc-700" />
+                                  <span>{check}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          variant={step.complete ? 'outline' : 'default'}
+                          className={cn('shrink-0 rounded-none', step.complete ? 'border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.07]' : 'bg-rose-500 text-white hover:bg-rose-400')}
+                          disabled={step.blocked}
+                          onClick={() => setTab(step.tab)}
+                        >
+                          {step.action}
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="border border-white/10 bg-[#08080a] p-6 lg:p-8">
                 <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Season packet</p>
-                    <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Identity and publishing controls</h2>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Step 01 detail</p>
+                    <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Season identity and publishing controls</h2>
                   </div>
                   <Button className="rounded-none bg-white text-black hover:bg-zinc-200" onClick={handleOverviewSave} disabled={updateSeason.isPending}>
-                    Save changes
+                    Save identity
                   </Button>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2">
@@ -1152,7 +1267,7 @@ const SeasonManage = () => {
                   <h3 className="text-lg font-black uppercase tracking-tight text-white">Season branding</h3>
                   <p className="mt-1 text-sm text-zinc-500">Upload a banner and logo for the public season experience.</p>
                   <div className="mt-5 grid gap-6 md:grid-cols-[1fr_150px]">
-                    <ImageUploader value={overview.bannerUrl} onChange={(url) => setOverview((current) => ({ ...current, bannerUrl: url }))} bucket="season-images" folder="banners" aspectRatio="banner" label="Season banner" helperText="Recommended: 1920×1080." />
+                    <ImageUploader value={overview.bannerUrl} onChange={(url) => setOverview((current) => ({ ...current, bannerUrl: url }))} bucket="season-images" folder="banners" aspectRatio="banner" label="Season banner" helperText="Recommended: 1920x1080." />
                     <ImageUploader value={overview.logoUrl} onChange={(url) => setOverview((current) => ({ ...current, logoUrl: url }))} bucket="season-images" folder="logos" aspectRatio="logo" label="Logo" helperText="1:1 ratio." />
                   </div>
                 </div>
@@ -1161,43 +1276,58 @@ const SeasonManage = () => {
 
             <aside className="space-y-6">
               <div className="border border-white/10 bg-[#08080a] p-6">
-                <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Readiness</p>
-                <div className="mt-5 space-y-4">
-                  {[
-                    { label: 'Structure nodes configured', complete: plannedTournamentNodes.length > 0 && readyPlannedTournamentCount === plannedTournamentNodes.length },
-                    { label: 'At least one tournament exists', complete: seasonTournaments.length > 0 || plannedTournamentNodes.length > 0 },
-                    { label: 'Points rules prepared', complete: data.rules.length > 0 },
-                    { label: 'Public visibility reviewed', complete: overview.isPublic || data.season.status === 'draft' },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-start gap-3">
-                      <div className={cn('mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border', item.complete ? 'border-emerald-500 bg-emerald-500 text-black' : 'border-zinc-700 bg-white/[0.03] text-zinc-600')}>
-                        {item.complete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clock className="h-3 w-3" />}
-                      </div>
-                      <p className={cn('text-sm leading-5', item.complete ? 'text-zinc-300' : 'text-zinc-500')}>{item.label}</p>
-                    </div>
-                  ))}
-                </div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Launch gate</p>
+                <h3 className="mt-3 text-xl font-black uppercase tracking-tight text-white">{canPublishFromGuide ? 'Ready to publish' : 'Not ready yet'}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">
+                  Publishing should only happen after identity, templates, schedules, scoring, and advancement checks are complete.
+                </p>
                 {data.season.status === 'draft' && (
-                  <Button className="mt-6 w-full rounded-none bg-rose-500 text-white hover:bg-rose-400" onClick={handlePublish} disabled={publishSeason.isPending}>
+                  <Button className="mt-5 w-full rounded-none bg-rose-500 text-white hover:bg-rose-400 disabled:opacity-50" onClick={handlePublish} disabled={!canPublishFromGuide || publishSeason.isPending}>
                     {publishSeason.isPending ? 'Publishing...' : 'Publish season'}
                   </Button>
                 )}
               </div>
 
               <div className="border border-white/10 bg-[#08080a] p-6">
-                <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Tree Preview</p>
-                <SeasonTreePreview tree={seasonTreePreview} className="mt-5" compact />
+                <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Validation summary</p>
+                <div className="mt-5 space-y-3">
+                  {[
+                    { label: 'Season dates', ok: identityReady, detail: invalidSeasonDates ? 'End date is before start date' : 'Name, slug, game, and date range' },
+                    { label: 'Tournament templates', ok: missingConfigNodes.length === 0 && plannedTournamentNodes.length > 0, detail: `${readyPlannedTournamentCount}/${plannedTournamentNodes.length} configured` },
+                    { label: 'Schedules', ok: missingScheduleNodes.length === 0 && invalidScheduleNodes.length === 0, detail: `${missingScheduleNodes.length + invalidScheduleNodes.length} schedule issue${missingScheduleNodes.length + invalidScheduleNodes.length === 1 ? '' : 's'}` },
+                    { label: 'Advancement rules', ok: flowReady, detail: `${totalAdvancementConnections} connection${totalAdvancementConnections === 1 ? '' : 's'} and ${hasRuleDestination ? 'rule destinations' : 'no rule destinations'}` },
+                    { label: 'Leaderboards', ok: leaderboardReady, detail: `${standingsQuery.data?.length ?? 0} standing row${(standingsQuery.data?.length ?? 0) === 1 ? '' : 's'}` },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-start gap-3">
+                      <div className={cn('mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border', item.ok ? 'border-emerald-500 bg-emerald-500 text-black' : 'border-amber-500/40 bg-amber-500/10 text-amber-300')}>
+                        {item.ok ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-zinc-300">{item.label}</p>
+                        <p className="mt-0.5 text-xs text-zinc-600">{item.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="border border-white/10 bg-[#08080a] p-6">
-                <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Ownership</p>
-                <p className="mt-3 text-lg font-bold text-white">{data.season.ownerFullName || data.season.ownerUsername || 'Unknown'}</p>
-                <p className="mt-1 text-sm text-zinc-500">{formatDisplayDate(data.season.startDate)} → {formatDisplayDate(data.season.endDate)}</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Structure roles</p>
+                <p className="mt-3 text-sm leading-6 text-zinc-400">
+                  Season structure is the blueprint. Every non-root node should represent a tournament role or phase such as qualifier, event, stage, final, regional final, last chance qualifier, playoff, grand final, or custom.
+                </p>
+                <Button variant="outline" className="mt-5 w-full rounded-none border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.07]" onClick={() => setTab('structure')}>
+                  Edit structure templates
+                </Button>
+              </div>
+
+              <div className="border border-white/10 bg-[#08080a] p-6">
+                <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Tree Preview</p>
+                <SeasonTreePreview tree={seasonTreePreview} className="mt-5" compact />
               </div>
             </aside>
           </div>
         )}
-
         {activeTab === 'staff' && (
           <div className="space-y-6">
             {/* Header */}
@@ -2640,5 +2770,7 @@ const SeasonManage = () => {
 };
 
 export default SeasonManage;
+
+
 
 
