@@ -13,6 +13,7 @@ import {
   readTournamentConfig,
   toSeasonNodeDraftPayload,
   validateSeasonBuilderNodes,
+  validateSeasonSetupDomain,
 } from '@/components/season/builder/seasonBuilderUtils';
 import { formatDistanceToNow } from 'date-fns';
 import SeasonQualificationsPanel from '@/components/season/SeasonQualificationsPanel';
@@ -741,28 +742,20 @@ const SeasonManage = () => {
   const readyPlannedTournamentCount = plannedTournamentNodes.filter((node) => isTournamentConfigComplete(readTournamentConfig(node))).length;
   const liveTournamentCount = seasonTournaments.filter((tournament) => (tournament.tournamentStatus ?? tournament.status) === 'live').length;
   const invalidSeasonDates = Boolean(overview.startDate && overview.endDate && new Date(overview.endDate) < new Date(overview.startDate));
-  const structureValidation = validateSeasonBuilderNodes(nodeRows);
-  const missingConfigNodes = plannedTournamentNodes.filter((node) => !isTournamentConfigComplete(readTournamentConfig(node)));
-  const missingScheduleNodes = plannedTournamentNodes.filter((node) => !node.registrationDeadline || !node.startsAt || !node.endsAt);
-  const invalidScheduleNodes = plannedTournamentNodes.filter((node) => {
-    if (node.registrationDeadline && node.startsAt && new Date(node.registrationDeadline) > new Date(node.startsAt)) return true;
-    if (node.startsAt && node.endsAt && new Date(node.endsAt) < new Date(node.startsAt)) return true;
-    return false;
-  });
   const totalAdvancementConnections = plannedTournamentNodes.reduce((total, node) => total + readOutgoingConnections(node).length, 0);
   const hasRuleRows = ruleRows.some((rule) => rule.sourceNodeId);
   const hasInvalidRuleRows = ruleRows.some((rule) => rule.sourceNodeId && rule.placementFrom > rule.placementTo);
   const hasRuleDestination = ruleRows.some((rule) => Boolean(rule.destinationNodeId));
   const identityReady = Boolean(overview.name.trim() && overview.slug.trim() && overview.game && overview.startDate && overview.endDate && !invalidSeasonDates);
-  const structureReady = structureValidation.valid && plannedTournamentNodes.length > 0 && missingConfigNodes.length === 0 && missingScheduleNodes.length === 0 && invalidScheduleNodes.length === 0;
   const rulesReady = hasRuleRows && !hasInvalidRuleRows;
   const flowReady = plannedTournamentNodes.length <= 1 || totalAdvancementConnections > 0 || hasRuleDestination;
   const leaderboardReady = rulesReady && (standingsQuery.data?.length ?? 0) > 0;
+  const setupDomainValidation = validateSeasonSetupDomain(nodeRows, ruleRows);
 
-  const canPublishSeason = identityReady && structureReady && rulesReady && flowReady && missingScheduleNodes.length === 0 && invalidScheduleNodes.length === 0;
+  const canPublishSeason = identityReady && setupDomainValidation.issues.length === 0;
   const managementChecks = [
     { label: 'Linked tournaments', value: seasonTournaments.length, complete: seasonTournaments.length > 0, tab: 'tournaments' },
-    { label: 'Registrations scheduled', value: plannedTournamentNodes.length - missingScheduleNodes.length, complete: missingScheduleNodes.length === 0 && invalidScheduleNodes.length === 0, tab: 'registrations' },
+    { label: 'Registrations scheduled', value: plannedTournamentNodes.length - setupDomainValidation.missingSchedule.length, complete: setupDomainValidation.missingSchedule.length === 0 && setupDomainValidation.invalidSchedule.length === 0, tab: 'registrations' },
     { label: 'Rules configured', value: ruleRows.filter((rule) => rule.sourceNodeId).length, complete: rulesReady, tab: 'rules' },
     { label: 'Advancement wired', value: totalAdvancementConnections, complete: flowReady, tab: 'advancement' },
     { label: 'Leaderboard rows', value: standingsQuery.data?.length ?? 0, complete: leaderboardReady, tab: 'standings' },

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useSeason, useSyncSeasonNodes, useSyncSeasonRules } from '@/hooks/useSeason';
-import { buildSeasonTreeFromDrafts, hydrateSeasonBuilderNodes, isTournamentConfigComplete, readOutgoingConnections, readTournamentConfig, toSeasonNodeDraftPayload, validateSeasonBuilderNodes } from '@/components/season/builder/seasonBuilderUtils';
+import { buildSeasonTreeFromDrafts, hydrateSeasonBuilderNodes, isProgressionOnlyNode, nodeRequiresRegistrationDeadline, readOutgoingConnections, readTournamentConfig, toSeasonNodeDraftPayload, validateSeasonBuilderNodes, validateSeasonSetupDomain } from '@/components/season/builder/seasonBuilderUtils';
 import SeasonTreePreview from '@/components/season/SeasonTreePreview';
 import { cn } from '@/lib/utils';
 import type { AdvancementConnection, SeasonBuilderNode, SeasonNodeType, SeasonQualificationType, SeasonRuleDraft } from '@/types/season';
@@ -71,30 +71,7 @@ const createDraftNode = (seasonId: string, parentNodeId: string | null, displayO
   };
 };
 
-const getPlanIssues = (nodes: SeasonBuilderNode[], rules: SeasonRuleDraft[]) => {
-  const planned = nodes.filter((node) => node.nodeType !== 'root');
-  const structureValidation = validateSeasonBuilderNodes(nodes);
-  const missingConfig = planned.filter((node) => !isTournamentConfigComplete(readTournamentConfig(node)));
-  const missingSchedule = planned.filter((node) => !node.registrationDeadline || !node.startsAt || !node.endsAt);
-  const invalidSchedule = planned.filter((node) => {
-    if (node.registrationDeadline && node.startsAt && new Date(node.registrationDeadline) > new Date(node.startsAt)) return true;
-    if (node.startsAt && node.endsAt && new Date(node.endsAt) < new Date(node.startsAt)) return true;
-    return false;
-  });
-  const invalidRules = rules.filter((rule) => rule.sourceNodeId && rule.placementFrom > rule.placementTo);
-  const connectionCount = planned.reduce((total, node) => total + readOutgoingConnections(node).length, 0);
-  const hasRuleDestination = rules.some((rule) => Boolean(rule.destinationNodeId));
-  const issues = [
-    !structureValidation.valid ? structureValidation.message ?? 'Create a valid season tree.' : null,
-    planned.length === 0 ? 'Add at least one tournament to the plan.' : null,
-    missingConfig.length > 0 ? `${missingConfig.length} tournament${missingConfig.length === 1 ? '' : 's'} missing format, team size, max teams, or registration type.` : null,
-    missingSchedule.length > 0 ? `${missingSchedule.length} tournament${missingSchedule.length === 1 ? '' : 's'} missing registration/start/end dates.` : null,
-    invalidSchedule.length > 0 ? `${invalidSchedule.length} tournament${invalidSchedule.length === 1 ? '' : 's'} have invalid schedule order.` : null,
-    invalidRules.length > 0 ? 'Fix rule placement ranges before review.' : null,
-    planned.length > 1 && connectionCount === 0 && !hasRuleDestination ? 'Wire at least one tournament advancement link or rule destination.' : null,
-  ].filter(Boolean) as string[];
-  return { planned, missingConfig, missingSchedule, invalidSchedule, invalidRules, connectionCount, hasRuleDestination, issues };
-};
+const getPlanIssues = validateSeasonSetupDomain;
 
 const SeasonSetupPlan = () => {
   const { id: seasonId } = useParams<{ id: string }>();
@@ -130,7 +107,23 @@ const SeasonSetupPlan = () => {
   const nodeOptions = plannedNodes.map((node, index) => ({ id: node.id, label: node.name || `Tournament ${index + 1}` }));
 
   const updateNode = (nodeId: string, patch: Partial<SeasonBuilderNode>) => {
-    setNodeRows((current) => current.map((node) => (node.id === nodeId ? { ...node, ...patch } : node)));
+    setNodeRows((current) => current.map((node) => {
+      if (node.id !== nodeId) return node;
+      const next = { ...node, ...patch };
+      if (patch.nodeType && isProgressionOnlyNode(next)) {
+        return {
+          ...next,
+          registrationDeadline: null,
+          metadata: {
+            ...(next.metadata ?? {}),
+            registrationType: 'closed',
+            registrationPolicy: 'inbound_only',
+            qualificationSource: patch.nodeType === 'final' ? 'upstream_results' : 'prior_stage',
+          },
+        };
+      }
+      return next;
+    }));
   };
 
   const updateMetadata = (nodeId: string, patch: Record<string, unknown>) => {
@@ -304,10 +297,11 @@ const SeasonSetupPlan = () => {
                         </div>
                         <div className="space-y-2">
                           <Label>Registration</Label>
-                          <Select value={config.registrationType ?? ''} onValueChange={(value) => updateMetadata(node.id, { registrationType: value })}>
+                          <Select value={config.registrationType ?? ''} onValueChange={(value) => updateMetadata(node.id, { registrationType: value })} disabled={isProgressionOnlyNode(node)}>
                             <SelectTrigger className="rounded-none border-white/10 bg-black/20 text-white"><SelectValue placeholder="Type" /></SelectTrigger>
                             <SelectContent>{REGISTRATION_TYPES.map((type) => <SelectItem key={type} value={type}>{type.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
                           </Select>
+                          {isProgressionOnlyNode(node) && <p className="text-xs text-zinc-600">Inbound-only: entrants come from upstream results.</p>}
                         </div>
                         <div className="space-y-2">
                           <Label>Max teams</Label>
@@ -319,7 +313,8 @@ const SeasonSetupPlan = () => {
                         </div>
                         <div className="space-y-2">
                           <Label>Registration deadline</Label>
-                          <Input type="date" value={formatDateInput(node.registrationDeadline)} onChange={(event) => updateNode(node.id, { registrationDeadline: event.target.value })} className="rounded-none border-white/10 bg-black/20 text-white" />
+                          <Input type="date" value={formatDateInput(node.registrationDeadline)} onChange={(event) => updateNode(node.id, { registrationDeadline: event.target.value })} disabled={!nodeRequiresRegistrationDeadline(node)} className="rounded-none border-white/10 bg-black/20 text-white" />
+                          {!nodeRequiresRegistrationDeadline(node) && <p className="text-xs text-zinc-600">No direct registration for finals/stages.</p>}
                         </div>
                         <div className="space-y-2">
                           <Label>Start date</Label>

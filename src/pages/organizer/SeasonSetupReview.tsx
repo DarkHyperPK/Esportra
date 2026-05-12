@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, Calendar, CheckCircle2, ChevronLeft, GitBranch, Link2, Target, Trophy, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSeason } from '@/hooks/useSeason';
-import { buildSeasonTreeFromDrafts, hydrateSeasonBuilderNodes, isTournamentConfigComplete, readOutgoingConnections, readTournamentConfig, validateSeasonBuilderNodes } from '@/components/season/builder/seasonBuilderUtils';
+import { buildSeasonTreeFromDrafts, hydrateSeasonBuilderNodes, readOutgoingConnections, readTournamentConfig, validateSeasonSetupDomain } from '@/components/season/builder/seasonBuilderUtils';
 import SeasonTreePreview from '@/components/season/SeasonTreePreview';
 import { cn } from '@/lib/utils';
 import type { SeasonBuilderNode, SeasonRuleDraft } from '@/types/season';
@@ -14,28 +14,8 @@ const formatDate = (value?: string | null) => {
 };
 
 const getReviewIssues = (nodes: SeasonBuilderNode[], rules: SeasonRuleDraft[]) => {
-  const planned = nodes.filter((node) => node.nodeType !== 'root');
-  const structureValidation = validateSeasonBuilderNodes(nodes);
-  const missingConfig = planned.filter((node) => !isTournamentConfigComplete(readTournamentConfig(node)));
-  const missingSchedule = planned.filter((node) => !node.registrationDeadline || !node.startsAt || !node.endsAt);
-  const invalidSchedule = planned.filter((node) => {
-    if (node.registrationDeadline && node.startsAt && new Date(node.registrationDeadline) > new Date(node.startsAt)) return true;
-    if (node.startsAt && node.endsAt && new Date(node.endsAt) < new Date(node.startsAt)) return true;
-    return false;
-  });
-  const invalidRules = rules.filter((rule) => rule.sourceNodeId && rule.placementFrom > rule.placementTo);
-  const connectionCount = planned.reduce((total, node) => total + readOutgoingConnections(node).length, 0);
-  const hasRuleDestination = rules.some((rule) => Boolean(rule.destinationNodeId));
-  const blockers = [
-    !structureValidation.valid ? structureValidation.message ?? 'Create a valid season tree.' : null,
-    planned.length === 0 ? 'Add at least one tournament before entering management.' : null,
-    missingConfig.length > 0 ? `${missingConfig.length} tournament${missingConfig.length === 1 ? '' : 's'} missing template configuration.` : null,
-    missingSchedule.length > 0 ? `${missingSchedule.length} tournament${missingSchedule.length === 1 ? '' : 's'} missing schedule fields.` : null,
-    invalidSchedule.length > 0 ? `${invalidSchedule.length} tournament${invalidSchedule.length === 1 ? '' : 's'} have invalid schedule order.` : null,
-    invalidRules.length > 0 ? 'Fix invalid scoring or qualification placement ranges.' : null,
-    planned.length > 1 && connectionCount === 0 && !hasRuleDestination ? 'Add at least one advancement link or rule destination for multi-tournament seasons.' : null,
-  ].filter(Boolean) as string[];
-  return { planned, missingConfig, missingSchedule, invalidSchedule, invalidRules, connectionCount, hasRuleDestination, blockers };
+  const result = validateSeasonSetupDomain(nodes, rules);
+  return { ...result, blockers: result.issues };
 };
 
 const SeasonSetupReview = () => {

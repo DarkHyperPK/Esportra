@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
+import { seasonApi } from '@/services/api';
 import { useCreateSeason } from '@/hooks/useSeasons';
 import { useToast } from '@/hooks/use-toast';
+import { buildSeasonTemplatePlan } from '@/components/season/builder/seasonTemplateHydration';
 import esportsGames from '@/data/esportsGames.json';
 import type { CreateSeasonRequest, CreateSeasonResponse, SeasonParticipantMode } from '@/types/season';
 import { useSeasonSmoothScroll } from './useSeasonSmoothScroll';
@@ -197,8 +199,21 @@ const SeasonWizard = () => {
 
     try {
       const season = await createSeason.mutateAsync(payload);
+      const templatePlan = buildSeasonTemplatePlan({
+        seasonId: season.id,
+        rootNodeId: season.rootNodeId,
+        templateId: selectedBlueprintId,
+        startDate: form.startDate,
+      });
+      if (templatePlan) {
+        await seasonApi.syncSeasonNodes(season.id, templatePlan.nodes);
+        await seasonApi.syncSeasonRules(season.id, templatePlan.rules);
+      }
       setCreatedSeason(season);
-      toast({ title: 'Season created', description: 'Opening the season planner.' });
+      toast({
+        title: 'Season created',
+        description: templatePlan ? 'Template structure applied. Opening the season planner.' : 'Opening the season planner.',
+      });
       window.setTimeout(() => navigate(`/season/setup/${season.id}/plan`), 450);
     } catch (error) {
       toast({
@@ -228,7 +243,7 @@ const SeasonWizard = () => {
             </div>
             <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-rose-300">Circuit initialized</p>
             <h2 className="mt-3 text-2xl font-black uppercase tracking-tight">{createdSeason.name}</h2>
-            <p className="mt-2 text-sm text-zinc-500">Opening command center...</p>
+            <p className="mt-2 text-sm text-zinc-500">Opening planner...</p>
           </div>
         </div>
       )}
@@ -351,7 +366,7 @@ const SeasonWizard = () => {
             </section>
 
             <section ref={blueprintRef} className="border border-white/10 bg-black/40 p-6 lg:p-8">
-              <SectionHeader index="02" title="Blueprint" description="Choose the season structure starter. Templates create intent; management completes the tournaments." complete={completion.blueprint} />
+              <SectionHeader index="02" title="Blueprint" description="Choose the season structure starter. Templates pre-apply planned tournaments, schedules, scoring, and advancement rules." complete={completion.blueprint} />
 
               {errors.blueprint && (
                 <div className="mt-6 flex items-center gap-2 border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -389,7 +404,7 @@ const SeasonWizard = () => {
             </section>
 
             <section ref={launchRef} className="border border-white/10 bg-black/40 p-6 lg:p-8">
-              <SectionHeader index="03" title="Launch" description="Review the shell. Tournament configuration continues inside the season command center." complete={completion.launch} />
+              <SectionHeader index="03" title="Launch" description="Review the shell. Selected templates will seed the season planner before management opens." complete={completion.launch} />
 
               <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
                 <div className="border border-white/10 bg-white/[0.03] p-6">
@@ -408,7 +423,7 @@ const SeasonWizard = () => {
                   <Trophy className="h-10 w-10 text-rose-400" />
                   <h3 className="mt-5 text-xl font-black uppercase tracking-tight">Initialize circuit</h3>
                   <p className="mt-3 text-sm leading-6 text-zinc-400">
-                    This creates the season shell as a draft. Add and configure real tournaments from the command center before publishing.
+                    This creates the season shell as a draft and applies the selected blueprint into the planner before publishing.
                   </p>
                   <Button
                     onClick={handleSubmit}
