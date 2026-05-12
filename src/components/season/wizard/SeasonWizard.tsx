@@ -198,8 +198,8 @@ const SeasonWizard = () => {
     try {
       const season = await createSeason.mutateAsync(payload);
       setCreatedSeason(season);
-      toast({ title: 'Season created', description: 'Opening the season command center.' });
-      window.setTimeout(() => navigate(`/season/manage/${season.id}`), 450);
+      toast({ title: 'Season created', description: 'Opening the season planner.' });
+      window.setTimeout(() => navigate(`/season/setup/${season.id}/plan`), 450);
     } catch (error) {
       toast({
         title: 'Could not create season',
