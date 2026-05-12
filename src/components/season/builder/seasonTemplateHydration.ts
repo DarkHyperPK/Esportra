@@ -3,7 +3,6 @@ import type { AdvancementConnection, SeasonBuilderNode, SeasonNodeDraft, SeasonN
 
 const DEFAULT_TEAM_SIZE = 5;
 const DEFAULT_MAX_TEAMS = 16;
-const STANDINGS_FINAL_TEMPLATE_IDS = new Set(['weekly-circuit', 'points-race']);
 
 const addDays = (value: string, days: number) => {
   const date = new Date(value);
@@ -44,7 +43,6 @@ export function buildSeasonTemplatePlan(params: {
   const nodeIds = template.slots.map(() => crypto.randomUUID());
   const finalIndex = template.slots.findIndex((slot) => slot.type === 'finals');
   const finalNodeId = finalIndex >= 0 ? nodeIds[finalIndex] : null;
-  const finalUsesStandings = STANDINGS_FINAL_TEMPLATE_IDS.has(template.id);
 
   const nodes: SeasonNodeDraft[] = template.slots.map((slot, index) => {
     const scheduledDate = datedSlots[index]?.suggestedDate ?? addDays(startDate, index * template.intervalDays);
@@ -52,7 +50,7 @@ export function buildSeasonTemplatePlan(params: {
     const endsAt = addDays(scheduledDate, slot.type === 'finals' ? 2 : 1);
     const registrationDeadline = slot.type === 'finals' ? null : addDays(scheduledDate, -2);
     const nodeType = toNodeType(slot);
-    const shouldAdvanceToFinal = Boolean(finalNodeId && !finalUsesStandings && nodeIds[index] !== finalNodeId && nodeType !== 'final');
+    const shouldAdvanceToFinal = Boolean(finalNodeId && nodeIds[index] !== finalNodeId && nodeType !== 'final');
     const connectionRange = template.advancementRules?.[0];
     const connections: AdvancementConnection[] = shouldAdvanceToFinal && finalNodeId
       ? [{
@@ -75,7 +73,7 @@ export function buildSeasonTemplatePlan(params: {
       registrationDeadline,
       startsAt,
       endsAt,
-      metadata: buildNodeMetadata(slot, connections, slot.type === 'finals' && finalUsesStandings ? 'points_standings' : undefined),
+      metadata: buildNodeMetadata(slot, connections),
       city: null,
       country: null,
       region: null,
@@ -86,15 +84,16 @@ export function buildSeasonTemplatePlan(params: {
   });
 
   const sourceNodeIds = finalNodeId ? nodeIds.filter((id) => id !== finalNodeId) : nodeIds;
-  const rules: SeasonRuleDraft[] = sourceNodeIds.flatMap((sourceNodeId) => template.pointRules.map((rule) => ({
+  const backendSafePointRules = template.pointRules.filter((rule) => rule.placement_start === 1 && rule.placement_end === 1);
+  const rules: SeasonRuleDraft[] = sourceNodeIds.flatMap((sourceNodeId) => backendSafePointRules.map((rule) => ({
     sourceNodeId,
     sourceStageId: null,
-    destinationNodeId: finalUsesStandings ? null : finalNodeId ?? null,
+    destinationNodeId: finalNodeId ?? null,
     placementFrom: rule.placement_start,
     placementTo: rule.placement_end,
     pointsAwarded: rule.points,
-    qualificationStatus: finalNodeId && !finalUsesStandings ? 'qualified' : rule.qualification_status ?? null,
-    autoCreateQualification: Boolean(finalNodeId && !finalUsesStandings),
+    qualificationStatus: finalNodeId ? 'qualified' : rule.qualification_status ?? null,
+    autoCreateQualification: Boolean(finalNodeId),
     regionKey: null,
   })));
 

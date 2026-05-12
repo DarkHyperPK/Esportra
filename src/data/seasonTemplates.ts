@@ -32,227 +32,65 @@ export interface SeasonTemplate {
 
 export const SEASON_TEMPLATES: SeasonTemplate[] = [
   {
-    id: 'weekly-circuit',
-    name: 'Weekly Circuit',
-    description: 'A series of weekly cups culminating in a grand finals. Teams earn cumulative points across all events.',
-    icon: 'Calendar',
-    gameTags: ['fps', 'moba', 'sports', 'rts'],
-    tournamentCount: 8,
-    slots: [
-      { name: 'Week 1', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 2', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 3', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 4', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 5', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 6', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 7', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Grand Finals', type: 'finals', suggestedFormat: 'double_elimination', defaultBestOf: 5, description: 'Top 16 teams by points' },
-    ],
-    intervalDays: 7,
-    pointRules: [
-      { placement_start: 1, placement_end: 1, points: 100 },
-      { placement_start: 2, placement_end: 2, points: 75 },
-      { placement_start: 3, placement_end: 3, points: 60 },
-      { placement_start: 4, placement_end: 4, points: 50 },
-      { placement_start: 5, placement_end: 8, points: 30 },
-      { placement_start: 9, placement_end: 16, points: 15 },
-      { placement_start: 17, placement_end: 32, points: 5 },
-    ],
-    advancementRules: [
-      { source_tournament_id: '', target_tournament_id: '', placement_start: 1, placement_end: 16, advancement_count: 16, seed_mode: 'top_seeded' },
-    ],
-  },
-  {
-    id: 'qualifier-series',
-    name: 'Qualifier Ladder',
-    description: 'Four open qualifiers feed into a closed championship. Only the best teams from each qualifier advance.',
+    id: 'team-bracket-safe',
+    name: 'Team Championship',
+    description: 'A safe two-step bracket season: one open qualifier feeds one closed final using winner-only tournament rules.',
     icon: 'Trophy',
     gameTags: ['fps', 'moba'],
-    tournamentCount: 5,
+    tournamentCount: 2,
     slots: [
-      { name: 'Open Qualifier #1', type: 'qualifier', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
-      { name: 'Open Qualifier #2', type: 'qualifier', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
-      { name: 'Open Qualifier #3', type: 'qualifier', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
-      { name: 'Open Qualifier #4', type: 'qualifier', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
-      { name: 'Championship', type: 'finals', suggestedFormat: 'double_elimination', defaultBestOf: 3, description: 'Top 4 from each qualifier' },
+      { name: 'Open Qualifier', type: 'qualifier', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
+      { name: 'Championship Final', type: 'finals', suggestedFormat: 'double_elimination', defaultBestOf: 3, description: 'Qualifier winner advances into the closed final' },
     ],
     intervalDays: 7,
     pointRules: [
       { placement_start: 1, placement_end: 1, points: 100 },
-      { placement_start: 2, placement_end: 2, points: 70 },
-      { placement_start: 3, placement_end: 3, points: 50 },
-      { placement_start: 4, placement_end: 4, points: 40 },
-      { placement_start: 5, placement_end: 8, points: 20 },
     ],
     advancementRules: [
-      { source_tournament_id: '', target_tournament_id: '', placement_start: 1, placement_end: 4, advancement_count: 4, seed_mode: 'top_seeded' },
+      { source_tournament_id: '', target_tournament_id: '', placement_start: 1, placement_end: 1, advancement_count: 1, seed_mode: 'top_seeded' },
     ],
   },
   {
-    id: 'monthly-series',
-    name: 'Monthly Series',
-    description: 'Three monthly tournaments with cumulative standings. Simple and flexible for any game.',
-    icon: 'CalendarDays',
-    gameTags: ['fps', 'moba', 'sports', 'rts', 'fighter'],
-    tournamentCount: 3,
-    slots: [
-      { name: 'Monthly #1', type: 'monthly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Monthly #2', type: 'monthly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Monthly #3', type: 'monthly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-    ],
-    intervalDays: 30,
-    pointRules: [
-      { placement_start: 1, placement_end: 1, points: 100 },
-      { placement_start: 2, placement_end: 2, points: 75 },
-      { placement_start: 3, placement_end: 3, points: 60 },
-      { placement_start: 4, placement_end: 4, points: 50 },
-      { placement_start: 5, placement_end: 8, points: 30 },
-      { placement_start: 9, placement_end: 16, points: 15 },
-    ],
-  },
-  {
-    id: 'regional-circuit',
-    name: 'Regional Circuit',
-    description: 'Regional open qualifiers converge into one closed championship event.',
-    icon: 'Globe2',
-    gameTags: ['fps', 'moba', 'sports', 'rts', 'fighter'],
-    tournamentCount: 5,
-    slots: [
-      { name: 'North Qualifier', type: 'qualifier', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
-      { name: 'South Qualifier', type: 'qualifier', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
-      { name: 'East Qualifier', type: 'qualifier', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
-      { name: 'West Qualifier', type: 'qualifier', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
-      { name: 'Regional Finals', type: 'finals', suggestedFormat: 'double_elimination', defaultBestOf: 5, description: 'Top teams from each region' },
-    ],
-    intervalDays: 7,
-    pointRules: [
-      { placement_start: 1, placement_end: 1, points: 100 },
-      { placement_start: 2, placement_end: 2, points: 75 },
-      { placement_start: 3, placement_end: 4, points: 50 },
-      { placement_start: 5, placement_end: 8, points: 25 },
-    ],
-    advancementRules: [
-      { source_tournament_id: '', target_tournament_id: '', placement_start: 1, placement_end: 4, advancement_count: 4, seed_mode: 'top_seeded' },
-    ],
-  },
-  {
-    id: 'split-series',
-    name: 'Split Series',
-    description: 'Two split events feed a closed season final with qualification records.',
-    icon: 'GitBranch',
-    gameTags: ['fps', 'moba', 'sports', 'rts'],
-    tournamentCount: 3,
-    slots: [
-      { name: 'Split 1 Event', type: 'monthly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Split 2 Event', type: 'monthly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Season Finals', type: 'finals', suggestedFormat: 'double_elimination', defaultBestOf: 5, description: 'Qualified teams from both splits' },
-    ],
-    intervalDays: 30,
-    pointRules: [
-      { placement_start: 1, placement_end: 1, points: 100 },
-      { placement_start: 2, placement_end: 2, points: 70 },
-      { placement_start: 3, placement_end: 4, points: 45 },
-      { placement_start: 5, placement_end: 8, points: 20 },
-    ],
-    advancementRules: [
-      { source_tournament_id: '', target_tournament_id: '', placement_start: 1, placement_end: 8, advancement_count: 8, seed_mode: 'top_seeded' },
-    ],
-  },
-  {
-    id: 'points-race',
-    name: 'Points Race',
-    description: 'A leaderboard-first season where recurring events award points into an invitational final.',
-    icon: 'Target',
-    gameTags: ['fps', 'moba', 'sports', 'rts', 'fighter'],
-    tournamentCount: 5,
-    slots: [
-      { name: 'Points Event #1', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Points Event #2', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Points Event #3', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Points Event #4', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Invitational Finals', type: 'finals', suggestedFormat: 'double_elimination', defaultBestOf: 5, description: 'Top teams by cumulative points' },
-    ],
-    intervalDays: 7,
-    pointRules: [
-      { placement_start: 1, placement_end: 1, points: 100 },
-      { placement_start: 2, placement_end: 2, points: 75 },
-      { placement_start: 3, placement_end: 4, points: 50 },
-      { placement_start: 5, placement_end: 8, points: 30 },
-      { placement_start: 9, placement_end: 16, points: 10 },
-    ],
-    advancementRules: [
-      { source_tournament_id: '', target_tournament_id: '', placement_start: 1, placement_end: 16, advancement_count: 16, seed_mode: 'top_seeded' },
-    ],
-  },
-  {
-    id: 'single-major',
-    name: 'Single Major',
-    description: 'One large tournament with group stage and playoffs. Minimal season wrapper for a flagship event.',
+    id: 'sports-bracket-safe',
+    name: 'Sports Cup',
+    description: 'A safe single-event bracket season for sports titles with winner-only tournament rules.',
     icon: 'Crown',
-    gameTags: ['fps', 'moba', 'sports', 'rts', 'fighter'],
+    gameTags: ['sports'],
     tournamentCount: 1,
     slots: [
-      { name: 'Main Event', type: 'major', suggestedFormat: 'swiss', defaultBestOf: 3, description: 'Groups + Playoffs' },
+      { name: 'Main Cup', type: 'major', suggestedFormat: 'single_elimination', defaultBestOf: 3 },
     ],
     intervalDays: 0,
     pointRules: [
       { placement_start: 1, placement_end: 1, points: 100 },
-      { placement_start: 2, placement_end: 2, points: 60 },
-      { placement_start: 3, placement_end: 3, points: 40 },
-      { placement_start: 4, placement_end: 4, points: 30 },
-      { placement_start: 5, placement_end: 8, points: 20 },
     ],
   },
   {
-    id: 'br-league',
-    name: 'BR League',
-    description: 'Five match days with placement-based scoring. Designed for Battle Royale games.',
+    id: 'br-safe',
+    name: 'Battle Royale Lobby',
+    description: 'A safe single-lobby season starter for Battle Royale games with no unsupported placement-range rules.',
     icon: 'Target',
     gameTags: ['br'],
-    tournamentCount: 5,
+    tournamentCount: 1,
     slots: [
-      { name: 'Match Day 1', type: 'match_day', suggestedFormat: 'battle_royale', defaultBestOf: 6 },
-      { name: 'Match Day 2', type: 'match_day', suggestedFormat: 'battle_royale', defaultBestOf: 6 },
-      { name: 'Match Day 3', type: 'match_day', suggestedFormat: 'battle_royale', defaultBestOf: 6 },
-      { name: 'Match Day 4', type: 'match_day', suggestedFormat: 'battle_royale', defaultBestOf: 6 },
-      { name: 'Match Day 5', type: 'match_day', suggestedFormat: 'battle_royale', defaultBestOf: 6 },
+      { name: 'Main Lobby', type: 'match_day', suggestedFormat: 'battle_royale', defaultBestOf: 1 },
     ],
-    intervalDays: 7,
-    pointRules: [
-      { placement_start: 1, placement_end: 1, points: 100 },
-      { placement_start: 2, placement_end: 2, points: 80 },
-      { placement_start: 3, placement_end: 3, points: 65 },
-      { placement_start: 4, placement_end: 5, points: 50 },
-      { placement_start: 6, placement_end: 10, points: 35 },
-      { placement_start: 11, placement_end: 20, points: 20 },
-      { placement_start: 21, placement_end: 50, points: 10 },
-    ],
+    intervalDays: 0,
+    pointRules: [],
   },
   {
-    id: 'weekly-showdown',
-    name: 'Weekly Showdown',
-    description: 'Eight weekly bracket events with championship points. Perfect for fighting games.',
+    id: 'fighter-safe',
+    name: 'Fighting Championship',
+    description: 'A safe double-elimination fighting game bracket with winner-only tournament rules.',
     icon: 'Swords',
     gameTags: ['fighter'],
-    tournamentCount: 8,
+    tournamentCount: 1,
     slots: [
-      { name: 'Week 1', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 2', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 3', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 4', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 5', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 6', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 7', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-      { name: 'Week 8', type: 'weekly', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
+      { name: 'Main Bracket', type: 'major', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
     ],
-    intervalDays: 7,
+    intervalDays: 0,
     pointRules: [
       { placement_start: 1, placement_end: 1, points: 100 },
-      { placement_start: 2, placement_end: 2, points: 70 },
-      { placement_start: 3, placement_end: 3, points: 50 },
-      { placement_start: 4, placement_end: 4, points: 40 },
-      { placement_start: 5, placement_end: 8, points: 25 },
-      { placement_start: 9, placement_end: 16, points: 10 },
     ],
   },
 ];
@@ -269,13 +107,14 @@ export function getTemplatesForGame(gameName: string): SeasonTemplate[] {
     ? 'sports'
     : gameName.toLowerCase().includes('valorant') || gameName.toLowerCase().includes('cs')
     ? 'fps'
-    : gameName.toLowerCase().includes('lol') || gameName.toLowerCase().includes('dota')
+    : gameName.toLowerCase().includes('league') || gameName.toLowerCase().includes('lol') || gameName.toLowerCase().includes('dota')
     ? 'moba'
     : null;
 
-  if (!genre) return SEASON_TEMPLATES.slice(0, 3); // fallback
+  if (!genre) return SEASON_TEMPLATES.filter((t) => t.id === 'sports-bracket-safe');
 
-  return SEASON_TEMPLATES.filter((t) => t.gameTags.includes(genre));
+  const template = SEASON_TEMPLATES.find((t) => t.gameTags.includes(genre));
+  return template ? [template] : SEASON_TEMPLATES.filter((t) => t.id === 'sports-bracket-safe');
 }
 
 /** Get template by ID */

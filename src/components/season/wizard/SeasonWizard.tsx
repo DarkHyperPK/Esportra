@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Calendar, Check, ChevronRight, Gamepad2, GitBranch, Globe2, Layers, Settings, Target, Trophy } from 'lucide-react';
+import { AlertTriangle, Calendar, Check, ChevronRight, Gamepad2, Settings, Target, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { apiClient } from '@/lib/apiClient';
+import { ApiError, apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import { seasonApi } from '@/services/api';
 import { useCreateSeason } from '@/hooks/useSeasons';
 import { useToast } from '@/hooks/use-toast';
 import { buildSeasonTemplatePlan } from '@/components/season/builder/seasonTemplateHydration';
+import { getTemplatesForGame, type SeasonTemplate } from '@/data/seasonTemplates';
 import esportsGames from '@/data/esportsGames.json';
 import type { CreateSeasonRequest, CreateSeasonResponse, SeasonParticipantMode } from '@/types/season';
 import { useSeasonSmoothScroll } from './useSeasonSmoothScroll';
@@ -36,14 +37,37 @@ type FormState = {
   organizationId?: string;
 };
 
-const BLUEPRINTS: Blueprint[] = [
-  { id: 'weekly-circuit', name: 'Weekly Circuit', meta: '8 tournaments', description: 'Recurring weekly competition loop for active communities.', icon: Calendar },
-  { id: 'qualifier-series', name: 'Qualifier Series', meta: '4 qualifiers + final', description: 'Multiple open qualifiers feeding a championship event.', icon: Layers },
-  { id: 'split-series', name: 'Split Series', meta: 'Spring + fall', description: 'Two-part season with separate competitive windows.', icon: GitBranch },
-  { id: 'regional-circuit', name: 'Regional Circuit', meta: 'Multi-region paths', description: 'Regional qualifiers converging into one final.', icon: Globe2 },
-  { id: 'points-race', name: 'Points Race', meta: 'Leaderboard first', description: 'Award points across events and qualify by standings.', icon: Target },
-  { id: 'custom', name: 'Custom Blueprint', meta: 'Start blank', description: 'Create the season shell and design the tournament graph manually.', icon: Settings },
-];
+const CUSTOM_BLUEPRINT: Blueprint = { id: 'custom', name: 'Custom Blueprint', meta: 'Start blank', description: 'Create the season shell and design the tournament graph manually.', icon: Settings };
+
+const templateToBlueprint = (template: SeasonTemplate): Blueprint => ({
+  id: template.id,
+  name: template.name,
+  meta: `${template.tournamentCount} tournament${template.tournamentCount === 1 ? '' : 's'}`,
+  description: template.description,
+  icon: template.gameTags.includes('br') ? Target : Trophy,
+});
+
+const getApiErrorBodyMessage = (body: unknown) => {
+  if (!body) return null;
+  if (typeof body === 'string') return body;
+  if (typeof body === 'object' && 'error' in body && typeof (body as { error?: unknown }).error === 'string') return (body as { error: string }).error;
+  if (typeof body === 'object' && 'message' in body && typeof (body as { message?: unknown }).message === 'string') return (body as { message: string }).message;
+  return null;
+};
+
+const logSeasonCreationError = (phase: string, error: unknown, context: Record<string, unknown>) => {
+  if (error instanceof ApiError) {
+    console.error('[SeasonCreate] API error', {
+      phase,
+      status: error.status,
+      body: error.body,
+      backendMessage: getApiErrorBodyMessage(error.body),
+      ...context,
+    });
+    return;
+  }
+  console.error('[SeasonCreate] Unexpected error', { phase, error, ...context });
+};
 
 const INITIAL_FORM: FormState = {
   name: '',
@@ -73,8 +97,22 @@ const SeasonWizard = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [createdSeason, setCreatedSeason] = useState<CreateSeasonResponse | null>(null);
 
-  const selectedBlueprint = BLUEPRINTS.find((blueprint) => blueprint.id === selectedBlueprintId);
   const selectedGame = useMemo(() => esportsGames.games.find((game) => game.name === form.game), [form.game]);
+  const blueprints = useMemo<Blueprint[]>(() => {
+    if (!form.game) return [CUSTOM_BLUEPRINT];
+    const gameTemplates = getTemplatesForGame(form.game).map(templateToBlueprint);
+    return [...gameTemplates, CUSTOM_BLUEPRINT];
+  }, [form.game]);
+  const selectedBlueprint = blueprints.find((blueprint) => blueprint.id === selectedBlueprintId);
+
+  useEffect(() => {
+    if (!form.game) {
+      setSelectedBlueprintId('');
+      return;
+    }
+    const gameTemplate = getTemplatesForGame(form.game)[0];
+    setSelectedBlueprintId(gameTemplate?.id ?? 'custom');
+  }, [form.game]);
 
   useEffect(() => {
     setForm(INITIAL_FORM);
@@ -139,6 +177,11 @@ const SeasonWizard = () => {
 
   const handleGameSelect = (gameName: string) => {
     updateForm('game', gameName);
+    setErrors((current) => {
+      const next = { ...current };
+      delete next.blueprint;
+      return next;
+    });
     window.setTimeout(() => scrollTo(blueprintRef.current), 120);
   };
 
@@ -206,8 +249,27 @@ const SeasonWizard = () => {
         startDate: form.startDate,
       });
       if (templatePlan) {
-        await seasonApi.syncSeasonNodes(season.id, templatePlan.nodes);
-        await seasonApi.syncSeasonRules(season.id, templatePlan.rules);
+        try {
+          await seasonApi.syncSeasonNodes(season.id, templatePlan.nodes);
+          await seasonApi.syncSeasonRules(season.id, templatePlan.rules);
+        } catch (templateError) {
+          logSeasonCreationError('applyTemplate', templateError, {
+            seasonId: season.id,
+            selectedGame: form.game,
+            templateId: selectedBlueprintId,
+            nodeCount: templatePlan.nodes.length,
+            ruleCount: templatePlan.rules.length,
+            ruleRanges: templatePlan.rules.map((rule) => `${rule.placementFrom}-${rule.placementTo}`),
+          });
+          setCreatedSeason(season);
+          toast({
+            title: 'Season draft created',
+            description: 'The template could not be applied automatically. Opening the planner so you can finish setup manually.',
+            variant: 'destructive',
+          });
+          window.setTimeout(() => navigate(`/season/setup/${season.id}/plan`), 450);
+          return;
+        }
       }
       setCreatedSeason(season);
       toast({
@@ -216,9 +278,21 @@ const SeasonWizard = () => {
       });
       window.setTimeout(() => navigate(`/season/setup/${season.id}/plan`), 450);
     } catch (error) {
+      logSeasonCreationError('createSeason', error, {
+        selectedGame: form.game,
+        templateId: selectedBlueprintId,
+        payload: {
+          name: payload.name,
+          game: payload.game,
+          participant_mode: payload.participant_mode,
+          hasStartDate: Boolean(payload.start_date),
+          hasEndDate: Boolean(payload.end_date),
+          hasOrganizationId: Boolean(payload.organization_id),
+        },
+      });
       toast({
         title: 'Could not create season',
-        description: error instanceof Error ? error.message : 'Please check the season details and try again.',
+        description: 'Please check the season details and try again. Technical details were logged for debugging.',
         variant: 'destructive',
       });
     }
@@ -366,7 +440,7 @@ const SeasonWizard = () => {
             </section>
 
             <section ref={blueprintRef} className="border border-white/10 bg-black/40 p-6 lg:p-8">
-              <SectionHeader index="02" title="Blueprint" description="Choose the season structure starter. Templates pre-apply planned tournaments, schedules, scoring, and advancement rules." complete={completion.blueprint} />
+              <SectionHeader index="02" title="Blueprint" description="Choose the safe starter for this game. Only backend-compatible templates are shown." complete={completion.blueprint} />
 
               {errors.blueprint && (
                 <div className="mt-6 flex items-center gap-2 border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -376,7 +450,7 @@ const SeasonWizard = () => {
               )}
 
               <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {BLUEPRINTS.map((blueprint) => {
+                {blueprints.map((blueprint) => {
                   const Icon = blueprint.icon;
 
                   return (
