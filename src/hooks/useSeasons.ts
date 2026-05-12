@@ -10,9 +10,11 @@ import type {
   Season,
   SeasonList,
   CreateSeasonRequest,
+  CreateSeasonResponse,
   UpdateSeasonPayload,
   SeasonAdvancementConnection,
   SeasonAuditLogEntry,
+  AddSeasonTournamentRequest,
 } from '@/types/season';
 import { useToast } from './use-toast';
 import { ApiError } from '@/lib/apiClient';
@@ -37,9 +39,8 @@ export function useSeason(id: string) {
 
 export function useCreateSeason() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
-  return useMutation({
+  return useMutation<CreateSeasonResponse, Error, CreateSeasonRequest>({
     mutationFn: async (data: CreateSeasonRequest) => {
       try {
         return await seasonApi.createSeason(data);
@@ -61,17 +62,6 @@ export function useCreateSeason() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
-      toast({
-        title: 'Season created',
-        description: 'Your season has been created successfully.',
-      });
-    },
-    onError: () => {
-      toast({
-        title: 'Error creating season',
-        description: 'We could not create the season right now. Please check your details and try again.',
-        variant: 'destructive',
-      });
     },
   });
 }
@@ -276,5 +266,31 @@ export function useSeasonAuditLog(id: string) {
     queryFn: () => seasonApi.getSeasonAuditLog(id),
     enabled: !!id,
     staleTime: 5 * 60_000,
+  });
+}
+
+export function useAddSeasonTournament() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ seasonId, tournament }: { seasonId: string; tournament: AddSeasonTournamentRequest }) =>
+      seasonApi.addSeasonTournament(seasonId, tournament),
+    onSuccess: (_, { seasonId }) => {
+      queryClient.invalidateQueries({ queryKey: ['season-tournaments', seasonId] });
+      queryClient.invalidateQueries({ queryKey: ['season-detail', seasonId] });
+      queryClient.invalidateQueries({ queryKey: ['season', seasonId] });
+      toast({
+        title: 'Tournament created',
+        description: 'The tournament has been added to this season.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error creating tournament',
+        description: error instanceof Error ? error.message : 'Failed to create tournament',
+        variant: 'destructive',
+      });
+    },
   });
 }

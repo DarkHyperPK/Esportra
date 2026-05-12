@@ -4,6 +4,7 @@ import type {
   Season,
   SeasonList,
   CreateSeasonRequest,
+  CreateSeasonResponse,
   UpdateSeasonRequest,
   UpdateSeasonPayload,
   SeasonStanding,
@@ -17,6 +18,8 @@ import type {
   SeasonQualificationRecord,
   SeasonAuditLogEntry,
   SeasonAdvancementConnection,
+  AddSeasonTournamentRequest,
+  AddSeasonTournamentResponse,
 } from '@/types/season';
 
 // Types
@@ -163,7 +166,7 @@ export const seasonApi = {
   },
 
   createSeason: async (season: CreateSeasonRequest) => {
-    return await apiClient.post<Season>('/api/seasons', season);
+    return await apiClient.post<CreateSeasonResponse>('/api/seasons', season);
   },
 
   updateSeason: async (id: string, season: UpdateSeasonRequest) => {
@@ -218,6 +221,10 @@ export const seasonApi = {
 
   getSeasonTournaments: async (id: string) => {
     return await apiClient.get<SeasonTournamentDetails[]>(`/api/seasons/${id}/tournaments`);
+  },
+
+  addSeasonTournament: async (id: string, tournament: AddSeasonTournamentRequest) => {
+    return await apiClient.post<AddSeasonTournamentResponse>(`/api/seasons/${id}/tournaments`, tournament);
   },
 
   getPointRules: async (id: string) => {
@@ -305,6 +312,6 @@ export const seasonApi = {
   },
 
   getSeasonAuditLog: async (id: string) => {
-    return await apiClient.get<SeasonAuditLogEntry[]>(`/api/admin/seasons/${id}/audit`);
+    return await apiClient.get<SeasonAuditLogEntry[]>(`/api/seasons/${id}/audit`);
   },
 };

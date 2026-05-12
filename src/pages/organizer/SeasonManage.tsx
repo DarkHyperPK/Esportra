@@ -37,7 +37,7 @@ import {
   useSyncSeasonStaff,
   useUpdateSeasonQualification,
 } from '@/hooks/useSeason';
-import { usePublishSeason, useUpdateSeason, useArchiveSeason, useCancelSeason, useDuplicateSeason, useSeasonTournaments, useSeasonAdvancement, useSeasonAuditLog } from '@/hooks/useSeasons';
+import { usePublishSeason, useUpdateSeason, useArchiveSeason, useCancelSeason, useDuplicateSeason, useSeasonTournaments, useSeasonAdvancement, useSeasonAuditLog, useAddSeasonTournament } from '@/hooks/useSeasons';
 import { useToast } from '@/hooks/use-toast';
 import { seasonBasicsSchema } from '@/schemas/seasonSchema';
 import type {
@@ -66,6 +66,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import esportsGames from '@/data/esportsGames.json';
 
 const NAV_GROUPS = [
@@ -121,6 +122,7 @@ const STATUS_STYLES: Record<SeasonStatus, string> = {
   active: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10',
   completed: 'border-white/20 text-zinc-300 bg-white/10',
   archived: 'border-zinc-700/30 text-zinc-600 bg-zinc-700/10',
+  cancelled: 'border-red-500/30 text-red-400 bg-red-500/10',
 };
 
 const SEASON_STATUSES: SeasonStatus[] = ['draft', 'published', 'active', 'completed', 'archived'];
@@ -129,6 +131,7 @@ const NODE_TYPES: SeasonNodeType[] = ['root', 'qualifier', 'event', 'stage', 'fi
 const NODE_STATUSES: SeasonNodeStatus[] = ['draft', 'scheduled', 'live', 'completed', 'archived'];
 const STAFF_ROLES: SeasonStaffMember['role'][] = ['co_organizer', 'admin'];
 const QUALIFICATION_TYPES: SeasonQualificationType[] = ['qualified', 'wildcard', 'reserve'];
+const SEASON_TOURNAMENT_ROLES = ['qualifier', 'event', 'regional_final', 'last_chance_qualifier', 'playoff', 'grand_final', 'custom'];
 
 type OverviewState = {
   name: string;
@@ -197,6 +200,7 @@ const SeasonManage = () => {
   const archiveSeason = useArchiveSeason();
   const cancelSeason = useCancelSeason();
   const duplicateSeason = useDuplicateSeason();
+  const addSeasonTournament = useAddSeasonTournament();
   const tournamentsQuery = useSeasonTournaments(seasonId ?? '');
   const advancementQuery = useSeasonAdvancement(seasonId ?? '');
   const auditLogQuery = useSeasonAuditLog(seasonId ?? '');
@@ -213,8 +217,20 @@ const SeasonManage = () => {
   const [rosterLock, setRosterLock] = useState(false);
   const [allowRosterChangesBetween, setAllowRosterChangesBetween] = useState(true);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isAddTournamentOpen, setIsAddTournamentOpen] = useState(false);
+  const [newTournament, setNewTournament] = useState({
+    name: '',
+    role: 'qualifier',
+    region: '',
+    format: 'single_elimination',
+    maxTeams: '16',
+    teamSize: '5',
+    startDate: '',
+    endDate: '',
+    registrationDeadline: '',
+  });
 
-  const activeTab = searchParams.get('tab') ?? 'overview';
+  const activeTab = searchParams.get('tab') ?? 'tournaments';
 
   useEffect(() => {
     if (!data) return;
@@ -282,6 +298,55 @@ const SeasonManage = () => {
 
   const setTab = (tab: string) => {
     setSearchParams({ tab }, { replace: true });
+  };
+
+  const resetNewTournament = () => {
+    setNewTournament({
+      name: '',
+      role: 'qualifier',
+      region: '',
+      format: 'single_elimination',
+      maxTeams: '16',
+      teamSize: '5',
+      startDate: '',
+      endDate: '',
+      registrationDeadline: '',
+    });
+  };
+
+  const handleAddTournament = async () => {
+    if (!seasonId) return;
+    const name = newTournament.name.trim();
+
+    if (name.length < 3) {
+      toast({
+        title: 'Validation failed',
+        description: 'Tournament name must be at least 3 characters.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await addSeasonTournament.mutateAsync({
+        seasonId,
+        tournament: {
+          name,
+          role: newTournament.role,
+          region: newTournament.region.trim() || undefined,
+          displayName: name,
+          format: newTournament.format,
+          maxTeams: Number(newTournament.maxTeams) || 16,
+          teamSize: Number(newTournament.teamSize) || 5,
+          startDate: newTournament.startDate || undefined,
+          endDate: newTournament.endDate || undefined,
+          registrationDeadline: newTournament.registrationDeadline || undefined,
+        },
+      });
+      resetNewTournament();
+      setIsAddTournamentOpen(false);
+      await tournamentsQuery.refetch();
+    } catch {}
   };
 
   const handleOverviewSave = async () => {
@@ -563,7 +628,7 @@ const SeasonManage = () => {
     try {
       const result = await duplicateSeason.mutateAsync({ seasonId, newName, newSlug });
       toast({ title: 'Season duplicated', description: `New season created: ${result.seasonId}` });
-      window.location.href = `/organizer/seasons/${result.seasonId}`;
+      window.location.href = `/season/manage/${result.seasonId}`;
     } catch (duplicateError) {
       toast({
         title: 'Duplicate failed',
@@ -741,7 +806,7 @@ const SeasonManage = () => {
           <span className="font-medium">Duplicate</span>
         </button>
         <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 px-2.5 h-8 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.05] text-sm font-medium">
-          <Link to={`/seasons/${data.season.slug}`} target="_blank">
+          <Link to={`/season/${data.season.slug}`} target="_blank">
             <ExternalLink className="w-4 h-4 shrink-0 text-zinc-500" />
             Public view
           </Link>
@@ -1655,14 +1720,24 @@ const SeasonManage = () => {
         {activeTab === 'tournaments' && (
           <div className="space-y-6">
             <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0c] p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="font-heading text-2xl font-bold text-white">Season Tournaments</h2>
-                  <p className="mt-1 text-sm text-zinc-400">Tournaments associated with this season circuit.</p>
+                  <p className="mt-1 text-sm text-zinc-400">Create and configure season-owned tournaments inline before publishing.</p>
                 </div>
-                <Badge className="bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
-                  {tournamentsQuery.data?.length ?? 0} tournaments
-                </Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-white/[0.06] text-zinc-300 hover:bg-white/[0.06]">
+                    {tournamentsQuery.data?.length ?? 0} tournaments
+                  </Badge>
+                  <Button
+                    size="sm"
+                    className="bg-rose-500 text-white hover:bg-rose-600"
+                    onClick={() => setIsAddTournamentOpen(true)}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Tournament
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -1670,7 +1745,7 @@ const SeasonManage = () => {
               <div className="flex items-start gap-3 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
                 <p className="text-sm text-blue-300">
-                  Tournaments will be created when you publish this season. The circuit below shows your planned structure.
+                  Add tournaments from the Structure tab. Publishing creates the real tournament records atomically from this season-owned plan.
                 </p>
               </div>
             )}
@@ -1723,7 +1798,7 @@ const SeasonManage = () => {
                           {st.tournamentStatus ?? st.status}
                         </span>
                         <Button asChild size="sm" variant="ghost" className="h-8 w-8 p-0 text-zinc-400 hover:text-white">
-                          <a href={`/organizer/tournaments/${st.tournamentId}/manage`} target="_blank" rel="noopener noreferrer">
+                          <a href={`/organizer/tournament/${st.slug || st.tournamentId}`} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-4 w-4" />
                           </a>
                         </Button>
@@ -1768,11 +1843,147 @@ const SeasonManage = () => {
               <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02] py-16 text-center">
                 <Activity className="h-10 w-10 text-zinc-600" />
                 <p className="text-sm font-medium text-zinc-400">No tournaments yet</p>
-                <p className="text-xs text-zinc-600">Add tournaments to the structure to see them here.</p>
+                <p className="text-xs text-zinc-600">Add season-owned tournaments inline from the structure builder.</p>
+                <Button
+                  size="sm"
+                  className="mt-2 bg-rose-500 text-white hover:bg-rose-600"
+                  onClick={() => setIsAddTournamentOpen(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Tournament
+                </Button>
               </div>
             )}
           </div>
         )}
+
+        <Dialog open={isAddTournamentOpen} onOpenChange={setIsAddTournamentOpen}>
+          <DialogContent className="max-w-2xl border-white/10 bg-[#0a0a0c] text-white">
+            <DialogHeader>
+              <DialogTitle className="text-white">Add season tournament</DialogTitle>
+              <DialogDescription className="text-zinc-400">
+                Create a draft tournament owned by this season. It will appear in the tournament list immediately.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-2 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Name</Label>
+                <Input
+                  value={newTournament.name}
+                  onChange={(event) => setNewTournament((current) => ({ ...current, name: event.target.value }))}
+                  placeholder="Open Qualifier 1"
+                  className="border-white/10 bg-black/30 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select
+                  value={newTournament.role}
+                  onValueChange={(value) => setNewTournament((current) => ({ ...current, role: value }))}
+                >
+                  <SelectTrigger className="border-white/10 bg-black/30 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEASON_TOURNAMENT_ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>{role.replace(/_/g, ' ')}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Region</Label>
+                <Input
+                  value={newTournament.region}
+                  onChange={(event) => setNewTournament((current) => ({ ...current, region: event.target.value }))}
+                  placeholder="MENA"
+                  className="border-white/10 bg-black/30 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Format</Label>
+                <Select
+                  value={newTournament.format}
+                  onValueChange={(value) => setNewTournament((current) => ({ ...current, format: value }))}
+                >
+                  <SelectTrigger className="border-white/10 bg-black/30 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single_elimination">Single elimination</SelectItem>
+                    <SelectItem value="double_elimination">Double elimination</SelectItem>
+                    <SelectItem value="round_robin">Round robin</SelectItem>
+                    <SelectItem value="swiss">Swiss</SelectItem>
+                    <SelectItem value="battle_royale">Battle royale</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Max teams</Label>
+                <Input
+                  type="number"
+                  min={2}
+                  value={newTournament.maxTeams}
+                  onChange={(event) => setNewTournament((current) => ({ ...current, maxTeams: event.target.value }))}
+                  className="border-white/10 bg-black/30 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Team size</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={newTournament.teamSize}
+                  onChange={(event) => setNewTournament((current) => ({ ...current, teamSize: event.target.value }))}
+                  className="border-white/10 bg-black/30 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Registration deadline</Label>
+                <Input
+                  type="date"
+                  value={newTournament.registrationDeadline}
+                  onChange={(event) => setNewTournament((current) => ({ ...current, registrationDeadline: event.target.value }))}
+                  className="border-white/10 bg-black/30 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Start date</Label>
+                <Input
+                  type="date"
+                  value={newTournament.startDate}
+                  onChange={(event) => setNewTournament((current) => ({ ...current, startDate: event.target.value }))}
+                  className="border-white/10 bg-black/30 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End date</Label>
+                <Input
+                  type="date"
+                  value={newTournament.endDate}
+                  onChange={(event) => setNewTournament((current) => ({ ...current, endDate: event.target.value }))}
+                  className="border-white/10 bg-black/30 text-white"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                onClick={() => setIsAddTournamentOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-rose-500 text-white hover:bg-rose-600"
+                onClick={handleAddTournament}
+                disabled={addSeasonTournament.isPending}
+              >
+                {addSeasonTournament.isPending ? 'Creating...' : 'Create Tournament'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {activeTab === 'advancement' && (
           <SeasonAdvancementDashboard seasonId={seasonId} />

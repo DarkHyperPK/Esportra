@@ -79,7 +79,7 @@ const ManageSeasons = () => {
             <p className="text-zinc-400 text-sm">Create your first season to start managing multi-event tournament trees.</p>
           </div>
           <button
-            onClick={() => navigate('/organizer/seasons/create')}
+            onClick={() => navigate('/seasons/create')}
             className="flex items-center gap-2 px-6 h-11 bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -94,7 +94,7 @@ const ManageSeasons = () => {
     <>
       <div className="px-8 py-8">
         <div className="flex justify-end mb-6">
-          <Link to="/organizer/seasons/create">
+          <Link to="/seasons/create">
             <Button className="bg-rose-500 hover:bg-rose-600 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Create Season
@@ -241,7 +241,7 @@ const SeasonGrid: React.FC<SeasonGridProps> = ({
                 </div>
               )}
               <div className="flex gap-2 pt-3">
-                <Link to={`/organizer/seasons/${season.id}`} className="flex-1">
+                <Link to={`/season/manage/${season.id}`} className="flex-1">
                   <Button variant="outline" size="sm" className="w-full border-white/10 bg-white/5 hover:bg-white/10 text-white">
                     Manage
                   </Button>

@@ -28,13 +28,13 @@ export default function SeasonPublicPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const seasonData = await apiClient.get<Season>(`/api/seasons/slug/${slug}`);
+        const seasonData = await apiClient.get<Season>(`/api/public/seasons/${slug}`);
         setSeason(seasonData);
 
         if (seasonData?.id) {
           const [tournamentsData, standingsData, participantsData] = await Promise.all([
-            apiClient.get<SeasonTournamentDetails[]>(`/api/seasons/${seasonData.id}/tournaments`).catch(() => []),
-            apiClient.get<SeasonStanding[]>(`/api/seasons/${seasonData.id}/standings?page=1&limit=10`).catch(() => []),
+            apiClient.get<SeasonTournamentDetails[]>(`/api/public/seasons/${seasonData.id}/tournaments`).catch(() => []),
+            apiClient.get<SeasonStanding[]>(`/api/public/seasons/${seasonData.id}/standings`).catch(() => []),
             apiClient.get<SeasonParticipant[]>(`/api/seasons/${seasonData.id}/participants`).catch(() => []),
           ]);
           setTournaments(tournamentsData);
@@ -172,7 +172,7 @@ export default function SeasonPublicPage() {
         </div>
 
         {/* REGISTER CTA */}
-        {(season.status === 'published' || season.status === 'live') && (
+        {(season.status === 'published' || season.status === 'active') && (
           <div className="px-8 py-8 border-b border-[#1a1a1a]">
             <div className="max-w-6xl mx-auto border border-rose-500/20 bg-rose-500/5 p-8 flex flex-col md:flex-row items-center justify-between gap-6">
               <div>

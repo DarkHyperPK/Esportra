@@ -1,0 +1,520 @@
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, Calendar, Check, ChevronRight, Gamepad2, GitBranch, Globe2, Layers, Settings, Target, Trophy, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { apiClient } from '@/lib/apiClient';
+import { cn } from '@/lib/utils';
+import { useCreateSeason } from '@/hooks/useSeasons';
+import { useToast } from '@/hooks/use-toast';
+import esportsGames from '@/data/esportsGames.json';
+import type { CreateSeasonRequest, CreateSeasonResponse, SeasonParticipantMode } from '@/types/season';
+import { useSeasonSmoothScroll } from './useSeasonSmoothScroll';
+
+type SectionId = 'directive' | 'blueprint' | 'launch';
+
+type Blueprint = {
+  id: string;
+  name: string;
+  meta: string;
+  description: string;
+  icon: typeof Calendar;
+};
+
+type FormState = {
+  name: string;
+  game: string;
+  participantMode: SeasonParticipantMode;
+  description: string;
+  startDate: string;
+  endDate: string;
+  bannerUrl: string;
+  logoUrl: string;
+  organizationId?: string;
+};
+
+const BLUEPRINTS: Blueprint[] = [
+  { id: 'weekly-circuit', name: 'Weekly Circuit', meta: '8 tournaments', description: 'Recurring weekly competition loop for active communities.', icon: Calendar },
+  { id: 'qualifier-series', name: 'Qualifier Series', meta: '4 qualifiers + final', description: 'Multiple open qualifiers feeding a championship event.', icon: Layers },
+  { id: 'split-series', name: 'Split Series', meta: 'Spring + fall', description: 'Two-part season with separate competitive windows.', icon: GitBranch },
+  { id: 'regional-circuit', name: 'Regional Circuit', meta: 'Multi-region paths', description: 'Regional qualifiers converging into one final.', icon: Globe2 },
+  { id: 'points-race', name: 'Points Race', meta: 'Leaderboard first', description: 'Award points across events and qualify by standings.', icon: Target },
+  { id: 'custom', name: 'Custom Blueprint', meta: 'Start blank', description: 'Create the season shell and design the tournament graph manually.', icon: Settings },
+];
+
+const INITIAL_FORM: FormState = {
+  name: '',
+  game: '',
+  participantMode: 'team',
+  description: '',
+  startDate: '',
+  endDate: '',
+  bannerUrl: '',
+  logoUrl: '',
+  organizationId: undefined,
+};
+
+const SeasonWizard = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { scrollTo } = useSeasonSmoothScroll();
+  const createSeason = useCreateSeason();
+
+  const directiveRef = useRef<HTMLDivElement>(null);
+  const blueprintRef = useRef<HTMLDivElement>(null);
+  const launchRef = useRef<HTMLDivElement>(null);
+
+  const [activeSection, setActiveSection] = useState<SectionId>('directive');
+  const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [selectedBlueprintId, setSelectedBlueprintId] = useState<string>('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [createdSeason, setCreatedSeason] = useState<CreateSeasonResponse | null>(null);
+
+  const selectedBlueprint = BLUEPRINTS.find((blueprint) => blueprint.id === selectedBlueprintId);
+  const selectedGame = useMemo(() => esportsGames.games.find((game) => game.name === form.game), [form.game]);
+
+  useEffect(() => {
+    setForm(INITIAL_FORM);
+    setSelectedBlueprintId('');
+    setErrors({});
+    setCreatedSeason(null);
+
+    let mounted = true;
+
+    apiClient
+      .get<{ organization_id?: string | null }>('/api/me/roles')
+      .then((roles) => {
+        if (mounted && roles?.organization_id) {
+          setForm((current) => ({ ...current, organizationId: roles.organization_id ?? undefined }));
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const sections: Array<[SectionId, HTMLDivElement | null]> = [
+      ['directive', directiveRef.current],
+      ['blueprint', blueprintRef.current],
+      ['launch', launchRef.current],
+    ];
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (!visible) return;
+
+        const matched = sections.find(([, element]) => element === visible.target);
+        if (matched) {
+          setActiveSection(matched[0]);
+        }
+      },
+      { threshold: [0.25, 0.45, 0.7] },
+    );
+
+    sections.forEach(([, element]) => {
+      if (element) observer.observe(element);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const updateForm = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setErrors((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const handleGameSelect = (gameName: string) => {
+    updateForm('game', gameName);
+    window.setTimeout(() => scrollTo(blueprintRef.current), 120);
+  };
+
+  const handleBlueprintSelect = (blueprintId: string) => {
+    setSelectedBlueprintId(blueprintId);
+    setErrors((current) => {
+      const next = { ...current };
+      delete next.blueprint;
+      return next;
+    });
+    window.setTimeout(() => scrollTo(launchRef.current), 120);
+  };
+
+  const validate = () => {
+    const nextErrors: Record<string, string> = {};
+
+    if (form.name.trim().length < 3) {
+      nextErrors.name = 'Season name must be at least 3 characters.';
+    }
+
+    if (!form.game) {
+      nextErrors.game = 'Select the game this season is built for.';
+    }
+
+    if (!selectedBlueprintId) {
+      nextErrors.blueprint = 'Select a blueprint or custom start.';
+    }
+
+    if (form.startDate && form.endDate && new Date(form.endDate) < new Date(form.startDate)) {
+      nextErrors.endDate = 'End date must be on or after the start date.';
+    }
+
+    setErrors(nextErrors);
+
+    if (nextErrors.name || nextErrors.game || nextErrors.endDate) {
+      scrollTo(directiveRef.current);
+    } else if (nextErrors.blueprint) {
+      scrollTo(blueprintRef.current);
+    }
+
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
+
+    const payload: CreateSeasonRequest = {
+      name: form.name.trim(),
+      game: form.game,
+      participant_mode: form.participantMode,
+      description: form.description.trim() || undefined,
+      start_date: form.startDate || undefined,
+      end_date: form.endDate || undefined,
+      banner_url: form.bannerUrl.trim() || undefined,
+      logo_url: form.logoUrl.trim() || undefined,
+      organization_id: form.organizationId,
+    };
+
+    try {
+      const season = await createSeason.mutateAsync(payload);
+      setCreatedSeason(season);
+      toast({ title: 'Season created', description: 'Opening the season command center.' });
+      window.setTimeout(() => navigate(`/season/manage/${season.id}?tab=tournaments`), 450);
+    } catch (error) {
+      toast({
+        title: 'Could not create season',
+        description: error instanceof Error ? error.message : 'Please check the season details and try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const completion = {
+    directive: Boolean(form.name.trim().length >= 3 && form.game),
+    blueprint: Boolean(selectedBlueprintId),
+    launch: Boolean(form.name.trim().length >= 3 && form.game && selectedBlueprintId),
+  };
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-white">
+      <div className="fixed inset-0 pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:80px_80px]" />
+      <div className="fixed -top-40 right-0 w-[60vw] h-[60vw] rounded-full bg-rose-600/10 blur-[150px] mix-blend-screen pointer-events-none" />
+
+      {createdSeason && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-rose-500/10 backdrop-blur-md">
+          <div className="border border-rose-400/40 bg-black px-10 py-8 text-center shadow-2xl shadow-rose-500/20">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center bg-rose-500 text-white">
+              <Check className="h-7 w-7" />
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-rose-300">Circuit initialized</p>
+            <h2 className="mt-3 text-2xl font-black uppercase tracking-tight">{createdSeason.name}</h2>
+            <p className="mt-2 text-sm text-zinc-500">Opening command center...</p>
+          </div>
+        </div>
+      )}
+
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/90 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8">
+          <button onClick={() => navigate('/organizer/tournaments')} className="font-black uppercase tracking-[0.24em] text-white">
+            ESPORT<span className="text-rose-500">RA</span>
+          </button>
+          <div className="hidden items-center gap-2 md:flex">
+            {(['directive', 'blueprint', 'launch'] as SectionId[]).map((section, index) => (
+              <button
+                key={section}
+                onClick={() => scrollTo(section === 'directive' ? directiveRef.current : section === 'blueprint' ? blueprintRef.current : launchRef.current)}
+                className={cn(
+                  'h-9 border px-3 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors',
+                  activeSection === section ? 'border-rose-500/60 bg-rose-500/10 text-rose-300' : 'border-white/10 bg-white/[0.03] text-zinc-500 hover:border-white/20 hover:text-white',
+                )}
+              >
+                {String(index + 1).padStart(2, '0')} {section}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => navigate('/organizer/tournaments')}
+            className="flex h-9 w-9 items-center justify-center border border-white/10 text-zinc-500 transition-colors hover:border-white/30 hover:text-white"
+            aria-label="Exit"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
+
+      <main className="relative mx-auto max-w-7xl px-5 py-10 lg:px-8 lg:py-14">
+        <section className="mb-16 max-w-4xl">
+          <p className="font-mono text-[10px] uppercase tracking-[0.5em] text-rose-400">Season Architect</p>
+          <h1 className="mt-5 text-5xl font-black uppercase tracking-[-0.05em] text-white md:text-7xl">
+            Architect a championship season.
+          </h1>
+          <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-400">
+            Build a governed multi-tournament circuit with explicit structure, controlled publishing, and a professional management command center.
+          </p>
+        </section>
+
+        <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
+          <div className="space-y-8">
+            <section ref={directiveRef} className="border border-white/10 bg-black/40 p-6 lg:p-8">
+              <SectionHeader index="01" title="Directive" description="Define the season identity and competitive constraints." complete={completion.directive} />
+
+              <div className="mt-8 grid gap-6 lg:grid-cols-2">
+                <Field label="Circuit designation" error={errors.name}>
+                  <Input
+                    value={form.name}
+                    onChange={(event) => updateForm('name', event.target.value)}
+                    placeholder="MENA Valorant Championship"
+                    className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </Field>
+
+                <Field label="Participant format">
+                  <div className="grid grid-cols-2 border border-white/10">
+                    {(['team', 'solo'] as SeasonParticipantMode[]).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => updateForm('participantMode', mode)}
+                        className={cn(
+                          'h-12 font-mono text-[11px] uppercase tracking-[0.22em] transition-colors',
+                          form.participantMode === mode ? 'bg-rose-500 text-white' : 'bg-white/[0.03] text-zinc-500 hover:text-white',
+                        )}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+                <div className="lg:col-span-2">
+                  <Field label="Game engine" error={errors.game}>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      {esportsGames.games.slice(0, 8).map((game) => (
+                        <button
+                          key={game.slug}
+                          onClick={() => handleGameSelect(game.name)}
+                          className={cn(
+                            'group border-2 bg-white/[0.02] p-4 text-left transition-colors hover:border-white/20',
+                            form.game === game.name ? 'border-rose-500/60 bg-rose-500/5' : 'border-white/10',
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center border border-white/10 bg-black">
+                              <Gamepad2 className="h-5 w-5 text-rose-400" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-white">{game.name}</p>
+                              <p className="mt-1 text-[11px] text-zinc-500">{game.category}</p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                </div>
+
+                <Field label="Start date">
+                  <Input
+                    type="date"
+                    value={form.startDate}
+                    onChange={(event) => updateForm('startDate', event.target.value)}
+                    className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </Field>
+
+                <Field label="End date" error={errors.endDate}>
+                  <Input
+                    type="date"
+                    value={form.endDate}
+                    onChange={(event) => updateForm('endDate', event.target.value)}
+                    className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </Field>
+
+                <Field label="Mission brief" className="lg:col-span-2">
+                  <Textarea
+                    value={form.description}
+                    onChange={(event) => updateForm('description', event.target.value)}
+                    placeholder="Describe the competitive narrative, eligibility, and season goals."
+                    className="min-h-32 rounded-none border-white/10 bg-white/[0.03] text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </Field>
+
+                <Field label="Banner asset URL">
+                  <Input
+                    value={form.bannerUrl}
+                    onChange={(event) => updateForm('bannerUrl', event.target.value)}
+                    placeholder="https://..."
+                    className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </Field>
+
+                <Field label="Logo asset URL">
+                  <Input
+                    value={form.logoUrl}
+                    onChange={(event) => updateForm('logoUrl', event.target.value)}
+                    placeholder="https://..."
+                    className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </Field>
+              </div>
+            </section>
+
+            <section ref={blueprintRef} className="border border-white/10 bg-black/40 p-6 lg:p-8">
+              <SectionHeader index="02" title="Blueprint" description="Choose the season structure starter. Templates create intent; management completes the tournaments." complete={completion.blueprint} />
+
+              {errors.blueprint && (
+                <div className="mt-6 flex items-center gap-2 border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  <AlertTriangle className="h-4 w-4" />
+                  {errors.blueprint}
+                </div>
+              )}
+
+              <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {BLUEPRINTS.map((blueprint) => {
+                  const Icon = blueprint.icon;
+
+                  return (
+                    <button
+                      key={blueprint.id}
+                      onClick={() => handleBlueprintSelect(blueprint.id)}
+                      className={cn(
+                        'group min-h-52 border-2 bg-white/[0.02] p-5 text-left transition-colors hover:border-white/20',
+                        selectedBlueprintId === blueprint.id ? 'border-rose-500/60 bg-rose-500/5' : 'border-white/10',
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center border border-white/10 bg-black text-rose-400">
+                          <Icon className="h-6 w-6" />
+                        </div>
+                        <div className={cn('h-4 w-4 border', selectedBlueprintId === blueprint.id ? 'border-rose-400 bg-rose-500' : 'border-white/20')} />
+                      </div>
+                      <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">{blueprint.meta}</p>
+                      <h3 className="mt-2 text-xl font-black uppercase tracking-tight text-white">{blueprint.name}</h3>
+                      <p className="mt-3 text-sm leading-6 text-zinc-400">{blueprint.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section ref={launchRef} className="border border-white/10 bg-black/40 p-6 lg:p-8">
+              <SectionHeader index="03" title="Launch" description="Review the shell. Tournament configuration continues inside the season command center." complete={completion.launch} />
+
+              <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
+                <div className="border border-white/10 bg-white/[0.03] p-6">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Season packet</p>
+                  <h2 className="mt-4 text-3xl font-black uppercase tracking-tight text-white">{form.name || 'Untitled season'}</h2>
+                  <div className="mt-6 grid gap-3 text-sm">
+                    <SummaryRow label="Game" value={form.game || 'Not selected'} />
+                    <SummaryRow label="Format" value={form.participantMode.toUpperCase()} />
+                    <SummaryRow label="Blueprint" value={selectedBlueprint?.name ?? 'Not selected'} />
+                    <SummaryRow label="Window" value={form.startDate || form.endDate ? `${form.startDate || 'Open'} → ${form.endDate || 'Open'}` : 'No schedule set'} />
+                    <SummaryRow label="Public setup" value="Draft command center" />
+                  </div>
+                </div>
+
+                <div className="border border-rose-500/30 bg-rose-500/[0.04] p-6">
+                  <Trophy className="h-10 w-10 text-rose-400" />
+                  <h3 className="mt-5 text-xl font-black uppercase tracking-tight">Initialize circuit</h3>
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">
+                    This creates the season shell as a draft. Add and configure real tournaments from the command center before publishing.
+                  </p>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={createSeason.isPending}
+                    className="mt-6 h-14 w-full rounded-none bg-rose-500 font-bold uppercase tracking-[0.18em] text-white hover:bg-rose-400 active:bg-rose-600"
+                  >
+                    {createSeason.isPending ? 'Initializing...' : 'Initialize circuit'}
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <aside className="hidden lg:block">
+            <div className="sticky top-24 border border-white/10 bg-black/50 p-5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-600">Progress</p>
+              <div className="mt-5 space-y-2">
+                <ProgressButton label="Directive" active={activeSection === 'directive'} complete={completion.directive} onClick={() => scrollTo(directiveRef.current)} />
+                <ProgressButton label="Blueprint" active={activeSection === 'blueprint'} complete={completion.blueprint} onClick={() => scrollTo(blueprintRef.current)} />
+                <ProgressButton label="Launch" active={activeSection === 'launch'} complete={completion.launch} onClick={() => scrollTo(launchRef.current)} />
+              </div>
+
+              <div className="mt-6 border-t border-white/10 pt-5">
+                <p className="text-xs leading-5 text-zinc-500">
+                  {selectedGame ? `${selectedGame.name} selected. ${selectedGame.category}` : 'Select a game to unlock the blueprint decision.'}
+                </p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const SectionHeader = ({ index, title, description, complete }: { index: string; title: string; description: string; complete: boolean }) => (
+  <div className="flex flex-col gap-5 border-b border-white/10 pb-6 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <p className="font-mono text-[10px] uppercase tracking-[0.5em] text-zinc-600">Section {index}</p>
+      <h2 className="mt-3 text-3xl font-black uppercase tracking-tight text-white">{title}</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">{description}</p>
+    </div>
+    <div className={cn('flex h-10 w-10 items-center justify-center border', complete ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-600')}>
+      <Check className="h-5 w-5" />
+    </div>
+  </div>
+);
+
+const Field = ({ label, error, className, children }: { label: string; error?: string; className?: string; children: ReactNode }) => (
+  <div className={cn('space-y-2', className)}>
+    <div className="flex items-center justify-between gap-3">
+      <label className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">{label}</label>
+      {error && <span className="text-right text-xs text-red-400">{error}</span>}
+    </div>
+    {children}
+  </div>
+);
+
+const SummaryRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex items-center justify-between gap-4 border-b border-white/10 py-3 last:border-b-0">
+    <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-600">{label}</span>
+    <span className="text-right font-medium text-zinc-200">{value}</span>
+  </div>
+);
+
+const ProgressButton = ({ label, active, complete, onClick }: { label: string; active: boolean; complete: boolean; onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      'flex w-full items-center justify-between border px-3 py-3 text-left transition-colors',
+      active ? 'border-rose-500/60 bg-rose-500/10 text-white' : 'border-white/10 bg-white/[0.02] text-zinc-500 hover:border-white/20 hover:text-white',
+    )}
+  >
+    <span className="font-mono text-[10px] uppercase tracking-[0.24em]">{label}</span>
+    <span className={cn('h-2 w-2', complete ? 'bg-rose-500' : 'bg-zinc-700')} />
+  </button>
+);
+
+export default SeasonWizard;

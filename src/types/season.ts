@@ -106,6 +106,14 @@ export interface CreateSeasonRequest {
   organization_id?: string;
 }
 
+export interface CreateSeasonResponse {
+  id: string;
+  name: string;
+  slug: string;
+  rootNodeId: string;
+  status: SeasonStatus;
+}
+
 export interface UpdateSeasonRequest {
   name: string;
   description?: string;
@@ -191,6 +199,25 @@ export interface SeasonTournamentDetails {
   displayName?: string | null;
   role: string;
   region?: string | null;
+}
+
+export interface AddSeasonTournamentRequest {
+  name: string;
+  role: string;
+  region?: string;
+  displayName?: string;
+  format?: string;
+  maxTeams?: number;
+  teamSize?: number;
+  startDate?: string;
+  endDate?: string;
+  registrationDeadline?: string;
+}
+
+export interface AddSeasonTournamentResponse {
+  seasonTournamentId: string;
+  tournamentId: string;
+  slug: string;
 }
 
 export interface SeasonParticipant {

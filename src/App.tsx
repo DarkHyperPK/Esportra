@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NotificationProvider } from "@/components/NotificationContext";
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/PageTransition";
@@ -77,7 +77,6 @@ const AnomalyDetection = lazyWithRetry(() => import("./pages/admin/tools/Anomaly
 const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dashboard"));
 
 // Tournament Organizer
-const OrganizerDashboard = lazyWithRetry(() => import("./pages/organizer/Dashboard"));
 const ManageSeasons = lazyWithRetry(() => import("./pages/organizer/ManageSeasons"));
 const CreateSeason = lazyWithRetry(() => import("./pages/organizer/CreateSeason"));
 const SeasonManage = lazyWithRetry(() => import("./pages/organizer/SeasonManage"));
@@ -97,6 +96,16 @@ const OrganizationWizard = lazyWithRetry(() => import("./pages/organizer/Organiz
 const AdminSeasonAudit = lazyWithRetry(() => import("./pages/admin/AdminSeasonAudit"));
 const AdminSeasonOverride = lazyWithRetry(() => import("./pages/admin/AdminSeasonOverride"));
 const AdminSeasonAnalytics = lazyWithRetry(() => import("./pages/admin/AdminSeasonAnalytics"));
+
+const LegacySeasonManageRedirect = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/season/manage/${id}` : '/organizer/seasons'} replace />;
+};
+
+const LegacySeasonPublicRedirect = () => {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={slug ? `/season/${slug}` : '/seasons'} replace />;
+};
 
 const ADMIN_ROLE_SETS = {
   anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
@@ -573,11 +582,7 @@ const AppContent = React.memo(() => {
                 } />
 
                 {/* Tournament Organizer Routes */}
-                <Route path="/organizer/dashboard" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <OrganizerDashboard />
-                  </ProtectedRoute>
-                } />
+                <Route path="/organizer/dashboard" element={<Navigate to="/organizer/tournaments" replace />} />
                 <Route path="/organizer/setup-organization" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <OrganizationWizard />
@@ -593,14 +598,10 @@ const AppContent = React.memo(() => {
                     <ManageSeasons />
                   </ProtectedRoute>
                 } />
-                <Route path="/organizer/seasons/create" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <CreateSeason />
-                  </ProtectedRoute>
-                } />
+                <Route path="/organizer/seasons/create" element={<Navigate to="/seasons/create" replace />} />
                 <Route path="/organizer/seasons/:id" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
-                    <SeasonManage />
+                    <LegacySeasonManageRedirect />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug" element={
@@ -630,8 +631,18 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/tournaments" element={<BrowseTournaments />} />
                 <Route path="/seasons" element={<SeasonsList />} />
-                <Route path="/seasons/create" element={<Navigate to="/organizer/seasons/create" replace />} />
-                <Route path="/seasons/:slug" element={<SeasonPublic />} />
+                <Route path="/seasons/create" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <CreateSeason />
+                  </ProtectedRoute>
+                } />
+                <Route path="/season/manage/:id" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <SeasonManage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/season/:slug" element={<SeasonPublic />} />
+                <Route path="/seasons/:slug" element={<LegacySeasonPublicRedirect />} />
                 <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
                 <Route path="/player/:username" element={<PlayerProfile />} />
