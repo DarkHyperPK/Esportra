@@ -154,6 +154,37 @@ export function validateSeasonBuilderNodes(nodes: SeasonBuilderNode[]): {
   return { valid: true };
 }
 
+const getPlacementRangeSize = (start: number, end: number) => {
+  if (start < 1 || end < 1 || start > end) return 0;
+  return end - start + 1;
+};
+
+const hasDirectedCycle = (edges: Array<{ sourceId: string; targetId: string }>) => {
+  const adjacency = new Map<string, Set<string>>();
+  edges.forEach((edge) => {
+    if (!adjacency.has(edge.sourceId)) adjacency.set(edge.sourceId, new Set());
+    adjacency.get(edge.sourceId)?.add(edge.targetId);
+  });
+
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+
+  const visit = (nodeId: string): boolean => {
+    if (visiting.has(nodeId)) return true;
+    if (visited.has(nodeId)) return false;
+    visiting.add(nodeId);
+    const nextNodes = adjacency.get(nodeId) ?? new Set<string>();
+    for (const nextNodeId of nextNodes) {
+      if (visit(nextNodeId)) return true;
+    }
+    visiting.delete(nodeId);
+    visited.add(nodeId);
+    return false;
+  };
+
+  return Array.from(adjacency.keys()).some((nodeId) => visit(nodeId));
+};
+
 export function validateSeasonSetupDomain(nodes: SeasonBuilderNode[], rules: SeasonRuleDraft[]) {
   const planned = nodes.filter((node) => node.nodeType !== 'root');
   const structureValidation = validateSeasonBuilderNodes(nodes);
@@ -175,10 +206,26 @@ export function validateSeasonSetupDomain(nodes: SeasonBuilderNode[], rules: Sea
   const hasRuleDestination = rules.some((rule) => Boolean(rule.destinationNodeId));
   const nodeById = new Map(planned.map((node) => [node.id, node]));
   const domainIssues: string[] = [];
+  const graphEdges: Array<{ sourceId: string; targetId: string }> = [];
+  const connectionPairKeys = new Set<string>();
+  const incomingCapacityByTarget = new Map<string, number>();
+  const finals = planned.filter((node) => node.nodeType === 'final');
+
+  if (finals.length > 1) {
+    domainIssues.push('A season should have one finals node. Split extra championships into stages or separate seasons.');
+  }
 
   planned.forEach((node) => {
     const config = readTournamentConfig(node);
     const outgoing = readOutgoingConnections(node);
+
+    if (typeof config.teamSize === 'number' && typeof config.maxTeams === 'number' && config.maxTeams < config.teamSize) {
+      domainIssues.push(`${node.name || 'Tournament'} must have max teams greater than or equal to team size.`);
+    }
+
+    if (typeof config.bestOf === 'number' && (!Number.isInteger(config.bestOf) || config.bestOf < 1 || config.bestOf > 7 || config.bestOf % 2 === 0)) {
+      domainIssues.push(`${node.name || 'Tournament'} best-of must be an odd value between 1 and 7.`);
+    }
 
     if (isProgressionOnlyNode(node)) {
       if (config.registrationType !== 'closed') {
@@ -199,6 +246,8 @@ export function validateSeasonSetupDomain(nodes: SeasonBuilderNode[], rules: Sea
         domainIssues.push(`${node.name || 'Tournament'} has an advancement link without a valid target.`);
         return;
       }
+      graphEdges.push({ sourceId: node.id, targetId: target.id });
+      connectionPairKeys.add(`${node.id}:${target.id}`);
       if (target.id === node.id) {
         domainIssues.push(`${node.name || 'Tournament'} cannot advance into itself.`);
       }
@@ -209,6 +258,7 @@ export function validateSeasonSetupDomain(nodes: SeasonBuilderNode[], rules: Sea
       if (connection.advancementCount < 1 || connection.advancementCount > placementRange) {
         domainIssues.push(`${node.name || 'Tournament'} advances more entrants than its placement range allows.`);
       }
+      incomingCapacityByTarget.set(target.id, (incomingCapacityByTarget.get(target.id) ?? 0) + Math.max(0, connection.advancementCount));
       if (node.endsAt && target.startsAt && new Date(node.endsAt) > new Date(target.startsAt)) {
         domainIssues.push(`${target.name || 'Target tournament'} must start after ${node.name || 'source tournament'} ends.`);
       }
@@ -242,11 +292,41 @@ export function validateSeasonSetupDomain(nodes: SeasonBuilderNode[], rules: Sea
     const source = nodeById.get(rule.sourceNodeId);
     const destination = nodeById.get(rule.destinationNodeId);
     if (!source || !destination) return;
+    graphEdges.push({ sourceId: source.id, targetId: destination.id });
+    if (!connectionPairKeys.has(`${source.id}:${destination.id}`)) {
+      incomingCapacityByTarget.set(destination.id, (incomingCapacityByTarget.get(destination.id) ?? 0) + getPlacementRangeSize(rule.placementFrom, rule.placementTo));
+    }
     if (source.id === destination.id) {
       domainIssues.push(`${source.name || 'Tournament'} cannot qualify entrants into itself.`);
     }
     if (source.endsAt && destination.startsAt && new Date(source.endsAt) > new Date(destination.startsAt)) {
       domainIssues.push(`${destination.name || 'Destination tournament'} must start after ${source.name || 'source tournament'} ends.`);
+    }
+  });
+
+  if (hasDirectedCycle(graphEdges)) {
+    domainIssues.push('Advancement flow contains a cycle. Tournament progression must move forward without looping back.');
+  }
+
+  planned.forEach((node) => {
+    const inbound = graphEdges.some((edge) => edge.targetId === node.id);
+    const outbound = graphEdges.some((edge) => edge.sourceId === node.id);
+    const scoringSource = rules.some((rule) => rule.sourceNodeId === node.id);
+    const meta = node.metadata as Record<string, unknown> | null | undefined;
+    const hasPointsStandingsInbound = node.nodeType === 'final' && meta?.qualificationSource === 'points_standings' && rules.some((rule) => {
+      const source = nodeById.get(rule.sourceNodeId);
+      return source && source.nodeType !== 'final';
+    });
+    if (planned.length > 1 && !inbound && !outbound && !scoringSource && !hasPointsStandingsInbound) {
+      domainIssues.push(`${node.name || 'Tournament'} is orphaned. Connect it to the season flow or remove it.`);
+    }
+  });
+
+  incomingCapacityByTarget.forEach((incomingCount, targetId) => {
+    const target = nodeById.get(targetId);
+    const targetConfig = target ? readTournamentConfig(target) : {};
+    if (target && typeof targetConfig.maxTeams === 'number' && incomingCount > targetConfig.maxTeams) {
+      domainIssues.push(`${target.name || 'Target tournament'} receives ${incomingCount} entrants but only allows ${targetConfig.maxTeams} teams.`);
     }
   });
 

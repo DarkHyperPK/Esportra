@@ -122,14 +122,32 @@ const SeasonSetupPlan = () => {
           },
         };
       }
+      if (patch.nodeType && nodeRequiresRegistrationDeadline(next)) {
+        return {
+          ...next,
+          metadata: {
+            ...(next.metadata ?? {}),
+            registrationType: 'open',
+            registrationPolicy: 'direct_entry',
+            qualificationSource: 'registration',
+          },
+        };
+      }
       return next;
     }));
   };
 
   const updateMetadata = (nodeId: string, patch: Record<string, unknown>) => {
-    setNodeRows((current) => current.map((node) => (
-      node.id === nodeId ? { ...node, metadata: { ...(node.metadata ?? {}), ...patch } } : node
-    )));
+    setNodeRows((current) => current.map((node) => {
+      if (node.id !== nodeId) return node;
+      const nextMetadata = { ...(node.metadata ?? {}), ...patch };
+      if (isProgressionOnlyNode(node)) {
+        nextMetadata.registrationType = 'closed';
+        nextMetadata.registrationPolicy = 'inbound_only';
+        nextMetadata.qualificationSource = node.nodeType === 'final' ? 'upstream_results' : 'prior_stage';
+      }
+      return { ...node, metadata: nextMetadata };
+    }));
   };
 
   const updateConnection = (nodeId: string, patch: Partial<AdvancementConnection>) => {
