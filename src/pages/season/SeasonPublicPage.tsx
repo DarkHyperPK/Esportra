@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { apiClient } from '@/lib/apiClient';
+import { seasonApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Trophy, Calendar, Users, ArrowRight, Gamepad2, Loader2, Swords } from 'lucide-react';
@@ -28,14 +28,14 @@ export default function SeasonPublicPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const seasonData = await apiClient.get<Season>(`/api/public/seasons/${slug}`);
+        const seasonData = await seasonApi.getSeason(slug);
         setSeason(seasonData);
 
         if (seasonData?.id) {
           const [tournamentsData, standingsData, participantsData] = await Promise.all([
-            apiClient.get<SeasonTournamentDetails[]>(`/api/public/seasons/${seasonData.id}/tournaments`).catch(() => []),
-            apiClient.get<SeasonStanding[]>(`/api/public/seasons/${seasonData.id}/standings`).catch(() => []),
-            apiClient.get<SeasonParticipant[]>(`/api/seasons/${seasonData.id}/participants`).catch(() => []),
+            seasonApi.getSeasonTournaments(seasonData.id).catch(() => []),
+            seasonApi.getStandings(seasonData.id).catch(() => []),
+            seasonApi.getSeasonParticipants(seasonData.id).catch(() => []),
           ]);
           setTournaments(tournamentsData);
           setStandings(standingsData);
