@@ -15,9 +15,10 @@ import { RulesTab } from '@/components/tournament/details/RulesTab';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import { usePublicBracketData } from '@/hooks/usePublicBracketData';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle, Clock, AlertTriangle, Ban as BanIcon, Swords, ChevronRight, Layers, Copy } from 'lucide-react';
+import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle, Clock, AlertTriangle, Ban as BanIcon, Swords, ChevronRight, Layers, Copy, Loader2, Mail } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
@@ -60,6 +61,7 @@ import BRGroupStageView from '@/components/tournament/br/BRGroupStageView';
 import { useBRGroupStage } from '@/hooks/useBRGroupLeaderboard';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import SEO from '@/components/SEO';
+import { useTournamentInvitations } from '@/hooks/useTournamentInvitations';
 
 interface EsportsGame {
   name: string;
@@ -153,6 +155,8 @@ const TournamentDetails = () => {
   const requestedBRStageId = detailsSearchParams?.get('brStage') ?? null;
   const competitorTabValue = terminology.competitorLabelPlural.toLowerCase();
   const [activeTab, setActiveTab] = useState(requestedDetailsTab || 'overview');
+  const [inviteCode, setInviteCode] = useState('');
+  const { redeemCode } = useTournamentInvitations(tournament?.id, { list: false });
 
   useEffect(() => {
     setActiveTab(requestedDetailsTab || 'overview');
@@ -185,6 +189,9 @@ const TournamentDetails = () => {
     !hasCheckedIn;
   const checkInWindowMinutes = (tournament?.settings as any)?.checkInWindowMinutes || 60; // Default to 60 if not set
   const checkInStartTime = checkInDeadlineDate ? new Date(checkInDeadlineDate.getTime() - (checkInWindowMinutes * 60 * 1000)) : null;
+  const tournamentRegistrationType = tournament?.registration_type ?? (tournament?.settings as any)?.registrationType ?? 'open';
+  const tournamentReservedInviteSlots = tournament?.reserved_invite_slots ?? (tournament?.settings as any)?.reservedInviteSlots ?? 0;
+  const shouldShowInviteCode = !isOrganizer && !isRegistered && (tournamentRegistrationType === 'invite_only' || tournamentReservedInviteSlots > 0);
 
   const canSelfCheckIn =
     requiresCheckIn &&
@@ -316,6 +323,7 @@ const TournamentDetails = () => {
       if (!data?.tournament) throw new Error('Tournament not found');
 
       const t = data.tournament;
+      const parsedSettings = typeof t.settings === 'string' ? (() => { try { return JSON.parse(t.settings); } catch { return t.settings; } })() : (t.settings || {});
       setCheckInCount(t.checked_in_count || 0);
 
       const baseTournament: BaseTournament = {
@@ -327,6 +335,9 @@ const TournamentDetails = () => {
         venue: t.venue_name || '',
         is_online: !t.venue_id,
         max_participants: t.max_teams,
+        reserved_invite_slots: t.reserved_invite_slots ?? t.reservedInviteSlots ?? parsedSettings?.reservedInviteSlots ?? 0,
+        invite_expiry_days: t.invite_expiry_days ?? t.inviteExpiryDays ?? parsedSettings?.inviteExpiryDays ?? 7,
+        registration_type: t.registration_type ?? t.registrationType ?? parsedSettings?.registrationType ?? null,
         team_size: 1,
         prize_pool: t.prize_pool?.toString() || '0',
         entry_fee: t.entry_fee?.toString() || '0',
@@ -350,7 +361,7 @@ const TournamentDetails = () => {
           username: t.organizer_username,
           avatar_url: t.organizer_avatar
         },
-        settings: typeof t.settings === 'string' ? (() => { try { return JSON.parse(t.settings); } catch { return t.settings; } })() : (t.settings || {}),
+        settings: parsedSettings,
         rules: t.rules || null,
         payment_instructions: t.payment_instructions || null,
       };
@@ -595,6 +606,29 @@ const TournamentDetails = () => {
     }
   };
 
+  const handleRedeemInviteCode = async () => {
+    if (!requireVerification()) return;
+    if (!tournament?.id) return;
+    const code = inviteCode.trim();
+    if (!code) {
+      toast({ title: 'Code required', description: 'Enter the invitation code from your email.', variant: 'destructive' });
+      return;
+    }
+    try {
+      await redeemCode.mutateAsync({ code });
+      setInviteCode('');
+      await checkRegistration(true);
+      await fetchTournamentData();
+      toast({ title: 'Invitation redeemed', description: 'Your team has joined this tournament.' });
+    } catch (error: any) {
+      toast({
+        title: 'Unable to redeem code',
+        description: error.message || 'Check that the code belongs to your email and that you are a team captain.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleBannerUpdate = async (url: string | null) => {
     if (!tournament?.id) return;
 
@@ -774,6 +808,47 @@ const TournamentDetails = () => {
         checkInStartTime={checkInStartTime}
         awaitingApproval={awaitingApproval}
       />
+
+      {shouldShowInviteCode && (
+        <div className="container mx-auto px-4 relative z-30 -mt-6 mb-10">
+          <Card className="mx-auto max-w-3xl border border-purple-500/20 bg-[#0d0d10]/95 shadow-2xl shadow-purple-950/20 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Mail className="h-5 w-5 text-purple-300" />
+                Have an invitation code?
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-gray-400">
+                Enter the code from your email. The code must match your logged-in email and you must be captain of a team.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Input
+                  value={inviteCode}
+                  onChange={(event) => setInviteCode(event.target.value.toUpperCase())}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      handleRedeemInviteCode();
+                    }
+                  }}
+                  placeholder="XKDL-MQP2"
+                  className="border-white/10 bg-black/40 font-mono tracking-widest text-white"
+                />
+                <Button
+                  type="button"
+                  onClick={handleRedeemInviteCode}
+                  disabled={redeemCode.isPending}
+                  className="bg-purple-600 hover:bg-purple-500 text-white"
+                >
+                  {redeemCode.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Join with Code
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* --- TABS NAVIGATION (Sticky) --- */}
       {/* --- TABS NAVIGATION (Sticky) --- */}

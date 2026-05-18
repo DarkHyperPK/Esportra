@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -45,6 +46,8 @@ import {
   Globe,
   Layers,
   Lock,
+  Loader2,
+  Mail,
   MapPin,
   Plus,
   RefreshCw,
@@ -56,6 +59,7 @@ import {
   Trophy,
   Unlock,
   Users,
+  X,
   Zap,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
@@ -99,9 +103,11 @@ import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
 import { MockModePanel } from '@/components/tournament/MockModePanel';
 import { useMockTournament } from '@/hooks/useMockTournament';
+import { useTournamentInvitations } from '@/hooks/useTournamentInvitations';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 const PARTICIPANTS_PAGE_SIZE = 24;
+const isValidInviteEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
 interface DatabaseTournament {
   id: string;
@@ -180,6 +186,7 @@ interface Participant {
   payment_rejection_reason?: string | null;
   entry_fee_amount?: number | null;
   entry_fee_paid?: boolean;
+  source?: string | null;
   user: {
     username: string;
     full_name: string | null;
@@ -361,6 +368,33 @@ const TournamentDashboard = () => {
   const [now, setNow] = useState(Date.now());
   const [participantsPage, setParticipantsPage] = useState(1);
   const [publishMockGuardOpen, setPublishMockGuardOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [draftInviteEmails, setDraftInviteEmails] = useState<string[]>([]);
+  const [csvImportText, setCsvImportText] = useState('');
+  const [showCsvImport, setShowCsvImport] = useState(false);
+
+  const {
+    invitations: invitationQuery,
+    createDrafts: createInviteDrafts,
+    sendInvites,
+    revokeInvite,
+    resendInvites,
+    importCsv,
+  } = useTournamentInvitations(tournament?.id);
+
+  const invitationRows = invitationQuery.data ?? [];
+  const registrationType = tournament?.registration_type ?? (tournament?.settings as any)?.registrationType ?? 'open';
+  const maxTeams = tournament?.max_teams ?? tournament?.max_participants ?? 0;
+  const configuredReservedInviteSlots = tournament?.reserved_invite_slots ?? (tournament?.settings as any)?.reservedInviteSlots ?? 0;
+  const effectiveReservedInviteSlots = configuredReservedInviteSlots > 0
+    ? configuredReservedInviteSlots
+    : registrationType === 'invite_only'
+      ? maxTeams
+      : 0;
+  const allocatedInvitationCount = invitationRows.filter((invite) => ['draft', 'sent', 'redeemed'].includes(invite.status)).length;
+  const inviteParticipantCount = participants.filter((participant) => participant.source === 'invite').length;
+  const usedInviteSlots = Math.max(allocatedInvitationCount, inviteParticipantCount) + draftInviteEmails.length;
+  const remainingInviteSlots = Math.max(0, effectiveReservedInviteSlots - usedInviteSlots);
 
   const { clear: clearMockForPublish } = useMockTournament({
     tournamentId: tournament?.id ?? '',
@@ -660,6 +694,50 @@ const TournamentDashboard = () => {
       });
     } finally {
       setRemovingUnchecked(false);
+    }
+  };
+
+  const handleAddInviteEmail = () => {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!isValidInviteEmail(email)) {
+      toast({ title: 'Invalid email', description: 'Enter a valid captain email address.', variant: 'destructive' });
+      return;
+    }
+    if (draftInviteEmails.includes(email) || invitationRows.some((invite) => invite.email.toLowerCase() === email && invite.status !== 'revoked')) {
+      toast({ title: 'Already added', description: `${email} already has an invitation.` });
+      return;
+    }
+    if (effectiveReservedInviteSlots <= 0) {
+      toast({ title: 'Invite slots not configured', description: 'Add reserved invite slots before sending guaranteed invite codes.', variant: 'destructive' });
+      return;
+    }
+    if (effectiveReservedInviteSlots > 0 && remainingInviteSlots <= 0) {
+      toast({ title: 'No invite slots remaining', description: 'Increase reserved invite slots or revoke an existing invitation.', variant: 'destructive' });
+      return;
+    }
+    setDraftInviteEmails((current) => [...current, email]);
+    setInviteEmail('');
+  };
+
+  const handleSendInviteEmails = async () => {
+    if (!tournament?.id || draftInviteEmails.length === 0) return;
+    try {
+      const created = await createInviteDrafts.mutateAsync({ emails: draftInviteEmails });
+      const invitationIds = created.map((invite) => invite.id).filter(Boolean);
+      await sendInvites.mutateAsync(invitationIds.length > 0 ? { invitationIds } : {});
+      setDraftInviteEmails([]);
+      toast({ title: 'Invitations sent', description: 'Codes were generated and emailed to the selected captains.' });
+    } catch (error: any) {
+      toast({ title: 'Unable to send invitations', description: error.message || 'Please try again later.', variant: 'destructive' });
+    }
+  };
+
+  const handleRevokeInvitation = async (invitationId: string) => {
+    try {
+      await revokeInvite.mutateAsync(invitationId);
+      toast({ title: 'Invitation revoked', description: 'The code can no longer be redeemed.' });
+    } catch (error: any) {
+      toast({ title: 'Unable to revoke invitation', description: error.message || 'Please try again later.', variant: 'destructive' });
     }
   };
 
@@ -1953,6 +2031,233 @@ const TournamentDashboard = () => {
                               </Button>
                             </div>
                           )}
+                        </CardContent>
+                      </Card>
+                    )}
+                    {canManageTeams && (
+                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                        <MotionTiles />
+                        <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                              <CardTitle className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
+                                <Mail className="h-5 w-5 text-purple-300" />
+                                Invite Teams
+                              </CardTitle>
+                              <p className="mt-1 text-sm text-gray-400">
+                                Email-locked codes let invited captains register their team into this tournament.
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                                <p className="text-gray-500 uppercase tracking-wider">Reserved</p>
+                                <p className="mt-1 text-lg font-black text-white">{effectiveReservedInviteSlots}</p>
+                              </div>
+                              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                                <p className="text-gray-500 uppercase tracking-wider">Used</p>
+                                <p className="mt-1 text-lg font-black text-white">{usedInviteSlots}</p>
+                              </div>
+                              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                                <p className="text-gray-500 uppercase tracking-wider">Remaining</p>
+                                <p className="mt-1 text-lg font-black text-emerald-300">{remainingInviteSlots}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-0 relative z-10 space-y-5">
+                          {/* Invitation stats breakdown */}
+                          {invitationRows.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-[10px]">
+                              {[
+                                { label: 'Draft', value: invitationRows.filter(i => i.status === 'draft').length, color: 'text-amber-300' },
+                                { label: 'Sent', value: invitationRows.filter(i => i.status === 'sent').length, color: 'text-blue-300' },
+                                { label: 'Redeemed', value: invitationRows.filter(i => i.status === 'redeemed').length, color: 'text-emerald-300' },
+                                { label: 'Expired', value: invitationRows.filter(i => i.status === 'expired').length, color: 'text-red-300' },
+                                { label: 'Revoked', value: invitationRows.filter(i => i.status === 'revoked').length, color: 'text-zinc-400' },
+                              ].map((stat) => (
+                                <div key={stat.label} className="rounded-xl border border-white/5 bg-white/[0.02] px-2 py-2">
+                                  <p className="text-zinc-500 uppercase tracking-wider">{stat.label}</p>
+                                  <p className={`mt-0.5 text-sm font-bold ${stat.color}`}>{stat.value}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {effectiveReservedInviteSlots <= 0 && (
+                            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+                              Reserved invite slots are not configured for this tournament. Add reserved slots in tournament settings before sending guaranteed invite codes.
+                            </div>
+                          )}
+                          <div className="flex flex-col gap-3 sm:flex-row">
+                            <Input
+                              type="email"
+                              value={inviteEmail}
+                              onChange={(event) => setInviteEmail(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault();
+                                  handleAddInviteEmail();
+                                }
+                              }}
+                              placeholder="captain@team.com"
+                              className="border-white/10 bg-black/30 text-white"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleAddInviteEmail}
+                              disabled={effectiveReservedInviteSlots <= 0}
+                              className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                            >
+                              Add
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={handleSendInviteEmails}
+                              disabled={effectiveReservedInviteSlots <= 0 || draftInviteEmails.length === 0 || createInviteDrafts.isPending || sendInvites.isPending}
+                              className="bg-purple-600 hover:bg-purple-500 text-white"
+                            >
+                              {(createInviteDrafts.isPending || sendInvites.isPending) ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Mail className="mr-2 h-4 w-4" />
+                              )}
+                              Send Codes
+                            </Button>
+                          </div>
+
+                          {draftInviteEmails.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {draftInviteEmails.map((email) => (
+                                <Badge key={email} className="bg-white/10 text-white border border-white/10">
+                                  {email}
+                                  <button
+                                    type="button"
+                                    onClick={() => setDraftInviteEmails((current) => current.filter((item) => item !== email))}
+                                    className="ml-2 text-gray-400 hover:text-white"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* CSV Import */}
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowCsvImport(!showCsvImport)}
+                              className="border-white/10 bg-white/5 text-white hover:bg-white/10 text-xs"
+                            >
+                              {showCsvImport ? 'Hide' : 'CSV Import'}
+                            </Button>
+                          </div>
+
+                          {showCsvImport && (
+                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+                              <p className="text-xs text-gray-400">Paste emails separated by commas, semicolons, or newlines:</p>
+                              <textarea
+                                value={csvImportText}
+                                onChange={(e) => setCsvImportText(e.target.value)}
+                                placeholder="captain1@team.com, captain2@team.com\ncaptain3@team.com"
+                                rows={4}
+                                className="w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-white placeholder:text-zinc-600 focus:border-purple-500/50 focus:outline-none"
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => {
+                                  if (!csvImportText.trim()) return;
+                                  importCsv.mutate({ csvContent: csvImportText }, {
+                                    onSuccess: (data) => {
+                                      toast({ title: 'CSV Import complete', description: `${data.imported} imported, ${data.skipped} skipped.` });
+                                      setCsvImportText('');
+                                      setShowCsvImport(false);
+                                    },
+                                    onError: (err: any) => toast({ title: 'CSV import failed', description: err.message || 'Try again.', variant: 'destructive' }),
+                                  });
+                                }}
+                                disabled={importCsv.isPending || !csvImportText.trim()}
+                                className="bg-purple-600 hover:bg-purple-500 text-white"
+                              >
+                                {importCsv.isPending ? 'Importing...' : 'Import Emails'}
+                              </Button>
+                            </div>
+                          )}
+
+                          <div className="rounded-2xl border border-white/10 overflow-hidden">
+                            {invitationQuery.isLoading ? (
+                              <div className="flex items-center justify-center gap-2 p-6 text-sm text-gray-400">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Loading invitations...
+                              </div>
+                            ) : invitationRows.length === 0 ? (
+                              <div className="p-6 text-sm text-gray-500">No invitation codes generated yet.</div>
+                            ) : (
+                              <div className="divide-y divide-white/10">
+                                {invitationRows.map((invite) => (
+                                  <div key={invite.id} className="grid gap-3 p-4 text-sm md:grid-cols-[minmax(0,1.3fr)_120px_100px_160px_90px] md:items-center">
+                                    <div className="min-w-0">
+                                      <p className="truncate font-medium text-white">{invite.email}</p>
+                                      {invite.teamName && <p className="truncate text-xs text-gray-500">{invite.teamName}</p>}
+                                    </div>
+                                    <code className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs text-purple-200">
+                                      {invite.code || 'Pending'}
+                                    </code>
+                                    <Badge className={cn(
+                                      'w-fit capitalize',
+                                      invite.status === 'redeemed' && 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30',
+                                      invite.status === 'sent' && 'bg-blue-500/20 text-blue-200 border-blue-500/30',
+                                      invite.status === 'expired' && 'bg-red-500/20 text-red-200 border-red-500/30',
+                                      invite.status === 'revoked' && 'bg-zinc-500/20 text-zinc-200 border-zinc-500/30',
+                                      invite.status === 'draft' && 'bg-amber-500/20 text-amber-200 border-amber-500/30',
+                                    )}>
+                                      {invite.status}
+                                    </Badge>
+                                    <span className="text-xs text-gray-500">
+                                      Expires {invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString() : '—'}
+                                    </span>
+                                    <div className="flex gap-1">
+                                      {(invite.status === 'sent' || invite.status === 'expired') && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            resendInvites.mutate({ invitationIds: [invite.id] }, {
+                                              onSuccess: () => toast({ title: 'Invitation resent', description: `Re-sent to ${invite.email}` }),
+                                              onError: (err: any) => toast({ title: 'Resend failed', description: err.message || 'Try again later.', variant: 'destructive' }),
+                                            });
+                                          }}
+                                          disabled={resendInvites.isPending}
+                                          className="justify-start text-blue-300 hover:bg-blue-500/10 hover:text-blue-200 text-xs px-2"
+                                        >
+                                          Resend
+                                        </Button>
+                                      )}
+                                      {invite.status === 'sent' && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleRevokeInvitation(invite.id)}
+                                          disabled={revokeInvite.isPending}
+                                          className="justify-start text-red-300 hover:bg-red-500/10 hover:text-red-200 text-xs px-2"
+                                        >
+                                          Revoke
+                                        </Button>
+                                      )}
+                                      {invite.status !== 'sent' && invite.status !== 'expired' && (
+                                        <span className="text-xs text-gray-600">—</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                     )}

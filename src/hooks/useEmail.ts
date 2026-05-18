@@ -10,7 +10,8 @@ export type EmailType =
     | 'MatchCheckinReminder'
     | 'Welcome'
     | 'TeamInvite'
-    | 'StaffInvite';
+    | 'StaffInvite'
+    | 'TournamentInvite';
 
 interface SendEmailParams {
     type: EmailType;

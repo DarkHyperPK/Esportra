@@ -22,6 +22,9 @@ export interface BaseTournament {
     region?: string | null;
     is_online: boolean;
     max_participants: number;
+    reserved_invite_slots?: number;
+    invite_expiry_days?: number;
+    registration_type?: string;
     team_size: number;
     prize_pool: string;
     entry_fee: string | null;
@@ -87,6 +90,7 @@ export interface RegistrationDetails {
 
 export interface TournamentRegistration extends RegistrationDetails {
     registration_type: RegistrationType;
+    source?: 'open' | 'invite' | 'auto_qualified' | 'advancement' | string;
     profiles?: {
         username: string;
         full_name: string | null;
@@ -105,6 +109,7 @@ export interface TournamentParticipant {
     team_name: string | null;
     team_members: string | null;
     status: RegistrationStatus;
+    source?: 'open' | 'invite' | 'auto_qualified' | 'advancement' | string;
     registered_at: string;
     created_at: string;
     user: {

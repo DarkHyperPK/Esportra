@@ -19,6 +19,9 @@ export interface DashboardTournament {
     slug: string;
     game: string;
     max_teams: number;
+    reserved_invite_slots?: number;
+    invite_expiry_days?: number;
+    registration_type?: string | null;
     min_teams: number;
     entry_fee: string;
     prize_pool: string;
@@ -46,6 +49,7 @@ export interface DashboardTournament {
     current_participants?: number;
     registration_open?: boolean;
     max_participants?: number;
+    settings?: any;
 }
 
 export interface DashboardParticipant {
@@ -61,6 +65,7 @@ export interface DashboardParticipant {
     registered_at: string;
     created_at: string;
     checked_in_at: string | null;
+    source?: string | null;
     is_mock: boolean;
     user?: {
         username: string;
@@ -119,9 +124,10 @@ export function useTournamentDashboard(slug: string | undefined) {
 
             const t = result.tournament;
 
+            const parsedSettings = typeof t.settings === 'string' ? (() => { try { return JSON.parse(t.settings); } catch { return t.settings; } })() : (t.settings || {});
             const mappedTournament: DashboardTournament = {
                 ...t,
-                settings:    typeof t.settings === 'string' ? (() => { try { return JSON.parse(t.settings); } catch { return t.settings; } })() : (t.settings || {}),
+                settings:    parsedSettings,
                 entry_fee:   t.entry_fee?.toString()  ?? '0',
                 prize_pool:  t.prize_pool?.toString()  ?? '0',
                 // Legacy computed fields
@@ -130,6 +136,9 @@ export function useTournamentDashboard(slug: string | undefined) {
                 venue:                 t.venue_id ? `Venue ${t.venue_id}` : 'Online',
                 is_online:             !t.venue_id,
                 max_participants:      t.max_teams ?? 0,
+                reserved_invite_slots: t.reserved_invite_slots ?? t.reservedInviteSlots ?? parsedSettings?.reservedInviteSlots ?? 0,
+                invite_expiry_days:    t.invite_expiry_days ?? t.inviteExpiryDays ?? parsedSettings?.inviteExpiryDays ?? 7,
+                registration_type:     t.registration_type ?? t.registrationType ?? parsedSettings?.registrationType ?? null,
                 registration_open:     t.status === 'open',
                 current_participants:  t.current_participants ?? result.participants.length,
             };
@@ -147,6 +156,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 registered_at:    p.registration_date ?? p.created_at,
                 created_at:       p.created_at,
                 checked_in_at:    p.checked_in_at ?? null,
+                source:           p.source ?? p.registration_source ?? null,
                 is_mock:          p.is_mock === true || p.is_mock === 'true',
                 user:             p.username ? { username: p.username, avatar_url: null, full_name: null } : undefined,
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
