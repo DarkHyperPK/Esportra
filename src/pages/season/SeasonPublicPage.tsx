@@ -1,54 +1,46 @@
-import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { seasonApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Trophy, Calendar, Users, ArrowRight, Gamepad2, Loader2, Swords } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useRegisterForSeason } from '@/hooks/useSeasonParticipants';
-import type { Season, SeasonStanding, SeasonTournamentDetails, SeasonParticipant } from '@/types/season';
+import { useRegisterForSeason, useSeasonParticipants } from '@/hooks/useSeasonParticipants';
+import { useSeason } from '@/hooks/useSeasons';
+import { useSeasonStandings } from '@/hooks/useSeason';
+import { useSeasonTournaments } from '@/hooks/useSeasonStandings';
+import { useSeasonAdvancement } from '@/hooks/useSeasons';
 
 export default function SeasonPublicPage() {
-  // Route may use :slug or :id depending on the path — accept either
   const params = useParams<{ slug?: string; id?: string }>();
   const slug = params.slug ?? params.id;
   const { user } = useAuth();
   const { toast } = useToast();
   const registerMutation = useRegisterForSeason();
 
-  const [season, setSeason] = useState<Season | null>(null);
-  const [tournaments, setTournaments] = useState<SeasonTournamentDetails[]>([]);
-  const [standings, setStandings] = useState<SeasonStanding[]>([]);
-  const [participants, setParticipants] = useState<SeasonParticipant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const seasonQuery = useSeason(slug ?? '');
+  const seasonId = seasonQuery.data?.id ?? '';
 
-  useEffect(() => {
-    if (!slug) return;
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const seasonData = await seasonApi.getSeason(slug);
-        setSeason(seasonData);
+  const tournamentsQuery = useSeasonTournaments(seasonId);
+  const standingsQuery = useSeasonStandings(seasonId);
+  const participantsQuery = useSeasonParticipants(seasonId);
+  const advancementQuery = useSeasonAdvancement(seasonId);
 
-        if (seasonData?.id) {
-          const [tournamentsData, standingsData, participantsData] = await Promise.all([
-            seasonApi.getSeasonTournaments(seasonData.id).catch(() => []),
-            seasonApi.getStandings(seasonData.id).catch(() => []),
-            seasonApi.getSeasonParticipants(seasonData.id).catch(() => []),
-          ]);
-          setTournaments(tournamentsData);
-          setStandings(standingsData);
-          setParticipants(participantsData);
-        }
-      } catch (err: any) {
-        setError(err?.message || 'Failed to load season');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [slug]);
+  const season = seasonQuery.data;
+  const tournaments = tournamentsQuery.data ?? [];
+  const standings = standingsQuery.data ?? [];
+  const participants = participantsQuery.data ?? [];
+  const advancementConnections = advancementQuery.data ?? [];
+
+  const isLoading =
+    seasonQuery.isLoading ||
+    (seasonId && (tournamentsQuery.isLoading || standingsQuery.isLoading || participantsQuery.isLoading || advancementQuery.isLoading));
+
+  const error =
+    seasonQuery.error?.message ??
+    tournamentsQuery.error?.message ??
+    standingsQuery.error?.message ??
+    participantsQuery.error?.message ??
+    advancementQuery.error?.message ??
+    null;
 
   const handleRegister = () => {
     if (!season) return;
@@ -79,7 +71,16 @@ export default function SeasonPublicPage() {
     }
   };
 
-  if (loading) {
+  const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD';
+
+  const getRankBadge = (rank: number) => {
+    if (rank === 1) return <span className="w-8 h-8 flex items-center justify-center bg-rose-500 text-black text-sm font-black">1</span>;
+    if (rank === 2) return <span className="w-8 h-8 flex items-center justify-center bg-[#2a2a2a] text-white text-sm font-bold">2</span>;
+    if (rank === 3) return <span className="w-8 h-8 flex items-center justify-center bg-[#2a2a2a] text-white text-sm font-bold">3</span>;
+    return <span className="w-8 h-8 flex items-center justify-center text-[#555555] text-sm font-bold">{rank}</span>;
+  };
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-rose-500" />
@@ -99,15 +100,6 @@ export default function SeasonPublicPage() {
       </div>
     );
   }
-
-  const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD';
-
-  const getRankBadge = (rank: number) => {
-    if (rank === 0) return <span className="w-8 h-8 flex items-center justify-center bg-rose-500 text-black text-sm font-black">1</span>;
-    if (rank === 1) return <span className="w-8 h-8 flex items-center justify-center bg-[#2a2a2a] text-white text-sm font-bold">2</span>;
-    if (rank === 2) return <span className="w-8 h-8 flex items-center justify-center bg-[#2a2a2a] text-white text-sm font-bold">3</span>;
-    return <span className="w-8 h-8 flex items-center justify-center text-[#555555] text-sm font-bold">{rank + 1}</span>;
-  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
@@ -272,9 +264,9 @@ export default function SeasonPublicPage() {
                     <div className="col-span-2 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider text-center">STATUS</div>
                     <div className="col-span-2 px-4 py-3 text-[10px] font-bold text-[#555555] uppercase tracking-wider text-right">POINTS</div>
                   </div>
-                  {standings.map((s, i) => (
+                  {standings.map((s) => (
                     <div key={s.id} className="grid grid-cols-12 gap-0 border-b border-[#1a1a1a] hover:bg-white/[0.02] transition-colors">
-                      <div className="col-span-1 px-4 py-4 flex items-center">{getRankBadge(i)}</div>
+                      <div className="col-span-1 px-4 py-4 flex items-center">{getRankBadge(s.rank ?? 0)}</div>
                       <div className="col-span-7 px-4 py-4 flex items-center gap-3">
                         {s.team_logo_url && (
                           <img src={s.team_logo_url} alt="" className="w-8 h-8 object-cover" />
@@ -302,6 +294,63 @@ export default function SeasonPublicPage() {
                 </div>
               )}
             </section>
+
+            {/* QUALIFICATION TRACKER */}
+            {advancementConnections.length > 0 && (
+              <section>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-[10px] font-bold text-[#555555] uppercase tracking-[0.2em]">// ADVANCEMENT</span>
+                </div>
+                <h2 className="text-4xl font-black uppercase tracking-tight mb-10">QUALIFICATION TRACKER</h2>
+
+                <div className="space-y-6">
+                  {advancementConnections.map((conn) => (
+                    <div key={conn.id} className="border border-[#1a1a1a] bg-[#0a0a0a] p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold text-white">{conn.sourceNodeName}</span>
+                          <ArrowRight className="w-4 h-4 text-[#555555]" />
+                          <span className="text-sm font-bold text-emerald-400">{conn.targetNodeName}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#555555] uppercase tracking-wider">
+                          Places {conn.placementStart}–{conn.placementEnd}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {standings
+                          .filter((s) => {
+                            const rank = s.rank ?? 0;
+                            return rank >= conn.placementStart && rank <= conn.placementEnd;
+                          })
+                          .slice(0, conn.advancementCount)
+                          .map((s) => (
+                            <div key={s.id} className="flex items-center gap-3 border-b border-[#1a1a1a] last:border-0 pb-2 last:pb-0">
+                              {s.team_logo_url && (
+                                <img src={s.team_logo_url} alt="" className="w-6 h-6 object-cover" />
+                              )}
+                              <span className="text-sm text-white flex-1">{s.team_name || 'Unknown Team'}</span>
+                              <span className="text-xs text-[#555555]">Rank #{s.rank ?? '—'}</span>
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border ${
+                                s.qualification_status === 'qualified'
+                                  ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'
+                                  : 'border-[#2a2a2a] text-[#808080] bg-[#111111]'
+                              }`}>
+                                {s.qualification_status || 'pending'}
+                              </span>
+                            </div>
+                          ))}
+                        {standings.filter((s) => {
+                          const rank = s.rank ?? 0;
+                          return rank >= conn.placementStart && rank <= conn.placementEnd;
+                        }).length === 0 && (
+                          <p className="text-sm text-[#555555] text-center py-4">No standings data for this path yet.</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* REGISTERED TEAMS */}
             <section>

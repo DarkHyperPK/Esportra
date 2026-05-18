@@ -17,6 +17,8 @@ const NODE_TYPES: Exclude<SeasonNodeType, 'root'>[] = ['qualifier', 'event', 'st
 const QUALIFICATION_TYPES: SeasonQualificationType[] = ['qualified', 'wildcard', 'reserve'];
 const FORMAT_OPTIONS = ['single_elimination', 'double_elimination', 'round_robin', 'swiss', 'battle_royale'];
 const REGISTRATION_TYPES = ['open', 'invite_only', 'application', 'closed'];
+const RESERVED_INVITE_SLOT_OPTIONS = [0, 1, 2, 4, 8, 16, 32, 64, 128];
+const INVITE_EXPIRY_DAY_OPTIONS = [1, 3, 7, 14, 30];
 
 const toNullable = (value: string | null | undefined) => {
   const trimmed = (value ?? '').trim();
@@ -61,6 +63,8 @@ const createDraftNode = (seasonId: string, parentNodeId: string | null, displayO
       teamSize: 5,
       maxTeams: 16,
       registrationType: 'open',
+      reservedInviteSlots: 0,
+      inviteExpiryDays: 7,
       bestOf: 1,
       connections: [],
     },
@@ -117,6 +121,7 @@ const SeasonSetupPlan = () => {
           metadata: {
             ...(next.metadata ?? {}),
             registrationType: 'closed',
+            reservedInviteSlots: 0,
             registrationPolicy: 'inbound_only',
             qualificationSource: patch.nodeType === 'final' ? 'upstream_results' : 'prior_stage',
           },
@@ -128,6 +133,8 @@ const SeasonSetupPlan = () => {
           metadata: {
             ...(next.metadata ?? {}),
             registrationType: 'open',
+            reservedInviteSlots: (next.metadata as Record<string, unknown> | null | undefined)?.reservedInviteSlots ?? 0,
+            inviteExpiryDays: (next.metadata as Record<string, unknown> | null | undefined)?.inviteExpiryDays ?? 7,
             registrationPolicy: 'direct_entry',
             qualificationSource: 'registration',
           },
@@ -143,6 +150,7 @@ const SeasonSetupPlan = () => {
       const nextMetadata = { ...(node.metadata ?? {}), ...patch };
       if (isProgressionOnlyNode(node)) {
         nextMetadata.registrationType = 'closed';
+        nextMetadata.reservedInviteSlots = 0;
         nextMetadata.registrationPolicy = 'inbound_only';
         nextMetadata.qualificationSource = node.nodeType === 'final' ? 'upstream_results' : 'prior_stage';
       }
@@ -321,6 +329,33 @@ const SeasonSetupPlan = () => {
                           </Select>
                           {isProgressionOnlyNode(node) && <p className="text-xs text-zinc-600">Inbound-only: entrants come from upstream results.</p>}
                         </div>
+                        {!isProgressionOnlyNode(node) && config.registrationType !== 'closed' && (
+                          <div className="space-y-2">
+                            <Label>Reserved invite slots</Label>
+                            <Select value={String(config.reservedInviteSlots ?? 0)} onValueChange={(value) => updateMetadata(node.id, { reservedInviteSlots: Number(value) })}>
+                              <SelectTrigger className="rounded-none border-white/10 bg-black/20 text-white"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {RESERVED_INVITE_SLOT_OPTIONS.filter((value) => value <= (config.maxTeams ?? 128)).map((value) => (
+                                  <SelectItem key={value} value={String(value)}>{value} slot{value === 1 ? '' : 's'}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-zinc-600">Open registrations cannot consume these reserved invitation slots.</p>
+                          </div>
+                        )}
+                        {!isProgressionOnlyNode(node) && (config.registrationType === 'invite_only' || (config.reservedInviteSlots ?? 0) > 0) && (
+                          <div className="space-y-2">
+                            <Label>Invite expiry</Label>
+                            <Select value={String(config.inviteExpiryDays ?? 7)} onValueChange={(value) => updateMetadata(node.id, { inviteExpiryDays: Number(value) })}>
+                              <SelectTrigger className="rounded-none border-white/10 bg-black/20 text-white"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {INVITE_EXPIRY_DAY_OPTIONS.map((value) => (
+                                  <SelectItem key={value} value={String(value)}>{value} day{value === 1 ? '' : 's'}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <Label>Max teams</Label>
                           <Input type="number" min={2} value={config.maxTeams ?? ''} onChange={(event) => updateMetadata(node.id, { maxTeams: Number(event.target.value) })} className="rounded-none border-white/10 bg-black/20 text-white" />

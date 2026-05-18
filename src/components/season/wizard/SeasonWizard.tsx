@@ -4,7 +4,7 @@ import { AlertTriangle, Calendar, Check, ChevronRight, Gamepad2, Settings, Targe
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ApiError, apiClient } from '@/lib/apiClient';
+import { ApiError } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import { seasonApi } from '@/services/api';
 import { useCreateSeason } from '@/hooks/useSeasons';
@@ -34,7 +34,6 @@ type FormState = {
   endDate: string;
   bannerUrl: string;
   logoUrl: string;
-  organizationId?: string;
 };
 
 const CUSTOM_BLUEPRINT: Blueprint = { id: 'custom', name: 'Custom Blueprint', meta: 'Start blank', description: 'Create the season shell and design the tournament graph manually.', icon: Settings };
@@ -78,7 +77,6 @@ const INITIAL_FORM: FormState = {
   endDate: '',
   bannerUrl: '',
   logoUrl: '',
-  organizationId: undefined,
 };
 
 const SeasonWizard = () => {
@@ -120,20 +118,6 @@ const SeasonWizard = () => {
     setErrors({});
     setCreatedSeason(null);
 
-    let mounted = true;
-
-    apiClient
-      .get<{ organization_id?: string | null }>('/api/me/roles')
-      .then((roles) => {
-        if (mounted && roles?.organization_id) {
-          setForm((current) => ({ ...current, organizationId: roles.organization_id ?? undefined }));
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      mounted = false;
-    };
   }, []);
 
   useEffect(() => {
@@ -237,7 +221,6 @@ const SeasonWizard = () => {
       end_date: form.endDate || undefined,
       banner_url: form.bannerUrl.trim() || undefined,
       logo_url: form.logoUrl.trim() || undefined,
-      organization_id: form.organizationId,
     };
 
     try {
@@ -287,7 +270,7 @@ const SeasonWizard = () => {
           participant_mode: payload.participant_mode,
           hasStartDate: Boolean(payload.start_date),
           hasEndDate: Boolean(payload.end_date),
-          hasOrganizationId: Boolean(payload.organization_id),
+          usesServerDerivedOrganization: true,
         },
       });
       toast({

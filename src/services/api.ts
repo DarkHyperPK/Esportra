@@ -8,6 +8,7 @@ import type {
   UpdateSeasonRequest,
   UpdateSeasonPayload,
   SeasonStanding,
+  PaginatedSeasonStandings,
   PointRule,
   AdvancementRule,
   SeasonTournamentDetails,
@@ -20,6 +21,7 @@ import type {
   SeasonAdvancementConnection,
   AddSeasonTournamentRequest,
   AddSeasonTournamentResponse,
+  AdvancementPreviewResult,
 } from '@/types/season';
 
 // Types
@@ -86,6 +88,7 @@ const standingAliases: Array<[string, string]> = [
   ['team_logo_url', 'teamLogoUrl'],
   ['total_points', 'totalPoints'],
   ['qualification_status', 'qualificationStatus'],
+  ['standing_rank', 'standingRank'],
   ['created_at', 'createdAt'],
   ['updated_at', 'updatedAt'],
 ];
@@ -341,8 +344,21 @@ export const seasonApi = {
       limit: limit.toString(),
       offset: pageOffset(page, limit).toString()
     });
-    const rows = await apiClient.get<SeasonStanding[]>(`/api/seasons/${id}/standings?${params}`);
-    return rows.map((row) => aliasFields(row as unknown as ApiObject, standingAliases) as SeasonStanding);
+    const response = await apiClient.get<PaginatedSeasonStandings>(`/api/seasons/${id}/standings?${params}`);
+    const items = (response.items ?? []).map((row) => aliasFields(row as unknown as ApiObject, standingAliases) as SeasonStanding);
+    return items;
+  },
+
+  getStandingsPaginated: async (id: string, page = 1, limit = 50) => {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: pageOffset(page, limit).toString()
+    });
+    const response = await apiClient.get<PaginatedSeasonStandings>(`/api/seasons/${id}/standings?${params}`);
+    return {
+      ...response,
+      items: (response.items ?? []).map((row) => aliasFields(row as unknown as ApiObject, standingAliases) as SeasonStanding),
+    };
   },
 
   recalculateStandings: async (id: string) => {
@@ -350,7 +366,13 @@ export const seasonApi = {
   },
 
   processAdvancement: async (id: string, tournamentId?: string) => {
-    return await apiClient.post<{ advanced_count: number }>(`/api/seasons/${id}/advancement/process`, {
+    return await apiClient.post<{ advanced_count: number; qualification_count: number; warnings: string[]; message: string | null }>(`/api/seasons/${id}/advancement/process`, {
+      tournamentId,
+    });
+  },
+
+  previewAdvancement: async (id: string, tournamentId?: string) => {
+    return await apiClient.post<AdvancementPreviewResult>(`/api/seasons/${id}/advancement/preview`, {
       tournamentId,
     });
   },

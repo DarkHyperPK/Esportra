@@ -2519,8 +2519,8 @@ const SeasonManage = () => {
                   <div className="space-y-2">
                     {topStandings.map((entry) => (
                       <div key={entry.entityId} className="flex items-center gap-3 rounded-2xl border border-white/[0.04] bg-white/[0.02] px-4 py-3">
-                        <span className={`w-6 shrink-0 font-heading text-sm font-bold ${entry.rank <= 3 ? 'text-amber-400' : 'text-zinc-600'}`}>
-                          #{entry.rank}
+                        <span className={`w-6 shrink-0 font-heading text-sm font-bold ${(entry.standingRank ?? 0) <= 3 ? 'text-amber-400' : 'text-zinc-600'}`}>
+                          #{entry.standingRank ?? '-'}
                         </span>
                         <p className="min-w-0 flex-1 truncate font-semibold text-white">{entry.displayName}</p>
                         <span className="shrink-0 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 font-body text-xs font-semibold text-emerald-400">

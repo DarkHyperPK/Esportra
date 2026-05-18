@@ -62,7 +62,7 @@ export interface SeasonStanding {
   teamLogoUrl?: string | null;
   totalPoints?: number;
   qualificationStatus?: QualificationStatus | string | null;
-  rank?: number;
+  standingRank?: number;
   displayName?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -402,6 +402,37 @@ export interface UpdateSeasonPayload {
   bannerUrl: string | null;
   logoUrl: string | null;
   settings?: Record<string, unknown>;
+}
+
+// ── Paginated standings ────────────────────────────────────────────────────
+export interface PaginatedSeasonStandings {
+  total: number;
+  page: number;
+  limit: number;
+  items: SeasonStanding[];
+}
+
+// ── Advancement preview result ───────────────────────────────────────────────
+export interface ProposedMovement {
+  teamId: string;
+  teamName: string | null;
+  teamLogoUrl: string | null;
+  currentRank: number;
+  totalPoints: number;
+  sourceNodeId: string | null;
+  sourceNodeName: string | null;
+  targetNodeId: string | null;
+  targetNodeName: string | null;
+  targetTournamentId: string | null;
+  ruleId: string;
+  seedMode: string | null;
+  alreadyRegistered: boolean;
+}
+
+export interface AdvancementPreviewResult {
+  movements: ProposedMovement[];
+  warnings: string[];
+  message: string | null;
 }
 
 // ── Season detail (camelCase from apiClient) ───────────────────────────────

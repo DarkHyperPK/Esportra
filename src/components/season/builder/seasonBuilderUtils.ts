@@ -67,6 +67,8 @@ export interface TournamentConfig {
   teamSize?: number;
   maxTeams?: number;
   registrationType?: string;
+  reservedInviteSlots?: number;
+  inviteExpiryDays?: number;
   bestOf?: number;
 }
 
@@ -78,6 +80,8 @@ export function readTournamentConfig(node: SeasonBuilderNode): TournamentConfig 
     teamSize: typeof meta.teamSize === 'number' ? meta.teamSize : undefined,
     maxTeams: typeof meta.maxTeams === 'number' ? meta.maxTeams : undefined,
     registrationType: typeof meta.registrationType === 'string' ? meta.registrationType : undefined,
+    reservedInviteSlots: typeof meta.reservedInviteSlots === 'number' ? meta.reservedInviteSlots : undefined,
+    inviteExpiryDays: typeof meta.inviteExpiryDays === 'number' ? meta.inviteExpiryDays : undefined,
     bestOf: typeof meta.bestOf === 'number' ? meta.bestOf : undefined,
   };
 }
@@ -325,8 +329,10 @@ export function validateSeasonSetupDomain(nodes: SeasonBuilderNode[], rules: Sea
   incomingCapacityByTarget.forEach((incomingCount, targetId) => {
     const target = nodeById.get(targetId);
     const targetConfig = target ? readTournamentConfig(target) : {};
-    if (target && typeof targetConfig.maxTeams === 'number' && incomingCount > targetConfig.maxTeams) {
-      domainIssues.push(`${target.name || 'Target tournament'} receives ${incomingCount} entrants but only allows ${targetConfig.maxTeams} teams.`);
+    const reservedInviteSlots = Math.max(0, targetConfig.reservedInviteSlots ?? 0);
+    const totalCommittedSlots = incomingCount + reservedInviteSlots;
+    if (target && typeof targetConfig.maxTeams === 'number' && totalCommittedSlots > targetConfig.maxTeams) {
+      domainIssues.push(`${target.name || 'Target tournament'} receives ${incomingCount} entrants and reserves ${reservedInviteSlots} invite slots, exceeding its ${targetConfig.maxTeams} team limit.`);
     }
   });
 

@@ -41,6 +41,22 @@ export function useRecalculateStandings() {
   });
 }
 
+export function usePreviewSeasonAdvancement() {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, tournamentId }: { id: string; tournamentId?: string }) =>
+      seasonApi.previewAdvancement(id, tournamentId),
+    onError: (error) => {
+      toast({
+        title: 'Error previewing advancement',
+        description: error instanceof Error ? error.message : 'Failed to preview advancement',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 export function useProcessSeasonAdvancement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
