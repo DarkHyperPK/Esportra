@@ -78,6 +78,7 @@ const AnomalyDetection = lazyWithRetry(() => import("./pages/admin/tools/Anomaly
 const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dashboard"));
 
 // Tournament Organizer
+const OrganizerDashboard = lazyWithRetry(() => import("./pages/organizer/Dashboard"));
 const ManageSeasons = lazyWithRetry(() => import("./pages/organizer/ManageSeasons"));
 const CreateSeason = lazyWithRetry(() => import("./pages/organizer/CreateSeason"));
 const SeasonSetupPlan = lazyWithRetry(() => import("./pages/organizer/SeasonSetupPlan"));
