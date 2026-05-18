@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useAdmin } from '@/contexts/AdminContext';
-import { apiClient } from '@/lib/apiClient';
+import { deriveHasOrganization, fetchMeRoles } from '@/lib/meRoles';
 import CreationModeHub from '@/components/tournament/CreationModeHub';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -33,8 +33,8 @@ const CreateTournament = () => {
         return;
       }
       try {
-        const roles = await apiClient.get<{ organization_id?: string | null }>('/api/me/roles');
-        setHasOrganization(!!roles?.organization_id);
+        const roles = await fetchMeRoles();
+        setHasOrganization(deriveHasOrganization(roles));
       } catch {
         setHasOrganization(false);
       } finally {

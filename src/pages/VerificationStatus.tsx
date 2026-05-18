@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
+import { fetchMeRoles, isApprovedVerifiedRole } from '@/lib/meRoles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useNavigate } from 'react-router-dom';
@@ -24,7 +25,7 @@ import {
 } from 'lucide-react';
 
 interface VerificationRequest {
-  id: string;
+  id?: string;
   requested_role: 'organizer' | 'venue_owner';
   status: 'pending' | 'approved' | 'rejected' | 'under_review';
   business_name: string;
@@ -36,7 +37,7 @@ interface VerificationRequest {
 }
 
 interface VerifiedRole {
-  id: string;
+  id?: string;
   role: 'organizer' | 'venue_owner';
   verified_at: string;
   is_active: boolean;
@@ -70,19 +71,19 @@ const VerificationStatus: React.FC = () => {
     try {
       setLoading(true);
 
-      // Fetch all roles and licenses via the unified roles endpoint
-      const rolesData = await apiClient.get<any>('/api/me/roles');
+      const [rolesData, requestData] = await Promise.all([
+        fetchMeRoles(),
+        apiClient.get<VerificationRequest[]>('/api/profiles/me/verification-requests'),
+      ]);
 
-      setRequests(rolesData?.verificationRequests || []);
+      setRequests(requestData || []);
       setVerifiedRoles(rolesData?.verifiedRoles || []);
       setAssignedRoles(rolesData?.userRoles || []);
 
       // Company profiles removed - no longer needed
       setOrgVerifiedByProfile(false);
 
-      // Check venue verification from licenses
-      const licenses = rolesData?.licenses || [];
-      setVenueVerifiedByProfile(licenses.some((l: any) => l.role === 'venue_owner' && l.is_active));
+      setVenueVerifiedByProfile((rolesData?.verifiedRoles || []).some((role: any) => role.role === 'venue_owner' && isApprovedVerifiedRole(role)));
 
     } catch (error) {
       console.error('Error fetching verification data:', error);
@@ -303,7 +304,7 @@ const VerificationStatus: React.FC = () => {
               <CardContent>
                 <div className="space-y-4">
                   {requests.map((request) => (
-                    <div key={request.id} className="border border-gray-700 rounded-lg p-4">
+                    <div key={request.id ?? `${request.requested_role}-${request.created_at}`} className="border border-gray-700 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <h3 className="text-white font-semibold">{request.business_name}</h3>

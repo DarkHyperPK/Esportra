@@ -3,17 +3,24 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { UserProfile, UserRole } from '@/types/auth';
 
+const fetchProfileById = async (userId: string): Promise<UserProfile> => {
+  const data = await apiClient.get<UserProfile>(`/api/profiles/${userId}`);
+  const role: UserRole = (data as any).role ?? 'casual';
+  return {
+    ...data,
+    id: data.id ?? userId,
+    email: data.email ?? null,
+    role,
+  } as UserProfile;
+};
+
 export const useProfile = () => {
   const queryClient = useQueryClient();
   const [trackedUserId, setTrackedUserId] = useState<string | null>(null);
 
   const { data: profile = null, isLoading: loading, error: queryError } = useQuery({
     queryKey: ['profile', trackedUserId],
-    queryFn: async () => {
-      const data = await apiClient.get<UserProfile>(`/api/profiles/${trackedUserId}`);
-      const role: UserRole = (data as any).role ?? 'casual';
-      return { ...data, role } as UserProfile;
-    },
+    queryFn: () => fetchProfileById(trackedUserId!),
     enabled: !!trackedUserId,
     staleTime: 5 * 60 * 1000,
   });
@@ -26,11 +33,7 @@ export const useProfile = () => {
     try {
       return await queryClient.fetchQuery({
         queryKey: ['profile', userId],
-        queryFn: async () => {
-          const data = await apiClient.get<UserProfile>(`/api/profiles/${userId}`);
-          const role: UserRole = (data as any).role ?? 'casual';
-          return { ...data, role } as UserProfile;
-        },
+        queryFn: () => fetchProfileById(userId),
         staleTime: 5 * 60 * 1000,
       });
     } catch {

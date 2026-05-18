@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { apiClient } from "@/lib/apiClient";
+import { deriveHasApprovedLicense, deriveHasOrganization, fetchMeRoles } from "@/lib/meRoles";
 import RoleSwitcher, { RoleSwitcherDialog } from "@/components/RoleSwitcher";
 import { AlertTriangle } from "lucide-react";
 
@@ -84,8 +85,8 @@ const UserMenu = ({
       return;
     }
     try {
-      const roles = await apiClient.get<any>('/api/me/roles');
-      setHasOrganization(!!roles?.organization_id);
+      const roles = await fetchMeRoles();
+      setHasOrganization(deriveHasOrganization(roles));
     } catch {
       setHasOrganization(false);
     }
@@ -107,9 +108,8 @@ const UserMenu = ({
         return;
       }
       try {
-        const roles = await apiClient.get<any>('/api/me/roles');
-        const hasLicense = !!(roles?.verifiedRoles?.length > 0);
-        setHasApprovedLicense(hasLicense);
+        const roles = await fetchMeRoles();
+        setHasApprovedLicense(deriveHasApprovedLicense(roles));
       } catch {
         setHasApprovedLicense(false);
       }

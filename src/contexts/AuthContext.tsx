@@ -114,7 +114,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     if (user?.id) {
       intervalId = setInterval(async () => {
         try {
-          const result = await apiClient.get<{ is_suspended?: boolean }>(`/api/profiles/${user.id}`);
+          const result = await apiClient.get<{ is_suspended?: boolean }>('/api/profiles/me');
           if (result?.is_suspended && window.location.pathname !== '/suspended') {
             console.warn("[AuthContext] Polling detected suspension!");
             window.location.href = '/suspended';

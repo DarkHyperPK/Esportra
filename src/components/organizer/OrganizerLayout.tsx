@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Trophy, Settings, Building2, User, Layers } from 'lucide-react';
-import { apiClient } from '@/lib/apiClient';
+import { deriveHasOrganization, fetchMeRoles } from '@/lib/meRoles';
 
 interface OrganizerLayoutProps {
   children: React.ReactNode;
@@ -28,8 +28,8 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
     let mounted = true;
     const checkOrg = async () => {
       try {
-        const roles = await apiClient.get<{ organization_id?: string | null }>('/api/me/roles');
-        if (mounted) setHasOrganization(!!roles?.organization_id);
+        const roles = await fetchMeRoles();
+        if (mounted) setHasOrganization(deriveHasOrganization(roles));
       } catch {
         if (mounted) setHasOrganization(false);
       }
