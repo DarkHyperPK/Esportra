@@ -281,13 +281,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
 
             } else {
                 // ── CREATE path ─────────────────────────────────────────────────
-                // Get organization ID via roles endpoint
-                const rolesData = await apiClient.get<any>('/api/me/roles');
-                const orgId = rolesData?.organization_id || null;
-
                 const slug = slugify(data.name, { lower: true, strict: true });
 
-                const tournament = await apiClient.post<{ id: string; slug: string }>('/api/tournaments', {
+                const tournament = await apiClient.post<{ slug: string; name?: string }>('/api/tournaments', {
                     name:                 data.name,
                     description:          data.description,
                     slug,
@@ -303,7 +299,6 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     registrationDeadline: registrationCloses.toISOString(),
                     bannerUrl:            data.bannerUrl,
                     logoUrl:              data.logoUrl,
-                    organizationId:       orgId,
                     isPublic:             data.visibility === 'public',
                     checkInRequired:      data.checkInRequired,
                     checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),
@@ -378,7 +373,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                 if (seasonId) {
                     navigate(`/season/manage/${seasonId}`);
                 } else {
-                    navigate(`/organizer/tournament/${tournament?.slug || tournament?.id}`);
+                    navigate(`/organizer/tournament/${tournament.slug}`);
                 }
             }
         } catch (err: any) {
