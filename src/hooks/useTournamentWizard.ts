@@ -18,7 +18,7 @@ import { apiClient } from '@/lib/apiClient';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
 import esportsGames from '@/data/esportsGames.json';
-import { getGameByName, getDefaultTeamSize, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getGameByName, getDefaultGameMode, getDefaultTeamSize, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import slugify from 'slugify';
 
 const STORAGE_KEY = 'tournament_wizard_draft';
@@ -69,7 +69,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
             if (updates.game && updates.game !== prev.game) {
                 const game = getGameByName(updates.game);
                 if (game) {
-                    newData.teamSize = getDefaultTeamSize(updates.game);
+                    const defaultMode = getDefaultGameMode(updates.game);
+                    newData.gameMode = defaultMode?.value || '';
+                    newData.teamSize = getDefaultTeamSize(updates.game, newData.gameMode);
                     // Auto-configure game features
                     if (!game.features.mapVeto) {
                         newData.mapVetoEnabled = false;
@@ -174,6 +176,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
             const registrationCloses = data.registrationCloses
                 ? new Date(data.registrationCloses)
                 : new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000);
+            const resolvedGameMode = data.gameMode || getDefaultGameMode(data.game)?.value || undefined;
 
             if (tournamentId) {
                 // ── UPDATE path ─────────────────────────────────────────────────
@@ -185,6 +188,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     status:               data.status || undefined,
                     maxTeams:             data.maxTeams,
                     teamSize:             data.teamSize,
+                    gameMode:             resolvedGameMode,
                     entryFee:             toMoney(data.entryFee),
                     prizePool:            toMoney(data.prizePool),
                     startDate:            startDateTime.toISOString(),
@@ -288,6 +292,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     description:          data.description,
                     slug,
                     game:                 data.game,
+                    gameMode:             resolvedGameMode,
                     status:               data.status || 'open',
                     maxTeams:             data.maxTeams,
                     teamSize:             data.teamSize,

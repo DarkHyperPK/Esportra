@@ -15,15 +15,18 @@ import { Globe, MapPin, Calendar, Clock, Eye, EyeOff, Lock, Target } from 'lucid
 import esportsGames from '@/data/esportsGames.json';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
-import { getGameByName, getDefaultTeamSize, isBattleRoyale, getBRConfig, EsportsGame } from '@/utils/gameFeatures';
+import { getGameByName, getDefaultGameMode, getDefaultTeamSize, getGameModes, isBattleRoyale, getBRConfig, EsportsGame } from '@/utils/gameFeatures';
 
 const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode }) => {
     const selectedGame = getGameByName(data.game) as EsportsGame | undefined;
+    const selectedGameModes = selectedGame ? getGameModes(selectedGame.name) : [];
+    const selectedGameModeValue = data.gameMode || getDefaultGameMode(data.game)?.value || '';
 
     const handleGameChange = (gameName: string) => {
         const game = getGameByName(gameName);
-        const teamSize = game ? getDefaultTeamSize(gameName) : data.teamSize;
-        const updates: Partial<typeof data> = { game: gameName, teamSize };
+        const defaultMode = game ? getDefaultGameMode(game.name) : undefined;
+        const teamSize = game ? getDefaultTeamSize(game.name, defaultMode?.value) : data.teamSize;
+        const updates: Partial<typeof data> = { game: gameName, gameMode: defaultMode?.value || '', teamSize };
         // Auto-disable map veto for games that don't support it
         if (game && !game.features.mapVeto) {
             updates.mapVetoEnabled = false;
@@ -34,10 +37,10 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
         updateData(updates);
     };
 
-    const handleFormatChange = (formatValue: string) => {
-        const fmt = selectedGame?.formats.find(f => f.value === formatValue);
-        if (fmt) {
-            updateData({ teamSize: fmt.teamSize });
+    const handleFormatChange = (modeValue: string) => {
+        const mode = selectedGameModes.find(m => (m.key || m.value) === modeValue || m.value === modeValue);
+        if (mode) {
+            updateData({ gameMode: mode.value, teamSize: mode.teamSize });
         }
     };
 
@@ -144,33 +147,36 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                                 <div className="font-semibold text-white">{selectedGame.name}</div>
                                 <div className="text-sm text-gray-400">
                                     {selectedGame.category} •
-                                    {selectedGame.formats.length > 1
-                                        ? ` ${selectedGame.formats.length} formats available`
-                                        : ` ${selectedGame.defaultFormat}`
+                                    {selectedGameModes.length > 1
+                                        ? ` ${selectedGameModes.length} modes available`
+                                        : ` ${selectedGameModes[0]?.name || selectedGame.defaultFormat}`
                                     }
                                 </div>
                             </div>
                         </div>
-                        {/* Format selector for games with multiple formats */}
-                        {selectedGame.formats.length > 1 && !isEditMode && (
+                        {/* Mode selector for games with multiple playable modes */}
+                        {selectedGameModes.length > 1 && !isEditMode && (
                             <div className="pt-2 border-t border-white/5">
-                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Format</Label>
+                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Game Mode</Label>
                                 <div className="grid grid-cols-3 gap-2">
-                                    {selectedGame.formats.map((fmt) => (
-                                        <button
-                                            key={fmt.value}
-                                            type="button"
-                                            onClick={() => handleFormatChange(fmt.value)}
-                                            className={cn(
-                                                "px-3 py-2 rounded-lg border text-sm font-medium transition-all",
-                                                data.teamSize === fmt.teamSize
-                                                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
-                                                    : "border-white/10 text-gray-400 hover:border-white/20"
-                                            )}
-                                        >
-                                            {fmt.name}
-                                        </button>
-                                    ))}
+                                    {selectedGameModes.map((mode) => {
+                                        const modeValue = mode.key || mode.value;
+                                        return (
+                                            <button
+                                                key={modeValue}
+                                                type="button"
+                                                onClick={() => handleFormatChange(modeValue)}
+                                                className={cn(
+                                                    "px-3 py-2 rounded-lg border text-sm font-medium transition-all",
+                                                    selectedGameModeValue === mode.value || selectedGameModeValue === mode.key
+                                                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
+                                                        : "border-white/10 text-gray-400 hover:border-white/20"
+                                                )}
+                                            >
+                                                {mode.name}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

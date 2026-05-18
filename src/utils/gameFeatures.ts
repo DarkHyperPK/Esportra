@@ -20,6 +20,26 @@ export interface GameFormat {
   teamSize: number;
 }
 
+export type ParticipantMode = 'solo' | 'team';
+
+export interface GameMode extends GameFormat {
+  key?: string;
+  participantMode?: ParticipantMode;
+  allowsSubstitutes?: boolean;
+  maxRosterSize?: number;
+  aliases?: string[];
+}
+
+export interface TournamentStructureCapability {
+  key: string;
+  name: string;
+}
+
+export interface TournamentCapabilities {
+  defaultStructure: string;
+  supportedStructures: TournamentStructureCapability[];
+}
+
 export interface EsportsGame {
   name: string;
   slug: string;
@@ -27,6 +47,10 @@ export interface EsportsGame {
   type: string;
   formats: GameFormat[];
   defaultFormat: string;
+  modes?: GameMode[];
+  defaultMode?: string;
+  aliases?: string[];
+  tournamentCapabilities?: TournamentCapabilities;
   logo: string;
   features: GameFeatures;
   brConfig?: BRConfig;
@@ -43,10 +67,16 @@ const DEFAULT_FEATURES: GameFeatures = {
   isBattleRoyale: false,
 };
 
-/** Find a game by name (case-insensitive) */
+const normalize = (value: string | undefined | null) => (value || '').trim().toLowerCase();
+
+/** Find a game by name, slug, or alias (case-insensitive) */
 export function getGameByName(gameName: string): EsportsGame | undefined {
+  const normalized = normalize(gameName);
   return (esportsGames.games as EsportsGame[]).find(
-    g => g.name.toLowerCase() === gameName.toLowerCase()
+    g =>
+      normalize(g.name) === normalized ||
+      normalize(g.slug) === normalized ||
+      (g.aliases || []).some(alias => normalize(alias) === normalized)
   );
 }
 
@@ -66,12 +96,38 @@ export function gameHasMapPool(gameName: string): boolean {
   return getGameFeatures(gameName).mapPool;
 }
 
-/** Get default team size for a game */
-export function getDefaultTeamSize(gameName: string): number {
+/** Get catalog modes for a game, falling back to legacy formats. */
+export function getGameModes(gameName: string): GameMode[] {
   const game = getGameByName(gameName);
-  if (!game) return 5;
-  const defaultFmt = game.formats.find(f => f.value === game.defaultFormat);
-  return defaultFmt?.teamSize ?? game.formats[0]?.teamSize ?? 5;
+  return game?.modes?.length ? game.modes : (game?.formats || []);
+}
+
+/** Get default mode for a game. */
+export function getDefaultGameMode(gameName: string): GameMode | undefined {
+  const game = getGameByName(gameName);
+  if (!game) return undefined;
+  const modes = getGameModes(gameName);
+  const defaultKey = game.defaultMode || game.defaultFormat;
+  return modes.find(m => normalize(m.key || m.value) === normalize(defaultKey)) ?? modes[0];
+}
+
+/** Get a specific game mode by key, value, name, or alias. */
+export function getGameMode(gameName: string, modeKey?: string | null): GameMode | undefined {
+  if (!modeKey) return getDefaultGameMode(gameName);
+  const normalized = normalize(modeKey);
+  return getGameModes(gameName).find(
+    mode =>
+      normalize(mode.key || mode.value) === normalized ||
+      normalize(mode.value) === normalized ||
+      normalize(mode.name) === normalized ||
+      (mode.aliases || []).some(alias => normalize(alias) === normalized)
+  );
+}
+
+/** Get default team size for a game, optionally for a selected mode. */
+export function getDefaultTeamSize(gameName: string, modeKey?: string | null): number {
+  const mode = getGameMode(gameName, modeKey);
+  return mode?.teamSize ?? 5;
 }
 
 /** Check if a game is a Battle Royale type */

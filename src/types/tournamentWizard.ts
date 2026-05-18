@@ -19,6 +19,7 @@ export interface TournamentWizardData {
     // Step 1: Basic Info
     name: string;
     game: string;
+    gameMode: string;
     isOnline: boolean;
     visibility: Visibility;
     startDate: string;
@@ -100,6 +101,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     // Step 1
     name: '',
     game: '',
+    gameMode: '',
     isOnline: true,
     visibility: 'unlisted',
     startDate: '',

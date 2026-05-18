@@ -32,6 +32,8 @@ interface TeamTournamentRegistrationProps {
     id: string;
     name: string;
     game: string;
+    game_mode?: string | null;
+    gameMode?: string | null;
     start_date: string;
     entry_fee?: number;
     prize_pool?: number;
@@ -51,7 +53,7 @@ interface TeamTournamentRegistrationProps {
 type TeamRow = { id: string; name: string; games: Record<string, unknown> | null; owner_id: string };
 
 // API response types for roster/member data from .NET endpoints
-interface RosterRow { id: string; game?: string; team_size?: number; name?: string }
+interface RosterRow { id: string; game?: string; format?: string | null; team_size?: number; name?: string }
 interface RosterMember { user_id: string; username?: string; full_name?: string; avatar_url?: string; is_starter?: boolean; profiles?: Record<string, unknown> }
 interface RiotAccount { user_id: string; game_name?: string; tag_line?: string }
 interface RegistrationStatus { tournament_id: string; [key: string]: unknown }
@@ -83,20 +85,27 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const gameLogo = useGameLogo(tournament.game);
   const rosterGameLogos = useGameLogos(teamRosters.map(r => r.game));
 
-  // Derive core team size from game format (e.g., 5 for 5v5), fallback to 5
-  const getCoreTeamSize = (gameName: string): number => {
+  const normalize = (value: string | null | undefined) => (value || '').trim().toLowerCase();
+  const tournamentGameMode = (tournament.gameMode || tournament.game_mode || '').trim();
+
+  // Derive core team size from the explicit tournament game mode, falling back to legacy formats.
+  const getCoreTeamSize = (gameName: string, modeKey?: string | null): number => {
     const game = esportsGames.games.find(
-      g => g.name.toLowerCase() === gameName.toLowerCase()
-    );
-    if (game?.formats && game.formats.length > 0) {
-      // Use the default format's team size, or the first format
-      const defaultFormat = game.formats.find(f => f.value === game.defaultFormat);
-      return defaultFormat?.teamSize || game.formats[0]?.teamSize || 5;
-    }
-    return 5; // Default to 5v5 if game not found
+      g => normalize(g.name) === normalize(gameName) || normalize(g.slug) === normalize(gameName)
+    ) as any;
+    const modes = game?.modes?.length ? game.modes : (game?.formats || []);
+    const mode = modeKey
+      ? modes.find((m: any) => normalize(m.key || m.value) === normalize(modeKey) || normalize(m.value) === normalize(modeKey) || normalize(m.name) === normalize(modeKey))
+      : modes.find((m: any) => normalize(m.key || m.value) === normalize(game?.defaultMode || game?.defaultFormat));
+    return mode?.teamSize || Number(tournament.team_size) || 5;
   };
 
-  const coreMembers = getCoreTeamSize(tournament.game);
+  const rosterMatchesMode = (roster: RosterRow) => {
+    if (!tournamentGameMode || !roster.format) return true;
+    return normalize(roster.format) === normalize(tournamentGameMode);
+  };
+
+  const coreMembers = getCoreTeamSize(tournament.game, tournamentGameMode);
   // Default max to tournament's team_size, or industry standard (core + 2 subs)
   const maxMembers = tournament.team_size ? Number(tournament.team_size) : coreMembers + 2;
 
@@ -116,9 +125,10 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         );
         const filtered = (data || []).filter((r: RosterRow) => {
         const byGame = !tournament.game || r.game?.toLowerCase() === tournament.game?.toLowerCase();
+        const byMode = rosterMatchesMode(r);
         // Roster team_size should be >= coreMembers (filter is lenient, actual validation at registration)
         const bySize = !coreMembers || Number(r.team_size) >= coreMembers;
-        return byGame && bySize;
+        return byGame && byMode && bySize;
       });
       setTeamRosters(filtered);
       setSelectedRosterId(filtered[0]?.id || '');
@@ -247,7 +257,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
         // Check if team has a roster matching the tournament's game
         const hasMatchingRoster = (rosters || []).some((r: RosterRow) =>
-          normalize(r.game) === tournamentGameNormalized
+          normalize(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
         );
 
         // Fallback: also check team.games for backwards compatibility
@@ -261,7 +271,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         // Check if matching roster has enough members
         if (hasMatchingRoster && tournament.game) {
           const matchingRoster = (rosters || []).find((r: RosterRow) =>
-            normalize(r.game) === tournamentGameNormalized
+            normalize(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
           );
 
           if (matchingRoster) {
@@ -683,6 +693,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                                     <p className="font-semibold mb-1">Required criteria:</p>
                                     <ul className="list-disc list-inside space-y-0.5">
                                       <li>Game: {tournament.game}</li>
+                                      {tournamentGameMode && <li>Mode: {tournamentGameMode}</li>}
                                       <li>Team size: {coreMembers}+ members</li>
                                       <li>Roster must be active</li>
                                     </ul>
@@ -810,6 +821,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                               // Only show requirements if roster doesn't meet criteria
                               const rosterMeetsCriteria = selectedRoster &&
                                 selectedRoster.game?.toLowerCase() === tournament.game?.toLowerCase() &&
+                                rosterMatchesMode(selectedRoster) &&
                                 Number(selectedRoster.team_size) >= coreMembers;
 
                               // Don't show message if criteria is met
