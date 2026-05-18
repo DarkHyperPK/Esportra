@@ -96,6 +96,7 @@ const ManageBracketPage = lazyWithRetry(() => import("./pages/organizer/ManageBr
 const FullscreenBracketPage = lazyWithRetry(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
 const OrganizationPublicProfile = lazyWithRetry(() => import("./pages/org/PublicProfile"));
 const OrganizationWizard = lazyWithRetry(() => import("./pages/organizer/OrganizationWizard"));
+const OrganizationSettings = lazyWithRetry(() => import("./pages/organizer/OrganizationSettings"));
 const AdminSeasonAudit = lazyWithRetry(() => import("./pages/admin/AdminSeasonAudit"));
 const AdminSeasonOverride = lazyWithRetry(() => import("./pages/admin/AdminSeasonOverride"));
 const AdminSeasonAnalytics = lazyWithRetry(() => import("./pages/admin/AdminSeasonAnalytics"));
@@ -587,6 +588,12 @@ const AppContent = React.memo(() => {
 
                 {/* Tournament Organizer Routes */}
                 <Route path="/organizer/dashboard" element={<Navigate to="/organizer/tournaments" replace />} />
+                <Route path="/organizer/settings" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <OrganizationSettings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/organization" element={<Navigate to="/organizer/settings" replace />} />
                 <Route path="/organizer/setup-organization" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <OrganizationWizard />

@@ -22,7 +22,7 @@ import esportsGames from '@/data/esportsGames.json';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getWebsiteAssetUrl } from '@/lib/storage';
-import { getGameByName, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode } from '@/utils/gameFeatures';
 
 /* ──────────────────────────────────────────────────────────────
    Sub-components
@@ -94,7 +94,7 @@ const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index }) =
    Main Component
    ────────────────────────────────────────────────────────────── */
 
-const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, tournamentId, participantsCount }) => {
+const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode, tournamentId, participantsCount }) => {
     const { toast } = useToast();
     const selectedGame = getGameByName(data.game || '');
     const gameFeatures = selectedGame?.features;
@@ -102,6 +102,43 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
     const mapPoolSizeLimit = gameFeatures?.mapPoolSize ?? 7;
     const isBR = isBattleRoyale(data.game || '');
     const brConfig = getBRConfig(data.game || '');
+    const selectedGameModes = selectedGame ? getGameModes(selectedGame.name) : [];
+    const explicitGameMode = data.gameMode ? getGameMode(data.game || '', data.gameMode) : undefined;
+    const activeGameMode = explicitGameMode
+        ?? selectedGameModes.find((mode) => mode.teamSize === data.teamSize)
+        ?? (selectedGame ? getGameMode(selectedGame.name, selectedGame.defaultMode || selectedGame.defaultFormat) : undefined)
+        ?? selectedGameModes[0];
+    const activeGameModeValue = activeGameMode ? (activeGameMode.key || activeGameMode.value) : '';
+    const activeTeamSize = activeGameMode?.teamSize ?? data.teamSize ?? 1;
+    const isGameModeLocked = Boolean(isEditMode || tournamentId);
+
+    const handleGameModeChange = (modeValue: string) => {
+        const mode = selectedGameModes.find((candidate) =>
+            (candidate.key || candidate.value) === modeValue || candidate.value === modeValue
+        );
+        if (!mode) return;
+
+        const updates: Partial<typeof data> = {
+            gameMode: mode.value,
+            teamSize: mode.teamSize,
+        };
+
+        if (isBR && brConfig) {
+            const unitsPerLobby = Math.floor(brConfig.playersPerLobby / Math.max(1, mode.teamSize));
+            const validOptions = [20, 30, 40, 60, 100, 150, 200];
+            const target = unitsPerLobby * 5;
+            updates.maxTeams = validOptions.find(n => n >= target) ?? validOptions[validOptions.length - 1];
+        }
+
+        updateData(updates);
+    };
+
+    useEffect(() => {
+        if (!selectedGame || !activeGameMode) return;
+        if (data.gameMode !== activeGameMode.value || data.teamSize !== activeGameMode.teamSize) {
+            updateData({ gameMode: activeGameMode.value, teamSize: activeGameMode.teamSize });
+        }
+    }, [data.game, data.gameMode, data.teamSize]);
 
     const isPowerOfTwo = (n: number) => n > 0 && (n & (n - 1)) === 0;
 
@@ -195,68 +232,46 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
             {/* ── Battle Royale Format ─────────────────────────────────── */}
             {isBR && brConfig ? (
                 <>
-                    {/* Game Mode (Solo / Duo / Squad) — only if game has multiple formats */}
-                    {selectedGame && selectedGame.formats.length > 1 && (() => {
-                        // Guard against stale teamSize from localStorage not matching any format of this game
-                        const validSizes = selectedGame.formats.map(f => f.teamSize);
-                        const activeSize = validSizes.includes(data.teamSize)
-                            ? data.teamSize
-                            : selectedGame.formats.find(f => f.value === selectedGame.defaultFormat)?.teamSize ?? selectedGame.formats[0].teamSize;
-
-                        // Auto-correct stale state without an extra render cycle
-                        if (!validSizes.includes(data.teamSize)) {
-                            updateData({ teamSize: activeSize });
-                        }
-
-                        return (
-                            <div className="space-y-3">
-                                <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                    <Users className="w-4 h-4" />
-                                    Game Mode
-                                </Label>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {selectedGame.formats.map((fmt) => {
-                                        const isSelected = activeSize === fmt.teamSize && fmt.value === (selectedGame.formats.find(f => f.teamSize === activeSize)?.value);
-                                        return (
-                                            <button
-                                                key={fmt.value}
-                                                type="button"
-                                                onClick={() => {
-                                                    const newSize = fmt.teamSize;
-                                                    // Compute sensible maxTeams for this format based on lobby size
-                                                    const unitsPerLobby = brConfig
-                                                        ? Math.floor(brConfig.playersPerLobby / Math.max(1, newSize))
-                                                        : 20;
-                                                    // Default to 5× the lobby size, clamped to the valid dropdown values
-                                                    const validOptions = [20, 30, 40, 60, 100, 150, 200];
-                                                    const target = unitsPerLobby * 5;
-                                                    const sensible = validOptions.find(n => n >= target) ?? validOptions[validOptions.length - 1];
-                                                    updateData({ teamSize: newSize, maxTeams: sensible });
-                                                }}
-                                                className={cn(
-                                                    "p-4 rounded-xl border text-center transition-all",
-                                                    isSelected
-                                                        ? "border-rose-500 bg-rose-500/10"
-                                                        : "border-white/10 hover:border-white/20 bg-white/[0.02]"
-                                                )}
-                                            >
-                                                <div className="font-bold text-white text-sm">{fmt.name}</div>
-                                                <div className="text-xs text-gray-400 mt-1">
-                                                    {fmt.teamSize === 1 ? 'Individual' : `${fmt.teamSize} players`}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                <p className="text-sm text-gray-400">
-                                    {activeSize === 1
-                                        ? 'Each participant competes individually.'
-                                        : `Teams of ${activeSize} compete together. Registrations will require a team of this size.`}
-                                </p>
-                                <div className="w-full h-px bg-white/5 my-2" />
+                    {/* Game Mode (Solo / Duo / Squad) */}
+                    {selectedGameModes.length > 1 && (
+                        <div className="space-y-3">
+                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                <Users className="w-4 h-4" />
+                                Game Mode
+                            </Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {selectedGameModes.map((mode) => {
+                                    const modeValue = mode.key || mode.value;
+                                    const isSelected = activeGameModeValue === modeValue || data.gameMode === mode.value;
+                                    return (
+                                        <button
+                                            key={modeValue}
+                                            type="button"
+                                            disabled={isGameModeLocked}
+                                            onClick={() => handleGameModeChange(modeValue)}
+                                            className={cn(
+                                                "p-4 rounded-xl border text-center transition-all disabled:cursor-not-allowed disabled:opacity-60",
+                                                isSelected
+                                                    ? "border-rose-500 bg-rose-500/10"
+                                                    : "border-white/10 hover:border-white/20 bg-white/[0.02]"
+                                            )}
+                                        >
+                                            <div className="font-bold text-white text-sm">{mode.name}</div>
+                                            <div className="text-xs text-gray-400 mt-1">
+                                                {mode.teamSize === 1 ? 'Individual' : `${mode.teamSize} players`}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                        );
-                    })()}
+                            <p className="text-sm text-gray-400">
+                                {activeTeamSize === 1
+                                    ? 'Each participant competes individually.'
+                                    : `Teams of ${activeTeamSize} compete together. Registrations will require a roster matching this mode.`}
+                            </p>
+                            <div className="w-full h-px bg-white/5 my-2" />
+                        </div>
+                    )}
 
                     {/* Game Count */}
                     <div className="space-y-3">
@@ -551,6 +566,45 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                     </div>
 
 
+                    {selectedGameModes.length > 1 && (
+                        <div className="space-y-3">
+                            <div className="w-full h-px bg-white/5 my-6" />
+                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                <Users className="w-4 h-4" />
+                                Game Mode
+                            </Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {selectedGameModes.map((mode) => {
+                                    const modeValue = mode.key || mode.value;
+                                    const isSelected = activeGameModeValue === modeValue || data.gameMode === mode.value;
+                                    return (
+                                        <button
+                                            key={modeValue}
+                                            type="button"
+                                            disabled={isGameModeLocked}
+                                            onClick={() => handleGameModeChange(modeValue)}
+                                            className={cn(
+                                                "p-4 rounded-xl border text-left transition-all disabled:cursor-not-allowed disabled:opacity-60",
+                                                isSelected
+                                                    ? "border-emerald-500 bg-emerald-500/10"
+                                                    : "border-white/10 hover:border-white/20 bg-white/[0.02]"
+                                            )}
+                                        >
+                                            <div className="font-bold text-white text-sm">{mode.name}</div>
+                                            <div className="text-xs text-gray-400 mt-1">
+                                                {mode.teamSize} players per team
+                                                {mode.maxRosterSize ? ` • max roster ${mode.maxRosterSize}` : ''}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {isGameModeLocked && (
+                                <p className="text-sm text-gray-400">Game mode is locked after tournament creation to protect registrations and match integrity.</p>
+                            )}
+                        </div>
+                    )}
+
                     {/* Max Teams */}
                     <div className="space-y-3">
                         <div className="w-full h-px bg-white/5 my-6" />
@@ -599,18 +653,21 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         <div className="w-full h-px bg-white/5 my-6" />
                         <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                             <Users className="w-4 h-4" />
-                            Team Size (Max Players)
+                            Team Size
                         </Label>
                         <Input
                             type="number"
                             min={1}
                             max={10}
-                            value={data.teamSize}
+                            value={activeTeamSize}
+                            disabled={Boolean(activeGameMode)}
                             onChange={(e) => updateData({ teamSize: parseInt(e.target.value) || 1 })}
-                            className="[color-scheme:dark] font-bold tracking-tight"
+                            className="[color-scheme:dark] font-bold tracking-tight disabled:cursor-not-allowed disabled:opacity-70"
                         />
                         <p className="text-sm text-gray-400">
-                            Maximum players per team (including subs). Standard for {data.game} is {selectedGame?.formats?.find(f => f.value === selectedGame.defaultFormat)?.teamSize || 5}.
+                            {activeGameMode
+                                ? `${activeGameMode.name} requires ${activeTeamSize} players per team${activeGameMode.maxRosterSize ? ` with a max roster of ${activeGameMode.maxRosterSize}` : ''}.`
+                                : `Maximum players per team (including substitutes).`}
                         </p>
                     </div>
 

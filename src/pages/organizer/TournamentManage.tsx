@@ -2395,7 +2395,7 @@ const TournamentDashboard = () => {
                           Staff members added to your organization automatically gain access to all your tournaments.
                         </p>
                         <Button
-                          onClick={() => navigate('/organizer/dashboard?tab=staff')}
+                          onClick={() => navigate('/organizer/settings?tab=staff')}
                           className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl transition-all hover:scale-105"
                         >
                           Go to Organization Settings
