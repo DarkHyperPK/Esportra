@@ -39,16 +39,16 @@ const MobileNav = ({
 
   const isActive = (paths: string[]) => paths.some(path => location.pathname === path || location.pathname.startsWith(`${path}/`));
   const linkClass = (active = false, tone: 'default' | 'danger' | 'info' = 'default') => cn(
-    "flex min-h-12 w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-rose-500/70",
+    "flex min-h-12 w-full items-center justify-between border px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-wider outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-rose-500/70",
     active
-      ? "border-rose-400/35 bg-rose-500/15 text-white shadow-[0_12px_30px_rgba(244,63,94,0.16)]"
-      : "border-white/5 bg-white/[0.03] text-white/70 hover:border-white/15 hover:bg-white/[0.07] hover:text-white",
+      ? "border-rose-500 bg-rose-500 text-white shadow-[0_12px_30px_rgba(244,63,94,0.18)]"
+      : "border-white/10 bg-black/50 text-zinc-400 hover:border-white/30 hover:bg-white/[0.04] hover:text-white",
     tone === 'danger' && "border-red-500/30 text-red-300 hover:border-red-500/45 hover:bg-red-500/10",
     tone === 'info' && "border-cyan-500/25 text-cyan-200 hover:border-cyan-400/40 hover:bg-cyan-500/10"
   );
   const subLinkClass = (active = false) => cn(
-    "block rounded-xl px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-rose-500/70",
-    active ? "bg-rose-500/12 text-white" : "text-white/50 hover:bg-white/[0.06] hover:text-white/85"
+    "block border-l px-4 py-2.5 font-mono text-[10px] font-bold uppercase tracking-wider outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-rose-500/70",
+    active ? "border-rose-500 bg-rose-500/10 text-white" : "border-white/10 text-zinc-500 hover:border-white/30 hover:bg-white/[0.04] hover:text-white"
   );
 
   const accordionMotion = {
@@ -68,13 +68,13 @@ const MobileNav = ({
           exit={{ opacity: 0, gridTemplateRows: '0fr' }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           style={{ display: 'grid', overflow: 'hidden' }}
-          className="fixed left-0 right-0 top-[92px] z-[998] mx-3 rounded-3xl border border-white/10 bg-[#050505]/95 shadow-[0_28px_80px_rgba(0,0,0,0.72)] backdrop-blur-2xl lg:hidden"
+          className="fixed left-0 right-0 top-[92px] z-[998] mx-3 border border-white/10 bg-black/95 shadow-[0_28px_80px_rgba(0,0,0,0.72)] backdrop-blur-xl lg:hidden"
         >
-        <div style={{ minHeight: 0, overflow: 'hidden' }} className="max-h-[80vh] overflow-y-auto rounded-3xl">
+        <div style={{ minHeight: 0, overflow: 'hidden' }} className="max-h-[80vh] overflow-y-auto">
           {/* Background Effects */}
           <MotionTiles />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(244,63,94,0.18),transparent_35%),radial-gradient(circle_at_90%_15%,rgba(255,255,255,0.08),transparent_28%)] mix-blend-screen" />
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:36px_36px] opacity-70" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/70 to-transparent" />
 
           <div className="relative z-10 space-y-1 px-3 pb-4 pt-4">
             {/* General Navigation */}
@@ -202,7 +202,7 @@ const MobileNav = ({
 
                 {/* Role & Identity Switchers */}
                 {userRole !== 'admin' && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                  <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
                     <RoleSwitcher />
                   </div>
 
@@ -301,10 +301,10 @@ const MobileNav = ({
 
             {!user && (
               <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                <Link to="/auth/signin" className="block rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/10 hover:text-white" onClick={onClose}>
+                <Link to="/auth/signin" className="block border border-white/10 bg-black px-4 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400 transition-colors duration-200 hover:border-white/30 hover:bg-white/10 hover:text-white" onClick={onClose}>
                   Sign In
                 </Link>
-                <Link to="/auth/signup" className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-bold uppercase tracking-[0.15em] text-black shadow-[0_20px_45px_rgba(255,255,255,0.12)] transition-all duration-200 hover:bg-rose-500 hover:text-white hover:shadow-[0_20px_45px_rgba(244,63,94,0.35)]" onClick={onClose}>
+                <Link to="/auth/signup" className="block bg-white px-4 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-wider text-black shadow-[0_20px_45px_rgba(255,255,255,0.12)] transition-colors duration-200 hover:bg-rose-500 hover:text-white hover:shadow-[0_20px_45px_rgba(244,63,94,0.35)]" onClick={onClose}>
                   Sign Up
                 </Link>
               </div>

@@ -27,17 +27,17 @@ const DesktopNav = ({
 
   const isActive = (paths: string[]) => paths.some(path => location.pathname === path || location.pathname.startsWith(`${path}/`));
   const navPillClass = (active: boolean) => cn(
-    "group inline-flex min-h-11 items-center gap-2 rounded-2xl border px-3.5 py-2 text-sm font-semibold text-white/70 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-rose-500/70",
+    "group inline-flex min-h-11 items-center gap-2 border px-3.5 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400 outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-rose-500/70",
     active
-      ? "border-rose-400/35 bg-rose-500/15 text-white shadow-[0_12px_30px_rgba(244,63,94,0.16)]"
-      : "border-transparent hover:border-white/10 hover:bg-white/[0.06] hover:text-white"
+      ? "border-rose-500 bg-rose-500 text-white shadow-[0_16px_40px_rgba(244,63,94,0.22)]"
+      : "border-white/10 bg-black/40 hover:border-white/30 hover:bg-white/[0.04] hover:text-white"
   );
 
   return (
     <div className="hidden items-center gap-2 font-heading font-medium lg:flex">
 
       {/* Dropdown: Venues */}
-      <FramerDropdownRoot>
+      <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e">
         <FramerDropdownTrigger asChild>
           <button type="button" className={navPillClass(isActive(['/venues']))}>
             <MapPin className="h-4 w-4 text-rose-300" />
@@ -45,7 +45,7 @@ const DesktopNav = ({
             <ChevronDown className="h-3.5 w-3.5 text-white/45 transition-transform duration-200 group-hover:text-white/75" />
           </button>
         </FramerDropdownTrigger>
-        <FramerDropdownContent className="min-w-[240px] border-white/10 bg-[#09090b]/95 shadow-[0_24px_70px_rgba(0,0,0,0.75)]">
+        <FramerDropdownContent className="min-w-[240px] rounded-none border-white/10 bg-[#09090b]/98 shadow-[0_24px_70px_rgba(0,0,0,0.75)]">
           <FramerDropdownItem to="/venues/search">Find Venues</FramerDropdownItem>
           <FramerDropdownItem to="/venues/featured">Featured Venues</FramerDropdownItem>
           {canManageVenues && (
@@ -58,7 +58,7 @@ const DesktopNav = ({
       </FramerDropdownRoot>
 
       {/* Dropdown: Tournaments */}
-      <FramerDropdownRoot>
+      <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e">
         <FramerDropdownTrigger asChild>
           <button type="button" className={navPillClass(isActive(['/tournaments', '/organizer/tournaments', '/organizer/seasons', '/season']))}>
             <Trophy className="h-4 w-4 text-rose-300" />
@@ -66,7 +66,7 @@ const DesktopNav = ({
             <ChevronDown className="h-3.5 w-3.5 text-white/45 transition-transform duration-200 group-hover:text-white/75" />
           </button>
         </FramerDropdownTrigger>
-        <FramerDropdownContent className="min-w-[250px] border-white/10 bg-[#09090b]/95 shadow-[0_24px_70px_rgba(0,0,0,0.75)]">
+        <FramerDropdownContent className="min-w-[250px] rounded-none border-white/10 bg-[#09090b]/98 shadow-[0_24px_70px_rgba(0,0,0,0.75)]">
           <FramerDropdownItem to="/tournaments">Browse Tournaments</FramerDropdownItem>
           {canManageTournaments && (
             <>
@@ -88,7 +88,7 @@ const DesktopNav = ({
       </Link>
 
       {/* Dropdown: About */}
-      <FramerDropdownRoot>
+      <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e">
         <FramerDropdownTrigger asChild>
           <button type="button" className={navPillClass(isActive(['/about']))}>
             <Info className="h-4 w-4 text-rose-300" />
@@ -96,7 +96,7 @@ const DesktopNav = ({
             <ChevronDown className="h-3.5 w-3.5 text-white/45 transition-transform duration-200 group-hover:text-white/75" />
           </button>
         </FramerDropdownTrigger>
-        <FramerDropdownContent className="min-w-[220px] border-white/10 bg-[#09090b]/95 shadow-[0_24px_70px_rgba(0,0,0,0.75)]">
+        <FramerDropdownContent className="min-w-[220px] rounded-none border-white/10 bg-[#09090b]/98 shadow-[0_24px_70px_rgba(0,0,0,0.75)]">
           <FramerDropdownItem to="/about/company">About Us</FramerDropdownItem>
           <FramerDropdownItem to="/about/contact">Contact</FramerDropdownItem>
           <FramerDropdownItem to="/about/faq">FAQ</FramerDropdownItem>
@@ -111,7 +111,7 @@ const DesktopNav = ({
 
       {/* Admin Dashboard link — visible to all admins */}
       {admin.isAdmin && (
-        <Link to="/admin/dashboard" className={cn(navPillClass(isActive(['/admin'])), "border-rose-500/30 text-rose-200 hover:bg-rose-500/10")}>
+        <Link to="/admin/dashboard" className={cn(navPillClass(isActive(['/admin'])), "border-rose-500/40 text-rose-200 hover:bg-rose-500/10")}>
           <Shield className="h-4 w-4" />
           Admin
         </Link>
@@ -130,7 +130,7 @@ const DesktopNav = ({
         <div className="ml-2 flex items-center gap-2 border-l border-white/10 pl-3">
           <Button
             variant="outline"
-            className="min-h-11 rounded-2xl border-white/15 bg-white/[0.04] px-4 text-white/80 hover:border-white/30 hover:bg-white/10 hover:text-white"
+            className="min-h-11 rounded-none border-white/15 bg-black px-4 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-300 hover:border-white/30 hover:bg-white/10 hover:text-white"
             asChild
           >
             <Link to="/auth/signin">
@@ -139,7 +139,7 @@ const DesktopNav = ({
             </Link>
           </Button>
           <Button
-            className="min-h-11 rounded-2xl bg-white px-4 font-mono font-bold uppercase tracking-wider text-black shadow-[0_16px_40px_rgba(255,255,255,0.12)] hover:bg-rose-500 hover:text-white hover:shadow-[0_18px_45px_rgba(244,63,94,0.3)]"
+            className="min-h-11 rounded-none bg-white px-4 font-mono text-[11px] font-bold uppercase tracking-wider text-black shadow-[0_16px_40px_rgba(255,255,255,0.12)] hover:bg-rose-500 hover:text-white hover:shadow-[0_18px_45px_rgba(244,63,94,0.3)]"
             asChild
           >
             <Link to="/auth/signup">
