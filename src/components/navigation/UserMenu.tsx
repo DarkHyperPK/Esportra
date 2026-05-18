@@ -1,4 +1,4 @@
-import { User, Users, MessageSquare, ArrowRightLeft, Building2, Award, Settings } from "lucide-react";
+import { User, Users, MessageSquare, ArrowRightLeft, Building2, Award, Settings, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,7 +16,6 @@ import { useAdmin } from "@/contexts/AdminContext";
 import { apiClient } from "@/lib/apiClient";
 import { deriveHasApprovedLicense, deriveHasOrganization, fetchMeRoles } from "@/lib/meRoles";
 import { RoleSwitcherDialog } from "@/components/RoleSwitcher";
-import { AlertTriangle } from "lucide-react";
 
 // Specialized button component for inside the menu
 const RoleSwitcherMenuButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
@@ -200,30 +199,31 @@ const UserMenu = ({
 
   return (
     <>
-      <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e">
+      <FramerDropdownRoot borderRadius={6} accentColor="#f43f5e">
         <FramerDropdownTrigger>
-          <Button
-            variant="outline"
-            className="min-h-11 rounded-none border border-white/10 bg-black/40 px-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors duration-200 hover:border-white/30 hover:bg-white/[0.04] hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70"
+          <button
+            type="button"
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-zinc-400 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70"
           >
-            <span className="mr-2 flex h-7 w-7 items-center justify-center border border-white/10 bg-black">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
               <User className="h-4 w-4" />
             </span>
-            <span className="max-w-[120px] truncate">{profile?.username || 'Account'}</span>
+            <span className="hidden max-w-[100px] truncate sm:inline">{profile?.username || 'Account'}</span>
+            <ChevronDown className="h-4 w-4 opacity-50" />
             {!isEmailVerified && user && (
-              <AlertTriangle className="ml-1.5 h-3.5 w-3.5 text-amber-400" />
+              <span className="h-2 w-2 rounded-full bg-amber-400" />
             )}
-          </Button>
+          </button>
         </FramerDropdownTrigger>
-        <FramerDropdownContent align="end" width={320} className="rounded-none border-white/10 bg-[#09090b]/98 shadow-[0_24px_70px_rgba(0,0,0,0.75)]">
-          <div className="border-b border-white/10 bg-white/[0.02] px-5 py-4">
+        <FramerDropdownContent align="end" width={260} className="border border-white/10 bg-[#0d0d10]">
+          <div className="border-b border-white/10 px-4 py-3">
             <p className="text-sm font-semibold text-white">
               {profile?.full_name || profile?.username || 'User'}
             </p>
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/50">{roleLabel}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <p className="text-xs text-zinc-500">{roleLabel}</p>
               {!isEmailVerified && user && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-400 uppercase tracking-wider">
+                <Badge variant="outline" className="border-amber-500/40 px-1.5 py-0 text-[10px] text-amber-400">
                   Unverified
                 </Badge>
               )}
@@ -231,8 +231,8 @@ const UserMenu = ({
           </div>
 
           {!admin.isAdmin && hasApprovedLicense && (
-            <div className="space-y-2 border-b border-white/10 px-4 py-3">
-              <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
+            <div className="space-y-2 border-b border-white/10 px-3 py-2">
+              <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
                 <RoleSwitcherMenuButton onClick={() => setIsRoleSwitcherOpen(true)} />
               </div>
             </div>
