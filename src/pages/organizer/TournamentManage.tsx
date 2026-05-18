@@ -617,7 +617,7 @@ const TournamentDashboard = () => {
     switch (status) {
       case 'draft': return 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)]';
       case 'open':
-      case 'upcoming': return 'border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.15)]';
+      case 'upcoming': return 'border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.15)]';
       case 'ongoing': return 'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.15)]';
       case 'completed': return 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]';
       case 'cancelled': return 'border-gray-500';
@@ -629,9 +629,9 @@ const TournamentDashboard = () => {
     switch (status) {
       case 'draft': return 'text-amber-400';
       case 'open':
-      case 'upcoming': return 'text-purple-400';
+      case 'upcoming': return 'text-rose-400';
       case 'ongoing': return 'text-red-400';
-      case 'completed': return 'text-emerald-400';
+      case 'completed': return 'text-rose-400';
       case 'cancelled': return 'text-gray-400';
       default: return 'text-white';
     }
@@ -1155,7 +1155,7 @@ const TournamentDashboard = () => {
                     <img src={home.logo} loading="lazy" alt={getTeamDisplayName(home)} className="w-6 h-6 rounded bg-white border border-gray-300" />
                   ) : (
                     <span className="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300">
-                      <GamepadIcon className="w-4 h-4 text-emerald-400" />
+                      <GamepadIcon className="w-4 h-4 text-rose-400" />
                     </span>
                   )}
                   <span className="font-semibold text-white text-sm truncate max-w-[80px]">{getTeamDisplayName(home)}</span>
@@ -1167,7 +1167,7 @@ const TournamentDashboard = () => {
                     <img src={visitor.logo} loading="lazy" alt={getTeamDisplayName(visitor)} className="w-6 h-6 rounded bg-white border border-gray-300" />
                   ) : (
                     <span className="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300">
-                      <GamepadIcon className="w-4 h-4 text-emerald-400" />
+                      <GamepadIcon className="w-4 h-4 text-rose-400" />
                     </span>
                   )}
                   <span className="font-semibold text-white text-sm truncate max-w-[80px]">{getTeamDisplayName(visitor)}</span>
@@ -1182,7 +1182,7 @@ const TournamentDashboard = () => {
               {home.logo ? (
                 <img src={home.logo} loading="lazy" alt={getTeamDisplayName(home)} className="w-5 h-5 rounded bg-white border border-gray-300" />
               ) : (
-                <GamepadIcon className="w-4 h-4 text-emerald-400" />
+                <GamepadIcon className="w-4 h-4 text-rose-400" />
               )}
               <span className="font-semibold text-white text-xs">{getTeamDisplayName(home)}</span>
             </div>
@@ -1190,7 +1190,7 @@ const TournamentDashboard = () => {
               {visitor.logo ? (
                 <img src={visitor.logo} loading="lazy" alt={getTeamDisplayName(visitor)} className="w-5 h-5 rounded bg-white border border-gray-300" />
               ) : (
-                <GamepadIcon className="w-4 h-4 text-emerald-400" />
+                <GamepadIcon className="w-4 h-4 text-rose-400" />
               )}
               <span className="font-semibold text-white text-xs">{getTeamDisplayName(visitor)}</span>
             </div>
@@ -1458,7 +1458,7 @@ const TournamentDashboard = () => {
     return (
       <div className="min-h-screen bg-transparent text-white">
         <main className="container mx-auto px-4 py-8">
-          <div className="text-center max-w-md mx-auto bg-[#0d0d10] border border-white/10 p-8 rounded-3xl">
+          <div className="text-center max-w-md mx-auto bg-[#0d0d10] border border-white/10 p-8 rounded-none">
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h1 className="text-2xl font-bold mb-2">
               {dashboardError ? 'Error Loading Tournament' : 'Tournament not found'}
@@ -1471,7 +1471,7 @@ const TournamentDashboard = () => {
             </p>
             <Button
               onClick={() => navigate('/organizer/tournaments')}
-              className="bg-red-600 hover:bg-red-500 font-bold px-8 py-6 rounded-2xl transition-all hover:scale-105"
+              className="bg-red-600 hover:bg-red-500 font-bold px-8 py-6 rounded-none transition-all hover:scale-105"
             >
               Back to Tournaments
             </Button>
@@ -1524,7 +1524,7 @@ const TournamentDashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 rounded-xl border border-cyan-500/20 bg-cyan-950/30 text-sm text-cyan-200 px-4 py-2 flex items-center gap-2"
+            className="mb-6 rounded-none border border-cyan-500/20 bg-cyan-950/30 text-sm text-cyan-200 px-4 py-2 flex items-center gap-2"
           >
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
             Staff Mode: <span className="font-medium text-cyan-100">{staffPermissionSummary}</span>
@@ -1535,19 +1535,19 @@ const TournamentDashboard = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6"
+          className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6"
         >
           {/* Motion Background Grid */}
           <MotionTiles />
           {/* Decorative Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-transparent to-blue-500/20 opacity-0 transition-opacity duration-1000 pointer-events-none mix-blend-overlay" />
+          <div className="absolute inset-0 bg-rose-500/10 opacity-0 transition-opacity duration-1000 pointer-events-none mix-blend-overlay" />
 
           <div className="relative flex flex-col lg:flex-row gap-8 justify-between z-10">
             {/* Left: Identity */}
             <div className="flex gap-6 items-start">
               {/* Big Game Logo with Glow */}
               <div className="relative shrink-0">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#09090b] border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden transition-transform duration-500">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-none bg-[#09090b] border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden transition-transform duration-500">
                   {gameLogo && !logoError ? (
                     <img
                       src={gameLogo}
@@ -1556,11 +1556,11 @@ const TournamentDashboard = () => {
                       onError={() => setLogoError(true)}
                     />
                   ) : (
-                    <GamepadIcon className="w-10 h-10 text-emerald-400" />
+                    <GamepadIcon className="w-10 h-10 text-rose-400" />
                   )}
                 </div>
                 {/* Glowing dot */}
-                <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-[#09090b] ${getStatusColor(tournament.status).includes('red') ? 'bg-red-500' : getStatusColor(tournament.status).includes('emerald') ? 'bg-emerald-500' : getStatusColor(tournament.status).includes('purple') ? 'bg-purple-500' : 'bg-gray-500'}`} />
+                <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-[#09090b] ${getStatusColor(tournament.status).includes('red') ? 'bg-red-500' : getStatusColor(tournament.status).includes('emerald') ? 'bg-emerald-500' : getStatusColor(tournament.status).includes('purple') ? 'bg-rose-500' : 'bg-gray-500'}`} />
               </div>
 
               <div className="pt-1">
@@ -1569,7 +1569,7 @@ const TournamentDashboard = () => {
                     {tournament.is_online ? 'Online' : 'LAN'} Event
                   </span>
                   {tournament.game && (
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider text-rose-400">
                       {tournament.game}
                     </span>
                   )}
@@ -1618,7 +1618,7 @@ const TournamentDashboard = () => {
                           })();
                         }
                       }}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.3)] group"
+                      className="bg-white text-black hover:bg-rose-500 hover:text-white text-white font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-none transition-all  shadow-[0_0_20px_rgba(16,185,129,0.3)] group"
                     >
                       <Globe className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
                       Publish Tournament
@@ -1643,7 +1643,7 @@ const TournamentDashboard = () => {
                             Cancel
                           </AlertDialogCancel>
                           <AlertDialogAction
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            className="bg-white text-black hover:bg-rose-500 hover:text-white text-white"
                             onClick={async () => {
                               try {
                                 await clearMockForPublish.mutateAsync();
@@ -1667,7 +1667,7 @@ const TournamentDashboard = () => {
                 {isOrganizer && tournament.status !== 'completed' && tournament.status !== 'draft' && (
                   <Button
                     onClick={handleCompleteTournament}
-                    className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.1)] group"
+                    className="bg-white/[0.03] text-rose-300 border border-rose-500/30 hover:bg-rose-500 hover:text-white font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-none transition-all  shadow-[0_0_20px_rgba(16,185,129,0.1)] group"
                   >
                     <CheckCircle className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
                     Mark as Finished
@@ -1677,7 +1677,7 @@ const TournamentDashboard = () => {
                 {isOrganizer && tournament.status === 'completed' && (
                   <Button
                     onClick={() => handleStatusChange('published')}
-                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(245,158,11,0.1)] group"
+                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-none transition-all  shadow-[0_0_20px_rgba(245,158,11,0.1)] group"
                   >
                     <RefreshCw className="w-4 h-4 mr-2 transition-transform group-hover:rotate-180" />
                     Reopen Tournament
@@ -1687,7 +1687,7 @@ const TournamentDashboard = () => {
                 {isOrganizer && (
                   <Button
                     onClick={handleEditTournament}
-                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(245,158,11,0.1)] group"
+                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-none transition-all  shadow-[0_0_20px_rgba(245,158,11,0.1)] group"
                   >
                     <Edit2 className="w-4 h-4 mr-2 transition-transform group-hover:-rotate-12" />
                     Edit Tournament
@@ -1696,7 +1696,7 @@ const TournamentDashboard = () => {
 
                 <Button
                   onClick={() => navigate(`/tournaments/${slug}`)}
-                  className="bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-xl transition-all hover:scale-105 active:scale-95 group"
+                  className="bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-none transition-all  group"
                 >
                   <Eye className="w-4 h-4 mr-2 transition-transform group-hover:scale-110" />
                   View Public Page
@@ -1731,7 +1731,7 @@ const TournamentDashboard = () => {
               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Registration</span>
               <div className="flex items-center gap-2 mt-1">
                 {tournament.registration_open ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-rose-400 text-xs font-bold uppercase">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Open
                   </span>
                 ) : (
@@ -1750,7 +1750,7 @@ const TournamentDashboard = () => {
           <div className="md:hidden sticky top-4 z-40 mb-6">
             <div className="relative">
               <Select value={activeTab} onValueChange={handleTabChange}>
-                <SelectTrigger className="w-full h-12 bg-[#09090b] border-white/10 text-white rounded-xl px-4 font-bold tracking-wide">
+                <SelectTrigger className="w-full h-12 bg-[#09090b] border-white/10 text-white rounded-none px-4 font-bold tracking-wide">
                   <SelectValue placeholder="Select View" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#09090b] border-white/10 text-white z-[60]">
@@ -1782,7 +1782,7 @@ const TournamentDashboard = () => {
           {/* Desktop View: Floating Animated Tabs */}
           <div className="hidden md:flex sticky top-4 z-40 mb-8 justify-center perspective-1000">
             <motion.div
-              className="p-1 bg-[#0d0d10] border border-white/10 rounded-2xl shadow-2xl inline-flex relative overflow-hidden"
+              className="p-1 bg-[#0d0d10] border border-white/10 rounded-none shadow-2xl inline-flex relative overflow-hidden"
               initial={{ y: -50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -1800,7 +1800,7 @@ const TournamentDashboard = () => {
                         key="brackets"
                         onClick={() => navigate(`/tournaments/${slug}/brackets`)}
                         disabled={!canEditBracket}
-                        className="px-6 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-all flex items-center justify-center h-full"
+                        className="px-6 py-2.5 rounded-none text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-all flex items-center justify-center h-full"
                       >
                         Brackets
                       </button>
@@ -1816,7 +1816,7 @@ const TournamentDashboard = () => {
                     <TabsTrigger
                       key={tab}
                       value={tab}
-                      className="px-6 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-indigo-600 data-[state=active]:to-purple-700 data-[state=active]:text-white data-[state=active]:shadow-lg relative overflow-hidden capitalize h-auto"
+                      className="px-6 py-2.5 rounded-none text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow-lg relative overflow-hidden capitalize h-auto"
                     >
                       <span className="relative z-10">{tab}</span>
                     </TabsTrigger>
@@ -1836,7 +1836,7 @@ const TournamentDashboard = () => {
               {activeTab === 'overview' && (
                 <TabsContent value="overview" forceMount key="overview">
                   <TabTransition direction={direction}>
-                    <Card className="bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden mb-6">
+                    <Card className="bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden mb-6">
                       <CardHeader className="pb-4 border-b border-white/5">
                         <CardTitle className="text-lg font-bold text-white tracking-wide">Overview</CardTitle>
                       </CardHeader>
@@ -1935,7 +1935,7 @@ const TournamentDashboard = () => {
                 <TabsContent value="participants" forceMount key="participants">
                   <TabTransition direction={direction}>
                     {showCheckInSummary && (
-                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                         <CardHeader className="p-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between relative z-10 border-b border-white/5 pb-4 mb-6">
                           <div>
                             <CardTitle className="text-lg font-bold text-white flex items-center gap-2 tracking-wide">
@@ -1955,7 +1955,7 @@ const TournamentDashboard = () => {
                                   key={checkInCountdown}
                                   initial={{ opacity: 0, y: -5 }}
                                   animate={{ opacity: 1, y: 0 }}
-                                  className="text-emerald-400 font-bold ml-2"
+                                  className="text-rose-400 font-bold ml-2"
                                 >
                                   · {checkInCountdown} left
                                 </motion.span>
@@ -1985,7 +1985,7 @@ const TournamentDashboard = () => {
                             </div>
                             <div className="flex flex-col sm:border-r border-white/10 px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Checked In</span>
-                              <span className="text-3xl font-black text-emerald-400 tracking-tight">{participants.filter(p => p.status === 'checked_in').length}</span>
+                              <span className="text-3xl font-black text-rose-400 tracking-tight">{participants.filter(p => p.status === 'checked_in').length}</span>
                             </div>
                             <div className="flex flex-col px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Pending</span>
@@ -2035,13 +2035,13 @@ const TournamentDashboard = () => {
                       </Card>
                     )}
                     {canManageTeams && (
-                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                         <MotionTiles />
                         <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div>
                               <CardTitle className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
-                                <Mail className="h-5 w-5 text-purple-300" />
+                                <Mail className="h-5 w-5 text-rose-300" />
                                 Invite Teams
                               </CardTitle>
                               <p className="mt-1 text-sm text-gray-400">
@@ -2049,15 +2049,15 @@ const TournamentDashboard = () => {
                               </p>
                             </div>
                             <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                              <div className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-3">
                                 <p className="text-gray-500 uppercase tracking-wider">Reserved</p>
                                 <p className="mt-1 text-lg font-black text-white">{effectiveReservedInviteSlots}</p>
                               </div>
-                              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                              <div className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-3">
                                 <p className="text-gray-500 uppercase tracking-wider">Used</p>
                                 <p className="mt-1 text-lg font-black text-white">{usedInviteSlots}</p>
                               </div>
-                              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                              <div className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-3">
                                 <p className="text-gray-500 uppercase tracking-wider">Remaining</p>
                                 <p className="mt-1 text-lg font-black text-emerald-300">{remainingInviteSlots}</p>
                               </div>
@@ -2070,12 +2070,12 @@ const TournamentDashboard = () => {
                             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-[10px]">
                               {[
                                 { label: 'Draft', value: invitationRows.filter(i => i.status === 'draft').length, color: 'text-amber-300' },
-                                { label: 'Sent', value: invitationRows.filter(i => i.status === 'sent').length, color: 'text-blue-300' },
+                                { label: 'Sent', value: invitationRows.filter(i => i.status === 'sent').length, color: 'text-amber-300' },
                                 { label: 'Redeemed', value: invitationRows.filter(i => i.status === 'redeemed').length, color: 'text-emerald-300' },
                                 { label: 'Expired', value: invitationRows.filter(i => i.status === 'expired').length, color: 'text-red-300' },
                                 { label: 'Revoked', value: invitationRows.filter(i => i.status === 'revoked').length, color: 'text-zinc-400' },
                               ].map((stat) => (
-                                <div key={stat.label} className="rounded-xl border border-white/5 bg-white/[0.02] px-2 py-2">
+                                <div key={stat.label} className="rounded-none border border-white/5 bg-white/[0.02] px-2 py-2">
                                   <p className="text-zinc-500 uppercase tracking-wider">{stat.label}</p>
                                   <p className={`mt-0.5 text-sm font-bold ${stat.color}`}>{stat.value}</p>
                                 </div>
@@ -2083,7 +2083,7 @@ const TournamentDashboard = () => {
                             </div>
                           )}
                           {effectiveReservedInviteSlots <= 0 && (
-                            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+                            <div className="rounded-none border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
                               Reserved invite slots are not configured for this tournament. Add reserved slots in tournament settings before sending guaranteed invite codes.
                             </div>
                           )}
@@ -2114,7 +2114,7 @@ const TournamentDashboard = () => {
                               type="button"
                               onClick={handleSendInviteEmails}
                               disabled={effectiveReservedInviteSlots <= 0 || draftInviteEmails.length === 0 || createInviteDrafts.isPending || sendInvites.isPending}
-                              className="bg-purple-600 hover:bg-purple-500 text-white"
+                              className="bg-purple-600 hover:bg-rose-500 text-white"
                             >
                               {(createInviteDrafts.isPending || sendInvites.isPending) ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2156,14 +2156,14 @@ const TournamentDashboard = () => {
                           </div>
 
                           {showCsvImport && (
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+                            <div className="rounded-none border border-white/10 bg-black/20 p-4 space-y-3">
                               <p className="text-xs text-gray-400">Paste emails separated by commas, semicolons, or newlines:</p>
                               <textarea
                                 value={csvImportText}
                                 onChange={(e) => setCsvImportText(e.target.value)}
                                 placeholder="captain1@team.com, captain2@team.com\ncaptain3@team.com"
                                 rows={4}
-                                className="w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-white placeholder:text-zinc-600 focus:border-purple-500/50 focus:outline-none"
+                                className="w-full rounded-none border border-white/10 bg-black/30 p-3 text-sm text-white placeholder:text-zinc-600 focus:border-rose-500/50 focus:outline-none"
                               />
                               <Button
                                 type="button"
@@ -2180,14 +2180,14 @@ const TournamentDashboard = () => {
                                   });
                                 }}
                                 disabled={importCsv.isPending || !csvImportText.trim()}
-                                className="bg-purple-600 hover:bg-purple-500 text-white"
+                                className="bg-purple-600 hover:bg-rose-500 text-white"
                               >
                                 {importCsv.isPending ? 'Importing...' : 'Import Emails'}
                               </Button>
                             </div>
                           )}
 
-                          <div className="rounded-2xl border border-white/10 overflow-hidden">
+                          <div className="rounded-none border border-white/10 overflow-hidden">
                             {invitationQuery.isLoading ? (
                               <div className="flex items-center justify-center gap-2 p-6 text-sm text-gray-400">
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -2203,13 +2203,13 @@ const TournamentDashboard = () => {
                                       <p className="truncate font-medium text-white">{invite.email}</p>
                                       {invite.teamName && <p className="truncate text-xs text-gray-500">{invite.teamName}</p>}
                                     </div>
-                                    <code className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs text-purple-200">
+                                    <code className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs text-rose-200">
                                       {invite.code || 'Pending'}
                                     </code>
                                     <Badge className={cn(
                                       'w-fit capitalize',
                                       invite.status === 'redeemed' && 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30',
-                                      invite.status === 'sent' && 'bg-blue-500/20 text-blue-200 border-blue-500/30',
+                                      invite.status === 'sent' && 'bg-amber-500/20 text-amber-200 border-amber-500/30',
                                       invite.status === 'expired' && 'bg-red-500/20 text-red-200 border-red-500/30',
                                       invite.status === 'revoked' && 'bg-zinc-500/20 text-zinc-200 border-zinc-500/30',
                                       invite.status === 'draft' && 'bg-amber-500/20 text-amber-200 border-amber-500/30',
@@ -2232,7 +2232,7 @@ const TournamentDashboard = () => {
                                             });
                                           }}
                                           disabled={resendInvites.isPending}
-                                          className="justify-start text-blue-300 hover:bg-blue-500/10 hover:text-blue-200 text-xs px-2"
+                                          className="justify-start text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 text-xs px-2"
                                         >
                                           Resend
                                         </Button>
@@ -2269,7 +2269,7 @@ const TournamentDashboard = () => {
                         onRefresh={refetchDashboard}
                       />
                     )}
-                    <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                    <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                       <MotionTiles />
                       <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
                         <CardTitle className="text-lg font-bold text-white tracking-wide">
@@ -2386,9 +2386,9 @@ const TournamentDashboard = () => {
               {activeTab === 'staff' && (
                 <TabsContent value="staff" forceMount key="staff">
                   <TabTransition direction={direction}>
-                    <Card className="bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8">
+                    <Card className="bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8">
                       <CardContent className="text-center py-8 space-y-4">
-                        <ShieldCheck className="w-12 h-12 text-emerald-400 mx-auto" />
+                        <ShieldCheck className="w-12 h-12 text-rose-400 mx-auto" />
                         <h3 className="text-xl font-bold text-white">Staff Management Moved</h3>
                         <p className="text-gray-400 max-w-md mx-auto">
                           Staff is now managed at the <strong>organization level</strong>.
@@ -2396,7 +2396,7 @@ const TournamentDashboard = () => {
                         </p>
                         <Button
                           onClick={() => navigate('/organizer/settings?tab=staff')}
-                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl transition-all hover:scale-105"
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-none transition-all hover:scale-105"
                         >
                           Go to Organization Settings
                         </Button>
@@ -2425,24 +2425,24 @@ const TournamentDashboard = () => {
                       <PermissionNotice message="Tournament settings are available only to the organizer." />
                     ) : (
                       <>
-                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                         <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                           <CardTitle className="text-lg font-semibold text-white">Check-In Requirements</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0 space-y-5">
                           <div className="flex flex-col gap-4">
-                            <div className="flex items-start gap-2 text-sm text-gray-300 p-4 rounded-xl bg-white/[0.02] border border-white/5">
-                              <AlertTriangle className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                            <div className="flex items-start gap-2 text-sm text-gray-300 p-4 rounded-none bg-white/[0.02] border border-white/5">
+                              <AlertTriangle className="w-5 h-5 text-rose-400 mt-0.5 flex-shrink-0" />
                               <div>
                                 <p className="font-medium text-white mb-1">Check-in Enforcement</p>
                                 <ul className="list-disc list-inside space-y-1 text-gray-400">
-                                  <li>Check-in is <span className="text-emerald-400 font-medium">mandatory</span> for all teams.</li>
+                                  <li>Check-in is <span className="text-rose-400 font-medium">mandatory</span> for all teams.</li>
                                   <li>Teams who fail to check in before the deadline will be <span className="text-red-400 font-medium">auto-removed</span>.</li>
                                   <li>Only checked-in teams will be added to the bracket.</li>
                                 </ul>
                               </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5 gap-4">
+                            <div className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-none bg-white/[0.02] border border-white/5 gap-4">
                               <div>
                                 <p className="font-semibold text-white">Manual Enforcement</p>
                                 <p className="text-sm text-gray-400">You can manually trigger removal of teams who haven't checked in yet.</p>
@@ -2462,7 +2462,7 @@ const TournamentDashboard = () => {
 
                       {/* Assisted Match Reporting — games with API integration */}
                       {getGameFeatures(tournament?.game || '').assistedReporting && (
-                        <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                        <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                           <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
                               <Zap className="w-5 h-5 text-amber-400" />
@@ -2470,7 +2470,7 @@ const TournamentDashboard = () => {
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="p-0 space-y-4">
-                            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                            <div className="flex items-start gap-4 p-4 rounded-none bg-white/[0.02] border border-white/5">
                               <Switch
                                 checked={tournament?.settings?.assistedMatchReporting === true}
                                 onCheckedChange={handleToggleAssistedReporting}
@@ -2486,7 +2486,7 @@ const TournamentDashboard = () => {
                               </div>
                             </div>
                             {tournament?.settings?.assistedMatchReporting && (
-                              <div className="flex items-start gap-2 text-sm text-gray-300 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                              <div className="flex items-start gap-2 text-sm text-gray-300 p-4 rounded-none bg-amber-500/5 border border-amber-500/20">
                                 <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
                                 <div>
                                   <p className="font-medium text-amber-300 mb-1">Riot Account Required</p>
@@ -2502,7 +2502,7 @@ const TournamentDashboard = () => {
 
                       {/* Map Veto — games with map veto support */}
                       {getGameFeatures(tournament?.game || '').mapVeto && (
-                        <Card className="relative bg-[#0d0d10] border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
+                        <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                           <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
                               <Swords className="w-5 h-5 text-rose-400" />
@@ -2510,7 +2510,7 @@ const TournamentDashboard = () => {
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="p-0 space-y-4">
-                            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                            <div className="flex items-start gap-4 p-4 rounded-none bg-white/[0.02] border border-white/5">
                               <Switch
                                 checked={tournament?.settings?.mapVetoEnabled !== false}
                                 onCheckedChange={handleToggleMapVeto}
@@ -2526,7 +2526,7 @@ const TournamentDashboard = () => {
                               </div>
                             </div>
                             {tournament?.settings?.mapVetoEnabled === false && (
-                              <div className="flex items-start gap-2 text-sm text-gray-300 p-4 rounded-xl bg-rose-500/5 border border-rose-500/20">
+                              <div className="flex items-start gap-2 text-sm text-gray-300 p-4 rounded-none bg-rose-500/5 border border-rose-500/20">
                                 <AlertTriangle className="w-5 h-5 text-rose-400 mt-0.5 flex-shrink-0" />
                                 <div>
                                   <p className="font-medium text-rose-300 mb-1">Map Veto Disabled</p>
@@ -2548,7 +2548,7 @@ const TournamentDashboard = () => {
 
             {/* Team Management Dialog - Outside AnimatePresence to avoid layout issues */}
             <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
-              <DialogContent className="sm:max-w-[480px] bg-[#09090b] border border-white/10 rounded-2xl shadow-2xl p-0 gap-0 overflow-hidden duration-300">
+              <DialogContent className="sm:max-w-[480px] bg-[#09090b] border border-white/10 rounded-none shadow-2xl p-0 gap-0 overflow-hidden duration-300">
                 <div className="p-6 pb-2">
                   <DialogHeader className="space-y-1">
                     <DialogTitle className="text-2xl font-bold text-white tracking-tight">{selectedTeam?.team_name || 'Team'}</DialogTitle>
@@ -2576,7 +2576,7 @@ const TournamentDashboard = () => {
                         </motion.span>
                       ))}
                       {teamCaptain && (
-                        <span className="px-4 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm font-medium text-emerald-400">👑 {teamCaptain}</span>
+                        <span className="px-4 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm font-medium text-rose-400">👑 {teamCaptain}</span>
                       )}
                     </div>
                   )}

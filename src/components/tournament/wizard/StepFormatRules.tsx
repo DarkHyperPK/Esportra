@@ -22,7 +22,7 @@ import esportsGames from '@/data/esportsGames.json';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getWebsiteAssetUrl } from '@/lib/storage';
-import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode } from '@/utils/gameFeatures';
+import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups } from '@/utils/gameFeatures';
 
 /* ──────────────────────────────────────────────────────────────
    Sub-components
@@ -41,9 +41,9 @@ const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index }) =
     return (
         <div
             className={cn(
-                "group relative aspect-video rounded-lg overflow-hidden border-2 cursor-pointer transition-all duration-200",
+                "group relative aspect-video rounded-none overflow-hidden border-2 cursor-pointer transition-all duration-200",
                 isSelected
-                    ? "border-emerald-500 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500"
+                    ? "border-rose-500 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500"
                     : "border-white/10 hover:border-white/30 opacity-70 hover:opacity-100"
             )}
             onClick={() => onToggle(map.id)}
@@ -51,7 +51,7 @@ const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index }) =
             {/* Skeleton / Shimmer Overlay */}
             {!isImgLoaded && (
                 <div className="absolute inset-0 bg-white/5 animate-pulse flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-2 border-emerald-500/20 border-t-emerald-500/80 animate-spin" />
+                    <div className="w-8 h-8 rounded-full border-2 border-rose-500/20 border-t-emerald-500/80 animate-spin" />
                 </div>
             )}
 
@@ -81,7 +81,7 @@ const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index }) =
             <div className="absolute bottom-2 left-2 right-2">
                 <span className={cn(
                     "text-[10px] sm:text-xs font-bold uppercase tracking-wide drop-shadow-md transition-colors",
-                    isSelected ? "text-emerald-400" : "text-white"
+                    isSelected ? "text-rose-400" : "text-white"
                 )}>
                     {map.map_name}
                 </span>
@@ -103,6 +103,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
     const isBR = isBattleRoyale(data.game || '');
     const brConfig = getBRConfig(data.game || '');
     const selectedGameModes = selectedGame ? getGameModes(selectedGame.name) : [];
+    const selectedGameModeGroups = selectedGame ? getGameModeGroups(selectedGame.name) : [];
     const explicitGameMode = data.gameMode ? getGameMode(data.game || '', data.gameMode) : undefined;
     const activeGameMode = explicitGameMode
         ?? selectedGameModes.find((mode) => mode.teamSize === data.teamSize)
@@ -132,6 +133,84 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
 
         updateData(updates);
     };
+
+    const activeModeGroup = selectedGameModeGroups.find((group) =>
+        group.modes.some((mode) => activeGameModeValue === mode.value || activeGameModeValue === mode.key)
+    );
+
+    const handleModeGroupChange = (groupKey: string) => {
+        const group = selectedGameModeGroups.find((candidate) => candidate.key === groupKey);
+        const mode = group?.modes[0];
+        if (mode) handleGameModeChange(mode.key || mode.value);
+    };
+
+    const renderGameModeSelector = () => selectedGameModes.length > 1 ? (
+        <div className="space-y-3">
+            <div className="w-full h-px bg-white/5 my-6" />
+            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                <Users className="w-4 h-4" />
+                Game Mode
+            </Label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {selectedGameModeGroups.map((group) => {
+                    const isSelected = activeModeGroup?.key === group.key;
+                    return (
+                        <button
+                            key={group.key}
+                            type="button"
+                            disabled={isGameModeLocked}
+                            onClick={() => handleModeGroupChange(group.key)}
+                            className={cn(
+                                "rounded-none border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                                isSelected
+                                    ? "border-rose-500 bg-rose-500 text-white"
+                                    : "border-white/10 bg-white/[0.02] text-gray-400 hover:border-white/30 hover:text-white"
+                            )}
+                        >
+                            <div className="font-bold text-sm uppercase tracking-wide">{group.label}</div>
+                            <div className="text-xs opacity-70 mt-1">
+                                {group.modes.length > 1
+                                    ? `${group.modes.length} variants`
+                                    : group.modes[0].teamSize === 1 ? 'Individual' : `${group.modes[0].teamSize} players`}
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+            {activeModeGroup && activeModeGroup.modes.length > 1 && (
+                <div className="grid grid-cols-2 gap-3">
+                    {activeModeGroup.modes.map((mode) => {
+                        const modeValue = mode.key || mode.value;
+                        const isSelected = activeGameModeValue === modeValue || data.gameMode === mode.value;
+                        return (
+                            <button
+                                key={modeValue}
+                                type="button"
+                                disabled={isGameModeLocked}
+                                onClick={() => handleGameModeChange(modeValue)}
+                                className={cn(
+                                    "rounded-none border p-3 text-center font-mono text-xs font-bold uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                                    isSelected
+                                        ? "border-white bg-white text-black"
+                                        : "border-white/10 bg-black/40 text-gray-400 hover:border-rose-500/50 hover:text-white"
+                                )}
+                            >
+                                {mode.variantLabel || mode.name}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+            <p className="text-sm text-gray-400">
+                {activeTeamSize === 1
+                    ? 'This mode registers participants individually.'
+                    : `This mode requires ${activeTeamSize} starters${activeGameMode?.maxRosterSize ? ` with a max roster of ${activeGameMode.maxRosterSize}` : ''}.`}
+            </p>
+            {isGameModeLocked && (
+                <p className="text-sm text-gray-400">Game mode is locked after tournament creation to protect registrations and match integrity.</p>
+            )}
+        </div>
+    ) : null;
 
     useEffect(() => {
         if (!selectedGame || !activeGameMode) return;
@@ -233,45 +312,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
             {isBR && brConfig ? (
                 <>
                     {/* Game Mode (Solo / Duo / Squad) */}
-                    {selectedGameModes.length > 1 && (
-                        <div className="space-y-3">
-                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                <Users className="w-4 h-4" />
-                                Game Mode
-                            </Label>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                {selectedGameModes.map((mode) => {
-                                    const modeValue = mode.key || mode.value;
-                                    const isSelected = activeGameModeValue === modeValue || data.gameMode === mode.value;
-                                    return (
-                                        <button
-                                            key={modeValue}
-                                            type="button"
-                                            disabled={isGameModeLocked}
-                                            onClick={() => handleGameModeChange(modeValue)}
-                                            className={cn(
-                                                "p-4 rounded-xl border text-center transition-all disabled:cursor-not-allowed disabled:opacity-60",
-                                                isSelected
-                                                    ? "border-rose-500 bg-rose-500/10"
-                                                    : "border-white/10 hover:border-white/20 bg-white/[0.02]"
-                                            )}
-                                        >
-                                            <div className="font-bold text-white text-sm">{mode.name}</div>
-                                            <div className="text-xs text-gray-400 mt-1">
-                                                {mode.teamSize === 1 ? 'Individual' : `${mode.teamSize} players`}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <p className="text-sm text-gray-400">
-                                {activeTeamSize === 1
-                                    ? 'Each participant competes individually.'
-                                    : `Teams of ${activeTeamSize} compete together. Registrations will require a roster matching this mode.`}
-                            </p>
-                            <div className="w-full h-px bg-white/5 my-2" />
-                        </div>
-                    )}
+                    {renderGameModeSelector()}
 
                     {/* Game Count */}
                     <div className="space-y-3">
@@ -317,9 +358,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                         brCustomScoring: null,
                                     })}
                                     className={cn(
-                                        "p-4 rounded-xl border text-left transition-all",
+                                        "p-4 rounded-none border text-left transition-all",
                                         data.brScoringPreset === key
-                                            ? "border-emerald-500 bg-emerald-500/10"
+                                            ? "border-rose-500 bg-rose-500/10"
                                             : "border-white/10 hover:border-white/20 bg-white/[0.02]"
                                     )}
                                 >
@@ -342,9 +383,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                     },
                                 })}
                                 className={cn(
-                                    "p-4 rounded-xl border text-left transition-all",
+                                    "p-4 rounded-none border text-left transition-all",
                                     data.brScoringPreset === 'custom'
-                                        ? "border-emerald-500 bg-emerald-500/10"
+                                        ? "border-rose-500 bg-rose-500/10"
                                         : "border-white/10 hover:border-white/20 bg-white/[0.02]"
                                 )}
                             >
@@ -363,7 +404,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Placement Points</Label>
                             <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2">
                                 {brConfig.scoringPresets[data.brScoringPreset].placements.map((pts, i) => (
-                                    <div key={i} className="text-center p-2 rounded-lg bg-white/[0.03] border border-white/5">
+                                    <div key={i} className="text-center p-2 rounded-none bg-white/[0.03] border border-white/5">
                                         <div className="text-[10px] text-gray-500 font-bold">#{i + 1}</div>
                                         <div className={cn(
                                             "text-sm font-bold",
@@ -527,9 +568,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
 
                     {/* Stages Info */}
                     {tournamentId ? (
-                        <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                        <div className="p-4 bg-white/[0.03] rounded-none border border-white/10">
                             <div className="flex items-center gap-3">
-                                <Layers className="w-5 h-5 text-blue-400" />
+                                <Layers className="w-5 h-5 text-rose-400" />
                                 <div>
                                     <div className="font-medium text-white">Tournament Stages</div>
                                     <div className="text-sm text-gray-400">
@@ -539,9 +580,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             </div>
                         </div>
                     ) : (
-                        <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                        <div className="p-4 bg-rose-500/10 rounded-none border border-rose-500/30">
                             <div className="flex items-center gap-3">
-                                <Layers className="w-5 h-5 text-emerald-400" />
+                                <Layers className="w-5 h-5 text-rose-400" />
                                 <div>
                                     <div className="font-medium text-white">Tournament Stages</div>
                                     <div className="text-sm text-gray-400">
@@ -553,9 +594,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                     )}
 
                     {/* Tournament Format Info */}
-                    <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                    <div className="p-4 bg-white/[0.03] rounded-none border border-white/10">
                         <div className="flex items-center gap-3">
-                            <Trophy className="w-5 h-5 text-blue-400" />
+                            <Trophy className="w-5 h-5 text-rose-400" />
                             <div>
                                 <div className="font-medium text-white">Tournament Format</div>
                                 <div className="text-sm text-gray-400">
@@ -564,46 +605,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             </div>
                         </div>
                     </div>
-
-
-                    {selectedGameModes.length > 1 && (
-                        <div className="space-y-3">
-                            <div className="w-full h-px bg-white/5 my-6" />
-                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                <Users className="w-4 h-4" />
-                                Game Mode
-                            </Label>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                {selectedGameModes.map((mode) => {
-                                    const modeValue = mode.key || mode.value;
-                                    const isSelected = activeGameModeValue === modeValue || data.gameMode === mode.value;
-                                    return (
-                                        <button
-                                            key={modeValue}
-                                            type="button"
-                                            disabled={isGameModeLocked}
-                                            onClick={() => handleGameModeChange(modeValue)}
-                                            className={cn(
-                                                "p-4 rounded-xl border text-left transition-all disabled:cursor-not-allowed disabled:opacity-60",
-                                                isSelected
-                                                    ? "border-emerald-500 bg-emerald-500/10"
-                                                    : "border-white/10 hover:border-white/20 bg-white/[0.02]"
-                                            )}
-                                        >
-                                            <div className="font-bold text-white text-sm">{mode.name}</div>
-                                            <div className="text-xs text-gray-400 mt-1">
-                                                {mode.teamSize} players per team
-                                                {mode.maxRosterSize ? ` • max roster ${mode.maxRosterSize}` : ''}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            {isGameModeLocked && (
-                                <p className="text-sm text-gray-400">Game mode is locked after tournament creation to protect registrations and match integrity.</p>
-                            )}
-                        </div>
-                    )}
+                    {renderGameModeSelector()}
 
                     {/* Max Teams */}
                     <div className="space-y-3">
@@ -686,10 +688,10 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
 
                             {loadingMaps ? (
                                 <div className="flex items-center justify-center py-8">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
                                 </div>
                             ) : availableMaps.length === 0 ? (
-                                <div className="p-4 bg-amber-500/10 rounded-lg border border-amber-500/30">
+                                <div className="p-4 bg-amber-500/10 rounded-none border border-amber-500/30">
                                     <p className="text-amber-400 text-sm">No maps found for {data.game}. Maps can be added to the database.</p>
                                 </div>
                             ) : (
@@ -758,7 +760,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                     onChange={(e) => updateData({ rules: e.target.value })}
                     placeholder="Enter your tournament rules here. Each rule on a new line, e.g.:\n1. All participants must check in 30 minutes before start.\n2. No unauthorized software allowed.\n3. Disputes must be filed within 5 minutes of match end."
                     rows={8}
-                    className="w-full rounded-xl bg-zinc-900/50 border border-white/10 text-white placeholder:text-zinc-600 px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500/40 resize-y"
+                    className="w-full rounded-none bg-zinc-900/50 border border-white/10 text-white placeholder:text-zinc-600 px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500/40 resize-y"
                 />
                 <p className="text-xs text-zinc-500">These rules will be displayed on the tournament's public page under the Rules tab.</p>
             </div>

@@ -28,6 +28,15 @@ export interface GameMode extends GameFormat {
   allowsSubstitutes?: boolean;
   maxRosterSize?: number;
   aliases?: string[];
+  modeGroup?: string;
+  variantLabel?: string;
+}
+
+export interface GameModeGroup {
+  key: string;
+  label: string;
+  modes: GameMode[];
+  isGrouped: boolean;
 }
 
 export interface TournamentStructureCapability {
@@ -100,6 +109,34 @@ export function gameHasMapPool(gameName: string): boolean {
 export function getGameModes(gameName: string): GameMode[] {
   const game = getGameByName(gameName);
   return game?.modes?.length ? game.modes : (game?.formats || []);
+}
+
+/** Get grouped catalog modes for a game. */
+export function getGameModeGroups(gameName: string): GameModeGroup[] {
+  const groups = new Map<string, GameModeGroup>();
+
+  for (const mode of getGameModes(gameName)) {
+    const flatKey = mode.key || mode.value;
+    const groupKey = mode.modeGroup ? normalize(mode.modeGroup) : flatKey;
+    const existing = groups.get(groupKey);
+
+    if (existing) {
+      existing.modes.push(mode);
+      existing.isGrouped = true;
+    } else {
+      groups.set(groupKey, {
+        key: groupKey,
+        label: mode.modeGroup || mode.name,
+        modes: [mode],
+        isGrouped: Boolean(mode.modeGroup),
+      });
+    }
+  }
+
+  return Array.from(groups.values()).map((group) => ({
+    ...group,
+    modes: group.modes.sort((a, b) => a.teamSize - b.teamSize || a.name.localeCompare(b.name)),
+  }));
 }
 
 /** Get default mode for a game. */

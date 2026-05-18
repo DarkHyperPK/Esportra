@@ -34,8 +34,8 @@ const MobileNav = ({
     setExpandedMenu(expandedMenu === menu ? null : menu);
   };
 
-  const linkClass = "block rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white";
-  const subLinkClass = "block rounded-xl px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/50 transition-all duration-200 hover:bg-white/5 hover:text-white/80";
+  const linkClass = "block rounded-none border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white";
+  const subLinkClass = "block rounded-none px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/50 transition-all duration-200 hover:bg-white/5 hover:text-white/80";
 
   const accordionMotion = {
     initial: { opacity: 0, gridTemplateRows: '0fr' },
@@ -54,12 +54,12 @@ const MobileNav = ({
           exit={{ opacity: 0, gridTemplateRows: '0fr' }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           style={{ display: 'grid', overflow: 'hidden' }}
-          className="lg:hidden fixed top-[88px] left-0 right-0 mx-4 z-[998] bg-[#0d0d10] border border-white/10 rounded-3xl shadow-[0_25px_45px_rgba(0,0,0,0.65)]"
+          className="lg:hidden fixed top-[88px] left-0 right-0 mx-4 z-[998] bg-[#0d0d10] border border-white/10 rounded-none shadow-[0_25px_45px_rgba(0,0,0,0.65)]"
         >
         <div style={{ minHeight: 0, overflow: 'hidden' }} className="max-h-[80vh] overflow-y-auto">
           {/* Background Effects */}
           <MotionTiles />
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-transparent to-blue-500/20 opacity-20 pointer-events-none mix-blend-overlay" />
+          <div className="absolute inset-0 bg-rose-500/10 opacity-20 pointer-events-none mix-blend-overlay" />
 
           <div className="space-y-1 px-3 pt-4 pb-4 relative z-10">
             {/* General Navigation */}
@@ -68,7 +68,7 @@ const MobileNav = ({
               <div>
                 <button
                   onClick={() => toggleMenu('venues')}
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
+                  className="flex w-full items-center justify-between rounded-none border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
                 >
                   Venues
                   <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expandedMenu === 'venues' ? 'rotate-180' : ''}`} />
@@ -95,7 +95,7 @@ const MobileNav = ({
               <div>
                 <button
                   onClick={() => toggleMenu('tournaments')}
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
+                  className="flex w-full items-center justify-between rounded-none border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
                 >
                   Tournaments
                   <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expandedMenu === 'tournaments' ? 'rotate-180' : ''}`} />
@@ -134,7 +134,7 @@ const MobileNav = ({
               <div>
                 <button
                   onClick={() => toggleMenu('about')}
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
+                  className="flex w-full items-center justify-between rounded-none border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
                 >
                   About
                   <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expandedMenu === 'about' ? 'rotate-180' : ''}`} />
@@ -166,7 +166,7 @@ const MobileNav = ({
 
                 {/* Role & Identity Switchers */}
                 {userRole !== 'admin' && (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                  <div className="rounded-none border border-white/10 bg-white/5 px-3 py-2">
                     <RoleSwitcher />
                   </div>
 
@@ -201,27 +201,27 @@ const MobileNav = ({
                 {/* Role-Specific Navigation */}
                 {profile?.role === 'admin' && (
                   <div className="mb-3 space-y-1">
-                    <Link to="/admin/dashboard" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
+                    <Link to="/admin/dashboard" className="block rounded-none border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                       Admin Panel
                     </Link>
                   </div>
                 )}
                 {(userRole === 'venue_owner' && !isSuperAdmin) && (
                   <div className="mb-3 space-y-1">
-                    <Link to="/venues/manage" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-cyan-300 transition-all duration-200 hover:border-cyan-500/40 hover:bg-cyan-500/10" onClick={onClose}>
+                    <Link to="/venues/manage" className="block rounded-none border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-cyan-300 transition-all duration-200 hover:border-cyan-500/40 hover:bg-cyan-500/10" onClick={onClose}>
                       My Venues
                     </Link>
-                    <Link to="/venues/list-venue" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
+                    <Link to="/venues/list-venue" className="block rounded-none border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                       List New Venue
                     </Link>
                   </div>
                 )}
                 {(userRole === 'organizer' && !isSuperAdmin) && (
                   <div className="mb-3 space-y-1">
-                    <Link to="/organizer/tournaments" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
+                    <Link to="/organizer/tournaments" className="block rounded-none border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                       Manage Tournaments
                     </Link>
-                    <Link to="/tournaments/create" className="block rounded-2xl border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
+                    <Link to="/tournaments/create" className="block rounded-none border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
                       Create Tournament
                     </Link>
                   </div>
@@ -231,7 +231,7 @@ const MobileNav = ({
 
                 {/* Sign Out */}
                 <button
-                  className="block w-full rounded-2xl border border-red-500/40 px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:bg-red-500/10"
+                  className="block w-full rounded-none border border-red-500/40 px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:bg-red-500/10"
                   onClick={() => { onClose(); handleSignOut(); }}
                 >
                   Sign Out
@@ -241,10 +241,10 @@ const MobileNav = ({
 
             {!user && (
               <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                <Link to="/auth/signin" className="block rounded-2xl border border-white/10 px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
+                <Link to="/auth/signin" className="block rounded-none border border-white/10 px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
                   Sign In
                 </Link>
-                <Link to="/auth/signup" className="block rounded-2xl bg-gradient-to-r from-[#f43f5e] to-[#fb7185] px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.15em] text-white shadow-[0_20px_45px_rgba(244,63,94,0.35)] transition-all duration-200 hover:from-[#fb7185] hover:to-[#f43f5e]" onClick={onClose}>
+                <Link to="/auth/signup" className="block rounded-none bg-white text-black hover:bg-rose-500 hover:text-white px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.15em] text-white shadow-[0_20px_45px_rgba(244,63,94,0.35)] transition-all duration-200 hover:from-[#fb7185] hover:to-[#f43f5e]" onClick={onClose}>
                   Sign Up
                 </Link>
               </div>

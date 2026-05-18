@@ -48,13 +48,13 @@ const Navbar = () => {
     >
       <div className={`max-w-6xl mx-auto w-full px-4 sm:px-8 ${isLandingPage ? 'py-1' : 'py-3'}`}>
         <div
-          className={`relative flex w-full items-center justify-between rounded-3xl border border-white/10 shadow-lg transition-colors duration-200 ${isScrolled
-            ? "bg-[#0a0a0c]/95 border-white/5"
-            : "bg-[#0a0a0c]/80"
+          className={`relative flex w-full items-center justify-between rounded-none border border-white/10 shadow-lg transition-colors duration-200 ${isScrolled
+            ? "bg-black/95 border-rose-500/25"
+            : "bg-black/85"
             }`}
         >
-          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.06] to-transparent" />
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-none">
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:24px_24px]" />
           </div>
           <div className="relative z-10 flex w-full items-center justify-between px-6 py-3 text-white">
             {/* Logo and Brand */}

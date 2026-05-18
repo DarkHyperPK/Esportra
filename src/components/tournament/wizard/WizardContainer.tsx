@@ -1,7 +1,6 @@
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Loader2, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useTournamentWizard } from '@/hooks/useTournamentWizard';
 import WizardProgress from './WizardProgress';
 import StepBasicInfo from './StepBasicInfo';
@@ -11,6 +10,7 @@ import StepRegistration from './StepRegistration';
 import StepSettings from './StepSettings';
 import StepReview from './StepReview';
 import { WIZARD_STEPS } from '@/types/tournamentWizard';
+import { CommandButton, CommandHeader, CommandSection, CommandShell } from '@/components/management/CommandSurface';
 
 import { TournamentWizardData } from '@/types/tournamentWizard';
 
@@ -22,7 +22,6 @@ interface WizardContainerProps {
 }
 
 const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tournamentId, participantsCount, seasonId }) => {
-    // ... hooks ...
     const {
         currentStep,
         data,
@@ -30,7 +29,6 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
         isSubmitting,
         stepValidation,
         updateData,
-        validateCurrentStep,
         nextStep,
         prevStep,
         goToStep,
@@ -43,8 +41,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
             case 1:
                 return <StepBasicInfo data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId} />;
             case 2:
-                // Ensure StepFormatRules receives the required props
-                return <StepFormatRules data={data} updateData={updateData} errors={errors} tournamentId={tournamentId} participantsCount={participantsCount} />;
+                return <StepFormatRules data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId} tournamentId={tournamentId} participantsCount={participantsCount} />;
             case 3:
                 return <StepBranding data={data} updateData={updateData} errors={errors} />;
             case 4:
@@ -62,19 +59,14 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
     const isFirstStep = currentStep === 1;
 
     return (
-        <div className="min-h-screen bg-transparent text-white relative overflow-hidden font-sans">
-            <div className="max-w-4xl mx-auto relative z-10 py-6 px-4">
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight">
-                        {tournamentId ? 'Edit Tournament' : 'Create Tournament'}
-                    </h1>
-                    <p className="text-gray-400">
-                        {tournamentId ? 'Update your tournament settings' : 'Set up your tournament in just a few steps'}
-                    </p>
-                </div>
+        <CommandShell>
+            <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+                <CommandHeader
+                    eyebrow={tournamentId ? 'Tournament Command' : 'Tournament Setup'}
+                    title={tournamentId ? 'Edit Tournament' : 'Create Tournament'}
+                    description={tournamentId ? 'Update the operating contract for this tournament.' : 'Configure a tournament with backend-validated game modes, roster rules, and registration settings.'}
+                />
 
-                {/* Progress */}
                 <WizardProgress
                     currentStep={currentStep}
                     stepValidation={stepValidation}
@@ -82,88 +74,71 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
                     steps={WIZARD_STEPS}
                 />
 
-                {/* Form Container - GLASS STYLE */}
-                <div className="bg-[#0d0d10] border border-white/10 rounded-3xl p-6 md:p-8 relative overflow-hidden group">
-                    {/* Optional: MotionTiles for extra flair, same as dashboard */}
-                    <div className="absolute inset-0 opacity-20 pointer-events-none">
+                <CommandSection className="relative overflow-hidden">
+                    <div className="pointer-events-none absolute inset-0 opacity-20">
                         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
                     </div>
 
                     <AnimatePresence mode="wait">
                         {renderStep()}
                     </AnimatePresence>
-                </div>
+                </CommandSection>
 
-                {/* Navigation */}
-                <div className="mt-6 flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         {!isFirstStep && (
-                            <Button
-                                variant="outline"
-                                onClick={prevStep}
-                                className="border-gray-700 bg-black/20 hover:bg-white/10 text-white"
-                            >
-                                <ArrowLeft className="w-4 h-4 mr-2" />
+                            <CommandButton variant="secondary" onClick={prevStep}>
+                                <ArrowLeft className="h-4 w-4" />
                                 Back
-                            </Button>
+                            </CommandButton>
                         )}
 
-                        {/* Clear draft button - only show in create mode */}
                         {!tournamentId && (
-                            <Button
-                                variant="ghost"
-                                onClick={clearDraft}
-                                className="text-gray-400 hover:text-red-400 hover:bg-red-500/10"
-                            >
-                                <Trash2 className="w-4 h-4 mr-2" />
+                            <CommandButton variant="ghost" onClick={clearDraft}>
+                                <Trash2 className="h-4 w-4" />
                                 Clear Draft
-                            </Button>
+                            </CommandButton>
                         )}
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {/* Draft saved indicator */}
                         {!tournamentId && (
-                            <span className="text-xs text-gray-500 hidden md:block">
-                                ✓ Draft auto-saved
+                            <span className="hidden font-mono text-[10px] uppercase tracking-widest text-gray-500 md:block">
+                                Draft auto-saved
                             </span>
                         )}
 
                         {isLastStep ? (
-                            <Button
+                            <CommandButton
                                 onClick={submitTournament}
                                 disabled={isSubmitting || Object.keys(errors).length > 0}
-                                className="bg-emerald-500 hover:bg-emerald-600 min-w-[160px] text-white font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                                className="min-w-[180px]"
                             >
                                 {isSubmitting ? (
                                     <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        {tournamentId ? 'Saving...' : 'Creating...'}
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        {tournamentId ? 'Saving' : 'Creating'}
                                     </>
                                 ) : (
                                     tournamentId ? 'Save Changes' : 'Create Tournament'
                                 )}
-                            </Button>
+                            </CommandButton>
                         ) : (
-                            <Button
-                                onClick={nextStep}
-                                className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-                            >
+                            <CommandButton onClick={nextStep}>
                                 Next
-                                <ArrowRight className="w-4 h-4 ml-2" />
-                            </Button>
+                                <ArrowRight className="h-4 w-4" />
+                            </CommandButton>
                         )}
                     </div>
                 </div>
 
-                {/* Help text */}
-                <div className="mt-4 text-center text-xs text-gray-500">
+                <div className="text-center font-mono text-[10px] uppercase tracking-widest text-gray-500">
                     {tournamentId
-                        ? 'Changes will be applied immediately upon saving.'
-                        : 'Your progress is automatically saved. You can close this page and continue later.'}
+                        ? 'Changes apply immediately after saving.'
+                        : 'Your progress is automatically saved.'}
                 </div>
             </div>
-        </div>
+        </CommandShell>
     );
 };
 

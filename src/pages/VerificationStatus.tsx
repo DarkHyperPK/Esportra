@@ -144,14 +144,14 @@ const VerificationStatus: React.FC = () => {
     return (
       <div className="min-h-screen bg-esports-dark text-white flex items-center justify-center">
         <div className="max-w-md mx-auto text-center">
-          <Settings className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+          <Settings className="w-16 h-16 text-rose-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-white mb-2">Admin Access</h1>
           <p className="text-gray-400 mb-6">
             As an admin, you don't need verification. You have full access to all platform features.
           </p>
           <Button
             onClick={() => navigate('/admin/dashboard')}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-white text-black hover:bg-rose-500 hover:text-white text-white"
           >
             Go to Admin Dashboard
           </Button>
@@ -172,9 +172,9 @@ const VerificationStatus: React.FC = () => {
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-8 rounded-3xl border border-white/10 bg-[#0a0a0c] p-6 md:p-8 relative overflow-hidden">
-            <div className="absolute -top-16 -right-16 w-56 h-56 bg-rose-500/10 blur-3xl rounded-full pointer-events-none" />
-            <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none" />
+          <div className="mb-8 rounded-none border border-white/10 bg-[#0a0a0c] p-6 md:p-8 relative overflow-hidden">
+            <div className="hidden" />
+            <div className="hidden" />
             <div className="relative flex items-center justify-between gap-4">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] uppercase tracking-wider text-rose-300 mb-3">
@@ -197,7 +197,7 @@ const VerificationStatus: React.FC = () => {
           {/* Verification Status Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {/* Organizer License */}
-            <Card className="bg-gradient-to-br from-[#0a0a0c] to-[#121214] border-white/10 hover:border-rose-500/30 transition-all hover:-translate-y-0.5">
+            <Card className="bg-[#09090b] border-white/10 hover:border-rose-500/30 transition-all hover:-translate-y-0.5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
                   <Trophy className="w-5 h-5 text-rose-400" />
@@ -235,7 +235,7 @@ const VerificationStatus: React.FC = () => {
                     </p>
                     <Button
                       onClick={() => { setRequestFor('organizer'); setShowRequestForm(true); }}
-                      className="bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white shadow-lg shadow-rose-500/20"
+                      className="bg-white text-black hover:bg-rose-500 hover:text-white rounded-none text-white shadow-lg shadow-rose-500/20"
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
                       Apply for License
@@ -246,10 +246,10 @@ const VerificationStatus: React.FC = () => {
             </Card>
 
             {/* Venue Owner License */}
-            <Card className="bg-gradient-to-br from-[#0a0a0c] to-[#121214] border-white/10 hover:border-emerald-500/30 transition-all hover:-translate-y-0.5">
+            <Card className="bg-[#09090b] border-white/10 hover:border-rose-500/30 transition-all hover:-translate-y-0.5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
-                  <Building2 className="w-5 h-5 text-emerald-400" />
+                  <Building2 className="w-5 h-5 text-rose-400" />
                   Venue Owner License
                 </CardTitle>
               </CardHeader>
@@ -284,7 +284,7 @@ const VerificationStatus: React.FC = () => {
                     </p>
                     <Button
                       onClick={() => { setRequestFor('venue_owner'); setShowRequestForm(true); }}
-                      className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/20"
+                      className="bg-white text-black hover:bg-rose-500 hover:text-white rounded-none text-white shadow-lg shadow-emerald-500/20"
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
                       Apply for License
@@ -304,7 +304,7 @@ const VerificationStatus: React.FC = () => {
               <CardContent>
                 <div className="space-y-4">
                   {requests.map((request) => (
-                    <div key={request.id ?? `${request.requested_role}-${request.created_at}`} className="border border-gray-700 rounded-lg p-4">
+                    <div key={request.id ?? `${request.requested_role}-${request.created_at}`} className="border border-gray-700 rounded-none p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <h3 className="text-white font-semibold">{request.business_name}</h3>
@@ -347,7 +347,7 @@ const VerificationStatus: React.FC = () => {
                       {request.verification_notes && (
                         <Alert className="mt-3 bg-blue-900/20 border-blue-700">
                           <AlertCircle className="h-4 w-4" />
-                          <AlertDescription className="text-blue-300">
+                          <AlertDescription className="text-zinc-300">
                             <strong>Admin Notes:</strong> {request.verification_notes}
                           </AlertDescription>
                         </Alert>
@@ -360,9 +360,9 @@ const VerificationStatus: React.FC = () => {
           )}
 
           {/* Information Alert */}
-            <Alert className="mt-6 bg-blue-900/15 border-blue-500/30">
+            <Alert className="mt-6 bg-white/[0.03] border-white/10">
               <Award className="h-4 w-4" />
-              <AlertDescription className="text-blue-300">
+              <AlertDescription className="text-zinc-300">
                 <strong>License Application Process:</strong> Our team reviews all license applications within 1-3 business days.
               You'll receive an email notification once your application is processed. Please provide accurate business information.
             </AlertDescription>
@@ -373,7 +373,7 @@ const VerificationStatus: React.FC = () => {
       {/* Verification Request Form Dialog */}
       {showRequestForm && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-3xl border border-white/10 bg-[#09090b] shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
+          <div className="w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-none border border-white/10 bg-[#09090b] shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
             <VerificationRequestForm
               requestedRole={requestFor || undefined}
               onSuccess={() => {

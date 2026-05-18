@@ -15,11 +15,12 @@ import { Globe, MapPin, Calendar, Clock, Eye, EyeOff, Lock, Target } from 'lucid
 import esportsGames from '@/data/esportsGames.json';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
-import { getGameByName, getDefaultGameMode, getDefaultTeamSize, getGameModes, isBattleRoyale, getBRConfig, EsportsGame } from '@/utils/gameFeatures';
+import { getGameByName, getDefaultGameMode, getDefaultTeamSize, getGameModes, getGameModeGroups, isBattleRoyale, getBRConfig, EsportsGame } from '@/utils/gameFeatures';
 
 const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode }) => {
     const selectedGame = getGameByName(data.game) as EsportsGame | undefined;
     const selectedGameModes = selectedGame ? getGameModes(selectedGame.name) : [];
+    const selectedGameModeGroups = selectedGame ? getGameModeGroups(selectedGame.name) : [];
     const selectedGameModeValue = data.gameMode || getDefaultGameMode(data.game)?.value || '';
 
     const handleGameChange = (gameName: string) => {
@@ -42,6 +43,16 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
         if (mode) {
             updateData({ gameMode: mode.value, teamSize: mode.teamSize });
         }
+    };
+
+    const activeModeGroup = selectedGameModeGroups.find((group) =>
+        group.modes.some((mode) => selectedGameModeValue === mode.value || selectedGameModeValue === mode.key)
+    );
+
+    const handleModeGroupChange = (groupKey: string) => {
+        const group = selectedGameModeGroups.find((candidate) => candidate.key === groupKey);
+        const mode = group?.modes[0];
+        if (mode) handleFormatChange(mode.key || mode.value);
     };
 
     // Get today's date for min date validation
@@ -139,7 +150,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-3"
+                        className="p-4 bg-white/[0.02] rounded-none border border-white/10 space-y-3"
                     >
                         <div className="flex items-center gap-3">
                             <img src={selectedGame.logo} alt={selectedGame.name} className="w-10 h-10 object-cover rounded" />
@@ -156,35 +167,58 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         </div>
                         {/* Mode selector for games with multiple playable modes */}
                         {selectedGameModes.length > 1 && !isEditMode && (
-                            <div className="pt-2 border-t border-white/5">
-                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Game Mode</Label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {selectedGameModes.map((mode) => {
-                                        const modeValue = mode.key || mode.value;
+                            <div className="pt-3 border-t border-white/10 space-y-3">
+                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest block">Game Mode</Label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {selectedGameModeGroups.map((group) => {
+                                        const isSelected = activeModeGroup?.key === group.key;
                                         return (
                                             <button
-                                                key={modeValue}
+                                                key={group.key}
                                                 type="button"
-                                                onClick={() => handleFormatChange(modeValue)}
+                                                onClick={() => handleModeGroupChange(group.key)}
                                                 className={cn(
-                                                    "px-3 py-2 rounded-lg border text-sm font-medium transition-all",
-                                                    selectedGameModeValue === mode.value || selectedGameModeValue === mode.key
-                                                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
-                                                        : "border-white/10 text-gray-400 hover:border-white/20"
+                                                    "rounded-none border px-3 py-2 text-left text-sm font-bold uppercase tracking-wide transition-colors",
+                                                    isSelected
+                                                        ? "border-rose-500 bg-rose-500 text-white"
+                                                        : "border-white/10 bg-black/40 text-gray-400 hover:border-white/30 hover:text-white"
                                                 )}
                                             >
-                                                {mode.name}
+                                                {group.label}
                                             </button>
                                         );
                                     })}
                                 </div>
+                                {activeModeGroup && activeModeGroup.modes.length > 1 && (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {activeModeGroup.modes.map((mode) => {
+                                            const modeValue = mode.key || mode.value;
+                                            const isSelected = selectedGameModeValue === mode.value || selectedGameModeValue === mode.key;
+                                            return (
+                                                <button
+                                                    key={modeValue}
+                                                    type="button"
+                                                    onClick={() => handleFormatChange(modeValue)}
+                                                    className={cn(
+                                                        "rounded-none border px-3 py-2 text-sm font-mono font-bold uppercase tracking-wider transition-colors",
+                                                        isSelected
+                                                            ? "border-white bg-white text-black"
+                                                            : "border-white/10 bg-white/[0.02] text-gray-400 hover:border-rose-500/50 hover:text-white"
+                                                    )}
+                                                >
+                                                    {mode.variantLabel || mode.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         {/* BR format notice */}
                         {isBattleRoyale(selectedGame.name) && (
                             <div className="pt-2 border-t border-white/5">
-                                <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                                <div className="flex items-start gap-3 p-3 rounded-none bg-amber-500/5 border border-amber-500/20">
                                     <Target className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
                                     <div>
                                         <p className="font-medium text-amber-300 text-sm">Points-Based Tournament</p>
@@ -213,14 +247,14 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                 >
                     <label
                         className={cn(
-                            "flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
+                            "flex items-center gap-3 p-4 rounded-none border-2 cursor-pointer transition-all",
                             data.isOnline
-                                ? "border-emerald-500 bg-emerald-500/10"
+                                ? "border-rose-500 bg-rose-500/10"
                                 : "border-white/10 hover:border-white/20"
                         )}
                     >
                         <RadioGroupItem value="online" className="sr-only" />
-                        <Globe className={cn("w-5 h-5", data.isOnline ? "text-emerald-400" : "text-gray-400")} />
+                        <Globe className={cn("w-5 h-5", data.isOnline ? "text-rose-400" : "text-gray-400")} />
                         <div>
                             <div className="font-medium text-white">Online</div>
                             <div className="text-xs text-gray-400">Players compete remotely</div>
@@ -228,14 +262,14 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                     </label>
                     <label
                         className={cn(
-                            "flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
+                            "flex items-center gap-3 p-4 rounded-none border-2 cursor-pointer transition-all",
                             !data.isOnline
-                                ? "border-emerald-500 bg-emerald-500/10"
+                                ? "border-rose-500 bg-rose-500/10"
                                 : "border-white/10 hover:border-white/20"
                         )}
                     >
                         <RadioGroupItem value="lan" className="sr-only" />
-                        <MapPin className={cn("w-5 h-5", !data.isOnline ? "text-emerald-400" : "text-gray-400")} />
+                        <MapPin className={cn("w-5 h-5", !data.isOnline ? "text-rose-400" : "text-gray-400")} />
                         <div>
                             <div className="font-medium text-white">LAN</div>
                             <div className="text-xs text-gray-400">In-person at a venue</div>
@@ -303,16 +337,16 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div
                         className={cn(
-                            "flex flex-col items-center p-6 rounded-2xl border-2 transition-all text-center",
-                            "border-emerald-500 bg-emerald-500/10"
+                            "flex flex-col items-center p-6 rounded-none border-2 transition-all text-center",
+                            "border-rose-500 bg-rose-500/10"
                         )}
                     >
-                        <EyeOff className="w-8 h-8 mb-3 text-emerald-400" />
+                        <EyeOff className="w-8 h-8 mb-3 text-rose-400" />
                         <div className="text-base font-bold text-white uppercase tracking-tight">Unlisted (Draft)</div>
-                        <div className="text-xs text-emerald-400/70 mt-1 font-medium">Only you can see this right now</div>
+                        <div className="text-xs text-rose-400/70 mt-1 font-medium">Only you can see this right now</div>
                     </div>
 
-                    <div className="flex flex-col justify-center p-4 rounded-2xl border border-white/5 bg-white/[0.01] text-left">
+                    <div className="flex flex-col justify-center p-4 rounded-none border border-white/5 bg-white/[0.01] text-left">
                         <div className="flex items-center gap-2 mb-2 text-white/40">
                             <Globe className="w-4 h-4" />
                             <span className="text-xs font-bold uppercase tracking-widest">Go Public Later</span>

@@ -18,6 +18,7 @@ import { Trash2, ImageIcon, Folder, Plus, ArrowLeft, MoreVertical, Edit2 } from 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import OrganizationStaffManager from '@/components/organizer/OrganizationStaffManager';
+import { CommandTabs } from '@/components/management/CommandSurface';
 
 interface Organization {
     id: string;
@@ -110,6 +111,7 @@ const OrganizationSettings: React.FC = () => {
 
     // Seasons state
     const [seasons, setSeasons] = useState<Season[]>([]);
+    const [activeManagementSection, setActiveManagementSection] = useState('profile');
 
     // Track whether form fields differ from saved organization data
     const hasUnsavedChanges = organization ? (
@@ -126,6 +128,22 @@ const OrganizationSettings: React.FC = () => {
             fetchOrganization();
         }
     }, [user?.id]);
+
+    const managementTabs = [
+        { value: 'profile', label: 'Profile' },
+        { value: 'branding', label: 'Branding' },
+        { value: 'staff', label: 'Staff' },
+        { value: 'seasons', label: 'Seasons' },
+        { value: 'media', label: 'Media' },
+        { value: 'advanced', label: 'Advanced' },
+    ];
+
+    const handleManagementTabChange = (value: string) => {
+        setActiveManagementSection(value);
+        requestAnimationFrame(() => {
+            document.getElementById(`org-section-${value}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    };
 
     const fetchOrganization = async () => {
         try {
@@ -437,7 +455,7 @@ const OrganizationSettings: React.FC = () => {
                     animate={{ opacity: 1 }}
                     className="flex flex-col items-center gap-4"
                 >
-                    <Loader2 className="h-10 w-10 animate-spin text-esports-accent" />
+                    <Loader2 className="h-10 w-10 animate-spin text-rose-400" />
                     <span className="text-gray-400">Loading organization...</span>
                 </motion.div>
             </div>
@@ -449,16 +467,16 @@ const OrganizationSettings: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="space-y-8"
+            className="space-y-6"
         >
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold flex items-center gap-3 font-heading">
-                        <div className="p-2 rounded-xl bg-gradient-to-br from-esports-purple/20 to-esports-accent/20 border border-white/10">
-                            <Building2 className="h-6 w-6 text-esports-accent" />
+                        <div className="p-2 rounded-none bg-rose-500/10 border border-white/10">
+                            <Building2 className="h-6 w-6 text-rose-400" />
                         </div>
-                        <span className="text-gradient bg-gradient-to-r from-white to-gray-400">
+                        <span className="text-white">
                             Organization Settings
                         </span>
                     </h2>
@@ -472,7 +490,7 @@ const OrganizationSettings: React.FC = () => {
                     <Button
                         variant="outline"
                         onClick={() => window.open(`/org/${organization.slug}`, '_blank')}
-                        className="gap-2 border-white/10 hover:bg-white/5 hover:border-esports-accent/50 transition-all"
+                        className="gap-2 border-white/10 hover:bg-white/5 hover:border-rose-500/50 transition-all"
                     >
                         <ExternalLink className="h-4 w-4" />
                         View Public Profile
@@ -480,40 +498,42 @@ const OrganizationSettings: React.FC = () => {
                 )}
             </div>
 
+            <CommandTabs tabs={managementTabs} active={activeManagementSection} onChange={handleManagementTabChange} />
+
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div id="org-section-profile" className="grid grid-cols-1 md:grid-cols-3 gap-4 scroll-mt-24">
                 <motion.div
                     whileHover={{ y: -4, scale: 1.02 }}
-                    className="relative overflow-hidden rounded-2xl p-6 border border-white/5 bg-gradient-to-br from-esports-purple/10 to-transparent backdrop-blur-sm"
+                    className="relative overflow-hidden rounded-none p-6 border border-white/5 bg-[#09090b] backdrop-blur-sm"
                 >
-                    <Trophy className="h-8 w-8 text-esports-purple mb-3" />
+                    <Trophy className="h-8 w-8 text-rose-400 mb-3" />
                     <div className="text-3xl font-bold font-heading">{stats.totalTournaments}</div>
                     <div className="text-gray-400 text-sm">Total Tournaments</div>
                 </motion.div>
 
                 <motion.div
                     whileHover={{ y: -4, scale: 1.02 }}
-                    className="relative overflow-hidden rounded-2xl p-6 border border-white/5 bg-gradient-to-br from-esports-accent/10 to-transparent backdrop-blur-sm"
+                    className="relative overflow-hidden rounded-none p-6 border border-white/5 bg-[#09090b] backdrop-blur-sm"
                 >
-                    <Users className="h-8 w-8 text-esports-accent mb-3" />
+                    <Users className="h-8 w-8 text-rose-400 mb-3" />
                     <div className="text-3xl font-bold font-heading">{stats.totalParticipants}</div>
                     <div className="text-gray-400 text-sm">Total Participants</div>
                 </motion.div>
 
                 <motion.div
                     whileHover={{ y: -4, scale: 1.02 }}
-                    className="relative overflow-hidden rounded-2xl p-6 border border-white/5 bg-gradient-to-br from-esports-green/10 to-transparent backdrop-blur-sm"
+                    className="relative overflow-hidden rounded-none p-6 border border-white/5 bg-[#09090b] backdrop-blur-sm"
                 >
-                    <Calendar className="h-8 w-8 text-esports-green mb-3" />
+                    <Calendar className="h-8 w-8 text-emerald-400 mb-3" />
                     <div className="text-3xl font-bold font-heading">{stats.activeTournaments}</div>
                     <div className="text-gray-400 text-sm">Active Tournaments</div>
                 </motion.div>
             </div>
 
             {/* Banner & Logo Preview */}
-            <Card className="overflow-hidden border-white/5 bg-gradient-to-br from-[#0a0a0c] to-[#050507]">
+            <Card className="overflow-hidden border-white/5 bg-[#09090b]">
                 <div
-                    className="h-36 bg-gradient-to-r from-esports-purple/30 via-esports-accent/20 to-esports-blue/30 relative group"
+                    className="h-36 bg-gradient-to-r from-rose-500/30 via-white/10 to-black relative group"
                     style={bannerUrl ? { backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                 >
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-transparent to-transparent" />
@@ -521,15 +541,15 @@ const OrganizationSettings: React.FC = () => {
                     {/* Preview only — no interactive upload here */}
 
                     <div className="absolute bottom-0 left-6 translate-y-1/2">
-                        <Avatar className="h-24 w-24 border-4 border-[#050507] shadow-xl ring-2 ring-esports-accent/30">
+                        <Avatar className="h-24 w-24 border-4 border-[#050507] shadow-xl ring-2 ring-rose-500/30">
                             <AvatarImage src={logoUrl} />
-                            <AvatarFallback className="bg-gradient-to-br from-esports-purple to-esports-accent text-2xl font-bold">
+                            <AvatarFallback className="bg-rose-500 text-2xl font-bold">
                                 {name ? name[0].toUpperCase() : 'O'}
                             </AvatarFallback>
                         </Avatar>
                     </div>
                     {organization?.is_verified && (
-                        <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-esports-accent/20 border border-esports-accent/50 text-esports-accent text-sm z-20">
+                        <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-400 text-sm z-20">
                             <CheckCircle className="h-4 w-4" />
                             Verified
                         </div>
@@ -542,7 +562,7 @@ const OrganizationSettings: React.FC = () => {
             </Card>
 
             {/* Basic Info */}
-            <Card className="border-white/5 bg-gradient-to-br from-[#0a0a0c] to-[#050507]">
+            <Card className="border-white/5 bg-[#09090b]">
                 <CardHeader>
                     <CardTitle className="font-heading">Basic Information</CardTitle>
                     <CardDescription>This is how your organization will appear on tournaments.</CardDescription>
@@ -556,7 +576,7 @@ const OrganizationSettings: React.FC = () => {
                                 value={name}
                                 onChange={(e) => handleNameChange(e.target.value)}
                                 placeholder="Esportra Gaming"
-                                className="bg-white/5 border-white/10 focus:border-esports-accent focus:ring-esports-accent/20"
+                                className="bg-white/5 border-white/10 focus:border-rose-500 focus:ring-rose-500/20"
                             />
                         </div>
                         <div className="space-y-2">
@@ -568,7 +588,7 @@ const OrganizationSettings: React.FC = () => {
                                     value={slug}
                                     onChange={(e) => setSlug(generateSlug(e.target.value))}
                                     placeholder="esportra-gaming"
-                                    className="bg-white/5 border-white/10 focus:border-esports-accent focus:ring-esports-accent/20"
+                                    className="bg-white/5 border-white/10 focus:border-rose-500 focus:ring-rose-500/20"
                                 />
                             </div>
                         </div>
@@ -580,14 +600,15 @@ const OrganizationSettings: React.FC = () => {
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Tell players about your organization..."
-                            className="bg-white/5 border-white/10 focus:border-esports-accent focus:ring-esports-accent/20 min-h-[120px]"
+                            className="bg-white/5 border-white/10 focus:border-rose-500 focus:ring-rose-500/20 min-h-[120px]"
                         />
                     </div>
                 </CardContent>
             </Card>
 
+            <div id="org-section-seasons" className="scroll-mt-24" />
             {/* Seasons */}
-            <Card className="border-white/5 bg-gradient-to-br from-[#0a0a0c] to-[#050507]">
+            <Card className="border-white/5 bg-[#09090b]">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
@@ -607,7 +628,7 @@ const OrganizationSettings: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                     {seasons.length === 0 ? (
-                        <div className="text-center py-12 border border-dashed border-white/10 rounded-xl bg-white/5">
+                        <div className="text-center py-12 border border-dashed border-white/10 rounded-none bg-white/5">
                             <Trophy className="w-12 h-12 text-gray-700 mx-auto mb-4" />
                             <p className="text-gray-500">No seasons created yet.</p>
                             <Button variant="outline" size="sm" asChild className="mt-4 border-white/10 hover:bg-white/5">
@@ -619,10 +640,10 @@ const OrganizationSettings: React.FC = () => {
                             {seasons.map((season) => (
                                 <div
                                     key={season.id}
-                                    className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+                                    className="flex items-center justify-between p-4 rounded-none border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-rose-500/20 to-rose-600/20 border border-rose-500/30 flex items-center justify-center">
+                                        <div className="h-10 w-10 rounded-none bg-gradient-to-br from-rose-500/20 to-rose-600/20 border border-rose-500/30 flex items-center justify-center">
                                             <Trophy className="h-5 w-5 text-rose-400" />
                                         </div>
                                         <div>
@@ -634,7 +655,7 @@ const OrganizationSettings: React.FC = () => {
                                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                                             season.status === 'active' ? 'bg-emerald-500/20 text-emerald-300' :
                                             season.status === 'draft' ? 'bg-gray-500/20 text-gray-300' :
-                                            season.status === 'completed' ? 'bg-blue-500/20 text-blue-300' :
+                                            season.status === 'completed' ? 'bg-emerald-500/20 text-emerald-300' :
                                             'bg-amber-500/20 text-amber-300'
                                         }`}>
                                             {season.status}
@@ -652,8 +673,9 @@ const OrganizationSettings: React.FC = () => {
                 </CardContent>
             </Card>
 
+            <div id="org-section-branding" className="scroll-mt-24" />
             {/* Branding */}
-            <Card className="border-white/5 bg-gradient-to-br from-[#0a0a0c] to-[#050507]">
+            <Card className="border-white/5 bg-[#09090b]">
                 <CardHeader>
                     <CardTitle className="font-heading">Branding</CardTitle>
                     <CardDescription>Upload your organization logo and banner.</CardDescription>
@@ -665,7 +687,7 @@ const OrganizationSettings: React.FC = () => {
                             <div className="flex items-center gap-6">
                                 <Avatar className="h-20 w-20 border-2 border-white/10">
                                     <AvatarImage src={logoUrl} />
-                                    <AvatarFallback className="bg-gradient-to-br from-esports-purple to-esports-accent text-xl">
+                                    <AvatarFallback className="bg-rose-500 text-xl">
                                         {name ? name[0].toUpperCase() : 'O'}
                                     </AvatarFallback>
                                 </Avatar>
@@ -676,7 +698,7 @@ const OrganizationSettings: React.FC = () => {
                                         onChange={handleLogoUpload}
                                         className="hidden"
                                     />
-                                    <Button variant="outline" size="sm" asChild className="border-white/10 hover:bg-white/5 hover:border-esports-accent/50">
+                                    <Button variant="outline" size="sm" asChild className="border-white/10 hover:bg-white/5 hover:border-rose-500/50">
                                         <span>
                                             <Upload className="h-4 w-4 mr-2" />
                                             Upload Logo
@@ -696,7 +718,7 @@ const OrganizationSettings: React.FC = () => {
                                     className="hidden"
                                 />
                                 <div
-                                    className="h-24 rounded-xl bg-gradient-to-r from-esports-purple/20 to-esports-accent/20 border border-white/10 flex items-center justify-center overflow-hidden relative group hover:border-rose-500/50 transition-all"
+                                    className="h-24 rounded-none bg-rose-500/10 border border-white/10 flex items-center justify-center overflow-hidden relative group hover:border-rose-500/50 transition-all"
                                     style={bannerUrl ? { backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                                 >
                                     {/* Hover Overlay */}
@@ -725,7 +747,7 @@ const OrganizationSettings: React.FC = () => {
                     <div className="flex justify-center py-6">
                         <Avatar className="h-32 w-32 border-2 border-white/10">
                             <AvatarImage src={pendingLogoPreview || ''} />
-                            <AvatarFallback className="bg-gradient-to-br from-esports-purple to-esports-accent text-3xl">
+                            <AvatarFallback className="bg-rose-500 text-3xl">
                                 {name ? name[0].toUpperCase() : 'O'}
                             </AvatarFallback>
                         </Avatar>
@@ -734,7 +756,7 @@ const OrganizationSettings: React.FC = () => {
                         <Button variant="outline" onClick={cancelLogoPreview} className="border-white/10 hover:bg-white/5">
                             Cancel
                         </Button>
-                        <Button onClick={confirmLogoUpload} disabled={uploadingLogo} className="bg-esports-accent hover:bg-esports-accent/80">
+                        <Button onClick={confirmLogoUpload} disabled={uploadingLogo} className="bg-rose-500 hover:bg-rose-500/80">
                             {uploadingLogo ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : 'Confirm & Save'}
                         </Button>
                     </DialogFooter>
@@ -750,7 +772,7 @@ const OrganizationSettings: React.FC = () => {
                     </DialogHeader>
                     <div className="py-4">
                         <div
-                            className="h-36 rounded-xl bg-gradient-to-r from-esports-purple/20 to-esports-accent/20 border border-white/10 overflow-hidden"
+                            className="h-36 rounded-none bg-rose-500/10 border border-white/10 overflow-hidden"
                             style={pendingBannerPreview ? { backgroundImage: `url(${pendingBannerPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                         />
                     </div>
@@ -758,13 +780,13 @@ const OrganizationSettings: React.FC = () => {
                         <Button variant="outline" onClick={cancelBannerPreview} className="border-white/10 hover:bg-white/5">
                             Cancel
                         </Button>
-                        <Button onClick={confirmBannerUpload} disabled={uploadingBanner} className="bg-esports-accent hover:bg-esports-accent/80">
+                        <Button onClick={confirmBannerUpload} disabled={uploadingBanner} className="bg-rose-500 hover:bg-rose-500/80">
                             {uploadingBanner ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : 'Confirm & Save'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            <Card className="border-white/5 bg-gradient-to-br from-[#0a0a0c] to-[#050507]">
+            <Card className="border-white/5 bg-[#09090b]">
                 <CardHeader>
                     <CardTitle className="font-heading">Social Links</CardTitle>
                     <CardDescription>Connect your organization's social media accounts.</CardDescription>
@@ -773,24 +795,24 @@ const OrganizationSettings: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label className="flex items-center gap-2 text-gray-300">
-                                <Globe className="h-4 w-4 text-esports-accent" /> Website
+                                <Globe className="h-4 w-4 text-rose-400" /> Website
                             </Label>
                             <Input
                                 value={socialLinks.website || ''}
                                 onChange={(e) => setSocialLinks({ ...socialLinks, website: e.target.value })}
                                 placeholder="https://your-website.com"
-                                className="bg-white/5 border-white/10 focus:border-esports-accent"
+                                className="bg-white/5 border-white/10 focus:border-rose-500"
                             />
                         </div>
                         <div className="space-y-2">
                             <Label className="flex items-center gap-2 text-gray-300">
-                                <Twitter className="h-4 w-4 text-blue-400" /> Twitter/X
+                                <Twitter className="h-4 w-4 text-rose-400" /> Twitter/X
                             </Label>
                             <Input
                                 value={socialLinks.twitter || ''}
                                 onChange={(e) => setSocialLinks({ ...socialLinks, twitter: e.target.value })}
                                 placeholder="@username"
-                                className="bg-white/5 border-white/10 focus:border-esports-accent"
+                                className="bg-white/5 border-white/10 focus:border-rose-500"
                             />
                         </div>
                         <div className="space-y-2">
@@ -801,7 +823,7 @@ const OrganizationSettings: React.FC = () => {
                                 value={socialLinks.instagram || ''}
                                 onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
                                 placeholder="@username"
-                                className="bg-white/5 border-white/10 focus:border-esports-accent"
+                                className="bg-white/5 border-white/10 focus:border-rose-500"
                             />
                         </div>
                         <div className="space-y-2">
@@ -812,7 +834,7 @@ const OrganizationSettings: React.FC = () => {
                                 value={socialLinks.youtube || ''}
                                 onChange={(e) => setSocialLinks({ ...socialLinks, youtube: e.target.value })}
                                 placeholder="Channel URL"
-                                className="bg-white/5 border-white/10 focus:border-esports-accent"
+                                className="bg-white/5 border-white/10 focus:border-rose-500"
                             />
                         </div>
                         <div className="space-y-2">
@@ -823,16 +845,17 @@ const OrganizationSettings: React.FC = () => {
                                 value={socialLinks.discord || ''}
                                 onChange={(e) => setSocialLinks({ ...socialLinks, discord: e.target.value })}
                                 placeholder="Discord invite link"
-                                className="bg-white/5 border-white/10 focus:border-esports-accent"
+                                className="bg-white/5 border-white/10 focus:border-rose-500"
                             />
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
+            <div id="org-section-media" className="scroll-mt-24" />
             {/* Media Gallery */}
             {/* Media Gallery */}
-            <Card className="border-white/5 bg-gradient-to-br from-[#0a0a0c] to-[#050507]">
+            <Card className="border-white/5 bg-[#09090b]">
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
                         <div className="flex items-center gap-2">
@@ -884,7 +907,7 @@ const OrganizationSettings: React.FC = () => {
                                     </div>
                                     <DialogFooter>
                                         <Button variant="ghost" onClick={() => setIsCreateAlbumOpen(false)} className="hover:bg-white/10 hover:text-white">Cancel</Button>
-                                        <Button onClick={handleCreateAlbum} disabled={creatingAlbum} className="bg-esports-accent hover:bg-esports-accent/90">
+                                        <Button onClick={handleCreateAlbum} disabled={creatingAlbum} className="bg-rose-500 hover:bg-rose-500/90">
                                             {creatingAlbum ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}
                                         </Button>
                                     </DialogFooter>
@@ -905,7 +928,7 @@ const OrganizationSettings: React.FC = () => {
                                 disabled={uploadingMedia}
                                 onClick={() => fileInputRef.current?.click()}
                                 variant="default"
-                                className="bg-esports-accent hover:bg-esports-accent/90 gap-2"
+                                className="bg-rose-500 hover:bg-rose-500/90 gap-2"
                             >
                                 {uploadingMedia ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                                 {activeAlbum ? 'Upload to Album' : 'Upload Uncategorized'}
@@ -935,11 +958,11 @@ const OrganizationSettings: React.FC = () => {
                                             className="group cursor-pointer relative aspect-square"
                                         >
                                             {/* Stack Effect */}
-                                            <div className="absolute top-0 right-0 w-full h-full bg-white/5 rounded-2xl rotate-3 scale-90 transition-transform group-hover:rotate-6 border border-white/5" />
-                                            <div className="absolute top-0 right-0 w-full h-full bg-white/5 rounded-2xl -rotate-3 scale-95 transition-transform group-hover:-rotate-6 border border-white/5" />
+                                            <div className="absolute top-0 right-0 w-full h-full bg-white/5 rounded-none rotate-3 scale-90 transition-transform group-hover:rotate-6 border border-white/5" />
+                                            <div className="absolute top-0 right-0 w-full h-full bg-white/5 rounded-none -rotate-3 scale-95 transition-transform group-hover:-rotate-6 border border-white/5" />
 
                                             {/* Main Card */}
-                                            <div className="relative w-full h-full bg-[#0a0a0c] border border-white/10 rounded-2xl overflow-hidden shadow-xl transition-transform group-hover:scale-[1.02]">
+                                            <div className="relative w-full h-full bg-[#0a0a0c] border border-white/10 rounded-none overflow-hidden shadow-xl transition-transform group-hover:scale-[1.02]">
                                                 {/* Cover Image */}
                                                 {(album as any).cover_url ? (
                                                     <img
@@ -976,7 +999,7 @@ const OrganizationSettings: React.FC = () => {
                                                 </Button>
 
                                                 {/* Type Icon */}
-                                                <div className="absolute top-2 left-2 p-1.5 bg-black/50 backdrop-blur-md rounded-lg border border-white/10">
+                                                <div className="absolute top-2 left-2 p-1.5 bg-black/50 backdrop-blur-md rounded-none border border-white/10">
                                                     <ImageIcon className="w-3 h-3 text-white" />
                                                 </div>
                                             </div>
@@ -989,7 +1012,7 @@ const OrganizationSettings: React.FC = () => {
 
                     {/* Media Grid */}
                     {mediaItems.length === 0 && !activeAlbum ? (
-                        <div className="text-center py-12 border border-dashed border-white/10 rounded-xl bg-white/5">
+                        <div className="text-center py-12 border border-dashed border-white/10 rounded-none bg-white/5">
                             <ImageIcon className="w-12 h-12 text-gray-700 mx-auto mb-4" />
                             <p className="text-gray-500">No media uploaded yet.</p>
                         </div>
@@ -1000,7 +1023,7 @@ const OrganizationSettings: React.FC = () => {
                             </h4>
                             <div className="columns-1 md:columns-3 gap-4 space-y-4">
                                 {mediaItems.map((item) => (
-                                    <div key={item.id} className="break-inside-avoid relative group rounded-xl overflow-hidden bg-black/20">
+                                    <div key={item.id} className="break-inside-avoid relative group rounded-none overflow-hidden bg-black/20">
                                         <img src={item.url} loading="lazy" alt={item.caption} className="w-full h-full object-cover" />
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                             <Button
@@ -1020,6 +1043,7 @@ const OrganizationSettings: React.FC = () => {
                 </CardContent>
             </Card>
 
+            <div id="org-section-staff" className="scroll-mt-24" />
             {/* Organization Staff */}
             {organization && user?.id && (
                 <OrganizationStaffManager
@@ -1028,6 +1052,7 @@ const OrganizationSettings: React.FC = () => {
                 />
             )}
 
+            <div id="org-section-advanced" className="scroll-mt-24" />
             {/* Danger Zone */}
             {organization && organization.owner_id === user?.id && (
                 <Card className="border-red-900/30 bg-red-950/10 mt-12">
@@ -1038,7 +1063,7 @@ const OrganizationSettings: React.FC = () => {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-center justify-between p-4 border border-red-900/30 rounded-xl bg-red-950/20">
+                        <div className="flex items-center justify-between p-4 border border-red-900/30 rounded-none bg-red-950/20">
                             <div>
                                 <h4 className="font-semibold text-red-100">Delete Organization</h4>
                                 <p className="text-sm text-red-400/60 mt-1">
@@ -1118,7 +1143,7 @@ const OrganizationSettings: React.FC = () => {
                         <Button
                             onClick={handleSave}
                             disabled={saving}
-                            className="bg-esports-accent hover:bg-esports-accent/90 text-white min-w-[130px] shadow-lg shadow-esports-accent/20"
+                            className="bg-rose-500 hover:bg-rose-500/90 text-white min-w-[130px] shadow-lg shadow-rose-500/20"
                         >
                             {saving ? (
                                 <>
@@ -1140,4 +1165,5 @@ const OrganizationSettings: React.FC = () => {
 };
 
 export default OrganizationSettings;
+
 
