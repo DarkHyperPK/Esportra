@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { User, Users, MessageSquare, ArrowRightLeft, Building2, Award, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +15,7 @@ import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { apiClient } from "@/lib/apiClient";
 import { deriveHasApprovedLicense, deriveHasOrganization, fetchMeRoles } from "@/lib/meRoles";
-import RoleSwitcher, { RoleSwitcherDialog } from "@/components/RoleSwitcher";
+import { RoleSwitcherDialog } from "@/components/RoleSwitcher";
 import { AlertTriangle } from "lucide-react";
 
 // Specialized button component for inside the menu
@@ -65,7 +64,6 @@ const UserMenu = ({
   const { user, profile, isEmailVerified } = useAuth();
   const { currentRole: userRole } = useRole();
   const admin = useAdmin();
-  const navigate = useNavigate();
   const [hasTeam, setHasTeam] = useState(false);
   const [hasPendingInvite, setHasPendingInvite] = useState(false);
   const [hasStaffInvites, setHasStaffInvites] = useState(false);
@@ -206,17 +204,19 @@ const UserMenu = ({
         <FramerDropdownTrigger>
           <Button
             variant="outline"
-            className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-white hover:bg-white/10 hover:text-white"
+            className="min-h-11 rounded-2xl border border-white/15 bg-white/[0.04] px-3.5 text-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-200 hover:border-rose-400/30 hover:bg-rose-500/10 hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70"
           >
-            <User className="mr-2 h-4 w-4" />
-            {profile?.username || 'Account'}
+            <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-xl bg-white/10">
+              <User className="h-4 w-4" />
+            </span>
+            <span className="max-w-[120px] truncate">{profile?.username || 'Account'}</span>
             {!isEmailVerified && user && (
               <AlertTriangle className="ml-1.5 h-3.5 w-3.5 text-amber-400" />
             )}
           </Button>
         </FramerDropdownTrigger>
-        <FramerDropdownContent align="end" width={320}>
-          <div className="border-b border-white/10 px-5 py-4">
+        <FramerDropdownContent align="end" width={320} className="border-white/10 bg-[#09090b]/95 shadow-[0_24px_70px_rgba(0,0,0,0.75)]">
+          <div className="border-b border-white/10 bg-white/[0.02] px-5 py-4">
             <p className="text-sm font-semibold text-white">
               {profile?.full_name || profile?.username || 'User'}
             </p>
@@ -232,7 +232,7 @@ const UserMenu = ({
 
           {!admin.isAdmin && hasApprovedLicense && (
             <div className="space-y-2 border-b border-white/10 px-4 py-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
                 <RoleSwitcherMenuButton onClick={() => setIsRoleSwitcherOpen(true)} />
               </div>
             </div>

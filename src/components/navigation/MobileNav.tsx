@@ -1,6 +1,5 @@
-import { Link, useNavigate } from "react-router-dom";
-import { Menu, Bell, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Link, useLocation } from "react-router-dom";
+import { Bell, ChevronDown, Handshake, Info, LogOut, MapPin, Medal, Plus, Shield, Trophy, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
@@ -8,6 +7,7 @@ import { useNotifications } from "@/components/NotificationContext";
 import { UserRole } from "@/types/auth";
 import RoleSwitcher from "@/components/RoleSwitcher";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { MotionTiles } from "@/components/effects/MotionTiles";
@@ -25,8 +25,11 @@ const MobileNav = ({
   const { currentRole } = useRole();
   const admin = useAdmin();
   const { unreadCount } = useNotifications();
+  const location = useLocation();
   const userRole = currentRole as UserRole;
   const isSuperAdmin = admin.isAdmin && admin.roles.includes('super_admin');
+  const canManageVenues = userRole === 'venue_owner' || isSuperAdmin || admin.hasPermission('venues:view');
+  const canManageTournaments = userRole === 'organizer' || isSuperAdmin || admin.hasPermission('tournaments:create');
 
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
@@ -34,8 +37,19 @@ const MobileNav = ({
     setExpandedMenu(expandedMenu === menu ? null : menu);
   };
 
-  const linkClass = "block rounded-none border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white";
-  const subLinkClass = "block rounded-none px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/50 transition-all duration-200 hover:bg-white/5 hover:text-white/80";
+  const isActive = (paths: string[]) => paths.some(path => location.pathname === path || location.pathname.startsWith(`${path}/`));
+  const linkClass = (active = false, tone: 'default' | 'danger' | 'info' = 'default') => cn(
+    "flex min-h-12 w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-rose-500/70",
+    active
+      ? "border-rose-400/35 bg-rose-500/15 text-white shadow-[0_12px_30px_rgba(244,63,94,0.16)]"
+      : "border-white/5 bg-white/[0.03] text-white/70 hover:border-white/15 hover:bg-white/[0.07] hover:text-white",
+    tone === 'danger' && "border-red-500/30 text-red-300 hover:border-red-500/45 hover:bg-red-500/10",
+    tone === 'info' && "border-cyan-500/25 text-cyan-200 hover:border-cyan-400/40 hover:bg-cyan-500/10"
+  );
+  const subLinkClass = (active = false) => cn(
+    "block rounded-xl px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-rose-500/70",
+    active ? "bg-rose-500/12 text-white" : "text-white/50 hover:bg-white/[0.06] hover:text-white/85"
+  );
 
   const accordionMotion = {
     initial: { opacity: 0, gridTemplateRows: '0fr' },
@@ -54,35 +68,41 @@ const MobileNav = ({
           exit={{ opacity: 0, gridTemplateRows: '0fr' }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           style={{ display: 'grid', overflow: 'hidden' }}
-          className="lg:hidden fixed top-[88px] left-0 right-0 mx-4 z-[998] bg-[#0d0d10] border border-white/10 rounded-none shadow-[0_25px_45px_rgba(0,0,0,0.65)]"
+          className="fixed left-0 right-0 top-[92px] z-[998] mx-3 rounded-3xl border border-white/10 bg-[#050505]/95 shadow-[0_28px_80px_rgba(0,0,0,0.72)] backdrop-blur-2xl lg:hidden"
         >
-        <div style={{ minHeight: 0, overflow: 'hidden' }} className="max-h-[80vh] overflow-y-auto">
+        <div style={{ minHeight: 0, overflow: 'hidden' }} className="max-h-[80vh] overflow-y-auto rounded-3xl">
           {/* Background Effects */}
           <MotionTiles />
-          <div className="absolute inset-0 bg-rose-500/10 opacity-20 pointer-events-none mix-blend-overlay" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(244,63,94,0.18),transparent_35%),radial-gradient(circle_at_90%_15%,rgba(255,255,255,0.08),transparent_28%)] mix-blend-screen" />
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
 
-          <div className="space-y-1 px-3 pt-4 pb-4 relative z-10">
+          <div className="relative z-10 space-y-1 px-3 pb-4 pt-4">
             {/* General Navigation */}
-            <div className="mb-3 space-y-1">
+            <div className="mb-3 space-y-2">
               {/* Venues with sub-menu */}
               <div>
                 <button
+                  type="button"
+                  aria-expanded={expandedMenu === 'venues'}
                   onClick={() => toggleMenu('venues')}
-                  className="flex w-full items-center justify-between rounded-none border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
+                  className={linkClass(isActive(['/venues']))}
                 >
-                  Venues
+                  <span className="flex items-center gap-3">
+                    <MapPin className="h-4 w-4 text-rose-300" />
+                    Venues
+                  </span>
                   <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expandedMenu === 'venues' ? 'rotate-180' : ''}`} />
                 </button>
                 <AnimatePresence>
                   {expandedMenu === 'venues' && (
-                    <motion.div {...accordionMotion} className="ml-3 mt-1 border-l border-white/10 pl-2">
-                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
-                      <Link to="/venues/search" className={subLinkClass} onClick={onClose}>Find Venues</Link>
-                      <Link to="/venues/featured" className={subLinkClass} onClick={onClose}>Featured Venues</Link>
-                      {(userRole === 'venue_owner' || isSuperAdmin) && (
+                    <motion.div {...accordionMotion} className="ml-5 mt-1 border-l border-white/10 pl-3">
+                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-1 py-1">
+                      <Link to="/venues/search" className={subLinkClass(isActive(['/venues/search']))} onClick={onClose}>Find Venues</Link>
+                      <Link to="/venues/featured" className={subLinkClass(isActive(['/venues/featured']))} onClick={onClose}>Featured Venues</Link>
+                      {canManageVenues && (
                         <>
-                          <Link to="/venues/list-venue" className={subLinkClass} onClick={onClose}>List Your Venue</Link>
-                          <Link to="/venues/manage" className={subLinkClass} onClick={onClose}>Manage Venues</Link>
+                          <Link to="/venues/list-venue" className={subLinkClass(isActive(['/venues/list-venue']))} onClick={onClose}>List Your Venue</Link>
+                          <Link to="/venues/manage" className={subLinkClass(isActive(['/venues/manage']))} onClick={onClose}>Manage Venues</Link>
                         </>
                       )}
                     </div>
@@ -94,27 +114,32 @@ const MobileNav = ({
               {/* Tournaments with sub-menu */}
               <div>
                 <button
+                  type="button"
+                  aria-expanded={expandedMenu === 'tournaments'}
                   onClick={() => toggleMenu('tournaments')}
-                  className="flex w-full items-center justify-between rounded-none border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
+                  className={linkClass(isActive(['/tournaments', '/organizer/tournaments', '/organizer/seasons', '/season']))}
                 >
-                  Tournaments
+                  <span className="flex items-center gap-3">
+                    <Trophy className="h-4 w-4 text-rose-300" />
+                    Tournaments
+                  </span>
                   <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expandedMenu === 'tournaments' ? 'rotate-180' : ''}`} />
                 </button>
                 <AnimatePresence>
                   {expandedMenu === 'tournaments' && (
-                    <motion.div {...accordionMotion} className="ml-3 mt-1 border-l border-white/10 pl-2">
-                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
-                      <Link to="/tournaments/upcoming" className={subLinkClass} onClick={onClose}>Upcoming Tournaments</Link>
-                      <Link to="/tournaments/ongoing" className={subLinkClass} onClick={onClose}>Live Tournaments</Link>
-                      <Link to="/tournament-history" className={subLinkClass} onClick={onClose}>Tournament History</Link>
-                      {(userRole === 'organizer' || isSuperAdmin) && (
+                    <motion.div {...accordionMotion} className="ml-5 mt-1 border-l border-white/10 pl-3">
+                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-1 py-1">
+                      <Link to="/tournaments/upcoming" className={subLinkClass(isActive(['/tournaments/upcoming']))} onClick={onClose}>Upcoming Tournaments</Link>
+                      <Link to="/tournaments/ongoing" className={subLinkClass(isActive(['/tournaments/ongoing']))} onClick={onClose}>Live Tournaments</Link>
+                      <Link to="/tournament-history" className={subLinkClass(isActive(['/tournament-history']))} onClick={onClose}>Tournament History</Link>
+                      {canManageTournaments && (
                         <>
                           <div className="h-px bg-white/10 my-1 mx-2" />
-                          <Link to="/organizer/tournaments" className={subLinkClass} onClick={onClose}>Manage Tournaments</Link>
-                          <Link to="/tournaments/create" className={subLinkClass} onClick={onClose}>Create Tournament</Link>
+                          <Link to="/organizer/tournaments" className={subLinkClass(isActive(['/organizer/tournaments']))} onClick={onClose}>Manage Tournaments</Link>
+                          <Link to="/tournaments/create" className={subLinkClass(isActive(['/tournaments/create']))} onClick={onClose}>Create Tournament</Link>
                           <div className="h-px bg-white/10 my-1 mx-2" />
-                          <Link to="/organizer/seasons" className={subLinkClass} onClick={onClose}>Manage Seasons</Link>
-                          <Link to="/tournaments/create?mode=season" className={subLinkClass} onClick={onClose}>Create Season</Link>
+                          <Link to="/organizer/seasons" className={subLinkClass(isActive(['/organizer/seasons']))} onClick={onClose}>Manage Seasons</Link>
+                          <Link to="/tournaments/create?mode=season" className={subLinkClass(location.pathname === '/tournaments/create' && location.search.includes('mode=season'))} onClick={onClose}>Create Season</Link>
                         </>
                       )}
                     </div>
@@ -125,27 +150,35 @@ const MobileNav = ({
 
               {/* Leaderboards - flat link */}
               <div>
-                <Link to="/leaderboards" className={linkClass} onClick={onClose}>
-                  Leaderboards
+                <Link to="/leaderboards" className={linkClass(isActive(['/leaderboards']))} onClick={onClose}>
+                  <span className="flex items-center gap-3">
+                    <Medal className="h-4 w-4 text-rose-300" />
+                    Leaderboards
+                  </span>
                 </Link>
               </div>
 
               {/* About with sub-menu */}
               <div>
                 <button
+                  type="button"
+                  aria-expanded={expandedMenu === 'about'}
                   onClick={() => toggleMenu('about')}
-                  className="flex w-full items-center justify-between rounded-none border border-white/5 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white"
+                  className={linkClass(isActive(['/about']))}
                 >
-                  About
+                  <span className="flex items-center gap-3">
+                    <Info className="h-4 w-4 text-rose-300" />
+                    About
+                  </span>
                   <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expandedMenu === 'about' ? 'rotate-180' : ''}`} />
                 </button>
                 <AnimatePresence>
                   {expandedMenu === 'about' && (
-                    <motion.div {...accordionMotion} className="ml-3 mt-1 border-l border-white/10 pl-2">
-                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-0.5">
-                      <Link to="/about/company" className={subLinkClass} onClick={onClose}>About Us</Link>
-                      <Link to="/about/contact" className={subLinkClass} onClick={onClose}>Contact</Link>
-                      <Link to="/about/faq" className={subLinkClass} onClick={onClose}>FAQ</Link>
+                    <motion.div {...accordionMotion} className="ml-5 mt-1 border-l border-white/10 pl-3">
+                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="space-y-1 py-1">
+                      <Link to="/about/company" className={subLinkClass(isActive(['/about/company']))} onClick={onClose}>About Us</Link>
+                      <Link to="/about/contact" className={subLinkClass(isActive(['/about/contact']))} onClick={onClose}>Contact</Link>
+                      <Link to="/about/faq" className={subLinkClass(isActive(['/about/faq']))} onClick={onClose}>FAQ</Link>
                     </div>
                     </motion.div>
                   )}
@@ -154,97 +187,124 @@ const MobileNav = ({
 
               {/* Partners - flat link */}
               <div>
-                <Link to="/partners" className={linkClass} onClick={onClose}>
-                  Partners
+                <Link to="/partners" className={linkClass(isActive(['/partners']))} onClick={onClose}>
+                  <span className="flex items-center gap-3">
+                    <Handshake className="h-4 w-4 text-rose-300" />
+                    Partners
+                  </span>
                 </Link>
               </div>
             </div>
 
             {user && (
               <>
-                <div className="my-3 border-t border-white/10"></div>
+                <div className="my-3 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
 
                 {/* Role & Identity Switchers */}
                 {userRole !== 'admin' && (
-                  <div className="rounded-none border border-white/10 bg-white/5 px-3 py-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
                     <RoleSwitcher />
                   </div>
 
                 )}
 
-                <div className="my-3 border-t border-white/10"></div>
+                <div className="my-3 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
 
                 {/* User Navigation */}
-                <div className="mb-3 space-y-1">
-                  <Link to="/user/profile" className={linkClass} onClick={onClose}>
-                    My Profile
+                <div className="mb-3 space-y-2">
+                  <Link to="/user/profile" className={linkClass(isActive(['/user/profile']))} onClick={onClose}>
+                    <span className="flex items-center gap-3">
+                      <User className="h-4 w-4 text-rose-300" />
+                      My Profile
+                    </span>
                   </Link>
-                  <Link to="/notifications" className={linkClass} onClick={onClose}>
+                  <Link to="/notifications" className={linkClass(isActive(['/notifications']))} onClick={onClose}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Bell className="h-4 w-4" />
+                        <Bell className="h-4 w-4 text-rose-300" />
                         Notifications
                       </div>
                       {unreadCount > 0 && (
-                        <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center">
+                        <span className="min-w-[20px] rounded-full bg-rose-500 px-2 py-0.5 text-center text-xs font-bold text-white shadow-[0_0_18px_rgba(244,63,94,0.55)]">
                           {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                       )}
                     </div>
                   </Link>
-                  <Link to="/player/teams" className={linkClass} onClick={onClose}>
-                    Create Your Team
+                  <Link to="/player/teams" className={linkClass(isActive(['/player/teams']))} onClick={onClose}>
+                    <span className="flex items-center gap-3">
+                      <Plus className="h-4 w-4 text-rose-300" />
+                      Create Your Team
+                    </span>
                   </Link>
 
                 </div>
 
                 {/* Role-Specific Navigation */}
                 {profile?.role === 'admin' && (
-                  <div className="mb-3 space-y-1">
-                    <Link to="/admin/dashboard" className="block rounded-none border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
-                      Admin Panel
+                  <div className="mb-3 space-y-2">
+                    <Link to="/admin/dashboard" className={linkClass(isActive(['/admin']), 'danger')} onClick={onClose}>
+                      <span className="flex items-center gap-3">
+                        <Shield className="h-4 w-4" />
+                        Admin Panel
+                      </span>
                     </Link>
                   </div>
                 )}
                 {(userRole === 'venue_owner' && !isSuperAdmin) && (
-                  <div className="mb-3 space-y-1">
-                    <Link to="/venues/manage" className="block rounded-none border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-cyan-300 transition-all duration-200 hover:border-cyan-500/40 hover:bg-cyan-500/10" onClick={onClose}>
-                      My Venues
+                  <div className="mb-3 space-y-2">
+                    <Link to="/venues/manage" className={linkClass(isActive(['/venues/manage']), 'info')} onClick={onClose}>
+                      <span className="flex items-center gap-3">
+                        <MapPin className="h-4 w-4" />
+                        My Venues
+                      </span>
                     </Link>
-                    <Link to="/venues/list-venue" className="block rounded-none border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
-                      List New Venue
+                    <Link to="/venues/list-venue" className={linkClass(isActive(['/venues/list-venue']), 'danger')} onClick={onClose}>
+                      <span className="flex items-center gap-3">
+                        <Plus className="h-4 w-4" />
+                        List New Venue
+                      </span>
                     </Link>
                   </div>
                 )}
                 {(userRole === 'organizer' && !isSuperAdmin) && (
-                  <div className="mb-3 space-y-1">
-                    <Link to="/organizer/tournaments" className="block rounded-none border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
-                      Manage Tournaments
+                  <div className="mb-3 space-y-2">
+                    <Link to="/organizer/tournaments" className={linkClass(isActive(['/organizer/tournaments']), 'danger')} onClick={onClose}>
+                      <span className="flex items-center gap-3">
+                        <Trophy className="h-4 w-4" />
+                        Manage Tournaments
+                      </span>
                     </Link>
-                    <Link to="/tournaments/create" className="block rounded-none border border-white/15 px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/10" onClick={onClose}>
-                      Create Tournament
+                    <Link to="/tournaments/create" className={linkClass(isActive(['/tournaments/create']), 'danger')} onClick={onClose}>
+                      <span className="flex items-center gap-3">
+                        <Plus className="h-4 w-4" />
+                        Create Tournament
+                      </span>
                     </Link>
                   </div>
                 )}
 
-                <div className="my-3 border-t border-white/10"></div>
+                <div className="my-3 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
 
                 {/* Sign Out */}
                 <button
-                  className="block w-full rounded-none border border-red-500/40 px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.15em] text-red-300 transition-all duration-200 hover:bg-red-500/10"
+                  className={linkClass(false, 'danger')}
                   onClick={() => { onClose(); handleSignOut(); }}
                 >
-                  Sign Out
+                  <span className="flex items-center gap-3">
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </span>
                 </button>
               </>
             )}
 
             {!user && (
               <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                <Link to="/auth/signin" className="block rounded-none border border-white/10 px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/5 hover:text-white" onClick={onClose}>
+                <Link to="/auth/signin" className="block rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.15em] text-white/70 transition-all duration-200 hover:border-white/20 hover:bg-white/10 hover:text-white" onClick={onClose}>
                   Sign In
                 </Link>
-                <Link to="/auth/signup" className="block rounded-none bg-white text-black hover:bg-rose-500 hover:text-white px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.15em] text-white shadow-[0_20px_45px_rgba(244,63,94,0.35)] transition-all duration-200 hover:from-[#fb7185] hover:to-[#f43f5e]" onClick={onClose}>
+                <Link to="/auth/signup" className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-bold uppercase tracking-[0.15em] text-black shadow-[0_20px_45px_rgba(255,255,255,0.12)] transition-all duration-200 hover:bg-rose-500 hover:text-white hover:shadow-[0_20px_45px_rgba(244,63,94,0.35)]" onClick={onClose}>
                   Sign Up
                 </Link>
               </div>

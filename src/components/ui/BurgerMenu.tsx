@@ -12,7 +12,10 @@ export function BurgerMenu({ isOpen, onClick, className }: BurgerMenuProps) {
     return (
         <motion.button
             onClick={onClick}
-            className={`relative w-12 h-12 rounded-full flex flex-col items-center justify-center gap-[5px] border border-white/10 ${className}`}
+            type="button"
+            aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isOpen}
+            className={`relative w-12 h-12 rounded-full flex flex-col items-center justify-center gap-[5px] border border-white/10 outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70 ${className}`}
             animate={variant}
             initial="default"
             variants={{
