@@ -200,13 +200,13 @@ const UserMenu = ({
 
   return (
     <>
-      <FramerDropdownRoot>
+      <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e">
         <FramerDropdownTrigger>
           <Button
             variant="outline"
-            className="min-h-11 rounded-2xl border border-white/15 bg-white/[0.04] px-3.5 text-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-200 hover:border-rose-400/30 hover:bg-rose-500/10 hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70"
+            className="min-h-11 rounded-none border border-white/10 bg-black/40 px-3.5 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors duration-200 hover:border-white/30 hover:bg-white/[0.04] hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70"
           >
-            <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-xl bg-white/10">
+            <span className="mr-2 flex h-7 w-7 items-center justify-center border border-white/10 bg-black">
               <User className="h-4 w-4" />
             </span>
             <span className="max-w-[120px] truncate">{profile?.username || 'Account'}</span>
@@ -215,7 +215,7 @@ const UserMenu = ({
             )}
           </Button>
         </FramerDropdownTrigger>
-        <FramerDropdownContent align="end" width={320} className="border-white/10 bg-[#09090b]/95 shadow-[0_24px_70px_rgba(0,0,0,0.75)]">
+        <FramerDropdownContent align="end" width={320} className="rounded-none border-white/10 bg-[#09090b]/98 shadow-[0_24px_70px_rgba(0,0,0,0.75)]">
           <div className="border-b border-white/10 bg-white/[0.02] px-5 py-4">
             <p className="text-sm font-semibold text-white">
               {profile?.full_name || profile?.username || 'User'}
@@ -232,7 +232,7 @@ const UserMenu = ({
 
           {!admin.isAdmin && hasApprovedLicense && (
             <div className="space-y-2 border-b border-white/10 px-4 py-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+              <div className="border border-white/10 bg-white/[0.03] px-3 py-2">
                 <RoleSwitcherMenuButton onClick={() => setIsRoleSwitcherOpen(true)} />
               </div>
             </div>
