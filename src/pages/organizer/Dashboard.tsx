@@ -1,7 +1,7 @@
 // OrganizerDashboard.tsx
 // This file is the main dashboard for the organizer (stats, quick links, etc.)
 import { useState, useEffect } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
@@ -23,8 +23,12 @@ import { useOrganizerStats } from "@/hooks/useOrganizerStats";
 const OrganizerDashboard = () => {
   const { profile, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTabState] = useState(tabFromUrl || "tournaments");
+  const defaultTab = location.pathname.includes('/settings') || location.pathname.includes('/organization')
+    ? (tabFromUrl || 'organization')
+    : (tabFromUrl || 'tournaments');
+  const [activeTab, setActiveTabState] = useState(defaultTab);
   const navigate = useNavigate();
 
   // Sync tab changes to the URL so refresh preserves the active section
@@ -93,16 +97,16 @@ const OrganizerDashboard = () => {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-8 h-[1px] bg-rose-500" />
-              <span className="text-rose-500 font-mono text-xs tracking-widest uppercase">ORGANIZER_PANEL</span>
+              <span className="text-rose-500 font-mono text-xs tracking-widest uppercase">ORGANIZATION_COMMAND</span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight">Organization Dashboard</h1>
-            <p className="text-zinc-500 mt-1">Welcome back, {profile?.full_name || profile?.username}</p>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight">Manage Organization</h1>
+            <p className="text-zinc-500 mt-1">{orgName ? orgName : `Welcome back, ${profile?.full_name || profile?.username || 'Organizer'}`}</p>
           </div>
           <div className="flex gap-3">
             <Button
               onClick={() => navigate('/organizer/seasons')}
               variant="outline"
-              className="border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-zinc-700 text-white"
+              className="border-zinc-800 bg-black hover:bg-white hover:text-black hover:border-zinc-700 text-white"
             >
               <Workflow className="mr-2 h-4 w-4" />
               Manage Seasons
@@ -110,14 +114,14 @@ const OrganizerDashboard = () => {
             <Button
               onClick={() => navigate('/organizer/tournaments')}
               variant="outline"
-              className="border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-zinc-700 text-white"
+              className="border-zinc-800 bg-black hover:bg-white hover:text-black hover:border-zinc-700 text-white"
             >
               <Trophy className="mr-2 h-4 w-4" />
               Manage Tournaments
             </Button>
             <Button
               onClick={() => navigate('/tournaments/create')}
-              className="bg-rose-500 hover:bg-rose-600 text-white"
+              className="bg-white text-black hover:bg-rose-500 hover:text-white"
             >
               <Plus className="mr-2 h-4 w-4" />
               Create Tournament
@@ -128,17 +132,17 @@ const OrganizerDashboard = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Left sidebar */}
           <div className="lg:col-span-1">
-            <div className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 p-5">
+            <div className="rounded-none bg-[#0a0a0c] border border-zinc-800/50 p-5">
               <h2 className="text-sm font-bold tracking-widest text-zinc-400 uppercase mb-4">Management</h2>
               <div className="space-y-1">
 
                 <button
                   onClick={() => setActiveTab("tournaments")}
                   className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-xl transition-all duration-200 group",
+                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
                     activeTab === "tournaments"
                       ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent"
+                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
                   )}
                 >
                   <Trophy className={cn("mr-3 h-4 w-4", activeTab === "tournaments" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
@@ -149,10 +153,10 @@ const OrganizerDashboard = () => {
                 <button
                   onClick={() => setActiveTab("participants")}
                   className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-xl transition-all duration-200 group",
+                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
                     activeTab === "participants"
                       ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent"
+                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
                   )}
                 >
                   <Users className={cn("mr-3 h-4 w-4", activeTab === "participants" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
@@ -163,10 +167,10 @@ const OrganizerDashboard = () => {
                 <button
                   onClick={() => setActiveTab("schedule")}
                   className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-xl transition-all duration-200 group",
+                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
                     activeTab === "schedule"
                       ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent"
+                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
                   )}
                 >
                   <Calendar className={cn("mr-3 h-4 w-4", activeTab === "schedule" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
@@ -177,10 +181,10 @@ const OrganizerDashboard = () => {
                 <button
                   onClick={() => setActiveTab("analytics")}
                   className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-xl transition-all duration-200 group",
+                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
                     activeTab === "analytics"
                       ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent"
+                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
                   )}
                 >
                   <BarChart3 className={cn("mr-3 h-4 w-4", activeTab === "analytics" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
@@ -191,10 +195,10 @@ const OrganizerDashboard = () => {
                 <button
                   onClick={() => setActiveTab("history")}
                   className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-xl transition-all duration-200 group",
+                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
                     activeTab === "history"
                       ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent"
+                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
                   )}
                 >
                   <Trophy className={cn("mr-3 h-4 w-4", activeTab === "history" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
@@ -205,10 +209,10 @@ const OrganizerDashboard = () => {
                 <button
                   onClick={() => setActiveTab("organization")}
                   className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-xl transition-all duration-200 group",
+                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
                     activeTab === "organization"
                       ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent"
+                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
                   )}
                 >
                   <Building2 className={cn("mr-3 h-4 w-4", activeTab === "organization" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
@@ -219,10 +223,10 @@ const OrganizerDashboard = () => {
                 <button
                   onClick={() => setActiveTab("staff")}
                   className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-xl transition-all duration-200 group",
+                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
                     activeTab === "staff"
                       ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white border border-transparent"
+                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
                   )}
                 >
                   <ShieldCheck className={cn("mr-3 h-4 w-4", activeTab === "staff" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
@@ -240,10 +244,10 @@ const OrganizerDashboard = () => {
           <div className="lg:col-span-4">
             <TabsContent value="tournaments" className="m-0">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="p-6 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all group">
+                <div className="p-6 rounded-none bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all group">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-mono text-zinc-500 tracking-widest uppercase">Active</span>
-                    <div className="p-2 rounded-lg bg-zinc-900/50 group-hover:bg-rose-500/10 transition-colors">
+                    <div className="p-2 rounded-none bg-black group-hover:bg-rose-500/10 transition-colors">
                       <Trophy className="w-4 h-4 text-rose-500" />
                     </div>
                   </div>
@@ -253,10 +257,10 @@ const OrganizerDashboard = () => {
                   <p className="text-zinc-500 text-sm mt-1">Currently running</p>
                 </div>
 
-                <div className="p-6 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all group">
+                <div className="p-6 rounded-none bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all group">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-mono text-zinc-500 tracking-widest uppercase">Upcoming</span>
-                    <div className="p-2 rounded-lg bg-zinc-900/50 group-hover:bg-rose-500/10 transition-colors">
+                    <div className="p-2 rounded-none bg-black group-hover:bg-rose-500/10 transition-colors">
                       <Calendar className="w-4 h-4 text-rose-500" />
                     </div>
                   </div>
@@ -266,10 +270,10 @@ const OrganizerDashboard = () => {
                   <p className="text-zinc-500 text-sm mt-1">Next 30 days</p>
                 </div>
 
-                <div className="p-6 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all group">
+                <div className="p-6 rounded-none bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all group">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-mono text-zinc-500 tracking-widest uppercase">Participants</span>
-                    <div className="p-2 rounded-lg bg-zinc-900/50 group-hover:bg-rose-500/10 transition-colors">
+                    <div className="p-2 rounded-none bg-black group-hover:bg-rose-500/10 transition-colors">
                       <Users className="w-4 h-4 text-rose-500" />
                     </div>
                   </div>

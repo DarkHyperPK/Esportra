@@ -10,7 +10,7 @@ interface OrganizerLayoutProps {
 const NAV_ITEMS = [
   { path: '/organizer/tournaments', label: 'Tournaments', icon: Trophy },
   { path: '/organizer/seasons', label: 'Seasons', icon: Layers },
-  { path: '/organizer/settings', label: 'Organization', icon: Building2 },
+  { path: '/organizer/dashboard', label: 'Manage Organization', icon: Building2 },
   { path: '/organizer/disputes', label: 'Disputes', icon: Settings },
 ];
 
@@ -18,7 +18,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/organizer/tournaments': 'Tournaments',
   '/organizer/seasons': 'Seasons',
   '/organizer/disputes': 'Disputes',
-  '/organizer/settings': 'Organization Settings',
+  '/organizer/settings': 'Manage Organization',
+  '/organizer/dashboard': 'Manage Organization',
   '/organizer/setup-organization': 'Organization',
 };
 

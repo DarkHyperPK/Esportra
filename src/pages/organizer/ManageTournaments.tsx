@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchMeRoles, getOrganizationId } from '@/lib/meRoles';
 import esportsGames from '@/data/esportsGames.json';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -42,6 +43,27 @@ interface DeletedTournament {
   days_remaining: number;
 }
 
+const getCurrentOrganization = async () => {
+  const roles = await fetchMeRoles().catch(() => null);
+  const roleOrgId = getOrganizationId(roles);
+
+  const mine = await apiClient.get<any>('/api/organizations/mine').catch(() => null);
+  if (mine?.id) return mine;
+
+  const me = await apiClient.get<any>('/api/organizations/me').catch(() => null);
+  if (me?.id) return me;
+
+  if (roleOrgId) return { id: roleOrgId };
+  return null;
+};
+
+const normalizeTournamentRows = (value: any): any[] => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.items)) return value.items;
+  return [];
+};
+
 const TournamentList = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -60,21 +82,21 @@ const TournamentList = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const orgData = await apiClient.get<any>(`/api/organizations/me`).catch(() => null);
+      const orgData = await getCurrentOrganization();
 
-      if (!orgData) return [];
+      if (!orgData?.id) return [];
 
-      const data = await apiClient.get<any[]>(`/api/organizations/${orgData.id}/tournaments?exclude_completed=true`);
+      const data = await apiClient.get<any[]>(`/api/organizations/${orgData.id}/tournaments`);
 
-      return (data || []).map((tournament: any) => ({
+      return normalizeTournamentRows(data).map((tournament: any) => ({
         id: tournament.id,
         name: tournament.name,
         game: tournament.game,
         date: tournament.start_date ? new Date(tournament.start_date).toISOString().split('T')[0] : '',
         time: tournament.start_date ? new Date(tournament.start_date).toTimeString().split(' ')[0] : '',
         venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
-        max_participants: tournament.max_teams,
-        current_participants: tournament.tournament_participants?.[0]?.count || 0,
+        max_participants: tournament.max_teams ?? tournament.max_participants ?? 0,
+        current_participants: tournament.current_participants ?? tournament.participant_count ?? tournament.tournament_participants?.[0]?.count ?? 0,
         prize_pool: tournament.prize_pool?.toString() || '0',
         user_id: user.id, // Current user is organization owner here
         entry_fee: tournament.entry_fee?.toString() || 'Free',
@@ -98,13 +120,13 @@ const TournamentList = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const orgData = await apiClient.get<any>(`/api/organizations/me`).catch(() => null);
+      const orgData = await getCurrentOrganization();
 
-      if (!orgData) return [];
+      if (!orgData?.id) return [];
 
       const data = await apiClient.get<any[]>(`/api/organizations/${orgData.id}/tournaments?deleted=true`);
 
-      return (data || []).map((t: any) => {
+      return normalizeTournamentRows(data).map((t: any) => {
         const deletedDate = new Date(t.deleted_at);
         const now = new Date();
         const diffTime = 7 * 24 * 60 * 60 * 1000 - (now.getTime() - deletedDate.getTime());
@@ -254,7 +276,7 @@ const TournamentList = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold mb-2">My Tournaments</h1>
-            <p className="text-gray-400">Manage your tournaments</p>
+            <p className="text-gray-400">Manage every tournament hosted by your organization</p>
           </div>
           <Link to="/tournaments/create">
             <Button>Create Tournament</Button>
@@ -264,7 +286,7 @@ const TournamentList = () => {
         <Tabs defaultValue="active" className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="active">
-              Active Tournaments ({tournaments.length})
+              Hosted Tournaments ({tournaments.length})
             </TabsTrigger>
             <TabsTrigger value="deleted" className="text-red-400">
               <Trash2 className="w-4 h-4 mr-2" />
@@ -275,7 +297,7 @@ const TournamentList = () => {
           <TabsContent value="active">
             {tournaments.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-400 mb-4">You haven't created any tournaments yet</p>
+                <p className="text-gray-400 mb-4">No hosted tournaments found</p>
                 <Link to="/tournaments/create">
                   <Button>Create Your First Tournament</Button>
                 </Link>
@@ -320,8 +342,8 @@ const TournamentList = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-blue-200">
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-none p-4 mb-6">
+                  <p className="text-sm text-amber-200">
                     <Clock className="w-4 h-4 inline mr-2" />
                     Deleted tournaments will be permanently removed after 7 days. Restore them before the deadline to keep your data.
                   </p>
@@ -345,7 +367,7 @@ const TournamentList = () => {
                           size="sm"
                           onClick={() => handleRestore(tournament.id, tournament.name)}
                           disabled={restoring === tournament.id}
-                          className="bg-green-600 hover:bg-green-700"
+                          className="bg-emerald-600 hover:bg-emerald-700"
                         >
                           <RotateCcw className="w-4 h-4 mr-2" />
                           {restoring === tournament.id ? 'Restoring...' : 'Restore'}

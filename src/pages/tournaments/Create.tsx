@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
 import { useAdmin } from '@/contexts/AdminContext';
 import { deriveHasOrganization, fetchMeRoles } from '@/lib/meRoles';
-import CreationModeHub from '@/components/tournament/CreationModeHub';
 import Footer from '@/components/Footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, ArrowLeft, ArrowRight, Building2, Loader2, Trophy } from 'lucide-react';
+import { AlertCircle, ArrowRight, Building2, Loader2, Trophy } from 'lucide-react';
 import { WizardContainer } from '@/components/tournament/wizard';
 import { Button } from '@/components/ui/button';
 
@@ -16,14 +15,12 @@ const CreateTournament = () => {
   const { canCreateTournaments, currentRole } = useRole();
   const admin = useAdmin();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [hasOrganization, setHasOrganization] = useState(false);
 
   const canCreate = canCreateTournaments || admin.hasPermission('tournaments:create');
   const requestedMode = searchParams.get('mode');
-  // Only 'event' mode is handled inline; 'season' redirects to dedicated route
-  const creationMode = requestedMode === 'event' ? requestedMode : null;
 
   // Check if user has an organization
   useEffect(() => {
@@ -43,14 +40,6 @@ const CreateTournament = () => {
     };
     checkOrganization();
   }, [user?.id, currentRole, admin]);
-
-  const handleModeSelect = (mode: 'event' | 'season') => {
-    if (mode === 'season') {
-      navigate('/organizer/seasons/create');
-    } else {
-      setSearchParams({ mode });
-    }
-  };
 
   if (!user) {
     return (
@@ -145,40 +134,14 @@ const CreateTournament = () => {
     );
   }
 
+  if (requestedMode === 'season') {
+    return <Navigate to="/organizer/seasons/create" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-transparent text-white flex flex-col">
       <main className="flex-grow">
-        {!creationMode ? (
-          <CreationModeHub onSelect={handleModeSelect} />
-        ) : (
-          <>
-            <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-              <div className="mb-6 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-[#0d0d10] p-5 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-start gap-4">
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white">
-                    <Trophy className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-rose-400">Single event flow</p>
-                    <h1 className="mt-1 text-2xl font-black tracking-tight">Create one tournament with multiple stages</h1>
-                    <p className="mt-2 text-sm text-zinc-400">
-                      Use the existing tournament wizard for one event with groups, playoffs, match settings, and registration.
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  className="border-white/15 bg-white/5 text-white hover:bg-white/10"
-                  onClick={() => navigate('/tournaments/create')}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to options
-                </Button>
-              </div>
-            </div>
-            <WizardContainer />
-          </>
-        )}
+        <WizardContainer />
       </main>
       <Footer />
     </div>

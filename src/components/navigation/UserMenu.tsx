@@ -322,8 +322,8 @@ const UserMenu = ({
                 {hasOrganization ? (
                   <>
                     <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
-                    <FramerDropdownItem to="/organizer/settings" icon={<Building2 className="h-4 w-4" />}>
-                      Organization Settings
+                    <FramerDropdownItem to="/organizer/dashboard?tab=organization" icon={<Building2 className="h-4 w-4" />}>
+                      Manage Organization
                     </FramerDropdownItem>
                     <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
                     <FramerDropdownItem to="/seasons/create">Create Season</FramerDropdownItem>

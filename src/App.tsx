@@ -587,13 +587,21 @@ const AppContent = React.memo(() => {
                 } />
 
                 {/* Tournament Organizer Routes */}
-                <Route path="/organizer/dashboard" element={<Navigate to="/organizer/tournaments" replace />} />
-                <Route path="/organizer/settings" element={
+                <Route path="/organizer/dashboard" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
-                    <OrganizationSettings />
+                    <OrganizerDashboard />
                   </ProtectedRoute>
                 } />
-                <Route path="/organizer/organization" element={<Navigate to="/organizer/settings" replace />} />
+                <Route path="/organizer/settings" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <OrganizerDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer/organization" element={
+                  <ProtectedRoute allowedRoles={['organizer']}>
+                    <OrganizerDashboard />
+                  </ProtectedRoute>
+                } />
                 <Route path="/organizer/setup-organization" element={
                   <ProtectedRoute allowedRoles={['organizer']}>
                     <OrganizationWizard />
