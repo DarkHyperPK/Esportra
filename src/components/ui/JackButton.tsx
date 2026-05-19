@@ -24,7 +24,7 @@ const jackButtonVariants = cva(
         // Default: white surface, black text. Rose slides up on hover.
         primary: "bg-white text-black",
         // Inverse: matte-black surface, white text. Rose slides up on hover.
-        invert: "border border-white/15 bg-black text-white",
+        invert: "border border-white/15 bg-[#0a0a0c] text-white",
         // Outline: transparent surface, white text. Rose slides up on hover.
         ghost:
           "border border-white/25 bg-white/5 text-white backdrop-blur-md hover:border-white/50",

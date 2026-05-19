@@ -12,7 +12,7 @@ Only three primary colors are used across the platform.
 
 | Token            | Hex / Tailwind             | Used for |
 | ---------------- | -------------------------- | -------- |
-| **Matte black**  | `#000000` / `bg-black`     | Default surface, navbar pill, dropdown panels, command surfaces. |
+| **Matte black**  | `#0a0a0c` / `bg-[#0a0a0c]` | Default surface, navbar pill, dropdown panels, command surfaces. |
 | **White**        | `#ffffff` / `bg-white`     | Primary CTA fill, foreground text on dark, button surface. |
 | **Rose pink**    | `#f43f5e` / `rose-500`     | Sole accent. Hover fills, active rails, focus rings, single status accents. |
 
@@ -22,7 +22,7 @@ For contrast and depth — never as decoration:
 
 | Token                  | Tailwind                | Notes |
 | ---------------------- | ----------------------- | ----- |
-| Deep matte             | `bg-[#0a0a0c]`          | Section bands above black. |
+| Pitch black veil       | `bg-black`              | Only for page/video overlays and dividers, not large UI panels. |
 | Low-contrast text      | `text-zinc-400`         | Secondary text. |
 | Borders                | `border-white/10`       | Default container border. |
 | Strong border          | `border-white/25`       | Outlined ghost buttons. |
@@ -76,7 +76,7 @@ import { ChevronRight } from "lucide-react";
 | Variant   | Surface          | Text   | Hover                                |
 | --------- | ---------------- | ------ | ------------------------------------ |
 | `primary` | `bg-white`       | black  | Rose-pink panel slides up from below |
-| `invert`  | `bg-black`       | white  | Rose-pink panel slides up from below |
+| `invert`  | `bg-[#0a0a0c]`   | white  | Rose-pink panel slides up from below |
 | `ghost`   | `bg-white/5` + border | white | Rose-pink panel slides up from below |
 
 ### Sizes
@@ -119,7 +119,7 @@ All new dashboards/pages should compose these.
 Outside command surfaces:
 
 ```tsx
-<div className="border border-white/10 bg-black/60 p-5 md:p-7">
+<div className="border border-white/10 bg-[#0a0a0c]/90 p-5 md:p-7">
   ...
 </div>
 ```
@@ -130,12 +130,12 @@ only when floating (modals, dropdowns).
 ### Navbar pill
 
 `@/components/Navbar.tsx`. Floating pill: `rounded-full border border-white/10
-bg-black/80 backdrop-blur-xl`. The only rounded surface allowed.
+bg-[#0a0a0c]/85 backdrop-blur-xl`. The only rounded surface allowed.
 
 ### Dropdowns
 
 `@/components/ui/FramerDropdown.tsx` with `borderRadius={0}`,
-`backgroundColor="#000000"`, `borderColor="rgba(244,63,94,0.4)"`. Items use the
+`backgroundColor="#0a0a0c"`, `borderColor="rgba(244,63,94,0.4)"`. Items use the
 JACK IN treatment (white tile, rose slide-up).
 
 ## 5. Inputs
@@ -144,7 +144,7 @@ Inputs follow the wizard surface (`@/components/tournament/wizard/StepBasicInfo.
 
 ```tsx
 <input
-  className="w-full border border-white/10 bg-black/60 px-4 py-3 text-sm text-white
+  className="w-full border border-white/10 bg-[#0a0a0c]/90 px-4 py-3 text-sm text-white
              placeholder:text-zinc-500 outline-none transition-colors
              focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
 />

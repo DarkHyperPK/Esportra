@@ -210,7 +210,7 @@ const UserMenu = ({
       <FramerDropdownRoot
         borderRadius={0}
         accentColor="#f43f5e"
-        backgroundColor="#000000"
+        backgroundColor="#0a0a0c"
         borderColor="rgba(244,63,94,0.4)"
       >
         <FramerDropdownTrigger>
@@ -218,7 +218,7 @@ const UserMenu = ({
             type="button"
             className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium text-white/85 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70"
           >
-            <span className="flex h-8 w-8 items-center justify-center border border-white/10 bg-black">
+            <span className="flex h-8 w-8 items-center justify-center border border-white/10 bg-[#0a0a0c]">
               <User className="h-4 w-4" />
             </span>
             <span className="hidden max-w-[100px] truncate sm:inline">
@@ -232,10 +232,10 @@ const UserMenu = ({
         <FramerDropdownContent
           align="end"
           width={280}
-          className="!rounded-none !border-rose-500/40 !bg-black !p-0 !backdrop-blur-0"
+          className="!rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0"
         >
           {/* Identity header */}
-          <div className="border-b border-white/10 bg-black px-4 py-4">
+          <div className="border-b border-white/10 bg-[#0a0a0c] px-4 py-4">
             <p className="text-sm font-semibold text-white">
               {profile?.full_name || profile?.username || "User"}
             </p>
@@ -252,12 +252,12 @@ const UserMenu = ({
           </div>
 
           {!admin.isAdmin && hasApprovedLicense && (
-            <div className="border-b border-white/10 bg-black p-3">
+            <div className="border-b border-white/10 bg-[#0a0a0c] p-3">
               <RoleSwitcherMenuButton onClick={() => setIsRoleSwitcherOpen(true)} />
             </div>
           )}
 
-          <div className="space-y-px bg-black p-2">
+          <div className="space-y-px bg-[#0a0a0c] p-2">
             <JackMenuItem to="/user/profile">My Profile</JackMenuItem>
             <JackMenuItem to="/account/settings">Account Settings</JackMenuItem>
             {!admin.isAdmin && (
@@ -337,7 +337,7 @@ const UserMenu = ({
             )}
           </div>
 
-          <div className="border-t border-white/10 bg-black p-3">
+          <div className="border-t border-white/10 bg-[#0a0a0c] p-3">
             <JackButton
               variant="invert"
               size="sm"

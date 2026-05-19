@@ -63,7 +63,7 @@ const DesktopNav = ({
       {/* Center: Navigation */}
       <div className="flex items-center gap-6">
         {/* Venues */}
-        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#000000" borderColor="rgba(244,63,94,0.4)">
+        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
           <FramerDropdownTrigger asChild>
             <button type="button" className={linkClass(isActive(["/venues"]))}>
               <MapPin className="h-4 w-4" />
@@ -71,8 +71,8 @@ const DesktopNav = ({
               <ChevronDown className="h-3.5 w-3.5 opacity-50" />
             </button>
           </FramerDropdownTrigger>
-          <FramerDropdownContent className="min-w-[220px] !rounded-none !border-rose-500/40 !bg-black !p-0 !backdrop-blur-0">
-            <div className="space-y-px bg-black">
+          <FramerDropdownContent className="min-w-[220px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+            <div className="space-y-px bg-[#0a0a0c]">
               <JackItem to="/venues/search">Find Venues</JackItem>
               <JackItem to="/venues/featured">Featured Venues</JackItem>
               {canManageVenues && (
@@ -87,7 +87,7 @@ const DesktopNav = ({
         </FramerDropdownRoot>
 
         {/* Tournaments */}
-        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#000000" borderColor="rgba(244,63,94,0.4)">
+        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
           <FramerDropdownTrigger asChild>
             <button
               type="button"
@@ -105,8 +105,8 @@ const DesktopNav = ({
               <ChevronDown className="h-3.5 w-3.5 opacity-50" />
             </button>
           </FramerDropdownTrigger>
-          <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-black !p-0 !backdrop-blur-0">
-            <div className="space-y-px bg-black">
+          <FramerDropdownContent className="min-w-[240px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+            <div className="space-y-px bg-[#0a0a0c]">
               <JackItem to="/tournaments">Browse Tournaments</JackItem>
               {canManageTournaments && (
                 <>
@@ -130,7 +130,7 @@ const DesktopNav = ({
         </Link>
 
         {/* About */}
-        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#000000" borderColor="rgba(244,63,94,0.4)">
+        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
           <FramerDropdownTrigger asChild>
             <button type="button" className={linkClass(isActive(["/about"]))}>
               <Info className="h-4 w-4" />
@@ -138,8 +138,8 @@ const DesktopNav = ({
               <ChevronDown className="h-3.5 w-3.5 opacity-50" />
             </button>
           </FramerDropdownTrigger>
-          <FramerDropdownContent className="min-w-[200px] !rounded-none !border-rose-500/40 !bg-black !p-0 !backdrop-blur-0">
-            <div className="space-y-px bg-black">
+          <FramerDropdownContent className="min-w-[200px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+            <div className="space-y-px bg-[#0a0a0c]">
               <JackItem to="/about/company">About Us</JackItem>
               <JackItem to="/about/contact">Contact</JackItem>
               <JackItem to="/about/faq">FAQ</JackItem>
