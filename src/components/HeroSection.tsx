@@ -1,10 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronRight, Volume2, VolumeX, Trophy, Users, MapPin, ChevronDown } from "lucide-react";
+import { ChevronRight, Volume2, VolumeX, ChevronDown, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 
 import { getWebsiteAssetUrl } from "@/lib/storage";
+import {
+  deriveHasApprovedLicense,
+  fetchMeRoles,
+  meRolesQueryKey,
+} from "@/lib/meRoles";
 
 // LCP-optimized: Use direct URL
 const HERO_VIDEO_URL = getWebsiteAssetUrl('hero-section-video/video3.mp4');
@@ -24,13 +30,27 @@ const HeroSection = () => {
   const backgroundY = useTransform(scrollY, [0, 500], [0, 200]);
   const contentOpacity = useTransform(scrollY, [0, 300], [1, 0]);
 
-  // Trigger reveal of hero content after the intro pause
+  // Trigger content reveal shortly after mount
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLogoMoved(true);
-    }, 1800);
+    }, 200);
     return () => clearTimeout(timer);
   }, []);
+
+  // Resolve where the "Host Tournament" CTA should send the user
+  const { data: meRoles } = useQuery({
+    queryKey: meRolesQueryKey,
+    queryFn: fetchMeRoles,
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const hasApprovedLicense = !!user && deriveHasApprovedLicense(meRoles);
+  const hostTournamentHref = !user
+    ? "/auth/signup"
+    : hasApprovedLicense
+      ? "/tournaments/create"
+      : "/verification";
 
   // Ensure video is playing and handle initial mute/volume
   useEffect(() => {
@@ -78,9 +98,9 @@ const HeroSection = () => {
         </motion.video>
       </motion.div>
 
-      {/* Darker overlay for stronger text contrast */}
-      <div className="absolute inset-0 z-10 bg-black/75" />
-      <div className="absolute inset-0 z-10 bg-[radial-gradient(ellipse_at_top_left,rgba(67,56,202,0.1),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(16,185,129,0.05),transparent_50%)]"></div>
+      {/* Heavy darken layer so the headline + CTAs read clearly over the video */}
+      <div className="absolute inset-0 z-10 bg-black/70" />
+      <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/40 via-black/55 to-black/85" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0f1115] to-transparent z-10"></div>
 
       {/* Video Credits - Bottom Left */}
@@ -122,50 +142,12 @@ const HeroSection = () => {
         </div>
       </div>
 
-      {/* Logo intro (animates up after 4s) */}
-      <div className="container mx-auto px-4 relative z-20 flex justify-center items-start h-full min-h-[100vh] pt-[28vh]">
-        <motion.div
-          layout
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{
-            opacity: 1,
-            scale: isLogoMoved ? 0.55 : 1,
-            y: isLogoMoved ? (typeof window !== 'undefined' && window.innerWidth < 768 ? -110 : -120) : 0,
-          }}
-          transition={{
-            duration: 1.4,
-            delay: isLogoMoved ? 0 : 0.4,
-            ease: [0.22, 1, 0.36, 1],
-          }}
-          style={{ opacity: contentOpacity }}
-          className="flex flex-col items-center justify-center"
-        >
-          <img
-            src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
-            alt="Esportra Logo"
-            className="h-24 md:h-32 w-auto opacity-95 drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]"
-          />
-        </motion.div>
-      </div>
-
-      {/* Hero content (revealed after logo intro) */}
+      {/* Hero content */}
       <motion.div
-        className="absolute inset-x-0 top-1/2 z-20 -translate-y-1/2 px-6"
-        style={{ opacity: contentOpacity }}
+        className="relative z-20 mx-auto flex w-full max-w-5xl flex-col items-center justify-center px-6 text-center"
+        style={{ opacity: contentOpacity, minHeight: '100vh' }}
       >
-        <div className="mx-auto max-w-5xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: isLogoMoved ? 1 : 0, y: isLogoMoved ? 0 : 20 }}
-            transition={{ duration: 0.8, delay: isLogoMoved ? 0.2 : 0, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-5 inline-flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-1.5 backdrop-blur-md"
-          >
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.9)]" />
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-rose-100">
-              Live tournaments running now
-            </span>
-          </motion.div>
-
+        <div className="w-full">
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: isLogoMoved ? 1 : 0, y: isLogoMoved ? 0 : 30 }}
@@ -192,7 +174,7 @@ const HeroSection = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: isLogoMoved ? 1 : 0, y: isLogoMoved ? 0 : 20 }}
-            transition={{ duration: 1, delay: isLogoMoved ? 0.75 : 0, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 1, delay: isLogoMoved ? 0.55 : 0, ease: [0.22, 1, 0.36, 1] }}
             className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
           >
             <Link
@@ -207,31 +189,12 @@ const HeroSection = () => {
             </Link>
 
             <Link
-              to="/tournaments"
+              to={hostTournamentHref}
               className="group relative inline-flex h-14 items-center gap-2 overflow-hidden border border-white/25 bg-white/5 px-10 font-mono text-sm font-bold uppercase tracking-wider text-white backdrop-blur-md transition-colors hover:border-white/50 hover:bg-white/10"
             >
-              Observe Data
+              <Trophy className="h-4 w-4" />
+              Host Tournament
             </Link>
-          </motion.div>
-
-          {/* Stats strip */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: isLogoMoved ? 1 : 0, y: isLogoMoved ? 0 : 20 }}
-            transition={{ duration: 1, delay: isLogoMoved ? 0.95 : 0, ease: [0.22, 1, 0.36, 1] }}
-            className="mx-auto mt-16 grid max-w-3xl grid-cols-3 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md"
-          >
-            {[
-              { icon: Trophy, label: "Tournaments", value: "1,200+" },
-              { icon: Users, label: "Active players", value: "48K+" },
-              { icon: MapPin, label: "Partner venues", value: "320+" },
-            ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="flex flex-col items-center justify-center gap-2 bg-black/40 px-4 py-5">
-                <Icon className="h-4 w-4 text-rose-300" />
-                <span className="font-heading text-2xl font-black text-white md:text-3xl">{value}</span>
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">{label}</span>
-              </div>
-            ))}
           </motion.div>
         </div>
       </motion.div>
