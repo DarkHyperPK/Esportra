@@ -157,7 +157,7 @@ const HeroSection = () => {
             className="font-heading text-5xl font-black uppercase tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)] md:text-7xl lg:text-8xl"
           >
             Where competition <br className="hidden sm:block" />
-            <span className="bg-gradient-to-r from-rose-400 via-rose-300 to-rose-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-rose-500 via-rose-500 to-rose-500 bg-clip-text text-transparent">
               actually lives.
             </span>
           </motion.h1>
