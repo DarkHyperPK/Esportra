@@ -29,7 +29,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-[999] border-b border-rose-500/20 bg-black">
+    <nav data-mounted className="sticky top-0 z-[999] border-b border-rose-500/20 bg-black">
       <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-8">
         <DesktopNav handleSignOut={handleSignOut} />
 
