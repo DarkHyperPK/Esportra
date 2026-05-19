@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import MobileNav from "./navigation/MobileNav";
 import DesktopNav from "./navigation/DesktopNav";
 import { BurgerMenu } from "./ui/BurgerMenu";
 import { AnimatePresence } from "framer-motion";
+import { getWebsiteAssetUrl } from "@/lib/storage";
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -28,9 +29,17 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-[999] border-b border-white/[0.06] bg-[#0a0a0c]">
+    <nav className="sticky top-0 z-[999] border-b border-rose-500/20 bg-black">
       <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-8">
         <DesktopNav handleSignOut={handleSignOut} />
+
+        <Link to="/" className="flex items-center lg:hidden">
+          <img
+            src={getWebsiteAssetUrl("eSportra-Logo/eSPORTRA-white-transparent.png")}
+            alt="Esportra"
+            className="h-7 w-auto"
+          />
+        </Link>
 
         <div className="lg:hidden">
           <BurgerMenu

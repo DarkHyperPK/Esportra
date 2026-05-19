@@ -42,15 +42,20 @@ const MobileNav = ({
 
   const linkClass = (active: boolean) =>
     cn(
-      "group relative flex w-full items-center justify-between overflow-hidden bg-white px-4 py-3 text-sm font-semibold text-black outline-none transition-colors",
-      active ? "text-white" : "hover:text-white"
+      "flex w-full items-center justify-between px-3 py-3 text-sm font-medium outline-none transition-colors",
+      active ? "text-white" : "text-white/85 hover:text-white"
     );
 
-  const subLinkClass = (active: boolean) =>
-    cn(
-      "group relative block overflow-hidden bg-white px-4 py-2.5 text-sm font-medium text-black outline-none transition-colors",
-      active ? "text-white" : "hover:text-white"
-    );
+  const JackSubItem = ({ to, children }: { to: string; children: React.ReactNode }) => (
+    <Link
+      to={to}
+      onClick={onClose}
+      className="group relative block w-full overflow-hidden bg-white px-4 py-2.5 text-left font-mono text-[11px] font-bold uppercase tracking-wider text-black"
+    >
+      <span className="relative z-10">{children}</span>
+      <span className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
+    </Link>
+  );
 
   const accordionMotion = {
     initial: { opacity: 0, height: 0 },
@@ -58,8 +63,6 @@ const MobileNav = ({
     exit: { opacity: 0, height: 0 },
     transition: { duration: 0.2 },
   };
-
-  const roseOverlay = <div className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />;
 
   return (
     <AnimatePresence>
@@ -69,28 +72,38 @@ const MobileNav = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-x-0 top-16 z-[998] border-b border-white/[0.06] bg-[#0a0a0c] lg:hidden"
+          className="fixed inset-x-0 top-16 z-[998] border-b border-rose-500/20 bg-black lg:hidden"
         >
           <div className="max-h-[calc(100vh-4rem)] overflow-y-auto px-4 py-3">
             {/* Main nav */}
             <div className="space-y-0.5">
               {/* Venues */}
               <div>
-                <button type="button" onClick={() => toggleMenu("venues")} className={linkClass(isActive(["/venues"]))}>
-                  <span className="relative z-10 flex items-center gap-2"><MapPin className="h-4 w-4" /> Venues</span>
-                  <ChevronDown className={`relative z-10 h-4 w-4 transition-transform ${expandedMenu === "venues" ? "rotate-180" : ""}`} />
-                  {roseOverlay}
+                <button
+                  type="button"
+                  onClick={() => toggleMenu("venues")}
+                  className={linkClass(isActive(["/venues"]))}
+                >
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Venues
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      expandedMenu === "venues" ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
                 <AnimatePresence>
                   {expandedMenu === "venues" && (
                     <motion.div {...accordionMotion} className="overflow-hidden">
-                      <div className="ml-4 space-y-0.5 border-l border-white/10 pl-4 py-1">
-                        <Link to="/venues/search" className={subLinkClass(isActive(["/venues/search"]))} onClick={onClose}><span className="relative z-10">Find Venues</span>{roseOverlay}</Link>
-                        <Link to="/venues/featured" className={subLinkClass(isActive(["/venues/featured"]))} onClick={onClose}><span className="relative z-10">Featured Venues</span>{roseOverlay}</Link>
+                      <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
+                        <JackSubItem to="/venues/search">Find Venues</JackSubItem>
+                        <JackSubItem to="/venues/featured">Featured Venues</JackSubItem>
                         {canManageVenues && (
                           <>
-                            <Link to="/venues/list-venue" className={subLinkClass(isActive(["/venues/list-venue"]))} onClick={onClose}><span className="relative z-10">List Your Venue</span>{roseOverlay}</Link>
-                            <Link to="/venues/manage" className={subLinkClass(isActive(["/venues/manage"]))} onClick={onClose}><span className="relative z-10">Manage Venues</span>{roseOverlay}</Link>
+                            <JackSubItem to="/venues/list-venue">List Your Venue</JackSubItem>
+                            <JackSubItem to="/venues/manage">Manage Venues</JackSubItem>
                           </>
                         )}
                       </div>
@@ -101,22 +114,39 @@ const MobileNav = ({
 
               {/* Tournaments */}
               <div>
-                <button type="button" onClick={() => toggleMenu("tournaments")} className={linkClass(isActive(["/tournaments", "/organizer/tournaments", "/organizer/seasons", "/season"]))}>
-                  <span className="relative z-10 flex items-center gap-2"><Trophy className="h-4 w-4" /> Tournaments</span>
-                  <ChevronDown className={`relative z-10 h-4 w-4 transition-transform ${expandedMenu === "tournaments" ? "rotate-180" : ""}`} />
-                  {roseOverlay}
+                <button
+                  type="button"
+                  onClick={() => toggleMenu("tournaments")}
+                  className={linkClass(
+                    isActive([
+                      "/tournaments",
+                      "/organizer/tournaments",
+                      "/organizer/seasons",
+                      "/season",
+                    ])
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4" />
+                    Tournaments
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      expandedMenu === "tournaments" ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
                 <AnimatePresence>
                   {expandedMenu === "tournaments" && (
                     <motion.div {...accordionMotion} className="overflow-hidden">
-                      <div className="ml-4 space-y-0.5 border-l border-white/10 pl-4 py-1">
-                        <Link to="/tournaments" className={subLinkClass(isActive(["/tournaments"]))} onClick={onClose}><span className="relative z-10">Browse Tournaments</span>{roseOverlay}</Link>
+                      <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
+                        <JackSubItem to="/tournaments">Browse Tournaments</JackSubItem>
                         {canManageTournaments && (
                           <>
-                            <Link to="/organizer/tournaments" className={subLinkClass(isActive(["/organizer/tournaments"]))} onClick={onClose}><span className="relative z-10">Manage Tournaments</span>{roseOverlay}</Link>
-                            <Link to="/tournaments/create" className={subLinkClass(isActive(["/tournaments/create"]))} onClick={onClose}><span className="relative z-10">Create Tournament</span>{roseOverlay}</Link>
-                            <Link to="/organizer/seasons" className={subLinkClass(isActive(["/organizer/seasons"]))} onClick={onClose}><span className="relative z-10">Manage Seasons</span>{roseOverlay}</Link>
-                            <Link to="/tournaments/create?mode=season" className={subLinkClass(location.pathname === "/tournaments/create" && location.search.includes("mode=season"))} onClick={onClose}><span className="relative z-10">Create Season</span>{roseOverlay}</Link>
+                            <JackSubItem to="/organizer/tournaments">Manage Tournaments</JackSubItem>
+                            <JackSubItem to="/tournaments/create">Create Tournament</JackSubItem>
+                            <JackSubItem to="/organizer/seasons">Manage Seasons</JackSubItem>
+                            <JackSubItem to="/tournaments/create?mode=season">Create Season</JackSubItem>
                           </>
                         )}
                       </div>
@@ -127,24 +157,36 @@ const MobileNav = ({
 
               {/* Leaderboards */}
               <Link to="/leaderboards" className={linkClass(isActive(["/leaderboards"]))} onClick={onClose}>
-                <span className="relative z-10 flex items-center gap-2"><Medal className="h-4 w-4" /> Leaderboards</span>
-                {roseOverlay}
+                <span className="flex items-center gap-2">
+                  <Medal className="h-4 w-4" />
+                  Leaderboards
+                </span>
               </Link>
 
               {/* About */}
               <div>
-                <button type="button" onClick={() => toggleMenu("about")} className={linkClass(isActive(["/about"]))}>
-                  <span className="relative z-10 flex items-center gap-2"><Info className="h-4 w-4" /> About</span>
-                  <ChevronDown className={`relative z-10 h-4 w-4 transition-transform ${expandedMenu === "about" ? "rotate-180" : ""}`} />
-                  {roseOverlay}
+                <button
+                  type="button"
+                  onClick={() => toggleMenu("about")}
+                  className={linkClass(isActive(["/about"]))}
+                >
+                  <span className="flex items-center gap-2">
+                    <Info className="h-4 w-4" />
+                    About
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      expandedMenu === "about" ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
                 <AnimatePresence>
                   {expandedMenu === "about" && (
                     <motion.div {...accordionMotion} className="overflow-hidden">
-                      <div className="ml-4 space-y-0.5 border-l border-white/10 pl-4 py-1">
-                        <Link to="/about/company" className={subLinkClass(isActive(["/about/company"]))} onClick={onClose}><span className="relative z-10">About Us</span>{roseOverlay}</Link>
-                        <Link to="/about/contact" className={subLinkClass(isActive(["/about/contact"]))} onClick={onClose}><span className="relative z-10">Contact</span>{roseOverlay}</Link>
-                        <Link to="/about/faq" className={subLinkClass(isActive(["/about/faq"]))} onClick={onClose}><span className="relative z-10">FAQ</span>{roseOverlay}</Link>
+                      <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
+                        <JackSubItem to="/about/company">About Us</JackSubItem>
+                        <JackSubItem to="/about/contact">Contact</JackSubItem>
+                        <JackSubItem to="/about/faq">FAQ</JackSubItem>
                       </div>
                     </motion.div>
                   )}
@@ -153,81 +195,122 @@ const MobileNav = ({
 
               {/* Partners */}
               <Link to="/partners" className={linkClass(isActive(["/partners"]))} onClick={onClose}>
-                <span className="relative z-10 flex items-center gap-2"><Handshake className="h-4 w-4" /> Partners</span>
-                {roseOverlay}
+                <span className="flex items-center gap-2">
+                  <Handshake className="h-4 w-4" />
+                  Partners
+                </span>
               </Link>
             </div>
 
             {user && (
               <>
                 <div className="my-3 h-px bg-white/[0.06]" />
-                {userRole !== "admin" && <div className="mb-3"><RoleSwitcher /></div>}
+
+                {userRole !== "admin" && (
+                  <div className="mb-3">
+                    <RoleSwitcher />
+                  </div>
+                )}
+
                 <div className="space-y-0.5">
                   <Link to="/user/profile" className={linkClass(isActive(["/user/profile"]))} onClick={onClose}>
-                    <span className="relative z-10 flex items-center gap-2"><User className="h-4 w-4" /> My Profile</span>
-                    {roseOverlay}
+                    <span className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      My Profile
+                    </span>
                   </Link>
                   <Link to="/notifications" className={linkClass(isActive(["/notifications"]))} onClick={onClose}>
-                    <span className="relative z-10 flex items-center gap-2"><Bell className="h-4 w-4" /> Notifications</span>
-                    {unreadCount > 0 && <span className="relative z-10 rounded-full bg-rose-500 px-2 py-0.5 text-xs font-semibold text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>}
-                    {roseOverlay}
+                    <span className="flex items-center gap-2">
+                      <Bell className="h-4 w-4" />
+                      Notifications
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className="rounded-full bg-rose-500 px-2 py-0.5 text-xs font-semibold text-white">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
                   </Link>
                   <Link to="/player/teams" className={linkClass(isActive(["/player/teams"]))} onClick={onClose}>
-                    <span className="relative z-10 flex items-center gap-2"><Plus className="h-4 w-4" /> Create Your Team</span>
-                    {roseOverlay}
+                    <span className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Create Your Team
+                    </span>
                   </Link>
                 </div>
 
                 {profile?.role === "admin" && (
                   <div className="mt-2 space-y-0.5">
                     <Link to="/admin/dashboard" className={linkClass(isActive(["/admin"]))} onClick={onClose}>
-                      <span className="relative z-10 flex items-center gap-2"><Shield className="h-4 w-4" /> Admin Panel</span>
-                      {roseOverlay}
+                      <span className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Admin Panel
+                      </span>
                     </Link>
                   </div>
                 )}
                 {userRole === "venue_owner" && !isSuperAdmin && (
                   <div className="mt-2 space-y-0.5">
                     <Link to="/venues/manage" className={linkClass(isActive(["/venues/manage"]))} onClick={onClose}>
-                      <span className="relative z-10 flex items-center gap-2"><MapPin className="h-4 w-4" /> My Venues</span>
-                      {roseOverlay}
+                      <span className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        My Venues
+                      </span>
                     </Link>
                     <Link to="/venues/list-venue" className={linkClass(isActive(["/venues/list-venue"]))} onClick={onClose}>
-                      <span className="relative z-10 flex items-center gap-2"><Plus className="h-4 w-4" /> List New Venue</span>
-                      {roseOverlay}
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        List New Venue
+                      </span>
                     </Link>
                   </div>
                 )}
                 {userRole === "organizer" && !isSuperAdmin && (
                   <div className="mt-2 space-y-0.5">
                     <Link to="/organizer/tournaments" className={linkClass(isActive(["/organizer/tournaments"]))} onClick={onClose}>
-                      <span className="relative z-10 flex items-center gap-2"><Trophy className="h-4 w-4" /> Manage Tournaments</span>
-                      {roseOverlay}
+                      <span className="flex items-center gap-2">
+                        <Trophy className="h-4 w-4" />
+                        Manage Tournaments
+                      </span>
                     </Link>
                     <Link to="/tournaments/create" className={linkClass(isActive(["/tournaments/create"]))} onClick={onClose}>
-                      <span className="relative z-10 flex items-center gap-2"><Plus className="h-4 w-4" /> Create Tournament</span>
-                      {roseOverlay}
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Create Tournament
+                      </span>
                     </Link>
                   </div>
                 )}
 
                 <div className="my-3 h-px bg-white/[0.06]" />
-                <button className="group relative flex w-full items-center gap-2 overflow-hidden bg-white px-4 py-3 text-sm font-semibold text-black outline-none transition-colors hover:text-white" onClick={() => { onClose(); handleSignOut(); }}>
-                  <span className="relative z-10 flex items-center gap-2"><LogOut className="h-4 w-4" /> Sign Out</span>
-                  {roseOverlay}
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:text-white"
+                  onClick={() => {
+                    onClose();
+                    handleSignOut();
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
                 </button>
               </>
             )}
 
             {!user && (
-              <div className="mt-3 flex items-center gap-3 border-t border-white/[0.06] pt-3">
-                <Link to="/auth/signin" className="group relative flex-1 overflow-hidden bg-white py-3 text-center text-sm font-semibold text-black outline-none transition-colors hover:text-white" onClick={onClose}>
-                  <span className="relative z-10">Log in</span>
-                  {roseOverlay}
+              <div className="mt-3 flex items-center gap-2 border-t border-white/[0.06] pt-3">
+                <Link
+                  to="/auth/signin"
+                  className="flex-1 border border-white/10 px-4 py-2.5 text-center font-mono text-[11px] font-bold uppercase tracking-wider text-white/85 transition-colors hover:border-white/30 hover:text-white"
+                  onClick={onClose}
+                >
+                  Log in
                 </Link>
-                <Link to="/auth/signup" className="group relative flex-1 overflow-hidden bg-white py-3 text-center text-sm font-semibold text-black outline-none transition-colors hover:text-white" onClick={onClose}>
+                <Link
+                  to="/auth/signup"
+                  className="group relative flex-1 overflow-hidden bg-white px-4 py-2.5 text-center font-mono text-[11px] font-bold uppercase tracking-wider text-black"
+                  onClick={onClose}
+                >
                   <span className="relative z-10">Sign up</span>
-                  {roseOverlay}
+                  <span className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
                 </Link>
               </div>
             )}
